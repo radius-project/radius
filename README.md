@@ -1,28 +1,21 @@
 # Project
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+Project Radius is a developer-centric cloud-native application platform.
 
-As the maintainer of this project, please make a few updates:
+The core of Radius is using the declarative **application model** to describe complete applications that can be managed and deployed with an intelligent control plane. Radius uses the [Bicep](https://github.com/azure/bicep) language as a file-format and infrastructure-as-code tool.
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+Radius consists of:
+
+- Extensions to the Bicep language
+- Application model that represent developer concepts with a declarative model
+- Schemas for different compute and non-compute resource types
+- CLI tools for deployment and management
+- Multiple runtimes for application hosting
+  - *For now* this is just Kubernetes
 
 ## Contributing
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
-
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+We gladly accept feedback and code contribution from outside the core team. Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Trademarks
 
