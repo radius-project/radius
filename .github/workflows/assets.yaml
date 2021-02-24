@@ -1,0 +1,32 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: assets
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    name: Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
+        with:
+          source_dir: 'deploy'
+          container_name: 'environment'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: true
+          extra_args: '--pattern rp-full.json'
+      - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
+        with:
+          source_dir: 'deploy'
+          container_name: 'environment'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: true
+          extra_args: '--pattern initialize-cluster.sh'

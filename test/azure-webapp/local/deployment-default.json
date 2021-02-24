@@ -1,0 +1,9 @@
+{
+    "properties": {
+        "components": [
+            {
+                "componentName": "radius/azure-function/webapp"
+            }
+        ]
+    }
+}

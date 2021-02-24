@@ -1,0 +1,27 @@
+{
+    "kind": "radius.dev/Container@v1alpha1",
+    "properties": {
+        "run": {
+            "container": {
+                "image": "rynowak/frontend:0.5.0-dev"
+            }
+        },
+        "provides": [
+            {
+                "name": "frontend",
+                "kind": "http",
+                "containerPort": 80
+            }
+        ],
+        "dependsOn": [
+            {
+                "name": "backend",
+                "kind": "http",
+                "setEnv": {
+                    "SERVICE__BACKEND__HOST": "host",
+                    "SERVICE__BACKEND__PORT": "port"
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "kind": "radius.dev/Container@v1alpha1",
+    "properties": {
+        "run": {
+            "container": {
+                "image": "rynowak/dapr-hello-nodeapp:latest"
+            }
+        },
+        "traits": [
+            {
+                "kind": "dapr.io/App@v1alpha1",
+                "properties": {
+                    "appId": "nodeapp",
+                    "appPort": 3000
+                }
+            }
+        ]
+    }
+}

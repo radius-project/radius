@@ -1,0 +1,12 @@
+{
+    "properties": {
+        "components": [
+            {
+                "componentName": "radius/cosmos-container/db"
+            },
+            {
+                "componentName": "radius/cosmos-container/webapp"
+            }
+        ]
+    }
+}

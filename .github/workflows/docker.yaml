@@ -1,0 +1,75 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+
+# Logic here:
+# - always do a docker build for validation
+# - tag the image as latest and with a version if the trigger was a tag
+# - push the image for pushes to master, or to a tag
+name: docker
+
+on:
+  push:
+    branches:
+      - main
+      - release-*
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - release-*
+jobs:
+  build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        destination: ['acr', 'dockerhub']
+        include:
+        - destination: acr
+          registry: radius.azurecr.io
+          login_server: radius.azurecr.io
+          username_secret: DOCKER_USERNAME
+          password_secret: DOCKER_PASSWORD
+        - destination: dockerhub
+          registry: radiusteam
+          login_server: https://index.docker.io/v1/
+          username_secret: RADIUSTEAM_DOCKERHUB_USERNAME
+          password_secret: RADIUSTEAM_DOCKERHUB_PASSWORD
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Parse release version and set REL_VERSION
+        run: python ./.github/scripts/get_release_version.py
+      - name: make docker
+        run: make docker
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: latest
+      - name: make docker (release)
+        run: make docker
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+      - uses: azure/docker-login@v1
+        with:
+          login-server: ${{ matrix.login_server }}
+          username: '${{ secrets[matrix.username_secret] }}'
+          password: '${{ secrets[matrix.password_secret] }}'
+      - name: make dockerpush
+        run: make dockerpush
+        if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to master or tag
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: latest
+      - name: make dockerpush (release)
+        run: make dockerpush
+        if: startsWith(github.ref, 'refs/tags/v') # push image on tag
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}

@@ -1,0 +1,15 @@
+{
+    "properties": {
+        "components": [
+            {
+                "componentName": "radius/dapr-hello-azure/nodeapp"
+            },
+            {
+                "componentName": "radius/dapr-hello-azure/pythonapp"
+            },
+            {
+                "componentName": "radius/dapr-hello-azure/statestore"
+            }
+        ]
+    }
+}

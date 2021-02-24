@@ -1,0 +1,22 @@
+{
+    "kind": "dapr.io/Component@v1alpha1",
+    "properties": {
+        "config": {
+            "type": "pubsub.redis",
+            "metadata": [
+                {
+                    "name": "enableTLS",
+                    "value": "true"
+                },
+                {
+                    "name": "redisHost",
+                    "value": ""
+                },
+                {
+                    "name": "redisPassword",
+                    "value": ""
+                }
+            ]
+        }
+    }
+}

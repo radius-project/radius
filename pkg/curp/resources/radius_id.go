@@ -1,0 +1,190 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package resources
+
+import (
+	"errors"
+	"strings"
+)
+
+// baseResourceType declares the base resource type for the Radius RP - all of the Radius resource types are children.
+const baseResourceType = "Microsoft.CustomProviders/resourceProviders"
+
+// applicationResourceType declares the resource type for an Application.
+const applicationResourceType = "Applications"
+
+// componentResourceType declares the resource type for a Component.
+const componentResourceType = "Components"
+
+// deploymentResourceType declares the resource type for a Deployment.
+const deploymentResourceType = "Deployments"
+
+// scopeResourceType declares the resource type for a Scope.
+const scopeResourceType = "Scopes"
+
+// ApplicationCollectionType can be used to validate resource IDs with ValidateResourceType.
+var ApplicationCollectionType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType},
+	},
+}
+
+// ApplicationResourceType can be used to validate resource IDs with ValidateResourceType.
+var ApplicationResourceType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType, Name: "*"},
+	},
+}
+
+// ComponentCollectionType can be used to validate resource IDs with ValidateResourceType.
+var ComponentCollectionType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType, Name: "*"},
+		{Type: componentResourceType},
+	},
+}
+
+// ComponentResourceType can be used to validate resource IDs with ValidateResourceType.
+var ComponentResourceType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType, Name: "*"},
+		{Type: componentResourceType, Name: "*"},
+	},
+}
+
+// DeploymentCollectionType can be used to validate resource IDs with ValidateResourceType.
+var DeploymentCollectionType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType, Name: "*"},
+		{Type: deploymentResourceType},
+	},
+}
+
+// DeploymentResourceType can be used to validate resource IDs with ValidateResourceType.
+var DeploymentResourceType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType, Name: "*"},
+		{Type: deploymentResourceType, Name: "*"},
+	},
+}
+
+// ScopeCollectionType can be used to validate resource IDs with ValidateResourceType.
+var ScopeCollectionType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType, Name: "*"},
+		{Type: scopeResourceType},
+	},
+}
+
+// ScopeResourceType can be used to validate resource IDs with ValidateResourceType.
+var ScopeResourceType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType, Name: "*"},
+		{Type: scopeResourceType, Name: "*"},
+	},
+}
+
+// ApplicationID represents the ResourceID for an application.
+type ApplicationID struct {
+	ResourceID
+}
+
+// ComponentID represents the ResourceID for a component.
+type ComponentID struct {
+	Resource ResourceID
+	App      ApplicationID
+}
+
+// DeploymentID represents the ResourceID for a deployment.
+type DeploymentID struct {
+	Resource ResourceID
+	App      ApplicationID
+}
+
+// ScopeID represents the ResourceID for a scope.
+type ScopeID struct {
+	Resource ResourceID
+	App      ApplicationID
+}
+
+// Application gets an ApplicationID for the resource.
+func (ri ResourceID) Application() (ApplicationID, error) {
+	if len(ri.Types) < 2 ||
+		!strings.EqualFold(ri.Types[0].Type, baseResourceType) ||
+		!strings.EqualFold(ri.Types[1].Type, applicationResourceType) ||
+		ri.Types[1].Name == "" {
+		// Not a Radius resource type.
+		return ApplicationID{}, errors.New("not an Application resource or child resource")
+	}
+
+	if len(ri.Types) == 2 {
+		// Already an ApplicationID
+		return ApplicationID{ri}, nil
+	}
+
+	// This is a Radius nested resource type, we need to make a new ID for the application.
+	return ApplicationID{
+		ResourceID: ResourceID{
+			ID:             MakeID(ri.SubscriptionID, ri.ResourceGroup, ri.Types[0], ri.Types[1]),
+			SubscriptionID: ri.SubscriptionID,
+			ResourceGroup:  ri.ResourceGroup,
+			Types:          ri.Types[:2],
+		},
+	}, nil
+}
+
+// Component gets a ComponentID for the resource.
+func (ri ResourceID) Component() (ComponentID, error) {
+	err := ri.ValidateResourceType(ComponentResourceType)
+	if err != nil {
+		return ComponentID{}, errors.New("not a valid Component resource")
+	}
+
+	app, err := ri.Application()
+	if err != nil {
+		return ComponentID{}, err
+	}
+
+	return ComponentID{ri, app}, nil
+}
+
+// Deployment gets a DeploymentID for the resource.
+func (ri ResourceID) Deployment() (DeploymentID, error) {
+	err := ri.ValidateResourceType(DeploymentResourceType)
+	if err != nil {
+		return DeploymentID{}, errors.New("not a valid Deployment resource")
+	}
+
+	app, err := ri.Application()
+	if err != nil {
+		return DeploymentID{}, err
+	}
+
+	return DeploymentID{ri, app}, nil
+}
+
+// Scope gets a ScopeID for the resource.
+func (ri ResourceID) Scope() (ScopeID, error) {
+	err := ri.ValidateResourceType(ScopeResourceType)
+	if err != nil {
+		return ScopeID{}, errors.New("not a valid Scope resource")
+	}
+
+	app, err := ri.Application()
+	if err != nil {
+		return ScopeID{}, err
+	}
+
+	return ScopeID{ri, app}, nil
+}

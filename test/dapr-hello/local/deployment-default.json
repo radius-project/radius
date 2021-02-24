@@ -1,0 +1,18 @@
+{
+    "properties": {
+        "components": [
+            {
+                "componentName": "radius/dapr-webapp/nodeapp"
+            },
+            {
+                "componentName": "radius/dapr-webapp/pubsub"
+            },
+            {
+                "componentName": "radius/dapr-webapp/pythonapp"
+            },
+            {
+                "componentName": "radius/dapr-webapp/statestore"
+            }
+        ]
+    }
+}

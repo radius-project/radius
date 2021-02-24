@@ -1,0 +1,24 @@
+{
+    "kind": "radius.dev/Container@v1alpha1",
+    "properties": {
+        "run": {
+            "container": {
+                "image": "rynowak/dapr-hello-pythonapp:latest"
+            }
+        },
+        "dependsOn": [
+            {
+                "name": "nodeapp",
+                "kind": "dapr.io/Invoke"
+            }
+        ],
+        "traits": [
+            {
+                "kind": "dapr.io/App@v1alpha1",
+                "properties": {
+                    "appId": "pythonapp"
+                }
+            }
+        ]
+    }
+}

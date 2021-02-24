@@ -1,0 +1,12 @@
+{
+    "properties": {
+        "components": [
+            {
+                "componentName": "radius/frontend-backend/frontend"
+            },
+            {
+                "componentName": "radius/frontend-backend/backend"
+            }
+        ]
+    }
+}

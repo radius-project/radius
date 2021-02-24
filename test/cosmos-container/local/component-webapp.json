@@ -1,0 +1,26 @@
+{
+    "kind": "radius.dev/Container@v1alpha1",
+    "properties": {
+        "run": {
+            "container": {
+                "image": "rynowak/node-todo:latest"
+            }
+        },
+        "provides": [
+            {
+                "name": "public",
+                "kind": "http",
+                "containerPort": 8080
+            }
+        ],
+        "dependsOn": [
+            {
+                "name": "db",
+                "kind": "mongodb.com/Mongo",
+                "setEnv": {
+                    "DB_CONNECTION": "connectionString"
+                }
+            }
+        ]
+    }
+}

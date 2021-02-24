@@ -1,0 +1,117 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package cosmosdocumentdbv1alpha1
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net/url"
+
+	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
+	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/workloads"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+// Renderer is the WorkloadRenderer implementation for the cosmos documentdb workload.
+type Renderer struct {
+	Arm armauth.ArmConfig
+}
+
+// Allocate is the WorkloadRenderer implementation for cosmos documentdb  workload.
+func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
+	if service.Kind != "mongodb.com/Mongo" && service.Kind != "azure.com/CosmosDocumentDb" {
+		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
+	}
+
+	if len(wrp) != 1 || wrp[0].Type != "azure.cosmos.documentdb" {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.cosmos.documentdb")
+	}
+
+	properties := wrp[0].Properties
+	accountname := properties["cosmosaccountname"]
+	dbname := properties["databasename"]
+
+	log.Printf("fulfilling service for account: %v db: %v", accountname, dbname)
+
+	// cosmos uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
+	dac := documentdb.NewDatabaseAccountsClient(r.Arm.SubscriptionID)
+	dac.Authorizer = r.Arm.Auth
+
+	css, err := dac.ListConnectionStrings(ctx, r.Arm.ResourceGroup, accountname)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
+	}
+
+	if css.ConnectionStrings == nil || len(*css.ConnectionStrings) == 0 {
+		return nil, fmt.Errorf("failed to retrieve connection strings")
+	}
+
+	// These connection strings won't include the database
+	u, err := url.Parse(*(*css.ConnectionStrings)[0].ConnectionString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse connection string as a URL")
+	}
+
+	u.Path = "/" + dbname
+
+	values := map[string]interface{}{
+		"connectionString": u.String(),
+		"database":         dbname,
+	}
+
+	return values, nil
+}
+
+// Render is the WorkloadRenderer implementation for cosmos documentdb workload.
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+	spec, err := getSpec(w.Workload)
+	if err != nil {
+		return []workloads.WorkloadResource{}, err
+	}
+
+	if !spec.Managed {
+		return []workloads.WorkloadResource{}, errors.New("only 'managed=true' is supported right now")
+	}
+
+	// generate data we can use to manage a cosmosdb instance
+	resource := workloads.WorkloadResource{
+		Type: "azure.cosmos.documentdb",
+		Resource: map[string]string{
+			"name": w.Workload.GetName(),
+		},
+	}
+
+	// It's already in the correct format
+	return []workloads.WorkloadResource{resource}, nil
+}
+
+type cosmosDocumentDbSpec struct {
+	Managed bool `json:"managed"`
+}
+
+func getSpec(item unstructured.Unstructured) (cosmosDocumentDbSpec, error) {
+	spec, ok := item.Object["spec"]
+	if !ok {
+		return cosmosDocumentDbSpec{}, errors.New("workload does not contain a spec element")
+	}
+
+	b, err := json.Marshal(spec)
+	if err != nil {
+		return cosmosDocumentDbSpec{}, err
+	}
+
+	value := cosmosDocumentDbSpec{}
+	err = json.Unmarshal(b, &value)
+	if err != nil {
+		return cosmosDocumentDbSpec{}, err
+	}
+
+	return value, nil
+}
