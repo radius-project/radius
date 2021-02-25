@@ -13,6 +13,10 @@ Radius consists of:
 - Multiple runtimes for application hosting
   - *For now* this is just Kubernetes
 
+## Getting Started
+
+Move on over to [Getting Started](docs/getting-started.md).
+
 ## Contributing
 
 We gladly accept feedback and code contribution from outside the core team. Please see [CONTRIBUTING.md](CONTRIBUTING.md).
