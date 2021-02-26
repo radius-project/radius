@@ -32,7 +32,7 @@
         },
         "image": {
             "type": "string",
-            "defaultValue": "radiusteam/radiusrp:latest",
+            "defaultValue": "radiusteam/radius-rp:latest",
             "metadata": {
                 "description": "The container image to deploy."
             }
