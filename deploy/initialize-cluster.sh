@@ -18,12 +18,25 @@ CLUSTER_NAME=$2
 
 az aks get-credentials --name $CLUSTER_NAME --resource-group $RESOURCE_GROUP
 
-KUBECTL_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
 
-# Install kubectl - https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl-on-linux
-curl -LO "https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+# Install kubectl and verify the binary with retries
+# https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl-on-linux
+for i in {1..5}
+do
+  echo "downloading kubectl version: $KUBECTL_VERSION - attempt $i"
+
+  curl -LO "https://dl.k8s.io/$KUBECTL_VERSION/bin/linux/amd64/kubectl.sha256"
+  curl -LO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+  
+  if echo "$(<kubectl.sha256) kubectl" | sha256sum --check
+  then
+    echo "kubectl verified"
+    break
+  fi
+done
+
 chmod +x ./kubectl
-./kubectl version --client
 
 # Install helm - https://helm.sh/docs/intro/install/
 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
@@ -44,4 +57,13 @@ helm upgrade \
   --namespace dapr-system \
   --version 1.0.0
 
-./kubectl get pods -n dapr-system
+# Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
+# ex: https://github.com/Azure/radius/issues/29 https://github.com/Azure/radius/issues/39
+for i in {1..5}
+do
+  echo "listing dapr pods - attempt $i"
+  if ./kubectl get pods -n dapr-system
+  then
+    break
+  fi
+done
