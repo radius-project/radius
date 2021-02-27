@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -eux
 
+# Note: It's important that anything we in this script to mutate the runtime environment is idempotnent
+# Ex: use `helm upgrade --install` instead of `helm install`
+# 
+# The script might run with retries before succeeding. It's OK to dirty the state of the container
+# because each run has a separate container.
+
 if [[ "$#" -ne 2 ]]
 then
   echo "usage: initialize-cluster.sh <resource-group> <cluster-name>"
@@ -23,16 +29,19 @@ chmod +x ./kubectl
 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 helm version
 
-# Install Dapr
-wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s 1.0.0-rc.2
+# Install Dapr CLI
+wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s 1.0.0
 dapr --version
+
+# Install Dapr
 helm repo add dapr https://dapr.github.io/helm-charts/
 helm repo update
-cat <<EOF | ./kubectl apply -f -
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: dapr-system
-EOF
-helm install dapr dapr/dapr --namespace dapr-system --version 1.0.0-rc.2
+
+helm upgrade \
+  dapr dapr/dapr \
+  --install \
+  --create-namespace \
+  --namespace dapr-system \
+  --version 1.0.0
+
 ./kubectl get pods -n dapr-system
