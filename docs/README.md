@@ -6,6 +6,8 @@
 
 ## Development
 
+[Running rad CLI](development/running-rad-cli.md)
+
 [Running locally](development/running-locally.md)
 
 [Testing locally](development/testing-locally.md)
