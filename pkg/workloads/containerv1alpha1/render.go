@@ -325,8 +325,9 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 	for _, provides := range cw.Provides {
 		if provides.ContainerPort != nil {
 			port := corev1.ServicePort{
-				Name: provides.Name,
-				Port: int32(*provides.ContainerPort),
+				Name:     provides.Name,
+				Port:     int32(*provides.ContainerPort),
+				Protocol: corev1.ProtocolTCP,
 			}
 
 			service.Spec.Ports = append(service.Spec.Ports, port)

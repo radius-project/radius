@@ -576,7 +576,7 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 	require.Equal(t, map[string]ServiceBinding{"A": {Name: "A", Kind: "http", Provider: "A"}}, action.ServiceBindings)
 }
 
-func Test_DeploymentUpdated_RenderRealisticContainerizedWorkload(t *testing.T) {
+func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 	app := db.NewApplication()
 	app.Name = "radius/myapp"
 	app.Components["A"] = db.ComponentHistory{
