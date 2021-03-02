@@ -7,14 +7,17 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/authorization/mgmt/authorization"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2019-02-01/containerservice"
 	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
 	"github.com/Azure/azure-sdk-for-go/services/preview/customproviders/mgmt/2018-09-01-preview/customproviders"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
@@ -53,7 +56,7 @@ var envInitAzureCmd = &cobra.Command{
 			}
 		}
 
-		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup)
+		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.DeploymentTemplate)
 		if err != nil {
 			return err
 		}
@@ -69,13 +72,17 @@ func init() {
 	envInitAzureCmd.Flags().String("subscription-id", "", "The subscription ID to use for the environment")
 	envInitAzureCmd.Flags().String("resource-group", "", "The resource group to use for the environment")
 	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
+
+	// development support
+	envInitAzureCmd.Flags().String("deployment-template", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
 }
 
 type arguments struct {
-	Name           string
-	Interactive    bool
-	SubscriptionID string
-	ResourceGroup  string
+	Name               string
+	Interactive        bool
+	SubscriptionID     string
+	ResourceGroup      string
+	DeploymentTemplate string
 }
 
 func validate(cmd *cobra.Command, args []string) (arguments, error) {
@@ -107,11 +114,24 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, errors.New("subscription id and resource group must be specified")
 	}
 
+	deploymentTemplate, err := cmd.Flags().GetString("deployment-template")
+	if err != nil {
+		return arguments{}, err
+	}
+
+	if deploymentTemplate != "" {
+		_, err := os.Stat(deploymentTemplate)
+		if err != nil {
+			return arguments{}, fmt.Errorf("could not read deployment-template: %w", err)
+		}
+	}
+
 	return arguments{
-		Name:           name,
-		Interactive:    interactive,
-		SubscriptionID: subscriptionID,
-		ResourceGroup:  resourceGroup,
+		Name:               name,
+		Interactive:        interactive,
+		SubscriptionID:     subscriptionID,
+		ResourceGroup:      resourceGroup,
+		DeploymentTemplate: deploymentTemplate,
 	}, nil
 }
 
@@ -222,7 +242,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func connect(ctx context.Context, name string, subscriptionID string, resourceGroup string) error {
+func connect(ctx context.Context, name string, subscriptionID string, resourceGroup string, deploymentTemplate string) error {
 	settings, err := auth.GetSettingsFromEnvironment()
 	if err != nil {
 		return err
@@ -240,7 +260,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 
 	// Check for an existing RP in the target resource group. This way we
 	// can use a single command to bind to an existing environment
-	exists, err := lookForExisting(ctx, armauth, subscriptionID, resourceGroup)
+	exists, clusterName, err := findExistingEnvironment(ctx, armauth, subscriptionID, resourceGroup)
 	if err != nil {
 		return err
 	}
@@ -248,7 +268,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	if exists {
 		// We already have a provider in this resource group
 		logger.LogInfo("Found existing environment...")
-		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup)
+		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
 		if err != nil {
 			return err
 		}
@@ -271,12 +291,17 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	_, err = deployEnvironment(ctx, armauth, sp, subscriptionID, resourceGroup)
+	deployment, err := deployEnvironment(ctx, armauth, sp, subscriptionID, resourceGroup, deploymentTemplate)
 	if err != nil {
 		return err
 	}
 
-	err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup)
+	clusterName, err = findClusterInDeployment(ctx, deployment)
+	if err != nil {
+		return err
+	}
+
+	err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
 	if err != nil {
 		return err
 	}
@@ -284,20 +309,42 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	return nil
 }
 
-func lookForExisting(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (bool, error) {
+func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (bool, string, error) {
 	cpc := customproviders.NewCustomResourceProviderClient(subscriptionID)
 	cpc.Authorizer = authorizer
 
 	_, err := cpc.Get(ctx, resourceGroup, "radius")
 	if detail, ok := util.ExtractDetailedError(err); ok && detail.StatusCode == 404 {
 		// not found - will need to be created
-		return false, nil
+		return false, "", nil
 	} else if err != nil {
-		return false, err
-	} else {
-		// already exists
-		return true, nil
+		return false, "", err
 	}
+
+	// Custom Provider already exists, find the cluster...
+	mcc := containerservice.NewManagedClustersClient(subscriptionID)
+	mcc.Authorizer = authorizer
+
+	var cluster *containerservice.ManagedCluster
+	for list, err := mcc.ListByResourceGroupComplete(ctx, resourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
+		if err != nil {
+			return false, "", fmt.Errorf("cannot read AKS clusters: %w", err)
+		}
+
+		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
+		tag, ok := list.Value().Tags["rad-environment"]
+		if ok && strings.EqualFold(*tag, "true") {
+			temp := list.Value()
+			cluster = &temp
+			break
+		}
+	}
+
+	if cluster == nil {
+		return false, "", fmt.Errorf("could not find an AKS instance in resource group '%v'", resourceGroup)
+	}
+
+	return true, *cluster.Name, nil
 }
 
 func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (string, error) {
@@ -324,6 +371,7 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	tc := subscription.NewTenantsClient()
 	tc.Authorizer = authorizer
 
+	// TODO: this lists the tenants and just returns the first one. This might be the cause of #32
 	tenants, err := tc.ListComplete(ctx)
 	if err != nil {
 		return "", err
@@ -429,10 +477,16 @@ func configurePermissions(ctx context.Context, authorizer autorest.Authorizer, s
 	return errors.New("timed out waiting for service principal to show up")
 }
 
-func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, sp servicePrincipal, subscriptionID string, resourceGroup string) (resources.DeploymentExtended, error) {
+func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, sp servicePrincipal, subscriptionID string, resourceGroup string, deploymentTemplate string) (resources.DeploymentExtended, error) {
 	step := logger.BeginStep("Deploying Environment...")
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
+
+	// Don't set a timeout, the user can cancel the command if they want a timeout.
+	dc.PollingDuration = 0
+
+	// Poll faster for completion when possible. The default is 60 seconds which is a long time to wait.
+	dc.PollingDelay = time.Second * 15
 
 	key, err := ssh.GenerateKey(ssh.DefaultSize)
 	if err != nil {
@@ -456,18 +510,37 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, sp s
 		},
 	}
 
+	deploymentProperties := &resources.DeploymentProperties{
+		Parameters: parameters,
+		Mode:       resources.Incremental,
+	}
+
+	if deploymentTemplate == "" {
+		deploymentProperties.TemplateLink = &resources.TemplateLink{
+			URI: to.StringPtr(armTemplateURI),
+		}
+	} else {
+		logger.LogInfo("overriding deployment template: %v", deploymentTemplate)
+		templateContent, err := ioutil.ReadFile(deploymentTemplate)
+		if err != nil {
+			return resources.DeploymentExtended{}, fmt.Errorf("could not read deployment template: %w", err)
+		}
+
+		data := map[string]interface{}{}
+		err = json.Unmarshal(templateContent, &data)
+		if err != nil {
+			return resources.DeploymentExtended{}, fmt.Errorf("could not read deployment template as JSON: %w", err)
+		}
+
+		deploymentProperties.Template = data
+	}
+
 	// See https://github.com/Azure/AKS/issues/1206 - propagation of service principals can cause issues during
-	// validation.
+	// validation. We need retries to work around that.
 	name := fmt.Sprintf("rad-create-environment-%v", uuid.New().String())
 	for i := 0; i < 30; i++ {
 		op, err := dc.CreateOrUpdate(ctx, resourceGroup, name, resources.Deployment{
-			Properties: &resources.DeploymentProperties{
-				TemplateLink: &resources.TemplateLink{
-					URI: to.StringPtr(armTemplateURI),
-				},
-				Parameters: parameters,
-				Mode:       resources.Incremental,
-			},
+			Properties: deploymentProperties,
 		})
 		if detailed, ok := util.ExtractDetailedError(err); ok && detailed.StatusCode == 400 {
 			if service, ok := util.ExtractServiceError(err); ok {
@@ -507,39 +580,38 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, sp s
 	return resources.DeploymentExtended{}, errors.New("timed out waiting for creation to succeeed")
 }
 
-func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string) error {
+func findClusterInDeployment(ctx context.Context, deployment resources.DeploymentExtended) (string, error) {
+	obj := deployment.Properties.Outputs
+	outputs, ok := obj.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("deployment outputs has unexpected type: %T", obj)
+	}
+
+	obj, ok = outputs["clusterName"]
+	if !ok {
+		return "", fmt.Errorf("deployment outputs does not contain cluster name: %v", outputs)
+	}
+
+	clusterNameOutput, ok := obj.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("cluster name was of unexpected type: %T", obj)
+	}
+
+	obj, ok = clusterNameOutput["value"]
+	if !ok {
+		return "", fmt.Errorf("cluster name output does not contain value: %v", outputs)
+	}
+
+	clusterName, ok := obj.(string)
+	if !ok {
+		return "", fmt.Errorf("cluster name was of unexpected type: %T", obj)
+	}
+
+	return clusterName, nil
+}
+
+func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, clusterName string) error {
 	step := logger.BeginStep("Updating Config...")
-
-	mcc := containerservice.NewManagedClustersClient(subscriptionID)
-	mcc.Authorizer = authorizer
-
-	iter, err := mcc.ListByResourceGroupComplete(ctx, resourceGroup)
-	if err != nil {
-		return err
-	}
-
-	var cluster *containerservice.ManagedCluster
-	for {
-		tag, ok := iter.Value().Tags["rad-environment"]
-		if ok && *tag == "true" {
-			temp := iter.Value()
-			cluster = &temp
-			break
-		}
-
-		if !iter.NotDone() {
-			break
-		}
-
-		err := iter.NextWithContext(ctx)
-		if err != nil {
-			return fmt.Errorf("cannot read AKS clusters: %w", err)
-		}
-	}
-
-	if cluster == nil {
-		return fmt.Errorf("could not find an AKS instance in resource group '%v'", resourceGroup)
-	}
 
 	v := viper.GetViper()
 	env, err := rad.ReadEnvironmentSection(v)
@@ -551,6 +623,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		"kind":           "azure",
 		"subscriptionId": subscriptionID,
 		"resourceGroup":  resourceGroup,
+		"clusterName":    clusterName,
 	}
 	if len(env.Items) == 1 {
 		env.Default = name

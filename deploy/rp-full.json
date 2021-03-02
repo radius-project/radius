@@ -157,6 +157,15 @@
             "metadata": {
                 "description": "The identity name to use for the deployment script."
             }
+        },
+        "resourceTags": {
+            "type": "object",
+            "defaultValue": {
+                "rad-environment": true
+            },
+            "metadata": {
+                "description": "The tags to apply to each resource"
+            }
         }
     },
     "variables": {
@@ -169,12 +178,14 @@
             "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
             "name": "[parameters('identityName')]",
             "apiVersion": "2018-11-30",
-            "location": "[resourceGroup().location]"
+            "location": "[resourceGroup().location]",
+            "tags": "[parameters('resourceTags')]"
         },
         {
             "type": "Microsoft.Authorization/roleAssignments",
             "apiVersion": "2019-04-01-preview",
             "name": "[variables('roleDefinitionName')]",
+            "tags": "[parameters('resourceTags')]",
             "dependsOn": [
                 "[parameters('identityName')]"
             ],
@@ -190,6 +201,7 @@
             "name": "[parameters('accountName')]",
             "apiVersion": "2020-03-01",
             "location": "[parameters('location')]",
+            "tags": "[parameters('resourceTags')]",
             "kind": "MongoDB",
             "properties": {
                 "locations": [
@@ -209,6 +221,7 @@
             "type": "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
             "name": "[concat(parameters('accountName'), '/', parameters('databaseName'))]",
             "apiVersion": "2020-03-01",
+            "tags": "[parameters('resourceTags')]",
             "dependsOn": [ "[resourceId('Microsoft.DocumentDB/databaseAccounts/', parameters('accountName'))]" ],
             "properties": {
                 "resource": {
@@ -221,6 +234,7 @@
             "type": "Microsoft.DocumentDb/databaseAccounts/mongodbDatabases/collections",
             "name": "[concat(parameters('accountName'), '/', parameters('databaseName'), '/', 'applications')]",
             "apiVersion": "2020-03-01",
+            "tags": "[parameters('resourceTags')]",
             "dependsOn": [ "[resourceId('Microsoft.DocumentDB/databaseAccounts/mongodbDatabases', parameters('accountName'), parameters('databaseName'))]" ],
             "properties": {
                 "resource": {
@@ -239,9 +253,7 @@
             "type": "Microsoft.ContainerService/managedClusters",
             "location": "[parameters('location')]",
             "name": "[parameters('clusterName')]",
-            "tags": {
-                "rad-environment": "true"
-            },
+            "tags": "[parameters('resourceTags')]",
             "properties": {
                 "kubernetesVersion": "[parameters('kubernetesVersion')]",
                 "dnsPrefix": "[parameters('clusterName')]",
@@ -277,6 +289,7 @@
             "apiVersion": "2020-10-01",
             "name": "deploy-radius-runtime",
             "location": "[resourceGroup().location]",
+            "tags": "[parameters('resourceTags')]",
             "dependsOn": [
                 "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
                 "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleDefinitionName'))]"
@@ -304,6 +317,7 @@
             "apiVersion": "2018-02-01",
             "name": "[variables('hostingPlanName')]",
             "location": "[parameters('location')]",
+            "tags": "[parameters('resourceTags')]",
             "sku": {
                 "name": "[parameters('sku')]",
                 "capacity": "[parameters('workerSize')]"
@@ -319,6 +333,7 @@
             "apiVersion": "2020-06-01",
             "name": "[parameters('siteName')]",
             "location": "[parameters('location')]",
+            "tags": "[parameters('resourceTags')]",
             "identity": {
                 "type": "None"
             },
@@ -377,6 +392,7 @@
             "type": "Microsoft.CustomProviders/resourceProviders",
             "name": "radius",
             "location": "[parameters('location')]",
+            "tags": "[parameters('resourceTags')]",
             "dependsOn": [
                 "[concat('Microsoft.Web/sites/', parameters('siteName'))]"
             ],
@@ -405,5 +421,11 @@
                 ]
             }
         }
-    ]
+    ],
+    "outputs": {
+        "clusterName": {
+            "type": "string",
+            "value": "[parameters('clusterName')]"
+        }
+    }
 }
