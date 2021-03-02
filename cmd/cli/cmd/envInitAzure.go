@@ -325,29 +325,18 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	mcc := containerservice.NewManagedClustersClient(subscriptionID)
 	mcc.Authorizer = authorizer
 
-	iter, err := mcc.ListByResourceGroupComplete(ctx, resourceGroup)
-	if err != nil {
-		return false, "", err
-	}
-
 	var cluster *containerservice.ManagedCluster
-	for {
-		tag, ok := iter.Value().Tags["rad-environment"]
-
-		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
-		if ok && strings.EqualFold(*tag, "true") {
-			temp := iter.Value()
-			cluster = &temp
-			break
-		}
-
-		if !iter.NotDone() {
-			break
-		}
-
-		err := iter.NextWithContext(ctx)
+	for list, err := mcc.ListByResourceGroupComplete(ctx, resourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
 		if err != nil {
 			return false, "", fmt.Errorf("cannot read AKS clusters: %w", err)
+		}
+
+		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
+		tag, ok := list.Value().Tags["rad-environment"]
+		if ok && strings.EqualFold(*tag, "true") {
+			temp := list.Value()
+			cluster = &temp
+			break
 		}
 	}
 
@@ -382,6 +371,7 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	tc := subscription.NewTenantsClient()
 	tc.Authorizer = authorizer
 
+	// TODO: this lists the tenants and just returns the first one. This might be the cause of #32
 	tenants, err := tc.ListComplete(ctx)
 	if err != nil {
 		return "", err
