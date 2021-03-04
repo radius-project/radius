@@ -68,7 +68,7 @@ func getResourcesClient() resources.Client {
 		return resources.Client{}
 	}
 	resourcesClient.Authorizer = a
-	resourcesClient.AddToUserAgent(config.UserAgent())
+	// _ := resourcesClient.AddToUserAgent(config.UserAgent())
 	return resourcesClient
 }
 
@@ -79,6 +79,6 @@ func getGroupsClient() resources.GroupsClient {
 		log.Fatalf("failed to initialize authorizer: %v\n", err)
 	}
 	groupsClient.Authorizer = a
-	groupsClient.AddToUserAgent(config.UserAgent())
+	// groupsClient.AddToUserAgent(config.UserAgent())
 	return groupsClient
 }
