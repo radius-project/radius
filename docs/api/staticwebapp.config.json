@@ -17,7 +17,11 @@
             "allowedRoles": ["anonymous"]
         },
         {
-            "route": "/*",
+            "route": "/",
+            "allowedRoles": ["reader"]
+        },
+        {
+            "route": "/getting-started",
             "allowedRoles": ["reader"]
         }
     ],
