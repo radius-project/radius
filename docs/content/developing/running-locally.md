@@ -1,4 +1,10 @@
-# Running Locally
+---
+type: docs
+title: "Running Radius locally"
+linkTitle: "Run locally"
+description: "How to get a local deployment of Radius up and running"
+weight: 20
+---
 
 You can run the Radius RP locally using:
 
