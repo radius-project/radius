@@ -21,7 +21,7 @@ jobs:
       - name: Setup Docsy
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
       - name: Configure Routes
-        run: mkdir ./public && cp ./docs/api/routes.json ./public/routes.json
+        run: mkdir -p /bin/staticsites/ss-oryx/app && cp ./docs/api/routes.json /bin/staticsites/ss-oryx/app/routes.json
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v0.0.1-preview
