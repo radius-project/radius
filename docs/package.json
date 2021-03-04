@@ -1,20 +1,20 @@
 {
-    "name": "radius-docs-hugo",
-    "version": "0.0.1",
-    "description": "Docs site for Project Radius",
-    "main": "",
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/Azure/radius.git"
-    },
-    "author": "",
-    "bugs": {
-      "url": "https://github.com/Azure/radius/issues"
-    },
-    "homepage": "https://radius.azurewebapp.net",
-    "dependencies": {},
-    "devDependencies": {
-      "autoprefixer": "^9.8.6",
-      "postcss-cli": "^7.1.2"
-    }
+  "name": "radius-docs-hugo",
+  "version": "0.0.1",
+  "description": "Docs site for Project Radius",
+  "main": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Azure/radius.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/Azure/radius/issues"
+  },
+  "homepage": "https://radius.azurewebapp.net",
+  "dependencies": {},
+  "devDependencies": {
+    "autoprefixer": "^9.8.6",
+    "postcss-cli": "^7.1.2"
   }
+}
