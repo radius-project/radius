@@ -1,22 +1,26 @@
 {
     "routes": [
         {
-            "route": "/.auth/*",
-            "allowedRoles": ["anonymous","authenticated"]
-        },
-        {
-            "route": "/.auth/login/github",
-            "allowedRoles": ["anonymous","authenticated"]
-        },
-        {
             "route": "/login",
             "rewrite": "/.auth/login/github"
+        },
+        {
+            "route": "/logout",
+            "serve": "/.auth/logout"
+        },
+        {
+            "route": "/.auth/*",
+            "allowedRoles": ["anonymous"]
         },
         {
             "route": "/*",
             "allowedRoles": ["readers"]
         }
     ],
+    "navigationFallback": {
+        "rewrite": "index.html",
+        "exclude": ["/images/*.{png,jpg,gif}", "/css/*"]
+      },
     "responseOverrides": {
         "401": {
             "redirect": "/login",
