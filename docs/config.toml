@@ -1,0 +1,30 @@
+baseURL = "https://radius.azurewebsites.net/"
+languageCode = "en-us"
+title = "Project Radius"
+
+disableFastRender = true
+
+theme =  "docsy"
+
+# Disable categories & tags
+disableKinds = ["taxonomy", "term"]
+
+# Top Nav Bar
+[[menu.main]]
+    name = "GitHub"
+    weight = 40
+    url = "https://github.com/Azure/radius"
+
+[params]
+copyright = "Project Radius"
+
+# Markdown Engine - Allow inline html
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
+# GitHub Information
+github_repo = "https://github.com/Azure/radius"
+github_subdir = "docs"
+github_branch = "vmain"
