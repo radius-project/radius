@@ -35,7 +35,7 @@ jobs:
           app_location: "docs" # App source code path
           api_location: "docs/api" # Api source code path - optional
           output_location: "public" # Built app content directory - optional
-          app_build_command: "hugo && cp ./docs/api/routes.json ./public/routes.json"
+          app_build_command: "hugo && cp ./api/routes.json ./public/routes.json"
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
