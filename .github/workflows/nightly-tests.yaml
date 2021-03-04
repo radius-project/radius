@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-name: build
+name: nightly-tests
 
 on:
   push:
