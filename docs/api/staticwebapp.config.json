@@ -5,6 +5,10 @@
             "allowedRoles": ["anonymous","authenticated"]
         },
         {
+            "route": "/.auth/login/github",
+            "allowedRoles": ["anonymous","authenticated"]
+        },
+        {
             "route": "/login",
             "rewrite": "/.auth/login/github"
         },
