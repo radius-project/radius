@@ -9,18 +9,18 @@
             "serve": "/.auth/logout"
         },
         {
-            "route": "/.auth/*",
+            "route": "/.auth/login/github",
+            "allowedRoles": ["anonymous"]
+        },
+        {
+            "route": "/.auth/logout",
             "allowedRoles": ["anonymous"]
         },
         {
             "route": "/*",
-            "allowedRoles": ["readers"]
+            "allowedRoles": ["reader"]
         }
     ],
-    "navigationFallback": {
-        "rewrite": "index.html",
-        "exclude": ["/images/*.{png,jpg,gif}", "/css/*"]
-      },
     "responseOverrides": {
         "401": {
             "redirect": "/login",
