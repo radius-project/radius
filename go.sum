@@ -355,6 +355,10 @@ github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e/go.mod h1:C1wdFJiN
 github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7ldAVICs=
 github.com/markbates/oncer v0.0.0-20181203154359-bf2de49a0be2/go.mod h1:Ld9puTsIW75CHf65OeIOkyKbteujpZVXDpWK6YGZbxE=
 github.com/markbates/safe v1.0.1/go.mod h1:nAqgmRi7cY2nqMc92/bSEeQA+R4OheNU2T1kNSCBdG0=
+github.com/marstr/collection v1.0.1 h1:j61osRfyny7zxBlLRtoCvOZ2VX7HEyybkZcsLNLJ0z0=
+github.com/marstr/collection v1.0.1/go.mod h1:HHDXVxjLO3UYCBXJWY+J/ZrxCUOYqrO66ob1AzIsmYA=
+github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c h1:JE+MDz5rhFN5EC9Dj/N8dLYKboTWm6FXeWhnyKVj0vA=
+github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c/go.mod h1:Xc224oUXd7/sKMjWKl17cfkYOKQ1S+HSOW7YHEGXauI=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-isatty v0.0.3/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
 github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=

@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/Azure/azure-sdk-for-go v45.1.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.4
+	github.com/Azure/go-autorest/autorest/adal v0.9.2
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.1
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.0
 	github.com/Azure/go-autorest/autorest/date v0.3.0
@@ -19,6 +20,7 @@ require (
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.4
+	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/prometheus/client_golang v1.1.0 // indirect
 	github.com/spf13/cobra v1.1.1
