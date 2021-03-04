@@ -17,9 +17,11 @@
             "allowedRoles": ["readers"]
         }
     ],
-    "platformErrorOverrides": {
-        "errorType": "Unauthenticated",
-        "statusCode": "302",
-        "serve": "/login"
-      }
+    "platformErrorOverrides": [
+        {
+            "errorType": "Unauthenticated",
+            "statusCode": "302",
+            "serve": "/login"
+        }
+    ]
 }
