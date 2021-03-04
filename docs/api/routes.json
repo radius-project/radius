@@ -1,0 +1,25 @@
+{
+    "routes": [
+        {
+            "route": "/login",
+            "serve": "/.auth/login/github"
+        },
+        {
+            "route": "/logout",
+            "serve": "/.auth/logout"
+        },
+        {
+            "route": "/.auth/*",
+            "allowedRoles": ["anonymous"]
+        },
+        {
+            "route": "/*",
+            "allowedRoles": ["readers"]
+        }
+    ],
+    "platformErrorOverrides": {
+        "errorType": "Unauthenticated",
+        "statusCode": "302",
+        "serve": "/login"
+      }
+}
