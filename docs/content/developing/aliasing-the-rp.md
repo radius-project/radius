@@ -1,4 +1,10 @@
-# Aliasing the RP
+---
+type: docs
+title: "Use an existing Radius RP deployment"
+linkTitle: "Use existing RP"
+description: "How to alias the RP to map an existing Radius RP deployment"
+weight: 50
+---
 
 We provide a separate ARM template `rp-only.json` to map the Radius RP into a resource group using an *existing* deployment of the Radius RP.
 

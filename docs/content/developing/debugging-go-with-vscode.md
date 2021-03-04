@@ -1,4 +1,10 @@
-# Debugging Go with VSCode
+---
+type: docs
+title: "Debugging Radius with Visual Studio Code"
+linkTitle: "Debug with VSCode"
+description: "How to debug Project Radius with Visual Studio Code"
+weight: 70
+---
 
 VSCode has good support for debugging VSCode, it's just a little unintuitive to set up.
 
