@@ -10,7 +10,7 @@
         },
         {
             "route": "/*",
-            "allowedRoles": ["authenticated"]
+            "allowedRoles": ["readers"]
         }
     ],
     "responseOverrides": {
