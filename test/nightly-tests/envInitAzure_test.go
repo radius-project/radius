@@ -43,6 +43,10 @@ func TestAzureRadiusEnvInitialization(t *testing.T) {
 	resourceMap := make(map[string]string)
 
 	for pageResults, _ := azurehelpers.ListResourcesInResourceGroup(ctx, resourceGroupName, "2020-06-01"); pageResults.NotDone(); err = pageResults.NextWithContext(ctx) {
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
 		for _, r := range pageResults.Values() {
 			resourceMap[*r.Type] = *r.ID
 		}
