@@ -168,7 +168,7 @@ test:
 	go test ./pkg/...
 
 ################################################################################
-# Target: test - nightly testing                                                  #
+# Target: e2e-tests - run nightly integration tests                                                  #
 ################################################################################
 .PHONY: e2e-tests
 e2e-tests:
