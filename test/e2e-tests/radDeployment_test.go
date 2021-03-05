@@ -27,7 +27,7 @@ func TestAzureRadiusDeployment(t *testing.T) {
 
 	// Run the rad cli init command and look for errors
 	fmt.Println("Deploying in resource group: " + resourceGroupName)
-	err := utils.RunRadInitCommand(config.SubscriptionID(), resourceGroupName, config.DefaultLocation(), time.Minute*10)
+	err := utils.RunRadInitCommand(config.SubscriptionID(), resourceGroupName, config.DefaultLocation(), time.Minute*15)
 	if err != nil {
 		fmt.Println(err)
 	}
