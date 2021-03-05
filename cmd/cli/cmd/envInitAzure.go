@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/date"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/logger"
@@ -252,39 +253,9 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string) error {
-	settings, err := auth.GetSettingsFromEnvironment()
+	armauth, graphauth, err := utils.GetArmAuthorizer()
 	if err != nil {
 		return err
-	}
-
-	var servicePrincipalExists bool
-	var armauth autorest.Authorizer
-	var graphauth autorest.Authorizer
-	if settings.Values[auth.ClientID] != "" && settings.Values[auth.ClientSecret] != "" {
-		servicePrincipalExists = true
-	}
-
-	if servicePrincipalExists {
-		// Use the service principal specified
-		armauth, err = auth.NewAuthorizerFromEnvironment()
-		if err != nil {
-			return err
-		}
-
-		graphauth, err = auth.NewAuthorizerFromEnvironment()
-		if err != nil {
-			return err
-		}
-	} else {
-		armauth, err = auth.NewAuthorizerFromCLIWithResource(settings.Environment.ResourceManagerEndpoint)
-		if err != nil {
-			return err
-		}
-
-		graphauth, err = auth.NewAuthorizerFromCLIWithResource(settings.Environment.GraphEndpoint)
-		if err != nil {
-			return err
-		}
 	}
 
 	// Check for an existing RP in the target resource group. This way we
@@ -318,8 +289,12 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
+	useServicePrincipal, err := utils.UseServicePrincipal()
+	if err != nil {
+		return err
+	}
 	var sp servicePrincipal
-	if !servicePrincipalExists {
+	if !useServicePrincipal {
 		sp, err := createServicePrincipal(ctx, graphauth, tenantID)
 		if err != nil {
 			return err
