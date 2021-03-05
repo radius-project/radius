@@ -6,21 +6,10 @@
 name: e2e-tests
 
 on:
-  push:
-    branches:
-      - main
-      - release-*
-      - any
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - main
-      - release-*
-  # schedule:
-  #   - cron: '0 */2 * * *'
-  # repository_dispatch:
-  #   types: [e2e-tests]
+  schedule:
+    - cron: '0 */2 * * *'
+  repository_dispatch:
+    types: [e2e-tests]
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -71,9 +60,6 @@ jobs:
         if: matrix.target_arch != 'arm'
         run: |
           cd $GITHUB_WORKSPACE
-          echo "radius path: ${{ env.RADIUS_PATH }}"
-          echo "tenant id: ${{ env.AZURE_TENANT_ID }}"
-          echo "sub id: ${{ env.RADIUS_TEST_SUBSCRIPTION_ID }}"
           export PATH=$PATH:${{ env.RADIUS_PATH }}
           export AZURE_TENANT_ID=${{ env.AZURE_TENANT_ID }}
           export AZURE_CLIENT_ID=${{ env.AZURE_CLIENT_ID }}
