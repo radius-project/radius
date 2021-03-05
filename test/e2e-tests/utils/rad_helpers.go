@@ -45,7 +45,7 @@ func RunRadMergeCredentialsCommand() error {
 	cmd := exec.CommandContext(ctx, "rad", "env", "merge-credentials", "--name", "azure")
 	err := runCommand(ctx, cmd)
 	if err != nil {
-		log.Fatal("Could not merge kubernetes credentials")
+		log.Fatal("Could not merge kubernetes credentials: " + err.Error())
 	}
 	return err
 }

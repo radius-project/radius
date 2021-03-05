@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -84,11 +86,31 @@ var envMergeCredentialsCmd = &cobra.Command{
 			executableName = "az"
 		}
 
+		useServicePrincipal, err := utils.UseServicePrincipal()
+		if err != nil {
+			return err
+		}
+
+		if useServicePrincipal {
+			settings, err := auth.GetSettingsFromEnvironment()
+			if err != nil {
+				return fmt.Errorf("could not read environment settings")
+			}
+			c := exec.Command(executableName, "login", "--service-principal", "--username", settings.Values[auth.ClientID], "--password", settings.Values[auth.ClientSecret], "--tenant", settings.Values[auth.TenantID])
+			c.Stderr = os.Stderr
+			c.Stdout = os.Stdout
+			err = c.Run()
+			if err != nil {
+				return err
+			}
+		}
+
 		c := exec.Command(executableName, "aks", "get-credentials", "--resource-group", resourceGroup, "--name", clusterName)
 		c.Stderr = os.Stderr
 		c.Stdout = os.Stdout
 		err = c.Run()
 		return err
+
 	},
 }
 
