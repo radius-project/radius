@@ -75,7 +75,10 @@ jobs:
       - name: Run make nightly-tests
         if: matrix.target_arch != 'arm'
         run: |
-          export PATH=$PATH:$RADIUS_PATH
+          echo "radius path: ${{ env.RADIUS_PATH }}"
+          echo "tenant id: ${{ env.AZURE_TENANT_ID }}"
+          echo "sub id: ${{ env.RADIUS_TEST_SUBSCRIPTION_ID }}"
+          export PATH=$PATH:${{ env.RADIUS_PATH }}
           export AZURE_TENANT_ID=${{ env.AZURE_TENANT_ID }}
           export AZURE_CLIENT_ID=${{ env.RADIUS_SP_APP_ID}}
           export AZURE_CLIENT_SECRET=${{ env.RADIUS_SP_PASSWORD}}
