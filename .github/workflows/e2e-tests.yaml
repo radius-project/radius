@@ -64,7 +64,7 @@ jobs:
       - name: Parse release version and set REL_VERSION
         run: python ./.github/scripts/get_release_version.py
       - name: Download bicep private binary for Radius
-        run: wget https://radiuspublic.blob.core.windows.net/tools/linux-x64/bicep --directory-prefix /usr/local/bin
+        run: sudo wget https://radiuspublic.blob.core.windows.net/tools/linux-x64/bicep --directory-prefix /usr/local/bin
       - name: Run make e2e-tests
         if: matrix.target_arch != 'arm'
         run: |
