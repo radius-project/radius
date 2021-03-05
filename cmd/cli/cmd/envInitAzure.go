@@ -406,7 +406,7 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
 	groupsClient := resources.NewGroupsClient(subscriptionID)
-	a, err := auth.NewAuthorizerFromEnvironment()
+	a, _, err := utils.GetArmAuthorizer()
 	if err != nil {
 		log.Fatalf("failed to initialize authorizer: %v\n", err)
 	}
