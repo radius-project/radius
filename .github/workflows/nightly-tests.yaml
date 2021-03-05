@@ -46,15 +46,6 @@ jobs:
         include:
           - os: ubuntu-latest
             target_os: linux
-          - os: windows-latest
-            target_os: windows
-          - os: macOS-latest
-            target_os: darwin
-        exclude:
-          - os: windows-latest
-            target_arch: arm
-          - os: macOS-latest
-            target_arch: arm
     steps:
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v2
