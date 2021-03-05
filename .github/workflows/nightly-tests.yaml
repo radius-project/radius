@@ -33,9 +33,9 @@ jobs:
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
       RADIUS_PATH: $GITHUB_WORKSPACE/dist/${{ matrix.target_os }}_${{ matrix.target_arch }}/release
-      AZURE_TENANT_ID: ${{ secrets.RADIUS_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.RADIUS_SP_APP_ID}}
-      AZURE_CLIENT_SECRET: ${{ secrets.RADIUS_SP_PASSWORD}}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET}}
       RADIUS_TEST_SUBSCRIPTION_ID: "66d1209e-1382-45d3-99bb-650e6bf63fc0"
       RADIUS_TEST_DEFAULT_LOCATION: "westus2"
       RADIUS_TEST_BASE_GROUP_NAME: "rad-it"
