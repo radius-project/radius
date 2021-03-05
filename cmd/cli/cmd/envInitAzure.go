@@ -331,6 +331,9 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	} else {
 		sp, err = getServicePrincipal(ctx, armauth, tenantID)
+		if err != nil {
+			return err
+		}
 	}
 
 	deployment, err := deployEnvironment(ctx, armauth, sp, subscriptionID, resourceGroup, deploymentTemplate)
