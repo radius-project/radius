@@ -1,4 +1,4 @@
-package shellhelpers
+package utils
 
 import (
 	"context"

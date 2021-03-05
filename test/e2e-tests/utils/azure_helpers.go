@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
-package azurehelpers
+package utils
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/radius/test/nightly-tests/config"
+	"github.com/Azure/radius/test/e2e-tests/config"
 )
 
 // WithAPIVersion returns a prepare decorator that changes the request's query for api-version

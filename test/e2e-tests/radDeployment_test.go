@@ -14,14 +14,12 @@ import (
 	"testing"
 	"time"
 
-	azurehelpers "github.com/Azure/radius/test/nightly-tests/azure"
-	"github.com/Azure/radius/test/nightly-tests/config"
-	kubernetes_helpers "github.com/Azure/radius/test/nightly-tests/kubernetes"
-	shellhelpers "github.com/Azure/radius/test/nightly-tests/shell"
+	"github.com/Azure/radius/test/e2e-tests/config"
+	"github.com/Azure/radius/test/e2e-tests/utils"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAzureRadiusEnvInitialization(t *testing.T) {
+func TestAzureRadiusDeployment(t *testing.T) {
 	ctx := context.Background()
 	resourceGroupName := config.GenerateGroupName(config.BaseGroupName())
 
@@ -29,20 +27,20 @@ func TestAzureRadiusEnvInitialization(t *testing.T) {
 
 	// Run the rad cli init command and look for errors
 	fmt.Println("Deploying in resource group: " + resourceGroupName)
-	err := shellhelpers.RunRadInitCommand(config.SubscriptionID(), resourceGroupName, config.DefaultLocation(), time.Minute*10)
+	err := utils.RunRadInitCommand(config.SubscriptionID(), resourceGroupName, config.DefaultLocation(), time.Minute*10)
 	if err != nil {
 		fmt.Println(err)
 	}
 	require.NoError(t, err)
 
 	// Check whether the resource group is created
-	rg, err := azurehelpers.GetGroup(ctx, resourceGroupName)
+	rg, err := utils.GetGroup(ctx, resourceGroupName)
 	if err != nil || *rg.Name != resourceGroupName {
 		log.Fatal(err)
 	}
 	resourceMap := make(map[string]string)
 
-	for pageResults, _ := azurehelpers.ListResourcesInResourceGroup(ctx, resourceGroupName, "2020-06-01"); pageResults.NotDone(); err = pageResults.NextWithContext(ctx) {
+	for pageResults, _ := utils.ListResourcesInResourceGroup(ctx, resourceGroupName, "2020-06-01"); pageResults.NotDone(); err = pageResults.NextWithContext(ctx) {
 		if err != nil {
 			log.Fatal(err)
 			return
@@ -79,14 +77,14 @@ func TestAzureRadiusEnvInitialization(t *testing.T) {
 	// Deploy bicep template
 	cwd, _ := os.Getwd()
 	templateFilePath := filepath.Join(cwd, "../frontend-backend/azure-bicep/template.bicep")
-	err = shellhelpers.RunRadDeployCommand(templateFilePath, time.Minute*5)
+	err = utils.RunRadDeployCommand(templateFilePath, time.Minute*5)
 	if err != nil {
 		log.Fatal(err)
 	}
 	require.NoError(t, err)
 
 	// Merge the k8s credentials to the cluster
-	err = shellhelpers.RunRadMergeCredentialsCommand()
+	err = utils.RunRadMergeCredentialsCommand()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,11 +95,11 @@ func TestAzureRadiusEnvInitialization(t *testing.T) {
 	expectedPods["dapr-system"] = 5
 	// Validate pods specified in frontend-backend template are up and running
 	expectedPods["frontend-backend"] = 2
-	require.True(t, kubernetes_helpers.ValidatePodsRunning(expectedPods))
+	require.True(t, utils.ValidatePodsRunning(expectedPods))
 }
 
 func cleanup(ctx context.Context, resourceGroupName string) {
-	_, err := azurehelpers.DeleteGroup(ctx, resourceGroupName)
+	_, err := utils.DeleteGroup(ctx, resourceGroupName)
 	if err != nil {
 		log.Fatal(err)
 	}

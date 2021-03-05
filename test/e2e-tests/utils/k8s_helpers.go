@@ -1,4 +1,4 @@
-package kubernetes_helpers
+package utils
 
 import (
 	"context"

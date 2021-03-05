@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-name: nightly-tests
+name: e2e-tests
 
 on:
   push:
@@ -20,7 +20,7 @@ on:
   # schedule:
   #   - cron: '0 */2 * * *'
   # repository_dispatch:
-  #   types: [nightly-tests]
+  #   types: [e2e-tests]
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -63,7 +63,9 @@ jobs:
           version: v1.37
       - name: Parse release version and set REL_VERSION
         run: python ./.github/scripts/get_release_version.py
-      - name: Run make nightly-tests
+      - name: Download bicep private binary for Radius
+        run: wget https://radiuspublic.blob.core.windows.net/tools/linux-x64/bicep --directory-prefix /usr/local/bin
+      - name: Run make e2e-tests
         if: matrix.target_arch != 'arm'
         run: |
           echo "radius path: ${{ env.RADIUS_PATH }}"
@@ -76,4 +78,4 @@ jobs:
           export RADIUS_TEST_SUBSCRIPTION_ID=${{ env.RADIUS_TEST_SUBSCRIPTION_ID }}
           export RADIUS_TEST_DEFAULT_LOCATION=${{ env.RADIUS_TEST_DEFAULT_LOCATION }}
           export RADIUS_TEST_BASE_GROUP_NAME=${{ env.RADIUS_TEST_BASE_GROUP_NAME }}
-          make nightly-tests
+          make e2e-tests

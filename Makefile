@@ -170,9 +170,9 @@ test:
 ################################################################################
 # Target: test - nightly testing                                                  #
 ################################################################################
-.PHONY: nightly-tests
-nightly-tests:
-	go test ./test/nightly-tests/... -timeout 900s
+.PHONY: e2e-tests
+e2e-tests:
+	go test ./test/e2e-tests/... -timeout 900s
 
 ################################################################################
 # Target: clean                                                                #
