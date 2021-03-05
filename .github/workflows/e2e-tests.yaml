@@ -65,8 +65,11 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
       - name: Download bicep private binary for Radius
         run: |
+          echo "PATH before is $PATH"
           sudo wget https://radiuspublic.blob.core.windows.net/tools/linux-x64/bicep --directory-prefix /usr/local/bin
-          export PATH=$PATH:/usr/local/bin
+          sudo chmod a+x /usr/local/bin/bicep
+          echo "PATH now is $PATH"
+          which bicep
       - name: Run make e2e-tests
         if: matrix.target_arch != 'arm'
         run: |
