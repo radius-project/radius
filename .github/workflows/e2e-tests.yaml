@@ -5,24 +5,14 @@
 
 name: e2e-tests
 
-# on:
-#   schedule:
-#     - cron: '0 */2 * * *'
-#   repository_dispatch:
-#     types: [e2e-tests]
 on:
-  push:
-    branches:
-      - main
-      - release-*
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - main
-      - release-*
+  schedule:
+    - cron: '0 */2 * * *'
+  repository_dispatch:
+    types: [e2e-tests]
+  workflow_dispatch:
 jobs:
-  build:
+  run-e2e-tests:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries and run e2e tests
     runs-on: ${{ matrix.os }}
     env:
@@ -47,6 +37,25 @@ jobs:
           - os: ubuntu-latest
             target_os: linux
     steps:
+      - name: Set up for scheduled test
+        if: github.event_name != 'repository_dispatch'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/master" >> $GITHUB_ENV
+      - name: Parse test payload
+        if: github.event_name == 'repository_dispatch'
+        uses: actions/github-script@0.3.0
+        with:
+          github-token: ${{secrets.RADIUS_BOT_TOKEN}}
+          script: |
+            const testPayload = context.payload.client_payload;
+            if (testPayload && testPayload.command == "run-e2e-tests") {
+              var fs = require('fs');
+              // Set environment variables
+              fs.appendFileSync(process.env.GITHUB_ENV,
+                `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
+                `CHECKOUT_REF=${testPayload.pull_head_ref}`);
+            }
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v2
         with:
@@ -72,6 +81,4 @@ jobs:
           export INTEGRATION_TEST_SUBSCRIPTION_ID=${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}
           export INTEGRATION_TEST_DEFAULT_LOCATION=${{ env.INTEGRATION_TEST_DEFAULT_LOCATION }}
           export INTEGRATION_TEST_BASE_GROUP_NAME=${{ env.INTEGRATION_TEST_BASE_GROUP_NAME }}
-
-          echo "$AZURE_TENANT_ID, $AZURE_CLIENT_ID, $INTEGRATION_TEST_SUBSCRIPTION_ID"
           make e2e-tests
