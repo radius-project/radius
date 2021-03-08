@@ -12,7 +12,7 @@ on:
     types: [e2e-tests]
 jobs:
   build:
-    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
+    name: Run end-to-end tests
     runs-on: ${{ matrix.os }}
     env:
       GOVER: '^1.15.0'

@@ -35,6 +35,7 @@ func init() {
 
 // Read test configuration from environment variables
 func (config *azureConfig) initialize() {
+	config = new(azureConfig)
 	config.clientID = os.Getenv("AZURE_CLIENT_ID")
 	config.clientSecret = os.Getenv("AZURE_CLIENT_SECRET")
 	config.tenantID = os.Getenv("AZURE_TENANT_ID")
