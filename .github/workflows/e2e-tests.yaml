@@ -22,7 +22,7 @@ jobs:
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
       RADIUS_PATH: $GITHUB_WORKSPACE/dist/${{ matrix.target_os }}_${{ matrix.target_arch }}/release
-      NTEGRATION_TEST_TENANT_ID: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+      INTEGRATION_TEST_TENANT_ID: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
       INTEGRATION_TEST_SP_APP_ID: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
       INTEGRATION_TEST_SP_PASSWORD: ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
       INTEGRATION_TEST_SUBSCRIPTION_ID: "66d1209e-1382-45d3-99bb-650e6bf63fc0"
@@ -55,10 +55,12 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           export PATH=$PATH:${{ env.RADIUS_PATH }}
-          export AZURE_TENANT_ID=${{ env.NTEGRATION_TEST_TENANT_ID }}
+          export AZURE_TENANT_ID=${{ env.INTEGRATION_TEST_TENANT_ID }}
           export AZURE_CLIENT_ID=${{ env.INTEGRATION_TEST_SP_APP_ID }}
           export AZURE_CLIENT_SECRET=${{ env.INTEGRATION_TEST_SP_PASSWORD }}
           export INTEGRATION_TEST_SUBSCRIPTION_ID=${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}
           export INTEGRATION_TEST_DEFAULT_LOCATION=${{ env.INTEGRATION_TEST_DEFAULT_LOCATION }}
           export INTEGRATION_TEST_BASE_GROUP_NAME=${{ env.INTEGRATION_TEST_BASE_GROUP_NAME }}
+
+          echo "$AZURE_TENANT_ID, $AZURE_CLIENT_ID, $INTEGRATION_TEST_SUBSCRIPTION_ID"
           make e2e-tests

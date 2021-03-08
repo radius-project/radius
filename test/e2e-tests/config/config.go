@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
-	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/marstr/randname"
 )
@@ -28,7 +27,6 @@ type azureConfig struct {
 	locationDefault string
 	cloudName       string
 	baseGroupName   string
-	environment     *azure.Environment
 }
 
 func init() {
