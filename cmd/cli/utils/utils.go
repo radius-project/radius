@@ -10,50 +10,53 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
-// GetArmAuthorizer returns the authorizer for ResourceManagerEndpoint and GraphEndpoint
-func GetArmAuthorizer() (autorest.Authorizer, autorest.Authorizer, error) {
-
-	var armauth autorest.Authorizer
-	var graphauth autorest.Authorizer
-
-	useServicePrincipal, err := UseServicePrincipal()
-	if err != nil {
-		return nil, nil, err
-	}
-
+// GetResourceManagerEndpointAuthorizer returns the authorizer for the ResourceManager endpoint
+func GetResourceManagerEndpointAuthorizer() (autorest.Authorizer, error) {
 	settings, err := auth.GetSettingsFromEnvironment()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+
+	return getArmAuthorizer(settings.Environment.ResourceManagerEndpoint)
+}
+
+// GetGraphEndpointAuthorizer returns the authorizer for the ResourceManager endpoint
+func GetGraphEndpointAuthorizer() (autorest.Authorizer, error) {
+	settings, err := auth.GetSettingsFromEnvironment()
+	if err != nil {
+		return nil, err
+	}
+
+	return getArmAuthorizer(settings.Environment.GraphEndpoint)
+}
+
+func getArmAuthorizer(endpoint string) (autorest.Authorizer, error) {
+
+	var authorizer autorest.Authorizer
+
+	useServicePrincipal, err := IsServicePrincipalConfigured()
+	if err != nil {
+		return nil, err
 	}
 
 	if useServicePrincipal {
 		// Use the service principal specified
-		armauth, err = auth.NewAuthorizerFromEnvironment()
+		authorizer, err = auth.NewAuthorizerFromEnvironment()
 		if err != nil {
-			return nil, nil, err
-		}
-
-		graphauth, err = auth.NewAuthorizerFromEnvironment()
-		if err != nil {
-			return armauth, nil, err
+			return nil, err
 		}
 	} else {
-		armauth, err = auth.NewAuthorizerFromCLIWithResource(settings.Environment.ResourceManagerEndpoint)
+		authorizer, err = auth.NewAuthorizerFromCLIWithResource(endpoint)
 		if err != nil {
-			return nil, nil, err
-		}
-
-		graphauth, err = auth.NewAuthorizerFromCLIWithResource(settings.Environment.GraphEndpoint)
-		if err != nil {
-			return armauth, nil, err
+			return nil, err
 		}
 	}
 
-	return armauth, graphauth, nil
+	return authorizer, nil
 }
 
-// UseServicePrincipal determines whether a service principal is specifed
-func UseServicePrincipal() (bool, error) {
+// IsServicePrincipalConfigured determines whether a service principal is specifed
+func IsServicePrincipalConfigured() (bool, error) {
 	settings, err := auth.GetSettingsFromEnvironment()
 	if err != nil {
 		return false, err

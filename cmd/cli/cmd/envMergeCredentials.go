@@ -86,12 +86,12 @@ var envMergeCredentialsCmd = &cobra.Command{
 			executableName = "az"
 		}
 
-		useServicePrincipal, err := utils.UseServicePrincipal()
+		isServicePrincipalConfigured, err := utils.IsServicePrincipalConfigured()
 		if err != nil {
 			return err
 		}
 
-		if useServicePrincipal {
+		if isServicePrincipalConfigured {
 			settings, err := auth.GetSettingsFromEnvironment()
 			if err != nil {
 				return fmt.Errorf("could not read environment settings")

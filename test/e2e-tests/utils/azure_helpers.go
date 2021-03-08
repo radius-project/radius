@@ -2,19 +2,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
+
 package utils
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/radius/test/e2e-tests/config"
+)
+
+var (
+	// ResourcesPkgAPIVersion is the API version of the azure go-sdk resources package used
+	ResourcesPkgAPIVersion string = "2019-05-01"
 )
 
 // WithAPIVersion returns a prepare decorator that changes the request's query for api-version
@@ -39,46 +42,30 @@ func WithAPIVersion(apiVersion string) autorest.PrepareDecorator {
 
 // GetGroup gets info on the resource group in use
 func GetGroup(ctx context.Context, groupName string) (resources.Group, error) {
-	groupsClient := getGroupsClient()
+	groupsClient, err := config.AzureConfig.GetGroupsClient()
+	if err != nil {
+		return resources.Group{}, err
+	}
 	return groupsClient.Get(ctx, groupName)
 }
 
 // DeleteGroup deletes the resource group
-func DeleteGroup(ctx context.Context, groupName string) (resources.GroupsDeleteFuture, error) {
-	groupsClient := getGroupsClient()
+func DeleteGroup(ctx context.Context, groupName string) (result resources.GroupsDeleteFuture, err error) {
+	groupsClient, err := config.AzureConfig.GetGroupsClient()
+	if err != nil {
+		return resources.GroupsDeleteFuture{}, err
+	}
 	return groupsClient.Delete(ctx, groupName)
 }
 
 // ListResourcesInResourceGroup gets all resources in resource group
-func ListResourcesInResourceGroup(ctx context.Context, groupName string, apiVersion string) (resources.ListResultPage, error) {
-	resourcesClient := getResourcesClient()
-	resourcesClient.RequestInspector = WithAPIVersion(apiVersion)
+func ListResourcesInResourceGroup(ctx context.Context, groupName string) (resources.ListResultPage, error) {
+	resourcesClient, err := config.AzureConfig.GetResourcesClient()
+	if err != nil {
+		return resources.ListResultPage{}, err
+	}
+	resourcesClient.RequestInspector = WithAPIVersion(ResourcesPkgAPIVersion)
 	var top10 int32 = 10
 	resourcesInRg, err := resourcesClient.ListByResourceGroup(ctx, groupName, "", "", &top10)
-	fmt.Printf("Resources found: %v\n", resourcesInRg)
 	return resourcesInRg, err
-}
-
-func getResourcesClient() resources.Client {
-	resourcesClient := resources.NewClient(config.SubscriptionID())
-	// a, _ := iam.GetResourceManagementAuthorizer()
-	a, err := auth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		fmt.Println("Failed to init authorizer")
-		return resources.Client{}
-	}
-	resourcesClient.Authorizer = a
-	// _ := resourcesClient.AddToUserAgent(config.UserAgent())
-	return resourcesClient
-}
-
-func getGroupsClient() resources.GroupsClient {
-	groupsClient := resources.NewGroupsClient(config.SubscriptionID())
-	a, err := auth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		log.Fatalf("failed to initialize authorizer: %v\n", err)
-	}
-	groupsClient.Authorizer = a
-	// groupsClient.AddToUserAgent(config.UserAgent())
-	return groupsClient
 }

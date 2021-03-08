@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -253,7 +252,12 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string) error {
-	armauth, graphauth, err := utils.GetArmAuthorizer()
+	armauth, err := utils.GetResourceManagerEndpointAuthorizer()
+	if err != nil {
+		return err
+	}
+
+	graphauth, err := utils.GetGraphEndpointAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -289,23 +293,23 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
-	useServicePrincipal, err := utils.UseServicePrincipal()
+	isServicePrincipalConfigured, err := utils.IsServicePrincipalConfigured()
 	if err != nil {
 		return err
 	}
 	var sp servicePrincipal
-	if !useServicePrincipal {
+	if isServicePrincipalConfigured {
+		sp, err = getServicePrincipal(ctx, armauth, tenantID)
+		if err != nil {
+			return err
+		}
+	} else {
 		sp, err := createServicePrincipal(ctx, graphauth, tenantID)
 		if err != nil {
 			return err
 		}
 
 		err = configurePermissions(ctx, armauth, sp, subscriptionID)
-		if err != nil {
-			return err
-		}
-	} else {
-		sp, err = getServicePrincipal(ctx, armauth, tenantID)
 		if err != nil {
 			return err
 		}
@@ -406,9 +410,9 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
 	groupsClient := resources.NewGroupsClient(subscriptionID)
-	a, _, err := utils.GetArmAuthorizer()
+	a, err := utils.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
-		log.Fatalf("failed to initialize authorizer: %v\n", err)
+		return err
 	}
 	groupsClient.Authorizer = a
 
@@ -471,7 +475,10 @@ func createServicePrincipal(ctx context.Context, authorizer autorest.Authorizer,
 
 func getServicePrincipal(ctx context.Context, authorizer autorest.Authorizer, tenantID string) (servicePrincipal, error) {
 	step := logger.BeginStep("Getting Service Principal...")
-	settings, _ := auth.GetSettingsFromEnvironment()
+	settings, err := auth.GetSettingsFromEnvironment()
+	if err != nil {
+		return servicePrincipal{}, err
+	}
 
 	var sp graphrbac.ServicePrincipal
 	clientID := settings.Values[auth.ClientID]

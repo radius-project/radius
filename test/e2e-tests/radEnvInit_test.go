@@ -19,15 +19,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAzureRadiusDeployment(t *testing.T) {
+func TestAzureEnvironmentSetup(t *testing.T) {
 	ctx := context.Background()
-	resourceGroupName := config.GenerateGroupName(config.BaseGroupName())
+	resourceGroupName := config.AzureConfig.GenerateGroupName()
 
 	defer cleanup(ctx, resourceGroupName)
 
 	// Run the rad cli init command and look for errors
 	fmt.Println("Deploying in resource group: " + resourceGroupName)
-	err := utils.RunRadInitCommand(config.SubscriptionID(), resourceGroupName, config.DefaultLocation(), time.Minute*15)
+	err := utils.RunRadInitCommand(config.AzureConfig.SubscriptionID(), resourceGroupName, config.AzureConfig.DefaultLocation(), time.Minute*15)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -40,7 +40,7 @@ func TestAzureRadiusDeployment(t *testing.T) {
 	}
 	resourceMap := make(map[string]string)
 
-	for pageResults, _ := utils.ListResourcesInResourceGroup(ctx, resourceGroupName, "2020-06-01"); pageResults.NotDone(); err = pageResults.NextWithContext(ctx) {
+	for pageResults, _ := utils.ListResourcesInResourceGroup(ctx, resourceGroupName); pageResults.NotDone(); err = pageResults.NextWithContext(ctx) {
 		if err != nil {
 			log.Fatal(err)
 			return
@@ -95,7 +95,7 @@ func TestAzureRadiusDeployment(t *testing.T) {
 	expectedPods["dapr-system"] = 5
 	// Validate pods specified in frontend-backend template are up and running
 	expectedPods["frontend-backend"] = 2
-	require.True(t, utils.ValidatePodsRunning(expectedPods))
+	require.True(t, utils.ValidatePodsRunning(t, expectedPods))
 }
 
 func cleanup(ctx context.Context, resourceGroupName string) {

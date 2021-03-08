@@ -22,12 +22,12 @@ jobs:
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
       RADIUS_PATH: $GITHUB_WORKSPACE/dist/${{ matrix.target_os }}_${{ matrix.target_arch }}/release
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      RADIUS_TEST_SUBSCRIPTION_ID: "66d1209e-1382-45d3-99bb-650e6bf63fc0"
-      RADIUS_TEST_DEFAULT_LOCATION: "westus2"
-      RADIUS_TEST_BASE_GROUP_NAME: "rad-it"
+      NTEGRATION_TEST_TENANT_ID: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+      INTEGRATION_TEST_SP_APP_ID: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+      INTEGRATION_TEST_SP_PASSWORD: ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+      INTEGRATION_TEST_SUBSCRIPTION_ID: "66d1209e-1382-45d3-99bb-650e6bf63fc0"
+      INTEGRATION_TEST_DEFAULT_LOCATION: "westus2"
+      INTEGRATION_TEST_BASE_GROUP_NAME: "rad-it"
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -44,12 +44,6 @@ jobs:
         uses: actions/checkout@v2
       - name: Make
         run: make
-      - name: Run linter
-        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
-        uses: golangci/golangci-lint-action@v2.4.0
-        with:
-          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.37
       - name: Parse release version and set REL_VERSION
         run: python ./.github/scripts/get_release_version.py
       - name: Download bicep private binary for Radius
@@ -61,10 +55,10 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           export PATH=$PATH:${{ env.RADIUS_PATH }}
-          export AZURE_TENANT_ID=${{ env.AZURE_TENANT_ID }}
-          export AZURE_CLIENT_ID=${{ env.AZURE_CLIENT_ID }}
-          export AZURE_CLIENT_SECRET=${{ env.AZURE_CLIENT_SECRET }}
-          export RADIUS_TEST_SUBSCRIPTION_ID=${{ env.RADIUS_TEST_SUBSCRIPTION_ID }}
-          export RADIUS_TEST_DEFAULT_LOCATION=${{ env.RADIUS_TEST_DEFAULT_LOCATION }}
-          export RADIUS_TEST_BASE_GROUP_NAME=${{ env.RADIUS_TEST_BASE_GROUP_NAME }}
+          export AZURE_TENANT_ID=${{ env.NTEGRATION_TEST_TENANT_ID }}
+          export AZURE_CLIENT_ID=${{ env.INTEGRATION_TEST_SP_APP_ID }}
+          export AZURE_CLIENT_SECRET=${{ env.INTEGRATION_TEST_SP_PASSWORD }}
+          export INTEGRATION_TEST_SUBSCRIPTION_ID=${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          export INTEGRATION_TEST_DEFAULT_LOCATION=${{ env.INTEGRATION_TEST_DEFAULT_LOCATION }}
+          export INTEGRATION_TEST_BASE_GROUP_NAME=${{ env.INTEGRATION_TEST_BASE_GROUP_NAME }}
           make e2e-tests

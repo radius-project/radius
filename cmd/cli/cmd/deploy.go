@@ -213,7 +213,7 @@ func deployApplication(ctx context.Context, filePath string, env deployableEnvir
 
 func createDeploymentClient(env deployableEnvironment) (resources.DeploymentsClient, error) {
 	if env.Kind == "azure" {
-		armauth, _, err := utils.GetArmAuthorizer()
+		armauth, err := utils.GetResourceManagerEndpointAuthorizer()
 		if err != nil {
 			return resources.DeploymentsClient{}, err
 		}

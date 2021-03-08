@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"path/filepath"
+	"testing"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -13,7 +14,7 @@ import (
 )
 
 // ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
-func ValidatePodsRunning(expectedPods map[string]int) bool {
+func ValidatePodsRunning(t *testing.T, expectedPods map[string]int) bool {
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
@@ -24,11 +25,11 @@ func ValidatePodsRunning(expectedPods map[string]int) bool {
 
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		panic(err)
+		t.Errorf(err.Error())
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err)
+		t.Errorf(err.Error())
 	}
 
 	for namespace, expectedNumPods := range expectedPods {
