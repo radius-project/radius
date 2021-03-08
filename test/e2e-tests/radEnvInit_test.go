@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Radius env setup test
 func TestAzureEnvironmentSetup(t *testing.T) {
 	ctx := context.Background()
 	resourceGroupName := config.AzureConfig.GenerateGroupName()
