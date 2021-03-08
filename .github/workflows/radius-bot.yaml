@@ -1,0 +1,78 @@
+name: radius-bot
+
+on:
+  issue_comment: {types: created}
+
+jobs:
+  radiusbot:
+    name: bot-processor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment analyzer
+        uses: actions/github-script@v1
+        with:
+          github-token: ${{secrets.RADIUS_BOT_TOKEN}}
+          script: |
+            // list of owner who can control radius-bot workflow
+            // TODO: Read owners from OWNERS file.
+            const owners = [
+              "kachawla",
+              "rynowak",
+              "vinayada1",
+            ];
+
+            const payload = context.payload;
+            const issue = context.issue;
+            const isFromPulls = !!payload.issue.pull_request;
+            const commentBody = payload.comment.body;
+
+            if (owners.indexOf(context.actor) < 0) {
+              return;
+            }
+
+            // Pollyfill: register createDispatchEvent because actions/github-script@0.3.0 
+            // does not have createDispatchEvent.
+            github.registerEndpoints({
+              repos: {
+                createDispatchEvent: {
+                  "headers": { "accept": "application/vnd.github.everest-preview+json" },
+                  "method": "POST",
+                  "params": {
+                    "client_payload": { "type": "object" },
+                    "event_type": { "type": "string" },
+                    "owner": { "required": true, "type": "string" },
+                    "repo": { "required": true, "type": "string" }
+                  },
+                  "url": "/repos/:owner/:repo/dispatches"
+                }
+              }
+            });
+
+            if (commentBody.indexOf("/run-e2e-tests") == 0) {
+                // Get pull request
+                const pull = await github.pulls.get({
+                  owner: issue.owner,
+                  repo: issue.repo,
+                  pull_number: issue.number
+                });
+                if (pull && pull.data) {                
+                  // Get commit id and repo from pull head
+                  const e2eTestsPayload = {
+                    pull_head_ref: pull.data.head.sha,
+                    pull_head_repo: pull.data.head.repo.full_name,
+                    command: "run-e2e-tests",
+                    issue: issue,
+                  };
+      
+                  // Fire repository_dispatch event to trigger e2e test
+                  await github.repos.createDispatchEvent({
+                    owner: issue.owner,
+                    repo: issue.repo,
+                    event_type: "e2e-tests",
+                    client_payload: e2eTestsPayload,
+                  });
+                  
+                  console.log(`Trigger end to end tests for ${JSON.stringify(e2eTestsPayload)}`);
+                }
+              }
+            }
