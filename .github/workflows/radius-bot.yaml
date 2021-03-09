@@ -20,16 +20,13 @@ jobs:
               "rynowak",
               "vinayada1"
             ];
-
             const payload = context.payload;
             const issue = context.issue;
             const isFromPulls = !!payload.issue.pull_request;
             const commentBody = payload.comment.body;
-
             if (owners.indexOf(context.actor) < 0) {
               return;
             }
-
             // Pollyfill: register createDispatchEvent because actions/github-script@0.3.0 
             // does not have createDispatchEvent.
             github.registerEndpoints({
@@ -47,7 +44,6 @@ jobs:
                 }
               }
             });
-
             if (isFromPulls && commentBody) {
               if (commentBody.indexOf("/run-e2e-tests") == 0) {
                   // Get pull request
@@ -77,4 +73,3 @@ jobs:
                   }
                 }
               }
-            }
