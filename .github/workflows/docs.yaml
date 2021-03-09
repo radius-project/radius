@@ -29,13 +29,14 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.DOCS_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
+          skip_deploy_on_missing_secrets: true
           action: "upload"
           ###### Repository/Build Configurations - These values can be configured to match you app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "docs" # App source code path
           api_location: "docs/api" # Api source code path - optional
           output_location: "public" # Built app content directory - optional
-          app_build_command: "hugo"
+          app_build_command: "hugo && cp ./api/routes.json ./public/routes.json"
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
@@ -48,4 +49,5 @@ jobs:
         uses: Azure/static-web-apps-deploy@v0.0.1-preview
         with:
           azure_static_web_apps_api_token: ${{ secrets.DOCS_TOKEN }}
+          skip_deploy_on_missing_secrets: true
           action: "close"
