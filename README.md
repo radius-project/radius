@@ -1,9 +1,10 @@
-# Project
+# Project Radius
 
 Project Radius is a developer-centric cloud-native application platform.
 
 The core of Radius is using the declarative **application model** to describe complete applications that can be managed and deployed with an intelligent control plane. Radius uses the [Bicep](https://github.com/azure/bicep) language as a file-format and infrastructure-as-code tool.
 
+## Contents
 Radius consists of:
 
 - Extensions to the Bicep language
@@ -13,9 +14,11 @@ Radius consists of:
 - Multiple runtimes for application hosting
   - *For now* this is just Kubernetes
 
-## Getting Started
+## Getting started
 
-Move on over to [Getting Started](docs/getting-started.md).
+Visit the Project Radius [docs site](https://docs.radapp.dev/getting-started/) to get up and running with Radius in minutes.
+
+Open an [issue](https://github.com/Azure/radius/issues/new/choose) if you need access to the website.
 
 ## Contributing
 
