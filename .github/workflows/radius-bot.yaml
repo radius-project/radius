@@ -1,4 +1,4 @@
-name: radius-bot
+name: dapr-bot
 
 on:
   issue_comment: {types: created}
@@ -11,7 +11,7 @@ jobs:
       - name: Comment analyzer
         uses: actions/github-script@v1
         with:
-          github-token: ${{ secrets.RADIUS_BOT_TOKEN }}
+          github-token: ${{secrets.RADIUS_BOT_TOKEN}}
           script: |
             // list of owner who can control radius-bot workflow
             // TODO: Read owners from OWNERS file.
