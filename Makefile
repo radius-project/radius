@@ -130,27 +130,8 @@ $(CLI_BINARY):
 # Target: generate                                                             #
 ################################################################################
 .PHONY: generate
-generate: download-controller-gen
-	$(CONTROLLER_GEN) \
-		object:headerFile="./boilerplate.go.txt" \
-		paths="./pkg/apis/..."
+generate:
 	go generate -v ./... 
-
-# find or download controller-gen
-# download controller-gen if necessary
-download-controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-		set -e ;\
-		CONTROLLER_GEN_TMP_DIR="$$(mktemp -d)" ;\
-		cd "$$CONTROLLER_GEN_TMP_DIR" ;\
-		GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 ; \
-		rm -rf "$$CONTROLLER_GEN_TMP_DIR" ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
 
 ################################################################################
 # Target: lint                                                                 #

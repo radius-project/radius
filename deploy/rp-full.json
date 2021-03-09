@@ -9,20 +9,6 @@
                 "description": "Location for all resources."
             }
         },
-        "servicePrincipalClientId": {
-            "defaultValue": "",
-            "metadata": {
-                "description": "The Service Principal Client Id."
-            },
-            "type": "securestring"
-        },
-        "servicePrincipalClientSecret": {
-            "defaultValue": "",
-            "metadata": {
-                "description": "The Service Principal Client Secret."
-            },
-            "type": "securestring"
-        },
         "_scriptUri": {
             "type": "string",
             "defaultValue": "https://radiuspublic.blob.core.windows.net/environment/initialize-cluster.sh",
@@ -151,7 +137,7 @@
                 "description": "The type of operating system."
             }
         },
-        "identityName": {
+        "deploymentScriptIdentityName": {
             "type": "string",
             "defaultValue": "[concat('radius-deployment-id-', uniqueString(resourceGroup().id))]",
             "metadata": {
@@ -169,14 +155,17 @@
         }
     },
     "variables": {
+        "contributorRole": "b24988ac-6180-42a0-ab88-20f7382dd24c",
         "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
-        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
-        "roleDefinitionName": "[guid(parameters('identityName'), subscription().subscriptionId)]"
+        "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
+        "rpRoleDefinitionName": "[guid(parameters('siteName'), subscription().subscriptionId)]",
+        "deploymentRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
+        "deploymentRoleDefinitionName": "[guid(parameters('deploymentScriptIdentityName'), subscription().subscriptionId)]"
     },
     "resources": [
         {
             "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-            "name": "[parameters('identityName')]",
+            "name": "[parameters('deploymentScriptIdentityName')]",
             "apiVersion": "2018-11-30",
             "location": "[resourceGroup().location]",
             "tags": "[parameters('resourceTags')]"
@@ -184,14 +173,14 @@
         {
             "type": "Microsoft.Authorization/roleAssignments",
             "apiVersion": "2019-04-01-preview",
-            "name": "[variables('roleDefinitionName')]",
+            "name": "[variables('deploymentRoleDefinitionName')]",
             "tags": "[parameters('resourceTags')]",
             "dependsOn": [
-                "[parameters('identityName')]"
+                "[parameters('deploymentScriptIdentityName')]"
             ],
             "properties": {
-                "roleDefinitionId": "[variables('roleDefinitionId')]",
-                "principalId": "[reference(parameters('identityName')).principalId]",
+                "roleDefinitionId": "[variables('deploymentRoleDefinitionId')]",
+                "principalId": "[reference(parameters('deploymentScriptIdentityName')).principalId]",
                 "scope": "[resourceGroup().id]",
                 "principalType": "ServicePrincipal"
             }
@@ -254,6 +243,9 @@
             "location": "[parameters('location')]",
             "name": "[parameters('clusterName')]",
             "tags": "[parameters('resourceTags')]",
+            "identity": {
+                "type": "SystemAssigned"
+            },
             "properties": {
                 "kubernetesVersion": "[parameters('kubernetesVersion')]",
                 "dnsPrefix": "[parameters('clusterName')]",
@@ -267,20 +259,6 @@
                         "storageProfile": "ManagedDisks"
                     }
                 ],
-                "linuxProfile": {
-                    "adminUsername": "[parameters('linuxAdminUsername')]",
-                    "ssh": {
-                        "publicKeys": [
-                            {
-                                "keyData": "[parameters('sshRSAPublicKey')]"
-                            }
-                        ]
-                    }
-                },
-                "servicePrincipalProfile": {
-                    "clientId": "[parameters('servicePrincipalClientId')]",
-                    "Secret": "[parameters('servicePrincipalClientSecret')]"
-                },
                 "enableRBAC": true
             }
         },
@@ -292,13 +270,13 @@
             "tags": "[parameters('resourceTags')]",
             "dependsOn": [
                 "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
-                "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleDefinitionName'))]"
+                "[resourceId('Microsoft.Authorization/roleAssignments', variables('deploymentRoleDefinitionName'))]"
             ],
             "kind": "AzureCLI",
             "identity": {
                 "type": "userAssigned",
                 "userAssignedIdentities": {
-                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]": {}
+                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName'))]": {}
                 }
             },
             "properties": {
@@ -335,7 +313,7 @@
             "location": "[parameters('location')]",
             "tags": "[parameters('resourceTags')]",
             "identity": {
-                "type": "None"
+                "type": "SystemAssigned"
             },
             "dependsOn": [
                 "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
@@ -370,21 +348,24 @@
                         {
                             "name": "K8S_SUBSCRIPTION_ID",
                             "value": "[subscription().subscriptionId]"
-                        },
-                        {
-                            "name": "CLIENT_ID",
-                            "value": "[parameters('servicePrincipalClientId')]"
-                        },
-                        {
-                            "name": "CLIENT_SECRET",
-                            "value": "[parameters('servicePrincipalClientSecret')]"
-                        },
-                        {
-                            "name": "TENANT_ID",
-                            "value": "[subscription().tenantId]"
                         }
                     ]
                 }
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2019-04-01-preview",
+            "name": "[variables('rpRoleDefinitionName')]",
+            "tags": "[parameters('resourceTags')]",
+            "dependsOn": [
+                "[concat('Microsoft.Web/sites/', parameters('siteName'))]"
+            ],
+            "properties": {
+                "roleDefinitionId": "[variables('rpRoleDefinitionId')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('siteName')), '2019-08-01', 'full').identity.principalId]",
+                "scope": "[resourceGroup().id]",
+                "principalType": "ServicePrincipal"
             }
         },
         {
@@ -394,7 +375,8 @@
             "location": "[parameters('location')]",
             "tags": "[parameters('resourceTags')]",
             "dependsOn": [
-                "[concat('Microsoft.Web/sites/', parameters('siteName'))]"
+                "[concat('Microsoft.Web/sites/', parameters('siteName'))]",
+                "[resourceId('Microsoft.Authorization/roleAssignments', variables('rpRoleDefinitionName'))]"
             ],
             "properties": {
                 "resourceTypes": [
