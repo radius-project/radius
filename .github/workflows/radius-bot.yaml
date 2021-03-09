@@ -1,4 +1,4 @@
-name: dapr-bot
+name: radius-bot
 
 on:
   issue_comment: {types: created}
@@ -11,7 +11,7 @@ jobs:
       - name: Comment analyzer
         uses: actions/github-script@v1
         with:
-          github-token: ${{secrets.RADIUS_BOT_TOKEN}}
+          github-token: ${{ secrets.RADIUS_BOT_TOKEN }}
           script: |
             // list of owner who can control radius-bot workflow
             // TODO: Read owners from OWNERS file.
@@ -54,8 +54,7 @@ jobs:
                   const pull = await github.pulls.get({
                     owner: issue.owner,
                     repo: issue.repo,
-                    event_type: "e2e-test",
-                    client_payload: testPayload,
+                    pull_number: issue.number
                   });
                   if (pull && pull.data) {                
                     // Get commit id and repo from pull head
