@@ -21,7 +21,68 @@ jobs:
               "vinayada1"
             ];
 
-            echo "Starting workflow"
+            # echo "Starting workflow"
+            # const payload = context.payload;
+            # const issue = context.issue;
+            # const isFromPulls = !!payload.issue.pull_request;
+            # const commentBody = payload.comment.body;
+
+            # if (owners.indexOf(context.actor) < 0) {
+            #   return;
+            # }
+
+            # echo "Creating register endpoints for dispatch event"
+            # // Pollyfill: register createDispatchEvent because actions/github-script@0.3.0 
+            # // does not have createDispatchEvent.
+            # github.registerEndpoints({
+            #   repos: {
+            #     createDispatchEvent: {
+            #       "headers": { "accept": "application/vnd.github.everest-preview+json" },
+            #       "method": "POST",
+            #       "params": {
+            #         "client_payload": { "type": "object" },
+            #         "event_type": { "type": "string" },
+            #         "owner": { "required": true, "type": "string" },
+            #         "repo": { "required": true, "type": "string" }
+            #       },
+            #       "url": "/repos/:owner/:repo/dispatches"
+            #     }
+            #   }
+            # });
+
+            # if (isFromPulls && commentBody) {
+            #   echo "Inside isFromPulls"
+            #   if (commentBody.indexOf("/run-e2e-tests") == 0) {
+            #       // Get pull request
+            #       const pull = await github.pulls.get({
+            #         owner: issue.owner,
+            #         repo: issue.repo,
+            #         pull_number: issue.number
+            #       });
+            #       if (pull && pull.data) {                
+            #         // Get commit id and repo from pull head
+            #         const e2eTestsPayload = {
+            #           pull_head_ref: pull.data.head.sha,
+            #           pull_head_repo: pull.data.head.repo.full_name,
+            #           command: "run-e2e-tests",
+            #           issue: issue,
+            #         };
+        
+            #         echo "Creating dispatch event"
+            #         // Fire repository_dispatch event to trigger e2e test
+            #         await github.repos.createDispatchEvent({
+            #           owner: issue.owner,
+            #           repo: issue.repo,
+            #           event_type: "e2e-tests",
+            #           client_payload: e2eTestsPayload,
+            #         });
+                    
+            #         console.log(`Trigger end to end tests for ${JSON.stringify(e2eTestsPayload)}`);
+            #       }
+            #     }
+            #   }
+            # }
+
             const payload = context.payload;
             const issue = context.issue;
             const isFromPulls = !!payload.issue.pull_request;
@@ -31,7 +92,24 @@ jobs:
               return;
             }
 
-            echo "Creating register endpoints for dispatch event"
+            if (commentBody && commentBody.indexOf("/make-me-laugh") == 0) {
+              const result = await github.request("https://official-joke-api.appspot.com/random_joke");
+              jokedata = result.data;
+              joke = "I have a bad feeling about this.";
+              if (jokedata && jokedata.setup && jokedata.punchline) {
+                joke = `${jokedata.setup} - ${jokedata.punchline}`;
+              }
+
+              await github.issues.createComment({
+                owner: issue.owner,
+                repo: issue.repo,
+                issue_number: issue.number,
+                body: joke,
+              });
+
+              return;
+            }
+
             // Pollyfill: register createDispatchEvent because actions/github-script@0.3.0 
             // does not have createDispatchEvent.
             github.registerEndpoints({
@@ -51,34 +129,85 @@ jobs:
             });
 
             if (isFromPulls && commentBody) {
-              echo "Inside isFromPulls"
-              if (commentBody.indexOf("/run-e2e-tests") == 0) {
-                  // Get pull request
-                  const pull = await github.pulls.get({
+              if (commentBody.indexOf("/ok-to-test") == 0) {
+                // Get pull request
+                const pull = await github.pulls.get({
+                  owner: issue.owner,
+                  repo: issue.repo,
+                  pull_number: issue.number
+                });
+
+                if (pull && pull.data) {                
+                  // Get commit id and repo from pull head
+                  const testPayload = {
+                    pull_head_ref: pull.data.head.sha,
+                    pull_head_repo: pull.data.head.repo.full_name,
+                    command: "ok-to-test",
+                    issue: issue,
+                  };
+      
+                  // Fire repository_dispatch event to trigger e2e test
+                  await github.repos.createDispatchEvent({
                     owner: issue.owner,
                     repo: issue.repo,
-                    pull_number: issue.number
+                    event_type: "e2e-test",
+                    client_payload: testPayload,
                   });
-                  if (pull && pull.data) {                
-                    // Get commit id and repo from pull head
-                    const e2eTestsPayload = {
-                      pull_head_ref: pull.data.head.sha,
-                      pull_head_repo: pull.data.head.repo.full_name,
-                      command: "run-e2e-tests",
-                      issue: issue,
-                    };
-        
-                    echo "Creating dispatch event"
-                    // Fire repository_dispatch event to trigger e2e test
-                    await github.repos.createDispatchEvent({
-                      owner: issue.owner,
-                      repo: issue.repo,
-                      event_type: "e2e-tests",
-                      client_payload: e2eTestsPayload,
-                    });
-                    
-                    console.log(`Trigger end to end tests for ${JSON.stringify(e2eTestsPayload)}`);
-                  }
+                  
+                  console.log(`Trigger E2E test for ${JSON.stringify(testPayload)}`);
+                }
+              } else if (commentBody.indexOf("/build-windows-base") == 0) {
+                // Get pull request
+                const pull = await github.pulls.get({
+                  owner: issue.owner,
+                  repo: issue.repo,
+                  pull_number: issue.number
+                });
+
+                if (pull && pull.data) {
+                  // Get commit id and repo from pull head
+                  const testPayload = {
+                    pull_head_ref: pull.data.head.sha,
+                    pull_head_repo: pull.data.head.repo.full_name,
+                    command: "windows-base",
+                    issue: issue,
+                  };
+
+                  // Fire repository_dispatch event to trigger e2e test
+                  await github.repos.createDispatchEvent({
+                    owner: issue.owner,
+                    repo: issue.repo,
+                    event_type: "windows-base",
+                    client_payload: testPayload,
+                  });
+
+                  console.log(`Trigger a build of the windows base image ${JSON.stringify(testPayload)}`);
+                }
+              } else if (commentBody.indexOf("/run-e2e-tests") == 0) {
+                // Get pull request
+                const pull = await github.pulls.get({
+                  owner: issue.owner,
+                  repo: issue.repo,
+                  pull_number: issue.number
+                });
+                if (pull && pull.data) {                
+                  // Get commit id and repo from pull head
+                  const perfPayload = {
+                    pull_head_ref: pull.data.head.sha,
+                    pull_head_repo: pull.data.head.repo.full_name,
+                    command: "run-e2e-tests",
+                    issue: issue,
+                  };
+      
+                  // Fire repository_dispatch event to trigger e2e test
+                  await github.repos.createDispatchEvent({
+                    owner: issue.owner,
+                    repo: issue.repo,
+                    event_type: "e2e-tests",
+                    client_payload: perfPayload,
+                  });
+                  
+                  console.log(`Trigger Perf test for ${JSON.stringify(perfPayload)}`);
                 }
               }
             }
