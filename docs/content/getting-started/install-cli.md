@@ -22,17 +22,7 @@ Download the `rad` CLI from one of these links:
 
 Place this somewhere on your PATH so it can be invoked easily.
 
-## 2. Install custom Bicep
-
-You need a custom build of the `bicep` CLI. Using the distribution from azure/bicep **WILL NOT WORK**, you need this specific build.
-
-Download from one of these links and add it to your path so it can be invoked by the `rad` CLI.
-
-- [MacOS](https://radiuspublic.blob.core.windows.net/tools/macos-x64/bicep)
-- [Linux](https://radiuspublic.blob.core.windows.net/tools/linux-x64/bicep)
-- [Windows](https://radiuspublic.blob.core.windows.net/tools/windows-x64/bicep.exe)
-
-## 3. Install custom VSCode extension
+## 2. Install custom VSCode extension
 
 Install the VSCode extension from `.vsix` file.
 
