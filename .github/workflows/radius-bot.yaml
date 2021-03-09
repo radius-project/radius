@@ -1,10 +1,10 @@
-name: dapr-bot
+name: radius-bot
 
 on:
   issue_comment: {types: created}
 
 jobs:
-  daprbot:
+  radiusbot:
     name: bot-processor
     runs-on: ubuntu-latest
     steps:
