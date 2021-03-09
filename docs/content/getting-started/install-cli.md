@@ -49,8 +49,8 @@ Download from one of these links and add it to your path so it can be invoked by
 
 ## 4. Install custom VSCode extension
 
-Install the VSCode extension from `.vsix` file. Using the distribution from azure/bicep **WILL NOT WORK**, you need this specific build.
+Install the VSCode extension from `.vsix` file.
 
-- [Download](https://radiuspublic.blob.core.windows.net/tools/vscode-bicep.vsix)
+- [Download](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix)
 
-Next, make sure to disable auto-update of VSCode extensions. If you leave auto-updates enabled then your copy of the extension will get overridden with the main one and stop working.
+Next you will need to disable the official Bicep extension if you have it installed. Our custom extension needs to be responsible for handling `.bicep` files and you cannot have both extensions enabled at once.
