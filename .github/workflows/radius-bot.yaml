@@ -18,7 +18,7 @@ jobs:
             const owners = [
               "kachawla",
               "rynowak",
-              "vinayada1",
+              "vinayada1"
             ];
 
             const payload = context.payload;
@@ -48,31 +48,33 @@ jobs:
               }
             });
 
-            if (commentBody.indexOf("/run-e2e-tests") == 0) {
-                // Get pull request
-                const pull = await github.pulls.get({
-                  owner: issue.owner,
-                  repo: issue.repo,
-                  pull_number: issue.number
-                });
-                if (pull && pull.data) {                
-                  // Get commit id and repo from pull head
-                  const e2eTestsPayload = {
-                    pull_head_ref: pull.data.head.sha,
-                    pull_head_repo: pull.data.head.repo.full_name,
-                    command: "run-e2e-tests",
-                    issue: issue,
-                  };
-      
-                  // Fire repository_dispatch event to trigger e2e test
-                  await github.repos.createDispatchEvent({
+            if (isFromPulls && commentBody) {
+              if (commentBody.indexOf("/run-e2e-tests") == 0) {
+                  // Get pull request
+                  const pull = await github.pulls.get({
                     owner: issue.owner,
                     repo: issue.repo,
-                    event_type: "e2e-tests",
-                    client_payload: e2eTestsPayload,
+                    pull_number: issue.number
                   });
-                  
-                  console.log(`Trigger end to end tests for ${JSON.stringify(e2eTestsPayload)}`);
+                  if (pull && pull.data) {                
+                    // Get commit id and repo from pull head
+                    const e2eTestsPayload = {
+                      pull_head_ref: pull.data.head.sha,
+                      pull_head_repo: pull.data.head.repo.full_name,
+                      command: "run-e2e-tests",
+                      issue: issue,
+                    };
+        
+                    // Fire repository_dispatch event to trigger e2e test
+                    await github.repos.createDispatchEvent({
+                      owner: issue.owner,
+                      repo: issue.repo,
+                      event_type: "e2e-tests",
+                      client_payload: e2eTestsPayload,
+                    });
+                    
+                    console.log(`Trigger end to end tests for ${JSON.stringify(e2eTestsPayload)}`);
+                  }
                 }
               }
             }
