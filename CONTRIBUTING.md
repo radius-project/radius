@@ -5,7 +5,6 @@ Radius is in an early phase of development right now. We welcome feedback in the
 We welcome small PR contributions from outside the core team (docs improments, bug fixes, minor features.) as long as they follow a few guidelines:
 
 - Please start by [opening an issue](https://github.com/Azure/radius/issues/new/choose) unless is it truly minor (ex: correcting a typo)
-- Ask questions and learn about the latest updates over in the [discussions tab](https://github.com/Azure/radius/discussions).
 - Please work with the [core team](mailto:radiusct@microsoft.com) to ensure that what you're doing is in scope for the project before writing any code
 
 ## CLA

@@ -20,10 +20,6 @@ Visit the Project Radius [docs site](https://docs.radapp.dev/getting-started/) t
 
 Open an [issue](https://github.com/Azure/radius/issues/new/choose) if you need access to the website.
 
-## Discussions
-
-Head over to the [Discussions tab](https://github.com/Azure/radius/discussions) to ask questions and learn more about Radius.
-
 ## Contributing
 
 We gladly accept feedback and code contribution from outside the core team. Please see [CONTRIBUTING.md](CONTRIBUTING.md).
