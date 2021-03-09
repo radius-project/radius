@@ -14,13 +14,13 @@ on:
   push:
     branches:
       - main
-      - release-*
+      - release/*
     tags:
       - v*
   pull_request:
     branches:
       - main
-      - release-*
+      - release/*
 jobs:
   build:
     name: Docker build
@@ -63,7 +63,7 @@ jobs:
           password: '${{ secrets[matrix.password_secret] }}'
       - name: make dockerpush
         run: make dockerpush
-        if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to master or tag
+        if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to main or tag
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
           DOCKER_TAG_VERSION: latest
