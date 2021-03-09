@@ -25,6 +25,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/date"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/logger"
@@ -56,7 +57,7 @@ var envInitAzureCmd = &cobra.Command{
 			}
 		}
 
-		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.DeploymentTemplate)
+		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate)
 		if err != nil {
 			return err
 		}
@@ -71,6 +72,7 @@ func init() {
 	envInitAzureCmd.Flags().String("name", "azure", "The environment name")
 	envInitAzureCmd.Flags().String("subscription-id", "", "The subscription ID to use for the environment")
 	envInitAzureCmd.Flags().String("resource-group", "", "The resource group to use for the environment")
+	envInitAzureCmd.Flags().String("location", "", "The Azure location to use for the environment")
 	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
 
 	// development support
@@ -82,6 +84,7 @@ type arguments struct {
 	Interactive        bool
 	SubscriptionID     string
 	ResourceGroup      string
+	Location           string
 	DeploymentTemplate string
 }
 
@@ -106,12 +109,17 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
-	if interactive && (subscriptionID != "" || resourceGroup != "") {
-		return arguments{}, errors.New("subcription id and resource group cannot be specified with interactive")
+	location, err := cmd.Flags().GetString("location")
+	if err != nil {
+		return arguments{}, err
 	}
 
-	if !interactive && (subscriptionID == "" || resourceGroup == "") {
-		return arguments{}, errors.New("subscription id and resource group must be specified")
+	if interactive && (subscriptionID != "" || resourceGroup != "" || location != "") {
+		return arguments{}, errors.New("subcription id, resource group or location cannot be specified with interactive")
+	}
+
+	if !interactive && (subscriptionID == "" || resourceGroup == "" || location == "") {
+		return arguments{}, errors.New("subscription id, resource group and location must be specified")
 	}
 
 	deploymentTemplate, err := cmd.Flags().GetString("deployment-template")
@@ -131,6 +139,7 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		Interactive:        interactive,
 		SubscriptionID:     subscriptionID,
 		ResourceGroup:      resourceGroup,
+		Location:           location,
 		DeploymentTemplate: deploymentTemplate,
 	}, nil
 }
@@ -242,18 +251,13 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func connect(ctx context.Context, name string, subscriptionID string, resourceGroup string, deploymentTemplate string) error {
-	settings, err := auth.GetSettingsFromEnvironment()
+func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string) error {
+	armauth, err := utils.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
 	}
 
-	armauth, err := auth.NewAuthorizerFromCLIWithResource(settings.Environment.ResourceManagerEndpoint)
-	if err != nil {
-		return err
-	}
-
-	graphauth, err := auth.NewAuthorizerFromCLIWithResource(settings.Environment.GraphEndpoint)
+	graphauth, err := utils.GetGraphEndpointAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -276,19 +280,39 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return nil
 	}
 
-	tenantID, err := validateSubscription(ctx, armauth, subscriptionID, resourceGroup)
+	tenantID, rgExists, err := validateSubscription(ctx, armauth, subscriptionID, resourceGroup)
 	if err != nil {
 		return err
 	}
 
-	sp, err := createServicePrincipal(ctx, graphauth, tenantID)
+	if !rgExists {
+		// Resource group specified was not found. Create it
+		err := createResourceGroup(ctx, subscriptionID, resourceGroup, location)
+		if err != nil {
+			return err
+		}
+	}
+
+	isServicePrincipalConfigured, err := utils.IsServicePrincipalConfigured()
 	if err != nil {
 		return err
 	}
+	var sp servicePrincipal
+	if isServicePrincipalConfigured {
+		sp, err = getServicePrincipal(ctx, armauth, tenantID)
+		if err != nil {
+			return err
+		}
+	} else {
+		sp, err := createServicePrincipal(ctx, graphauth, tenantID)
+		if err != nil {
+			return err
+		}
 
-	err = configurePermissions(ctx, armauth, sp, subscriptionID)
-	if err != nil {
-		return err
+		err = configurePermissions(ctx, armauth, sp, subscriptionID)
+		if err != nil {
+			return err
+		}
 	}
 
 	deployment, err := deployEnvironment(ctx, armauth, sp, subscriptionID, resourceGroup, deploymentTemplate)
@@ -347,7 +371,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	return true, *cluster.Name, nil
 }
 
-func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (string, error) {
+func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (string, bool, error) {
 	step := logger.BeginStep("Validating Subscription...")
 
 	sc := subscription.NewSubscriptionsClient()
@@ -355,17 +379,16 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 	_, err := sc.Get(ctx, subscriptionID)
 	if err != nil {
-		return "", fmt.Errorf("cannot find subscription with id '%v'", subscriptionID)
+		return "", false, fmt.Errorf("cannot find subscription with id '%v'", subscriptionID)
 	}
 
 	rgc := resources.NewGroupsClient(subscriptionID)
 	rgc.Authorizer = authorizer
 
+	rgExists := true
 	resp, err := rgc.CheckExistence(ctx, resourceGroup)
-	if err != nil {
-		return "", fmt.Errorf("cannot find resource group named '%v'", resourceGroup)
-	} else if resp.HasHTTPStatus(404) {
-		return "", fmt.Errorf("cannot find resource group named '%v'", resourceGroup)
+	if err != nil || resp.HasHTTPStatus(404) {
+		rgExists = false
 	}
 
 	tc := subscription.NewTenantsClient()
@@ -374,15 +397,37 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	// TODO: this lists the tenants and just returns the first one. This might be the cause of #32
 	tenants, err := tc.ListComplete(ctx)
 	if err != nil {
-		return "", err
+		return "", rgExists, err
 	}
 
 	if tenants.Value().TenantID == nil {
-		return "", errors.New("cannot find tenant ID")
+		return "", rgExists, errors.New("cannot find tenant ID")
 	}
 
 	logger.CompleteStep(step)
-	return *tenants.Value().TenantID, nil
+	return *tenants.Value().TenantID, rgExists, nil
+}
+
+func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
+	groupsClient := resources.NewGroupsClient(subscriptionID)
+	a, err := utils.GetResourceManagerEndpointAuthorizer()
+	if err != nil {
+		return err
+	}
+	groupsClient.Authorizer = a
+
+	_, err = groupsClient.CreateOrUpdate(
+		ctx,
+		resourceGroupName,
+		resources.Group{
+			Location: to.StringPtr(location),
+		})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func createServicePrincipal(ctx context.Context, authorizer autorest.Authorizer, tenantID string) (servicePrincipal, error) {
@@ -426,6 +471,22 @@ func createServicePrincipal(ctx context.Context, authorizer autorest.Authorizer,
 
 	logger.CompleteStep(step)
 	return servicePrincipal{Principal: sp, ClientSecret: clientSecret}, nil
+}
+
+func getServicePrincipal(ctx context.Context, authorizer autorest.Authorizer, tenantID string) (servicePrincipal, error) {
+	step := logger.BeginStep("Getting Service Principal...")
+	settings, err := auth.GetSettingsFromEnvironment()
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+
+	var sp graphrbac.ServicePrincipal
+	clientID := settings.Values[auth.ClientID]
+	sp.AppID = &clientID
+
+	logger.CompleteStep(step)
+
+	return servicePrincipal{Principal: sp, ClientSecret: settings.Values[auth.ClientSecret]}, nil
 }
 
 func configurePermissions(ctx context.Context, authorizer autorest.Authorizer, sp servicePrincipal, subscriptionID string) error {

@@ -19,6 +19,7 @@ require (
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.4
+	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/prometheus/client_golang v1.1.0 // indirect
 	github.com/spf13/cobra v1.1.1
@@ -26,9 +27,11 @@ require (
 	github.com/stretchr/testify v1.6.1
 	go.mongodb.org/mongo-driver v1.4.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381 // indirect
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
+	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 	k8s.io/api v0.18.8
 	k8s.io/apimachinery v0.18.8

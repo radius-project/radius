@@ -1,0 +1,84 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: e2e-tests
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  repository_dispatch:
+    types: [e2e-tests]
+  workflow_dispatch:
+jobs:
+  run-e2e-tests:
+    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries and run e2e tests
+    runs-on: ${{ matrix.os }}
+    env:
+      GOVER: '^1.15.0'
+      GOLANGCILINT_VER: 1.26.0
+      GOOS: ${{ matrix.target_os }}
+      GOARCH: ${{ matrix.target_arch }}
+      GOPROXY: https://proxy.golang.org
+      ARCHIVE_OUTDIR: dist/archives
+      RADIUS_PATH: $GITHUB_WORKSPACE/dist/${{ matrix.target_os }}_${{ matrix.target_arch }}/release
+      INTEGRATION_TEST_TENANT_ID: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+      INTEGRATION_TEST_SP_APP_ID: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+      INTEGRATION_TEST_SP_PASSWORD: ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+      INTEGRATION_TEST_SUBSCRIPTION_ID: "66d1209e-1382-45d3-99bb-650e6bf63fc0"
+      INTEGRATION_TEST_DEFAULT_LOCATION: "westus2"
+      INTEGRATION_TEST_BASE_GROUP_NAME: "rad-it"
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        target_arch: [arm, amd64]
+        include:
+          - os: ubuntu-latest
+            target_os: linux
+    steps:
+      - name: Set up for scheduled test
+        if: github.event_name != 'repository_dispatch'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/master" >> $GITHUB_ENV
+      - name: Parse test payload
+        if: github.event_name == 'repository_dispatch'
+        uses: actions/github-script@0.3.0
+        with:
+          github-token: ${{secrets.RADIUS_BOT_TOKEN}}
+          script: |
+            const testPayload = context.payload.client_payload;
+            if (testPayload && testPayload.command == "run-e2e-tests") {
+              var fs = require('fs');
+              // Set environment variables
+              fs.appendFileSync(process.env.GITHUB_ENV,
+                `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
+                `CHECKOUT_REF=${testPayload.pull_head_ref}`);
+            }
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: Make
+        run: make
+      - name: Parse release version and set REL_VERSION
+        run: python ./.github/scripts/get_release_version.py
+      - name: Download bicep private binary for Radius
+        run: |
+          sudo wget https://radiuspublic.blob.core.windows.net/tools/linux-x64/bicep --directory-prefix /usr/local/bin --no-verbose
+          sudo chmod a+x /usr/local/bin/bicep
+      - name: Run make e2e-tests
+        if: matrix.target_arch != 'arm'
+        run: |
+          cd $GITHUB_WORKSPACE
+          export PATH=$PATH:${{ env.RADIUS_PATH }}
+          export AZURE_TENANT_ID=${{ env.INTEGRATION_TEST_TENANT_ID }}
+          export AZURE_CLIENT_ID=${{ env.INTEGRATION_TEST_SP_APP_ID }}
+          export AZURE_CLIENT_SECRET=${{ env.INTEGRATION_TEST_SP_PASSWORD }}
+          export INTEGRATION_TEST_SUBSCRIPTION_ID=${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          export INTEGRATION_TEST_DEFAULT_LOCATION=${{ env.INTEGRATION_TEST_DEFAULT_LOCATION }}
+          export INTEGRATION_TEST_BASE_GROUP_NAME=${{ env.INTEGRATION_TEST_BASE_GROUP_NAME }}
+          make e2e-tests

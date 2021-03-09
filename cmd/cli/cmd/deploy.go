@@ -17,7 +17,7 @@ import (
 	"runtime"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/google/uuid"
@@ -213,12 +213,7 @@ func deployApplication(ctx context.Context, filePath string, env deployableEnvir
 
 func createDeploymentClient(env deployableEnvironment) (resources.DeploymentsClient, error) {
 	if env.Kind == "azure" {
-		settings, err := auth.GetSettingsFromEnvironment()
-		if err != nil {
-			return resources.DeploymentsClient{}, err
-		}
-
-		armauth, err := auth.NewAuthorizerFromCLIWithResource(settings.Environment.ResourceManagerEndpoint)
+		armauth, err := utils.GetResourceManagerEndpointAuthorizer()
 		if err != nil {
 			return resources.DeploymentsClient{}, err
 		}
