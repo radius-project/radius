@@ -9,24 +9,28 @@ on:
   push:
     branches:
       - main
+    tags:
+      - v*
 jobs:
-  build:
+  publish:
     name: Assets
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Parse release version and set REL_VERSION
+        run: python ./.github/scripts/get_release_version.py
       - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: 'deploy'
           container_name: 'environment'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--pattern rp-full.json'
+          extra_args: '--destination-path ${{ env.REL_VERSION }} --pattern rp-full.json'
       - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: 'deploy'
           container_name: 'environment'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--pattern initialize-cluster.sh'
+          extra_args: '--destination-path ${{ env.REL_VERSION }} --pattern initialize-cluster.sh'

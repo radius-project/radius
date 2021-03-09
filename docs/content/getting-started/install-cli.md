@@ -11,33 +11,18 @@ These steps will setup the required tools and extensions to get you up and runni
 ## Pre-requisites
 
 - [Az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
-- [Go](https://golang.org/dl/)
 
-## 1. Clone repository
+## 1. Install rad CLI
 
-The `rad` CLI lives in this repo and can be built/run from source.
+Download the `rad` CLI from one of these links:
 
-Begin by cloning the Radius repo onto your machine:
+- [MacOS](https://radiuspublic.blob.core.windows.net/tools/rad/edge/macos-x64/rad)
+- [Linux](https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad)
+- [Windows](https://radiuspublic.blob.core.windows.net/tools/rad/edge/windows-x64/rad.exe)
 
-```sh
-git clone https://github.com/Azure/radius
-```
+Place this somewhere on your PATH so it can be invoked easily.
 
-Now `cd` into the directory you just created:
-
-```sh
-cd radius
-```
-
-## 2. Build the rad CLI
-
-Run the following command to build the CLI and ensure it runs:
-
-```sh
-go run cmd/cli/main.go
-```
-
-## 3. Install custom Bicep
+## 2. Install custom Bicep
 
 You need a custom build of the `bicep` CLI. Using the distribution from azure/bicep **WILL NOT WORK**, you need this specific build.
 
@@ -47,7 +32,7 @@ Download from one of these links and add it to your path so it can be invoked by
 - [Linux](https://radiuspublic.blob.core.windows.net/tools/linux-x64/bicep)
 - [Windows](https://radiuspublic.blob.core.windows.net/tools/windows-x64/bicep.exe)
 
-## 4. Install custom VSCode extension
+## 3. Install custom VSCode extension
 
 Install the VSCode extension from `.vsix` file.
 
