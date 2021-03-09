@@ -2,7 +2,7 @@
 name: Other
 about: All other issues
 title: "[Other] - <TITLE>"
-labels: ''
+labels: other
 assignees: ''
 ---
 
