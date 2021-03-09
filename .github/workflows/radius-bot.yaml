@@ -54,8 +54,7 @@ jobs:
                   const pull = await github.pulls.get({
                     owner: issue.owner,
                     repo: issue.repo,
-                    event_type: "e2e-test",
-                    client_payload: testPayload,
+                    pull_number: issue.number
                   });
                   if (pull && pull.data) {                
                     // Get commit id and repo from pull head
