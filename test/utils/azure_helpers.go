@@ -7,12 +7,16 @@ package utils
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/test/e2e-tests/config"
+	"github.com/Azure/radius/test/config"
 )
 
 var (
@@ -68,4 +72,42 @@ func ListResourcesInResourceGroup(ctx context.Context, groupName string) (resour
 	var top10 int32 = 10
 	resourcesInRg, err := resourcesClient.ListByResourceGroup(ctx, groupName, "", "", &top10)
 	return resourcesInRg, err
+}
+
+// GetContainer gets info about an existing container.
+func GetContainer(ctx context.Context, accountName, accountGroupName, containerName string) (azblob.ContainerURL, error) {
+	c := getContainerURL(ctx, accountName, accountGroupName, containerName)
+
+	_, err := c.GetProperties(ctx, azblob.LeaseAccessConditions{})
+	return c, err
+}
+
+var (
+	blobFormatString = `https://%s.blob.core.windows.net`
+)
+
+func getContainerURL(ctx context.Context, accountName, accountGroupName, containerName string) azblob.ContainerURL {
+	key := getAccountPrimaryKey(ctx, accountName, accountGroupName)
+	c, _ := azblob.NewSharedKeyCredential(accountName, key)
+	p := azblob.NewPipeline(c, azblob.PipelineOptions{
+		Telemetry: azblob.TelemetryOptions{Value: config.UserAgent()},
+	})
+	u, _ := url.Parse(fmt.Sprintf(blobFormatString, accountName))
+	service := azblob.NewServiceURL(*u, p)
+	container := service.NewContainerURL(containerName)
+	return container
+}
+
+func getAccountPrimaryKey(ctx context.Context, accountName, accountGroupName string) string {
+	response, err := GetAccountKeys(ctx, accountName, accountGroupName)
+	if err != nil {
+		log.Fatalf("failed to list keys: %v", err)
+	}
+	return *(((*response.Keys)[0]).Value)
+}
+
+// GetAccountKeys gets the storage account keys
+func GetAccountKeys(ctx context.Context, accountName, accountGroupName string) (storage.AccountListKeysResult, error) {
+	accountsClient := config.AzureConfig.GetStorageAccountsClient()
+	return accountsClient.ListKeys(ctx, accountGroupName, accountName)
 }

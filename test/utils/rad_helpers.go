@@ -21,10 +21,10 @@ func RunRadInitCommand(subscriptionID, resourceGroupName, location string, timeo
 }
 
 // RunRadDeployCommand runs rad deploy command and times out after specified timeout
-func RunRadDeployCommand(templateFilePath string, timeout time.Duration) error {
+func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.Duration) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); os.IsNotExist(err) {
-		fmt.Printf("template file: %s specified does not exist\n", templateFilePath)
+		log.Fatalf("template file: %s specified does not exist\n", templateFilePath)
 		return err
 	}
 
@@ -32,7 +32,17 @@ func RunRadDeployCommand(templateFilePath string, timeout time.Duration) error {
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	// Create the command with our context
-	cmd := exec.CommandContext(ctx, "rad", "deploy", templateFilePath)
+	var cmd *exec.Cmd
+	if configFilePath != "" {
+		cmd = exec.CommandContext(ctx, "rad", "deploy", templateFilePath)
+	} else {
+		if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
+			log.Fatalf("template file: %s specified does not exist\n", templateFilePath)
+			return err
+		}
+		fmt.Printf("Using config file: %s for deployment", configFilePath)
+		cmd = exec.CommandContext(ctx, "rad", "deploy", templateFilePath, "--config", configFilePath)
+	}
 	err := runCommand(ctx, cmd)
 	return err
 }
