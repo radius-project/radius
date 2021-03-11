@@ -6,12 +6,14 @@ on:
       - main
     paths:
     - 'docs/**'
+    - 'test/**'
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
     paths:
     - 'docs/**'
+    - 'test/**'
 
 jobs:
   build_and_deploy_job:
