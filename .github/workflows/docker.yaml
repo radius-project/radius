@@ -17,10 +17,14 @@ on:
       - release/*
     tags:
       - v*
+    paths-ignore:
+    - 'docs/**'
   pull_request:
     branches:
       - main
       - release/*
+    paths-ignore:
+    - 'docs/**'
 jobs:
   build:
     name: Docker build
