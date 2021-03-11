@@ -85,7 +85,7 @@ func validateEnvironmentExists(envName string) (string, string, error) {
 	}
 
 	if len(env.Items) == 0 {
-		return "", "", errors.New("No environments found. Use 'rad env list' to list all environments.")
+		return "", "", errors.New("No environments found.")
 	}
 
 	envConfig, exists := env.Items[envName]
