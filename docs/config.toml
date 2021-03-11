@@ -1,10 +1,33 @@
 baseURL = "https://docs.radapp.dev/"
 languageCode = "en-us"
 title = "Project Radius"
+theme =  "docsy"
 
 disableFastRender = true
 
-theme =  "docsy"
+# Mounts
+[module]
+  [[module.mounts]]
+    source = "content"
+    target = "content"
+  [[module.mounts]]
+    source = "static"
+    target = "static"
+  [[module.mounts]]
+    source = "layouts"
+    target = "layouts"
+  [[module.mounts]]
+    source = "data"
+    target = "data"
+  [[module.mounts]]
+    source = "assets"
+    target = "assets"
+  [[module.mounts]]
+    source = "archetypes"
+    target = "archetypes"
+  [[module.mounts]]
+    source = "../test"
+    target = "content/examples"
 
 # Disable categories & tags
 disableKinds = ["taxonomy", "term"]
@@ -14,6 +37,10 @@ disableKinds = ["taxonomy", "term"]
     name = "GitHub"
     weight = 40
     url = "https://github.com/Azure/radius"
+[[menu.main]]
+    name = "Logout"
+    weight = 50
+    url = "./logout"
 
 [params]
 copyright = "Project Radius"
@@ -27,4 +54,4 @@ copyright = "Project Radius"
 # GitHub Information
 github_repo = "https://github.com/Azure/radius"
 github_subdir = "docs"
-github_branch = "vmain"
+github_branch = "main"

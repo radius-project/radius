@@ -22,9 +22,30 @@ Download the `rad` CLI from one of these links:
 
 Place this somewhere on your PATH so it can be invoked easily.
 
+Verify the `rad` CLI is installed correctly:
+
+```bash
+$ rad
+
+Usage:
+  rad [command]
+
+Available Commands:
+  deploy      Deploy a RAD application
+  env         Manage environments
+  expose      Expose local port
+  help        Help about any command
+
+Flags:
+      --config string   config file (default is $HOME/.rad/config.yaml)
+  -h, --help            help for rad
+
+Use "rad [command] --help" for more information about a command.
+```
+
 ## 2. Install custom VSCode extension
 
-Install the VSCode extension from `.vsix` file.
+Install the VSCode extension from `.vsix` file ([instructions](https://code.visualstudio.com/docs/editor/extension-gallery#_install-from-a-vsix)).
 
 - [Download](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix)
 
