@@ -2,5 +2,5 @@
 type: docs
 title: "Developing Project Radius"
 linkTitle: "Developing"
-weight: 30
+weight: 40
 ---
