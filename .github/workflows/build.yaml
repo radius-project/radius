@@ -31,6 +31,7 @@ jobs:
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
+      RADIUS_PATH: $GITHUB_WORKSPACE/dist/${{ matrix.target_os }}_${{ matrix.target_arch }}/release
       INTEGRATION_TEST_TENANT_ID: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
       INTEGRATION_TEST_SP_APP_ID: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
       INTEGRATION_TEST_SP_PASSWORD: ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
@@ -80,6 +81,7 @@ jobs:
       - name: Run deploy tests
         if: matrix.target_arch != 'arm'
         run: |
+          export PATH=$PATH:${{ env.RADIUS_PATH }}
           cd $GITHUB_WORKSPACE
           export AZURE_TENANT_ID=${{ env.INTEGRATION_TEST_TENANT_ID }}
           export AZURE_CLIENT_ID=${{ env.INTEGRATION_TEST_SP_APP_ID }}
