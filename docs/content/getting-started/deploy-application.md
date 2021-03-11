@@ -6,8 +6,11 @@ description: "How to use the rad CLI to deploy an application into your Azure su
 weight: 40
 ---
 
-You can find some examples to deploy in the `test/` folder. The best example to start with is at `test/frontend-backend/azure-bicep/template.bicep`.
+## Deploy an example application
+
+You can find some examples to deploy in the [examples section]({{< ref examples >}}). 
+The best example to start with is [Frontend/Backend]({{< ref frontend-backend >}})
 
 ```sh
-go run cmd/cli/main.go deploy <path-to-.bicep file>
+rad deploy <path-to-.bicep file>
 ```

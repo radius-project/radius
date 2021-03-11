@@ -28,8 +28,10 @@ az account set --subscription <SUB-ID>
 
 ## 3. Create a radius environment
 
+Initialize the private resource provider (environment) in your Azure subscription using the `rad` CLI
+
 ```sh
-go run cmd/cli/main.go env init azure -i
+rad env init azure -i
 ```
 
 This will prompt you for information and then go off and run a bunch of command to create assets in your subscription.
