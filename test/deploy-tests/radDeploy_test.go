@@ -58,7 +58,10 @@ func TestDeployApplication(t *testing.T) {
 
 func cleanup(ctx context.Context, t *testing.T, testClusterName string) {
 	// Delete the template deployment
-	utils.RunRadDeleteApplicationsCommand(testClusterName)
+	err := utils.RunRadDeleteApplicationsCommand(testClusterName)
+	if err != nil {
+		t.Log(err.Error())
+	}
 
 	releaseTestCluster(ctx, testClusterName)
 }
