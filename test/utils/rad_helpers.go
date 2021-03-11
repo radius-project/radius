@@ -72,7 +72,7 @@ func RunRadMergeCredentialsCommand(configFilePath string) error {
 }
 
 // RunRadDeleteApplicationsCommand deletes all applications deployed by Radius in the specified resource group
-func RunRadDeleteApplicationsCommand(resourceGroupName string) error {
+func RunRadDeleteApplicationsCommand(resourceGroupName string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
@@ -81,8 +81,7 @@ func RunRadDeleteApplicationsCommand(resourceGroupName string) error {
 	fmt.Println(currentPath)
 	scriptPath := filepath.Join(currentPath, "delete-applications")
 	cmd := exec.CommandContext(ctx, scriptPath, resourceGroupName)
-	err := RunCommand(ctx, cmd)
-	return err
+	RunCommand(ctx, cmd)
 }
 
 // RunCommand runs a shell command

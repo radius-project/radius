@@ -47,5 +47,4 @@ func findTestCluster(ctx context.Context) (string, error) {
 
 func releaseTestCluster(ctx context.Context, containerName string) {
 	utils.BreakStorageContainerLease(ctx, accountName, accountGroupName, containerName)
-	return
 }

@@ -128,5 +128,4 @@ func BreakStorageContainerLease(ctx context.Context, accountName, accountGroupNa
 	if err != nil {
 		fmt.Println("Error breaking lease: " + err.Error())
 	}
-	return
 }
