@@ -31,6 +31,11 @@ jobs:
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
+      RADIUS_PATH: $GITHUB_WORKSPACE/dist/${{ matrix.target_os }}_${{ matrix.target_arch }}/release
+      INTEGRATION_TEST_TENANT_ID: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+      INTEGRATION_TEST_SP_APP_ID: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+      INTEGRATION_TEST_SP_PASSWORD: ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+      INTEGRATION_TEST_SUBSCRIPTION_ID: "66d1209e-1382-45d3-99bb-650e6bf63fc0"
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
@@ -73,7 +78,16 @@ jobs:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
           path: ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/
           if-no-files-found: error
-
+      - name: Run deploy tests
+        if: matrix.target_os == 'linux' && matrix.target_arch != 'arm'
+        run: |
+          export PATH=$PATH:${{ env.RADIUS_PATH }}
+          cd $GITHUB_WORKSPACE
+          export AZURE_TENANT_ID=${{ env.INTEGRATION_TEST_TENANT_ID }}
+          export AZURE_CLIENT_ID=${{ env.INTEGRATION_TEST_SP_APP_ID }}
+          export AZURE_CLIENT_SECRET=${{ env.INTEGRATION_TEST_SP_PASSWORD }}
+          export INTEGRATION_TEST_SUBSCRIPTION_ID=${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          make deploy-tests
   publish:
     needs: [ 'build' ]
     runs-on: ubuntu-latest

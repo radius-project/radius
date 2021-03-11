@@ -4,9 +4,11 @@ go 1.15
 
 require (
 	github.com/Azure/azure-sdk-for-go v52.3.1+incompatible
+	github.com/Azure/azure-storage-blob-go v0.13.0
 	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.2
+	github.com/Azure/go-autorest/autorest/date v0.3.0
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa

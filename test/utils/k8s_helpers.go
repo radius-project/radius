@@ -13,25 +13,15 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+var (
+	clientset *kubernetes.Clientset = nil
+)
+
 // ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
 func ValidatePodsRunning(t *testing.T, expectedPods map[string]int) bool {
-	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	if clientset == nil {
+		clientset = getKubernetesClient(t)
 	}
-	flag.Parse()
-
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
 	for namespace, expectedNumPods := range expectedPods {
 		pods, _ := clientset.CoreV1().Pods(namespace).List(context.TODO(), v1.ListOptions{})
 		if len(pods.Items) != expectedNumPods {
@@ -46,4 +36,24 @@ func ValidatePodsRunning(t *testing.T, expectedPods map[string]int) bool {
 		}
 	}
 	return true
+}
+
+func getKubernetesClient(t *testing.T) *kubernetes.Clientset {
+	var kubeconfig *string
+	if home := homedir.HomeDir(); home != "" {
+		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	} else {
+		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	}
+	flag.Parse()
+
+	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	return k8sClient
 }

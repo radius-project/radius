@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/test/e2e-tests/config"
-	"github.com/Azure/radius/test/e2e-tests/utils"
+	"github.com/Azure/radius/test/config"
+	"github.com/Azure/radius/test/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -78,14 +78,14 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	// Deploy bicep template
 	cwd, _ := os.Getwd()
 	templateFilePath := filepath.Join(cwd, "../frontend-backend/azure-bicep/template.bicep")
-	err = utils.RunRadDeployCommand(templateFilePath, time.Minute*5)
+	err = utils.RunRadDeployCommand(templateFilePath, "", time.Minute*5)
 	if err != nil {
 		log.Fatal(err)
 	}
 	require.NoError(t, err)
 
 	// Merge the k8s credentials to the cluster
-	err = utils.RunRadMergeCredentialsCommand()
+	err = utils.RunRadMergeCredentialsCommand("")
 	if err != nil {
 		log.Fatal(err)
 	}
