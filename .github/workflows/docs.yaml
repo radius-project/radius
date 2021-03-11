@@ -5,15 +5,15 @@ on:
     branches:
       - main
     paths:
-    - 'docs/**'
-    - 'test/**'
+      - 'docs/**'
+      - 'test/**'
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
     paths:
-    - 'docs/**'
-    - 'test/**'
+      - 'docs/**'
+      - 'test/**'
 
 jobs:
   build_and_deploy_job:
