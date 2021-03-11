@@ -79,7 +79,7 @@ jobs:
           path: ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/
           if-no-files-found: error
       - name: Run deploy tests
-        if: matrix.target_arch != 'arm'
+        if: matrix.target_os == 'linux' && matrix.target_arch != 'arm'
         run: |
           export PATH=$PATH:${{ env.RADIUS_PATH }}
           cd $GITHUB_WORKSPACE
