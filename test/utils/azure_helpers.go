@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2015-06-15/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/test/config"
@@ -89,9 +89,7 @@ var (
 func getContainerURL(ctx context.Context, accountName, accountGroupName, containerName string) azblob.ContainerURL {
 	key := getAccountPrimaryKey(ctx, accountName, accountGroupName)
 	c, _ := azblob.NewSharedKeyCredential(accountName, key)
-	p := azblob.NewPipeline(c, azblob.PipelineOptions{
-		Telemetry: azblob.TelemetryOptions{Value: config.UserAgent()},
-	})
+	p := azblob.NewPipeline(c, azblob.PipelineOptions{})
 	u, _ := url.Parse(fmt.Sprintf(blobFormatString, accountName))
 	service := azblob.NewServiceURL(*u, p)
 	container := service.NewContainerURL(containerName)
@@ -103,11 +101,32 @@ func getAccountPrimaryKey(ctx context.Context, accountName, accountGroupName str
 	if err != nil {
 		log.Fatalf("failed to list keys: %v", err)
 	}
-	return *(((*response.Keys)[0]).Value)
+	return *response.Key1
 }
 
 // GetAccountKeys gets the storage account keys
-func GetAccountKeys(ctx context.Context, accountName, accountGroupName string) (storage.AccountListKeysResult, error) {
-	accountsClient := config.AzureConfig.GetStorageAccountsClient()
+func GetAccountKeys(ctx context.Context, accountName, accountGroupName string) (storage.AccountKeys, error) {
+	accountsClient, err := config.AzureConfig.GetStorageAccountsClient()
+	if err != nil {
+		return storage.AccountKeys{}, err
+	}
 	return accountsClient.ListKeys(ctx, accountGroupName, accountName)
+}
+
+// AcquireStorageContainerLease acquires an infinite lease on the storage container
+func AcquireStorageContainerLease(ctx context.Context, accountName, accountGroupName, containerName string) error {
+	container, _ := GetContainer(ctx, accountName, accountGroupName, containerName)
+	_, err := container.AcquireLease(ctx, "", -1, azblob.ModifiedAccessConditions{})
+	return err
+}
+
+// BreakStorageContainerLease breaks a lease on the storage container
+func BreakStorageContainerLease(ctx context.Context, accountName, accountGroupName, containerName string) {
+	// Break lease on the test cluster to make it available for other tests
+	container, _ := GetContainer(ctx, accountName, accountGroupName, containerName)
+	_, err := container.BreakLease(ctx, -1, azblob.ModifiedAccessConditions{})
+	if err != nil {
+		fmt.Println("Error breaking lease: " + err.Error())
+	}
+	return
 }

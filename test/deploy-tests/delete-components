@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+if [[ $# -ne 2 ]]
+then
+    echo "usage: delete-components <resource group> <application>"
+    exit 1
+fi
+
+RESOURCE_GROUP_ID="$(az group show --name $1 --query id --output tsv)"
+URI="$RESOURCE_GROUP_ID/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/$2/Components?api-version=2018-09-01-preview"
+
+for i in $(az rest --uri "$URI" --method "GET" | jq '.value[].id' -r); do
+    az rest --uri "$i?api-version=2018-09-01-preview" --method "DELETE"
+done

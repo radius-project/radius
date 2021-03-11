@@ -96,7 +96,7 @@ func (config *azureConfig) GetGroupsClient() (resources.GroupsClient, error) {
 }
 
 // GetStorageAccountsClient initializes and returns a storage.AccountsClient
-func GetStorageAccountsClient() (storage.AccountsClient, error) {
+func (config *azureConfig) GetStorageAccountsClient() (storage.AccountsClient, error) {
 	storageAccountsClient := storage.NewAccountsClient(AzureConfig.subscriptionID)
 	a, err := auth.NewAuthorizerFromEnvironment()
 	if err != nil {

@@ -14,12 +14,14 @@ import (
 )
 
 var (
-	k8sClient *kubernetes.Clientset
+	clientset *kubernetes.Clientset = nil
 )
 
 // ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
 func ValidatePodsRunning(t *testing.T, expectedPods map[string]int) bool {
-	clientset := getKubernetesClient(t)
+	if clientset == nil {
+		clientset = getKubernetesClient(t)
+	}
 	for namespace, expectedNumPods := range expectedPods {
 		pods, _ := clientset.CoreV1().Pods(namespace).List(context.TODO(), v1.ListOptions{})
 		if len(pods.Items) != expectedNumPods {
@@ -38,7 +40,9 @@ func ValidatePodsRunning(t *testing.T, expectedPods map[string]int) bool {
 
 // DeleteNamespace deletes the specified kubernetes namespace
 func DeleteNamespace(t *testing.T, namespace string) {
-	clientset := getKubernetesClient(t)
+	if clientset == nil {
+		clientset = getKubernetesClient(t)
+	}
 	err := clientset.CoreV1().Namespaces().Delete(context.TODO(), namespace, v1.DeleteOptions{})
 	if err != nil {
 		t.Errorf("Could not delete namespace: %s due to %v", namespace, err.Error())
@@ -59,7 +63,7 @@ func getKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	k8sClient, err = kubernetes.NewForConfig(config)
+	k8sClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		t.Errorf(err.Error())
 	}

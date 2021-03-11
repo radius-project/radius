@@ -85,7 +85,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	require.NoError(t, err)
 
 	// Merge the k8s credentials to the cluster
-	err = utils.RunRadMergeCredentialsCommand()
+	err = utils.RunRadMergeCredentialsCommand("")
 	if err != nil {
 		log.Fatal(err)
 	}

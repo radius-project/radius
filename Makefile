@@ -149,7 +149,14 @@ test:
 	go test ./pkg/...
 
 ################################################################################
-# Target: e2e-tests - run nightly integration tests                                                  #
+# Target: deploy-tests - run integration tests                                 #
+################################################################################
+.PHONY: deploy-tests
+deploy-tests:
+	go test ./test/deploy-tests/... -timeout 120s
+
+################################################################################
+# Target: e2e-tests - run nightly integration tests                            #
 ################################################################################
 .PHONY: e2e-tests
 e2e-tests:
