@@ -24,11 +24,10 @@ func RunRadInitCommand(subscriptionID, resourceGroupName, location string, timeo
 // RunRadDeployCommand runs rad deploy command and times out after specified timeout
 func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.Duration) error {
 	// Check if the template file path exists
-	if _, err := os.Stat(templateFilePath); os.IsNotExist(err) {
-		log.Fatalf("template file: %s specified does not exist\n", templateFilePath)
+	if _, err := os.Stat(templateFilePath); err != nil {
+		log.Fatalf("error deploying template file: %s - %s\n", templateFilePath, err.Error())
 		return err
 	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
@@ -37,11 +36,10 @@ func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.D
 	if configFilePath == "" {
 		cmd = exec.CommandContext(ctx, "rad", "deploy", templateFilePath)
 	} else {
-		if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
-			log.Fatalf("template file: %s specified does not exist\n", templateFilePath)
+		if _, err := os.Stat(configFilePath); err != nil {
+			log.Fatalf("error deploying template using configfile: %s - %s\n", configFilePath, err.Error())
 			return err
 		}
-		fmt.Printf("Using config file: %s for deployment", configFilePath)
 		cmd = exec.CommandContext(ctx, "rad", "deploy", templateFilePath, "--config", configFilePath)
 	}
 	err := RunCommand(ctx, cmd)
@@ -78,7 +76,6 @@ func RunRadDeleteApplicationsCommand(resourceGroupName string) error {
 
 	// TODO: Once we have a rad env delete command, replace this logic with that
 	currentPath, _ := os.Getwd()
-	fmt.Println(currentPath)
 	scriptPath := filepath.Join(currentPath, "delete-applications")
 	cmd := exec.CommandContext(ctx, scriptPath, resourceGroupName)
 	err := RunCommand(ctx, cmd)
@@ -90,7 +87,7 @@ func RunRadDeleteApplicationsCommand(resourceGroupName string) error {
 
 // RunCommand runs a shell command
 func RunCommand(ctx context.Context, cmd *exec.Cmd) error {
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 
 	if ctx.Err() == context.DeadlineExceeded {
 		fmt.Println("command timed out")

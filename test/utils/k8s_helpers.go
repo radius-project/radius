@@ -38,17 +38,6 @@ func ValidatePodsRunning(t *testing.T, expectedPods map[string]int) bool {
 	return true
 }
 
-// DeleteNamespace deletes the specified kubernetes namespace
-func DeleteNamespace(t *testing.T, namespace string) {
-	if clientset == nil {
-		clientset = getKubernetesClient(t)
-	}
-	err := clientset.CoreV1().Namespaces().Delete(context.TODO(), namespace, v1.DeleteOptions{})
-	if err != nil {
-		t.Errorf("Could not delete namespace: %s due to %v", namespace, err.Error())
-	}
-}
-
 func getKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
