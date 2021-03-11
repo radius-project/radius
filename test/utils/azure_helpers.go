@@ -19,11 +19,6 @@ import (
 	"github.com/Azure/radius/test/config"
 )
 
-var (
-	// ResourcesPkgAPIVersion is the API version of the azure go-sdk resources package used
-	ResourcesPkgAPIVersion string = "2019-05-01"
-)
-
 // WithAPIVersion returns a prepare decorator that changes the request's query for api-version
 // This can be set up as a client's RequestInspector.
 func WithAPIVersion(apiVersion string) autorest.PrepareDecorator {
@@ -68,7 +63,6 @@ func ListResourcesInResourceGroup(ctx context.Context, groupName string) (resour
 	if err != nil {
 		return resources.ListResultPage{}, err
 	}
-	resourcesClient.RequestInspector = WithAPIVersion(ResourcesPkgAPIVersion)
 	var top10 int32 = 10
 	resourcesInRg, err := resourcesClient.ListByResourceGroup(ctx, groupName, "", "", &top10)
 	return resourcesInRg, err
