@@ -47,7 +47,6 @@ func DeleteNamespace(t *testing.T, namespace string) {
 	if err != nil {
 		t.Errorf("Could not delete namespace: %s due to %v", namespace, err.Error())
 	}
-	return
 }
 
 func getKubernetesClient(t *testing.T) *kubernetes.Clientset {
