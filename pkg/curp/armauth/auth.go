@@ -76,6 +76,27 @@ func GetArmAuthorizer() (*autorest.Authorizer, error) {
 		}
 		log.Println("Using Service Principal auth.")
 		return &auth, nil
+	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
+		log.Println("Managed Identity detected - using Managed Identity to get credentials")
+
+		config := auth.NewMSIConfig()
+		token, err := config.ServicePrincipalToken()
+		if err != nil {
+			return nil, err
+		}
+
+		err = token.EnsureFresh()
+		if err != nil {
+			return nil, err
+		}
+
+		auth, err := config.Authorizer()
+		if err != nil {
+			return nil, err
+		}
+
+		log.Println("Using Managed Identity auth.")
+		return &auth, nil
 	} else {
 		log.Println("No Service Principal detected.")
 		auth, err := auth.NewAuthorizerFromCLIWithResource("https://management.azure.com")

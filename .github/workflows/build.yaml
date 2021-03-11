@@ -12,10 +12,14 @@ on:
       - release/*
     tags:
       - v*
+    paths-ignore:
+    - 'docs/**'
   pull_request:
     branches:
       - main
       - release/*
+    paths-ignore:
+    - 'docs/**'
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries

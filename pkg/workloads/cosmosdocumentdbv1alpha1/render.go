@@ -13,7 +13,7 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
