@@ -1,6 +1,6 @@
 module github.com/Azure/radius
 
-go 1.15
+go 1.16
 
 require (
 	github.com/Azure/azure-sdk-for-go v52.3.1+incompatible

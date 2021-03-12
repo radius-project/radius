@@ -16,7 +16,7 @@ jobs:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries and run e2e tests
     runs-on: ${{ matrix.os }}
     env:
-      GOVER: '^1.15.0'
+      GOVER: '^1.16.0'
       GOLANGCILINT_VER: 1.26.0
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
