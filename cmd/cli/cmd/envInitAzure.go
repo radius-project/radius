@@ -15,15 +15,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/authorization/mgmt/authorization"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
-	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
 	"github.com/Azure/azure-sdk-for-go/services/preview/customproviders/mgmt/2018-09-01-preview/customproviders"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/go-autorest/autorest/date"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
@@ -31,7 +28,6 @@ import (
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/rad/util"
-	"github.com/Azure/radius/pkg/rad/util/ssh"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -257,11 +253,6 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	graphauth, err := utils.GetGraphEndpointAuthorizer()
-	if err != nil {
-		return err
-	}
-
 	// Check for an existing RP in the target resource group. This way we
 	// can use a single command to bind to an existing environment
 	exists, clusterName, err := findExistingEnvironment(ctx, armauth, subscriptionID, resourceGroup)
@@ -280,7 +271,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return nil
 	}
 
-	tenantID, rgExists, err := validateSubscription(ctx, armauth, subscriptionID, resourceGroup)
+	rgExists, err := validateSubscription(ctx, armauth, subscriptionID, resourceGroup)
 	if err != nil {
 		return err
 	}
@@ -293,29 +284,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
-	isServicePrincipalConfigured, err := utils.IsServicePrincipalConfigured()
-	if err != nil {
-		return err
-	}
-	var sp servicePrincipal
-	if isServicePrincipalConfigured {
-		sp, err = getServicePrincipal(ctx, armauth, tenantID)
-		if err != nil {
-			return err
-		}
-	} else {
-		sp, err := createServicePrincipal(ctx, graphauth, tenantID)
-		if err != nil {
-			return err
-		}
-
-		err = configurePermissions(ctx, armauth, sp, subscriptionID)
-		if err != nil {
-			return err
-		}
-	}
-
-	deployment, err := deployEnvironment(ctx, armauth, sp, subscriptionID, resourceGroup, deploymentTemplate)
+	deployment, err := deployEnvironment(ctx, armauth, subscriptionID, resourceGroup, deploymentTemplate)
 	if err != nil {
 		return err
 	}
@@ -371,7 +340,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	return true, *cluster.Name, nil
 }
 
-func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (string, bool, error) {
+func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (bool, error) {
 	step := logger.BeginStep("Validating Subscription...")
 
 	sc := subscription.NewSubscriptionsClient()
@@ -379,7 +348,7 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 	_, err := sc.Get(ctx, subscriptionID)
 	if err != nil {
-		return "", false, fmt.Errorf("cannot find subscription with id '%v'", subscriptionID)
+		return false, fmt.Errorf("cannot find subscription with id '%v'", subscriptionID)
 	}
 
 	rgc := resources.NewGroupsClient(subscriptionID)
@@ -391,24 +360,12 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 		rgExists = false
 	}
 
-	tc := subscription.NewTenantsClient()
-	tc.Authorizer = authorizer
-
-	// TODO: this lists the tenants and just returns the first one. This might be the cause of #32
-	tenants, err := tc.ListComplete(ctx)
-	if err != nil {
-		return "", rgExists, err
-	}
-
-	if tenants.Value().TenantID == nil {
-		return "", rgExists, errors.New("cannot find tenant ID")
-	}
-
 	logger.CompleteStep(step)
-	return *tenants.Value().TenantID, rgExists, nil
+	return rgExists, nil
 }
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
+
 	groupsClient := resources.NewGroupsClient(subscriptionID)
 	a, err := utils.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
@@ -430,115 +387,7 @@ func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName,
 	return nil
 }
 
-func createServicePrincipal(ctx context.Context, authorizer autorest.Authorizer, tenantID string) (servicePrincipal, error) {
-	step := logger.BeginStep("Creating Service Principal...")
-	appc := graphrbac.NewApplicationsClient(tenantID)
-	appc.Authorizer = authorizer
-
-	id := fmt.Sprintf("https://%v-%06v", "rad-rp", uuid.New().String())
-	app, err := appc.Create(ctx, graphrbac.ApplicationCreateParameters{
-		AvailableToOtherTenants: to.BoolPtr(false),
-		DisplayName:             to.StringPtr("rad-rp"),
-		Homepage:                to.StringPtr("http://azure.com"),
-		IdentifierUris: &[]string{
-			id,
-		},
-	})
-	if err != nil {
-		return servicePrincipal{}, err
-	}
-
-	rbacc := graphrbac.NewServicePrincipalsClient(tenantID)
-	rbacc.Authorizer = authorizer
-
-	clientSecret := uuid.New().String()
-
-	sp, err := rbacc.Create(ctx, graphrbac.ServicePrincipalCreateParameters{
-		AccountEnabled: to.BoolPtr(true),
-		AppID:          app.AppID,
-		PasswordCredentials: &[]graphrbac.PasswordCredential{
-			{
-				StartDate: &date.Time{Time: time.Now()},
-				EndDate:   &date.Time{Time: time.Now().AddDate(1, 0, 0)}, // One year from now
-				Value:     to.StringPtr(clientSecret),
-				KeyID:     to.StringPtr(uuid.New().String()),
-			},
-		},
-	})
-	if err != nil {
-		return servicePrincipal{}, err
-	}
-
-	logger.CompleteStep(step)
-	return servicePrincipal{Principal: sp, ClientSecret: clientSecret}, nil
-}
-
-func getServicePrincipal(ctx context.Context, authorizer autorest.Authorizer, tenantID string) (servicePrincipal, error) {
-	step := logger.BeginStep("Getting Service Principal...")
-	settings, err := auth.GetSettingsFromEnvironment()
-	if err != nil {
-		return servicePrincipal{}, err
-	}
-
-	var sp graphrbac.ServicePrincipal
-	clientID := settings.Values[auth.ClientID]
-	sp.AppID = &clientID
-
-	logger.CompleteStep(step)
-
-	return servicePrincipal{Principal: sp, ClientSecret: settings.Values[auth.ClientSecret]}, nil
-}
-
-func configurePermissions(ctx context.Context, authorizer autorest.Authorizer, sp servicePrincipal, subscriptionID string) error {
-	step := logger.BeginStep("Configuring Permissions...")
-	rdc := authorization.NewRoleDefinitionsClient(subscriptionID)
-	rdc.Authorizer = authorizer
-
-	roles, err := rdc.ListComplete(ctx, fmt.Sprintf("/subscriptions/%v", subscriptionID), "roleName eq 'Contributor'")
-	if err != nil {
-		return err
-	}
-
-	if roles.Value().Name == nil {
-		return errors.New("failed to find Contributor role")
-	}
-
-	rac := authorization.NewRoleAssignmentsClient(subscriptionID)
-	rac.Authorizer = authorizer
-
-	// We'll sometimes see this call fail due to the service principal not being propagated yet
-	for i := 0; i < 30; i++ {
-		_, err = rac.Create(
-			ctx,
-			fmt.Sprintf("/subscriptions/%v", subscriptionID),
-			uuid.New().String(),
-			authorization.RoleAssignmentCreateParameters{
-				Properties: &authorization.RoleAssignmentProperties{
-					PrincipalID:      to.StringPtr(*sp.Principal.ObjectID),
-					RoleDefinitionID: to.StringPtr(*roles.Value().ID),
-				},
-			})
-
-		if detailed, ok := util.ExtractDetailedError(err); ok && detailed.StatusCode == 400 {
-			if service, ok := util.ExtractServiceError(err); ok && service.Code == "PrincipalNotFound" {
-				fmt.Println("Waiting for permissions...")
-				time.Sleep(5 * time.Second)
-				continue
-			}
-		}
-
-		if err != nil {
-			return err
-		}
-
-		logger.CompleteStep(step)
-		return nil
-	}
-
-	return errors.New("timed out waiting for service principal to show up")
-}
-
-func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, sp servicePrincipal, subscriptionID string, resourceGroup string, deploymentTemplate string) (resources.DeploymentExtended, error) {
+func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, deploymentTemplate string) (resources.DeploymentExtended, error) {
 	step := logger.BeginStep("Deploying Environment...")
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
@@ -549,23 +398,9 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, sp s
 	// Poll faster for completion when possible. The default is 60 seconds which is a long time to wait.
 	dc.PollingDelay = time.Second * 15
 
-	key, err := ssh.GenerateKey(ssh.DefaultSize)
-	if err != nil {
-		return resources.DeploymentExtended{}, err
-	}
-
 	// see https://github.com/Azure-Samples/azure-sdk-for-go-samples/blob/master/resources/testdata/parameters.json
 	// for an example
 	parameters := map[string]interface{}{
-		"servicePrincipalClientId": map[string]interface{}{
-			"value": *sp.Principal.AppID,
-		},
-		"servicePrincipalClientSecret": map[string]interface{}{
-			"value": sp.ClientSecret,
-		},
-		"sshRSAPublicKey": map[string]interface{}{
-			"value": string(key),
-		},
 		"_scriptUri": map[string]interface{}{
 			"value": clusterInitScriptURI,
 		},
@@ -595,50 +430,26 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, sp s
 
 		deploymentProperties.Template = data
 	}
-
-	// See https://github.com/Azure/AKS/issues/1206 - propagation of service principals can cause issues during
-	// validation. We need retries to work around that.
 	name := fmt.Sprintf("rad-create-environment-%v", uuid.New().String())
-	for i := 0; i < 30; i++ {
-		op, err := dc.CreateOrUpdate(ctx, resourceGroup, name, resources.Deployment{
-			Properties: deploymentProperties,
-		})
-		if detailed, ok := util.ExtractDetailedError(err); ok && detailed.StatusCode == 400 {
-			if service, ok := util.ExtractServiceError(err); ok {
-				if service.Code == "InvalidTemplateDeployment" {
-					return resources.DeploymentExtended{}, fmt.Errorf("encountered a fatal error while creating environment: %v", err)
-				}
-
-				fmt.Printf("error encountered: %+v", service)
-				time.Sleep(5 * time.Second)
-				continue
-			} else {
-				return resources.DeploymentExtended{}, err
-			}
-		} else if err != nil {
-			return resources.DeploymentExtended{}, err
-		}
-
-		// This will not return a detailed error, it's always a service error
-		err = op.WaitForCompletionRef(ctx, dc.Client)
-		if service, ok := util.ExtractServiceError(err); ok {
-			fmt.Printf("error encountered: %+v", service)
-			time.Sleep(5 * time.Second)
-			continue
-		} else if err != nil {
-			return resources.DeploymentExtended{}, err
-		}
-
-		dep, err := op.Result(dc)
-		if err != nil {
-			return resources.DeploymentExtended{}, err
-		}
-
-		logger.CompleteStep(step)
-		return dep, nil
+	op, err := dc.CreateOrUpdate(ctx, resourceGroup, name, resources.Deployment{
+		Properties: deploymentProperties,
+	})
+	if err != nil {
+		return resources.DeploymentExtended{}, err
 	}
 
-	return resources.DeploymentExtended{}, errors.New("timed out waiting for creation to succeeed")
+	err = op.WaitForCompletionRef(ctx, dc.Client)
+	if err != nil {
+		return resources.DeploymentExtended{}, err
+	}
+
+	dep, err := op.Result(dc)
+	if err != nil {
+		return resources.DeploymentExtended{}, err
+	}
+
+	logger.CompleteStep(step)
+	return dep, nil
 }
 
 func findClusterInDeployment(ctx context.Context, deployment resources.DeploymentExtended) (string, error) {
@@ -698,9 +509,4 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 
 	logger.CompleteStep(step)
 	return nil
-}
-
-type servicePrincipal struct {
-	Principal    graphrbac.ServicePrincipal
-	ClientSecret string
 }

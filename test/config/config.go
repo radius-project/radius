@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2015-06-15/storage"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/marstr/randname"
 )
@@ -92,4 +93,16 @@ func (config *azureConfig) GetGroupsClient() (resources.GroupsClient, error) {
 	}
 	groupsClient.Authorizer = a
 	return groupsClient, nil
+}
+
+// GetStorageAccountsClient initializes and returns a storage.AccountsClient
+func (config *azureConfig) GetStorageAccountsClient() (storage.AccountsClient, error) {
+	storageAccountsClient := storage.NewAccountsClient(AzureConfig.subscriptionID)
+	a, err := auth.NewAuthorizerFromEnvironment()
+	if err != nil {
+		return storage.AccountsClient{}, err
+	}
+	storageAccountsClient.Authorizer = a
+
+	return storageAccountsClient, nil
 }

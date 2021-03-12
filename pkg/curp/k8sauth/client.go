@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2019-02-01/containerservice"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
