@@ -6,14 +6,16 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/radius/cmd/cli/utils"
@@ -55,14 +57,14 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 
 	step := logger.BeginStep("building application...")
-	compiledFilePath, err := bicepBuild(filePath)
+	template, err := bicepBuild(filePath)
 	if err != nil {
 		return err
 	}
 	logger.CompleteStep(step)
 
 	step = logger.BeginStep("deploying application...")
-	err = deployApplication(cmd.Context(), compiledFilePath, env)
+	err = deployApplication(cmd.Context(), template, env)
 	if err != nil {
 		return err
 	}
@@ -151,48 +153,68 @@ func validateEnvironment() (deployableEnvironment, error) {
 func bicepBuild(filePath string) (string, error) {
 	ok, err := bicep.IsBicepInstalled()
 	if err != nil {
-		return "", fmt.Errorf("bicep build failed: %w", err)
+		return "", fmt.Errorf("failed to find rad-bicep: %w", err)
 	}
 
 	if !ok {
 		logger.LogInfo("downloading bicep...")
 		err = bicep.DownloadBicep()
 		if err != nil {
-			return "", fmt.Errorf("bicep build failed: %w", err)
+			return "", fmt.Errorf("failed to download rad-bicep: %w", err)
 		}
 	}
 
 	filepath, err := bicep.GetLocalBicepFilepath()
 	if err != nil {
-		return "", fmt.Errorf("bicep build failed: %w", err)
+		return "", fmt.Errorf("failed to find rad-bicep: %w", err)
 	}
 
-	c := exec.Command(filepath, "build", filePath)
+	// runs 'rad-bicep build' on the file
+	//
+	// rad-bicep is being told to output the template to stdout and we will capture it
+	// rad-bicep will output compilation errors to stderr which will go to the user's console
+	c := exec.Command(filepath, "build", "--stdout", filePath)
 	c.Stderr = os.Stderr
-	c.Stdout = os.Stdout
-	err = c.Run()
+	stdout, err := c.StdoutPipe()
 	if err != nil {
-		return "", fmt.Errorf("bicep build failed: %w", err)
+		return "", fmt.Errorf("failed to create pipe: %w", err)
 	}
 
-	// produce filename with extension changed to '.json'
-	var ext = path.Ext(filePath)
-	return filePath[0:len(filePath)-len(ext)] + ".json", nil
+	err = c.Start()
+	if err != nil {
+		return "", fmt.Errorf("rad-bicep build failed: %w", err)
+	}
+
+	// asyncronously copy to our buffer, we don't really need to observe
+	// errors here since it's copying into memory
+	buf := bytes.Buffer{}
+	go func() {
+		_, _ = io.Copy(&buf, stdout)
+	}()
+
+	// wait will wait for us to finish draining stderr before returning the exit code
+	err = c.Wait()
+	if err != nil {
+		return "", fmt.Errorf("rad-bicep build failed: %w", err)
+	}
+
+	// read the content
+	bytes, err := io.ReadAll(&buf)
+	if err != nil {
+		return "", fmt.Errorf("failed to read rad-bicep output: %w", err)
+	}
+
+	return string(bytes), err
 }
 
-func deployApplication(ctx context.Context, filePath string, env deployableEnvironment) error {
+func deployApplication(ctx context.Context, content string, env deployableEnvironment) error {
 	dc, err := createDeploymentClient(env)
 	if err != nil {
 		return err
 	}
 
-	b, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return err
-	}
-
 	template := map[string]interface{}{}
-	err = json.Unmarshal(b, &template)
+	err = json.Unmarshal([]byte(content), &template)
 	if err != nil {
 		return err
 	}
@@ -231,6 +253,13 @@ func createDeploymentClient(env deployableEnvironment) (resources.DeploymentsCli
 
 		dc := resources.NewDeploymentsClient(env.SubscriptionID)
 		dc.Authorizer = armauth
+
+		// Poll faster than the default, many deployments are quick
+		dc.PollingDelay = 5 * time.Second
+
+		// Don't timeout, let the user cancel
+		dc.PollingDuration = 0
+
 		return dc, nil
 	} else if env.Kind == "openarm" {
 		// no auth for now - #YOLO
