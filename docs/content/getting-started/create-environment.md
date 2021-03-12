@@ -35,3 +35,9 @@ rad env init azure -i
 ```
 
 This will prompt you for information and then go off and run a bunch of command to create assets in your subscription.
+
+### Deleting an environment
+
+The rad CLI also has an option to [delete an environment]({{< ref env-delete.md >}}) if you need to remove or re-deploy an environment.
+
+<br /><a class="btn btn-primary" href="{{< ref deploy-application.md >}}" role="button">Next: Deploy an application</a>
