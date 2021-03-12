@@ -11,7 +11,7 @@
         },
         "_scriptUri": {
             "type": "string",
-            "defaultValue": "https://radiuspublic.blob.core.windows.net/environment/initialize-cluster.sh",
+            "defaultValue": "https://radiuspublic.blob.core.windows.net/environment/edge/initialize-cluster.sh",
             "metadata": {
                 "description": "URI of the script to execute. Used for testing."
             }
