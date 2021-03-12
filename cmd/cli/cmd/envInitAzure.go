@@ -33,8 +33,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-const armTemplateURI = "https://radiuspublic.blob.core.windows.net/environment/rp-full.json"
-const clusterInitScriptURI = "https://radiuspublic.blob.core.windows.net/environment/initialize-cluster.sh"
+const armTemplateURI = "https://radiuspublic.blob.core.windows.net/environment/edge/rp-full.json"
+const clusterInitScriptURI = "https://radiuspublic.blob.core.windows.net/environment/edge/initialize-cluster.sh"
 
 var envInitAzureCmd = &cobra.Command{
 	Use:   "azure",
