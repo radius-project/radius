@@ -50,3 +50,5 @@ Install the VSCode extension from `.vsix` file ([instructions](https://code.visu
 - [Download](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix)
 
 Next you will need to disable the official Bicep extension if you have it installed. Our custom extension needs to be responsible for handling `.bicep` files and you cannot have both extensions enabled at once.
+
+<br /><a class="btn btn-primary" href="{{< ref create-environment.md >}}" role="button">Next: Create environment</a>
