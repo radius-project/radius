@@ -21,7 +21,7 @@ If you receive an error saying Visual Studio or another application is not autho
 
 ## Creating environment
 
-## Error response cannot be parsed: """ error: EOF
+### Error response cannot be parsed: """ error: EOF
 
 If you get an error when initializing an Azure environment after selecting a Resource Group name, make sure you set your subscription to one within the Microsoft tenant:
 
@@ -29,7 +29,7 @@ If you get an error when initializing an Azure environment after selecting a Res
 az account set --subscription <SUB-ID>
 ```
 
-## Doskey is not recognized
+### Doskey is not recognized
 
 If you receive an error about the `doskey` binary, such as below:
 
