@@ -14,11 +14,11 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"runtime"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -149,17 +149,28 @@ func validateEnvironment() (deployableEnvironment, error) {
 }
 
 func bicepBuild(filePath string) (string, error) {
-	var executableName string
-	if runtime.GOOS == "windows" {
-		executableName = "bicep.exe"
-	} else {
-		executableName = "bicep"
+	ok, err := bicep.IsBicepInstalled()
+	if err != nil {
+		return "", fmt.Errorf("bicep build failed: %w", err)
 	}
 
-	c := exec.Command(executableName, "build", filePath)
+	if !ok {
+		logger.LogInfo("downloading bicep...")
+		err = bicep.DownloadBicep()
+		if err != nil {
+			return "", fmt.Errorf("bicep build failed: %w", err)
+		}
+	}
+
+	filepath, err := bicep.GetLocalBicepFilepath()
+	if err != nil {
+		return "", fmt.Errorf("bicep build failed: %w", err)
+	}
+
+	c := exec.Command(filepath, "build", filePath)
 	c.Stderr = os.Stderr
 	c.Stdout = os.Stdout
-	err := c.Run()
+	err = c.Run()
 	if err != nil {
 		return "", fmt.Errorf("bicep build failed: %w", err)
 	}
