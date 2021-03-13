@@ -8,7 +8,13 @@ weight: 20000
 
 ## Description
 
-Delete environment
+Delete a Radius environment. Note that this will delete:
+- The environment itself
+    - For Azure environments, this includes the resource group and anything else in it
+- Any applications that were deployed into a environment, along with any data within the applications.
+
+
+
 
 ## Usage
 
