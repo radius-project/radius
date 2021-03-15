@@ -340,6 +340,7 @@ Inside the `config` section you specified `managed: true`. This flag tells Radiu
 
 > 💡 If you have used Dapr before, you may notice that you neither had to create the Azure Storage resource itself, nor configure Dapr with details like connection strings. Radius does this for you.
 
+### Reference statestore from application
 Now that you've created the state store as an instance, you can reference it from nodeapp to connect them.
 
 Type the additional content from the following text inside your application definition. What's new this time is the `dependsOn` section.
