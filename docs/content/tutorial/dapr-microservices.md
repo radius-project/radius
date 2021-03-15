@@ -32,7 +32,7 @@ You can find the source code for the application [here](https://github.com/dapr/
 
 The order processing service (nodeapp) accepts HTTP requests to create or display orders. Here is a diagram:
 
-![The nodeapp order processing service](https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram.png)
+<img src="https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram.png" alt="The nodeapp order processing service" width=700>
 
 You can see that the nodeapp accepts HTTP requests on two endpoints: `GET /order` and `POST /neworder`.
 
