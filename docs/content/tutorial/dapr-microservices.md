@@ -465,7 +465,7 @@ If your message matches, then it means that pythonapp is able to communicate wit
 
 You have completed this tutorial!
 
-## Step 3: (Optional) Cleanup
+## Step 3: Cleanup (optional)
 
 When you are ready to clean up and delete the resources you can delete your environment. This will delete:
 
