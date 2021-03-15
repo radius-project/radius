@@ -42,6 +42,7 @@ The nodeapp also uses a [Dapr state store](https://docs.dapr.io/developing-appli
 
 The order generting service (pythonapp) does not accept any incoming traffic, and uses [Dapr service invocation](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/service-invocation-overview/) to send requests to nodeapp. 
 
+### Dapr state store
 The state store could be any compatible Dapr state store. In this tutorial we will use Azure Table Storage.
 
 Here is a diagram of the complete application include pythonapp:
