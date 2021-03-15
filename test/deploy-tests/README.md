@@ -1,1 +1,5 @@
-[Running deploy tests] ({{ ref running-deploy-tests-locally.md }})
+---
+toc_hide: true
+---
+
+[Running deploy tests] (https://docs.radapp.dev/developing/tests/running-deploy-tests/)
