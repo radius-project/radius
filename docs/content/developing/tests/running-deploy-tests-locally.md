@@ -6,7 +6,6 @@ description: "How to run Radius deploy tests"
 weight: 50
 ---
 
-# Radius Deploy Tests
 
 These tests verify whether the bicep template deployment to the Radius environment succeeded. These run on pre-created radius environments (or Radius test clusters).
 
