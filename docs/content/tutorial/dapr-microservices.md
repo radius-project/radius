@@ -364,7 +364,9 @@ application app = {
 
 The `dependsOn` section is used to configure relationships between an instance and services provided by other instances. Since the `statestore` is of type `dapr.io/StateStore@v1alpha1` it is considered to provide a service of kind `dapr.io/StateStore` implicitly. Configuring a dependency on a service is the oth part of specifying a relation. This declares the *intention* from the `nodeapp` component to communicate with the `statestore` using `dapr.io/StateStore` as the protocol.
 
-> 💡 Radius captures the relationships and intentions behind an application so that they can simplify deployment. Examples of this include wiring up connection strings, or granting permissions, or restarting components when a dependency changes. 
+{{% alert title="💡 Relationships" color="primary" %}}
+Radius captures the relationships and intentions behind an application so that they can simplify deployment. Examples of this include wiring up connection strings, or granting permissions, or restarting components when a dependency changes.
+{{% /alert %}}
 
 ---
 
