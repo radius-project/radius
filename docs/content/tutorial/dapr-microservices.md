@@ -161,7 +161,9 @@ application app = {
 
 You should no longer see errors due to missing properties. The content that you've just added for `nodeapp` specifies the container image to run. 
 
-> 💡 The `run` section is one of several top level sections in an *instance*. In general instance types that run your code will have a `run` section.
+{{% alert title="💡 Run" color="primary" %}}
+The `run` section is one of several top level sections in an *instance*. In general instance types that run your code will have a `run` section.
+{{% /alert %}}
 
 You could deploy this now and it will run the `radiusteam/nodeapp` image, however you would have no way to interact with the running application.
 
