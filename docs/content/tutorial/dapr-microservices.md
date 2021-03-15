@@ -305,6 +305,7 @@ The `traits` section is used to configure cross-cutting behaviors of instances. 
 The `traits` section is one of several top level sections in an *instance*. Traits are used to configure the instance in a cross-cutting way. Other examples would include handling public traffic (ingress) or scaling.
 {{% /alert %}}
 
+### Add statestore instance
 Now the nodeapp is hooked up to Dapr, but we still need to address the topic of the state store.
 
 Type the new instance declaration from the following text inside your application definition. Leave your existing declaration for nodeapp unchanged.
