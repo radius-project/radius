@@ -28,9 +28,13 @@ The application you will be deploying is a microservices order processing applic
 
 You can find the source code for the application [here](https://github.com/dapr/quickstarts/tree/v1.0.0/hello-world) as well as additional information and tutorials for Dapr. You will not need to build the application from source or have Dapr installed to complete this tutorial.
 
+Here is a diagram of the complete application:
+
+<img src="https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram_B.png" alt="The complete application" width=800>
+
 ### Order processing service
 
-The order processing service (nodeapp) accepts HTTP requests to create or display orders. Here is a diagram:
+The order processing service (nodeapp) accepts HTTP requests to create or display orders. Here is a diagram focused on the order processing service:
 
 <img src="https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram.png" alt="The nodeapp order processing service" width=700>
 
@@ -44,10 +48,6 @@ The order generting service (pythonapp) does not accept any incoming traffic, an
 
 ### Dapr state store
 The state store could be any compatible Dapr state store. In this tutorial we will use Azure Table Storage.
-
-Here is a diagram of the complete application include pythonapp:
-
-<img src="https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram_B.png" alt="The complete application" width=800>
 
 ## The Radius mindset
 
@@ -224,14 +224,14 @@ rad deploy template.bicep
 
 This will deploy the application and launch the container.
 
-
-> ⚠️⚠️⚠️⚠️⚠️ this step is temporary
-Run this command at the commandline:
+{{% alert title="⚠️ Temporary" color="warning" %}}
+Run this command at the commandline, which is temporary pending additions to the rad CLI:
 
 ```sh
 rad env merge-credentials --name azure 
 ```
-> ⚠️⚠️⚠️⚠️⚠️ end temporary-ness - thanks for your patience
+
+{{% /alert %}}
 
 To test it out, you can use the following command from the commandline:
 
