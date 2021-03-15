@@ -300,7 +300,9 @@ application app = {
 
 The `traits` section is used to configure cross-cutting behaviors of instances. Since Dapr is not part of the standard definition of a container, it can be added on via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required configuration to Dapr, the app-id and app-port.
 
-> 💡 The `traits` section is one of several top level sections in an *instance*. Traits are used to configure the instance in a cross-cutting way. Other examples would include handling public traffic (ingress) or scaling.
+{{% alert title="💡 Traits" color="primary" %}}
+The `traits` section is one of several top level sections in an *instance*. Traits are used to configure the instance in a cross-cutting way. Other examples would include handling public traffic (ingress) or scaling.
+{{% /alert %}}
 
 Now the nodeapp is hooked up to Dapr, but we still need to address the topic of the state store.
 
