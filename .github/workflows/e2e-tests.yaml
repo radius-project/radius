@@ -16,7 +16,7 @@ jobs:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries and run e2e tests
     runs-on: ${{ matrix.os }}
     env:
-      GOVER: '^1.15.0'
+      GOVER: '^1.16.0'
       GOLANGCILINT_VER: 1.26.0
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -66,10 +66,6 @@ jobs:
         run: make
       - name: Parse release version and set REL_VERSION
         run: python ./.github/scripts/get_release_version.py
-      - name: Download bicep private binary for Radius
-        run: |
-          sudo wget https://radiuspublic.blob.core.windows.net/tools/linux-x64/bicep --directory-prefix /usr/local/bin --no-verbose
-          sudo chmod a+x /usr/local/bin/bicep
       - name: Run make e2e-tests
         if: matrix.target_arch != 'arm'
         run: |
