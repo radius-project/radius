@@ -338,7 +338,9 @@ Inside the `config` section you specified a `kind` of `state.azure.tablestorage`
 
 Inside the `config` section you specified `managed: true`. This flag tells Radius to manage the lifetime of the Azure Storage account for you. The Azure Storage account will be deleted when you delete the application.
 
-> 💡 If you have used Dapr before, you may notice that you neither had to create the Azure Storage resource itself, nor configure Dapr with details like connection strings. Radius does this for you.
+{{% alert title="💡 Resource creation" color="primary" %}}
+If you have used Dapr before, you may notice that you neither had to create the Azure Storage resource itself, nor configure Dapr with details like connection strings. Radius does this for you.
+{{% /alert %}}
 
 ### Reference statestore from application
 Now that you've created the state store as an instance, you can reference it from nodeapp to connect them.
