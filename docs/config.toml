@@ -55,3 +55,7 @@ copyright = "Project Radius"
 github_repo = "https://github.com/Azure/radius"
 github_subdir = "docs"
 github_branch = "main"
+
+# UI Customization
+[params.ui]
+sidebar_menu_compact = true
