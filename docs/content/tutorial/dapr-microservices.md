@@ -397,6 +397,7 @@ If your message matches, then it means that the container is able to communicate
 To complete the application, you need to add another instance for the pythonapp.
 
 ### Add pythonapp instance
+### Add pythonapp instance
 Type the new instance declaration from the following text inside your application definition. Leave your existing declarations for nodeapp and statestore unchanged.
 
 ```txt
