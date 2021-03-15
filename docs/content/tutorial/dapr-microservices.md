@@ -96,7 +96,9 @@ Declarations in Bicep have symbolic (variable) names associated with them. The v
 
 An object (after the equals-sign) is similar to a JSON object.  Objects in Bicep don't need quotes around property names like in JSON. Properties in Bicep are separated by newlines, not commas. In general Bicep will require less typing than the equivalent JSON but they can express similar structures.
 
-> 💡 while Bicep uses newlines to separate properties and other syntax, it is not sensitive to indention like YAML is. By convention Bicep uses 2 spaces for indentation, but it is just a convention and not required.
+{{% alert title="💡 Indentation" color="primary" %}}
+While Bicep uses newlines to separate properties and other syntax, it is not sensitive to indention like YAML is. By convention Bicep uses 2 spaces for indentation, but it is just a convention and not required.
+{{% /alert %}}
 
 At this point you could deploy the application but it doesn't contain any components and so it won't do anything interesting. Move on to the next step where we will begin to fill in components.
 
