@@ -255,6 +255,7 @@ The `rad expose` command provides the application name, followed by the instance
 
 As the message from the previous step stated, you haven't yet added Dapr. You also haven't configured the Azure Table Storage state store. This step will add both of these things.
 
+### Add trait
 First, you should add a *trait* to the `nodeapp` instance to add Dapr. 
 
 Type the additional content from the following text inside your application definition. What's new this time is the `traits` section.
