@@ -47,7 +47,7 @@ The state store could be any compatible Dapr state store. In this tutorial we wi
 
 Here is a diagram of the complete application include pythonapp:
 
-![The complete application](https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram_B.png)
+<img src="https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram_B.png" alt="The complete application" width=800>
 
 ## The Radius mindset
 
