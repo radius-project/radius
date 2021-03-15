@@ -368,7 +368,7 @@ The `dependsOn` section is used to configure relationships between an instance a
 Radius captures the relationships and intentions behind an application so that they can simplify deployment. Examples of this include wiring up connection strings, or granting permissions, or restarting components when a dependency changes.
 {{% /alert %}}
 
----
+### Deploy application with Dapr
 
 Now you are ready to deploy. Switch to the command-line and run the following command.
 
