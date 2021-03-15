@@ -23,7 +23,7 @@ export INTEGRATION_TEST_SUBSCRIPTION_ID=Azure subscription ID
 ```
 
 
-## Running the tests via github workflow
+## Running via GitHub workflow
 
 These tests automatically run for every PR in the build.yaml github workflow.
 
