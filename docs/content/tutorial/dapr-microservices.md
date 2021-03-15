@@ -10,8 +10,8 @@ weight: 20
 
 To begin this tutorial you should have already completed the following steps:
 
-- [Install Radius CLI]({{ ref install-cli.md }})
-- [Create an environment]({{ ref create-environment.md }})
+- [Install Radius CLI]({{< ref install-cli.md >}})
+- [Create an environment]({{< ref create-environment.md >}})
 - [Install Kubectl](https://kubernetes.io/docs/tasks/tools/)
 
 No prior knowledge of Radius is needed, this tutorial will walk you through authoring the deployment template and deploying a microservices application from first principles.
