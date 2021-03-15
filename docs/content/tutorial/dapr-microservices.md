@@ -330,7 +330,9 @@ application app = {
 
 This declaration adds the state store as an instance of type `dapr.io/StateStore@v1alpha1`. You've seen instance declarations before, so you can notice some differences with this one. `statestore` has a `config` section instead of a `run` section.
 
-> 💡 The `config` section is one of several top level sections in an *instance*. In general instance types that represent a data store will have a `config` section.
+{{% alert title="💡 Config" color="primary" %}}
+The `config` section is one of several top level sections in an *instance*. In general instance types that represent a data store will have a `config` section
+{{% /alert %}}
 
 Inside the `config` section you specified a `kind` of `state.azure.tablestorage`. This corresponds to the type of Dapr state store used for [Azure Table Storage](https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/setup-azure-tablestorage/).
 
