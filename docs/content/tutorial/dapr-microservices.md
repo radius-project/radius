@@ -106,6 +106,7 @@ At this point you could deploy the application but it doesn't contain any compon
 
 Now that you've defined the shell for an application, you can add components inside.
 
+### Add an instance
 Type the additional content from the following text inside your application definition.
 
 ```txt
