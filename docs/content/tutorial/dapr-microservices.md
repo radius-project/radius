@@ -247,7 +247,9 @@ This will open a local tunnel on port 3000. Then you can visit the URL `http://l
 
 If your message matches, then it means that the container is running. When you are done testing press CTRL+C to terminate the port-forward, and you are ready to move on to the next step.
 
-> 💡 The `rad expose` command provides the application name, followed by the instance name, followed by a port. If you changed any of these names when deploying, update your command to match.
+{{% alert title="💡 rad expose" color="primary" %}}
+The `rad expose` command provides the application name, followed by the instance name, followed by a port. If you changed any of these names when deploying, update your command to match.
+{{% /alert %}}
 
 ## Step 3: Adding Dapr and the state store
 
