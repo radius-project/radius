@@ -3,7 +3,7 @@ type: docs
 title: "Running Radius deploy tests"
 linkTitle: "Deploy tests"
 description: "How to run Radius deploy tests"
-weight: 50
+weight: 200
 ---
 
 
