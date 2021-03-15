@@ -198,7 +198,9 @@ application app = {
 
 What you've added here defines a *service* called `web` and with the kind `http`. Services in Radius are logical connection-points. It's a way that one instance can expose functionality for components of the application to bind to. In this case you've defined an HTTP service that others can use to find the URL of `nodeapp` and sent it HTTP traffic. There is nothing special about the name `web`, it is just an identifier used for the name of the service.
 
-> 💡 HTTP services in Radius are *internal*, meaning that they are not exposed to internet traffic.
+{{% alert title="💡 HTTP services" color="primary" %}}
+HTTP services in Radius are *internal*, meaning that they are not exposed to internet traffic.
+{{% /alert %}}```
 
 > 💡 Other technologies you might have used specify `ports` as part of the container definition. Radius supports that style of definition as well, but it is more useful to attach operation details like port numbers to *behavior* and *protocols*. This is how Radius helps you capture the logical meaning behind the details.
 
