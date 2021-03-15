@@ -137,7 +137,7 @@ The *type* specifies the type of resource to create. The set of properties and s
 Like the application declaration, instances also declare a variable name. The variable name `nodeapp` could be used in this file to reference the instance in other declarations. The value of the `name` property (also `nodeapp`) is what will be used to identify the instance during management operations.
 {{% /alert %}}
 
----
+### Add instance details
 
 Now you can fill in the details of the instance. First you should specify the container image.
 
