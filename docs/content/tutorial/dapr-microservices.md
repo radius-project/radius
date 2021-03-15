@@ -436,7 +436,7 @@ The definition for pythonapp is simpler than what you have done so far for node 
 - pythonapp doesn't listen for HTTP traffic, so it neither configures a Dapr app-port nor a service for HTTP
 - pythonapp needs to communicate with nodeapp using the Dapr service invocation protocol
 
----
+### Deploy application with pythonapp
 
 Now you are ready to deploy. Switch to the command-line and run the following command.
 
