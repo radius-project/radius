@@ -90,7 +90,9 @@ This defines the basic structure of an application. This declaration:
 
 The syntax of Bicep is similar to JSON with a few differences. Top level declarations like `application` declare a variable, and are followed by an equals-sign `=` an then an object. 
 
-> 💡 delarations in Bicep have symbolic (variable) names associated with them. The variable name `app` could be used in this file to reference the application in other declarations. The value of the `name` property (`dapr-hello`) is what will be used to identify the application during management operations.
+{{% alert title="💡 Declarations" color="primary" %}}
+Declarations in Bicep have symbolic (variable) names associated with them. The variable name `app` could be used in this file to reference the application in other declarations. The value of the `name` property (`dapr-hello`) is what will be used to identify the application during management operations.
+{{% /alert %}}
 
 An object (after the equals-sign) is similar to a JSON object.  Objects in Bicep don't need quotes around property names like in JSON. Properties in Bicep are separated by newlines, not commas. In general Bicep will require less typing than the equivalent JSON but they can express similar structures.
 
