@@ -38,7 +38,7 @@ You can see that the nodeapp accepts HTTP requests on two endpoints: `GET /order
 
 The nodeapp also uses a [Dapr state store](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/) to store information about orders.
 
----
+### Order generating service
 
 The order generting service (pythonapp) does not accept any incoming traffic, and uses [Dapr service invocation](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/service-invocation-overview/) to send requests to nodeapp. 
 
