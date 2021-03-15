@@ -28,7 +28,7 @@ The application you will be deploying is a microservices order processing applic
 
 You can find the source code for the application [here](https://github.com/dapr/quickstarts/tree/v1.0.0/hello-world) as well as additional information and tutorials for Dapr. You will not need to build the application from source or have Dapr installed to complete this tutorial.
 
----
+### Order processing service
 
 The order processing service (nodeapp) accepts HTTP requests to create or display orders. Here is a diagram:
 
