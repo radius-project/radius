@@ -25,7 +25,7 @@ export INTEGRATION_TEST_SUBSCRIPTION_ID=Azure subscription ID
 
 ## Running via GitHub workflow
 
-These tests automatically run for every PR in the build.yaml github workflow.
+These tests automatically run for every PR in the `build.yaml` github workflow.
 
 
 ## Running the tests locally
