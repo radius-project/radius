@@ -202,7 +202,9 @@ What you've added here defines a *service* called `web` and with the kind `http`
 HTTP services in Radius are *internal*, meaning that they are not exposed to internet traffic.
 {{% /alert %}}```
 
-> 💡 Other technologies you might have used specify `ports` as part of the container definition. Radius supports that style of definition as well, but it is more useful to attach operation details like port numbers to *behavior* and *protocols*. This is how Radius helps you capture the logical meaning behind the details.
+{{% alert title="💡 Ports" color="primary" %}}
+Other technologies you might have used specify `ports` as part of the container definition. Radius supports that style of definition as well, but it is more useful to attach operation details like port numbers to *behavior* and *protocols*. This is how Radius helps you capture the logical meaning behind the details.
+{{% /alert %}}
 
 ---
 
