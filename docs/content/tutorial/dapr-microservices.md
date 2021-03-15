@@ -55,7 +55,7 @@ To get into the right mindset for Radius, you should think about the application
 
 A Radius template includes all of the logical relationships of an application but also the operational details associated with those relationships. Here is an updated diagram that shows what the Radius template needs to capture:
 
-![The application logical diagram](https://user-images.githubusercontent.com/1430011/111005089-04b3c280-833f-11eb-9ce1-bdd12beef78b.png)
+<img src="https://user-images.githubusercontent.com/1430011/111005089-04b3c280-833f-11eb-9ce1-bdd12beef78b.png" alt="The application logical diagram" width=800>
 
 The diagram reflects important details of the Radius model that are different from other deployment technologies you may have used:
 
