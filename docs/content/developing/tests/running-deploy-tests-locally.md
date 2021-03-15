@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Running Radius Deploy Tests"
-linkTitle: "Radius Deploy Tests"
+linkTitle: "Deploy tests"
 description: "How to run Radius deploy tests"
 weight: 50
 ---
