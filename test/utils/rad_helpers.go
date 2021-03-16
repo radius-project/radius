@@ -11,12 +11,12 @@ import (
 )
 
 // RunRadInitCommand runs rad env init command and times out after specified timeout
-func RunRadInitCommand(subscriptionID, resourceGroupName, location string, timeout time.Duration) error {
+func RunRadInitCommand(subscriptionID, resourceGroupName, location string, template string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	// Create the command with our context
-	cmd := exec.CommandContext(ctx, "rad", "env", "init", "azure", "--resource-group", resourceGroupName, "--subscription-id", subscriptionID, "--location", location)
+	cmd := exec.CommandContext(ctx, "rad", "env", "init", "azure", "--resource-group", resourceGroupName, "--subscription-id", subscriptionID, "--location", location, "--deployment-template", template)
 	err := RunCommand(ctx, cmd)
 	return err
 }
