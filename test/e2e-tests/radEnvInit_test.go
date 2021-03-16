@@ -7,8 +7,6 @@ package itests
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,30 +20,33 @@ import (
 // Radius env setup test
 func TestAzureEnvironmentSetup(t *testing.T) {
 	ctx := context.Background()
-	resourceGroupName := config.AzureConfig.GenerateGroupName()
 
-	defer cleanup(ctx, resourceGroupName)
+	cwd, err := os.Getwd()
+	require.NoError(t, err, "failed to get working directory")
+
+	resourceGroupName := config.AzureConfig.GenerateGroupName()
+	t.Cleanup(func() {
+		cleanup(ctx, t, resourceGroupName)
+	})
+
+	// use the local copy of the deployment template - this is needed for correctness when running as part of a PR
+	deploymentTemplateFilePath := filepath.Join(cwd, "../../deploy/rp-full.json")
+	require.FileExists(t, deploymentTemplateFilePath)
 
 	// Run the rad cli init command and look for errors
-	fmt.Println("Deploying in resource group: " + resourceGroupName)
-	err := utils.RunRadInitCommand(config.AzureConfig.SubscriptionID(), resourceGroupName, config.AzureConfig.DefaultLocation(), time.Minute*15)
-	if err != nil {
-		fmt.Println(err)
-	}
+	t.Log("Deploying in resource group: " + resourceGroupName)
+	err = utils.RunRadInitCommand(config.AzureConfig.SubscriptionID(), resourceGroupName, config.AzureConfig.DefaultLocation(), deploymentTemplateFilePath, time.Minute*15)
 	require.NoError(t, err)
 
 	// Check whether the resource group is created
 	rg, err := utils.GetGroup(ctx, resourceGroupName)
-	if err != nil || *rg.Name != resourceGroupName {
-		log.Fatal(err)
-	}
-	resourceMap := make(map[string]string)
+	require.NoError(t, err, "failed to find resource group")
+	require.Equal(t, resourceGroupName, *rg.Name)
 
-	for pageResults, _ := utils.ListResourcesInResourceGroup(ctx, resourceGroupName); pageResults.NotDone(); err = pageResults.NextWithContext(ctx) {
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
+	resourceMap := make(map[string]string)
+	for pageResults, err := utils.ListResourcesInResourceGroup(ctx, resourceGroupName); pageResults.NotDone(); err = pageResults.NextWithContext(ctx) {
+		require.NoError(t, err, "failed to list resources")
+
 		for _, r := range pageResults.Values() {
 			resourceMap[*r.Type] = *r.ID
 		}
@@ -76,20 +77,15 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
 
 	// Deploy bicep template
-	cwd, _ := os.Getwd()
 	templateFilePath := filepath.Join(cwd, "../frontend-backend/azure-bicep/template.bicep")
+	require.FileExists(t, templateFilePath, "could not find application template")
+
 	err = utils.RunRadDeployCommand(templateFilePath, "", time.Minute*5)
-	if err != nil {
-		log.Fatal(err)
-	}
-	require.NoError(t, err)
+	require.NoError(t, err, "application deployment failed")
 
 	// Merge the k8s credentials to the cluster
 	err = utils.RunRadMergeCredentialsCommand("")
-	if err != nil {
-		log.Fatal(err)
-	}
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to run merge credentials")
 
 	expectedPods := make(map[string]int)
 	// Validate dapr is installed and running
@@ -99,9 +95,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	require.True(t, utils.ValidatePodsRunning(t, expectedPods))
 }
 
-func cleanup(ctx context.Context, resourceGroupName string) {
+func cleanup(ctx context.Context, t *testing.T, resourceGroupName string) {
 	_, err := utils.DeleteGroup(ctx, resourceGroupName)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err, "failed to delete resource group")
 }
