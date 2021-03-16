@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2015-06-15/storage"
 	"github.com/Azure/go-autorest/autorest/to"
@@ -127,6 +128,10 @@ type storageStateStoreHandler struct {
 }
 
 type cosmosDocumentDbHandler struct {
+	arm armauth.ArmConfig
+}
+
+type serviceBusHandler struct {
 	arm armauth.ArmConfig
 }
 
@@ -847,6 +852,149 @@ func (cddh *cosmosDocumentDbHandler) Put(ctx context.Context, resource workloads
 	mrc.Authorizer = cddh.arm.Auth
 
 	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, cddh.arm.ResourceGroup, *account.Name, properties["name"], documentdb.MongoDBDatabaseCreateUpdateParameters{
+		MongoDBDatabaseCreateUpdateProperties: &documentdb.MongoDBDatabaseCreateUpdateProperties{
+			Resource: &documentdb.MongoDBDatabaseResource{
+				ID: to.StringPtr(properties["name"]),
+			},
+			Options: &documentdb.CreateUpdateOptions{
+				AutoscaleSettings: &documentdb.AutoscaleSettings{
+					MaxThroughput: to.Int32Ptr(4000),
+				},
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
+	}
+
+	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
+	}
+
+	db, err := dbfuture.Result(mrc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
+	}
+
+	// store db so we can delete later
+	properties["databasename"] = *db.Name
+
+	return properties, nil
+}
+
+func (cddh *cosmosDocumentDbHandler) Delete(ctx context.Context, properties map[string]string) error {
+	accountname := properties["cosmosaccountname"]
+	dbname := properties["databasename"]
+
+	mrc := documentdb.NewMongoDBResourcesClient(cddh.arm.SubscriptionID)
+	mrc.Authorizer = cddh.arm.Auth
+
+	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, cddh.arm.ResourceGroup, accountname, dbname)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+	}
+
+	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+	}
+
+	_, err = dbfuture.Result(mrc)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+	}
+
+	dac := documentdb.NewDatabaseAccountsClient(cddh.arm.SubscriptionID)
+	dac.Authorizer = cddh.arm.Auth
+
+	accountFuture, err := dac.Delete(ctx, cddh.arm.ResourceGroup, accountname)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE cosmosdb account: %w", err)
+	}
+
+	err = accountFuture.WaitForCompletionRef(ctx, dac.Client)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE cosmosdb account: %w", err)
+	}
+
+	_, err = accountFuture.Result(dac)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE cosmosdb account: %w", err)
+	}
+
+	return nil
+}
+
+func (sb *serviceBusHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+	if resource.Type != "azure.servicebus" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	return properties, nil
+}
+
+func (sbh *serviceBusHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
+	if resource.Type != "azure.cosmos.documentdb" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	mergeProperties(properties, existing)
+
+	sbc := servicebus.NewNamespacesClient(sbh.arm.SubscriptionID)
+	sbc.Authorizer = sbh.arm.Auth
+
+	namespace, ok := properties["servicebusnamespace"]
+
+	// TODO: for now we just use the resource-groups location. This would be a place where we'd plug
+	// in something to do with data locality.
+	rgc := resources.NewGroupsClient(sbh.arm.SubscriptionID)
+	rgc.Authorizer = sbh.arm.Auth
+
+	g, err := rgc.Get(ctx, sbh.arm.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
+	}
+
+	sbFuture, err := sbc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, namespace, servicebus.SBNamespace{
+		Sku: &servicebus.SBSku{
+			Name:     "Standard",
+			Tier:     servicebus.SkuTierBasic,
+			Capacity: to.Int32Ptr(1),
+		},
+		Location: g.Location,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+	}
+
+	err = sbFuture.WaitForCompletionRef(ctx, sbc.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+	}
+
+	sb, err := sbFuture.Result(sbc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+	}
+
+	// store account so we can delete later
+	properties["servicebusid"] = *sb.ID
+
+	mrc := documentdb.NewMongoDBResourcesClient(sbh.arm.SubscriptionID)
+	mrc.Authorizer = sbh.arm.Auth
+
+	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, sbh.arm.ResourceGroup, *account.Name, properties["name"], documentdb.MongoDBDatabaseCreateUpdateParameters{
 		MongoDBDatabaseCreateUpdateProperties: &documentdb.MongoDBDatabaseCreateUpdateProperties{
 			Resource: &documentdb.MongoDBDatabaseResource{
 				ID: to.StringPtr(properties["name"]),
