@@ -113,7 +113,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
   }
 }
@@ -147,7 +147,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
     properties: {
       run: {
@@ -176,7 +176,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
     properties: {
       run: {
@@ -264,7 +264,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
     properties: {
       run: {
@@ -345,7 +345,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
     properties: {
       run: {
