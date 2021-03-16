@@ -11,7 +11,7 @@ weight: 100
 These tests create a Radius environment, deploy a bicep template and verify the deployment
 
 
-## Environment Variables
+## Environment variables
 
 These tests rely on the following environment variables:-
 
