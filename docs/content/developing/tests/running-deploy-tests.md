@@ -10,7 +10,7 @@ weight: 200
 These tests verify whether the bicep template deployment to the Radius environment succeeded. These run on pre-created radius environments (or Radius test clusters).
 
 
-## Environment Variables
+## Environment variables
 
 These tests rely on the following environment variables:-
 
