@@ -26,7 +26,7 @@ export INTEGRATION_TEST_BASE_GROUP_NAME=Prefix of the resource group created. Th
 ```
 
 
-## Running the tests via github workflow
+## Running the tests via GitHub workflow
 
 These tests automatically run nightly on the main branch using the e2e-tests.yaml github workflow. They can be run on-demand for a PR by adding a comment "/run-e2e-tests".
 
