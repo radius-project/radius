@@ -113,7 +113,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
   }
 }
@@ -147,7 +147,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
     properties: {
       run: {
@@ -176,7 +176,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
     properties: {
       run: {
@@ -264,7 +264,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
     properties: {
       run: {
@@ -345,7 +345,7 @@ Type the additional content from the following text inside your application defi
 application app = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1 = {
+  instance nodeapp 'radius.dev/Container@v1alpha1' = {
     name: 'nodeapp'
     properties: {
       run: {
@@ -471,7 +471,7 @@ To test it out, you can use the following command from the commandline:
 rad expose dapr-hello nodeapp 3000
 ```
 
-This will open a local tunnel on port 3000. Then you can visit the URL `http://localhost:3000/orders` in the browser. 
+This will open a local tunnel on port 3000. Then you can visit the URL `http://localhost:3000/order` in the browser.
 
 Refresh the page multiple times, and you should see a message like before, but the order number is steadily increasing.
 
@@ -492,7 +492,7 @@ When you are ready to clean up and delete the resources you can delete your envi
 - The application you just deployed
 
 ```sh
-rad env delete --yes
+rad env delete azure --yes
 ```
 
 ## Related links
