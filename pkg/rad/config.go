@@ -18,17 +18,22 @@ type EnvironmentSection struct {
 
 // ReadEnvironmentSection reads the EnvironmentSection from elbow config.
 func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
-	section := EnvironmentSection{}
-
 	s := v.Sub(EnvironmentKey)
 	if s == nil {
-		section.Items = map[string]map[string]interface{}{}
-		return section, nil
+		return EnvironmentSection{
+			Items: map[string]map[string]interface{}{},
+		}, nil
 	}
 
+	section := EnvironmentSection{}
 	err := s.UnmarshalExact(&section)
 	if err != nil {
 		return EnvironmentSection{}, nil
+	}
+
+	// if items is not present it will be nil
+	if section.Items == nil {
+		section.Items = map[string]map[string]interface{}{}
 	}
 
 	return section, nil
