@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Running Radius Tests"
-linkTitle: "Radius Tests"
+title: "Running Radius tests"
+linkTitle: "Tests"
 weight: 40
 ---
