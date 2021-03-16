@@ -272,12 +272,6 @@ application app = {
           image: 'radiusteam/tutorial-nodeapp'
         }
       }
-      dependsOn: [
-        {
-          kind: 'dapr.io/StateStore'
-          name: 'statestore'
-        }
-      ]
       provides: [
         {
           kind: 'http'
