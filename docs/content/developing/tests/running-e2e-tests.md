@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Running Radius end-to-end tests"
-linkTitle: "Radius End-To-End Tests"
+linkTitle: "End-to-end tests"
 description: "How to run Radius end-to-end tests"
 weight: 100
 ---
