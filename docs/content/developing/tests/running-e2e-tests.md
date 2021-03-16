@@ -6,7 +6,6 @@ description: "How to run Radius end-to-end tests"
 weight: 100
 ---
 
-# Radius End-To-End Tests
 
 These tests create a Radius environment, deploy a bicep template and verify the deployment
 
