@@ -90,7 +90,7 @@ func validateEnvironmentExists(envName string) (string, string, error) {
 
 	envConfig, exists := env.Items[envName]
 	if !exists {
-		return "", "", errors.New(fmt.Sprintf("%s %s. %s", "Could not find the environment", envName, "Use 'rad env list' to list all environments."))
+		return "", "", fmt.Errorf("Could not find the environment %s. Use 'rad env list' to list all environments.", envName)
 	}
 
 	return envConfig["resourcegroup"].(string), envConfig["subscriptionid"].(string), nil
