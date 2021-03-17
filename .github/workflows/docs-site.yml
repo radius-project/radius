@@ -34,7 +34,7 @@ jobs:
       - name: Setup Docsy
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
       - name: Build Site
-        run: cd docs && hugo
+        run: cd docs && hugo && ls -l
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@4.0.0
         with:
@@ -42,7 +42,7 @@ jobs:
           username: ${{ secrets.DOCS_SITE_USERNAME }}
           password: ${{ secrets.DOCS_SITE_PASSWORD }}
           protocol: ftps
-          local-dir: "/docs/public/"
+          local-dir: "./docs/public/"
           # Path to upload to on the server. Must end with trailing slash /
           #server-dir: # optional
           dangerous-clean-slate: true
