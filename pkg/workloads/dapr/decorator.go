@@ -65,7 +65,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// use the workload name
 		if trait.Properties.AppID == "" {
-			trait.Properties.AppID = w.Workload.GetName()
+			trait.Properties.AppID = w.Workload.Name
 		}
 
 		annotations["dapr.io/enabled"] = "true"

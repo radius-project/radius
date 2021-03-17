@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"github.com/Azure/radius/pkg/curp/components"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -18,7 +18,9 @@ var ErrUnknownType = errors.New("workload type is unsupported")
 
 // InstantiatedWorkload workload provides all of the information needed to render a workload.
 type InstantiatedWorkload struct {
-	Workload      unstructured.Unstructured
+	Application   string
+	Name          string
+	Workload      components.GenericComponent
 	ServiceValues map[string]map[string]interface{}
 	Traits        []WorkloadTrait
 	Provides      map[string]map[string]interface{}
@@ -64,12 +66,12 @@ type WorkloadResourceProperties struct {
 // WorkloadDispatcher defines the interface for locating a WorkloadRenderer based on the
 // Kubernetes object type.
 type WorkloadDispatcher interface {
-	Lookup(t runtime.TypeMeta) (WorkloadRenderer, error)
+	Lookup(kind string) (WorkloadRenderer, error)
 }
 
 // Dispatcher is an implementation of WorkloadDispatcher.
 type Dispatcher struct {
-	Renderers map[runtime.TypeMeta]WorkloadRenderer
+	Renderers map[string]WorkloadRenderer
 }
 
 // NewKubernetesResource creates a Kubernetes WorkloadResource
@@ -78,8 +80,8 @@ func NewKubernetesResource(localID string, obj runtime.Object) WorkloadResource 
 }
 
 // Lookup implements the WorkloadDispatcher contract.
-func (d Dispatcher) Lookup(t runtime.TypeMeta) (WorkloadRenderer, error) {
-	r, ok := d.Renderers[t]
+func (d Dispatcher) Lookup(kind string) (WorkloadRenderer, error) {
+	r, ok := d.Renderers[kind]
 	if !ok {
 		return nil, ErrUnknownType
 	}

@@ -7,14 +7,13 @@ package servicebusqueuev1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Renderer is the WorkloadRenderer implementation for the service bus workload.
@@ -61,12 +60,13 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 // Render is the WorkloadRenderer implementation for servicebus workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
-	spec, err := getSpec(w.Workload)
+	component := ServiceBusQueueComponent{}
+	err := components.ConvertFromGeneric(w.Workload, &component)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
 	}
 
-	if !spec.Managed {
+	if !component.Config.Managed {
 		return []workloads.WorkloadResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 
@@ -75,36 +75,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: "azure.servicebus.queue",
 		Resource: map[string]string{
-			"name":            w.Workload.GetName(),
-			"servicebusqueue": spec.Queue,
+			"name":            w.Workload.Name,
+			"servicebusqueue": component.Config.Queue,
 		},
 	}
 
 	// It's already in the correct format
 	return []workloads.WorkloadResource{resource}, nil
-}
-
-type serviceBusSpec struct {
-	Managed bool   `json:"managed"`
-	Queue   string `json:"queue"`
-}
-
-func getSpec(item unstructured.Unstructured) (serviceBusSpec, error) {
-	spec, ok := item.Object["spec"]
-	if !ok {
-		return serviceBusSpec{}, errors.New("workload does not contain a spec element")
-	}
-
-	b, err := json.Marshal(spec)
-	if err != nil {
-		return serviceBusSpec{}, err
-	}
-
-	value := serviceBusSpec{}
-	err = json.Unmarshal(b, &value)
-	if err != nil {
-		return serviceBusSpec{}, err
-	}
-
-	return value, nil
 }

@@ -80,12 +80,17 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			"apiVersion": "networking.k8s.io/v1",
 			"kind":       "Ingress",
 			"metadata": map[string]interface{}{
-				"name":      w.Workload.GetName(),
-				"namespace": w.Workload.GetNamespace(),
+				"name":      w.Name,
+				"namespace": w.Application,
 				"annotations": map[string]interface{}{
 					"cert-manager.io/cluster-issuer": "letsencrypt",
 				},
 				"labels": map[string]interface{}{
+					"radius.dev/application": w.Application,
+					"radius.dev/component":   w.Name,
+					// TODO get the component revision here...
+					"app.kubernetes.io/name":       w.Name,
+					"app.kubernetes.io/part-of":    w.Application,
 					"app.kubernetes.io/managed-by": "radius-rp",
 				},
 			},

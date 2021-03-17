@@ -6,9 +6,9 @@
 package curp
 
 import (
-	"encoding/json"
 	"testing"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/curp/metadata"
 	"github.com/Azure/radius/pkg/curp/revision"
@@ -630,36 +630,20 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 	require.Contains(t, actions, "A")
 	action := actions["A"]
 	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, "myapp", action.ApplicationName)
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"].RevisionHistory[0], *action.Definition)
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)
 
-	// unmarshall and validate it
-	w := map[string]interface{}{}
-	buf, err := action.Workload.MarshalJSON()
+	// validate the workload
+	require.Equal(t, "radius.dev/Container@v1alpha1", action.Component.Kind)
+	require.Equal(t, "A", action.Component.Name)
+
+	component := containerv1alpha1.ContainerComponent{}
+	err = components.ConvertFromGeneric(*action.Component, &component)
 	require.NoError(t, err)
 
-	err = json.Unmarshal(buf, &w)
-	require.NoError(t, err)
-
-	metadata := w["metadata"].(map[string]interface{})
-	require.NotNil(t, metadata)
-	require.Equal(t, "Container", w["kind"])
-	require.Equal(t, "radius.dev/v1alpha1", w["apiVersion"])
-	require.Equal(t, "myapp", metadata["namespace"])
-	require.Equal(t, "A", metadata["name"])
-
-	// Labels ignored
-
-	spec := w["spec"]
-	buf, err = json.Marshal(spec)
-	require.NoError(t, err)
-
-	workload := containerv1alpha1.ContainerWorkload{}
-	err = json.Unmarshal(buf, &workload)
-	require.NoError(t, err)
-
-	cont := workload.Container
+	cont := component.Run.Container
 	require.Equal(t, "rynowak/frontend:0.5.0-dev", cont.Image)
 
 	require.Len(t, cont.Environment, 2)
