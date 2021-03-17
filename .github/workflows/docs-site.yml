@@ -1,4 +1,4 @@
-name: docs
+name: docs-site
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
     paths:
       - 'docs/**'
       - 'test/**'
+      - '.github/workflows/**'
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
@@ -14,6 +15,7 @@ on:
     paths:
       - 'docs/**'
       - 'test/**'
+      - '.github/workflows/**'
 
 jobs:
   build_and_deploy_job:
