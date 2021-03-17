@@ -62,11 +62,6 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
       - name: Make
         run: make
-      - name: Run linter
-        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: 'latest'
       - name: Run make test
         if: matrix.target_arch != 'arm'
         run: make test
