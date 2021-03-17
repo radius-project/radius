@@ -44,5 +44,3 @@ jobs:
           protocol: ftps
           local-dir: "./docs/public/"
           server-dir: "/site/wwwroot/"
-          dangerous-clean-slate: true
-          log-level: verbose
