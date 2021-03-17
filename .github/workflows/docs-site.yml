@@ -19,7 +19,7 @@ on:
 
 jobs:
   build_and_deploy_job:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     name: Build and Deploy Site
     steps:
@@ -43,7 +43,6 @@ jobs:
           password: ${{ secrets.DOCS_SITE_PASSWORD }}
           protocol: ftps
           local-dir: "./docs/public/"
-          # Path to upload to on the server. Must end with trailing slash /
-          #server-dir: # optional
+          server-dir: "/site/wwwroot/"
           dangerous-clean-slate: true
           log-level: verbose
