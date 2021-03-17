@@ -46,5 +46,4 @@ jobs:
           # Path to upload to on the server. Must end with trailing slash /
           #server-dir: # optional
           dangerous-clean-slate: true
-          # How verbose should the information be - warn, info, debug
-          log-level: debug
+          log-level: verbose
