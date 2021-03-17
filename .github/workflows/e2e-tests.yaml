@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 jobs:
   run-e2e-tests:
-    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries and run e2e tests
+    name: Run e2e tests
     runs-on: ${{ matrix.os }}
     env:
       GOVER: '^1.16.0'
@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        target_arch: [arm, amd64]
+        target_arch: [amd64]
         include:
           - os: ubuntu-latest
             target_os: linux
@@ -56,23 +56,23 @@ jobs:
                 `CHECKOUT_REPO=${{ github.repository }}\n`+
                 `CHECKOUT_REF=${testPayload.pull_head_ref}`);
             }
-      - name: Set up Go ${{ env.GOVER }}
-        if: env.CHECKOUT_REPO != ''
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ env.GOVER }}
-      - name: Check out code into the Go module directory
-        if: env.CHECKOUT_REPO != ''
+      - name: Check out code
         uses: actions/checkout@v2
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
-      - name: Make
-        run: make
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
       - name: Parse release version and set REL_VERSION
         run: python ./.github/scripts/get_release_version.py
+
+      # We need to build the CLI for the side-effect of placing it in the output
+      # directory for the tests to use
+      - name: Build CLI
+        run: make cli
       - name: Run make e2e-tests
-        if: matrix.target_arch != 'arm'
         run: |
           cd $GITHUB_WORKSPACE
           export PATH=$PATH:${{ env.RADIUS_PATH }}
