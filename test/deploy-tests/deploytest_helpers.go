@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/Azure/radius/test/utils"
@@ -24,7 +23,7 @@ var (
 func findTestCluster(ctx context.Context) (string, error) {
 	file, err := os.Open("deploy-tests-clusters.txt")
 	if err != nil {
-		log.Fatal(err)
+		return "", fmt.Errorf("cannot read test cluster manifest: %v", err)
 	}
 	defer file.Close()
 
@@ -46,5 +45,5 @@ func findTestCluster(ctx context.Context) (string, error) {
 }
 
 func releaseTestCluster(ctx context.Context, containerName string) {
-	utils.BreakStorageContainerLease(ctx, accountName, accountGroupName, containerName)
+	_ = utils.BreakStorageContainerLease(ctx, accountName, accountGroupName, containerName)
 }

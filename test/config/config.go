@@ -75,7 +75,6 @@ func (config *azureConfig) DefaultLocation() string {
 // GetResourcesClient initializes and returns a resources.Client
 func (config *azureConfig) GetResourcesClient() (resources.Client, error) {
 	resourcesClient := resources.NewClient(config.subscriptionID)
-	// a, _ := iam.GetResourceManagementAuthorizer()
 	a, err := auth.NewAuthorizerFromEnvironment()
 	if err != nil {
 		return resources.Client{}, err

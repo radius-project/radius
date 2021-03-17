@@ -56,16 +56,16 @@ func Test_Render_Success(t *testing.T) {
 	require.NotNil(t, service)
 
 	labels := map[string]string{
-		"radius.dev/application":       "test-app",
-		"radius.dev/component":         "test-container",
-		"app.kubernetes.io/name":       "test-container",
-		"app.kubernetes.io/part-of":    "test-app",
-		"app.kubernetes.io/managed-by": "radius-rp",
+		workloads.LabelRadiusApplication: "test-app",
+		workloads.LabelRadiusComponent:   "test-container",
+		"app.kubernetes.io/name":         "test-container",
+		"app.kubernetes.io/part-of":      "test-app",
+		"app.kubernetes.io/managed-by":   "radius-rp",
 	}
 
 	matchLabels := map[string]string{
-		"radius.dev/application": "test-app",
-		"radius.dev/component":   "test-container",
+		workloads.LabelRadiusApplication: "test-app",
+		workloads.LabelRadiusComponent:   "test-container",
 	}
 
 	t.Run("verify deployment", func(t *testing.T) {

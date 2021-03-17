@@ -14,6 +14,7 @@ import (
 
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/utils"
+	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
@@ -87,12 +88,30 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	err = utils.RunRadMergeCredentialsCommand("")
 	require.NoError(t, err, "failed to run merge credentials")
 
-	expectedPods := make(map[string]int)
-	// Validate dapr is installed and running
-	expectedPods["dapr-system"] = 5
-	// Validate pods specified in frontend-backend template are up and running
-	expectedPods["frontend-backend"] = 2
-	require.True(t, utils.ValidatePodsRunning(t, expectedPods))
+	expectedPods := validation.PodSet{
+		Namespaces: map[string][]validation.Pod{
+
+			// verify app
+			"frontend-backend": []validation.Pod{
+				validation.NewPodForComponent("frontend-backend", "frontend"),
+				validation.NewPodForComponent("frontend-backend", "backend"),
+			},
+
+			// verify dapr
+			"dapr-system": []validation.Pod{
+				validation.Pod{Labels: map[string]string{"app": "dapr-dashboard"}},
+				validation.Pod{Labels: map[string]string{"app": "dapr-operator"}},
+				validation.Pod{Labels: map[string]string{"app": "dapr-placement-server"}},
+				validation.Pod{Labels: map[string]string{"app": "dapr-sentry"}},
+				validation.Pod{Labels: map[string]string{"app": "dapr-sidecar-injector"}},
+			},
+		},
+	}
+
+	k8s, err := utils.GetKubernetesClient()
+	require.NoError(t, err, "failed to create kubernetes client")
+
+	validation.ValidatePodsRunning(t, k8s, expectedPods)
 }
 
 func cleanup(ctx context.Context, t *testing.T, resourceGroupName string) {

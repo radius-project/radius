@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,9 +24,9 @@ func RunRadInitCommand(subscriptionID, resourceGroupName, location string, templ
 func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.Duration) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
-		log.Fatalf("error deploying template file: %s - %s\n", templateFilePath, err.Error())
-		return err
+		return fmt.Errorf("error deploying template file: %s - %w", templateFilePath, err)
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
@@ -37,9 +36,9 @@ func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.D
 		cmd = exec.CommandContext(ctx, "rad", "deploy", templateFilePath)
 	} else {
 		if _, err := os.Stat(configFilePath); err != nil {
-			log.Fatalf("error deploying template using configfile: %s - %s\n", configFilePath, err.Error())
-			return err
+			return fmt.Errorf("error deploying template using configfile: %s - %w", configFilePath, err)
 		}
+
 		cmd = exec.CommandContext(ctx, "rad", "deploy", templateFilePath, "--config", configFilePath)
 	}
 	err := RunCommand(ctx, cmd)
@@ -55,18 +54,22 @@ func RunRadMergeCredentialsCommand(configFilePath string) error {
 	if configFilePath == "" {
 		cmd = exec.CommandContext(ctx, "rad", "env", "merge-credentials", "--name", "azure")
 	} else {
-		if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
-			log.Fatalf("template file: %s specified does not exist\n", configFilePath)
-			return err
+		_, err := os.Stat(configFilePath)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("template file: %s specified does not exist", configFilePath)
+		} else if err != nil {
+			return fmt.Errorf("error reading: %s - %w", configFilePath, err)
 		}
+
 		fmt.Printf("Using config file: %s for merge credentials", configFilePath)
 		cmd = exec.CommandContext(ctx, "rad", "env", "merge-credentials", "--name", "azure", "--config", configFilePath)
 	}
 	err := RunCommand(ctx, cmd)
 	if err != nil {
-		log.Fatal("Could not merge kubernetes credentials for cluster: " + err.Error())
+		return fmt.Errorf("Could not merge kubernetes credentials for cluster: %v", err)
 	}
-	return err
+
+	return nil
 }
 
 // RunRadDeleteApplicationsCommand deletes all applications deployed by Radius in the specified resource group
