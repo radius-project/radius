@@ -30,11 +30,12 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	}
 
 	properties := wrp[0].Properties
-	namespace := properties["servicebusnamespace"]
-	ruleName := properties["servicebusrulename"]
+	namespaceName := properties["servicebusnamespace"]
+	ruleName := properties["servicebusrule"]
+	queueName := properties["servicebusqueue"]
 
 	sbClient := servicebus.NewNamespacesClient(r.Arm.SubscriptionID)
-	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespace, ruleName)
+	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, ruleName)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
@@ -56,7 +57,9 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 	values := map[string]interface{}{
 		"connectionString": u.String(),
-		"namespace":        namespace,
+		"namespace":        namespaceName,
+		"queue":            queueName,
+		"rule":             ruleName,
 	}
 
 	return values, nil
@@ -73,7 +76,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 
-	// generate data we can use to manage a cosmosdb instance
+	// generate data we can use to manage a servicebus instance
 	resource := workloads.WorkloadResource{
 		Type: "azure.servicebus",
 		Resource: map[string]string{

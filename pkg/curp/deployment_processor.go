@@ -926,7 +926,7 @@ func (cddh *cosmosDocumentDbHandler) Delete(ctx context.Context, properties map[
 	return nil
 }
 
-func (sb *serviceBusHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+func (sbh *serviceBusHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
 	if resource.Type != "azure.servicebus" {
 		return nil, errors.New("wrong resource type")
 	}
@@ -940,7 +940,7 @@ func (sb *serviceBusHandler) GetProperties(resource workloads.WorkloadResource) 
 }
 
 func (sbh *serviceBusHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
-	if resource.Type != "azure.cosmos.documentdb" {
+	if resource.Type != "azure.servicebus" {
 		return nil, errors.New("wrong resource type")
 	}
 
@@ -954,7 +954,7 @@ func (sbh *serviceBusHandler) Put(ctx context.Context, resource workloads.Worklo
 	sbc := servicebus.NewNamespacesClient(sbh.arm.SubscriptionID)
 	sbc.Authorizer = sbh.arm.Auth
 
-	namespace, ok := properties["servicebusnamespace"]
+	namespaceName, ok := properties["servicebusnamespace"]
 
 	// TODO: for now we just use the resource-groups location. This would be a place where we'd plug
 	// in something to do with data locality.
@@ -966,7 +966,7 @@ func (sbh *serviceBusHandler) Put(ctx context.Context, resource workloads.Worklo
 		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
 	}
 
-	sbFuture, err := sbc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, namespace, servicebus.SBNamespace{
+	sbNamespaceFuture, err := sbc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, namespaceName, servicebus.SBNamespace{
 		Sku: &servicebus.SBSku{
 			Name:     "Standard",
 			Tier:     servicebus.SkuTierBasic,
@@ -978,92 +978,66 @@ func (sbh *serviceBusHandler) Put(ctx context.Context, resource workloads.Worklo
 		return nil, fmt.Errorf("failed to PUT service bus: %w", err)
 	}
 
-	err = sbFuture.WaitForCompletionRef(ctx, sbc.Client)
+	err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT service bus: %w", err)
 	}
 
-	sb, err := sbFuture.Result(sbc)
+	sbNamespace, err := sbNamespaceFuture.Result(sbc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT service bus: %w", err)
 	}
 
 	// store account so we can delete later
-	properties["servicebusid"] = *sb.ID
+	properties["servicebusid"] = *sbNamespace.ID
 
-	mrc := documentdb.NewMongoDBResourcesClient(sbh.arm.SubscriptionID)
-	mrc.Authorizer = sbh.arm.Auth
-
-	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, sbh.arm.ResourceGroup, *account.Name, properties["name"], documentdb.MongoDBDatabaseCreateUpdateParameters{
-		MongoDBDatabaseCreateUpdateProperties: &documentdb.MongoDBDatabaseCreateUpdateProperties{
-			Resource: &documentdb.MongoDBDatabaseResource{
-				ID: to.StringPtr(properties["name"]),
-			},
-			Options: &documentdb.CreateUpdateOptions{
-				AutoscaleSettings: &documentdb.AutoscaleSettings{
-					MaxThroughput: to.Int32Ptr(4000),
-				},
-			},
+	queueName, ok := properties["servicebusqueue"]
+	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
+	sbq, err := qc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, namespaceName, queueName, servicebus.SBQueue{
+		Name: to.StringPtr(queueName),
+		SBQueueProperties: &servicebus.SBQueueProperties{
+			MaxSizeInMegabytes: to.Int32Ptr(1000000000),
 		},
 	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
-	}
 
-	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
-	}
-
-	db, err := dbfuture.Result(mrc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
+		return nil, fmt.Errorf("failed to PUT servicebus queue: %w", err)
 	}
 
 	// store db so we can delete later
-	properties["databasename"] = *db.Name
-
+	properties["queueName"] = *sbq.Name
 	return properties, nil
 }
 
-func (cddh *cosmosDocumentDbHandler) Delete(ctx context.Context, properties map[string]string) error {
-	accountname := properties["cosmosaccountname"]
-	dbname := properties["databasename"]
+func (sbh *serviceBusHandler) Delete(ctx context.Context, properties map[string]string) error {
+	namespaceName := properties["servicebusnamespace"]
+	queueName := properties["servicebusqueue"]
 
-	mrc := documentdb.NewMongoDBResourcesClient(cddh.arm.SubscriptionID)
-	mrc.Authorizer = cddh.arm.Auth
+	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
+	qc.Authorizer = sbh.arm.Auth
 
-	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, cddh.arm.ResourceGroup, accountname, dbname)
+	_, err := qc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName, queueName)
 	if err != nil {
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
 	}
 
-	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
+	sbc := servicebus.NewNamespacesClient(sbh.arm.SubscriptionID)
+	sbc.Authorizer = sbh.arm.Auth
+
+	sbNamespaceFuture, err := sbc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName)
+
 	if err != nil {
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
 	}
 
-	_, err = dbfuture.Result(mrc)
+	err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
 	if err != nil {
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
 	}
 
-	dac := documentdb.NewDatabaseAccountsClient(cddh.arm.SubscriptionID)
-	dac.Authorizer = cddh.arm.Auth
-
-	accountFuture, err := dac.Delete(ctx, cddh.arm.ResourceGroup, accountname)
+	_, err = sbNamespaceFuture.Result(sbc)
 	if err != nil {
-		return fmt.Errorf("failed to DELETE cosmosdb account: %w", err)
-	}
-
-	err = accountFuture.WaitForCompletionRef(ctx, dac.Client)
-	if err != nil {
-		return fmt.Errorf("failed to DELETE cosmosdb account: %w", err)
-	}
-
-	_, err = accountFuture.Result(dac)
-	if err != nil {
-		return fmt.Errorf("failed to DELETE cosmosdb account: %w", err)
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
 	}
 
 	return nil
