@@ -1,0 +1,5 @@
+# text files use OS defaults on checkout, LF on checkin
+* text eol=auto
+
+# shell scripts always use LF
+*.sh text eol=lf
