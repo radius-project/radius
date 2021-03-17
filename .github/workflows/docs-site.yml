@@ -34,10 +34,10 @@ jobs:
       - name: Setup Docsy
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
       - name: Build Site
-        run: cd docs && hugo && ls -l
+        run: cd docs && hugo
       - name: Deploy to WebApp
         uses: Azure/webapps-deploy@v2
         with:
-          app-name: radius-docs
+          app-name: radius
           publish-profile: ${{ secrets.DOCS_SITE_PUBLISHPROFILE }}
           package: "./docs/public/"
