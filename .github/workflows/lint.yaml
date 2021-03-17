@@ -1,0 +1,44 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: lint
+
+on:
+  push:
+    branches:
+      - main
+      - release/*
+    tags:
+      - v*
+    paths-ignore:
+    - 'docs/**'
+  pull_request:
+    branches:
+      - main
+      - release/*
+    paths-ignore:
+    - 'docs/**'
+jobs:
+  build:
+    name: Lint
+    runs-on: ubuntu-latest
+    env:
+      GOVER: '^1.16.0'
+      GOPROXY: https://proxy.golang.org
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Parse release version and set REL_VERSION
+        run: python ./.github/scripts/get_release_version.py
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: 'latest'
+          skip-go-installation: true
+          args: --timeout=10m
