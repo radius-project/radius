@@ -258,8 +258,8 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			Name:      w.Workload.GetName(),
 			Namespace: w.Workload.GetNamespace(),
 			Labels: map[string]string{
-				"radius.dev/application": w.Workload.GetNamespace(),
-				"radius.dev/component":   w.Workload.GetName(),
+				workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
+				workloads.LabelRadiusComponent:   w.Workload.GetName(),
 				// TODO get the component revision here...
 				"app.kubernetes.io/name":       w.Workload.GetName(),
 				"app.kubernetes.io/part-of":    w.Workload.GetNamespace(),
@@ -269,15 +269,15 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{
 				MatchLabels: map[string]string{
-					"radius.dev/application": w.Workload.GetNamespace(),
-					"radius.dev/component":   w.Workload.GetName(),
+					workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
+					workloads.LabelRadiusComponent:   w.Workload.GetName(),
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"radius.dev/application": w.Workload.GetNamespace(),
-						"radius.dev/component":   w.Workload.GetName(),
+						workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
+						workloads.LabelRadiusComponent:   w.Workload.GetName(),
 						// TODO get the component revision here...
 						"app.kubernetes.io/name":       w.Workload.GetName(),
 						"app.kubernetes.io/part-of":    w.Workload.GetNamespace(),
@@ -304,8 +304,8 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 			Name:      w.Workload.GetName(),
 			Namespace: w.Workload.GetNamespace(),
 			Labels: map[string]string{
-				"radius.dev/application": w.Workload.GetNamespace(),
-				"radius.dev/component":   w.Workload.GetName(),
+				workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
+				workloads.LabelRadiusComponent:   w.Workload.GetName(),
 				// TODO get the component revision here...
 				"app.kubernetes.io/name":       w.Workload.GetName(),
 				"app.kubernetes.io/part-of":    w.Workload.GetNamespace(),
@@ -314,8 +314,8 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				"radius.dev/application": w.Workload.GetNamespace(),
-				"radius.dev/component":   w.Workload.GetName(),
+				workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
+				workloads.LabelRadiusComponent:   w.Workload.GetName(),
 			},
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{},

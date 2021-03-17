@@ -71,7 +71,7 @@ jobs:
       # We need to build the CLI for the side-effect of placing it in the output
       # directory for the tests to use
       - name: Build CLI
-        run: make cli
+        run: make buildcli
       - name: Run make e2e-tests
         run: |
           cd $GITHUB_WORKSPACE

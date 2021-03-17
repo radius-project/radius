@@ -79,6 +79,16 @@ var envMergeCredentialsCmd = &cobra.Command{
 			return fmt.Errorf("could not read environment %v", name)
 		}
 
+		val, ok = props["subscriptionid"]
+		if !ok {
+			return fmt.Errorf("could not read environment %v", name)
+		}
+
+		subscriptionID, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("could not read environment %v", name)
+		}
+
 		var executableName string
 		if runtime.GOOS == "windows" {
 			executableName = "az.exe"
@@ -105,7 +115,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 			}
 		}
 
-		c := exec.Command(executableName, "aks", "get-credentials", "--resource-group", resourceGroup, "--name", clusterName)
+		c := exec.Command(executableName, "aks", "get-credentials", "--subscription", subscriptionID, "--resource-group", resourceGroup, "--name", clusterName)
 		c.Stderr = os.Stderr
 		c.Stdout = os.Stdout
 		err = c.Run()

@@ -8,13 +8,13 @@ package deploytests
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/Azure/radius/test/utils"
+	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,24 +36,27 @@ func TestDeployApplication(t *testing.T) {
 	configFilePath := filepath.Join("./", fmt.Sprintf("%s.yaml", testClusterName))
 	// Merge the k8s credentials to the cluster
 	err = utils.RunRadMergeCredentialsCommand(configFilePath)
-	if err != nil {
-		log.Fatal(err)
-	}
 	require.NoError(t, err)
 
 	// Deploy bicep template
 	cwd, _ := os.Getwd()
 	templateFilePath := filepath.Join(cwd, "../", appName, "/azure-bicep/template.bicep")
 	err = utils.RunRadDeployCommand(templateFilePath, configFilePath, time.Minute*5)
-	if err != nil {
-		log.Fatal(err)
-	}
 	require.NoError(t, err)
 
-	expectedPods := make(map[string]int)
-	// Validate pods specified in frontend-backend template are up and running
-	expectedPods[appName] = 2
-	require.True(t, utils.ValidatePodsRunning(t, expectedPods))
+	expectedPods := validation.PodSet{
+		Namespaces: map[string][]validation.Pod{
+			"frontend-backend": []validation.Pod{
+				validation.NewPodForComponent("frontend-backend", "frontend"),
+				validation.NewPodForComponent("frontend-backend", "backend"),
+			},
+		},
+	}
+
+	k8s, err := utils.GetKubernetesClient()
+	require.NoError(t, err, "failed to create kubernetes client")
+
+	validation.ValidatePodsRunning(t, k8s, expectedPods)
 }
 
 func cleanup(ctx context.Context, t *testing.T, testClusterName string) {

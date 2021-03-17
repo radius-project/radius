@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/curp/rest"
 	"github.com/Azure/radius/pkg/curp/revision"
+	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-playground/validator/v10"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -898,12 +899,12 @@ func render(appname string, name string, defn db.ComponentRevision) (*unstructur
 			"namespace": appname,
 			"name":      name,
 			"labels": map[string]interface{}{
-				"radius.dev/application":       appname,
-				"radius.dev/component":         name,
-				"radius.dev/revision":          string(defn.Revision),
-				"app.kubernetes.io/part-of":    appname,
-				"app.kubernetes.io/name":       name,
-				"app.kubernetes.io/managed-by": "radius-rp",
+				workloads.LabelRadiusApplication: appname,
+				workloads.LabelRadiusComponent:   name,
+				workloads.LabelRadiusRevision:    string(defn.Revision),
+				"app.kubernetes.io/part-of":      appname,
+				"app.kubernetes.io/name":         name,
+				"app.kubernetes.io/managed-by":   "radius-rp",
 			},
 		},
 		"dependsOn": defn.Properties.DependsOn,
