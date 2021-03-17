@@ -1,0 +1,50 @@
+name: docs-site
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'test/**'
+      - '.github/workflows/**'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'test/**'
+      - '.github/workflows/**'
+
+jobs:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy Site
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2.4.13
+        with:
+          hugo-version: 0.74.3
+          extended: true
+      - name: Setup Docsy
+        run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
+      - name: Build Site
+        run: cd docs && hugo
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@4.0.0
+        with:
+          server: ${{ secrets.DOCS_SITE_ENDPOINT }}
+          username: ${{ secrets.DOCS_SITE_USERNAME }}
+          password: ${{ secrets.DOCS_SITE_PASSWORD }}
+          protocol: ftps
+          local-dir: "/docs/public/"
+          # Path to upload to on the server. Must end with trailing slash /
+          #server-dir: # optional
+          dangerous-clean-slate: true
+          # How verbose should the information be - warn, info, debug
+          log-level: debug
