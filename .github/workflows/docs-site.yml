@@ -35,12 +35,19 @@ jobs:
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
       - name: Build Site
         run: cd docs && hugo && ls -l
-      - name: FTP Deploy
-        uses: SamKirkland/FTP-Deploy-Action@4.0.0
+      - name: Deploy to WebApp
+        uses: Azure/webapps-deploy@v2
         with:
-          server: ${{ secrets.DOCS_SITE_ENDPOINT }}
-          username: ${{ secrets.DOCS_SITE_USERNAME }}
-          password: ${{ secrets.DOCS_SITE_PASSWORD }}
-          protocol: ftps
-          local-dir: "./docs/public/"
-          server-dir: "/site/wwwroot/"
+          app-name: radius-docs
+          publish-profile: ${{ secrets.DOCS_SITE_PUBLISHPROFILE }}
+          package: "./docs/public/"
+
+      #- name: FTP Deploy
+      #  uses: SamKirkland/FTP-Deploy-Action@4.0.0
+      #  with:
+      #    server: ${{ secrets.DOCS_SITE_ENDPOINT }}
+      #    username: ${{ secrets.DOCS_SITE_USERNAME }}
+      #    password: ${{ secrets.DOCS_SITE_PASSWORD }}
+      #    protocol: ftps
+      #    local-dir: "./docs/public/"
+      #    server-dir: "/site/wwwroot/"
