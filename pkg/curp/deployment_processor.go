@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2015-06-15/storage"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/workloads"
@@ -55,14 +56,17 @@ const (
 
 // ComponentAction represents a set of deployment actions to take for a component instance.
 type ComponentAction struct {
-	ComponentName         string
-	Operation             DeploymentOperation
-	Definition            *db.ComponentRevision
-	Instantiation         *db.DeploymentComponent
-	Provides              map[string]ComponentService
-	ServiceBindings       map[string]ServiceBinding
-	Traits                []db.ComponentTrait
-	Workload              *unstructured.Unstructured
+	ApplicationName string
+	ComponentName   string
+	Operation       DeploymentOperation
+	Definition      *db.ComponentRevision
+	Instantiation   *db.DeploymentComponent
+	Provides        map[string]ComponentService
+	ServiceBindings map[string]ServiceBinding
+	Traits          []db.ComponentTrait
+
+	// Will be `nil` for a delete
+	Component             *components.GenericComponent
 	PreviousDefinition    *db.ComponentRevision
 	PreviousInstanitation *db.DeploymentComponent
 }
@@ -140,14 +144,14 @@ type serviceBusQueueHandler struct {
 // NewDeploymentProcessor initializes a deployment processor.
 func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
 	d := workloads.Dispatcher{
-		Renderers: map[runtime.TypeMeta]workloads.WorkloadRenderer{
-			{APIVersion: "dapr.io/v1alpha1", Kind: "Component"}:          &daprcomponentv1alpha1.Renderer{},
-			{APIVersion: "dapr.io/v1alpha1", Kind: "StateStore"}:         &daprstatestorev1alpha1.Renderer{},
-			{APIVersion: "azure.com/v1alpha1", Kind: "CosmosDocumentDb"}: &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
-			{APIVersion: "azure.com/v1alpha1", Kind: "Function"}:         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
-			{APIVersion: "azure.com/v1alpha1", Kind: "WebApp"}:           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
-			{APIVersion: "radius.dev/v1alpha1", Kind: "Container"}:       &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
-			{APIVersion: "azure.com/v1alpha1", Kind: "ServiceBusQueue"}:  &servicebusqueuev1alpha1.Renderer{Arm: arm},
+		Renderers: map[string]workloads.WorkloadRenderer{
+			"dapr.io/Component@v1alpha1":          &daprcomponentv1alpha1.Renderer{},
+			"dapr.io/StateStore@v1alpha1@":        &daprstatestorev1alpha1.Renderer{},
+			"azure.com/CosmosDocumentDb@v1alpha1": &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
+			"azure.com/Function@v1alpha1":         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
+			"azure.com/WebApp@v1alpha1":           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
+			"radius.dev/Container@v1alpha1":       &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
+			"azure.com/ServiceBusQueue@v1alpha1":  &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		},
 	}
 
@@ -244,7 +248,9 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			}
 
 			inst := workloads.InstantiatedWorkload{
-				Workload:      *action.Workload,
+				Application:   appName,
+				Name:          action.ComponentName,
+				Workload:      *action.Component,
 				ServiceValues: values,
 				Traits:        traits,
 			}
@@ -322,7 +328,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				d.Workloads = append(d.Workloads, dw)
 			}
 
-			log.Printf("successfully applied workload %v %v", action.Workload.GetKind(), action.ComponentName)
+			log.Printf("successfully applied workload %v %v", action.Component.Kind, action.ComponentName)
 
 		case DeleteWorkload:
 			// Remove the deployment record
@@ -467,23 +473,23 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, name string
 }
 
 func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
-	r, err := dp.dispatcher.Lookup(runtime.TypeMeta{APIVersion: w.Workload.GetAPIVersion(), Kind: w.Workload.GetKind()})
+	r, err := dp.dispatcher.Lookup(w.Workload.Kind)
 	if err != nil {
-		return []workloads.WorkloadResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.GetKind(), err)
+		return []workloads.WorkloadResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
 
 	resources, err := r.Render(ctx, w)
 	if err != nil {
-		return []workloads.WorkloadResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.GetKind(), err)
+		return []workloads.WorkloadResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
 
 	return resources, nil
 }
 
 func (dp *deploymentProcessor) renderServices(ctx context.Context, w workloads.InstantiatedWorkload, dr []db.DeploymentResource, services map[string]ComponentService) ([]db.DeploymentService, error) {
-	r, err := dp.dispatcher.Lookup(runtime.TypeMeta{APIVersion: w.Workload.GetAPIVersion(), Kind: w.Workload.GetKind()})
+	r, err := dp.dispatcher.Lookup(w.Workload.Kind)
 	if err != nil {
-		return []db.DeploymentService{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.GetKind(), err)
+		return []db.DeploymentService{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
 
 	resources := []workloads.WorkloadResourceProperties{}
@@ -502,7 +508,7 @@ func (dp *deploymentProcessor) renderServices(ctx context.Context, w workloads.I
 			return []db.DeploymentService{}, fmt.Errorf("could not allocate service of kind %v: %v", s.Kind, err)
 		}
 
-		results = append(results, db.DeploymentService{Name: s.Name, Kind: s.Kind, Provider: w.Workload.GetName(), Properties: values})
+		results = append(results, db.DeploymentService{Name: s.Name, Kind: s.Kind, Provider: w.Workload.Kind, Properties: values})
 	}
 
 	return results, nil

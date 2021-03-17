@@ -5,19 +5,25 @@
 
 package containerv1alpha1
 
-// ContainerWorkload is the definition of the spec element of the workload
-type ContainerWorkload struct {
-	Container *ContainerSpec
-	DependsOn []ContainerDependsOn
-	Provides  []ContainerProvides
+// ContainerComponent is the definition of the container component
+type ContainerComponent struct {
+	Name      string                   `json:"name"`
+	Kind      string                   `json:"kind"`
+	Config    map[string]interface{}   `json:"config,omitempty"`
+	Run       ContainerRun             `json:"run,omitempty"`
+	DependsOn []ContainerDependsOn     `json:"dependson,omitempty"`
+	Provides  []ContainerProvides      `json:"provides,omitempty"`
+	Traits    []map[string]interface{} `json:"traits,omitempty"`
 }
 
-// ContainerProvides is the definition of the provides section
-type ContainerProvides struct {
-	Name          string `json:"name"`
-	Kind          string `json:"kind"`
-	Port          *int   `json:"port"`
-	ContainerPort *int   `json:"containerPort"`
+// ContainerRun is the defintion of the run section of a container
+type ContainerRun struct {
+	Container ContainerRunContainer `json:"container"`
+}
+
+type ContainerRunContainer struct {
+	Image       string            `json:"image"`
+	Environment []ContainerEnvVar `json:"env,omitempty"`
 }
 
 // ContainerDependsOn is the definition of the dependsOn section
@@ -27,10 +33,12 @@ type ContainerDependsOn struct {
 	SetEnv map[string]string `json:"setEnv"`
 }
 
-// ContainerSpec is the defintion of a container
-type ContainerSpec struct {
-	Image       string            `json:"image"`
-	Environment []ContainerEnvVar `json:"env,omitempty"`
+// ContainerProvides is the definition of the provides section
+type ContainerProvides struct {
+	Name          string `json:"name"`
+	Kind          string `json:"kind"`
+	Port          *int   `json:"port"`
+	ContainerPort *int   `json:"containerPort"`
 }
 
 // ContainerEnvVar is the definition of an environment variable

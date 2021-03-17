@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/workloads"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Renderer is the WorkloadRenderer implementation for the dapr component workload.
@@ -24,6 +25,27 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 // Render is the WorkloadRenderer implementation for dapr component workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
-	// It's already in the correct format
-	return []workloads.WorkloadResource{workloads.NewKubernetesResource("Component", &w.Workload)}, nil
+	resource := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "dapr.io/v1",
+			"kind":       "Component",
+			"metadata": map[string]interface{}{
+				"name":      w.Workload.Name,
+				"namespace": w.Application,
+				"labels": map[string]interface{}{
+					"radius.dev/application": w.Application,
+					"radius.dev/component":   w.Name,
+					// TODO get the component revision here...
+					"app.kubernetes.io/name":       w.Name,
+					"app.kubernetes.io/part-of":    w.Application,
+					"app.kubernetes.io/managed-by": "radius-rp",
+				},
+			},
+
+			// Config section is already in the right format
+			"spec": w.Workload.Config,
+		},
+	}
+
+	return []workloads.WorkloadResource{workloads.NewKubernetesResource("Component", &resource)}, nil
 }

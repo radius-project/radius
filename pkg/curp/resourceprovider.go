@@ -7,20 +7,18 @@ package curp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"strings"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/curp/metadata"
 	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/curp/rest"
 	"github.com/Azure/radius/pkg/curp/revision"
-	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-playground/validator/v10"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // ResourceProvider defines the business logic of the resource provider for Radius.
@@ -550,6 +548,7 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		provides := filterProvidersByComponent(name, providers)
 
 		wd := ComponentAction{
+			ApplicationName:       app.FriendlyName(),
 			ComponentName:         name,
 			Operation:             None, // Assume none until we find otherwise
 			Definition:            n,
@@ -567,11 +566,10 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		}
 
 		if wd.Operation != DeleteWorkload {
-			rendered, err := render(app.FriendlyName(), wd.ComponentName, *wd.Definition)
+			wd.Component, err = convertToComponent(wd.ComponentName, *wd.Definition, traits)
 			if err != nil {
 				return nil, err
 			}
-			wd.Workload = rendered
 		}
 
 		actions[name] = wd
@@ -859,20 +857,6 @@ func combineTraits(dc *db.DeploymentComponent, cr *db.ComponentRevision) ([]db.C
 	return traits, nil
 }
 
-func parseKind(kind string) (v1.TypeMeta, error) {
-	slashIndex := strings.Index(kind, "/")
-	if slashIndex == -1 {
-		return v1.TypeMeta{}, errors.New("invalid 'kind' - cannot find /")
-	}
-	ampIndex := strings.Index(kind, "@")
-	if ampIndex == -1 || ampIndex < slashIndex {
-		return v1.TypeMeta{}, errors.New("invalid 'kind' - cannot find @")
-	}
-
-	ns, name, version := kind[:slashIndex], kind[slashIndex+1:ampIndex], kind[ampIndex+1:]
-	return v1.TypeMeta{Kind: name, APIVersion: ns + "/" + version}, nil
-}
-
 func filterProvidersByComponent(componentName string, providers map[string]ServiceBinding) map[string]ComponentService {
 	results := map[string]ComponentService{}
 	for _, sb := range providers {
@@ -887,35 +871,28 @@ func filterProvidersByComponent(componentName string, providers map[string]Servi
 	return results
 }
 
-func render(appname string, name string, defn db.ComponentRevision) (*unstructured.Unstructured, error) {
-	typemeta, err := parseKind(defn.Kind)
-	if err != nil {
-		return nil, err
-	}
-	workload := map[string]interface{}{
-		"kind":       typemeta.Kind,
-		"apiVersion": typemeta.APIVersion,
-		"metadata": map[string]interface{}{
-			"namespace": appname,
-			"name":      name,
-			"labels": map[string]interface{}{
-				workloads.LabelRadiusApplication: appname,
-				workloads.LabelRadiusComponent:   name,
-				workloads.LabelRadiusRevision:    string(defn.Revision),
-				"app.kubernetes.io/part-of":      appname,
-				"app.kubernetes.io/name":         name,
-				"app.kubernetes.io/managed-by":   "radius-rp",
-			},
-		},
+// Convert our datatabase representation to the "baked" version of the component
+func convertToComponent(name string, defn db.ComponentRevision, traits []db.ComponentTrait) (*components.GenericComponent, error) {
+	raw := map[string]interface{}{
+		"name":      name,
+		"kind":      defn.Kind,
+		"config":    defn.Properties.Config,
+		"run":       defn.Properties.Run,
 		"dependsOn": defn.Properties.DependsOn,
 		"provides":  defn.Properties.Provides,
+		"traits":    traits,
 	}
 
-	if defn.Properties.Config != nil && len(defn.Properties.Config) > 0 {
-		workload["spec"] = defn.Properties.Config
-	} else {
-		workload["spec"] = defn.Properties.Run
+	bytes, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal component: %w", err)
 	}
 
-	return &unstructured.Unstructured{Object: workload}, nil
+	component := components.GenericComponent{}
+	err = json.Unmarshal(bytes, &component)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal component: %w", err)
+	}
+
+	return &component, nil
 }

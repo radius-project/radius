@@ -7,7 +7,6 @@ package cosmosdocumentdbv1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -15,8 +14,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Renderer is the WorkloadRenderer implementation for the cosmos documentdb workload.
@@ -71,12 +70,13 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 // Render is the WorkloadRenderer implementation for cosmos documentdb workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
-	spec, err := getSpec(w.Workload)
+	component := CosmosDocumentDbComponent{}
+	err := components.ConvertFromGeneric(w.Workload, &component)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
 	}
 
-	if !spec.Managed {
+	if !component.Config.Managed {
 		return []workloads.WorkloadResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 
@@ -84,34 +84,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: "azure.cosmos.documentdb",
 		Resource: map[string]string{
-			"name": w.Workload.GetName(),
+			"name": w.Workload.Name,
 		},
 	}
 
 	// It's already in the correct format
 	return []workloads.WorkloadResource{resource}, nil
-}
-
-type cosmosDocumentDbSpec struct {
-	Managed bool `json:"managed"`
-}
-
-func getSpec(item unstructured.Unstructured) (cosmosDocumentDbSpec, error) {
-	spec, ok := item.Object["spec"]
-	if !ok {
-		return cosmosDocumentDbSpec{}, errors.New("workload does not contain a spec element")
-	}
-
-	b, err := json.Marshal(spec)
-	if err != nil {
-		return cosmosDocumentDbSpec{}, err
-	}
-
-	value := cosmosDocumentDbSpec{}
-	err = json.Unmarshal(b, &value)
-	if err != nil {
-		return cosmosDocumentDbSpec{}, err
-	}
-
-	return value, nil
 }

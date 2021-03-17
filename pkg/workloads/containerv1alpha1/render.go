@@ -7,10 +7,8 @@ package containerv1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -48,7 +47,7 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 			uri := url.URL{
 				Scheme: service.Kind,
-				Host:   fmt.Sprintf("%v.%v.svc.cluster.local", w.Workload.GetName(), w.Workload.GetNamespace()),
+				Host:   fmt.Sprintf("%v.%v.svc.cluster.local", w.Name, w.Application),
 			}
 
 			if p.Port != nil && *p.Port != 80 {
@@ -105,101 +104,38 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	return resources, nil
 }
 
-func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerWorkload, error) {
-	cw := &ContainerWorkload{}
-
-	log.Printf("%v", w.Workload)
-
-	obj, ok := w.Workload.Object["spec"]
-	if !ok {
-		return nil, errors.New("Workload must have a spec field")
-	}
-
-	spec, ok := obj.(map[string]interface{})
-	if !ok {
-		return nil, errors.New("Spec field must be a map")
-	}
-
-	obj, ok = spec["container"]
-	if !ok {
-		return nil, errors.New("spec must have a container field")
-	}
-
-	c, ok := obj.(map[string]interface{})
-	if !ok {
-		return nil, errors.New("container field must be a map")
-	}
-
-	b, err := json.Marshal(c)
+func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent, error) {
+	container := &ContainerComponent{}
+	err := components.ConvertFromGeneric(w.Workload, container)
 	if err != nil {
 		return nil, err
 	}
 
-	container := &ContainerSpec{}
-	err = json.Unmarshal(b, container)
-	if err != nil {
-		return nil, err
-	}
-
-	cw.Container = container
-
-	obj, ok = w.Workload.Object["dependsOn"]
-	if ok {
-		b, err := json.Marshal(obj)
-		if err != nil {
-			return nil, err
+	// Fixup ports so that port and container port are always both assigned or neither are.
+	for i := range container.Provides {
+		if container.Provides[i].ContainerPort != nil && container.Provides[i].Port == nil {
+			container.Provides[i].Port = container.Provides[i].ContainerPort
 		}
 
-		dependsOn := &[]ContainerDependsOn{}
-		err = json.Unmarshal(b, dependsOn)
-		if err != nil {
-			return nil, err
-		}
-
-		cw.DependsOn = *dependsOn
-	}
-
-	obj, ok = w.Workload.Object["provides"]
-	if ok {
-		b, err := json.Marshal(obj)
-		if err != nil {
-			return nil, err
-		}
-
-		provides := &[]ContainerProvides{}
-		err = json.Unmarshal(b, provides)
-		if err != nil {
-			return nil, err
-		}
-
-		cw.Provides = *provides
-
-		// Fixup ports so that port and container port are always both assigned or neither are.
-		for i := range cw.Provides {
-			if cw.Provides[i].ContainerPort != nil && cw.Provides[i].Port == nil {
-				cw.Provides[i].Port = cw.Provides[i].ContainerPort
-			}
-
-			if cw.Provides[i].Port != nil && cw.Provides[i].ContainerPort == nil {
-				cw.Provides[i].ContainerPort = cw.Provides[i].Port
-			}
+		if container.Provides[i].Port != nil && container.Provides[i].ContainerPort == nil {
+			container.Provides[i].ContainerPort = container.Provides[i].Port
 		}
 	}
 
-	return cw, nil
+	return container, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerWorkload) (*appsv1.Deployment, error) {
+func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, error) {
 	container := corev1.Container{
-		Name:  w.Workload.GetName(),
-		Image: cw.Container.Image,
+		Name:  cc.Name,
+		Image: cc.Run.Container.Image,
 
 		// TODO: use better policies than this when we have a good versioning story
 		ImagePullPolicy: corev1.PullPolicy("Always"),
 		Env:             []corev1.EnvVar{},
 	}
 
-	for _, e := range cw.Container.Environment {
+	for _, e := range cc.Run.Container.Environment {
 		if e.Value != nil {
 			container.Env = append(container.Env, corev1.EnvVar{
 				Name:  e.Name,
@@ -209,7 +145,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	for _, dep := range cw.DependsOn {
+	for _, dep := range cc.DependsOn {
 		if dep.SetEnv == nil {
 			continue
 		}
@@ -237,7 +173,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	for _, p := range cw.Provides {
+	for _, p := range cc.Provides {
 		if p.ContainerPort != nil {
 			port := corev1.ContainerPort{
 				Name:          p.Name,
@@ -255,32 +191,32 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      w.Workload.GetName(),
-			Namespace: w.Workload.GetNamespace(),
+			Name:      cc.Name,
+			Namespace: w.Application,
 			Labels: map[string]string{
-				workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
-				workloads.LabelRadiusComponent:   w.Workload.GetName(),
+				workloads.LabelRadiusApplication: w.Application,
+				workloads.LabelRadiusComponent:   cc.Name,
 				// TODO get the component revision here...
-				"app.kubernetes.io/name":       w.Workload.GetName(),
-				"app.kubernetes.io/part-of":    w.Workload.GetNamespace(),
+				"app.kubernetes.io/name":       cc.Name,
+				"app.kubernetes.io/part-of":    w.Application,
 				"app.kubernetes.io/managed-by": "radius-rp",
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{
 				MatchLabels: map[string]string{
-					workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
-					workloads.LabelRadiusComponent:   w.Workload.GetName(),
+					workloads.LabelRadiusApplication: w.Application,
+					workloads.LabelRadiusComponent:   cc.Name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
-						workloads.LabelRadiusComponent:   w.Workload.GetName(),
+						workloads.LabelRadiusApplication: w.Application,
+						workloads.LabelRadiusComponent:   cc.Name,
 						// TODO get the component revision here...
-						"app.kubernetes.io/name":       w.Workload.GetName(),
-						"app.kubernetes.io/part-of":    w.Workload.GetNamespace(),
+						"app.kubernetes.io/name":       cc.Name,
+						"app.kubernetes.io/part-of":    w.Application,
 						"app.kubernetes.io/managed-by": "radius-rp",
 					},
 				},
@@ -294,35 +230,35 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 	return &deployment, nil
 }
 
-func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerWorkload) (*corev1.Service, error) {
+func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*corev1.Service, error) {
 	service := corev1.Service{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      w.Workload.GetName(),
-			Namespace: w.Workload.GetNamespace(),
+			Name:      cc.Name,
+			Namespace: w.Application,
 			Labels: map[string]string{
-				workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
-				workloads.LabelRadiusComponent:   w.Workload.GetName(),
+				workloads.LabelRadiusApplication: w.Application,
+				workloads.LabelRadiusComponent:   cc.Name,
 				// TODO get the component revision here...
-				"app.kubernetes.io/name":       w.Workload.GetName(),
-				"app.kubernetes.io/part-of":    w.Workload.GetNamespace(),
+				"app.kubernetes.io/name":       cc.Name,
+				"app.kubernetes.io/part-of":    w.Application,
 				"app.kubernetes.io/managed-by": "radius-rp",
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				workloads.LabelRadiusApplication: w.Workload.GetNamespace(),
-				workloads.LabelRadiusComponent:   w.Workload.GetName(),
+				workloads.LabelRadiusApplication: w.Application,
+				workloads.LabelRadiusComponent:   cc.Name,
 			},
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{},
 		},
 	}
 
-	for _, provides := range cw.Provides {
+	for _, provides := range cc.Provides {
 		if provides.ContainerPort != nil {
 			port := corev1.ServicePort{
 				Name:     provides.Name,

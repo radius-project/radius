@@ -7,43 +7,39 @@ package containerv1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{}
 
-	w := workloads.InstantiatedWorkload{}
-	w.Workload = unstructuredFromJSON(t, `
-{
-	"kind": "Container",
-	"apiVersion": "radius.dev/v1alpha1",
-	"metadata": {
-		"name": "test-container",
-		"namespace": "test-app"
-	},
-	"spec": {
-		"container": {
-			"image": "test/test-image:latest"
-		}
-	},
-	"provides": [
-		{
-			"name": "test-service",
-			"kind": "http",
-			"containerPort": 3000
-		}
-	]
-}
-`)
+	w := workloads.InstantiatedWorkload{
+		Application: "test-app",
+		Name:        "test-container",
+		Workload: components.GenericComponent{
+			Name: "test-container",
+			Kind: "radius.dev/Container@v1alpha1",
+			Run: map[string]interface{}{
+				"container": map[string]interface{}{
+					"image": "test/test-image:latest",
+				},
+			},
+			Provides: []map[string]interface{}{
+				map[string]interface{}{
+					"name":          "test-service",
+					"kind":          "http",
+					"containerPort": 3000,
+				},
+			},
+		},
+	}
 
 	resources, err := renderer.Render(context.Background(), w)
 	require.NoError(t, err)
@@ -108,14 +104,6 @@ func Test_Render_Success(t *testing.T) {
 		require.Equal(t, v1.ProtocolTCP, port.Protocol)
 		require.Equal(t, int32(3000), port.Port)
 	})
-}
-
-func unstructuredFromJSON(t *testing.T, s string) unstructured.Unstructured {
-	object := map[string]interface{}{}
-	err := json.Unmarshal([]byte(s), &object)
-	require.NoError(t, err)
-
-	return unstructured.Unstructured{Object: object}
 }
 
 func findDeployment(resources []workloads.WorkloadResource) *appsv1.Deployment {
