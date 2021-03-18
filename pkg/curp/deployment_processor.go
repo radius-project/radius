@@ -27,6 +27,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/workloads/functionv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/ingress"
+	"github.com/Azure/radius/pkg/workloads/servicebusv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/webappv1alpha1"
 	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -145,6 +146,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			{APIVersion: "azure.com/v1alpha1", Kind: "Function"}:         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
 			{APIVersion: "azure.com/v1alpha1", Kind: "WebApp"}:           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
 			{APIVersion: "radius.dev/v1alpha1", Kind: "Container"}:       &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
+			{APIVersion: "azure.com/v1alpha1", Kind: "ServiceBus"}:       &servicebusv1alpha1.Renderer{Arm: arm},
 		},
 	}
 
@@ -153,6 +155,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			"kubernetes":                   &kubernetesHandler{k8s},
 			"dapr.statestore.azurestorage": &storageStateStoreHandler{arm, k8s},
 			"azure.cosmos.documentdb":      &cosmosDocumentDbHandler{arm},
+			"azure.servicebus":             &serviceBusHandler{arm},
 		},
 	}
 
@@ -495,7 +498,7 @@ func (dp *deploymentProcessor) renderServices(ctx context.Context, w workloads.I
 		service := workloads.WorkloadService{Name: s.Name, Kind: s.Kind}
 		values, err := r.Allocate(ctx, w, resources, service)
 		if err != nil {
-			return []db.DeploymentService{}, fmt.Errorf("could not allocate servce of kind %v: %v", s.Kind, err)
+			return []db.DeploymentService{}, fmt.Errorf("could not allocate service of kind %v: %v", s.Kind, err)
 		}
 
 		results = append(results, db.DeploymentService{Name: s.Name, Kind: s.Kind, Provider: w.Workload.GetName(), Properties: values})
@@ -968,7 +971,7 @@ func (sbh *serviceBusHandler) Put(ctx context.Context, resource workloads.Worklo
 
 	sbNamespaceFuture, err := sbc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, namespaceName, servicebus.SBNamespace{
 		Sku: &servicebus.SBSku{
-			Name:     "Standard",
+			Name:     servicebus.Basic,
 			Tier:     servicebus.SkuTierBasic,
 			Capacity: to.Int32Ptr(1),
 		},
@@ -993,10 +996,12 @@ func (sbh *serviceBusHandler) Put(ctx context.Context, resource workloads.Worklo
 
 	queueName, ok := properties["servicebusqueue"]
 	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
+	qc.Authorizer = sbh.arm.Auth
+
 	sbq, err := qc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, namespaceName, queueName, servicebus.SBQueue{
 		Name: to.StringPtr(queueName),
 		SBQueueProperties: &servicebus.SBQueueProperties{
-			MaxSizeInMegabytes: to.Int32Ptr(1000000000),
+			MaxSizeInMegabytes: to.Int32Ptr(1024),
 		},
 	})
 

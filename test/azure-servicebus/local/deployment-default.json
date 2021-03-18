@@ -2,7 +2,10 @@
     "properties": {
         "components": [
             {
-                "componentName": "radius/azure-servicebus/servicebus"
+                "componentName": "radius/azure-servicebus/sb"
+            },
+            {
+                "componentName": "radius/cosmos-container/webapp"
             }
         ]
     }

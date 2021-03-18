@@ -1,0 +1,11 @@
+{
+    "kind": "azure.com/ServiceBus@v1alpha1",
+    "properties": {
+        "config": {
+            "managed": true,
+            "yes": "yes",
+            "namespace": "radius-ns1",
+            "queue": "radius-queue1"
+        }
+    }
+}

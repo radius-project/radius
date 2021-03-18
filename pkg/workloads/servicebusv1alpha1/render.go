@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -23,7 +22,7 @@ type Renderer struct {
 	Arm armauth.ArmConfig
 }
 
-// Allocate is the WorkloadRenderer implementation for cosmos documentdb  workload.
+// Allocate is the WorkloadRenderer implementation for servicebus workload.
 func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
 	if len(wrp) != 1 || wrp[0].Type != "azure.servicebus" {
 		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.servicebus")
@@ -31,11 +30,11 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 	properties := wrp[0].Properties
 	namespaceName := properties["servicebusnamespace"]
-	ruleName := properties["servicebusrule"]
 	queueName := properties["servicebusqueue"]
 
 	sbClient := servicebus.NewNamespacesClient(r.Arm.SubscriptionID)
-	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, ruleName)
+	sbClient.Authorizer = r.Arm.Auth
+	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
@@ -46,20 +45,11 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	}
 
 	cs := accessKeys.PrimaryConnectionString
-	if cs == nil {
-		cs = accessKeys.SecondaryConnectionString
-	}
-
-	u, err := url.Parse(*cs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse connection string as a URL")
-	}
 
 	values := map[string]interface{}{
-		"connectionString": u.String(),
+		"connectionString": *cs,
 		"namespace":        namespaceName,
 		"queue":            queueName,
-		"rule":             ruleName,
 	}
 
 	return values, nil
@@ -80,7 +70,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: "azure.servicebus",
 		Resource: map[string]string{
-			"name": w.Workload.GetName(),
+			"name":                w.Workload.GetName(),
+			"servicebusnamespace": spec.Namespace,
+			"servicebusqueue":     spec.Queue,
+			"servicebusrule":      spec.Rule,
 		},
 	}
 
@@ -89,7 +82,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 }
 
 type serviceBusSpec struct {
-	Managed bool `json:"managed"`
+	Managed   bool   `json:"managed"`
+	Namespace string `json:"namespace"`
+	Queue     string `json:"queue"`
+	Rule      string `json:"rule"`
 }
 
 func getSpec(item unstructured.Unstructured) (serviceBusSpec, error) {

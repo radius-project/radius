@@ -1,0 +1,26 @@
+{
+    "kind": "radius.dev/Container@v1alpha1",
+    "properties": {
+        "run": {
+            "container": {
+                "image": "rynowak/node-todo:latest"
+            }
+        },
+        "provides": [
+            {
+                "name": "public",
+                "kind": "http",
+                "containerPort": 8080
+            }
+        ],
+        "dependsOn": [
+            {
+                "name": "sb",
+                "kind": "azure.com/ServiceBus",
+                "setEnv": {
+                    "SB_CONNECTION": "connectionString"
+                }
+            }
+        ]
+    }
+}
