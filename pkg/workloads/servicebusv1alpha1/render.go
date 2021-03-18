@@ -13,6 +13,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -67,13 +68,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	// generate data we can use to manage a servicebus instance
+	namespaceName := util.GenerateName("radius-ns")
 	resource := workloads.WorkloadResource{
 		Type: "azure.servicebus",
 		Resource: map[string]string{
 			"name":                w.Workload.GetName(),
-			"servicebusnamespace": spec.Namespace,
+			"servicebusnamespace": namespaceName,
 			"servicebusqueue":     spec.Queue,
-			"servicebusrule":      spec.Rule,
 		},
 	}
 
@@ -82,10 +83,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 }
 
 type serviceBusSpec struct {
-	Managed   bool   `json:"managed"`
-	Namespace string `json:"namespace"`
-	Queue     string `json:"queue"`
-	Rule      string `json:"rule"`
+	Managed bool   `json:"managed"`
+	Queue   string `json:"queue"`
 }
 
 func getSpec(item unstructured.Unstructured) (serviceBusSpec, error) {
