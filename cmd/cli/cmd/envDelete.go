@@ -39,8 +39,14 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Validate environment exists, retrieve associated resource group and subscription id
+	rg, subid, err := validateEnvironmentExists(args[0])
+	if err != nil {
+		return err
+	}
+
 	if !noPrompt {
-		confirmed, err := prompt.Confirm("Resource group associated with the environment will be deleted. Continue deleting? [y/n]?")
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource group %s with all its resources will be deleted. Continue deleting? [y/n]?", rg))
 		if err != nil {
 			return err
 		}
@@ -49,12 +55,6 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			logger.LogInfo("Delete cancelled.")
 			return nil
 		}
-	}
-
-	// Validate environment exists, retrieve associated resource group and subscription id
-	rg, subid, err := validateEnvironmentExists(args[0])
-	if err != nil {
-		return err
 	}
 
 	// Delete environment, this will delete the resource group and all the resources in it
@@ -90,7 +90,7 @@ func validateEnvironmentExists(envName string) (string, string, error) {
 
 	envConfig, exists := env.Items[envName]
 	if !exists {
-		return "", "", errors.New("Could not find the specified environment. Use 'rad env list' to list all environments.")
+		return "", "", fmt.Errorf("Could not find the environment %s. Use 'rad env list' to list all environments.", envName)
 	}
 
 	return envConfig["resourcegroup"].(string), envConfig["subscriptionid"].(string), nil
