@@ -4,7 +4,6 @@
         "config": {
             "managed": true,
             "yes": "yes",
-            "namespace": "radius-ns1",
             "queue": "radius-queue1"
         }
     }

@@ -5,7 +5,10 @@
                 "componentName": "radius/azure-servicebus/sb"
             },
             {
-                "componentName": "radius/cosmos-container/webapp"
+                "componentName": "radius/azure-servicebus/receiver"
+            },
+            {
+                "componentName": "radius/azure-servicebus/sender"
             }
         ]
     }

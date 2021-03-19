@@ -1,14 +1,15 @@
 {
     "kind": "radius.dev/Container@v1alpha1",
     "properties": {
+        "name": "receiver",
         "run": {
             "container": {
-                "image": "rynowak/node-todo:latest"
+                "image": "vinayada/servicebus-receiver:latest"
             }
         },
         "provides": [
             {
-                "name": "public",
+                "name": "receiver",
                 "kind": "http",
                 "containerPort": 8080
             }

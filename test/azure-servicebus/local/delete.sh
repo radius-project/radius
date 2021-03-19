@@ -19,7 +19,7 @@ fi
 URL_BASE="http://localhost:5000/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CustomProviders/resourceProviders/$RESOURCE_PROVIDER"
 
 APPLICATION="azure-servicebus"
-COMPONENTS=("servicebus")
+COMPONENTS=("sb" "sender" "receiver")
 DEPLOYMENTS=("default")
 
 for i in ${COMPONENTS[@]}; do

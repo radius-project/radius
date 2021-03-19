@@ -1,12 +1,12 @@
 application app = {
-  name: 'azure-servicebus'
+  name: 'radius-servicebus'
 
-  instance webapp 'radius.dev/Container@v1alpha1' = {
-    name: 'todoapp'
+  instance sender 'radius.dev/Container@v1alpha1' = {
+    name: 'servicebus-sender'
     properties: {
       run: {
         container: {
-          image: 'rynowak/node-todo:latest'
+          image: 'vinayada/servicebus-sender:latest'
         }
       }
       dependsOn: [
@@ -21,14 +21,37 @@ application app = {
     }
   }
 
+  instance receiver 'radius.dev/Container@v1alpha1' = {
+    name: 'servicebus-receiver'
+    properties: {
+      run: {
+        container: {
+          image: 'vinayada/servicebus-receiver:latest'
+        }
+      }
+      dependsOn: [
+        {
+          name: 'sb'
+          kind: 'azure.com/ServiceBus'
+          setEnv: {
+            SB_CONNECTION: 'connectionString'
+          }
+        }
+        {
+          name: 'servicebus-sender'
+          kind: 'radius.dev/Container'
+        }
+      ]
+    }
+  }
+
   instance sb 'azure.com/ServiceBus@v1alpha1' = {
     name: 'sb'
     properties: {
-      config: {
-        managed: true
-        namespace: 'radius-namespace1'
-        queue: 'radius-queue1'
-      }
+        config: {
+            managed: true
+            queue: 'radius-queue1'
+        }
     }
   }
 }

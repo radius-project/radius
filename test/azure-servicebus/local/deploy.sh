@@ -20,7 +20,7 @@ BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 URL_BASE="http://localhost:5000/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CustomProviders/resourceProviders/$RESOURCE_PROVIDER"
 
 APPLICATION="azure-servicebus"
-COMPONENTS=("sb" "webapp")
+COMPONENTS=("sb" "sender" "receiver")
 DEPLOYMENTS=("default")
 
 echo "creating application $APPLICATION"
