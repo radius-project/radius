@@ -16,8 +16,8 @@
         ],
         "dependsOn": [
             {
-                "name": "sb",
-                "kind": "azure.com/ServiceBus",
+                "name": "sbq",
+                "kind": "azure.com/ServiceBusQueue",
                 "setEnv": {
                     "SB_CONNECTION": "connectionString"
                 }

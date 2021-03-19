@@ -1,5 +1,5 @@
 {
-    "kind": "azure.com/ServiceBus@v1alpha1",
+    "kind": "azure.com/ServiceBusQueue@v1alpha1",
     "properties": {
         "config": {
             "managed": true,

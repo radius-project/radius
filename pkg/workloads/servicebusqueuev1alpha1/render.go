@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package servicebusv1alpha1
+package servicebusqueuev1alpha1
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -25,8 +24,12 @@ type Renderer struct {
 
 // Allocate is the WorkloadRenderer implementation for servicebus workload.
 func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	if len(wrp) != 1 || wrp[0].Type != "azure.servicebus" {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.servicebus")
+	if service.Kind != "azure.com/ServiceBusQueue" {
+		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
+	}
+
+	if len(wrp) != 1 || wrp[0].Type != "azure.servicebus.queue" {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.servicebus.queue")
 	}
 
 	properties := wrp[0].Properties
@@ -68,13 +71,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	// generate data we can use to manage a servicebus instance
-	namespaceName := util.GenerateName("radius-ns")
+
 	resource := workloads.WorkloadResource{
-		Type: "azure.servicebus",
+		Type: "azure.servicebus.queue",
 		Resource: map[string]string{
-			"name":                w.Workload.GetName(),
-			"servicebusnamespace": namespaceName,
-			"servicebusqueue":     spec.Queue,
+			"name":            w.Workload.GetName(),
+			"servicebusqueue": spec.Queue,
 		},
 	}
 

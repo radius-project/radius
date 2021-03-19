@@ -12,7 +12,7 @@ application app = {
       dependsOn: [
         {
           name: 'sb'
-          kind: 'azure.com/ServiceBus'
+          kind: 'azure.com/ServiceBusQueue'
           setEnv: {
             SB_CONNECTION: 'connectionString'
           }
@@ -31,8 +31,8 @@ application app = {
       }
       dependsOn: [
         {
-          name: 'sb'
-          kind: 'azure.com/ServiceBus'
+          name: 'sbq'
+          kind: 'azure.com/ServiceBusQueue'
           setEnv: {
             SB_CONNECTION: 'connectionString'
           }
@@ -45,8 +45,8 @@ application app = {
     }
   }
 
-  instance sb 'azure.com/ServiceBus@v1alpha1' = {
-    name: 'sb'
+  instance sbq 'azure.com/ServiceBusQueue@v1alpha1' = {
+    name: 'sbq'
     properties: {
         config: {
             managed: true

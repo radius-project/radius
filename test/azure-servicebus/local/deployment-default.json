@@ -2,7 +2,7 @@
     "properties": {
         "components": [
             {
-                "componentName": "radius/azure-servicebus/sb"
+                "componentName": "radius/azure-servicebus/sbq"
             },
             {
                 "componentName": "radius/azure-servicebus/receiver"

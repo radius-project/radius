@@ -35,9 +35,9 @@ func NewRegistry() Registry {
 				Name: "",
 				Kind: "mongodb.com/Mongo",
 			},
-			"azure.com/ServiceBus@v1alpha1": {
+			"azure.com/ServiceBusQueue@v1alpha1": {
 				Name: "",
-				Kind: "azure.com/ServiceBus",
+				Kind: "azure.com/ServiceBusQueue",
 			},
 		},
 	}
