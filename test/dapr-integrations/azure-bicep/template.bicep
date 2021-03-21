@@ -1,8 +1,9 @@
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-integrations'
 
-  component viewer 'azure.com/WebApp@v1alpha1' = {
+  resource viewer 'Components' = {
     name: 'viewer'
+    kind: 'azure.com/WebApp@v1alpha1'
     properties: {
       run: {
         code: {
@@ -37,8 +38,9 @@ application app = {
     }
   }
 
-  component processor 'radius.dev/Container@v1alpha1' = {
+  resource processor 'Components' = {
     name: 'processor'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -77,8 +79,9 @@ application app = {
     }
   }
   
-  component auditor 'azure.com/Function@v1alpha1' = {
+  resource auditor 'Components' = {
     name: 'auditor'
+    kind: 'azure.com/Function@v1alpha1'
     properties: {
       run: {
         code: {
@@ -127,8 +130,9 @@ application app = {
     }
   }
   
-  component auditstore 'dapr.io/Component@v1alpha1' = {
+  resource auditstore 'Components' = {
     name: 'auditstore'
+    kind: 'dapr.io/Component@v1alpha1'
     properties: {
       config: {
         type: 'state.azure.cosmosdb'
@@ -154,8 +158,9 @@ application app = {
     }
   }
   
-  component orderstore 'dapr.io/Component@v1alpha1' = {
+  resource orderstore 'Components' = {
     name: 'orderstore'
+    kind: 'dapr.io/Component@v1alpha1'
     properties: {
       config: {
         type: 'state.azure.cosmosdb'
@@ -181,8 +186,9 @@ application app = {
     }
   }
   
-  component pubsub 'dapr.io/Component@v1alpha1' = {
+  resource pubsub 'Components' = {
     name: 'pubsub'
+    kind: 'dapr.io/Component@v1alpha1'
     properties: {
       config: {
         type: 'pubsub.azure.servicebus'
@@ -196,8 +202,9 @@ application app = {
     }
   }
   
-  component email 'dapr.io/Component@v1alpha1' = {
+  resource email 'Components' = {
     name: 'email'
+    kind: 'dapr.io/Component@v1alpha1'
     properties: {
       config: {
         type: 'bindings.twilio.sendgrid'
@@ -221,7 +228,7 @@ application app = {
     }
   }
 
-  deployment default = {
+  resource default 'Deployments' = {
     name: 'default'
     properties: {
       components: [
