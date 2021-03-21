@@ -1,4 +1,4 @@
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'frontend-backend'
 
   // deploy two containers
@@ -9,8 +9,9 @@ application app = {
   // - SERVICE__BACKEND__HOST
   // - SERVICE__BACKEND__PORT
 
-  instance frontend 'radius.dev/Container@v1alpha1' = {
+  resource frontend 'Components' = {
     name: 'frontend'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -37,8 +38,9 @@ application app = {
     }
   }
 
-  instance backend 'radius.dev/Container@v1alpha1' = {
+  resource backend 'Components' = {
     name: 'backend'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {

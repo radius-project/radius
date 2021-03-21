@@ -77,7 +77,7 @@ You can start by creating a new `.bicep` file. Call it `template.bicep`.
 Inside `template.bicep`, type in the following content:
 
 ```txt
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
 }
@@ -85,10 +85,10 @@ application app = {
 
 This defines the basic structure of an application. This declaration:
 
-- Defines an application with the variable name of `app`
+- Defines an application resource with the variable name of `app`
 - Assigns the name `dapr-hello` to the application resource that will be created
 
-The syntax of Bicep is similar to JSON with a few differences. Top level declarations like `application` declare a variable, and are followed by an equals-sign `=` an then an object. 
+The syntax of Bicep is similar to JSON with a few differences. Declarations start with `resource`. They also declare a variable, and assign a resource type, and then are followed by an equals-sign `=` and then an object. 
 
 {{% alert title="💡 Declarations" color="primary" %}}
 Declarations in Bicep have symbolic (variable) names associated with them. The variable name `app` could be used in this file to reference the application in other declarations. The value of the `name` property (`dapr-hello`) is what will be used to identify the application during management operations.
@@ -106,49 +106,53 @@ At this point you could deploy the application but it doesn't contain any compon
 
 Now that you've defined the shell for an application, you can add components inside.
 
-### Add an instance
+### Add a component
 Type the additional content from the following text inside your application definition.
 
 ```txt
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1' = {
+  resource nodeapp 'Components' = {
     name: 'nodeapp'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+    }
   }
 }
 ```
 
-If you are using VS Code you may see and error squiggle at this point. You will have a chance to address those errors after a brief explanation.
+If you are using VS Code you may see an error squiggle at this point. You will have a chance to address those errors after a brief explanation.
 
-The content you added declares an *instance*. If you visualize the structure of an application *as a graph* then *instances* represent the nodes. *instances* represent the things to deploy.
+The content you added declares a *component*. If you visualize the structure of an application *as a graph* then *component* represent the nodes. *component* represent the things to deploy.
 
-Instances also include a *type*. In this case the type is `radius.dev/Container@v1alpha1` which represents a generic container.
+Components also include a *kind*. In this case the kind is `radius.dev/Container@v1alpha1` which represents a generic container.
 
-An instance can be:
+A component can be:
 
 - A resource that runs your code (eg. a container)
 - A resource that works with data (eg. a message queue or database)
 - A configuration resource (eg. configuration for an API gateway)
 
-The *type* specifies the type of resource to create. The set of properties and settings available inside the body of the instance depends on the type.
+The *kind* specifies the kind of resource to create. The set of properties and settings available inside the body of the component depends on the kind.
 
 {{% alert title="💡 Naming" color="primary" %}}
-Like the application declaration, instances also declare a variable name. The variable name `nodeapp` could be used in this file to reference the instance in other declarations. The value of the `name` property (also `nodeapp`) is what will be used to identify the instance during management operations.
+Like the application declaration, components also declare a variable name. The variable name `nodeapp` could be used in this file to reference the component in other declarations. The value of the `name` property (also `nodeapp`) is what will be used to identify the component during management operations.
 {{% /alert %}}
 
-### Add instance details
+### Add component details
 
-Now you can fill in the details of the instance. First you should specify the container image.
+Now you can fill in the details of the component. First you should specify the container image.
 
 Type the additional content from the following text inside your application definition.
 
 ```txt
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1' = {
+  resource nodeapp 'Components' = {
     name: 'nodeapp'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -163,7 +167,7 @@ application app = {
 You should no longer see errors due to missing properties. The content that you've just added for `nodeapp` specifies the container image to run. 
 
 {{% alert title="💡 Run" color="primary" %}}
-The `run` section is one of several top level sections in an *instance*. In general instance types that run your code will have a `run` section.
+The `run` section is one of several top level sections in a *component*. In general components that run your code will have a `run` section.
 {{% /alert %}}
 
 You could deploy this now and it will run the `radiusteam/nodeapp` image, however you would have no way to interact with the running application.
@@ -173,11 +177,12 @@ You can add the ability to listen for HTTP traffic as depicted in the diagram ab
 Type the additional content from the following text inside your application definition.
 
 ```txt
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1' = {
+  resource nodeapp 'Components' = {
     name: 'nodeapp'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -196,10 +201,10 @@ application app = {
 }
 ```
 
-What you've added here defines a *service* called `web` and with the kind `http`. Services in Radius are logical connection-points. It's a way that one instance can expose functionality for components of the application to bind to. In this case you've defined an HTTP service that others can use to find the URL of `nodeapp` and sent it HTTP traffic. There is nothing special about the name `web`, it is just an identifier used for the name of the service.
+What you've added here defines a *service* called `web` and with the kind `http`. Services in Radius are logical connection-points. It's a way that one component can expose functionality for components of the application to bind to. In this case you've defined an HTTP service that others can use to find the URL of `nodeapp` and sent it HTTP traffic. There is nothing special about the name `web`, it is just an identifier used for the name of the service.
 
 {{% alert title="💡 HTTP services" color="primary" %}}
-HTTP services in Radius are *internal*, meaning that they are not exposed to internet traffic.
+HTTP services in Radius are *internal*, meaning that they are not exposed to internet traffic by default.
 {{% /alert %}}
 
 {{% alert title="💡 Ports" color="primary" %}}
@@ -248,7 +253,7 @@ This will open a local tunnel on port 3000. Then you can visit the URL `http://l
 If your message matches, then it means that the container is running. When you are done testing press CTRL+C to terminate the port-forward, and you are ready to move on to the next step.
 
 {{% alert title="💡 rad expose" color="primary" %}}
-The `rad expose` command provides the application name, followed by the instance name, followed by a port. If you changed any of these names when deploying, update your command to match.
+The `rad expose` command provides the application name, followed by the component name, followed by a port. If you changed any of these names when deploying, update your command to match.
 {{% /alert %}}
 
 ## Step 3: Adding Dapr and the state store
@@ -256,16 +261,17 @@ The `rad expose` command provides the application name, followed by the instance
 As the message from the previous step stated, you haven't yet added Dapr. You also haven't configured the Azure Table Storage state store. This step will add both of these things.
 
 ### Add trait
-First, you should add a *trait* to the `nodeapp` instance to add Dapr. 
+First, you should add a *trait* to the `nodeapp` component to add Dapr. 
 
 Type the additional content from the following text inside your application definition. What's new this time is the `traits` section.
 
 ```txt
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1' = {
+  resource nodeapp 'Components' = {
     name: 'nodeapp'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -293,25 +299,26 @@ application app = {
 }
 ```
 
-The `traits` section is used to configure cross-cutting behaviors of instances. Since Dapr is not part of the standard definition of a container, it can be added on via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required configuration to Dapr, the app-id and app-port.
+The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added on via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required configuration to Dapr, the app-id and app-port.
 
 {{% alert title="💡 Traits" color="primary" %}}
-The `traits` section is one of several top level sections in an *instance*. Traits are used to configure the instance in a cross-cutting way. Other examples would include handling public traffic (ingress) or scaling.
+The `traits` section is one of several top level sections in a *component*. Traits are used to configure the component in a cross-cutting way. Other examples would include handling public traffic (ingress) or scaling.
 {{% /alert %}}
 
-### Add statestore instance
+### Add statestore component
 Now the nodeapp is hooked up to Dapr, but we still need to address the topic of the state store.
 
-Type the new instance declaration from the following text inside your application definition. Leave your existing declaration for nodeapp unchanged.
+Type the new component declaration from the following text inside your application definition. Leave your existing declaration for nodeapp unchanged.
 
 ```txt
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
   ...
 
-  instance statestore 'dapr.io/StateStore@v1alpha1' = {
+  resource statestore 'Components' = {
     name: 'statestore'
+    kind: 'dapr.io/StateStore@v1alpha1'
     properties: {
       config: {
         kind: 'state.azure.tablestorage'
@@ -322,13 +329,13 @@ application app = {
 }
 ```
 
-This declaration adds the state store as an instance of type `dapr.io/StateStore@v1alpha1`. You've seen instance declarations before, so you can notice some differences with this one. `statestore` has a `config` section instead of a `run` section.
+This declaration adds the state store as a component of kind `dapr.io/StateStore@v1alpha1`. You've seen component declarations before, so you can notice some differences with this one. `statestore` has a `config` section instead of a `run` section.
 
 {{% alert title="💡 Config" color="primary" %}}
-The `config` section is one of several top level sections in an *instance*. In general instance types that represent a data store will have a `config` section
+The `config` section is one of several top level sections in a *component*. In general component that represent a data store will have a `config` section
 {{% /alert %}}
 
-Inside the `config` section you specified a `kind` of `state.azure.tablestorage`. This corresponds to the type of Dapr state store used for [Azure Table Storage](https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/setup-azure-tablestorage/).
+Inside the `config` section you specified a `kind` of `state.azure.tablestorage`. This corresponds to the kind of Dapr state store used for [Azure Table Storage](https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/setup-azure-tablestorage/).
 
 Inside the `config` section you specified `managed: true`. This flag tells Radius to manage the lifetime of the Azure Storage account for you. The Azure Storage account will be deleted when you delete the application.
 
@@ -337,16 +344,17 @@ If you have used Dapr before, you may notice that you neither had to create the 
 {{% /alert %}}
 
 ### Reference statestore from application
-Now that you've created the state store as an instance, you can reference it from nodeapp to connect them.
+Now that you've created the state store as an component, you can reference it from nodeapp to connect them.
 
 Type the additional content from the following text inside your application definition. What's new this time is the `dependsOn` section.
 
 ```txt
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1' = {
+  resource nodeapp 'Components' = {
     name: 'nodeapp'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -377,10 +385,12 @@ application app = {
       ]
     }
   }
+
+  ...
 }
 ```
 
-The `dependsOn` section is used to configure relationships between an instance and services provided by other instances. Since the `statestore` is of type `dapr.io/StateStore@v1alpha1` it is considered to provide a service of kind `dapr.io/StateStore` implicitly. Configuring a dependency on a service is the oth part of specifying a relation. This declares the *intention* from the `nodeapp` component to communicate with the `statestore` using `dapr.io/StateStore` as the protocol.
+The `dependsOn` section is used to configure relationships between a component and services provided by other componentss. Since the `statestore` is of kind `dapr.io/StateStore@v1alpha1` it is considered to provide a service of kind `dapr.io/StateStore` implicitly. Configuring a dependency on a service is the oth part of specifying a relation. This declares the *intention* from the `nodeapp` component to communicate with the `statestore` using `dapr.io/StateStore` as the protocol.
 
 {{% alert title="💡 Relationships" color="primary" %}}
 Radius captures the relationships and intentions behind an application so that they can simplify deployment. Examples of this include wiring up connection strings, or granting permissions, or restarting components when a dependency changes.
@@ -412,19 +422,20 @@ If your message matches, then it means that the container is able to communicate
 
 ## Step 4: Adding pythonapp
 
-To complete the application, you need to add another instance for the pythonapp.
+To complete the application, you need to add another component for the pythonapp.
 
-### Add pythonapp instance
-Type the new instance declaration from the following text inside your application definition. Leave your existing declarations for nodeapp and statestore unchanged.
+### Add pythonapp component
+Type the new component declaration from the following text inside your application definition. Leave your existing declarations for nodeapp and statestore unchanged.
 
 ```txt
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
   ...
 
-  instance pythonapp 'radius.dev/Container@v1alpha1' = {
+  resource pythonapp 'Components' = {
     name: 'pythonapp'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {

@@ -1,8 +1,9 @@
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
-  instance nodeapp 'radius.dev/Container@v1alpha1' = {
+  resource nodeapp 'Components' = {
     name: 'nodeapp'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -34,8 +35,9 @@ application app = {
     }
   }
   
-  instance pythonapp 'radius.dev/Container@v1alpha1' = {
+  resource pythonapp 'Components' = {
     name: 'pythonapp'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -60,7 +62,7 @@ application app = {
   }
   
   // Imagine this deployment in a separate file/repo
-  deployment default = {
+  resource default 'Deployments' = {
     name: 'default'
     properties: {
       components: [
@@ -71,8 +73,9 @@ application app = {
     }
   }
   
-  component statestore 'dapr.io/Component@v1alpha1' = {
+  resource statestore 'Components' = {
     name: 'statestore'
+    kind: 'dapr.io/Component@v1alpha1'
     properties: {
       config: {
         type: 'state.azure.tablestorage'

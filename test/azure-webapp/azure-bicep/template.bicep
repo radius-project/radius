@@ -1,9 +1,10 @@
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'azure-webapp'
 
   // Using a similar schema to k4se
-  instance webapp 'azure.com/WebApp@v1alpha1' = {
+  resource webapp 'Components' = {
     name: 'webapp'
+    kind: 'azure.com/WebApp@v1alpha1'
     properties: {
       run: {
         code: {

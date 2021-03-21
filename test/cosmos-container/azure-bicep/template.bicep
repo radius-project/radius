@@ -1,8 +1,9 @@
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'cosmos-container'
   
-  instance webapp 'radius.dev/Container@v1alpha1' = {
+  resource webapp 'Components' = {
     name: 'todoapp'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -21,8 +22,9 @@ application app = {
     }
   }
 
-  instance db 'azure.com/CosmosDocumentDb@v1alpha1' = {
+  resource db 'Components' = {
     name: 'db'
+    kind: 'azure.com/CosmosDocumentDb@v1alpha1'
     properties: {
       config: {
         managed: true
