@@ -13,10 +13,19 @@ To begin this tutorial you should have already completed the following steps:
 - [Install Radius CLI]({{< ref install-cli.md >}})
 - [Create an environment]({{< ref create-environment.md >}})
 - [Install Kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [(Recommended) Install Visual Studio Code](https://code.visualstudio.com/)
 
 No prior knowledge of Radius is needed, this tutorial will walk you through authoring the deployment template and deploying a microservices application from first principles.
 
-If you are using Visual Studio Code with the Project Radius extension you should see syntax highlighting. If you have the offical Bicep extension installed, you should disable it for this tutorial. The instructions will refer to VS Code features like syntax highlighting and the problems windows - however, you can complete this tutorial with just a basic text editor.
+Using [Visual Studio Code](https://code.visualstudio.com/) as your editor for this tutorial is highly recommended. The [installation guide]({{< ref install-cli.md >}}) includes instructions for installing the Project Radius extension which provides syntax highlighting, completion, and linting.
+
+You can also complete this tutorial with any basic text editor.
+
+## Before you begin
+
+This is a tutorial that will teach you how to use Radius to deploy a microservices application from first principles. As part of this tutorial you will learn the basic syntax of the Bicep language as well as the concepts of the Radius application model.
+
+The application in this tutorial uses [Dapr](https://dapr.io). You do not need experience with Dapr to complete the tutorial.
 
 ## Understanding the application
 
@@ -88,15 +97,15 @@ This defines the basic structure of an application. This declaration:
 - Defines an application resource with the variable name of `app`
 - Assigns the name `dapr-hello` to the application resource that will be created
 
-The syntax of Bicep is similar to JSON with a few differences. Declarations start with `resource`. They also declare a variable, and assign a resource type, and then are followed by an equals-sign `=` and then an object. 
+Declarations in Bicep start with `resource`. They also declare a variable, and assign a resource type, and then are followed by an equals-sign `=` and then an object. 
 
 {{% alert title="💡 Declarations" color="primary" %}}
 Declarations in Bicep have symbolic (variable) names associated with them. The variable name `app` could be used in this file to reference the application in other declarations. The value of the `name` property (`dapr-hello`) is what will be used to identify the application during management operations.
 {{% /alert %}}
 
-An object (after the equals-sign) is similar to a JSON object.  Objects in Bicep don't need quotes around property names like in JSON. Properties in Bicep are separated by newlines, not commas. In general Bicep will require less typing than the equivalent JSON but they can express similar structures.
+{{% alert title="💡 Bicep Syntax" color="primary" %}}
+Objects in Bicep don't need quotes around property names like in JSON. Properties in Bicep are separated by newlines, not commas. In general Bicep will require less typing than the equivalent JSON but they can express similar structures.
 
-{{% alert title="💡 Indentation" color="primary" %}}
 While Bicep uses newlines to separate properties and other syntax, it is not sensitive to indention like YAML is. By convention Bicep uses 2 spaces for indentation, but it is just a convention and not required.
 {{% /alert %}}
 
@@ -107,44 +116,7 @@ At this point you could deploy the application but it doesn't contain any compon
 Now that you've defined the shell for an application, you can add components inside.
 
 ### Add a component
-Type the additional content from the following text inside your application definition.
-
-```txt
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'dapr-hello'
-
-  resource nodeapp 'Components' = {
-    name: 'nodeapp'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-    }
-  }
-}
-```
-
-If you are using VS Code you may see an error squiggle at this point. You will have a chance to address those errors after a brief explanation.
-
-The content you added declares a *component*. If you visualize the structure of an application *as a graph* then *component* represent the nodes. *component* represent the things to deploy.
-
-Components also include a *kind*. In this case the kind is `radius.dev/Container@v1alpha1` which represents a generic container.
-
-A component can be:
-
-- A resource that runs your code (eg. a container)
-- A resource that works with data (eg. a message queue or database)
-- A configuration resource (eg. configuration for an API gateway)
-
-The *kind* specifies the kind of resource to create. The set of properties and settings available inside the body of the component depends on the kind.
-
-{{% alert title="💡 Naming" color="primary" %}}
-Like the application declaration, components also declare a variable name. The variable name `nodeapp` could be used in this file to reference the component in other declarations. The value of the `name` property (also `nodeapp`) is what will be used to identify the component during management operations.
-{{% /alert %}}
-
-### Add component details
-
-Now you can fill in the details of the component. First you should specify the container image.
-
-Type the additional content from the following text inside your application definition.
+Type the additional content from the following text inside your application definition. What's new is the `nodeapp` component.
 
 ```txt
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -164,12 +136,27 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-You should no longer see errors due to missing properties. The content that you've just added for `nodeapp` specifies the container image to run. 
+The content you added declares a *component*. If you visualize the structure of an application *as a graph* then *component* represent the nodes. *component* represent the things to deploy.
+
+Components also include a *kind*. In this case the kind is `radius.dev/Container@v1alpha1` which represents a generic container.
+
+A component can be:
+
+- A resource that runs your code (eg. a container)
+- A resource that works with data (eg. a message queue or database)
+- A configuration resource (eg. configuration for an API gateway)
+
+The *kind* specifies the kind of resource to create. The set of properties and settings available inside the body of the component depends on the kind. The `run` section is used to specify how the component runs. In this case `run` specifies a container image to run. 
+
+{{% alert title="💡 Naming" color="primary" %}}
+Like the application declaration, components also declare a variable name. The variable name `nodeapp` could be used in this file to reference the component in other declarations. The value of the `name` property (also `nodeapp`) is what will be used to identify the component during management operations.
+{{% /alert %}}
 
 {{% alert title="💡 Run" color="primary" %}}
 The `run` section is one of several top level sections in a *component*. In general components that run your code will have a `run` section.
 {{% /alert %}}
 
+### Add HTTP
 You could deploy this now and it will run the `radiusteam/nodeapp` image, however you would have no way to interact with the running application.
 
 You can add the ability to listen for HTTP traffic as depicted in the diagram above.
@@ -205,10 +192,6 @@ What you've added here defines a *service* called `web` and with the kind `http`
 
 {{% alert title="💡 HTTP services" color="primary" %}}
 HTTP services in Radius are *internal*, meaning that they are not exposed to internet traffic by default.
-{{% /alert %}}
-
-{{% alert title="💡 Ports" color="primary" %}}
-Other technologies you might have used specify `ports` as part of the container definition. Radius supports that style of definition as well, but it is more useful to attach operation details like port numbers to *behavior* and *protocols*. This is how Radius helps you capture the logical meaning behind the details.
 {{% /alert %}}
 
 ### Deploy application
@@ -390,7 +373,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-The `dependsOn` section is used to configure relationships between a component and services provided by other componentss. Since the `statestore` is of kind `dapr.io/StateStore@v1alpha1` it is considered to provide a service of kind `dapr.io/StateStore` implicitly. Configuring a dependency on a service is the oth part of specifying a relation. This declares the *intention* from the `nodeapp` component to communicate with the `statestore` using `dapr.io/StateStore` as the protocol.
+The `dependsOn` section is used to configure relationships between a component and services provided by other componentss. Since the `statestore` is of kind `dapr.io/StateStore@v1alpha1` it is considered to provide a service of kind `dapr.io/StateStore` implicitly. Configuring a dependency on a service is the other part of specifying a relation. This declares the *intention* from the `nodeapp` component to communicate with the `statestore` using `dapr.io/StateStore` as the protocol.
 
 {{% alert title="💡 Relationships" color="primary" %}}
 Radius captures the relationships and intentions behind an application so that they can simplify deployment. Examples of this include wiring up connection strings, or granting permissions, or restarting components when a dependency changes.
