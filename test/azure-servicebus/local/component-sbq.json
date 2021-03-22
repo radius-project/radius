@@ -4,7 +4,7 @@
         "config": {
             "managed": true,
             "yes": "yes",
-            "queue": "radius-queue1"
+            "queue": "myqueue"
         }
     }
 }

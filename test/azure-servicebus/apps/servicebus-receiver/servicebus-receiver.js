@@ -2,9 +2,8 @@ const { ServiceBusClient } = require("@azure/service-bus");
 
 // connection string to your Service Bus namespace
 const connectionString = process.env.SB_CONNECTION
-
 // name of the queue
-const queueName = "radius-queue1"
+const queueName = process.env.SB_QUEUE
 
 async function main() {
 	var loop = true;

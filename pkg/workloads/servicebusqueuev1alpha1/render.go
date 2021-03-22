@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// Renderer is the WorkloadRenderer implementation for the cosmos documentdb workload.
+// Renderer is the WorkloadRenderer implementation for the service bus workload.
 type Renderer struct {
 	Arm armauth.ArmConfig
 }

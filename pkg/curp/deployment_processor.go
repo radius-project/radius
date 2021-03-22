@@ -19,7 +19,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/db"
-	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1"
@@ -970,7 +970,7 @@ func (sbh *serviceBusQueueHandler) Put(ctx context.Context, resource workloads.W
 		sbNamespace = sbItr.Value()
 	} else {
 		// Generate a random namespace name
-		namespaceName := util.GenerateName("radius-ns")
+		namespaceName := namegenerator.GenerateName("radius-ns")
 
 		// TODO: for now we just use the resource-groups location. This would be a place where we'd plug
 		// in something to do with data locality.
@@ -979,7 +979,7 @@ func (sbh *serviceBusQueueHandler) Put(ctx context.Context, resource workloads.W
 
 		g, err := rgc.Get(ctx, sbh.arm.ResourceGroup)
 		if err != nil {
-			return nil, fmt.Errorf("failed to PUT storage account: %w", err)
+			return nil, fmt.Errorf("failed to PUT service bus: %w", err)
 		}
 
 		sbNamespaceFuture, err := sbc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, namespaceName, servicebus.SBNamespace{
@@ -1010,6 +1010,9 @@ func (sbh *serviceBusQueueHandler) Put(ctx context.Context, resource workloads.W
 	properties["servicebusid"] = *sbNamespace.ID
 
 	queueName, ok := properties["servicebusqueue"]
+	if !ok {
+		return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+	}
 	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
 	qc.Authorizer = sbh.arm.Auth
 

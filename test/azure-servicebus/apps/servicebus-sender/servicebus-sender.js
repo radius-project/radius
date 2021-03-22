@@ -5,7 +5,7 @@ const { sprintf } = require("sprintf-js");
 const connectionString = process.env.SB_CONNECTION
 console.log(connectionString)
 // name of the queue
-const queueName = "radius-queue1"
+const queueName = process.env.SB_QUEUE
 
 async function main() {
 	// create a Service Bus client using the connection string to the Service Bus namespace

@@ -15,6 +15,7 @@ application app = {
           kind: 'azure.com/ServiceBusQueue'
           setEnv: {
             SB_CONNECTION: 'connectionString'
+            SB_QUEUE: 'queue'
           }
         }
       ]
@@ -35,6 +36,7 @@ application app = {
           kind: 'azure.com/ServiceBusQueue'
           setEnv: {
             SB_CONNECTION: 'connectionString'
+            SB_QUEUE: 'queue'
           }
         }
         {

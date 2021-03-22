@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package util
+package namegenerator
 
 import (
 	"bytes"

@@ -19,7 +19,8 @@
                 "name": "sbq",
                 "kind": "azure.com/ServiceBusQueue",
                 "setEnv": {
-                    "SB_CONNECTION": "connectionString"
+                    "SB_CONNECTION": "connectionString",
+                    "SB_QUEUE": "queue"
                 }
             }
         ]
