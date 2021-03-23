@@ -1,8 +1,9 @@
-application app = {
+resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'radius-servicebus'
 
-  instance sender 'radius.dev/Container@v1alpha1' = {
+  resource sender 'Components' = {
     name: 'servicebus-sender'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -11,10 +12,11 @@ application app = {
       }
       dependsOn: [
         {
-          name: 'sb'
+          name: 'sbq'
           kind: 'azure.com/ServiceBusQueue'
           setEnv: {
             SB_CONNECTION: 'connectionString'
+            SB_NAMESPACE: 'namespace'
             SB_QUEUE: 'queue'
           }
         }
@@ -22,8 +24,9 @@ application app = {
     }
   }
 
-  instance receiver 'radius.dev/Container@v1alpha1' = {
+  resource receiver 'Components' = {
     name: 'servicebus-receiver'
+    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
@@ -36,6 +39,7 @@ application app = {
           kind: 'azure.com/ServiceBusQueue'
           setEnv: {
             SB_CONNECTION: 'connectionString'
+            SB_NAMESPACE: 'namespace'
             SB_QUEUE: 'queue'
           }
         }
@@ -47,8 +51,9 @@ application app = {
     }
   }
 
-  instance sbq 'azure.com/ServiceBusQueue@v1alpha1' = {
+  resource sbq 'Components' = {
     name: 'sbq'
+    kind: 'azure.com/ServiceBusQueue@v1alpha1'
     properties: {
         config: {
             managed: true
