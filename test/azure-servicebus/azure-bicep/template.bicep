@@ -2,7 +2,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'radius-servicebus'
 
   resource sender 'Components' = {
-    name: 'servicebus-sender'
+    name: 'sender'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
@@ -25,7 +25,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
   }
 
   resource receiver 'Components' = {
-    name: 'servicebus-receiver'
+    name: 'receiver'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
@@ -42,10 +42,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
             SB_NAMESPACE: 'namespace'
             SB_QUEUE: 'queue'
           }
-        }
-        {
-          name: 'servicebus-sender'
-          kind: 'radius.dev/Container'
         }
       ]
     }
