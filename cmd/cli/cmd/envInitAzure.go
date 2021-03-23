@@ -12,11 +12,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
+	containerserviceclient "github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2018-03-31/containerservice"
 	"github.com/Azure/azure-sdk-for-go/services/preview/customproviders/mgmt/2018-09-01-preview/customproviders"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/go-autorest/autorest"
@@ -173,7 +175,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (az
 	}
 
 	if subs.Default != nil {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Use Subcription '%v' [y/n]?", subs.Default.DisplayName))
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Use Subscription '%v' [y/n]?", subs.Default.DisplayName))
 		if err != nil {
 			return azure.Subscription{}, err
 		}
@@ -215,28 +217,19 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	}
 
 	logger.LogInfo("Resource Group '%v' will be created...", name)
-	location, err := prompt.Text("Enter a valid Azure location:", func(input string) (bool, error) {
-		sc := subscription.NewSubscriptionsClient()
-		sc.Authorizer = authorizer
 
-		locres, err := sc.ListLocations(ctx, sub.SubscriptionID)
-		if err != nil {
-			return false, fmt.Errorf("failed to list locations: %v", err)
-		}
+	// We need to find the list of locations where custom resource providers are supported
+	locations, err := getSupportedLocations(ctx, authorizer, sub)
+	if err != nil {
+		return "", fmt.Errorf("cannot find supported locations: %w", err)
+	}
 
-		locations := *locres.Value
-		for _, loc := range locations {
-			if strings.EqualFold(*loc.Name, input) {
-				return true, nil
-			}
-		}
-
-		return false, nil
-	})
+	index, err := prompt.Select("Select a location:", locations)
 	if err != nil {
 		return "", err
 	}
 
+	location := locations[index]
 	_, err = rgc.CreateOrUpdate(ctx, name, resources.Group{
 		Location: to.StringPtr(location),
 	})
@@ -245,6 +238,36 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	}
 
 	return name, nil
+}
+
+func getSupportedLocations(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription) ([]string, error) {
+	pc := resources.NewProvidersClient(sub.SubscriptionID)
+	pc.Authorizer = authorizer
+
+	provider, err := pc.Get(ctx, "Microsoft.CustomProviders", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to find Microsoft.CustomProviders namespace")
+	}
+
+	if provider.ResourceTypes == nil {
+		return nil, errors.New("provider response does not include resource types")
+	}
+
+	for _, t := range *provider.ResourceTypes {
+		if *t.ResourceType != "resourceProviders" {
+			continue
+		}
+
+		if t.Locations == nil {
+			return nil, errors.New("locations were nil for resourceProviders")
+		}
+
+		// alphabetize so the list is stable and scannable
+		sort.Strings(*t.Locations)
+		return *t.Locations, nil
+	}
+
+	return nil, errors.New("could not find resourceProviders resource type")
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string) error {
@@ -284,7 +307,13 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
-	deployment, err := deployEnvironment(ctx, armauth, subscriptionID, resourceGroup, deploymentTemplate)
+	kubernetesVersion, err := findKubernetesVersion(ctx, armauth, subscriptionID, resourceGroup)
+	if err != nil {
+		return err
+	}
+
+	params := deploymentParameters{DeploymentTemplate: deploymentTemplate, KubernetesVersion: kubernetesVersion}
+	deployment, err := deployEnvironment(ctx, armauth, subscriptionID, resourceGroup, params)
 	if err != nil {
 		return err
 	}
@@ -365,7 +394,6 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 }
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
-
 	groupsClient := resources.NewGroupsClient(subscriptionID)
 	a, err := utils.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
@@ -387,7 +415,39 @@ func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName,
 	return nil
 }
 
-func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, deploymentTemplate string) (resources.DeploymentExtended, error) {
+func findKubernetesVersion(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (string, error) {
+	rgc := resources.NewGroupsClient(subscriptionID)
+	rgc.Authorizer = authorizer
+
+	group, err := rgc.Get(ctx, resourceGroup)
+	if err != nil {
+		return "", fmt.Errorf("cannot get resource group %v: %w", resourceGroup, err)
+	}
+
+	k8sc := containerserviceclient.NewContainerServicesClient(subscriptionID)
+	k8sc.Authorizer = authorizer
+
+	result, err := k8sc.ListOrchestrators(ctx, *group.Location, "")
+	if err != nil {
+		return "", fmt.Errorf("cannot get AKS version: %w", err)
+	}
+
+	if result.OrchestratorVersionProfileProperties == nil || result.OrchestratorVersionProfileProperties.Orchestrators == nil {
+		return "", errors.New("AKS version response has missing data")
+	}
+
+	for _, v := range *result.OrchestratorVersionProfileProperties.Orchestrators {
+		if v.Default == nil || !*v.Default {
+			continue
+		}
+
+		return *v.OrchestratorVersion, nil
+	}
+
+	return "", errors.New("could not find a default version for Kubernetes")
+}
+
+func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
 	step := logger.BeginStep("Deploying Environment...")
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
@@ -404,6 +464,9 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subs
 		"_scriptUri": map[string]interface{}{
 			"value": clusterInitScriptURI,
 		},
+		"kubernetesVersion": map[string]interface{}{
+			"value": params.KubernetesVersion,
+		},
 	}
 
 	deploymentProperties := &resources.DeploymentProperties{
@@ -411,13 +474,13 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subs
 		Mode:       resources.Incremental,
 	}
 
-	if deploymentTemplate == "" {
+	if params.DeploymentTemplate == "" {
 		deploymentProperties.TemplateLink = &resources.TemplateLink{
 			URI: to.StringPtr(armTemplateURI),
 		}
 	} else {
-		logger.LogInfo("overriding deployment template: %v", deploymentTemplate)
-		templateContent, err := ioutil.ReadFile(deploymentTemplate)
+		logger.LogInfo("overriding deployment template: %v", params.DeploymentTemplate)
+		templateContent, err := ioutil.ReadFile(params.DeploymentTemplate)
 		if err != nil {
 			return resources.DeploymentExtended{}, fmt.Errorf("could not read deployment template: %w", err)
 		}
@@ -509,4 +572,9 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 
 	logger.CompleteStep(step)
 	return nil
+}
+
+type deploymentParameters struct {
+	DeploymentTemplate string
+	KubernetesVersion  string
 }
