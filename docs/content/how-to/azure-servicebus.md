@@ -39,12 +39,13 @@ docker push <your docker hub>/servicebus-receiver
 
 Note: You need to reference your new image as the container image in the deployment template:-
 ```
-instance receiver 'radius.dev/Container@v1alpha1' = {
-  name: 'servicebus-receiver'
+resource receiver 'Components' = {
+  name: 'receiver'
+  kind: 'radius.dev/Container@v1alpha1'
   properties: {
     run: {
       container: {
-        image: 'vinayada/servicebus-receiver:latest'
+        image: '<your docker hub>/servicebus-receiver:latest'
       }
     }
     dependsOn: [
@@ -53,12 +54,9 @@ instance receiver 'radius.dev/Container@v1alpha1' = {
         kind: 'azure.com/ServiceBusQueue'
         setEnv: {
           SB_CONNECTION: 'connectionString'
+          SB_NAMESPACE: 'namespace'
           SB_QUEUE: 'queue'
         }
-      }
-      {
-        name: 'servicebus-sender'
-        kind: 'radius.dev/Container'
       }
     ]
   }
@@ -76,20 +74,22 @@ docker push <your docker hub>/servicebus-sender
 
 Note: You need to reference your new image as the container image in the deployment template:-
 ```
-instance sender 'radius.dev/Container@v1alpha1' = {
-  name: 'servicebus-sender'
+resource sender 'Components' = {
+  name: 'sender'
+  kind: 'radius.dev/Container@v1alpha1'
   properties: {
     run: {
       container: {
-        image: 'vinayada/servicebus-sender:latest'
+        image: '<your docker hub>/servicebus-sender:latest'
       }
     }
     dependsOn: [
       {
-        name: 'sb'
+        name: 'sbq'
         kind: 'azure.com/ServiceBusQueue'
         setEnv: {
           SB_CONNECTION: 'connectionString'
+          SB_NAMESPACE: 'namespace'
           SB_QUEUE: 'queue'
         }
       }
@@ -101,8 +101,9 @@ instance sender 'radius.dev/Container@v1alpha1' = {
 ### Azure Service Bus
 Radius will create a new ServiceBus namespace if one does not already exist in the resource group and add the queue name "radius-queue1" as specified in the deployment template below. If you change the queue name, it is automatically injected into the sender/receiver app containers and they start sending/listening on the new queue accoridingly.:-
 ```
-instance sbq 'azure.com/ServiceBusQueue@v1alpha1' = {
+resource sbq 'Components' = {
   name: 'sbq'
+  kind: 'azure.com/ServiceBusQueue@v1alpha1'
   properties: {
       config: {
           managed: true
