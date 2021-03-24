@@ -13,11 +13,13 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2015-06-15/storage"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/db"
+	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1"
@@ -26,6 +28,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/workloads/functionv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/ingress"
+	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
 	"github.com/Azure/radius/pkg/workloads/webappv1alpha1"
 	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -130,6 +133,10 @@ type cosmosDocumentDbHandler struct {
 	arm armauth.ArmConfig
 }
 
+type serviceBusQueueHandler struct {
+	arm armauth.ArmConfig
+}
+
 // NewDeploymentProcessor initializes a deployment processor.
 func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
 	d := workloads.Dispatcher{
@@ -140,6 +147,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			{APIVersion: "azure.com/v1alpha1", Kind: "Function"}:         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
 			{APIVersion: "azure.com/v1alpha1", Kind: "WebApp"}:           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
 			{APIVersion: "radius.dev/v1alpha1", Kind: "Container"}:       &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
+			{APIVersion: "azure.com/v1alpha1", Kind: "ServiceBusQueue"}:  &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		},
 	}
 
@@ -148,6 +156,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			"kubernetes":                   &kubernetesHandler{k8s},
 			"dapr.statestore.azurestorage": &storageStateStoreHandler{arm, k8s},
 			"azure.cosmos.documentdb":      &cosmosDocumentDbHandler{arm},
+			"azure.servicebus.queue":       &serviceBusQueueHandler{arm},
 		},
 	}
 
@@ -490,7 +499,7 @@ func (dp *deploymentProcessor) renderServices(ctx context.Context, w workloads.I
 		service := workloads.WorkloadService{Name: s.Name, Kind: s.Kind}
 		values, err := r.Allocate(ctx, w, resources, service)
 		if err != nil {
-			return []db.DeploymentService{}, fmt.Errorf("could not allocate servce of kind %v: %v", s.Kind, err)
+			return []db.DeploymentService{}, fmt.Errorf("could not allocate service of kind %v: %v", s.Kind, err)
 		}
 
 		results = append(results, db.DeploymentService{Name: s.Name, Kind: s.Kind, Provider: w.Workload.GetName(), Properties: values})
@@ -916,6 +925,153 @@ func (cddh *cosmosDocumentDbHandler) Delete(ctx context.Context, properties map[
 	_, err = accountFuture.Result(dac)
 	if err != nil {
 		return fmt.Errorf("failed to DELETE cosmosdb account: %w", err)
+	}
+
+	return nil
+}
+
+func (sbh *serviceBusQueueHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+	if resource.Type != "azure.servicebus.queue" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	return properties, nil
+}
+
+func (sbh *serviceBusQueueHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
+	if resource.Type != "azure.servicebus.queue" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	mergeProperties(properties, existing)
+
+	sbc := servicebus.NewNamespacesClient(sbh.arm.SubscriptionID)
+	sbc.Authorizer = sbh.arm.Auth
+
+	// Check if a service bus namespace exists in the resource group
+	sbItr, err := sbc.ListByResourceGroupComplete(ctx, sbh.arm.ResourceGroup)
+	if err != nil {
+		return nil, errors.New("Failed to list service bus namespaces")
+	}
+
+	var sbNamespace servicebus.SBNamespace
+	if sbItr.NotDone() {
+		// A service bus namespace already exists
+		sbNamespace = sbItr.Value()
+	} else {
+		// Generate a random namespace name
+		namespaceName := namegenerator.GenerateName("radius-ns")
+
+		// TODO: for now we just use the resource-groups location. This would be a place where we'd plug
+		// in something to do with data locality.
+		rgc := resources.NewGroupsClient(sbh.arm.SubscriptionID)
+		rgc.Authorizer = sbh.arm.Auth
+
+		g, err := rgc.Get(ctx, sbh.arm.ResourceGroup)
+		if err != nil {
+			return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+		}
+
+		sbNamespaceFuture, err := sbc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, namespaceName, servicebus.SBNamespace{
+			Sku: &servicebus.SBSku{
+				Name:     servicebus.Basic,
+				Tier:     servicebus.SkuTierBasic,
+				Capacity: to.Int32Ptr(1),
+			},
+			Location: g.Location,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+		}
+
+		err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
+		if err != nil {
+			return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+		}
+
+		sbNamespace, err = sbNamespaceFuture.Result(sbc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+		}
+	}
+
+	// store account so we can delete later
+	properties["servicebusnamespace"] = *sbNamespace.Name
+	properties["servicebusid"] = *sbNamespace.ID
+
+	queueName, ok := properties["servicebusqueue"]
+	if !ok {
+		return nil, fmt.Errorf("failed to PUT service bus: %w", err)
+	}
+	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
+	qc.Authorizer = sbh.arm.Auth
+
+	sbq, err := qc.CreateOrUpdate(ctx, sbh.arm.ResourceGroup, *sbNamespace.Name, queueName, servicebus.SBQueue{
+		Name: to.StringPtr(queueName),
+		SBQueueProperties: &servicebus.SBQueueProperties{
+			MaxSizeInMegabytes: to.Int32Ptr(1024),
+		},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT servicebus queue: %w", err)
+	}
+
+	// store db so we can delete later
+	properties["queueName"] = *sbq.Name
+	return properties, nil
+}
+
+func (sbh *serviceBusQueueHandler) Delete(ctx context.Context, properties map[string]string) error {
+	namespaceName := properties["servicebusnamespace"]
+	queueName := properties["servicebusqueue"]
+
+	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
+	qc.Authorizer = sbh.arm.Auth
+
+	_, err := qc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName, queueName)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
+	}
+
+	qItr, err := qc.ListByNamespaceComplete(ctx, sbh.arm.ResourceGroup, namespaceName, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
+	}
+
+	if qItr.NotDone() {
+		// There are other queues in the same service bus namespace. Do not remove the namespace as a part of this delete deployment
+		return nil
+	}
+
+	// The last queue in the service bus namespace was deleted. Now delete the namespace as well
+	sbc := servicebus.NewNamespacesClient(sbh.arm.SubscriptionID)
+	sbc.Authorizer = sbh.arm.Auth
+
+	sbNamespaceFuture, err := sbc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName)
+
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+	}
+
+	err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+	}
+
+	_, err = sbNamespaceFuture.Result(sbc)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
 	}
 
 	return nil

@@ -1,0 +1,28 @@
+{
+    "kind": "radius.dev/Container@v1alpha1",
+    "properties": {
+        "name": "sender",
+        "run": {
+            "container": {
+                "image": "vinayada/servicebus-sender:latest"
+            }
+        },
+        "provides": [
+            {
+                "name": "sender",
+                "kind": "http",
+                "containerPort": 8080
+            }
+        ],
+        "dependsOn": [
+            {
+                "name": "sbq",
+                "kind": "azure.com/ServiceBusQueue",
+                "setEnv": {
+                    "SB_CONNECTION": "connectionString",
+                    "SB_QUEUE": "queue"
+                }
+            }
+        ]
+    }
+}

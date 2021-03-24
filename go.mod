@@ -4,7 +4,9 @@ go 1.16
 
 require (
 	github.com/Azure/azure-sdk-for-go v52.3.1+incompatible
+	github.com/Azure/azure-service-bus-go v0.10.11 // indirect
 	github.com/Azure/azure-storage-blob-go v0.13.0
+	github.com/Azure/go-amqp v0.13.6 // indirect
 	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.2
@@ -20,6 +22,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/klauspost/compress v1.11.12 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/mitchellh/go-homedir v1.1.0
@@ -29,7 +32,7 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	go.mongodb.org/mongo-driver v1.5.0
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+	golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/text v0.3.5 // indirect
