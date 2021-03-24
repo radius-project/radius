@@ -23,7 +23,7 @@ var (
 func findTestCluster(ctx context.Context) (string, error) {
 	file, err := os.Open("deploy-tests-clusters.txt")
 	if err != nil {
-		return "", fmt.Errorf("cannot read test cluster manifest: %v", err)
+		return "", fmt.Errorf("cannot read test cluster manifest: %w", err)
 	}
 	defer file.Close()
 
@@ -33,7 +33,7 @@ func findTestCluster(ctx context.Context) (string, error) {
 		// Check if cluster is in use
 		err = utils.AcquireStorageContainerLease(ctx, accountName, accountGroupName, testClusterName)
 		if err != nil {
-			fmt.Printf("Test cluster: %s not available.", testClusterName)
+			fmt.Printf("Test cluster: %s not available. err: %v\n", testClusterName, err)
 			continue
 		}
 

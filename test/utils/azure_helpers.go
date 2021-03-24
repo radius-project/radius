@@ -9,9 +9,10 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2015-06-15/storage"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/radius/test/config"
 )
@@ -83,20 +84,44 @@ func getContainerURL(ctx context.Context, accountName, accountGroupName, contain
 }
 
 func getAccountPrimaryKey(ctx context.Context, accountName, accountGroupName string) (string, error) {
-	response, err := GetAccountKeys(ctx, accountName, accountGroupName)
+	keys, err := GetAccountKeys(ctx, accountName, accountGroupName)
 	if err != nil {
 		return "", err
 	}
-	return *response.Key1, nil
+
+	var key *storage.AccountKey
+	for _, k := range keys {
+		if strings.EqualFold(string(k.Permissions), string(storage.Full)) {
+			key = &k
+			break
+		}
+	}
+
+	if key == nil {
+		return "", fmt.Errorf("listkeys contained keys, but none of them have full access")
+	}
+
+	return *key.Value, nil
 }
 
 // GetAccountKeys gets the storage account keys
-func GetAccountKeys(ctx context.Context, accountName, accountGroupName string) (storage.AccountKeys, error) {
+func GetAccountKeys(ctx context.Context, accountName, accountGroupName string) ([]storage.AccountKey, error) {
 	accountsClient, err := config.AzureConfig.GetStorageAccountsClient()
 	if err != nil {
-		return storage.AccountKeys{}, err
+		return []storage.AccountKey{}, err
 	}
-	return accountsClient.ListKeys(ctx, accountGroupName, accountName)
+
+	keys, err := accountsClient.ListKeys(ctx, accountGroupName, accountName, "")
+	if err != nil {
+		return []storage.AccountKey{}, fmt.Errorf("failed to query storage keys: %w", err)
+	}
+
+	// We don't expect this to happen, but just being defensive
+	if keys.Keys == nil || len(*keys.Keys) == 0 {
+		return nil, fmt.Errorf("listkeys returned an empty or nil list of keys")
+	}
+
+	return *keys.Keys, nil
 }
 
 // AcquireStorageContainerLease acquires an infinite lease on the storage container

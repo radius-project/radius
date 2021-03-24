@@ -9,8 +9,8 @@ import (
 	"bytes"
 	"os"
 
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2015-06-15/storage"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/marstr/randname"
 )
