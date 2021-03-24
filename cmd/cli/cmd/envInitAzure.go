@@ -246,7 +246,7 @@ func getSupportedLocations(ctx context.Context, authorizer autorest.Authorizer, 
 
 	provider, err := pc.Get(ctx, "Microsoft.CustomProviders", "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to find Microsoft.CustomProviders namespace")
+		return nil, fmt.Errorf("failed to find Microsoft.CustomProviders namespace: %w", err)
 	}
 
 	if provider.ResourceTypes == nil {
