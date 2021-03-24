@@ -13,9 +13,9 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2015-06-15/storage"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
@@ -670,9 +670,11 @@ func (sssh *storageStateStoreHandler) Put(ctx context.Context, resource workload
 
 	future, err := sc.Create(ctx, sssh.arm.ResourceGroup, name, storage.AccountCreateParameters{
 		Location: g.Location,
-		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
-			AccountType: storage.StandardLRS,
+		Kind:     storage.StorageV2,
+		Sku: &storage.Sku{
+			Name: storage.StandardLRS,
 		},
+		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
@@ -691,9 +693,27 @@ func (sssh *storageStateStoreHandler) Put(ctx context.Context, resource workload
 	// store storage account so we can delete later
 	properties["storageaccountid"] = *account.ID
 
-	keys, err := sc.ListKeys(ctx, sssh.arm.ResourceGroup, name)
+	keys, err := sc.ListKeys(ctx, sssh.arm.ResourceGroup, name, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
+	}
+
+	// Since we're doing this programmatically, let's make sure we can find a key with write access.
+	if keys.Keys == nil || len(*keys.Keys) == 0 {
+		return nil, fmt.Errorf("listkeys returned an empty or nil list of keys")
+	}
+
+	// Don't rely on the order the keys are in, we need Full access
+	var key *storage.AccountKey
+	for _, k := range *keys.Keys {
+		if strings.EqualFold(string(k.Permissions), string(storage.Full)) {
+			key = &k
+			break
+		}
+	}
+
+	if key == nil {
+		return nil, fmt.Errorf("listkeys contained keys, but none of them have full access")
 	}
 
 	item := unstructured.Unstructured{
@@ -714,7 +734,7 @@ func (sssh *storageStateStoreHandler) Put(ctx context.Context, resource workload
 					},
 					map[string]interface{}{
 						"name":  "accountKey",
-						"value": *keys.Key1,
+						"value": *key.Value,
 					},
 					map[string]interface{}{
 						"name":  "tableName",
