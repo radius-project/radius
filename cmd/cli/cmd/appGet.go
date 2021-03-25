@@ -48,17 +48,12 @@ func getApplication(cmd *cobra.Command, args []string) error {
 	radc := radclient.NewClient(env.SubscriptionID)
 	radc.Authorizer = authorizer
 	app, err := radc.GetApplication(cmd.Context(), env.ResourceGroup, applicationName)
-	// fmt.Println("name:", app.Name)
-	// fmt.Println("id:", app.ID)
-	// fmt.Printf("%+v\n", app)
 	var applicationDetails []byte
 	applicationDetails, err = json.MarshalIndent(app, "", "\t")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", applicationDetails)
-
-	// az rest --method "GET" --url "/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/kachawla-radius/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/?api-version=2018-09-01-preview"
 
 	return err
 }
