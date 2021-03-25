@@ -85,12 +85,12 @@ func validateEnvironmentExists(envName string) (string, string, error) {
 	}
 
 	if len(env.Items) == 0 {
-		return "", "", errors.New("No environments found.")
+		return "", "", errors.New("no environments found")
 	}
 
 	envConfig, exists := env.Items[envName]
 	if !exists {
-		return "", "", fmt.Errorf("Could not find the environment %s. Use 'rad env list' to list all environments.", envName)
+		return "", "", fmt.Errorf("could not find the environment %s. Use 'rad env list' to list all environments", envName)
 	}
 
 	return envConfig["resourcegroup"].(string), envConfig["subscriptionid"].(string), nil
