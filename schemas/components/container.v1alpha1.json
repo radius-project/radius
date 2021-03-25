@@ -1,0 +1,80 @@
+{
+  "id": "https://schema.radapp.dev/schemas/components/container.v1alpha1.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Component radius.dev/Container@v1alpha1",
+  "description": "Container component type (v1alpha1)",
+  "type": "object",
+  "required": [
+    "name",
+    "kind",
+    "properties"
+  ],
+  "properties": {
+    "name": {
+      "description": "Defines the name of the component.",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Defines the kind of component.",
+      "type": "string",
+      "enum": [
+        "radius.dev/Container@v1alpha1"
+      ]
+    },
+    "properties": {
+      "$ref": "#/definitions/Properties"
+    }
+  },
+  "definitions": {
+    "Properties": {
+      "title": "Container component properties (v1alpha1)",
+      "description": "Defines the properties of the component.",
+      "type": "object",
+      "required": [
+        "run"
+      ],
+      "properties": {
+        "run": {
+          "description": "Specifies the configuration for the component.",
+          "type": "object",
+          "required": [
+            "container"
+          ],
+          "properties": {
+            "container": {
+              "description": "Specifies configuration for the container.",
+              "type": "object",
+              "properties": {
+                "image": {
+                  "description": "Specifies the container image.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "dependsOn": {
+          "description": "Specifies service dependencies from this component.",
+          "type": "array",
+          "items": {
+            "$ref": "https://schema.radapp.dev/schemas/components/generic.component.v1alpha1.json#/definitions/dependency"
+          }
+        },
+        "provides": {
+          "description": "Specifies services provided by this component.",
+          "type": "array",
+          "items": {
+            "$ref": "https://schema.radapp.dev/schemas/components/generic.component.v1alpha1.json#/definitions/provider"
+          }
+        },
+        "traits": {
+          "description": "Specifies traits applied to this component.",
+          "type": "array",
+          "items": {
+            "$ref": "https://schema.radapp.dev/schemas/components/generic.component.v1alpha1.json#/definitions/trait"
+          }
+        }
+      }
+    }
+  }
+}
