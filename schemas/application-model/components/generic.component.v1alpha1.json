@@ -1,0 +1,119 @@
+{
+  "id": "https://schema.radapp.dev/schemas/components/generic.component.v1alpha1.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Generic component (v1alpha1)",
+  "description": "Core untyped representation of a component (v1alpha1)",
+  "type": "object",
+  "required": [
+    "name",
+    "kind"
+  ],
+  "properties": {
+    "properties": {
+      "$ref": "#/definitions/Properties"
+    }
+  },
+  "definitions": {
+    "Properties": {
+      "title": "Generic component properties (v1alpha1)",
+      "description": "Defines the properties of the component.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Defines the name of the component.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Defines the kind of component.",
+          "type": "string"
+        },
+        "config": {
+          "description": "Specifies configuration for a non-runnable component. The contents of 'config' are defined by the kind of component.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "run": {
+          "description": "Specifies configuration for a runnable component. The contents of 'run' are defined by the kind of component.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "dependsOn": {
+          "description": "Specifies service dependencies from this component.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Dependency"
+          }
+        },
+        "provides": {
+          "description": "Specifies services provided by this component.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Provider"
+          }
+        },
+        "traits": {
+          "description": "Specifies traits applied to this component.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Trait"
+          }
+        }
+      }
+    }
+  },
+  "Dependency": {
+    "title": "Generic dependency (v1alpha1)",
+    "description": "Core untyped representation of a dependency (v1alpha1)",
+    "type": "object",
+    "required": [
+      "name",
+      "kind"
+    ],
+    "additionalProperties": true,
+    "properties": {
+      "name": {
+        "description": "Defines the name of the service.",
+        "type": "string"
+      },
+      "kind": {
+        "description": "Defines the kind of service or protocol.",
+        "type": "string"
+      }
+    }
+  },
+  "Provider": {
+    "title": "Generic provider (v1alpha1)",
+    "description": "Core untyped representation of a provider (v1alpha1)",
+    "type": "object",
+    "required": [
+      "name",
+      "kind"
+    ],
+    "additionalProperties": true,
+    "properties": {
+      "name": {
+        "description": "Defines the name of the service.",
+        "type": "object"
+      },
+      "kind": {
+        "description": "Defines the kind of service or protocol.",
+        "type": "string"
+      }
+    }
+  },
+  "Trait": {
+    "title": "Generic trait (v1alpha1)",
+    "description": "Core untyped representation of a trait (v1alpha1)",
+    "type": "object",
+    "required": [
+      "kind"
+    ],
+    "additionalProperties": true,
+    "properties": {
+      "kind": {
+        "description": "Defines the kind of service or protocol.",
+        "type": "string"
+      }
+    }
+  }
+}
