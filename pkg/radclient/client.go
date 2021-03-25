@@ -80,7 +80,7 @@ func (client Client) ListRadiusResources(ctx context.Context, resourceGroupName 
 		return resources, validation.NewError("resources.Client", "Get", err.Error())
 	}
 
-	req, err := client.getResourcesPreparer(ctx, resourceGroupName, resourceProviderNamespace, parentResourcePath, resourceType, apiVersion)
+	req, err := client.getResourcesPreparer(ctx, resourceGroupName, resourceType)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "resources.Client", "Get", nil, "Failure preparing request")
 		return resources, err
@@ -89,7 +89,7 @@ func (client Client) ListRadiusResources(ctx context.Context, resourceGroupName 
 	resp, err := client.GetSender(req)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "resources.Client", "Get", resp, "Failure sending request")
-		return resources, err
+		return []Application{}, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -124,7 +124,7 @@ func (client Client) ListRadiusResources(ctx context.Context, resourceGroupName 
 
 // Prepares the ListRadiusResources request.
 // Taken from resources.GetPreparer with added support for custom resource types. https://github.com/Azure/azure-sdk-for-go/blob/master/services/resources/mgmt/2020-10-01/resources/resources.go#L685
-func (client Client) getResourcesPreparer(ctx context.Context, resourceGroupName string, resourceProviderNamespace string, parentResourcePath string, resourceType string, APIVersion string) (*http.Request, error) {
+func (client Client) getResourcesPreparer(ctx context.Context, resourceGroupName string, resourceType string) (*http.Request, error) {
 	pathParameters := map[string]interface{}{
 		"parentResourcePath":        parentResourcePath,
 		"resourceGroupName":         autorest.Encode("path", resourceGroupName),
@@ -134,7 +134,7 @@ func (client Client) getResourcesPreparer(ctx context.Context, resourceGroupName
 	}
 
 	queryParameters := map[string]interface{}{
-		"api-version": APIVersion,
+		"api-version": apiVersion,
 	}
 
 	preparer := autorest.CreatePreparer(

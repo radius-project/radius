@@ -48,18 +48,13 @@ func listApplications(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("Error listing the applications: '%w'", err)
 	}
-	if applications == nil {
-		fmt.Println("No applications found")
+	if len(applications) == 0 {
+		fmt.Println(applications)
 		return nil
 	}
-	for _, app := range applications {
-		var applicationDetails []byte
-		applicationDetails, err = json.MarshalIndent(app, "", "\t")
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s\n", applicationDetails)
-	}
+
+	applicationDetails, err := json.MarshalIndent(applications, "", "\t")
+	fmt.Printf("%s\n", applicationDetails)
 
 	return err
 }
