@@ -1,0 +1,15 @@
+{
+    "properties": {
+        "components": [
+            {
+                "componentName": "radius/dapr-pubsub/pythonpublisher"
+            },
+            {
+                "componentName": "radius/dapr-pubsub/nodesubscriber"
+            },
+            {
+                "componentName": "radius/dapr-pubsub/pubsub"
+            }
+        ]
+    }
+}

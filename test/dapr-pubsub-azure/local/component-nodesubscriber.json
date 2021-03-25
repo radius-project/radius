@@ -1,0 +1,25 @@
+{
+    "kind": "radius.dev/Container@v1alpha1",
+    "properties": {
+        "run": {
+            "container": {
+                "image": "vinayada/dapr-pubsub-nodesubscriber:latest"
+            }
+        },
+        "dependsOn": [
+            {
+                "kind": "dapr.io/PubSub",
+                "name": "pubsub"
+            }
+        ],
+        "traits": [
+            {
+                "kind": "dapr.io/App@v1alpha1",
+                "properties": {
+                    "appId": "nodesubscriber",
+                    "appPort": 50051
+                }
+            }
+        ]
+    }
+}

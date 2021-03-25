@@ -31,6 +31,10 @@ func NewRegistry() Registry {
 				Name: "",
 				Kind: "dapr.io/StateStore",
 			},
+			"dapr.io/PubSub@v1alpha1": {
+				Name: "",
+				Kind: "dapr.io/PubSub",
+			},
 			"azure.com/CosmosDocumentDb@v1alpha1": {
 				Name: "",
 				Kind: "mongodb.com/Mongo",

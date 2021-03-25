@@ -44,8 +44,6 @@ async function main() {
 			msgId++;
 			await delay(2000)
 		}
-
-
 		// Close the sender
 		await sender.close();
 	} finally {
