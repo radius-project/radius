@@ -26,7 +26,9 @@ func init() {
 	applicationCmd.AddCommand(getCmd)
 
 	getCmd.Flags().String("name", "", "The application name")
-	getCmd.MarkFlagRequired("name")
+	if err := getCmd.MarkFlagRequired("name"); err != nil {
+		fmt.Printf("Failed to mark the name flag required: %v", err)
+	}
 }
 
 func getApplication(cmd *cobra.Command, args []string) error {
@@ -48,6 +50,10 @@ func getApplication(cmd *cobra.Command, args []string) error {
 	radc := radclient.NewClient(env.SubscriptionID)
 	radc.Authorizer = authorizer
 	app, err := radc.GetApplication(cmd.Context(), env.ResourceGroup, applicationName)
+	if err != nil {
+		return fmt.Errorf("Error getting the application information: '%w'", err)
+	}
+
 	var applicationDetails []byte
 	applicationDetails, err = json.MarshalIndent(app, "", "\t")
 	if err != nil {

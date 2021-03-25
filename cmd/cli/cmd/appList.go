@@ -50,6 +50,7 @@ func listApplications(cmd *cobra.Command, args []string) error {
 	}
 	if applications == nil {
 		fmt.Println("No applications found")
+		return nil
 	}
 	for _, app := range applications {
 		var applicationDetails []byte
