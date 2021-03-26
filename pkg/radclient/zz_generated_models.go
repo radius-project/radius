@@ -17,12 +17,6 @@ type ApplicationCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Parameters used to create an application.
-type ApplicationCreateParameters struct {
-	// Any object
-	Properties interface{} `json:"properties,omitempty"`
-}
-
 // ApplicationDeleteOptions contains the optional parameters for the Application.Delete method.
 type ApplicationDeleteOptions struct {
 	// placeholder for future optional parameters
@@ -53,11 +47,17 @@ type ApplicationListResponse struct {
 	RawResponse *http.Response
 }
 
+// Properties of an application.
+type ApplicationProperties struct {
+	Ferb *string `json:"ferb,omitempty"`
+	Kerb *string `json:"kerb,omitempty"`
+}
+
 // Application resource.
 type ApplicationResource struct {
 	TrackedResource
 	// Properties of the application.
-	Properties interface{} `json:"properties,omitempty"`
+	Properties *ApplicationProperties `json:"properties,omitempty"`
 }
 
 // ApplicationResourceResponse is the response envelope for operations that return a ApplicationResource type.

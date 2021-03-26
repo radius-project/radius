@@ -29,7 +29,7 @@ func NewApplicationClient(con *armcore.Connection, subscriptionID string) *Appli
 }
 
 // CreateOrUpdate - Creates or updates an application.
-func (client *ApplicationClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationCreateParameters, options *ApplicationCreateOrUpdateOptions) (ApplicationResourceResponse, error) {
+func (client *ApplicationClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationCreateOrUpdateOptions) (ApplicationResourceResponse, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, parameters, options)
 	if err != nil {
 		return ApplicationResourceResponse{}, err
@@ -45,7 +45,7 @@ func (client *ApplicationClient) CreateOrUpdate(ctx context.Context, resourceGro
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ApplicationClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationCreateParameters, options *ApplicationCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *ApplicationClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}"
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))

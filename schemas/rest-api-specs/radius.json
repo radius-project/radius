@@ -120,7 +120,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ApplicationCreateParameters"
+              "$ref": "#/definitions/ApplicationResource"
             },
             "description": "Parameters supplied to the Create Application operation."
           },
@@ -223,25 +223,22 @@
     "ApplicationProperties": {
       "description": "Properties of an application.",
       "type": "object",
+      "x-ms-azure-resource": true,
       "properties": {
-      }
-    },
-    "ApplicationCreateParameters": {
-      "description": "Parameters used to create an application.",
-      "type": "object",
-      "required": [
-        "properties"
-      ],
-      "properties": {
-        "properties": {
-          "type": "object",
-          "$ref": "#/definitions/ApplicationCreateProperties"
+        "ferb": {
+          "type": "string",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "kerb": {
+          "type": "string",
+          "x-ms-mutability": [
+            "read"
+          ]
         }
       }
-    },
-    "ApplicationCreateProperties": {
-      "description": "Properties used to create an application.",
-      "type": "object"
     }
   },
   "parameters": {
