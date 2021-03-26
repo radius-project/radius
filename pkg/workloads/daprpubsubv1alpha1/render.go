@@ -23,36 +23,23 @@ type Renderer struct {
 
 // Allocate is the WorkloadRenderer implementation for dapr pubsub workload.
 func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	if service.Kind != "dapr.io/PubSub" {
+	if service.Kind != "dapr.io/PubSubTopic" {
 		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
 	}
 
-	if len(wrp) != 1 || wrp[0].Type != "dapr.pubsub.azureservicebus" {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for dapr.pubsub.azureservicebus")
+	if len(wrp) != 1 || wrp[0].Type != "dapr.pubsubtopic.azureservicebus" {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for dapr.pubsubtopic.azureservicebus")
 	}
 
 	properties := wrp[0].Properties
 	namespaceName := properties["servicebusnamespace"]
+	pubsubName := properties["servicebuspubsubname"]
 	topicName := properties["servicebustopic"]
 
-	// sbClient := servicebus.NewNamespacesClient(r.Arm.SubscriptionID)
-	// sbClient.Authorizer = r.Arm.Auth
-	// accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
-
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
-	// }
-
-	// if accessKeys.PrimaryConnectionString == nil && accessKeys.SecondaryConnectionString == nil {
-	// 	return nil, fmt.Errorf("failed to retrieve connection strings")
-	// }
-
-	// cs := accessKeys.PrimaryConnectionString
-
 	values := map[string]interface{}{
-		// "connectionString": cs,
-		"namespace": namespaceName,
-		"topic":     topicName,
+		"namespace":  namespaceName,
+		"pubsubName": pubsubName,
+		"topic":      topicName,
 	}
 
 	return values, nil
@@ -75,13 +62,14 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// generate data we can use to manage a pubsub
 	resource := workloads.WorkloadResource{
-		Type: "dapr.pubsub.azureservicebus",
+		Type: "dapr.pubsubtopic.azureservicebus",
 		Resource: map[string]string{
-			"name":            w.Workload.GetName(),
-			"namespace":       w.Workload.GetNamespace(),
-			"apiVersion":      "dapr.io/v1alpha1",
-			"kind":            "Component",
-			"servicebustopic": spec.Topic,
+			"name":                 w.Workload.GetName(),
+			"namespace":            w.Workload.GetNamespace(),
+			"apiVersion":           "dapr.io/v1alpha1",
+			"kind":                 "Component",
+			"servicebuspubsubname": spec.Name,
+			"servicebustopic":      spec.Topic,
 		},
 	}
 
@@ -92,6 +80,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 type pubsubSpec struct {
 	Kind    string `json:"kind"`
 	Managed bool   `json:"managed"`
+	Name    string `json:"name"`
 	Topic   string `json:"topic"`
 }
 

@@ -20,7 +20,7 @@ BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 URL_BASE="http://localhost:5000/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CustomProviders/resourceProviders/$RESOURCE_PROVIDER"
 
 APPLICATION="dapr-pubsub"
-COMPONENTS=("pythonpublisher" "nodesubscriber" "pubsub")
+COMPONENTS=("pythonpublisher" "nodesubscriber" "pubsub-azureservicebus")
 DEPLOYMENTS=("default")
 
 echo "creating application $APPLICATION"

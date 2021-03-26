@@ -134,7 +134,7 @@ type storageStateStoreHandler struct {
 	k8s client.Client
 }
 
-type servicebusPubSubHandler struct {
+type servicebusPubSubTopicHandler struct {
 	arm armauth.ArmConfig
 	k8s client.Client
 }
@@ -153,22 +153,22 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 		Renderers: map[string]workloads.WorkloadRenderer{
 			"dapr.io/Component@v1alpha1":          &daprcomponentv1alpha1.Renderer{},
 			"dapr.io/StateStore@v1alpha1":         &daprstatestorev1alpha1.Renderer{},
+			"dapr.io/PubSubTopicv1alpha1":         &daprpubsubv1alpha1.Renderer{},
 			"azure.com/CosmosDocumentDb@v1alpha1": &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
 			"azure.com/Function@v1alpha1":         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
 			"azure.com/WebApp@v1alpha1":           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
 			"radius.dev/Container@v1alpha1":       &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
 			"azure.com/ServiceBusQueue@v1alpha1":  &servicebusqueuev1alpha1.Renderer{Arm: arm},
-			"dapr.io/PubSubTopicv1alpha1":         &daprpubsubv1alpha1.Renderer{},
 		},
 	}
 
 	rm := resourceManager{
 		handlers: map[string]resourceHandler{
-			"kubernetes":                   &kubernetesHandler{k8s},
-			"dapr.statestore.azurestorage": &storageStateStoreHandler{arm, k8s},
-			"dapr.pubsub.azureservicebus":  &servicebusPubSubHandler{arm, k8s},
-			"azure.cosmos.documentdb":      &cosmosDocumentDbHandler{arm},
-			"azure.servicebus.queue":       &serviceBusQueueHandler{arm},
+			"kubernetes":                       &kubernetesHandler{k8s},
+			"dapr.statestore.azurestorage":     &storageStateStoreHandler{arm, k8s},
+			"dapr.pubsubtopic.azureservicebus": &servicebusPubSubTopicHandler{arm, k8s},
+			"azure.cosmos.documentdb":          &cosmosDocumentDbHandler{arm},
+			"azure.servicebus.queue":           &serviceBusQueueHandler{arm},
 		},
 	}
 
@@ -794,8 +794,8 @@ func (sssh *storageStateStoreHandler) Delete(ctx context.Context, properties map
 	return nil
 }
 
-func (pssb *servicebusPubSubHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
-	if resource.Type != "dapr.pubsub.azureservicebus" {
+func (pssb *servicebusPubSubTopicHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+	if resource.Type != "dapr.pubsubtopic.azureservicebus" {
 		return nil, errors.New("wrong resource type")
 	}
 
@@ -807,8 +807,8 @@ func (pssb *servicebusPubSubHandler) GetProperties(resource workloads.WorkloadRe
 	return properties, nil
 }
 
-func (pssb *servicebusPubSubHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
-	if resource.Type != "dapr.pubsub.azureservicebus" {
+func (pssb *servicebusPubSubTopicHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
+	if resource.Type != "dapr.pubsubtopic.azureservicebus" {
 		return nil, errors.New("wrong resource type")
 	}
 
@@ -890,7 +890,7 @@ func (pssb *servicebusPubSubHandler) Put(ctx context.Context, resource workloads
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to PUT servicebus pubsub: %w", err)
+		return nil, fmt.Errorf("failed to PUT servicebus topic: %w", err)
 	}
 
 	// store db so we can delete later
@@ -937,7 +937,7 @@ func (pssb *servicebusPubSubHandler) Put(ctx context.Context, resource workloads
 	return properties, nil
 }
 
-func (pssb *servicebusPubSubHandler) Delete(ctx context.Context, properties map[string]string) error {
+func (pssb *servicebusPubSubTopicHandler) Delete(ctx context.Context, properties map[string]string) error {
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties["apiVersion"],
@@ -962,15 +962,21 @@ func (pssb *servicebusPubSubHandler) Delete(ctx context.Context, properties map[
 
 	_, err = tc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName, topicName)
 	if err != nil {
-		return fmt.Errorf("failed to DELETE servicebus pubsub: %w", err)
+		return fmt.Errorf("failed to DELETE servicebus topic: %w", err)
 	}
 
-	qItr, err := tc.ListByNamespaceComplete(ctx, pssb.arm.ResourceGroup, namespaceName, nil, nil)
+	tItr, err := tc.ListByNamespaceComplete(ctx, pssb.arm.ResourceGroup, namespaceName, nil, nil)
 	if err != nil {
-		return fmt.Errorf("failed to DELETE servicebus pubsub: %w", err)
+		return fmt.Errorf("failed to DELETE servicebus topic: %w", err)
 	}
 
-	if qItr.NotDone() {
+	// Delete service bus topic only marks the topic for deletion but does not actually delete it. Hence the additional check...
+	// https://docs.microsoft.com/en-us/rest/api/servicebus/delete-topic
+	if tItr.NotDone() {
+		val := tItr.Value()
+		fmt.Printf("value: %v\n", val)
+	}
+	if tItr.NotDone() && tItr.Value().Name != &topicName {
 		// There are other topics in the same service bus namespace. Do not remove the namespace as a part of this delete deployment
 		return nil
 	}

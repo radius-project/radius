@@ -8,7 +8,7 @@
                 "componentName": "radius/dapr-pubsub/nodesubscriber"
             },
             {
-                "componentName": "radius/dapr-pubsub/pubsub"
+                "componentName": "radius/dapr-pubsub/pubsub-azureservicebus"
             }
         ]
     }

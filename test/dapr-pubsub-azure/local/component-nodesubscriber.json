@@ -8,8 +8,12 @@
         },
         "dependsOn": [
             {
-                "kind": "dapr.io/PubSub",
-                "name": "pubsub"
+                "kind": "dapr.io/PubSubTopic",
+                "name": "pubsub-azureservicebus",
+                "setEnv": {
+                    "SB_PUBSUBNAME": "pubsubName",
+                    "SB_TOPIC": "topic"
+                }
             }
         ],
         "traits": [
