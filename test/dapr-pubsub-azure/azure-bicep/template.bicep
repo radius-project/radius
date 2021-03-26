@@ -7,21 +7,15 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'vinayada/nodesubscriber:latest'
+          image: 'vinayada/dapr-pubsub-nodesubscriber:latest'
         }
       }
-      provides: [
-        {
-          name: 'nodesubscriber'
-          kind: 'http'
-          containerPort: 3000
-        }
-      ]
       dependsOn: [
         {
           name: 'pubsub'
-          kind: 'dapr.io/PubSub'
+          kind: 'dapr.io/PubSubTopic'
           setEnv: {
+            SB_PUBSUBNAME: 'pubsubName'
             SB_TOPIC: 'topic'
           }
         }
@@ -31,7 +25,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           kind: 'dapr.io/App@v1alpha1'
           properties: {
             appId: 'nodesubscriber'
-            appPort: 3000
+            appPort: 50051
           }
         }
       ]
@@ -39,19 +33,20 @@ resource app 'radius.dev/Applications@v1alpha1' = {
   }
   
   resource pythonpublisher 'Components' = {
-    name: 'nodepublisher'
+    name: 'pythonpublisher'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
-          image: 'vinayada/pythonpublisher:latest'
+          image: 'vinayada/dapr-pubsub-pythonpublisher:latest'
         }
       }
       dependsOn: [
         {
           name: 'pubsub'
-          kind: 'dapr.io/PubSub'
+          kind: 'dapr.io/PubSubTopic'
           setEnv: {
+            SB_PUBSUBNAME: 'pubsubName'
             SB_TOPIC: 'topic'
           }
         }
@@ -62,18 +57,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           properties: {
             appId: 'pythonpublisher'
           }
-        }
-      ]
-    }
-  }
-  
-  // Imagine this deployment in a separate file/repo
-  resource default 'Deployments' = {
-    name: 'default'
-    properties: {
-      components: [
-        {
-          componentName: pubsub.name
         }
       ]
     }
@@ -90,7 +73,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       provides: [
         {
           name: 'pubsub'
-          kind: 'dapr.io/PubSub'
+          kind: 'dapr.io/PubSubTopic'
         }
       ]
     }
