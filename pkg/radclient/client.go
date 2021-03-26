@@ -107,7 +107,7 @@ func (client Client) ListRadiusResources(ctx context.Context, resourceGroupName 
 		return resources, err
 	}
 	if parsedResponse["value"] == nil {
-		return resources, err
+		return []Application{}, err
 	}
 	applications := parsedResponse["value"].([]interface{})
 
