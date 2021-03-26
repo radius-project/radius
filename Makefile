@@ -129,9 +129,39 @@ $(CLI_BINARY):
 ################################################################################
 # Target: generate                                                             #
 ################################################################################
-.PHONY: generate
-generate:
+.PHONY: node-installed
+node-installed:
+	$(info $(H) Detecting node...)
+	@which node > /dev/null || { echo "node is a required dependency"; exit 1; }
+	$(info $(H) OK)
+
+.PHONY: autorest-installed
+autorest-installed:
+	$(info $(H) Detecting autorest...)
+	@which autorest > /dev/null || { echo "run npm install -g autorest to install autorest"; exit 1; }
+	$(info $(H) OK)
+
+.PHONY: autorest-generate
+autorest-generate: node-installed autorest-installed
+	autorest --use=@autorest/go@4.0.0-preview.14 \
+		schemas/rest-api-specs/radius/resource-manager/readme.md \
+		--tag=package-2018-09-01-preview \
+		--go  \
+		--output-folder=./pkg/radclient \
+		--modelerfour.lenient-model-deduplication \
+		--gomod-root=. \
+		--license-header=MICROSOFT_MIT_NO_VERSION \
+		--file-prefix=zz_generated_ \
+		--azure-arm \
+		--verbose
+
+.PHONY: go-generate
+go-generate:
+	$(info $(H) Running go generate...)
 	go generate -v ./... 
+
+.PHONY: generate
+generate: autorest-generate go-generate
 
 ################################################################################
 # Target: lint                                                                 #
