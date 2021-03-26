@@ -4,6 +4,8 @@ go 1.16
 
 require (
 	github.com/Azure/azure-sdk-for-go v52.3.1+incompatible
+	github.com/Azure/azure-sdk-for-go/sdk/armcore v0.6.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.14.2
 	github.com/Azure/azure-storage-blob-go v0.13.0
 	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
@@ -30,6 +32,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.mongodb.org/mongo-driver v1.5.0
 	golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b
+	golang.org/x/net v0.0.0-20210324205630-d1beb07c2056 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/text v0.3.5 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect

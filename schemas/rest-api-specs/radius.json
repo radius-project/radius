@@ -1,0 +1,257 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "2018-09-01-preview",
+    "title": "RadiusClient",
+    "description": "APIs for deploying and managing applications with Radius.",
+    "x-ms-code-generation-settings": {
+      "name": "radiusClient"
+    }
+  },
+  "host": "management.azure.com",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "security": [
+    {
+      "azure_auth": ["user_impersonation"]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "flow": "implicit",
+      "description": "Azure Active Directory OAuth2 Flow",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "paths": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications": {
+      "get": {
+        "operationId": "Application_ListByResourceGroup",
+        "tags": [
+          "Application"
+        ],
+        "description": "List applications in the resource group.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of applications was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}": {
+      "get": {
+        "operationId": "Application_Get",
+        "tags": [
+          "Application"
+        ],
+        "description": "Gets an application by name.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The application was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "Application_CreateOrUpdate",
+        "tags": [
+          "Application"
+        ],
+        "description": "Creates or updates an application.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationCreateParameters"
+            },
+            "description": "Parameters supplied to the Create Application operation."
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing application was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "201": {
+            "description": "The new application was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Application_Delete",
+        "tags": [
+          "Application"
+        ],
+        "description": "Deletes an application.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The application was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ApplicationList": {
+      "description": "Application list.",
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "List of applications.",
+          "items": {
+            "$ref": "#/definitions/ApplicationResource"
+          }
+        }
+      }
+    },
+    "ApplicationResource": {
+      "description": "Application resource.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ApplicationProperties",
+          "description": "Properties of the application."
+        }
+      }
+    },
+    "ApplicationProperties": {
+      "description": "Properties of an application.",
+      "type": "object",
+      "properties": {
+      }
+    },
+    "ApplicationCreateParameters": {
+      "description": "Parameters used to create an application.",
+      "type": "object",
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ApplicationCreateProperties"
+        }
+      }
+    },
+    "ApplicationCreateProperties": {
+      "description": "Properties used to create an application.",
+      "type": "object"
+    }
+  },
+  "parameters": {
+    "ApplicationNameParameter": {
+      "name": "applicationName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The application name.",
+      "x-ms-parameter-location": "method"
+    }
+  }
+}
