@@ -153,7 +153,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 		Renderers: map[string]workloads.WorkloadRenderer{
 			"dapr.io/Component@v1alpha1":          &daprcomponentv1alpha1.Renderer{},
 			"dapr.io/StateStore@v1alpha1":         &daprstatestorev1alpha1.Renderer{},
-			"dapr.io/PubSubTopicv1alpha1":         &daprpubsubv1alpha1.Renderer{},
+			"dapr.io/PubSubTopic@v1alpha1":        &daprpubsubv1alpha1.Renderer{},
 			"azure.com/CosmosDocumentDb@v1alpha1": &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
 			"azure.com/Function@v1alpha1":         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
 			"azure.com/WebApp@v1alpha1":           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
