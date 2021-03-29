@@ -2,59 +2,57 @@
 
 This directory holds the JSON schema documents used to describe types in the Radius Application Model.
 
-These artifacts are not currently consumed directly by any tools (yet). In the near future these will drive:
+These artifacts are not currently consumed directly by any tools (yet). However they may be referened by the Open API documents for reuse of definitions. You should update the generated code when making **any** schema change
+
+In the near future these will drive:
 
 - The Bicep compiler's type validation
 - Validation of API request payloads
 - Documentation for the Application Model
 
-> 💡 The Open API documents may reference types defined here for reuse of definitions. You should update the generated code (run `make generate`) when making **any** schema change.
-
 ## What these types represent
 
-The schemas here represent the Radius Application model as it would be typed by a user in Bicep code. They do not include ARM-isms that won't be reflected in a user's code.
+The schemas here represent the Radius Application model as it would be represented internally to our RP. We omit some of the properties that are required by ARM - because they are not part of our processing.
 
-Here's an example of what a user types:
+Here's an example of a payload to matches one of our schemas:
 
 ```txt
 ...
-    resource frontend 'Components' = {
-      name: 'frontend
-      kind: 'radius.dev/Container@v1alpha1'
-      properties: {
-        run: {
-          container: {
-            image: 'rynowak/frontend:latest'
-          }
-        }
+{
+  "name": "frontend",
+  "properties": {
+    "run": {
+      "container": {
+        "image": "rynowak/frontend:0.5.0-dev"
       }
     }
+  }
+}
 ...
 ```
 
-Here's an example of what an ARM resource for the same thing looks like:
+Here's an example of what an ARM response for the same component might be:
 
 ```txt
 ...
-    {
-      "id": " ..... ",
-      "name": "frontend",
-      "properties": {
-        "provisioningState": "Succeeded",
-        "revision": "c3036974529c68c1d9f9c7e98bc7d986b8c4daa8",
-        "run": {
-          "container": {
-            "image": "rynowak/frontend:0.5.0-dev"
-          }
-        }
-      },
-      "resourceGroup": "rynowak-radius",
-      "type": "Microsoft.CustomProviders/resourceProviders/Applications/Components"
+{
+  "id": " ..... ",
+  "name": "frontend",
+  "properties": {
+    "provisioningState": "Succeeded",
+    "run": {
+      "container": {
+        "image": "rynowak/frontend:0.5.0-dev"
+      }
     }
+  },
+  "resourceGroup": "rynowak-radius",
+  "type": "Microsoft.CustomProviders/resourceProviders/Applications/Components"
+}
 ...
 ```
 
-If you look past the format, you can see that there are additional properties that reflect ARM's semantics:
+You can see that the second example there are additional properties that reflect ARM's semantics:
 
 - `id`
 - `properties/provisioningState`

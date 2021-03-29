@@ -9,6 +9,14 @@
     "kind"
   ],
   "properties": {
+    "name": {
+      "description": "Defines the name of the component.",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Defines the kind of component.",
+      "type": "string"
+    },
     "properties": {
       "$ref": "#/definitions/Properties"
     }
@@ -19,14 +27,6 @@
       "description": "Defines the properties of the component.",
       "type": "object",
       "properties": {
-        "name": {
-          "description": "Defines the name of the component.",
-          "type": "string"
-        },
-        "kind": {
-          "description": "Defines the kind of component.",
-          "type": "string"
-        },
         "config": {
           "description": "Specifies configuration for a non-runnable component. The contents of 'config' are defined by the kind of component.",
           "type": "object",
@@ -38,7 +38,7 @@
           "additionalProperties": true
         },
         "dependsOn": {
-          "description": "Specifies service dependencies from this component.",
+          "description": "Specifies service dependencies of this component.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Dependency"

@@ -7,6 +7,10 @@ This directory holds the Open API documents used to generate `pkg/radclient`.
 
 > 💡 `radius.json` may reference types defined in the `../application-model` directory for reuse of definitions. You should update the generated code (run `make generate`) when making **any** schema change.
 
+## Authoring
+
+You can find the ARM team's documentation for authoring Open API documents [here](https://github.com/Azure/azure-rest-api-specs/blob/master/documentation/Getting%20started%20with%20OpenAPI%20specifications.md)
+
 ## Configuration
 
 This section is configuration for autorest. Do not modify these code blocks without consulting the autorest documentation first. Modifications here will change the behavior of the code generator.

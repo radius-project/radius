@@ -36,7 +36,7 @@
     },
     "Component": {
       "title": "Component",
-      "description": "Defines a reference a component as part of a deployment.",
+      "description": "Defines a reference to a component as part of a deployment.",
       "type": "object",
       "required": [
         "componentName"

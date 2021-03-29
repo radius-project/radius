@@ -44,6 +44,9 @@
             "container": {
               "description": "Specifies configuration for the container.",
               "type": "object",
+              "required": [
+                "image"
+              ],
               "properties": {
                 "image": {
                   "description": "Specifies the container image.",
@@ -54,7 +57,7 @@
           }
         },
         "dependsOn": {
-          "description": "Specifies service dependencies from this component.",
+          "description": "Specifies service dependencies of this component.",
           "type": "array",
           "items": {
             "$ref": "generic.component.v1alpha1.json#/definitions/dependency"
