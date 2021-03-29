@@ -3,8 +3,7 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-name: build
-
+name: Build and Test
 on:
   push:
     branches:
@@ -29,13 +28,8 @@ jobs:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
-      ARCHIVE_OUTDIR: dist/archives
-      RADIUS_PATH: $GITHUB_WORKSPACE/dist/${{ matrix.target_os }}_${{ matrix.target_arch }}/release
-      INTEGRATION_TEST_TENANT_ID: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
-      INTEGRATION_TEST_SP_APP_ID: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
-      INTEGRATION_TEST_SP_PASSWORD: ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
-      INTEGRATION_TEST_SUBSCRIPTION_ID: "66d1209e-1382-45d3-99bb-650e6bf63fc0"
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
         target_arch: [arm, amd64]
@@ -62,27 +56,136 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
       - name: Make
         run: make
-      - name: Run make test
+      - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm'
         run: make test
-      - name: Upload binary
+      - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
           path: ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/
           if-no-files-found: error
-      - name: Run deploy tests
-        if: matrix.target_os == 'linux' && matrix.target_arch != 'arm'
-        run: |
-          export PATH=$PATH:${{ env.RADIUS_PATH }}
-          cd $GITHUB_WORKSPACE
-          export AZURE_TENANT_ID=${{ env.INTEGRATION_TEST_TENANT_ID }}
-          export AZURE_CLIENT_ID=${{ env.INTEGRATION_TEST_SP_APP_ID }}
-          export AZURE_CLIENT_SECRET=${{ env.INTEGRATION_TEST_SP_PASSWORD }}
-          export INTEGRATION_TEST_SUBSCRIPTION_ID=${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}
-          make deploy-tests
+
+  # Logic here:
+  # - always do a docker build for validation
+  # - tag the image as latest and with a version if the trigger was a tag
+  # - tag the image with the PR version if the trigger was a PR
+  # - push the image for pushes to master, or to a tag
+  images:
+    name: Container image build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        destination: ['acr', 'dockerhub']
+        include:
+        - destination: acr
+          registry: radius.azurecr.io
+          login_server: radius.azurecr.io
+          username_secret: DOCKER_USERNAME
+          password_secret: DOCKER_PASSWORD
+        - destination: dockerhub
+          registry: radiusteam
+          login_server: https://index.docker.io/v1/
+          username_secret: RADIUSTEAM_DOCKERHUB_USERNAME
+          password_secret: RADIUSTEAM_DOCKERHUB_PASSWORD
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Parse release version and set REL_VERSION
+        run: python ./.github/scripts/get_release_version.py
+      - name: make docker
+        run: make docker
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: latest
+      - name: make docker (release)
+        run: make docker
+        if: startsWith(github.ref, 'refs/pull/')
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+      - name: make docker (release)
+        run: make docker
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+      - uses: azure/docker-login@v1
+        with:
+          login-server: ${{ matrix.login_server }}
+          username: '${{ secrets[matrix.username_secret] }}'
+          password: '${{ secrets[matrix.password_secret] }}'
+      - name: make dockerpush (latest)
+        run: make dockerpush
+        if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to main or tag
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: latest
+      - name: make dockerpush (PR)
+        run: make dockerpush
+        if: startsWith(github.ref, 'refs/pull/') # push image on pr
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+      - name: make dockerpush (release)
+        run: make dockerpush
+        if: startsWith(github.ref, 'refs/tags/v') # push image on tag
+        env:
+          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+
+  deploy_tests: 
+    name: Run deployment tests
+    needs: [ 'build', 'images' ]
+    runs-on: ubuntu-latest
+    env:
+      GOVER: '^1.16.0'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Go ${{ env.GOVER }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GOVER }}
+    - name: Parse release version and set REL_VERSION
+      run: python ./.github/scripts/get_release_version.py
+    - name: Download release artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: rad_cli_linux_amd64
+        path: dist
+    - name: Print assets (for santity)
+      run: |
+        echo "Asserts are in: $(cd "$(dirname ".")" && pwd)/$(basename ".")"
+        ls -R
+      working-directory: dist
+    - name: Make rad executable
+      run: chmod +x rad
+      working-directory: dist
+    - name: az CLI login
+      run: |
+        az login --service-principal \
+          --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+          --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+          --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+    - name: Run deploy tests
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export RP_IMAGE=radiusteam/radius-rp:${{ env.REL_VERSION }}
+        export RP_DEPLOY=true
+        export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+        export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+        export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+        export INTEGRATION_TEST_SUBSCRIPTION_ID="66d1209e-1382-45d3-99bb-650e6bf63fc0"
+        cd $GITHUB_WORKSPACE
+        echo "PATH is $PATH"
+        which rad || { echo "cannot find rad"; exit 1; }
+        make deploy-tests
+
   publish:
-    needs: [ 'build' ]
+    name: Publish rad CLI binaries
+    needs: [ 'build', 'deploy_tests' ]
     runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:

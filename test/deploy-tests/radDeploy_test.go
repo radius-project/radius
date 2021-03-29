@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,12 @@ func TestDeployApplication(t *testing.T) {
 
 	// Schedule test cluster cleanup
 	defer cleanup(ctx, t, testClusterName)
+
+	webc, err := config.AzureConfig.GetWebAppsClient()
+	require.NoError(t, err)
+
+	err = deployRP(ctx, webc, testClusterName)
+	require.NoError(t, err)
 
 	configFilePath := filepath.Join("./", fmt.Sprintf("%s.yaml", testClusterName))
 	// Merge the k8s credentials to the cluster

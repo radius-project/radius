@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/marstr/randname"
 )
@@ -70,6 +71,17 @@ func (config *azureConfig) ClientID() string {
 // DefaultLocation returns the location default
 func (config *azureConfig) DefaultLocation() string {
 	return config.locationDefault
+}
+
+// GetAppsClient initializes and returns a web.AppsClient
+func (config *azureConfig) GetWebAppsClient() (web.AppsClient, error) {
+	client := web.NewAppsClient(config.subscriptionID)
+	a, err := auth.NewAuthorizerFromEnvironment()
+	if err != nil {
+		return web.AppsClient{}, err
+	}
+	client.Authorizer = a
+	return client, nil
 }
 
 // GetResourcesClient initializes and returns a resources.Client

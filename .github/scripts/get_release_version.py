@@ -7,25 +7,46 @@
 # environment variable, REL_VERSION.
 
 import os
+import re
 import sys
 
 gitRef = os.getenv("GITHUB_REF")
-tagRefPrefix = "refs/tags/v"
+tagRefRegex = r"refs/tags/v(.*)"
+pullRefRegex = r"refs/pull/(.*)/(.*)"
 
 with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
-    if gitRef is None or not gitRef.startswith(tagRefPrefix):
-        githubEnv.write("REL_VERSION=edge\n")
-        print ("This is daily build from {}...".format(gitRef))
+    if gitRef is None:
+        print("This is not running in github, GITHUB_REF is null. Assuming a local build...")
+        version = "REL_VERSION=edge"
+        print("Setting: {}".format(version))
+        githubEnv.write(version + "\n")
         sys.exit(0)
 
-    releaseVersion = gitRef[len(tagRefPrefix):]
-    releaseNotePath="docs/release_notes/v{}.md".format(releaseVersion)
+    match = re.search(pullRefRegex, gitRef)
+    if match is not None:
+        print("This is pull request {}...".format(match.group(1)))
+        version = "REL_VERSION=pr-{}".format(match.group(1))
+        print("Setting: {}".format(version))
+        githubEnv.write(version + "\n")
+        sys.exit(0)
 
-    if gitRef.find("-rc.") > 0:
-        print ("Release Candidate build from {}...".format(gitRef))
-    else:
-        # Set LATEST_RELEASE to true
-        githubEnv.write("LATEST_RELEASE=true\n")
-        print ("Release build from {}...".format(gitRef))
+    match = re.search(tagRefRegex, gitRef)
+    if match is not None:
+        print("This is tagged as {}...".format(match.group(1)))
+        version = "REL_VERSION={}".format(match.group(1))
+        print("Setting: {}".format(version))
+        githubEnv.write(version + "\n")
 
-    githubEnv.write("REL_VERSION={}\n".format(releaseVersion))
+        if version.find("-rc") > 0:
+            print("Release Candidate build from {}...".format(version))
+        else:
+            print("Release build from {}...".format(version))
+            githubEnv.write("LATEST_RELEASE=true\n")
+        sys.exit(0)
+
+    githubEnv.write("\n")
+    print("This is daily build from {}...".format(gitRef))
+    version = "REL_VERSION=edge"
+    print("Setting: {}".format(version))
+    githubEnv.write(version + "\n")
+    sys.exit(0)

@@ -20,8 +20,11 @@ export AZURE_TENANT_ID=Tenant ID of the Azure subscription
 export AZURE_CLIENT_ID=App ID of the Service Principal
 export AZURE_CLIENT_SECRET=Password for the Service Principal
 export INTEGRATION_TEST_SUBSCRIPTION_ID=Azure subscription ID
+export RP_DEPLOY=true
+export RP_IMAGE=docker image for the RP
 ```
 
+`RP_DEPLOY` and `RP_IMAGE` are optional. If you set `RP_DEPLOY=true`, then the tests will deploy the image specified by `RP_IMAGE` to the test environment. You do not need to worry about cleanup, because every deploy tests job will deploy its own copy of the image.
 
 ## Running via GitHub workflow
 
