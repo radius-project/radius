@@ -41,3 +41,21 @@ jobs:
           app-name: radius
           publish-profile: ${{ secrets.DOCS_SITE_PUBLISHPROFILE }}
           package: "./docs/public/"
+
+  build_job:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    name: Build and Deploy Site
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2.4.13
+        with:
+          hugo-version: 0.74.3
+          extended: true
+      - name: Setup Docsy
+        run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
+      - name: Build Site
+        run: cd docs && hugo
