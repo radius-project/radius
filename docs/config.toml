@@ -1,9 +1,14 @@
-baseURL = "https://docs.radapp.dev/"
+baseURL = "https://radapp.dev/"
 languageCode = "en-us"
 title = "Project Radius"
 theme =  "docsy"
 
 disableFastRender = true
+
+# GitHub Information
+github_repo = "https://github.com/Azure/radius"
+github_subdir = "docs"
+github_branch = "main"
 
 # Mounts
 [module]
@@ -40,7 +45,7 @@ disableKinds = ["taxonomy", "term"]
 [[menu.main]]
     name = "Logout"
     weight = 50
-    url = "./logout"
+    url = "/.auth/logout"
 
 [params]
 copyright = "Project Radius"
@@ -50,11 +55,6 @@ copyright = "Project Radius"
   [markup.goldmark]
     [markup.goldmark.renderer]
       unsafe = true
-
-# GitHub Information
-github_repo = "https://github.com/Azure/radius"
-github_subdir = "docs"
-github_branch = "main"
 
 # UI Customization
 [params.ui]
