@@ -1,21 +1,36 @@
-## Table of contents
+# Project Radius documentation
 
-## Getting started
+This directory contains the files to generate the https://radapp.dev site. Please go there to consume Project Radius docs. This document will describe how to build Project Radius docs locally.
 
-[Getting started](getting-started.md)
+## Pre-requisites
 
-## Development
+- [Hugo extended version](https://gohugo.io/getting-started/installing)
+- [Node.js](https://nodejs.org/en/)
 
-[Running rad CLI](development/running-rad-cli.md)
+## Environment setup
 
-[Debugging Go with VSCode](development/debugging-go-with-vscode.md)
+1. Ensure pre-requisites are installed
+2. Clone this repository
+```sh
+git clone https://github.com/Azure/radius.git
+```
+3. Change to daprdocs directory: 
+```sh
+cd ./radius/docs
+```
+4. Update submodules: 
+```sh
+git submodule update --init --recursive
+```
+5. Install npm packages: 
+```sh
+npm install
+```
 
-[Testing environment setup](development/testing-environment-setup.md)
-
-[Running locally](development/running-locally.md)
-
-[Testing locally](development/testing-locally.md)
-
-[Deploying the RP manually](development/deploying-the-rp.md)
-
-[Aliasing an existing RP](development/aliasing-the-rp.md)
+## Run local server
+1. Make sure you're still in the `docs` directory
+2. Run 
+```sh
+hugo server
+```
+3. Navigate to `http://localhost:1313/`
