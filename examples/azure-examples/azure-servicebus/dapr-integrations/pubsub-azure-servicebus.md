@@ -77,7 +77,8 @@ The environment variables `SB_PUBSUBNAME` and `SB_TOPIC` are injected into the c
 ### Publisher Application
 
 The publisher application sends messages to a pubsub component named "pubsub" and an Azure ServiceBus topic named "TOPIC_A". If you wish to modify the application code, you can do so and create a new image as follows:-
-```
+
+```bash
 cd <Radius Path>/test/dapr-pubsub-azure/apps/pythonpublisher
 docker build . -t <your docker hub>/dapr-pubsub-pythonpublisher:latest
 docker push <your docker hub>/dapr-pubsub-pythonpublisher:latest
