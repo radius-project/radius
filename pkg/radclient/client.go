@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/validation"
+	"github.com/Azure/radius/cmd/cli/utils"
 )
 
 const apiVersion = "2018-09-01-preview"
@@ -55,7 +56,7 @@ func (client Client) GetApplication(ctx context.Context, resourceGroupName strin
 	}
 
 	app := Application{
-		Name: *result.Name,
+		Name: utils.GetResourceNameFromFullyQualifiedPath(*result.Name),
 		ID:   *result.ID,
 	}
 
@@ -113,7 +114,7 @@ func (client Client) ListRadiusResources(ctx context.Context, resourceGroupName 
 
 	for _, value := range applications {
 		app := Application{
-			Name: value.(map[string]interface{})["name"].(string),
+			Name: utils.GetResourceNameFromFullyQualifiedPath(value.(map[string]interface{})["name"].(string)),
 			ID:   value.(map[string]interface{})["id"].(string),
 		}
 		resources = append(resources, app)

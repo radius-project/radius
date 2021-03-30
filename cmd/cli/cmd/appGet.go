@@ -25,7 +25,7 @@ var getCmd = &cobra.Command{
 func init() {
 	applicationCmd.AddCommand(getCmd)
 
-	getCmd.Flags().String("name", "", "The application name")
+	getCmd.Flags().StringP("name", "n", "", "The application name")
 	if err := getCmd.MarkFlagRequired("name"); err != nil {
 		fmt.Printf("Failed to mark the name flag required: %v", err)
 	}
