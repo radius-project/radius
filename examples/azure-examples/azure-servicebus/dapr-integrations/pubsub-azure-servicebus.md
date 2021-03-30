@@ -74,7 +74,7 @@ resource nodesubscriber 'Components' = {
 
 The environment variables `SB_PUBSUBNAME` and `SB_TOPIC` are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec
 
-### Publisher Application
+### Publisher application
 
 The publisher application sends messages to a pubsub component named "pubsub" and an Azure ServiceBus topic named "TOPIC_A". If you wish to modify the application code, you can do so and create a new image as follows:-
 
