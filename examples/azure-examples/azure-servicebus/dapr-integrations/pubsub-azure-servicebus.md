@@ -72,7 +72,7 @@ resource nodesubscriber 'Components' = {
   }
 ```
 
-The environment variables SB_PUBSUBNAME and SB_TOPIC are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec
+The environment variables `SB_PUBSUBNAME` and `SB_TOPIC` are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec
 
 ### Publisher Application
 
