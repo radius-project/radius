@@ -31,7 +31,8 @@ You can find the source code for the sender and receiver applications [here](htt
 ### Subscriber application
 
 The subscriber application listens to a pubsub component named "pubsub" and an Azure ServiceBus topic named "TOPIC_A" and prints out the messages received. If you wish to modify the application code, you can do so and create a new image as follows:-
-```
+
+```bash
 cd <Radius Path>/test/dapr-pubsub-azure/apps/nodesubscriber
 docker build . -t <your docker hub>/dapr-pubsub-nodesubscriber:latest
 docker push <your docker hub>/dapr-pubsub-nodesubscriber:latest
