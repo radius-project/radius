@@ -189,7 +189,7 @@ TOPIC_A :  hello world
 
 You have completed this tutorial!
 
-## Step 3: Cleanup (optional)
+## (optional) Cleanup
 
 When you are ready to clean up and delete the resources you can delete your environment. This will delete:
 
