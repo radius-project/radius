@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
@@ -28,6 +29,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/workloads/ingress"
+	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
 	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -145,6 +147,10 @@ type serviceBusQueueHandler struct {
 	arm armauth.ArmConfig
 }
 
+type keyVaultHandler struct {
+	arm armauth.ArmConfig
+}
+
 // NewDeploymentProcessor initializes a deployment processor.
 func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
 	d := workloads.Dispatcher{
@@ -154,6 +160,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			cosmosdocumentdbv1alpha1.Kind: &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
 			containerv1alpha1.Kind:        &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
 			servicebusqueuev1alpha1.Kind:  &servicebusqueuev1alpha1.Renderer{Arm: arm},
+			keyvaultv1alpha1.Kind:         &keyvaultv1alpha1.Renderer{Arm: arm},
 		},
 	}
 
@@ -164,6 +171,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			"dapr.pubsubtopic.azureservicebus": &servicebusPubSubTopicHandler{arm, k8s},
 			"azure.cosmos.documentdb":          &cosmosDocumentDbHandler{arm},
 			"azure.servicebus.queue":           &serviceBusQueueHandler{arm},
+			"azure.keyvault":                   &keyVaultHandler{arm},
 		},
 	}
 
@@ -1300,6 +1308,73 @@ func (sbh *serviceBusQueueHandler) Delete(ctx context.Context, properties map[st
 	_, err = sbNamespaceFuture.Result(sbc)
 	if err != nil {
 		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+	}
+
+	return nil
+}
+
+func (kvh *keyVaultHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+	if resource.Type != "azure.keyvault" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	return properties, nil
+}
+
+func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
+	if resource.Type != "azure.keyvault" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	mergeProperties(properties, existing)
+
+	vaultName := properties["keyvaultname"]
+
+	kvc := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
+	kvc.Authorizer = kvh.arm.Auth
+	vaultsFuture, err := kvc.CreateOrUpdate(ctx, kvh.arm.ResourceGroup, vaultName, keyvault.VaultCreateOrUpdateParameters{
+		Properties: &keyvault.VaultProperties{
+			Sku: &keyvault.Sku{
+				Name:   keyvault.Standard,
+				Family: to.StringPtr("Standard"),
+			},
+		},
+	})
+
+	err = vaultsFuture.WaitForCompletionRef(ctx, kvc.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
+	}
+
+	kv, err := vaultsFuture.Result(kvc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
+	}
+
+	// store vault so we can use later
+	properties["keyvaultname"] = *kv.Name
+	return properties, nil
+}
+
+func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]string) error {
+	vaultName := properties["keyvaultname"]
+
+	kvClient := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
+	kvClient.Authorizer = kvh.arm.Auth
+
+	_, err := kvClient.Delete(ctx, kvh.arm.ResourceGroup, vaultName)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE keyvault: %w", err)
 	}
 
 	return nil
