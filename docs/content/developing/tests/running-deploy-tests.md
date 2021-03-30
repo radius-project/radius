@@ -6,13 +6,15 @@ description: "How to run Radius deploy tests"
 weight: 200
 ---
 
-
 These tests verify whether the bicep template deployment to the Radius environment succeeded. These run on pre-created radius environments (or Radius test clusters).
 
+## Running via GitHub workflow
 
-## Environment variables
+These tests automatically run for every PR in the `build.yaml` github workflow.
 
-These tests rely on the following environment variables:-
+### Configuration
+
+These tests rely on the following environment variables for configuration:
 
 ```
 export PATH=$PATH:<Radius Binary Path>
@@ -26,19 +28,20 @@ export RP_IMAGE=docker image for the RP
 
 `RP_DEPLOY` and `RP_IMAGE` are optional. If you set `RP_DEPLOY=true`, then the tests will deploy the image specified by `RP_IMAGE` to the test environment. You do not need to worry about cleanup, because every deploy tests job will deploy its own copy of the image.
 
-## Running via GitHub workflow
-
-These tests automatically run for every PR in the `build.yaml` github workflow.
-
-
 ## Running the tests locally
 
-1. Create a [service principal](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal), specify a password and assign it "Owner" role.
-2. Export the environment variables mentioned above
-3. Run:
-    ```
+1. Create an environment (`rad env init azure -i`)
+2. Merge your AKS credentials to your kubeconfig (`rad env merge-credentials --name azure`)
+3. Place `rad` on your path
+4. Run:
+
+    ```sh
     make deploy-tests
     ```
+
+When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`.
+
+You do not need to configure any environment variables to run the tests from your machine. You may want to configure `RP_DEPLOY` and `RP_IMAGE` to deploy a private build of your RP.
 
 ## Adding new test clusters
 

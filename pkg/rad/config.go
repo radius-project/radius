@@ -43,3 +43,12 @@ func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 func UpdateEnvironmentSection(v *viper.Viper, env EnvironmentSection) {
 	v.Set(EnvironmentKey, env)
 }
+
+func (env EnvironmentSection) GetDefaultEnvironment() (map[string]interface{}, bool) {
+	if env.Default == "" {
+		return nil, false
+	}
+
+	item, ok := env.Items[env.Default]
+	return item, ok
+}

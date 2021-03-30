@@ -7,48 +7,50 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/marstr/randname"
 )
 
-var (
-	// AzureConfig contains the configuration info to authorize with ARM
-	AzureConfig *azureConfig = new(azureConfig)
-)
-
-type azureConfig struct {
-	clientID        string
-	clientSecret    string
-	tenantID        string
+type AzureConfig struct {
+	Authorizer      autorest.Authorizer
 	subscriptionID  string
 	locationDefault string
 	cloudName       string
 	baseGroupName   string
 }
 
-func init() {
-	AzureConfig.initialize()
-}
+func NewAzureConfig() (*AzureConfig, error) {
+	// This will read the standard set of Azure env-vars and fall-back to CLI auth if they are not present.
+	var authorizer autorest.Authorizer
+	var err error
+	if os.Getenv("AZURE_CLIENT_ID") != "" || os.Getenv("AZURE_CLIENT_SECRET") != "" || os.Getenv("AZURE_TENANT_ID") != "" {
+		authorizer, err = auth.NewAuthorizerFromEnvironment()
+		if err != nil {
+			return nil, fmt.Errorf("failed to authenticate with Service Principal auth: %w", err)
+		}
+	} else {
+		authorizer, err = auth.NewAuthorizerFromCLI()
+		if err != nil {
+			return nil, fmt.Errorf("failed to authenticate with CLI auth: %w", err)
+		}
+	}
 
-// Read test configuration from environment variables
-func (config *azureConfig) initialize() {
-	config.clientID = os.Getenv("AZURE_CLIENT_ID")
-	config.clientSecret = os.Getenv("AZURE_CLIENT_SECRET")
-	config.tenantID = os.Getenv("AZURE_TENANT_ID")
-	config.subscriptionID = os.Getenv("INTEGRATION_TEST_SUBSCRIPTION_ID")
-	config.locationDefault = os.Getenv("INTEGRATION_TEST_DEFAULT_LOCATION")
-	config.baseGroupName = os.Getenv("INTEGRATION_TEST_BASE_GROUP_NAME")
-	config.cloudName = "AzurePublicCloud"
+	return &AzureConfig{
+		Authorizer:      authorizer,
+		subscriptionID:  os.Getenv("INTEGRATION_TEST_SUBSCRIPTION_ID"),
+		locationDefault: os.Getenv("INTEGRATION_TEST_DEFAULT_LOCATION"),
+		baseGroupName:   os.Getenv("INTEGRATION_TEST_BASE_GROUP_NAME"),
+		cloudName:       "AzurePublicCloud",
+	}, nil
 }
 
 // GenerateGroupName generates a resource group name with INTEGRATION_TEST_BASE_GROUP_NAME as the prefix
 // and adds a 5-character random string to it.
-func (config *azureConfig) GenerateGroupName(affixes ...string) string {
+func (config *AzureConfig) GenerateGroupName(affixes ...string) string {
 	b := bytes.NewBufferString(config.baseGroupName)
 	b.WriteRune('-')
 	for _, affix := range affixes {
@@ -59,61 +61,11 @@ func (config *azureConfig) GenerateGroupName(affixes ...string) string {
 }
 
 // SubscriptionID returns the subscription ID
-func (config *azureConfig) SubscriptionID() string {
+func (config *AzureConfig) SubscriptionID() string {
 	return config.subscriptionID
 }
 
-// ClientID returns the client ID
-func (config *azureConfig) ClientID() string {
-	return config.clientID
-}
-
 // DefaultLocation returns the location default
-func (config *azureConfig) DefaultLocation() string {
+func (config *AzureConfig) DefaultLocation() string {
 	return config.locationDefault
-}
-
-// GetAppsClient initializes and returns a web.AppsClient
-func (config *azureConfig) GetWebAppsClient() (web.AppsClient, error) {
-	client := web.NewAppsClient(config.subscriptionID)
-	a, err := auth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		return web.AppsClient{}, err
-	}
-	client.Authorizer = a
-	return client, nil
-}
-
-// GetResourcesClient initializes and returns a resources.Client
-func (config *azureConfig) GetResourcesClient() (resources.Client, error) {
-	resourcesClient := resources.NewClient(config.subscriptionID)
-	a, err := auth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		return resources.Client{}, err
-	}
-	resourcesClient.Authorizer = a
-	return resourcesClient, nil
-}
-
-// GetGroupsClient initializes and returns a resources.GroupsClient
-func (config *azureConfig) GetGroupsClient() (resources.GroupsClient, error) {
-	groupsClient := resources.NewGroupsClient(AzureConfig.subscriptionID)
-	a, err := auth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		return resources.GroupsClient{}, err
-	}
-	groupsClient.Authorizer = a
-	return groupsClient, nil
-}
-
-// GetStorageAccountsClient initializes and returns a storage.AccountsClient
-func (config *azureConfig) GetStorageAccountsClient() (storage.AccountsClient, error) {
-	storageAccountsClient := storage.NewAccountsClient(AzureConfig.subscriptionID)
-	a, err := auth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		return storage.AccountsClient{}, err
-	}
-	storageAccountsClient.Authorizer = a
-
-	return storageAccountsClient, nil
 }
