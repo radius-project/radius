@@ -28,7 +28,7 @@ The application you will be deploying is a simple publisher-subscriber applicati
 
 You can find the source code for the sender and receiver applications [here](https://github.com/Azure/radius/tree/main/test/dapr-pubsub-azure/apps).
 
-### Subscriber Application
+### Subscriber application
 
 The subscriber application listens to a pubsub component named "pubsub" and an Azure ServiceBus topic named "TOPIC_A" and prints out the messages received. If you wish to modify the application code, you can do so and create a new image as follows:-
 ```
