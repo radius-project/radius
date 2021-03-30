@@ -38,13 +38,13 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 		t.Logf("validating pods in namespace %v", namespace)
 
 		actualPods, err := k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-		require.NoError(t, err, "failed to list pods in namespace %v", namespace)
+		require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
 
 		// log all the data so its there if we need to analyze a failure
 		logPods(t, actualPods.Items)
 
 		// switch to using assert so we can validate all the details without failing fast
-		assert.Equal(t, len(expectedPods), len(actualPods.Items), "different number of pods than expected in namespace %v", namespace)
+		assert.Equalf(t, len(expectedPods), len(actualPods.Items), "different number of pods than expected in namespace %v", namespace)
 
 		// copy the list of expected pods so we can remove from it
 		//
@@ -57,7 +57,7 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 			index := matchesExpectedPod(remaining, actualPod)
 			if index == nil {
 				// this is not a match
-				assert.Fail(t, "count not find a match for Pod with namespace: %v name: %v labels: %v", actualPod.Namespace, actualPod.Name, actualPod.Labels)
+				assert.Failf(t, "count not find a match for Pod with namespace: %v name: %v labels: %v", actualPod.Namespace, actualPod.Name, actualPod.Labels)
 				continue
 			}
 
@@ -66,7 +66,7 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 		}
 
 		for _, remainingPod := range remaining {
-			assert.Fail(t, "failed to match pod in namespace %v with labels %v", namespace, remainingPod.Labels)
+			assert.Failf(t, "failed to match pod in namespace %v with labels %v", namespace, remainingPod.Labels)
 		}
 
 		// Now check the status of the pods
@@ -79,7 +79,7 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 
 			// If we're not in the running state, we need to wait a bit to see if things work out.
 			watch, err := k8s.CoreV1().Pods(namespace).Watch(ctx, metav1.SingleObject(actualPod.ObjectMeta))
-			require.NoError(t, err, "failed to watch pod: %v", actualPod.Name)
+			require.NoErrorf(t, err, "failed to watch pod: %v", actualPod.Name)
 			defer watch.Stop()
 
 		loop:
@@ -87,13 +87,13 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 				select {
 				case event := <-watch.ResultChan():
 					pod, ok := event.Object.(*corev1.Pod)
-					require.True(t, ok, "object %T is not a pod", event.Object)
+					require.Truef(t, ok, "object %T is not a pod", event.Object)
 
 					if pod.Status.Phase == corev1.PodRunning {
 						t.Logf("success! pod %v has status: %v", pod.Name, pod.Status)
 						break loop
 					} else if pod.Status.Phase == corev1.PodFailed {
-						assert.Fail(t, "pod %v entered a failing state", pod.Name)
+						assert.Failf(t, "pod %v entered a failing state", pod.Name)
 						break loop
 					}
 
@@ -101,7 +101,7 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 
 				// allow max of 60 seconds to pass without updates
 				case <-time.After(60 * time.Second):
-					assert.Fail(t, "timed out after waiting for pod %v to enter running status", actualPod.Name)
+					assert.Failf(t, "timed out after waiting for pod %v to enter running status", actualPod.Name)
 					break loop
 				}
 			}

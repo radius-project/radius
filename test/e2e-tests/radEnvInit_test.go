@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
@@ -22,12 +23,16 @@ import (
 func TestAzureEnvironmentSetup(t *testing.T) {
 	ctx := context.Background()
 
+	config, err := config.NewAzureConfig()
+	require.NoError(t, err, "failed to initialize azure config")
+	require.NotEmpty(t, config.SubscriptionID(), "Subscription Id must be set via INTEGRATION_TEST_SUBSCRIPTION_ID")
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err, "failed to get working directory")
 
-	resourceGroupName := config.AzureConfig.GenerateGroupName()
+	resourceGroupName := config.GenerateGroupName()
 	t.Cleanup(func() {
-		cleanup(ctx, t, resourceGroupName)
+		cleanup(ctx, t, config, resourceGroupName)
 	})
 
 	// use the local copy of the deployment template - this is needed for correctness when running as part of a PR
@@ -36,19 +41,25 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 
 	// Run the rad cli init command and look for errors
 	t.Log("Deploying in resource group: " + resourceGroupName)
-	err = utils.RunRadInitCommand(config.AzureConfig.SubscriptionID(), resourceGroupName, config.AzureConfig.DefaultLocation(), deploymentTemplateFilePath, time.Minute*15)
+	err = utils.RunRadInitCommand(config.SubscriptionID(), resourceGroupName, config.DefaultLocation(), deploymentTemplateFilePath, time.Minute*15)
 	require.NoError(t, err)
 
 	// Check whether the resource group is created
-	rg, err := utils.GetGroup(ctx, resourceGroupName)
+	groupc := resources.NewGroupsClient(config.SubscriptionID())
+	groupc.Authorizer = config.Authorizer
+
+	rg, err := groupc.Get(ctx, resourceGroupName)
 	require.NoError(t, err, "failed to find resource group")
 	require.Equal(t, resourceGroupName, *rg.Name)
 
 	resourceMap := make(map[string]string)
-	for pageResults, err := utils.ListResourcesInResourceGroup(ctx, resourceGroupName); pageResults.NotDone(); err = pageResults.NextWithContext(ctx) {
+	resc := resources.NewClient(config.SubscriptionID())
+	resc.Authorizer = config.Authorizer
+
+	for page, err := resc.ListByResourceGroup(ctx, resourceGroupName, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
 		require.NoError(t, err, "failed to list resources")
 
-		for _, r := range pageResults.Values() {
+		for _, r := range page.Values() {
 			resourceMap[*r.Type] = *r.ID
 		}
 	}
@@ -92,13 +103,13 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 		Namespaces: map[string][]validation.Pod{
 
 			// verify app
-			"frontend-backend": []validation.Pod{
+			"frontend-backend": {
 				validation.NewPodForComponent("frontend-backend", "frontend"),
 				validation.NewPodForComponent("frontend-backend", "backend"),
 			},
 
 			// verify dapr
-			"dapr-system": []validation.Pod{
+			"dapr-system": {
 				validation.Pod{Labels: map[string]string{"app": "dapr-dashboard"}},
 				validation.Pod{Labels: map[string]string{"app": "dapr-operator"}},
 				validation.Pod{Labels: map[string]string{"app": "dapr-placement-server"}},
@@ -114,7 +125,10 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	validation.ValidatePodsRunning(t, k8s, expectedPods)
 }
 
-func cleanup(ctx context.Context, t *testing.T, resourceGroupName string) {
-	_, err := utils.DeleteGroup(ctx, resourceGroupName)
+func cleanup(ctx context.Context, t *testing.T, config *config.AzureConfig, resourceGroupName string) {
+	groupc := resources.NewGroupsClient(config.SubscriptionID())
+	groupc.Authorizer = config.Authorizer
+
+	_, err := groupc.Delete(ctx, resourceGroupName)
 	require.NoError(t, err, "failed to delete resource group")
 }
