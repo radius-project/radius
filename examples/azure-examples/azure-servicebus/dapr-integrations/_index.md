@@ -7,4 +7,4 @@ weight: 20
 ---
 
 ## Dapr Integrations with Radius
-- [Dapr PubSub using Azure Service Bus](https://github.com/Azure/radius/tree/main/docs/content/how-to/dapr-integrations/pubsub-azure-servicebus.md)
+- [Dapr PubSub using Azure Service Bus]({{< ref pubsub-azure-servicebus.md >}})
