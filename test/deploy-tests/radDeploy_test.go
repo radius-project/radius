@@ -37,7 +37,7 @@ func TestDeployApplication(t *testing.T) {
 
 	// Deploy bicep template
 	cwd, _ := os.Getwd()
-	templateFilePath := filepath.Join(cwd, "../", appName, "/azure-bicep/template.bicep")
+	templateFilePath := filepath.Join(cwd, "../../examples/", appName, "/azure-bicep/template.bicep")
 	err = utils.RunRadDeployCommand(templateFilePath, configFilePath, time.Minute*5)
 	require.NoError(t, err)
 
