@@ -119,7 +119,7 @@ resource pythonpublisher 'Components' = {
 
 The environment variables `SB_PUBSUBNAME` and `SB_TOPIC` are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec
 
-### Dapr PubSub Component
+### Dapr pubsub component
 Radius will create a new ServiceBus namespace if one does not already exist in the resource group and add the topic name "TOPIC_A" as specified in the deployment template below.
 
 {{% alert title="Note" color="warning" %}}
