@@ -138,7 +138,7 @@ resource pubsub 'Components' = {
 }
 ```
 
-### Deploy application
+## Deploying the application
 
 Now you are ready to deploy this application.
 
