@@ -1,0 +1,12 @@
+# Documentation and examples for what this does:
+#
+#  https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
+
+# This file is a list of rules, with the last rule being most specific
+# All of the people (and only those people) from the matching rule will be notified
+
+# Default rule: anything that doesn't match a more specific rule goes here
+@kachawla @rynowak @vinayada1
+
+# Docs rule: any PR that touches docs goes here
+/docs/ @AaronCrawfis @kachawla @rynowak @vinayada1
