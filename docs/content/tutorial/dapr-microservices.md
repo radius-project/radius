@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Dapr Microservices Tutorial"
-linkTitle: "Dapr Microservices Tutorial"
+linkTitle: "Dapr Microservices"
 description: "Learn Project Radius by authoring templates and deploying a working Dapr application"
 weight: 20
 ---
