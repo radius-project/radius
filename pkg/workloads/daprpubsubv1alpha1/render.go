@@ -7,14 +7,12 @@ package daprpubsubv1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Renderer is the WorkloadRenderer implementation for the dapr pubsub workload.
@@ -74,31 +72,4 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// It's already in the correct format
 	return []workloads.WorkloadResource{resource}, nil
-}
-
-type pubsubSpec struct {
-	Kind    string `json:"kind"`
-	Managed bool   `json:"managed"`
-	Name    string `json:"name"`
-	Topic   string `json:"topic"`
-}
-
-func getSpec(item unstructured.Unstructured) (pubsubSpec, error) {
-	spec, ok := item.Object["spec"]
-	if !ok {
-		return pubsubSpec{}, errors.New("workload does not contain a spec element")
-	}
-
-	b, err := json.Marshal(spec)
-	if err != nil {
-		return pubsubSpec{}, err
-	}
-
-	pubsub := pubsubSpec{}
-	err = json.Unmarshal(b, &pubsub)
-	if err != nil {
-		return pubsubSpec{}, err
-	}
-
-	return pubsub, nil
 }

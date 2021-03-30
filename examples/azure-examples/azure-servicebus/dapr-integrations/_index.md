@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Use Dapr with Radius"
-linkTitle: "Use Dapr with Radius"
-description: "Learn how to use Dapr and Radius together"
+title: "How to use Dapr Integrations with Radis"
+linkTitle: "How to use Dapr Integrations with Radis"
+description: "Guides for using Dapr components with Radius"
 weight: 20
 ---
 

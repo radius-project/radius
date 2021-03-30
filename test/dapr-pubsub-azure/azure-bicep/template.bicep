@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'dapr-pubsub'
+  name: 'dapr-pubsub1'
 
   resource nodesubscriber 'Components' = {
     name: 'nodesubscriber'
@@ -64,18 +64,13 @@ resource app 'radius.dev/Applications@v1alpha1' = {
   
   resource pubsub 'Components' = {
     name: 'pubsub'
-    kind: 'dapr.io/Component@v1alpha1'
+    kind: 'dapr.io/PubSubTopic@v1alpha1'
     properties: {
       config: {
-        type: 'pubsub.azure.servicebus'
+        kind: 'pubsub.azure.servicebus'
         topic: 'TOPIC_A'
+        managed: true
       }
-      provides: [
-        {
-          name: 'pubsub'
-          kind: 'dapr.io/PubSubTopic'
-        }
-      ]
     }
   }
 }

@@ -53,6 +53,7 @@ resource nodesubscriber 'Components' = {
           name: 'pubsub'
           kind: 'dapr.io/PubSubTopic'
           setEnv: {
+            SB_PUBSUBNAME: 'pubsubName'
             SB_TOPIC: 'topic'
           }
         }
@@ -70,6 +71,8 @@ resource nodesubscriber 'Components' = {
   }
 ```
 
+The environment variables SB_PUBSUBNAME and SB_TOPIC are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec
+
 ### Publisher Application
 
 The publisher application sends messages to a pubsub component named "pubsub" and an Azure ServiceBus topic named "TOPIC_A". If you wish to modify the application code, you can do so and create a new image as follows:-
@@ -82,53 +85,54 @@ docker push <your docker hub>/dapr-pubsub-pythonpublisher:latest
 Note: You need to reference your new image as the container image in the deployment template:-
 ```
 resource pythonpublisher 'Components' = {
-    name: 'pythonpublisher'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: {
-        container: {
-          image: '<your docker hub>/dapr-pubsub-pythonpublisher:latest'
+  name: 'pythonpublisher'
+  kind: 'radius.dev/Container@v1alpha1'
+  properties: {
+    run: {
+      container: {
+        image: '<your docker hub>/dapr-pubsub-pythonpublisher:latest'
+      }
+    }
+    dependsOn: [
+      {
+        name: 'pubsub'
+        kind: 'dapr.io/PubSubTopic'
+        setEnv: {
+          SB_PUBSUBNAME: 'pubsubName'
+          SB_TOPIC: 'topic'
         }
       }
-      dependsOn: [
-        {
-          name: 'pubsub'
-          kind: 'dapr.io/PubSubTopic'
-          setEnv: {
-            SB_PUBSUBNAME: 'pubsubName'
-            SB_TOPIC: 'topic'
-          }
+    ]
+    traits: [
+      {
+        kind: 'dapr.io/App@v1alpha1'
+        properties: {
+          appId: 'pythonpublisher'
         }
-      ]
-      traits: [
-        {
-          kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'pythonpublisher'
-          }
-        }
-      ]
-    }
+      }
+    ]
   }
+}
 ```
 
+The environment variables SB_PUBSUBNAME and SB_TOPIC are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec
+
 ### Dapr PubSub Component
-Radius will create a new ServiceBus namespace if one does not already exist in the resource group and add the topic name "TOPIC_A" as specified in the deployment template below. If you change the pubsub or topic name, it is automatically injected into the sender/receiver app containers by SB_PUBSUBNAME and SB_TOPIC env variables and they start sending/listening on the new topic accoridingly.:-
+Radius will create a new ServiceBus namespace if one does not already exist in the resource group and add the topic name "TOPIC_A" as specified in the deployment template below.
+
+{{% alert title="Note" color="warning" %}}
+Note that the name 'pubsub' used below should match the names used by the publisher and sender applications:-
+{{% /alert %}}
+
 ```
 resource pubsub 'Components' = {
-    name: 'pubsub'
-    kind: 'dapr.io/Component@v1alpha1'
-    properties: {
-      config: {
-        type: 'pubsub.azure.servicebus'
-        topic: 'TOPIC_A'
-      }
-      provides: [
-        {
-          name: 'pubsub'
-          kind: 'dapr.io/PubSubTopic'
-        }
-      ]
+  name: 'pubsub'
+  kind: 'dapr.io/PubSubTopic@v1alpha1'
+  properties: {
+    config: {
+      kind: 'pubsub.azure.servicebus'
+      topic: 'TOPIC_A'
+      managed: true
     }
   }
 }
