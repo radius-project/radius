@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
+	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-11-01/subscriptions"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
@@ -31,6 +32,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads/ingress"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
+	uuid1 "github.com/gofrs/uuid"
 	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1071,6 +1073,7 @@ func (cddh *cosmosDocumentDbHandler) Put(ctx context.Context, resource workloads
 			},
 		},
 	})
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT cosmosdb account: %w", err)
 	}
@@ -1338,18 +1341,44 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 
 	mergeProperties(properties, existing)
 
-	vaultName := properties["keyvaultname"]
+	vaultName := namegenerator.GenerateName("kv")
+	properties["keyvaultname"] = vaultName
+
+	rgc := resources.NewGroupsClient(kvh.arm.SubscriptionID)
+	rgc.Authorizer = kvh.arm.Auth
+
+	g, err := rgc.Get(ctx, kvh.arm.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
+	}
+
+	sc := subscriptions.NewClient()
+	sc.Authorizer = kvh.arm.Auth
+	sub, err := sc.Get(ctx, kvh.arm.SubscriptionID)
 
 	kvc := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
 	kvc.Authorizer = kvh.arm.Auth
-	vaultsFuture, err := kvc.CreateOrUpdate(ctx, kvh.arm.ResourceGroup, vaultName, keyvault.VaultCreateOrUpdateParameters{
-		Properties: &keyvault.VaultProperties{
-			Sku: &keyvault.Sku{
-				Name:   keyvault.Standard,
-				Family: to.StringPtr("Standard"),
+	tenantID, err := uuid1.FromString(*sub.TenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	vaultsFuture, err := kvc.CreateOrUpdate(
+		ctx,
+		kvh.arm.ResourceGroup,
+		vaultName,
+		keyvault.VaultCreateOrUpdateParameters{
+			Location: g.Location,
+			Properties: &keyvault.VaultProperties{
+				TenantID: &tenantID,
+				Sku: &keyvault.Sku{
+					Family: to.StringPtr("A"),
+					Name:   keyvault.Standard,
+				},
+				AccessPolicies: &[]keyvault.AccessPolicyEntry{},
 			},
 		},
-	})
+	)
 
 	err = vaultsFuture.WaitForCompletionRef(ctx, kvc.Client)
 	if err != nil {

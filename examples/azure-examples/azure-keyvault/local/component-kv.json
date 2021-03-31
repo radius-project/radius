@@ -1,0 +1,9 @@
+{
+    "kind": "azure.com/KeyVault@v1alpha1",
+    "properties": {
+        "config": {
+            "managed": true,
+            "yes": "yes"
+        }
+    }
+}

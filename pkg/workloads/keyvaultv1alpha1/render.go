@@ -36,12 +36,13 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 	kvClient := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
 	kvClient.Authorizer = r.Arm.Auth
-
-	// TODO - Get connection string
-	kvClient.
+	vault, err := kvClient.Get(ctx, r.Arm.ResourceGroup, vaultName)
+	if err != nil {
+		return nil, fmt.Errorf("Cannot fetch keyvault")
+	}
 
 	values := map[string]interface{}{
-		"connectionString": *cs,
+		"uri": vault.Properties.VaultURI,
 	}
 
 	return values, nil
