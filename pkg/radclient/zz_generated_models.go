@@ -99,11 +99,17 @@ type ComponentListResponse struct {
 	RawResponse *http.Response
 }
 
+// Properties of a component.
+type ComponentProperties struct {
+	// Resource type of the component
+	Kind *string `json:"kind,omitempty"`
+}
+
 // Component resource.
 type ComponentResource struct {
 	TrackedResource
 	// Properties of the component.
-	Properties interface{} `json:"properties,omitempty"`
+	Properties *ComponentProperties `json:"properties,omitempty"`
 }
 
 // ComponentResourceResponse is the response envelope for operations that return a ComponentResource type.

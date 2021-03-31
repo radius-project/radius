@@ -29,8 +29,8 @@ func NewDeploymentClient(con *armcore.Connection, subscriptionID string) *Deploy
 }
 
 // Delete - Deletes a deployment.
-func (client *DeploymentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, applicationName1 string, options *DeploymentDeleteOptions) (*http.Response, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, applicationName1, options)
+func (client *DeploymentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentDeleteOptions) (*http.Response, error) {
+	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, deploymentName, options)
 	if err != nil {
 		return nil, err
 	}
@@ -45,12 +45,12 @@ func (client *DeploymentClient) Delete(ctx context.Context, resourceGroupName st
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DeploymentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, applicationName1 string, options *DeploymentDeleteOptions) (*azcore.Request, error) {
+func (client *DeploymentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Deployments/{deploymentName}"
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName1))
+	urlPath = strings.ReplaceAll(urlPath, "{deploymentName}", url.PathEscape(deploymentName))
 	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -73,8 +73,8 @@ var err ErrorResponse
 }
 
 // Get - Gets a deployment by name.
-func (client *DeploymentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, applicationName1 string, options *DeploymentGetOptions) (DeploymentResourceResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, applicationName1, options)
+func (client *DeploymentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentGetOptions) (DeploymentResourceResponse, error) {
+	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, deploymentName, options)
 	if err != nil {
 		return DeploymentResourceResponse{}, err
 	}
@@ -89,12 +89,12 @@ func (client *DeploymentClient) Get(ctx context.Context, resourceGroupName strin
 }
 
 // getCreateRequest creates the Get request.
-func (client *DeploymentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, applicationName1 string, options *DeploymentGetOptions) (*azcore.Request, error) {
+func (client *DeploymentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentGetOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Deployments/{deploymentName}"
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName1))
+	urlPath = strings.ReplaceAll(urlPath, "{deploymentName}", url.PathEscape(deploymentName))
 	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err

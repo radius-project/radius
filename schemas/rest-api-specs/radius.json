@@ -511,12 +511,18 @@
     "DeploymentProperties": {
       "description": "Properties of a deployment.",
       "type": "object",
+      "required": [
+        "components"
+      ],
       "properties": {
         "components": {
           "type": "array",
           "description": "List of components in the deployment.",
           "items": {
             "type": "object",
+            "required": [
+              "componentName"
+            ],
             "properties": {
               "componentName": {
                 "type": "string",
@@ -571,7 +577,14 @@
     "ComponentProperties": {
       "description": "Properties of a component.",
       "type": "object",
+      "required": [
+        "kind"
+      ],
       "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Resource type of the component"
+        }
       }
     }
   },
@@ -585,7 +598,7 @@
       "x-ms-parameter-location": "method"
     },
     "DeploymentNameParameter": {
-      "name": "applicationName",
+      "name": "deploymentName",
       "in": "path",
       "required": true,
       "type": "string",
