@@ -1,0 +1,21 @@
+{{- $index := .Ordinal -}}
+<!-- Make sure that we are enclosed within a tabs shortcode block -->
+{{- if ne .Parent.Name "tabs" -}}
+{{- errorf "codetab must be used within a tabs block" -}}
+{{- end -}}
+
+<!-- Generate the unique ID based on the enclosing tabs .Ordinal -->
+{{- $guid := printf "tabs-%d" .Parent.Ordinal -}}
+<!-- Trim any leading and trailing newlines from .Inner, this avoids
+     spurious lines during syntax highlighting -->
+
+{{- $entry := .Parent.Get $index -}}
+{{- $entry := lower $entry -}}
+
+{{- $tabid := printf "%s-%s-tab" $guid $entry | anchorize -}}
+{{- $entryid := printf "%s-%s" $guid $entry | anchorize -}}
+
+<div class="tab-pane fade{{ if eq $index 0 }} show active{{ end }}" id="{{ $entryid }}" role="tabpanel" aria-labelled-by="{{ $tabid }}">
+<br />
+     {{- .Inner -}}
+</div>
