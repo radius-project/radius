@@ -82,6 +82,22 @@ func TestDeployment(t *testing.T) {
 		})
 	})
 
+	t.Run(("Deploy dapr pubsub"), func(t *testing.T) {
+		templateFilePath := filepath.Join(cwd, "../../examples/dapr-examples/dapr-integrations/azure-bicep/template.bicep")
+
+		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
+		require.NoError(t, err)
+
+		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
+			Namespaces: map[string][]validation.Pod{
+				"dapr-pubsub": {
+					validation.NewPodForComponent("dapr-pubsub", "nodesubscriber"),
+					validation.NewPodForComponent("dapr-pubsub", "pythonpublisher"),
+				},
+			},
+		})
+	})
+
 	t.Run(("Deploy dapr-hello (Tutorial)"), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, "../../docs/content/tutorial/dapr-microservices/dapr-microservices.bicep")
 
