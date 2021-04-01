@@ -213,7 +213,7 @@ The keys to this definition are that traits:
 
 To understand why and when Traits should be part of a Component definition, consider the following use cases.
 
-#### Case Study: Manual Scaling
+#### Case study: Manual scaling
 
 For an example, consider manual scaling for compute resources. The number of replicas desired for a component is usually a per-deployment decision - it is not a requirement or a characteristic of how the code was written.
 
