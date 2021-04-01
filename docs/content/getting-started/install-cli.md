@@ -20,7 +20,7 @@ Download the `rad` CLI from one of these links:
 - [Linux](https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad)
 - [Windows](https://radiuspublic.blob.core.windows.net/tools/rad/edge/windows-x64/rad.exe)
 
-Place this somewhere on your PATH so it can be invoked easily.
+Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
 Verify the `rad` CLI is installed correctly:
 
