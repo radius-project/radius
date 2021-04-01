@@ -1,0 +1,27 @@
+{
+    "kind": "radius.dev/Container@v1alpha1",
+    "properties": {
+        "name": "app",
+        "run": {
+            "container": {
+                "image": "vinayada/azure-keyvault-app:latest"
+            }
+        },
+        "provides": [
+            {
+                "name": "receiver",
+                "kind": "http",
+                "containerPort": 8080
+            }
+        ],
+        "dependsOn": [
+            {
+                "name": "kv",
+                "kind": "azure.com/KeyVault",
+                "setEnv": {
+                    "KV_URI": "uri"
+                }
+            }
+        ]
+    }
+}

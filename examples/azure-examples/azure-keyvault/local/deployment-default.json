@@ -3,6 +3,9 @@
         "components": [
             {
                 "componentName": "radius/azure-keyvault/kv"
+            },
+            {
+                "componentName": "radius/azure-keyvault/app"
             }
         ]
     }
