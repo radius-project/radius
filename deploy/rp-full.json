@@ -369,22 +369,22 @@
                 "resourceTypes": [
                     {
                         "name": "Applications",
-                        "routingType": "Proxy,Cache",
+                        "routingType": "Proxy",
                         "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
                     },
                     {
                         "name": "Applications/Components",
-                        "routingType": "Proxy,Cache",
+                        "routingType": "Proxy",
                         "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
                     },
                     {
                         "name": "Applications/Scopes",
-                        "routingType": "Proxy,Cache",
+                        "routingType": "Proxy",
                         "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
                     },
                     {
                         "name": "Applications/Deployments",
-                        "routingType": "Proxy,Cache",
+                        "routingType": "Proxy",
                         "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
                     }
                 ]
