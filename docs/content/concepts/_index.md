@@ -39,19 +39,26 @@ Secondary concepts in Radius are part of your other definitions. They can be ins
 
 ### Applications
 
-The **Application** contains everything on the diagram. Applications contain all of the compute, data, and infrastructure pieces of an application.
+The **Application** contains everything on the diagram, including all the:
+- Compute
+- Data
+- Infrastructure
 
-The Application is defined as: 
+In one line, the Application is defined as: 
 
 > The **biggest** possible circle you could draw around your software.
 
-The Application concept in Radius is the boundary within which names have meaning. The other concepts in Radius define symbolic names - the Application is the scope in which these names must be unique, and in which they are referened.
+In Radius, the Application concept is the boundary within which names have meaning. The other concepts in Radius define symbolic names - the Application is the scope in which these names must be unique, and in which they are referenced.
 
-> 💡 Since defining an Application only defines a boundary, deploying an empty Application has no real effect. Applications are only containers for your **Components**.
+{{% alert title="💡 Applications" color="primary" %}}
+Since defining an Application only defines a boundary, deploying an empty Application has no real effect. Applications are only containers for your **Components**.
+{{% /alert %}} 
 
-It's up to you, the user, to define what you consider part of the Application. It is recommended that you draw this circle very large to includes as much as possible of the software you work on. You should include the things that run your code (runnable components) and your data and infrastructure resources (non-runnable components).
+It's up to you, the user, to define what you consider part of the Application. It is recommended that you draw this circle very large to includes as much as possible of the software you work on. You should include the things that run your code (**runnable components**), and your data and infrastructure resources (**non-runnable components**).
 
-> 💡 Applications are **not** units of deployment. An Application can contain multiple units of deployment that version separately. This topic will be explored later.
+{{% alert title="💡 Application != deployment" color="primary" %}}
+Applications are **not** units of deployment. An Application can contain multiple units of deployment that version separately. This topic will be explored later.
+{{% /alert %}} 
 
 #### Example
 
