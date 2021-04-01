@@ -6,37 +6,38 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	db "github.com/Azure/radius/pkg/curp/db"
 	resources "github.com/Azure/radius/pkg/curp/resources"
 	revision "github.com/Azure/radius/pkg/curp/revision"
 	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
 )
 
-// MockCurpDB is a mock of CurpDB interface
+// MockCurpDB is a mock of CurpDB interface.
 type MockCurpDB struct {
 	ctrl     *gomock.Controller
 	recorder *MockCurpDBMockRecorder
 }
 
-// MockCurpDBMockRecorder is the mock recorder for MockCurpDB
+// MockCurpDBMockRecorder is the mock recorder for MockCurpDB.
 type MockCurpDBMockRecorder struct {
 	mock *MockCurpDB
 }
 
-// NewMockCurpDB creates a new mock instance
+// NewMockCurpDB creates a new mock instance.
 func NewMockCurpDB(ctrl *gomock.Controller) *MockCurpDB {
 	mock := &MockCurpDB{ctrl: ctrl}
 	mock.recorder = &MockCurpDBMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockCurpDB) EXPECT() *MockCurpDBMockRecorder {
 	return m.recorder
 }
 
-// DeleteApplicationByID mocks base method
+// DeleteApplicationByID mocks base method.
 func (m *MockCurpDB) DeleteApplicationByID(arg0 context.Context, arg1 resources.ApplicationID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteApplicationByID", arg0, arg1)
@@ -44,13 +45,13 @@ func (m *MockCurpDB) DeleteApplicationByID(arg0 context.Context, arg1 resources.
 	return ret0
 }
 
-// DeleteApplicationByID indicates an expected call of DeleteApplicationByID
+// DeleteApplicationByID indicates an expected call of DeleteApplicationByID.
 func (mr *MockCurpDBMockRecorder) DeleteApplicationByID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteApplicationByID", reflect.TypeOf((*MockCurpDB)(nil).DeleteApplicationByID), arg0, arg1)
 }
 
-// DeleteComponentByApplicationID mocks base method
+// DeleteComponentByApplicationID mocks base method.
 func (m *MockCurpDB) DeleteComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteComponentByApplicationID", arg0, arg1, arg2)
@@ -58,13 +59,13 @@ func (m *MockCurpDB) DeleteComponentByApplicationID(arg0 context.Context, arg1 r
 	return ret0
 }
 
-// DeleteComponentByApplicationID indicates an expected call of DeleteComponentByApplicationID
+// DeleteComponentByApplicationID indicates an expected call of DeleteComponentByApplicationID.
 func (mr *MockCurpDBMockRecorder) DeleteComponentByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteComponentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).DeleteComponentByApplicationID), arg0, arg1, arg2)
 }
 
-// DeleteDeploymentByApplicationID mocks base method
+// DeleteDeploymentByApplicationID mocks base method.
 func (m *MockCurpDB) DeleteDeploymentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteDeploymentByApplicationID", arg0, arg1, arg2)
@@ -72,13 +73,13 @@ func (m *MockCurpDB) DeleteDeploymentByApplicationID(arg0 context.Context, arg1 
 	return ret0
 }
 
-// DeleteDeploymentByApplicationID indicates an expected call of DeleteDeploymentByApplicationID
+// DeleteDeploymentByApplicationID indicates an expected call of DeleteDeploymentByApplicationID.
 func (mr *MockCurpDBMockRecorder) DeleteDeploymentByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeploymentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).DeleteDeploymentByApplicationID), arg0, arg1, arg2)
 }
 
-// DeleteScopeByApplicationID mocks base method
+// DeleteScopeByApplicationID mocks base method.
 func (m *MockCurpDB) DeleteScopeByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteScopeByApplicationID", arg0, arg1, arg2)
@@ -86,13 +87,13 @@ func (m *MockCurpDB) DeleteScopeByApplicationID(arg0 context.Context, arg1 resou
 	return ret0
 }
 
-// DeleteScopeByApplicationID indicates an expected call of DeleteScopeByApplicationID
+// DeleteScopeByApplicationID indicates an expected call of DeleteScopeByApplicationID.
 func (mr *MockCurpDBMockRecorder) DeleteScopeByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScopeByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).DeleteScopeByApplicationID), arg0, arg1, arg2)
 }
 
-// GetApplicationByID mocks base method
+// GetApplicationByID mocks base method.
 func (m *MockCurpDB) GetApplicationByID(arg0 context.Context, arg1 resources.ApplicationID) (*db.Application, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetApplicationByID", arg0, arg1)
@@ -101,13 +102,13 @@ func (m *MockCurpDB) GetApplicationByID(arg0 context.Context, arg1 resources.App
 	return ret0, ret1
 }
 
-// GetApplicationByID indicates an expected call of GetApplicationByID
+// GetApplicationByID indicates an expected call of GetApplicationByID.
 func (mr *MockCurpDBMockRecorder) GetApplicationByID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplicationByID", reflect.TypeOf((*MockCurpDB)(nil).GetApplicationByID), arg0, arg1)
 }
 
-// GetComponentByApplicationID mocks base method
+// GetComponentByApplicationID mocks base method.
 func (m *MockCurpDB) GetComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 revision.Revision) (*db.Component, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetComponentByApplicationID", arg0, arg1, arg2, arg3)
@@ -116,13 +117,13 @@ func (m *MockCurpDB) GetComponentByApplicationID(arg0 context.Context, arg1 reso
 	return ret0, ret1
 }
 
-// GetComponentByApplicationID indicates an expected call of GetComponentByApplicationID
+// GetComponentByApplicationID indicates an expected call of GetComponentByApplicationID.
 func (mr *MockCurpDBMockRecorder) GetComponentByApplicationID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).GetComponentByApplicationID), arg0, arg1, arg2, arg3)
 }
 
-// GetDeploymentByApplicationID mocks base method
+// GetDeploymentByApplicationID mocks base method.
 func (m *MockCurpDB) GetDeploymentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) (*db.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDeploymentByApplicationID", arg0, arg1, arg2)
@@ -131,13 +132,13 @@ func (m *MockCurpDB) GetDeploymentByApplicationID(arg0 context.Context, arg1 res
 	return ret0, ret1
 }
 
-// GetDeploymentByApplicationID indicates an expected call of GetDeploymentByApplicationID
+// GetDeploymentByApplicationID indicates an expected call of GetDeploymentByApplicationID.
 func (mr *MockCurpDBMockRecorder) GetDeploymentByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeploymentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).GetDeploymentByApplicationID), arg0, arg1, arg2)
 }
 
-// GetScopeByApplicationID mocks base method
+// GetScopeByApplicationID mocks base method.
 func (m *MockCurpDB) GetScopeByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) (*db.Scope, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetScopeByApplicationID", arg0, arg1, arg2)
@@ -146,13 +147,13 @@ func (m *MockCurpDB) GetScopeByApplicationID(arg0 context.Context, arg1 resource
 	return ret0, ret1
 }
 
-// GetScopeByApplicationID indicates an expected call of GetScopeByApplicationID
+// GetScopeByApplicationID indicates an expected call of GetScopeByApplicationID.
 func (mr *MockCurpDBMockRecorder) GetScopeByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScopeByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).GetScopeByApplicationID), arg0, arg1, arg2)
 }
 
-// ListApplicationsByResourceGroup mocks base method
+// ListApplicationsByResourceGroup mocks base method.
 func (m *MockCurpDB) ListApplicationsByResourceGroup(arg0 context.Context, arg1 resources.ResourceID) ([]db.Application, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListApplicationsByResourceGroup", arg0, arg1)
@@ -161,13 +162,13 @@ func (m *MockCurpDB) ListApplicationsByResourceGroup(arg0 context.Context, arg1 
 	return ret0, ret1
 }
 
-// ListApplicationsByResourceGroup indicates an expected call of ListApplicationsByResourceGroup
+// ListApplicationsByResourceGroup indicates an expected call of ListApplicationsByResourceGroup.
 func (mr *MockCurpDBMockRecorder) ListApplicationsByResourceGroup(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListApplicationsByResourceGroup", reflect.TypeOf((*MockCurpDB)(nil).ListApplicationsByResourceGroup), arg0, arg1)
 }
 
-// ListComponentsByApplicationID mocks base method
+// ListComponentsByApplicationID mocks base method.
 func (m *MockCurpDB) ListComponentsByApplicationID(arg0 context.Context, arg1 resources.ApplicationID) ([]db.Component, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListComponentsByApplicationID", arg0, arg1)
@@ -176,13 +177,13 @@ func (m *MockCurpDB) ListComponentsByApplicationID(arg0 context.Context, arg1 re
 	return ret0, ret1
 }
 
-// ListComponentsByApplicationID indicates an expected call of ListComponentsByApplicationID
+// ListComponentsByApplicationID indicates an expected call of ListComponentsByApplicationID.
 func (mr *MockCurpDBMockRecorder) ListComponentsByApplicationID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListComponentsByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).ListComponentsByApplicationID), arg0, arg1)
 }
 
-// ListDeploymentsByApplicationID mocks base method
+// ListDeploymentsByApplicationID mocks base method.
 func (m *MockCurpDB) ListDeploymentsByApplicationID(arg0 context.Context, arg1 resources.ApplicationID) ([]db.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDeploymentsByApplicationID", arg0, arg1)
@@ -191,13 +192,13 @@ func (m *MockCurpDB) ListDeploymentsByApplicationID(arg0 context.Context, arg1 r
 	return ret0, ret1
 }
 
-// ListDeploymentsByApplicationID indicates an expected call of ListDeploymentsByApplicationID
+// ListDeploymentsByApplicationID indicates an expected call of ListDeploymentsByApplicationID.
 func (mr *MockCurpDBMockRecorder) ListDeploymentsByApplicationID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDeploymentsByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).ListDeploymentsByApplicationID), arg0, arg1)
 }
 
-// ListScopesByApplicationID mocks base method
+// ListScopesByApplicationID mocks base method.
 func (m *MockCurpDB) ListScopesByApplicationID(arg0 context.Context, arg1 resources.ApplicationID) ([]db.Scope, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListScopesByApplicationID", arg0, arg1)
@@ -206,13 +207,13 @@ func (m *MockCurpDB) ListScopesByApplicationID(arg0 context.Context, arg1 resour
 	return ret0, ret1
 }
 
-// ListScopesByApplicationID indicates an expected call of ListScopesByApplicationID
+// ListScopesByApplicationID indicates an expected call of ListScopesByApplicationID.
 func (mr *MockCurpDBMockRecorder) ListScopesByApplicationID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListScopesByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).ListScopesByApplicationID), arg0, arg1)
 }
 
-// PatchApplication mocks base method
+// PatchApplication mocks base method.
 func (m *MockCurpDB) PatchApplication(arg0 context.Context, arg1 *db.ApplicationPatch) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PatchApplication", arg0, arg1)
@@ -220,13 +221,13 @@ func (m *MockCurpDB) PatchApplication(arg0 context.Context, arg1 *db.Application
 	return ret0
 }
 
-// PatchApplication indicates an expected call of PatchApplication
+// PatchApplication indicates an expected call of PatchApplication.
 func (mr *MockCurpDBMockRecorder) PatchApplication(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchApplication", reflect.TypeOf((*MockCurpDB)(nil).PatchApplication), arg0, arg1)
 }
 
-// PatchComponentByApplicationID mocks base method
+// PatchComponentByApplicationID mocks base method.
 func (m *MockCurpDB) PatchComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Component, arg4 revision.Revision) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PatchComponentByApplicationID", arg0, arg1, arg2, arg3, arg4)
@@ -234,13 +235,13 @@ func (m *MockCurpDB) PatchComponentByApplicationID(arg0 context.Context, arg1 re
 	return ret0
 }
 
-// PatchComponentByApplicationID indicates an expected call of PatchComponentByApplicationID
+// PatchComponentByApplicationID indicates an expected call of PatchComponentByApplicationID.
 func (mr *MockCurpDBMockRecorder) PatchComponentByApplicationID(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchComponentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).PatchComponentByApplicationID), arg0, arg1, arg2, arg3, arg4)
 }
 
-// PatchDeploymentByApplicationID mocks base method
+// PatchDeploymentByApplicationID mocks base method.
 func (m *MockCurpDB) PatchDeploymentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Deployment) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PatchDeploymentByApplicationID", arg0, arg1, arg2, arg3)
@@ -248,13 +249,13 @@ func (m *MockCurpDB) PatchDeploymentByApplicationID(arg0 context.Context, arg1 r
 	return ret0
 }
 
-// PatchDeploymentByApplicationID indicates an expected call of PatchDeploymentByApplicationID
+// PatchDeploymentByApplicationID indicates an expected call of PatchDeploymentByApplicationID.
 func (mr *MockCurpDBMockRecorder) PatchDeploymentByApplicationID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchDeploymentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).PatchDeploymentByApplicationID), arg0, arg1, arg2, arg3)
 }
 
-// PatchScopeByApplicationID mocks base method
+// PatchScopeByApplicationID mocks base method.
 func (m *MockCurpDB) PatchScopeByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Scope) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PatchScopeByApplicationID", arg0, arg1, arg2, arg3)
@@ -262,7 +263,7 @@ func (m *MockCurpDB) PatchScopeByApplicationID(arg0 context.Context, arg1 resour
 	return ret0
 }
 
-// PatchScopeByApplicationID indicates an expected call of PatchScopeByApplicationID
+// PatchScopeByApplicationID indicates an expected call of PatchScopeByApplicationID.
 func (mr *MockCurpDBMockRecorder) PatchScopeByApplicationID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchScopeByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).PatchScopeByApplicationID), arg0, arg1, arg2, arg3)
