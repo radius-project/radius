@@ -233,7 +233,9 @@ This could create a problem when using Radius on Kubernetes, because Kubernetes 
 
 To solve this, you could define a *Kubernetes label trait* that *extends* the definition of a container with additional data. This is desirable because the labels are additional data - the addition of labels does not *change the nature* of the Component - it is still a container.
 
-> 💡 This use of a *Kubernetes Label trait* is an example of extensibility. The definition of a *generic container* can be extended to support additional features as long as they are additive and supported by the runtime environment.
+{{% alert title="💡 Extensibility" color="primary" %}}
+This use of a *Kubernetes Label trait* is an example of extensibility. The definition of a *generic container* can be extended to support additional features as long as they are additive and supported by the runtime environment.
+{{% /alert %}} 
 
 Another benefit of using a trait like this is that you *also* benefit from separation of concerns. It seems likely that a *Kubernetes label trait* would be applied per-deployment rather than as part of the Component definition.
 
