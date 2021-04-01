@@ -5,7 +5,6 @@ linkTitle: "Concepts"
 weight: 30
 ---
 
-# Project Radius concepts
 
 Project Radius provides an *application mdodel* - a descriptive framework for cloud native applications and their requirements. This section is a conceptual guide for how the Radius model is structured, and explains at high level the concepts at work when you describe and deploy an application with Radius.
 
