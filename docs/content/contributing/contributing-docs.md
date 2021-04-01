@@ -155,6 +155,46 @@ This HTML will display the `radius-overview.png` image on the `overview.md` page
 <img src="/images/radius-overview.png" width=1000 alt="Overview diagram of Dapr and its building blocks">
 ```
 
+###  Alerts
+
+The **alert** shortcode creates an alert block that can be used to display notices or warnings.
+
+```go-html-template
+{{%/* alert title="Warning" color="warning" */%}}
+This is a warning.
+{{%/* /alert */%}}
+```
+
+Renders to:
+
+{{% alert title="Warning" color="warning" %}}
+This is a warning.
+{{% /alert %}}
+
+| Parameter        | Default    | Description  |
+| ---------------- |------------| ------------|
+| color | primary | One of the theme colors, eg `primary`, `info`, `warning` etc.
+
+###  Page info banner
+
+The **pageinfo** shortcode creates a text box that you can use to add banner information for a page: for example, letting users know that the page contains placeholder content, that the content is deprecated, or that it documents a beta feature.
+
+```go-html-template
+{{%/* pageinfo color="primary" */%}}
+This is placeholder content.
+{{%/* /pageinfo */%}}
+```
+
+Renders to:
+
+{{% pageinfo color="primary" %}}
+This is placeholder content
+{{% /pageinfo %}}
+
+| Parameter        | Default    | Description  |
+| ---------------- |------------| ------------|
+| color | primary | One of the theme colors, eg `primary`, `info`, `warning` etc.
+
 ### Tabbed content
 Tabs are made possible through [Hugo shortcodes](https://gohugo.io/content-management/shortcodes/). 
 
