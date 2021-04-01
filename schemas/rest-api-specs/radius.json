@@ -560,12 +560,17 @@
       ],
       "required": [
         "name",
+        "kind",
         "properties"
       ],
       "properties": {
         "name": {
           "type": "string",
           "description": "Name of the component."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Resource type of the component"
         },
         "properties": {
           "type": "object",
@@ -577,14 +582,7 @@
     "ComponentProperties": {
       "description": "Properties of a component.",
       "type": "object",
-      "required": [
-        "kind"
-      ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Resource type of the component"
-        }
       }
     }
   },
