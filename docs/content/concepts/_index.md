@@ -219,7 +219,9 @@ For an example, consider manual scaling for compute resources. The number of rep
 
 Therefore it is desirable to move the declaration of *how many replicas* out of the Component definition, and into where the Component is deployed. This approach is much more flexible and organized, since the Component only contains deployment-agnostic details. The decision of *how many replicas* can be made by another person, or could live in another source code repository.
 
-> 💡 This use of a manual scalar trait is an example of separation of concerns. The concern of *how many replicas* is separated from describing the intentions and requirements of the code.
+{{% alert title="💡 Separation of concerns" color="primary" %}}
+This use of a manual scalar trait is an example of separation of concerns. The concern of *how many replicas* is separated from describing the intentions and requirements of the code.
+{{% /alert %}} 
 
 Another benefit of traits is that for operational behaviors like the *number of replicas*, Radius provides a consistent vocabulary. The trait definition for manual scaling is the same across a variety of different resource types.
 
