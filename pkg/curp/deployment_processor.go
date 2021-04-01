@@ -825,7 +825,7 @@ func (pssb *servicebusPubSubTopicHandler) Put(ctx context.Context, resource work
 	// Check if a service bus namespace exists in the resource group
 	sbItr, err := sbc.ListByResourceGroupComplete(ctx, pssb.arm.ResourceGroup)
 	if err != nil {
-		return nil, errors.New("Failed to list service bus namespaces")
+		return nil, fmt.Errorf("Failed to list service bus namespaces: %w", err)
 	}
 
 	var sbNamespace servicebus.SBNamespace
@@ -871,7 +871,6 @@ func (pssb *servicebusPubSubTopicHandler) Put(ctx context.Context, resource work
 		}
 	}
 
-	// store account so we can delete later
 	properties["servicebusnamespace"] = *sbNamespace.Name
 	properties["servicebusid"] = *sbNamespace.ID
 
@@ -972,10 +971,6 @@ func (pssb *servicebusPubSubTopicHandler) Delete(ctx context.Context, properties
 
 	// Delete service bus topic only marks the topic for deletion but does not actually delete it. Hence the additional check...
 	// https://docs.microsoft.com/en-us/rest/api/servicebus/delete-topic
-	if tItr.NotDone() {
-		val := tItr.Value()
-		fmt.Printf("value: %v\n", val)
-	}
 	if tItr.NotDone() && tItr.Value().Name != &topicName {
 		// There are other topics in the same service bus namespace. Do not remove the namespace as a part of this delete deployment
 		return nil
@@ -1205,7 +1200,7 @@ func (sbh *serviceBusQueueHandler) Put(ctx context.Context, resource workloads.W
 	// Check if a service bus namespace exists in the resource group
 	sbItr, err := sbc.ListByResourceGroupComplete(ctx, sbh.arm.ResourceGroup)
 	if err != nil {
-		return nil, errors.New("Failed to list service bus namespaces")
+		return nil, fmt.Errorf("Failed to list service bus namespaces: %w", err)
 	}
 
 	var sbNamespace servicebus.SBNamespace

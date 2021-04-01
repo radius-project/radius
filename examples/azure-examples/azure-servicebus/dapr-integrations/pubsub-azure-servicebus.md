@@ -26,7 +26,7 @@ The application you will be deploying is a simple publisher-subscriber applicati
 - A subscriber written in Node.js
 - A Dapr PubSub component that uses Azure Service Bus
 
-You can find the source code for the sender and receiver applications [here](https://github.com/Azure/radius/tree/main/test/dapr-pubsub-azure/apps).
+You can find the source code for the sender and receiver applications [here](https://github.com/Azure/radius/tree/main/examples/dapr-examples/dapr-pubsub-azure/apps).
 
 ### Subscriber application
 
@@ -158,14 +158,13 @@ rad deploy template.bicep
 
 This will deploy the application, create the ServiceBus queue and launch the containers.
 
-{{% alert title="⚠️ Temporary" color="warning" %}}
+
 Run this command at the commandline, which is temporary pending additions to the rad CLI:
 
 ```sh
 rad env merge-credentials --name azure 
 ```
 
-{{% /alert %}}
 
 To see the publisher and subscriber applications working, you can check logs:
 

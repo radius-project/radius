@@ -28,7 +28,7 @@ The application you will be deploying is a simple sender-receiver application us
 - A receiver written in Node.js
 - An Azure ServiceBus queue 
 
-You can find the source code for the sender and receiver applications at the [here](https://github.com/Azure/radius/tree/main/test/azure-servicebus/apps).
+You can find the source code for the sender and receiver applications at the [here](https://github.com/Azure/radius/tree/main/examples/azure-examples/azure-servicebus/apps).
 
 ### Receiver application
 
@@ -64,7 +64,7 @@ resource receiver 'Components' = {
 If you wish to modify the application code, you can do so and create a new image as follows:
 
 ```bash
-cd <Radius Path>/test/azure-servicebus/apps/servicebus-receiver
+cd <Radius Path>/examples/azure-examples/azure-servicebus/apps/servicebus-receiver
 docker build -t <your docker hub>/servicebus-receiver .
 docker push <your docker hub>/servicebus-receiver
 ```
@@ -105,7 +105,7 @@ resource sender 'Components' = {
 If you wish to modify the application code, you can do so and create a new image as follows:
 
 ```bash
-cd <Radius Path>/test/azure-servicebus/apps/servicebus-sender
+cd <Radius Path>/examples/azure-examples/azure-servicebus/apps/servicebus-sender
 docker build -t <your docker hub>/servicebus-sender .
 docker push <your docker hub>/servicebus-sender
 ```
