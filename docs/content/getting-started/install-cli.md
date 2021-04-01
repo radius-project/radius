@@ -31,6 +31,8 @@ Usage:
   rad [command]
 
 Available Commands:
+  application Manage applications
+  bicep       Manage bicep compiler
   deploy      Deploy a RAD application
   env         Manage environments
   expose      Expose local port
@@ -45,9 +47,14 @@ Use "rad [command] --help" for more information about a command.
 
 ## 2. Install custom VSCode extension
 
-Install the VSCode extension from `.vsix` file ([instructions](https://code.visualstudio.com/docs/editor/extension-gallery#_install-from-a-vsix)).
+Radius can be used with any text editor, but Radius-specific optimizations are available for [Visual Studio Code](https://code.visualstudio.com/). The Project Radius VSCode extension provides syntax highlighting, completion, and linting.
+
+Install the VSCode extension from `.vsix` file. 
 
 - [Download](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix)
+- In VSCode, manually install the extension using the *Install from VSIX* command in the Extensions view command drop-down.
+
+([Command-line alternative to install extension from VSIX](https://code.visualstudio.com/docs/editor/extension-gallery#_install-from-a-vsix).)
 
 Next you will need to disable the official Bicep extension if you have it installed. Our custom extension needs to be responsible for handling `.bicep` files and you cannot have both extensions enabled at once.
 
