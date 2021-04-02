@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/dapr"
 	"github.com/Azure/radius/pkg/workloads/daprcomponentv1alpha1"
+	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/workloads/functionv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/ingress"
@@ -133,6 +134,11 @@ type storageStateStoreHandler struct {
 	k8s client.Client
 }
 
+type servicebusPubSubTopicHandler struct {
+	arm armauth.ArmConfig
+	k8s client.Client
+}
+
 type cosmosDocumentDbHandler struct {
 	arm armauth.ArmConfig
 }
@@ -147,6 +153,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 		Renderers: map[string]workloads.WorkloadRenderer{
 			"dapr.io/Component@v1alpha1":          &daprcomponentv1alpha1.Renderer{},
 			"dapr.io/StateStore@v1alpha1":         &daprstatestorev1alpha1.Renderer{},
+			"dapr.io/PubSubTopic@v1alpha1":        &daprpubsubv1alpha1.Renderer{},
 			"azure.com/CosmosDocumentDb@v1alpha1": &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
 			"azure.com/Function@v1alpha1":         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
 			"azure.com/WebApp@v1alpha1":           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
@@ -157,10 +164,11 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 
 	rm := resourceManager{
 		handlers: map[string]resourceHandler{
-			"kubernetes":                   &kubernetesHandler{k8s},
-			"dapr.statestore.azurestorage": &storageStateStoreHandler{arm, k8s},
-			"azure.cosmos.documentdb":      &cosmosDocumentDbHandler{arm},
-			"azure.servicebus.queue":       &serviceBusQueueHandler{arm},
+			"kubernetes":                       &kubernetesHandler{k8s},
+			"dapr.statestore.azurestorage":     &storageStateStoreHandler{arm, k8s},
+			"dapr.pubsubtopic.azureservicebus": &servicebusPubSubTopicHandler{arm, k8s},
+			"azure.cosmos.documentdb":          &cosmosDocumentDbHandler{arm},
+			"azure.servicebus.queue":           &serviceBusQueueHandler{arm},
 		},
 	}
 
@@ -786,6 +794,211 @@ func (sssh *storageStateStoreHandler) Delete(ctx context.Context, properties map
 	return nil
 }
 
+func (pssb *servicebusPubSubTopicHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+	if resource.Type != "dapr.pubsubtopic.azureservicebus" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	return properties, nil
+}
+
+func (pssb *servicebusPubSubTopicHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
+	if resource.Type != "dapr.pubsubtopic.azureservicebus" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	mergeProperties(properties, existing)
+
+	sbc := servicebus.NewNamespacesClient(pssb.arm.SubscriptionID)
+	sbc.Authorizer = pssb.arm.Auth
+
+	// Check if a service bus namespace exists in the resource group
+	sbItr, err := sbc.ListByResourceGroupComplete(ctx, pssb.arm.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to list service bus namespaces: %w", err)
+	}
+
+	var sbNamespace servicebus.SBNamespace
+
+	// Azure Service Bus needs StandardTier or higher SKU to support topics
+	if sbItr.NotDone() && sbItr.Value().Sku.Tier != servicebus.SkuTierBasic {
+		// A service bus namespace already exists
+		sbNamespace = sbItr.Value()
+	} else {
+		// Generate a random namespace name
+		namespaceName := namegenerator.GenerateName("radius-ns")
+
+		// TODO: for now we just use the resource-groups location. This would be a place where we'd plug
+		// in something to do with data locality.
+		rgc := resources.NewGroupsClient(pssb.arm.SubscriptionID)
+		rgc.Authorizer = pssb.arm.Auth
+
+		g, err := rgc.Get(ctx, pssb.arm.ResourceGroup)
+		if err != nil {
+			return nil, fmt.Errorf("failed to PUT service bus pubsub: %w", err)
+		}
+
+		sbNamespaceFuture, err := sbc.CreateOrUpdate(ctx, pssb.arm.ResourceGroup, namespaceName, servicebus.SBNamespace{
+			Sku: &servicebus.SBSku{
+				Name:     servicebus.Standard,
+				Tier:     servicebus.SkuTierStandard,
+				Capacity: to.Int32Ptr(1),
+			},
+			Location: g.Location,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to PUT service bus pubsub: %w", err)
+		}
+
+		err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
+		if err != nil {
+			return nil, fmt.Errorf("failed to PUT service bus pubsub: %w", err)
+		}
+
+		sbNamespace, err = sbNamespaceFuture.Result(sbc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to PUT service bus pubsub: %w", err)
+		}
+	}
+
+	properties["servicebusnamespace"] = *sbNamespace.Name
+	properties["servicebusid"] = *sbNamespace.ID
+
+	topicName, ok := properties["servicebustopic"]
+	if !ok {
+		return nil, fmt.Errorf("failed to PUT service bus pubsub: %w", err)
+	}
+	tc := servicebus.NewTopicsClient(pssb.arm.SubscriptionID)
+	tc.Authorizer = pssb.arm.Auth
+
+	sbTopic, err := tc.CreateOrUpdate(ctx, pssb.arm.ResourceGroup, *sbNamespace.Name, topicName, servicebus.SBTopic{
+		Name: to.StringPtr(topicName),
+		SBTopicProperties: &servicebus.SBTopicProperties{
+			MaxSizeInMegabytes: to.Int32Ptr(1024),
+		},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT servicebus topic: %w", err)
+	}
+
+	// store db so we can delete later
+	properties["topicName"] = *sbTopic.Name
+
+	accessKeys, err := sbc.ListKeys(ctx, pssb.arm.ResourceGroup, *sbNamespace.Name, "RootManageSharedAccessKey")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
+	}
+
+	if accessKeys.PrimaryConnectionString == nil && accessKeys.SecondaryConnectionString == nil {
+		return nil, fmt.Errorf("failed to retrieve connection strings")
+	}
+
+	cs := accessKeys.PrimaryConnectionString
+
+	item := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": properties["apiVersion"],
+			"kind":       properties["kind"],
+			"metadata": map[string]interface{}{
+				"namespace": properties["namespace"],
+				"name":      properties["name"],
+			},
+			"spec": map[string]interface{}{
+				"type":    "pubsub.azure.servicebus",
+				"version": "v1",
+				"metadata": []interface{}{
+					map[string]interface{}{
+						"name":  "connectionString",
+						"value": cs,
+					},
+				},
+			},
+		},
+	}
+
+	err = pssb.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	if err != nil {
+		return nil, err
+	}
+
+	return properties, nil
+}
+
+func (pssb *servicebusPubSubTopicHandler) Delete(ctx context.Context, properties map[string]string) error {
+	item := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": properties["apiVersion"],
+			"kind":       properties["kind"],
+			"metadata": map[string]interface{}{
+				"namespace": properties["namespace"],
+				"name":      properties["name"],
+			},
+		},
+	}
+
+	err := client.IgnoreNotFound(pssb.k8s.Delete(ctx, &item))
+	if err != nil {
+		return err
+	}
+
+	namespaceName := properties["servicebusnamespace"]
+	topicName := properties["servicebustopic"]
+
+	tc := servicebus.NewTopicsClient(pssb.arm.SubscriptionID)
+	tc.Authorizer = pssb.arm.Auth
+
+	_, err = tc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName, topicName)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus topic: %w", err)
+	}
+
+	tItr, err := tc.ListByNamespaceComplete(ctx, pssb.arm.ResourceGroup, namespaceName, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus topic: %w", err)
+	}
+
+	// Delete service bus topic only marks the topic for deletion but does not actually delete it. Hence the additional check...
+	// https://docs.microsoft.com/en-us/rest/api/servicebus/delete-topic
+	if tItr.NotDone() && tItr.Value().Name != &topicName {
+		// There are other topics in the same service bus namespace. Do not remove the namespace as a part of this delete deployment
+		return nil
+	}
+
+	// The last queue in the service bus namespace was deleted. Now delete the namespace as well
+	sbc := servicebus.NewNamespacesClient(pssb.arm.SubscriptionID)
+	sbc.Authorizer = pssb.arm.Auth
+
+	sbNamespaceFuture, err := sbc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName)
+
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+	}
+
+	err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+	}
+
+	_, err = sbNamespaceFuture.Result(sbc)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+	}
+
+	return nil
+}
+
 func (cddh *cosmosDocumentDbHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
 	if resource.Type != "azure.cosmos.documentdb" {
 		return nil, errors.New("wrong resource type")
@@ -987,7 +1200,7 @@ func (sbh *serviceBusQueueHandler) Put(ctx context.Context, resource workloads.W
 	// Check if a service bus namespace exists in the resource group
 	sbItr, err := sbc.ListByResourceGroupComplete(ctx, sbh.arm.ResourceGroup)
 	if err != nil {
-		return nil, errors.New("Failed to list service bus namespaces")
+		return nil, fmt.Errorf("Failed to list service bus namespaces: %w", err)
 	}
 
 	var sbNamespace servicebus.SBNamespace
