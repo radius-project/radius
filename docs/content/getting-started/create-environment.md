@@ -22,7 +22,7 @@ az login
 
 Radius will use your currently-enabled Azure subscription.  
 
-You can verify your enabled subscription
+You can verify your enabled subscription:
 
 ```sh
 az account show
