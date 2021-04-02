@@ -15,8 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// getCmd command to get properties of an application
-var deleteCmd = &cobra.Command{
+// deleteCmd command to delete an application
+var appDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete RAD application",
 	Long:  "Delete the specified RAD application deployed in the default environment",
@@ -24,10 +24,10 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	applicationCmd.AddCommand(deleteCmd)
+	applicationCmd.AddCommand(appDeleteCmd)
 
-	deleteCmd.Flags().StringP("name", "n", "", "The application name")
-	if err := deleteCmd.MarkFlagRequired("name"); err != nil {
+	appDeleteCmd.Flags().StringP("name", "n", "", "The application name")
+	if err := appDeleteCmd.MarkFlagRequired("name"); err != nil {
 		fmt.Printf("Failed to mark the name flag required: %v", err)
 	}
 }
@@ -43,11 +43,11 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	azcred, err := azidentity.NewDefaultAzureCredential(&azidentity.DefaultAzureCredentialOptions{ExcludeEnvironmentCredential: true, ExcludeMSICredential: true})
+	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return fmt.Errorf("failed to obtain a Azure credential: %w", err)
 	}
-	// TODO skipping connection options for now, we should come back to this to configure retries, telemetry etc
+
 	con := armcore.NewDefaultConnection(azcred, nil)
 
 	// Delete deployments: An application can have multiple deployments in it that should be deleted before the application can be deleted.
