@@ -84,13 +84,13 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 ### Components
 
-Radius Components describe each node on the diagram. Components can describe compute (your code), data, and infrastructure pieces of an application. Components are always part of an Application - the logical name defined by a component only has meaning within the context of an Application. In one line, the Radius Component is defined as:
+Each node on the diagram maps to one **Component**. Components describe the code, data, and infrastructure pieces of an application. Components only have meaning within the context of an **Application**.
 
 {{% alert title="📄 Radius Components" color="primary" %}}
 The description of behavior and requirements for a single unit of software.
 {{% /alert %}}
 
-The Component is documentation for a piece of code, data, or infrastructure. It can capture all of the important behaviors and requirements needed for a runtime to host that software. They can be either *runnable*, or *non-runnable*.
+The Component is documentation for a piece of code, data, or infrastructure. It can capture all of the important behaviors and requirements needed for a runtime to host that software. An application can have both runnable components *(e.g. containers, web applications)* and non-runnable components *(e.g. databases, message queues)*. 
 
 #### Runnable Components
 
@@ -112,7 +112,7 @@ These details can generally be separated into two categories:
 Behaviors and requirements that are per-deployment or otherwise separate from the code can live separately.
 {{% /alert %}} 
 
-The Component concept in Radius is designed to **version with the application code**. For maximum flexiblity you should author Components that only capture the details that are always true about the code -- you have the option to configure per-deployment settings separately. 
+The Component concept in Radius is designed *to version with the application code*. For maximum flexibility, you should author Components that only capture the details that are always true about the code. Per-deployment settings can be configured separately as part of Deployment definitions.
 
 Its up to your discretion as the user to decide which details of your software are per-deployment and which are always true. Radius will also not stop you from writing *all-in-one* definitions that capture *everything*. 
 
@@ -305,7 +305,7 @@ By default, the compiler creates a *default* Deployment and includes all Compone
 This has been one of the aspects of confusion for a few folks now. Traits are one of the areas where judgement is necessary. A lot of this is matters of opinion. At this point we haven't built *much*, and we've said a lot. I don't want to say too much until we build more.
 {{% /alert %}}
 
-A **Trait** is a piece of configuration attached to a Component that specifies an operational behavior. Traits can be confusing to understand at first because they serve a few different purposes for making Radius more flexible:
+A **Trait** is a piece of configuration that specifies an operational behavior. Once defined, a trait can be added to Component or Deployment definitions. Traits serve a few purposes:
 
 - Separation of concerns: removing operational concerns from the Component defintion *(eg. number of replicas)*
 - Extensibility: expressing configuration that's not defined by the Component's type specification *(eg. specifying Kubernetes labels)*
@@ -313,14 +313,14 @@ A **Trait** is a piece of configuration attached to a Component that specifies a
 Traits are defined as:
 
 {{% alert title="📄 Radius Deployment" color="primary" %}}
-A structured piece of orthogonal configuration that can applied to a Component as part of its definition or its deployment.
+A structured piece of orthogonal configuration that can applied to a Component as part of its definition or a Deployment definition.
 {{% /alert %}}
 
 The keys to this definition are that traits:
 
 - Are strongly-typed and can be validated
 - Sometimes part of the Component's definition
-- Sometimes part of the Component's deployment
+- Sometimes part of the Deployment's definition
 
 To understand why and when Traits should be part of a Component definition, consider the following use cases.
 
@@ -328,7 +328,7 @@ To understand why and when Traits should be part of a Component definition, cons
 
 For an example, consider manual scaling for compute resources. The number of replicas desired for a component is usually a per-deployment decision - it is not a requirement or a characteristic of how the code was written.
 
-Therefore it is desirable to move the declaration of *how many replicas* out of the Component definition, and into where the Component is deployed. This approach is much more flexible and organized, since the Component only contains deployment-agnostic details. The decision of *how many replicas* can be made by another person, or could live in another source code repository.
+Therefore it is desirable to move the declaration of *how many replicas* out of the Component definition, and into the Deployment definition associated with the Component. This approach is much more flexible and organized, since the Component only contains deployment-agnostic details. The decision of *how many replicas* can be made by another person, or could live in another source code repository.
 
 {{% alert title="💡 Key concept" color="info" %}}
 This use of a manual scalar trait is an example of separation of concerns. The concern of *how many replicas* is separated from describing the intentions and requirements of the code.
