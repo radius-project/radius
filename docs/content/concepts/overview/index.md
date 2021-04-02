@@ -336,7 +336,7 @@ This use of a manual scalar trait is an example of separation of concerns. The c
 
 Another benefit of traits is that for operational behaviors like the *number of replicas*, Radius provides a consistent vocabulary. The trait definition for manual scaling is the same across a variety of different resource types.
 
-#### Case Study: Kubernetes Labels
+#### Case study: Kubernetes Labels
 
 For an example, consider a trait that applies [Kubernetes labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) when a Component is deployed to a Kubernetes environment. For many organizations using Kubernetes in production, they require workloads to be tagged with labels according to an internal convention. This is useful for consistency and governance across the organization.
 
