@@ -49,7 +49,7 @@ Use "rad [command] --help" for more information about a command.
 
 Radius can be used with any text editor, but Radius-specific optimizations are available for [Visual Studio Code](https://code.visualstudio.com/). The Project Radius VSCode extension provides syntax highlighting, completion, and linting.
 
-Install the VSCode extension from `.vsix` file. 
+Install the VSCode extension from `.vsix` file:
 
 - [Download](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix)
 - In VSCode, manually install the extension using the *Install from VSIX* command in the Extensions view command drop-down.
