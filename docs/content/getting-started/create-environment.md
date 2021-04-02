@@ -44,7 +44,7 @@ rad env init azure -i
 
 This will prompt you for several inputs and then go create assets in your subscription (~5-10 mins). 
 
-You can verify creation of your new environment 
+You can verify creation of your new environment:
 
 ```sh
 rad env list
