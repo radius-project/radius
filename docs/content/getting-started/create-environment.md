@@ -28,7 +28,7 @@ You can verify your enabled subscription:
 az account show
 ```
 
-If needed, you can change your to your preferred subscription
+If needed, you can change your to your preferred subscription:
 
 ```sh
 az account set --subscription <SUB-ID>
