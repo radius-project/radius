@@ -37,7 +37,7 @@ var deployCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(deployCmd)
+	RootCmd.AddCommand(deployCmd)
 }
 
 func deploy(cmd *cobra.Command, args []string) error {
