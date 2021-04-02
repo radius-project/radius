@@ -15,7 +15,7 @@ import (
 )
 
 // listCmd command to list applications deployed in the resource group
-var listCmd = &cobra.Command{
+var appListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists RAD applications",
 	Long:  "Lists RAD applications deployed in all the environments in the resource group",
@@ -26,7 +26,7 @@ var listCmd = &cobra.Command{
 const resourceType = "Applications"
 
 func init() {
-	applicationCmd.AddCommand(listCmd)
+	applicationCmd.AddCommand(appListCmd)
 }
 
 func listApplications(cmd *cobra.Command, args []string) error {

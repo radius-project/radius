@@ -15,7 +15,7 @@ import (
 )
 
 // getCmd command to get properties of an application
-var getCmd = &cobra.Command{
+var appGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get RAD application details",
 	Long:  "Get RAD application details",
@@ -23,10 +23,10 @@ var getCmd = &cobra.Command{
 }
 
 func init() {
-	applicationCmd.AddCommand(getCmd)
+	applicationCmd.AddCommand(appGetCmd)
 
-	getCmd.Flags().String("name", "", "The application name")
-	if err := getCmd.MarkFlagRequired("name"); err != nil {
+	appGetCmd.Flags().StringP("name", "n", "", "The application name")
+	if err := appGetCmd.MarkFlagRequired("name"); err != nil {
 		fmt.Printf("Failed to mark the name flag required: %v", err)
 	}
 }
