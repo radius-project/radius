@@ -20,7 +20,7 @@ az login
 
 ## 2. Select your subscription
 
-Radius will use your currently-enabled Azure subscription.  
+Radius will use your default Azure subscription.  
 
 You can verify your enabled subscription:
 
@@ -28,7 +28,7 @@ You can verify your enabled subscription:
 az account show
 ```
 
-If needed, you can change your to your preferred subscription:
+If needed, you can switch your to your preferred subscription:
 
 ```sh
 az account set --subscription <SUB-ID>
