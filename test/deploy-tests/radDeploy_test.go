@@ -83,7 +83,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run(("Deploy dapr pubsub"), func(t *testing.T) {
-		templateFilePath := filepath.Join(cwd, "../../examples/dapr-examples/dapr-integrations/azure-bicep/template.bicep")
+		templateFilePath := filepath.Join(cwd, "../../examples/dapr-examples/dapr-pubsub-azure/azure-bicep/template.bicep")
 
 		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
 		require.NoError(t, err)
