@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// deleteCmd command to delete an application
+// appDeleteCmd command to delete an application
 var appDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete RAD application",
