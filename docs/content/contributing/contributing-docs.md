@@ -15,13 +15,17 @@ The Project Radius docs are built on [Hugo](https://gohugo.io) with the [Docsy](
    git clone https://github.com/Azure/radius.git
    cd ./radius/docs
    ```
-1. Clone sudmodules (Docsy, Bootstrap, FontAwesome)
+1. Clone submodules (Docsy, Bootstrap, FontAwesome)
    ```
    git submodule update --init --recursive
    ```
 1. Install dependencies
    ```
    npm install
+   ```
+1. Build CLI commands
+   ```
+   go run ../cmd/docgen/main.go ./content/reference/cli
    ```
 1. Run local server
    ```
