@@ -42,10 +42,13 @@ func main() {
 }
 
 const template = `---
+type: docs
 date: %s
-title: "%s"
+title: "%s CLI reference"
+linkTitle: "%s"
 slug: %s
 url: %s
+description: "Details on the %s Radius CLI command"
 ---
 `
 
@@ -53,13 +56,14 @@ func frontmatter(filename string) string {
 	now := time.Now().Format(time.RFC3339)
 	name := filepath.Base(filename)
 	base := strings.TrimSuffix(name, path.Ext(name))
-	url := "/commands/" + strings.ToLower(base) + "/"
-	return fmt.Sprintf(template, now, strings.Replace(base, "_", " ", -1), base, url)
+	command := strings.Replace(base, "_", " ", -1)
+	url := "/reference/cli/" + strings.ToLower(base) + "/"
+	return fmt.Sprintf(template, now, command, command, base, url, command)
 }
 
 func link(name string) string {
 	base := strings.TrimSuffix(name, path.Ext(name))
-	return "/commands/" + strings.ToLower(base) + "/"
+	return "{{< ref " + strings.ToLower(base) + ".md >}}"
 }
 
 type options struct {
