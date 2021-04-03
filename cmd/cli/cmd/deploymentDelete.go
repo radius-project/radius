@@ -67,33 +67,5 @@ func deleteDeployment(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("Deployment '%s' deleted.\n", depName)
 
-	// Retrieve all the deployments in the application
-	// response, err := dc.ListByApplication(cmd.Context(), env.ResourceGroup, applicationName, nil)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// Delete the deployments
-	// deploymentResources := *response.DeploymentList
-	// for _, deploymentResource := range *deploymentResources.Value {
-	// 	// This is needed until server side implementation is fixed https://github.com/Azure/radius/issues/159
-	// 	deploymentName := utils.GetResourceNameFromFullyQualifiedPath(*deploymentResource.Name)
-
-	// 	_, err := dc.Delete(cmd.Context(), env.ResourceGroup, applicationName, deploymentName, nil)
-	// 	if err != nil {
-	// 		return fmt.Errorf("Failed to delete the deployment %s, %w", deploymentName, err)
-	// 	}
-	// 	fmt.Printf("Deleted deployment '%s'\n", deploymentName)
-	// }
-
-	// Delete application
-	// ac := radclient.NewApplicationClient(con, env.SubscriptionID)
-
-	// _, err = ac.Delete(cmd.Context(), env.ResourceGroup, applicationName, nil)
-	// if err != nil {
-	// 	return fmt.Errorf("Failed to delete the application %w", err)
-	// }
-	// fmt.Printf("Application '%s' has been deleted\n", applicationName)
-
 	return err
 }
