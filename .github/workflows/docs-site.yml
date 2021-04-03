@@ -33,6 +33,8 @@ jobs:
           extended: true
       - name: Setup Docsy
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
+      - name: Generate CLI Docs
+        run: go run ./cmd/docgen/main.go ./docs/content/reference/cli
       - name: Build Site
         run: cd docs && hugo
       - name: Deploy to WebApp
