@@ -16,5 +16,5 @@ var bicepCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(bicepCmd)
+	RootCmd.AddCommand(bicepCmd)
 }
