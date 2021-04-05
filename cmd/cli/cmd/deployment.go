@@ -11,8 +11,8 @@ import (
 
 var deploymentCmd = &cobra.Command{
 	Use:   "deployment",
-	Short: "Manage applications",
-	Long:  `Manage applications`,
+	Short: "Manage deployments",
+	Long:  `Manage deployments`,
 }
 
 func init() {

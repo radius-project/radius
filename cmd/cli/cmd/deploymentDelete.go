@@ -59,7 +59,6 @@ func deleteDeployment(cmd *cobra.Command, args []string) error {
 
 	con := armcore.NewDefaultConnection(azcred, nil)
 
-	// Delete deployments: An application can have multiple deployments in it that should be deleted before the application can be deleted.
 	dc := radclient.NewDeploymentClient(con, env.SubscriptionID)
 	_, err = dc.Delete(cmd.Context(), env.ResourceGroup, applicationName, depName, nil)
 	if err != nil {

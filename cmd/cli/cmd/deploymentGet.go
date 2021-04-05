@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// deploymentGetCmd command to delete a deployment
+// deploymentGetCmd command to get details of a deployment
 var deploymentGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get RAD deployment details",
@@ -61,15 +61,14 @@ func getDeployment(cmd *cobra.Command, args []string) error {
 	dc := radclient.NewDeploymentClient(con, env.SubscriptionID)
 
 	response, err := dc.Get(cmd.Context(), env.ResourceGroup, applicationName, depName, nil)
-	// response, err := dc.ListByApplication(cmd.Context(), env.ResourceGroup, applicationName, nil)
 	if err != nil {
 		return fmt.Errorf("Failed to get the deployment %s, %w", depName, err)
 	}
 
 	deploymentResource := *response.DeploymentResource
-	deploymentDetails, err := json.MarshalIndent(deploymentResource, "", "\t")
+	deploymentDetails, err := json.MarshalIndent(deploymentResource, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Failed to list deployments in the application %w", err)
+		return fmt.Errorf("Failed to marshal deployment response as JSON %w", err)
 	}
 
 	fmt.Println(string(deploymentDetails))

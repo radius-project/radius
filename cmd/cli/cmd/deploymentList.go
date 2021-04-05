@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// deploymentListCmd command to delete a deployment
+// deploymentListCmd command to list deployments in an application
 var deploymentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists application deployments",
@@ -56,9 +56,9 @@ func listDeployments(cmd *cobra.Command, args []string) error {
 	}
 
 	deploymentsList := *response.DeploymentList
-	deployments, err := json.MarshalIndent(deploymentsList, "", "\t")
+	deployments, err := json.MarshalIndent(deploymentsList, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Failed to list deployments in the application %w", err)
+		return fmt.Errorf("Failed to marshal deployment response as JSON %w", err)
 	}
 
 	fmt.Println(string(deployments))
