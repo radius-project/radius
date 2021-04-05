@@ -9,16 +9,17 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
 
-// listCmd command to list applications deployed in the resource group
+// appListCmd command to list applications deployed in the resource group
 var appListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists RAD applications",
-	Long:  "Lists RAD applications deployed in all the environments in the resource group",
+	Long:  "Lists RAD applications deployed in the resource group associated with the default environment",
 	Args:  cobra.ExactArgs(0),
 	RunE:  listApplications,
 }
@@ -35,26 +36,23 @@ func listApplications(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	authorizer, err := auth.NewAuthorizerFromCLI()
+	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to obtain Azure credentials: %w", err)
 	}
-
-	radc := radclient.NewClient(env.SubscriptionID)
-	radc.Authorizer = authorizer
-
-	var applications []radclient.Application
-	applications, err = radc.ListRadiusResources(cmd.Context(), env.ResourceGroup, resourceType)
+	con := armcore.NewDefaultConnection(azcred, nil)
+	ac := radclient.NewApplicationClient(con, env.SubscriptionID)
+	response, err := ac.ListByResourceGroup(cmd.Context(), env.ResourceGroup, nil)
 	if err != nil {
-		return fmt.Errorf("Error listing the applications: '%w'", err)
-	}
-	if len(applications) == 0 {
-		fmt.Println(applications)
-		return nil
+		return fmt.Errorf("Failed to list applications in the resource group %s, %w", env.ResourceGroup, err)
 	}
 
-	applicationDetails, err := json.MarshalIndent(applications, "", "\t")
-	fmt.Printf("%s\n", applicationDetails)
+	applicationsList := *response.ApplicationList
+	applications, err := json.MarshalIndent(applicationsList, "", "  ")
+	if err != nil {
+		return fmt.Errorf("Failed to marshal application response as JSON %w", err)
+	}
+	fmt.Println(string(applications))
 
 	return err
 }
