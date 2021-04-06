@@ -7,9 +7,12 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
@@ -26,14 +29,14 @@ var deploymentListCmd = &cobra.Command{
 func init() {
 	deploymentCmd.AddCommand(deploymentListCmd)
 
-	deploymentListCmd.Flags().StringP("name", "n", "", "Application name")
-	if err := deploymentListCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
+	deploymentListCmd.Flags().StringP("application-name", "a", "", "Application name")
+	if err := deploymentListCmd.MarkFlagRequired("application-name"); err != nil {
+		fmt.Printf("Failed to mark the application-name flag required: %v", err)
 	}
 }
 
 func listDeployments(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("name")
+	applicationName, err := cmd.Flags().GetString("application-name")
 	if err != nil {
 		return err
 	}
@@ -45,13 +48,19 @@ func listDeployments(cmd *cobra.Command, args []string) error {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain a Azure credentials: %w", err)
+		return fmt.Errorf("Failed to obtain Azure credentials: %w", err)
 	}
 	con := armcore.NewDefaultConnection(azcred, nil)
 	dc := radclient.NewDeploymentClient(con, env.SubscriptionID)
 
 	response, err := dc.ListByApplication(cmd.Context(), env.ResourceGroup, applicationName, nil)
 	if err != nil {
+		var httpresp azcore.HTTPResponse
+		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
+			errorMessage := fmt.Sprintf("Application '%s' was not found in the resource group '%s'.", applicationName, env.ResourceGroup)
+			return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
+
 		return fmt.Errorf("Failed to list deployments in the application %s, %w", applicationName, err)
 	}
 

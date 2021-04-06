@@ -1,0 +1,30 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package radclient
+
+import (
+	"fmt"
+)
+
+// RadiusError represents errors returned by Radius.
+type RadiusError struct {
+	Code string
+
+	Message string
+}
+
+//Error implements the error interface for the RadiusError type.
+func (e RadiusError) Error() string {
+	return fmt.Sprintf("Code: %s\nMessage: %s", e.Code, e.Message)
+}
+
+// NewRadiusError returns a RadiusError instance for provided code and message.
+func NewRadiusError(errorCode string, errorMessage string) error {
+	return RadiusError{
+		Code:    errorCode,
+		Message: errorMessage,
+	}
+}
