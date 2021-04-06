@@ -17,15 +17,23 @@ on:
 
 jobs:
   build_and_deploy_job:
+    name: Build and Deploy Job
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
+    env:
+      GOVER: '^1.16.0'
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: true
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
       - name: Setup Docsy
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
+      - name: Generate CLI Docs
+        run: go run ./cmd/docgen/main.go ./docs/content/reference/cli
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v0.0.1-preview

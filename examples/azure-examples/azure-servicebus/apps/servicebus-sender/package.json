@@ -2,7 +2,7 @@
   "name": "node-images",
   "version": "1.0.0",
   "description": "",
-  "main": "send.js",
+  "main": "servicebus-sender.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

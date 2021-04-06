@@ -19,13 +19,19 @@ on:
 
 jobs:
   build_and_deploy_job:
+    name: Build and Deploy Site
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    name: Build and Deploy Site
+    env:
+      GOVER: '^1.16.0'
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: true
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2.4.13
         with:
@@ -33,6 +39,8 @@ jobs:
           extended: true
       - name: Setup Docsy
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
+      - name: Generate CLI Docs
+        run: go run ./cmd/docgen/main.go ./docs/content/reference/cli
       - name: Build Site
         run: cd docs && hugo
       - name: Deploy to WebApp
@@ -43,13 +51,19 @@ jobs:
           package: "./docs/public/"
 
   build_job:
+    name: Build and Deploy Site
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
     runs-on: ubuntu-latest
-    name: Build and Deploy Site
+    env:
+      GOVER: '^1.16.0'
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: true
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2.4.13
         with:
@@ -57,5 +71,7 @@ jobs:
           extended: true
       - name: Setup Docsy
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
+      - name: Generate CLI Docs
+        run: go run ./cmd/docgen/main.go ./docs/content/reference/cli
       - name: Build Site
         run: cd docs && hugo

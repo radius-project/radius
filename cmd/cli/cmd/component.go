@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var applicationCmd = &cobra.Command{
-	Use:   "application",
-	Short: "Manage applications",
-	Long:  `Manage applications`,
+var componentCmd = &cobra.Command{
+	Use:   "component",
+	Short: "Manage components",
+	Long:  `Manage components`,
 }
 
 func init() {
-	RootCmd.AddCommand(applicationCmd)
+	RootCmd.AddCommand(componentCmd)
 }
