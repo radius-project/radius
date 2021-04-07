@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/Azure/radius/cmd/cli/cmd"
-	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 )
 
@@ -64,20 +63,4 @@ func frontmatter(filename string) string {
 func link(name string) string {
 	base := strings.TrimSuffix(name, path.Ext(name))
 	return "{{< ref " + strings.ToLower(base) + ".md >}}"
-}
-
-type options struct {
-}
-
-func visit(cmd *cobra.Command, opt options) error {
-	for _, c := range cmd.Commands() {
-		if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
-			continue
-		}
-		if err := visit(c, opt); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
