@@ -72,6 +72,7 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 			Name:   d.Name,
 			Kind:   d.Kind,
 			SetEnv: d.SetEnv,
+			Set:    d.Set,
 		}
 		c.Properties.DependsOn = append(c.Properties.DependsOn, dd)
 	}
@@ -114,6 +115,7 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 			Name:   d.Name,
 			Kind:   d.Kind,
 			SetEnv: d.SetEnv,
+			Set:    d.Set,
 		}
 		c.Properties.DependsOn = append(c.Properties.DependsOn, dd)
 	}

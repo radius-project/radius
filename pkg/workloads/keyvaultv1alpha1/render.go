@@ -33,7 +33,7 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 	properties := wrp[0].Properties
 	vaultName := properties["keyvaultname"]
-
+	msiResourceID := properties["keyvaultmsiresourceid"]
 	kvClient := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
 	kvClient.Authorizer = r.Arm.Auth
 	vault, err := kvClient.Get(ctx, r.Arm.ResourceGroup, vaultName)
@@ -42,7 +42,8 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	}
 
 	values := map[string]interface{}{
-		"uri": *vault.Properties.VaultURI,
+		"uri":   *vault.Properties.VaultURI,
+		"msiId": msiResourceID,
 	}
 
 	return values, nil

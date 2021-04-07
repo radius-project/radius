@@ -100,7 +100,7 @@
         },
         "agentCount": {
             "type": "int",
-            "defaultValue": 1,
+            "defaultValue": 3,
             "metadata": {
                 "description": "The number of nodes for the cluster."
             },
@@ -225,7 +225,7 @@
             }
         },
         {
-            "apiVersion": "2020-03-01",
+            "apiVersion": "2020-11-01",
             "type": "Microsoft.ContainerService/managedClusters",
             "location": "[parameters('location')]",
             "name": "[parameters('clusterName')]",
@@ -242,10 +242,18 @@
                         "count": "[parameters('agentCount')]",
                         "vmSize": "[parameters('agentVMSize')]",
                         "osType": "[parameters('osType')]",
-                        "storageProfile": "ManagedDisks"
+                        "storageProfile": "ManagedDisks",
+                        "type": "VirtualMachineScaleSets",
+                        "mode": "System"
                     }
                 ],
-                "enableRBAC": true
+                "enableRBAC": true,
+                "podIdentityProfile": {
+                    "enabled": true
+                },
+                "networkProfile": {
+                    "networkPlugin": "azure"
+                }
             }
         },
         {

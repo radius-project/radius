@@ -105,6 +105,7 @@ type ComponentDependsOn struct {
 
 	// TODO this should support more settings
 	SetEnv map[string]string `bson:"setEnv,omitempty"`
+	Set    map[string]string `bson:"set,omitempty"`
 }
 
 // ComponentTrait represents a trait for an Radius component.

@@ -33,6 +33,7 @@ type ContainerDependsOn struct {
 	Name   string            `json:"name"`
 	Kind   string            `json:"kind"`
 	SetEnv map[string]string `json:"setEnv"`
+	Set    map[string]string `json:"set"`
 }
 
 // ContainerProvides is the definition of the provides section

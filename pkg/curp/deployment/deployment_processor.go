@@ -6,6 +6,7 @@
 package deployment
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -17,11 +18,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-11-01/subscriptions"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
+	"github.com/Azure/radius/pkg/rad/azcli"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
@@ -1352,15 +1353,40 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
 	}
 
-	sc := subscriptions.NewClient()
-	sc.Authorizer = kvh.arm.Auth
-	sub, err := sc.Get(ctx, kvh.arm.SubscriptionID)
-
 	kvc := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
 	kvc.Authorizer = kvh.arm.Auth
-	tenantID, err := uuid1.FromString(*sub.TenantID)
 	if err != nil {
 		return nil, err
+	}
+
+	identityName := vaultName + "-msi"
+	msi, err := createIdentity(identityName, *g.Name, *g.Location, kvh.arm.SubscriptionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+	}
+
+	tenantID, _ := uuid1.FromString(msi.TenantID)
+	// appID, _ := uuid1.FromString(msi.AppID)
+
+	// Grant access to the managed identity created to access the Keyvault
+	accessPolicy := keyvault.AccessPolicyEntry{
+		TenantID: &tenantID,
+		ObjectID: &msi.ObjectID,
+		// ApplicationID: &appID,
+		Permissions: &keyvault.Permissions{
+			Keys: &[]keyvault.KeyPermissions{
+				keyvault.KeyPermissionsGet,
+				keyvault.KeyPermissionsList,
+				keyvault.KeyPermissionsCreate,
+				keyvault.KeyPermissionsDelete,
+			},
+			Secrets: &[]keyvault.SecretPermissions{
+				keyvault.SecretPermissionsGet,
+				keyvault.SecretPermissionsSet,
+				keyvault.SecretPermissionsList,
+				keyvault.SecretPermissionsDelete,
+			},
+		},
 	}
 
 	vaultsFuture, err := kvc.CreateOrUpdate(
@@ -1375,7 +1401,9 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 					Family: to.StringPtr("A"),
 					Name:   keyvault.Standard,
 				},
-				AccessPolicies: &[]keyvault.AccessPolicyEntry{},
+				AccessPolicies: &[]keyvault.AccessPolicyEntry{
+					accessPolicy,
+				},
 			},
 		},
 	)
@@ -1392,6 +1420,8 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 
 	// store vault so we can use later
 	properties["keyvaultname"] = *kv.Name
+	properties["keyvaultmsiresourceid"] = msi.ResourceID
+
 	return properties, nil
 }
 
@@ -1407,4 +1437,47 @@ func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]st
 	}
 
 	return nil
+}
+
+// AzureManagedIdentity represents a user assigned managed identity
+type AzureManagedIdentity struct {
+	TenantID   string
+	AppID      string
+	ObjectID   string
+	ResourceID string
+}
+
+func createIdentity(identityName, groupName, location, subscription string) (AzureManagedIdentity, error) {
+	// Create a user assigned managed identity
+	// TODO - Use SDK/templates. For now, using az cli
+	out, err := azcli.RunCLICommandWithOutput("identity", "create", "--name", identityName, "--resource-group", groupName, "--location", location, "--subscription", subscription)
+	if err != nil {
+		return AzureManagedIdentity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+	}
+
+	var tenantID, objectID, appID, resourceID string
+	scanner := bufio.NewScanner(strings.NewReader(string(out)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.ReplaceAll(line, "\"", "")
+		line = strings.ReplaceAll(line, ",", "")
+		line = strings.ReplaceAll(line, " ", "")
+		if strings.Contains(line, "clientSecretUrl") {
+			ids := strings.Split(strings.Split(line, "credentials?")[1], "&")
+			tenantID = strings.Split(ids[0], "=")[1]
+			objectID = strings.Split(ids[1], "=")[1]
+			appID = strings.Split(ids[2], "=")[1]
+		}
+
+		if strings.Contains(line, "id:") {
+			resourceID = strings.Split(line, ":")[1]
+		}
+	}
+
+	return AzureManagedIdentity{
+		TenantID:   tenantID,
+		ObjectID:   objectID,
+		AppID:      appID,
+		ResourceID: resourceID,
+	}, nil
 }

@@ -10,17 +10,23 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/rad/azcli"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
 type Renderer struct {
+	Arm armauth.ArmConfig
 }
 
 // Allocate is the WorkloadRenderer implementation for containerized workload.
@@ -100,6 +106,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		resources = append(resources, workloads.NewKubernetesResource("Service", service))
 	}
 
+	fmt.Printf("Container depends on: %v", w.Workload.DependsOn)
 	return resources, nil
 }
 
@@ -144,7 +151,38 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
+	var podID string
+	var err error
 	for _, dep := range cc.DependsOn {
+		// If the container depends on a KeyVault, create a pod identity
+		if dep.Kind == "azure.com/KeyVault" {
+			setVars := make(map[string]string)
+			if dep.Set != nil {
+				for k, v := range dep.Set {
+					service, ok := w.ServiceValues[dep.Name]
+					if !ok {
+						return nil, fmt.Errorf("cannot resolve service %v", dep.Name)
+					}
+
+					value, ok := service[v]
+					if !ok {
+						return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
+					}
+
+					str, ok := value.(string)
+					if !ok {
+						return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+					}
+
+					setVars[k] = str
+				}
+			}
+			podID, err = r.createPodIdentity(ctx, w, cc, setVars)
+			if err != nil {
+				return nil, errors.New("unable to create pod identity")
+			}
+		}
+
 		if dep.SetEnv == nil {
 			continue
 		}
@@ -217,6 +255,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 						"app.kubernetes.io/name":       cc.Name,
 						"app.kubernetes.io/part-of":    w.Application,
 						"app.kubernetes.io/managed-by": "radius-rp",
+						"aadpodidbinding":              podID,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -226,7 +265,57 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		},
 	}
 
+	// if podID != "" {
+	// 	fmt.Println("@@@@@ Adding podid to the deployment spec")
+	// 	deployment.Spec.Template.ObjectMeta.Labels["aadpodidbinding"] = podID
+	// 	fmt.Printf("@@@@ Deployment spec: %v\n", deployment)
+	// }
+
 	return &deployment, nil
+}
+
+func (r Renderer) createPodIdentity(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent, setVars map[string]string) (string, error) {
+
+	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
+	dc.Authorizer = r.Arm.Auth
+
+	// TODO Use deployment templates/SDK
+	// For now using az cli
+
+	// Get AKS cluster name in current resource group
+	mcc := containerservice.NewManagedClustersClient(r.Arm.SubscriptionID)
+	mcc.Authorizer = r.Arm.Auth
+
+	var cluster *containerservice.ManagedCluster
+	for list, err := mcc.ListByResourceGroupComplete(ctx, r.Arm.ResourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
+		if err != nil {
+			return "", fmt.Errorf("cannot read AKS clusters: %w", err)
+		}
+
+		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
+		tag, ok := list.Value().Tags["rad-environment"]
+		if ok && strings.EqualFold(*tag, "true") {
+			temp := list.Value()
+			cluster = &temp
+			break
+		}
+	}
+
+	if cluster == nil {
+		return "", fmt.Errorf("could not find an AKS instance in resource group '%v'", r.Arm.ResourceGroup)
+	}
+
+	msiResourceID := setVars["MSI_ID"]
+	// Note: Pod Identity name cannot have camel case
+	podIdentityName := "podid-" + cc.Name
+	// Note: The pod identity namespace specified here has to match the namespace in which the application pod is deployed
+	out, err := azcli.RunCLICommandWithOutput("aks", "pod-identity", "add", "--resource-group", r.Arm.ResourceGroup, "--cluster-name", *cluster.Name, "--namespace", w.Application, "--name", podIdentityName, "--identity-resource-id", msiResourceID)
+	if err != nil {
+		return "", fmt.Errorf("unable to create pod identity")
+	}
+	fmt.Println("@@@@@@ created pod identity...")
+	fmt.Println(string(out))
+	return podIdentityName, nil
 }
 
 func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*corev1.Service, error) {

@@ -20,6 +20,9 @@
                 "kind": "azure.com/KeyVault",
                 "setEnv": {
                     "KV_URI": "uri"
+                },
+                "set": {
+                    "MSI_ID": "msiId"
                 }
             }
         ]
