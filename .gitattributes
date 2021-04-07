@@ -4,5 +4,5 @@
 # shell scripts always use LF
 *.sh text eol=lf
 
-# treat pngs as binaries
+# images are binary
 *.png binary
