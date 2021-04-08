@@ -22,7 +22,7 @@ import (
 // deploymentGetCmd command to get details of a deployment
 var deploymentGetCmd = &cobra.Command{
 	Use:   "get",
-	Short: "Get RAD deployment details",
+	Short: "Get Radius deployment details",
 	Long:  "Get details of the specified Radius deployment deployed in the default environment",
 	RunE:  getDeployment,
 }
