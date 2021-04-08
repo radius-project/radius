@@ -22,7 +22,7 @@ Specifically, the following resources are created:
 |----------|-------------|
 |**Data plane**
 | Azure Kubernetes Service | The runtime into which containers and workloads are deployed.
-| Azure CosmosDB account | The default database to user for Radius applications when `managed` is specified.
+| Azure CosmosDB account | Default database used by Radius applications when `managed` is specified.
 |**Control plane**
 | Managed Identity | Identity used by the deployment script when the rad CLI deploys the environment for the first time
 | App Service | Radius private resource provider (control plane)
