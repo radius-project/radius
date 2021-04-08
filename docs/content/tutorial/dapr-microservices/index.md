@@ -81,9 +81,7 @@ Keep the diagram in mind as you proceed through the following steps. Creating a 
 
 ## Step 1: Creating the application definition
 
-You can start by creating a new `.bicep` file. Call it `template.bicep`. 
-
-Inside `template.bicep`, type in the following content:
+Radius uses the Bicep langauge as its file-format and structure. Create a new filed called `template.bicep` with the following content:
 
 ```txt
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -94,8 +92,8 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 This defines the basic structure of an application. This declaration:
 
-- Defines an application resource with the variable name of `app`
-- Assigns the name `dapr-hello` to the application resource that will be created
+- Defines an application resource with the symbolic name of `app`. 
+- Assigns the name `dapr-hello` to the application resource that will be created.
 
 Declarations in Bicep start with `resource`. They also declare a variable, and assign a resource type, and then are followed by an equals-sign `=` and then an object. 
 
@@ -109,14 +107,15 @@ Objects in Bicep don't need quotes around property names like in JSON. Propertie
 While Bicep uses newlines to separate properties and other syntax, it is not sensitive to indention like YAML is. By convention Bicep uses 2 spaces for indentation, but it is just a convention and not required.
 {{% /alert %}}
 
-At this point you could deploy the application but it doesn't contain any components and so it won't do anything interesting. Move on to the next step where we will begin to fill in components.
+At this point you could deploy the application but it doesn't contain any components and so it won't do anything interesting. In the next step, we will begin to fill in components.
 
 ## Step 2: Deploying a single container
 
-Now that you've defined the shell for an application, you can add components inside.
+Now that you've defined the shell for an application, you can add components to it.
 
 ### Add a component
-Type the additional content from the following text inside your application definition. What's new is the `nodeapp` component.
+We will first add a component representing a container.  
+Inside your application definition, add the `nodeapp` component shown below.
 
 ```txt
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -136,7 +135,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-The content you added declares a *component*. If you visualize the structure of an application *as a graph* then *component* represent the nodes. *component* represent the things to deploy.
+The content you added declares a *component*. If you visualize the structure of an application *as a graph*, then *components* represent the nodes and things to deploy.
 
 Components also include a *kind*. In this case the kind is `radius.dev/Container@v1alpha1` which represents a generic container.
 
@@ -161,7 +160,7 @@ You could deploy this now and it will run the `radiusteam/nodeapp` image, howeve
 
 You can add the ability to listen for HTTP traffic as depicted in the diagram above.
 
-Type the additional content from the following text inside your application definition.
+Expand your `nodeapp` as shown below so that it includes a web service definition via a `provides` section.
 
 ```txt
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -201,6 +200,12 @@ Now you are ready to deploy the application for the first time.
 First, double-check that you are logged-in to Azure. Switch to your commandline and run the following command:
 
 ```sh
+az account show
+```
+
+If necessary, log into Azure via
+
+```sh
 az login
 ```
 
@@ -227,7 +232,7 @@ To test it out, you can use the following command from the commandline:
 rad expose dapr-hello nodeapp 3000
 ```
 
-This will open a local tunnel on port 3000. Then you can visit the URL `http://localhost:3000/order` in the browser. For now you should see a message like:
+This will open a local tunnel on port 3000. Then you can visit the URL `http://localhost:3000/order` in the browser (or run `curl http://localhost:3000/order` if you're working in Codespaces). For now you should see a message like:
 
 ```txt
 {"message":"The container is running, but Dapr has not been configured."}
@@ -244,9 +249,8 @@ The `rad expose` command provides the application name, followed by the componen
 As the message from the previous step stated, you haven't yet added Dapr. You also haven't configured the Azure Table Storage state store. This step will add both of these things.
 
 ### Add trait
-First, you should add a *trait* to the `nodeapp` component to add Dapr. 
-
-Type the additional content from the following text inside your application definition. What's new this time is the `traits` section.
+We will first add a *trait* that describes the Dapr configuration. 
+Expand your `nodeapp` as shown below so that it includes a `traits` section.
 
 ```txt
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -282,7 +286,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added on via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required configuration to Dapr, the app-id and app-port.
+The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required Dapr configuration: the app-id and app-port.
 
 {{% alert title="💡 Traits" color="primary" %}}
 The `traits` section is one of several top level sections in a *component*. Traits are used to configure the component in a cross-cutting way. Other examples would include handling public traffic (ingress) or scaling.
@@ -312,7 +316,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-This declaration adds the state store as a component of kind `dapr.io/StateStore@v1alpha1`. You've seen component declarations before, so you can notice some differences with this one. `statestore` has a `config` section instead of a `run` section.
+This declaration adds the state store as a component of kind `dapr.io/StateStore@v1alpha1`. You've seen component declarations before, so you can notice some differences with this one. The `statestore` component has a "config" section, while the previous `noneapp` compnent had "run" and "provides" (services) sections.
 
 {{% alert title="💡 Config" color="primary" %}}
 The `config` section is one of several top level sections in a *component*. In general component that represent a data store will have a `config` section
