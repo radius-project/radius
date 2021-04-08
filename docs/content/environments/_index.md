@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Radius environments"
+title: "Supported Radius environments"
 linkTitle: "Environments"
 description: "Runtimes for hosting Radius applications"
 weight: 50
