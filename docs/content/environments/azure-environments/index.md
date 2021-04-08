@@ -8,22 +8,28 @@ weight: 20
 
 ## Azure environments
 
-An Azure Radius environment consists of various resources that together act as the private resource provider (control plane) and the application hosting environment to which you deploy Radius applications (data plane):
+An Azure Radius environment consists of various resources that together act as the private resource provider (control plane) and the application hosting environment to which you deploy Radius applications (runtime):
 
 <img src="./azure-overview.png" width=900 alt="Overview of an Azure Radius environment">
 
 {{% alert title="⚠ Caution" color="warning" %}}
 While this page describes the current implementation of Azure Radius environments, this is subject to change as the project matures and as Radius moves toward the goal of a fully hosted, multi-tenant, service.
+
+- For now we only support Azure as the environment
+- For now we use AKS as the runtime/data-plane
+- For now you will see all of the environment's control plane resources in your subscription and resource group
 {{% /alert %}}
 
-Specifically, the following resources are created:
+When a new Azure Radius environment is created, the following resources are created:
 
 | Resource | Description |
 |----------|-------------|
-|**Data plane**
-| Azure Kubernetes Service | Runtime into which containers and workloads are deployed.
-| Azure CosmosDB account | Default database used by Radius applications when `managed` is specified.
+|**Runtime**
+| Azure Kubernetes Service | Runtime into which containers and workloads are deployed. Note that an additional managed Resource Group, prefixed with "MC-", is also deployed to host the AKS cluste resources.
+| [Other Resources] | When applications are deployed, any additional resources are deployed into the resource group.
 |**Control plane**
+| Azure CosmosDB account | 
+| Deployment script | Script used during the deployment of the Radius control plane.
 | Managed Identity | Identity used by the deployment script when the rad CLI deploys the environment for the first time
 | App Service | Radius private resource provider (control plane)
 | App Service plan | Underlying plan for the private RP app service
