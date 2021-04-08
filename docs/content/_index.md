@@ -2,7 +2,7 @@
 type: docs
 title: "Project Radius Documentation"
 linkTitle: "Project Radius docs"
-description: "How to get up and running with Project Radius in minutes"
+description: "Documentation on the Project Radius application model"
 weight: 1
 ---
 
