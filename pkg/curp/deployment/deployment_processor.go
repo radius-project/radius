@@ -1414,6 +1414,10 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 		},
 	)
 
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
+	}
+
 	err = vaultsFuture.WaitForCompletionRef(ctx, kvc.Client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
