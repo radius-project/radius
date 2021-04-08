@@ -286,7 +286,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required Dapr configuration: the app-id and app-port.
+The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required Dapr configuration: the `app-id` and `app-port`.
 
 {{% alert title="💡 Traits" color="primary" %}}
 The `traits` section is one of several top level sections in a *component*. Traits are used to configure the component in a cross-cutting way. Other examples would include handling public traffic (ingress) or scaling.
