@@ -3,7 +3,7 @@ type: docs
 title: "Overview of Project Radius application model"
 linkTitle: "Application model"
 description: An overview of Project Radius application model and what it provides to the user
-weight: 100
+weight: 10
 ---
 
 Project Radius provides an *application mdodel* - a descriptive framework for cloud native applications and their requirements. This section is a conceptual guide for how the Radius model is structured, and explains at high level the concepts at work when you describe and deploy an application with Radius.
