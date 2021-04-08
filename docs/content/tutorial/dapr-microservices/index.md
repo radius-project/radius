@@ -92,7 +92,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 This defines the basic structure of an application. This declaration:
 
-- Defines an application resource with the symbolic name of `app`. 
+- Defines an application resource with the variable name of `app`. 
 - Assigns the name `dapr-hello` to the application resource that will be created.
 
 Declarations in Bicep start with `resource`. They also declare a variable, and assign a resource type, and then are followed by an equals-sign `=` and then an object. 
