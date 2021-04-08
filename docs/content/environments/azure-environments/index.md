@@ -66,7 +66,7 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
 1. Verify deployment
 
-   To verify the environment deployment succeeded, navigate to your subscription at https://portal.azure.com. You should see a new Resource Group:
+   To verify the environment deployment succeeded, navigate to your subscription at https://portal.azure.com. You should see a new Resource Group with the name you entered during the previous step: 
 
    <img src="./azure-rg.png" width=200 alt="New resource group that was created">
 
