@@ -1,9 +1,9 @@
 ---
 type: docs
 title: "Create a Radius RP environment"
-linkTitle: "Create an environment"
+linkTitle: "Create environment"
 description: "How to initialize the private Radius resource provider in your Azure subscription"
-weight: 20
+weight: 30
 ---
 
 Radius deploys a private resource provider, or control plane, that your `rad` cli connects to when managing your radius applications.
