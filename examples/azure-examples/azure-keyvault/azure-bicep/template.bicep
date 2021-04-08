@@ -10,4 +10,28 @@ resource app 'radius.dev/Applications@v1alpha1' = {
         }
     }
   }
+
+  resource kvaccessor 'Components' = {
+    name: 'kvaccessor'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: {
+        container: {
+          image: 'vinayada/azure-keyvault-app:latest'
+        }
+      }
+      dependsOn: [
+        {
+          name: 'kv'
+          kind: 'azure.com/KeyVault'
+          setEnv: {
+            KV_URI: 'uri'
+          }
+          set: {
+            MSI_ID: 'msiId'
+          }
+        }
+      ]
+    }
+  }
 }

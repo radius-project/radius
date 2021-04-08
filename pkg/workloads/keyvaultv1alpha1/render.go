@@ -28,7 +28,7 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	}
 
 	if len(wrp) != 1 || wrp[0].Type != "azure.keyvault" {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.servicebus.queue")
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.keyvault")
 	}
 
 	properties := wrp[0].Properties
