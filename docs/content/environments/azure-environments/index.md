@@ -55,11 +55,6 @@ While Radius environments are optimized for cost, any costs incurred by the depl
    ```bash
    az login
    ```
-1. Set your preferred Azure subscription into which you want to deploy your environment:
-   
-   ```bash
-   az account set --subscription SUB-ID
-   ```
 1. Deploy a Radius environment interactively:
    
    ```bash
