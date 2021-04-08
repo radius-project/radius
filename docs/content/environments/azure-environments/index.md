@@ -28,7 +28,7 @@ When a new Azure Radius environment is created, the following resources are crea
 | Azure Kubernetes Service | Runtime into which containers and workloads are deployed. Note that an additional managed Resource Group, prefixed with "MC-", is also deployed to host the AKS cluste resources.
 | [Other Resources] | When applications are deployed, any additional resources are deployed into the resource group.
 |**Control plane**
-| Azure CosmosDB account | 
+| Azure CosmosDB account | All of the server-side tracking of what your application definition is and what resources Radius is managing.
 | Deployment script | Script used during the deployment of the Radius control plane.
 | Managed Identity | Identity used by the deployment script when the rad CLI deploys the environment for the first time
 | App Service | Radius private resource provider (control plane)
