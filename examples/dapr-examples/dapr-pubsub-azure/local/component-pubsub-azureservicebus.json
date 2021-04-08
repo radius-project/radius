@@ -1,0 +1,11 @@
+{
+    "kind": "dapr.io/PubSubTopic@v1alpha1",
+    "properties": {
+        "config": {
+            "kind": "pubsub.azure.servicebus",
+            "managed": true,
+            "name": "pubsub-azureservicebus",
+            "topic": "TOPIC_A"
+        }
+    }
+}

@@ -18,7 +18,8 @@ import (
 
 var cfgFile string
 
-var rootCmd = &cobra.Command{
+// RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
+var RootCmd = &cobra.Command{
 	Use:           "rad",
 	Short:         "Project Radius CLI",
 	Long:          `Project Radius CLI`,
@@ -29,7 +30,7 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -38,7 +39,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
 }
 
 // initConfig reads in config file and ENV variables if set.

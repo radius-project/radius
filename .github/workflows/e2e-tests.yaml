@@ -7,7 +7,7 @@ name: e2e-tests
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 */24 * * *'
   repository_dispatch:
     types: [e2e-tests]
   workflow_dispatch:
@@ -17,11 +17,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       GOVER: '^1.16.0'
-      GOLANGCILINT_VER: 1.26.0
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
-      ARCHIVE_OUTDIR: dist/archives
       RADIUS_PATH: $GITHUB_WORKSPACE/dist/${{ matrix.target_os }}_${{ matrix.target_arch }}/release
       INTEGRATION_TEST_TENANT_ID: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
       INTEGRATION_TEST_SP_APP_ID: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
@@ -41,7 +39,7 @@ jobs:
         if: github.event_name != 'repository_dispatch'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=refs/heads/master" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
       - name: Parse test payload
         if: github.event_name == 'repository_dispatch'
         uses: actions/github-script@0.3.0

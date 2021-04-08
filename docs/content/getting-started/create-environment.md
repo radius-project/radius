@@ -20,7 +20,15 @@ az login
 
 ## 2. Select your subscription
 
-Use the `az` CLI specify your preferred subscription
+Radius will use your default Azure subscription.  
+
+You can verify your enabled subscription:
+
+```sh
+az account show
+```
+
+If needed, you can switch your to your preferred subscription:
 
 ```sh
 az account set --subscription <SUB-ID>
@@ -34,10 +42,16 @@ Initialize the private resource provider (environment) in your Azure subscriptio
 rad env init azure -i
 ```
 
-This will prompt you for information and then go off and run a bunch of command to create assets in your subscription.
+This will prompt you for several inputs and then go create assets in your subscription (~5-10 mins). 
+
+You can verify creation of your new environment:
+
+```sh
+rad env list
+```
 
 ### Deleting an environment
 
-The rad CLI also has an option to [delete an environment]({{< ref env-delete.md >}}) if you need to remove or re-deploy an environment.
+The rad CLI also has an option to [delete an environment]({{< ref rad_env_delete.md >}}) if you need to remove or re-deploy an environment.
 
 <br /><a class="btn btn-primary" href="{{< ref deploy-application.md >}}" role="button">Next: Deploy an application</a>

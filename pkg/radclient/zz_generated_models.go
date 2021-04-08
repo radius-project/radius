@@ -69,6 +69,112 @@ type ApplicationResourceResponse struct {
 	RawResponse *http.Response
 }
 
+// ComponentDeleteOptions contains the optional parameters for the Component.Delete method.
+type ComponentDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ComponentGetOptions contains the optional parameters for the Component.Get method.
+type ComponentGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// Component list.
+type ComponentList struct {
+	// List of components.
+	Value *[]ComponentResource `json:"value,omitempty"`
+}
+
+// ComponentListByApplicationOptions contains the optional parameters for the Component.ListByApplication method.
+type ComponentListByApplicationOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ComponentListResponse is the response envelope for operations that return a ComponentList type.
+type ComponentListResponse struct {
+	// Component list.
+	ComponentList *ComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// Component resource.
+type ComponentResource struct {
+	TrackedResource
+	// Resource type of the component
+	Kind *string `json:"kind,omitempty"`
+
+	// Properties of the component.
+	Properties interface{} `json:"properties,omitempty"`
+}
+
+// ComponentResourceResponse is the response envelope for operations that return a ComponentResource type.
+type ComponentResourceResponse struct {
+	// Component resource.
+	ComponentResource *ComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DeploymentDeleteOptions contains the optional parameters for the Deployment.Delete method.
+type DeploymentDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DeploymentGetOptions contains the optional parameters for the Deployment.Get method.
+type DeploymentGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// Deployment list.
+type DeploymentList struct {
+	// List of deployments.
+	Value *[]DeploymentResource `json:"value,omitempty"`
+}
+
+// DeploymentListByApplicationOptions contains the optional parameters for the Deployment.ListByApplication method.
+type DeploymentListByApplicationOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DeploymentListResponse is the response envelope for operations that return a DeploymentList type.
+type DeploymentListResponse struct {
+	// Deployment list.
+	DeploymentList *DeploymentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// Properties of a deployment.
+type DeploymentProperties struct {
+	// List of components in the deployment.
+	Components *[]DeploymentPropertiesComponentsItem `json:"components,omitempty"`
+}
+
+type DeploymentPropertiesComponentsItem struct {
+	// Name of the component
+	ComponentName *string `json:"componentName,omitempty"`
+}
+
+// Deployment resource.
+type DeploymentResource struct {
+	TrackedResource
+	// Properties of the deployment.
+	Properties *DeploymentProperties `json:"properties,omitempty"`
+}
+
+// DeploymentResourceResponse is the response envelope for operations that return a DeploymentResource type.
+type DeploymentResourceResponse struct {
+	// Deployment resource.
+	DeploymentResource *DeploymentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
 // The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.

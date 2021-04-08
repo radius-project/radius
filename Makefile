@@ -189,7 +189,7 @@ test:
 ################################################################################
 .PHONY: deploy-tests
 deploy-tests:
-	go test ./test/deploy-tests/... -timeout 120s
+	go test ./test/deploy-tests/... -timeout 900s
 
 ################################################################################
 # Target: e2e-tests - run nightly integration tests                            #

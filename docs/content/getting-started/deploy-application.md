@@ -6,11 +6,16 @@ description: "How to use the rad CLI to deploy an application into your Azure su
 weight: 40
 ---
 
+🎉 Congrats! You now have a Radius environment up and running. The next step is to deploy an application. There are two options: tutorials and examples.
+
+## Walk through a tutorial
+
+To walk through an application and learn about Radius and what it is doing, try one of the Radius [tutorials]({{< ref tutorial >}}).
+
+<a class="btn btn-primary" href="{{< ref tutorial >}}" role="button">Try a tutorial 💡</a>
+
 ## Deploy an example application
 
-You can find some examples to deploy in the [examples section]({{< ref examples >}}). 
-The best example to start with is [Frontend/Backend]({{< ref frontend-backend >}})
+You can find some examples to deploy in the [examples section]({{< ref examples >}}).
 
-```sh
-rad deploy <path-to-.bicep file>
-```
+<a class="btn btn-primary" href="{{< ref examples >}}" role="button">Deploy an example 🚀</a>

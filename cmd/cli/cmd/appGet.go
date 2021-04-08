@@ -9,13 +9,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
 
-// getCmd command to get properties of an application
-var getCmd = &cobra.Command{
+// appGetCmd command to get properties of an application
+var appGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get RAD application details",
 	Long:  "Get RAD application details",
@@ -23,10 +24,10 @@ var getCmd = &cobra.Command{
 }
 
 func init() {
-	applicationCmd.AddCommand(getCmd)
+	applicationCmd.AddCommand(appGetCmd)
 
-	getCmd.Flags().String("name", "", "The application name")
-	if err := getCmd.MarkFlagRequired("name"); err != nil {
+	appGetCmd.Flags().StringP("name", "n", "", "The application name")
+	if err := appGetCmd.MarkFlagRequired("name"); err != nil {
 		fmt.Printf("Failed to mark the name flag required: %v", err)
 	}
 }
@@ -42,24 +43,23 @@ func getApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	authorizer, err := auth.NewAuthorizerFromCLI()
+	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to obtain Azure credentials: %w", err)
+	}
+	con := armcore.NewDefaultConnection(azcred, nil)
+	ac := radclient.NewApplicationClient(con, env.SubscriptionID)
+	response, err := ac.Get(cmd.Context(), env.ResourceGroup, applicationName, nil)
+	if err != nil {
+		return fmt.Errorf("Failed to get the application %s, %w", applicationName, err)
 	}
 
-	radc := radclient.NewClient(env.SubscriptionID)
-	radc.Authorizer = authorizer
-	app, err := radc.GetApplication(cmd.Context(), env.ResourceGroup, applicationName)
+	applicationResource := *response.ApplicationResource
+	applicationDetails, err := json.MarshalIndent(applicationResource, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Error getting the application information: '%w'", err)
+		return fmt.Errorf("Failed to marshal application response as JSON %w", err)
 	}
-
-	var applicationDetails []byte
-	applicationDetails, err = json.MarshalIndent(app, "", "\t")
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s\n", applicationDetails)
+	fmt.Println(string(applicationDetails))
 
 	return err
 }

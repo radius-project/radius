@@ -70,7 +70,7 @@ var exposeCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(exposeCmd)
+	RootCmd.AddCommand(exposeCmd)
 }
 
 func createClient() (*rest.Config, error) {

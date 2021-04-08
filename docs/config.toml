@@ -31,7 +31,7 @@ github_branch = "main"
     source = "archetypes"
     target = "archetypes"
   [[module.mounts]]
-    source = "../test"
+    source = "../examples"
     target = "content/examples"
 
 # Disable categories & tags

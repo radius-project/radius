@@ -1,0 +1,99 @@
+// Code formatting.
+
+.copy-code-button {
+    color: #272822;
+    background-color: #FFF;
+    border-color: #0D2192;
+    border: 2px solid;
+    border-radius: 3px 3px 0px 0px;
+
+    /* right-align */
+    display: block;
+    margin-left: auto;
+    margin-right: 0;
+
+    margin-bottom: -2px;
+    padding: 3px 8px;
+    font-size: 0.8em;
+}
+
+.copy-code-button:hover {
+    cursor: pointer;
+    background-color: #F2F2F2;
+}
+
+.copy-code-button:focus {
+    /* Avoid an ugly focus outline on click in Chrome,
+       but darken the button for accessibility.
+       See https://stackoverflow.com/a/25298082/1481479 */
+    background-color: #E6E6E6;
+    outline: 0;
+}
+
+.copy-code-button:active {
+    background-color: #D9D9D9;
+}
+
+.highlight pre {
+    /* Avoid pushing up the copy buttons. */
+    margin: 0;
+}
+
+.td-content {
+	// Highlighted code.
+    .highlight {
+        @extend .card;
+	
+        margin: 0rem 0;
+        padding: 0rem;
+
+        margin-bottom: 2rem;
+
+        max-width: 100%;
+	    
+        pre {
+            margin: 0;
+            padding: 1rem;
+        }
+    }
+
+    // Inline code
+    p code, li > code, table code {
+        color: inherit;
+        padding: 0.2em 0.4em;
+        margin: 0;
+        font-size: 85%;
+        word-break: normal;
+        background-color: rgba($black, 0.05);
+        border-radius: $border-radius;
+
+        br {
+            display: none;
+        }
+    }
+
+
+    // Code blocks
+    pre {
+        word-wrap: normal;
+        background-color: $gray-100;
+        padding: $spacer;
+    
+        max-width: 100%;
+
+        > code {
+	    background-color: inherit !important;
+            padding: 0;
+            margin: 0;
+            font-size: 100%;
+            word-break: normal;
+            white-space: pre;
+            border: 0;
+        }
+    }
+
+    pre.mermaid {
+        background-color: inherit;
+        font-size: 0;
+    }
+}

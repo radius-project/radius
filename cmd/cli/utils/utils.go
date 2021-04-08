@@ -6,6 +6,8 @@
 package utils
 
 import (
+	"strings"
+
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
@@ -64,4 +66,16 @@ func IsServicePrincipalConfigured() (bool, error) {
 
 	spSpecified := settings.Values[auth.ClientID] != "" && settings.Values[auth.ClientSecret] != ""
 	return spSpecified, nil
+}
+
+// GetResourceNameFromFullyQualifiedPath Returns the resource name from full path of the resource.
+// For example returns 'default' for 'radius/frontend-backend/default'
+func GetResourceNameFromFullyQualifiedPath(fullyQualifiedPath string) string {
+	name := fullyQualifiedPath
+	if strings.Contains(fullyQualifiedPath, "/") {
+		split := strings.Split(fullyQualifiedPath, "/")
+		name = split[len(split)-1]
+	}
+
+	return name
 }
