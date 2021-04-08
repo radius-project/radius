@@ -1,0 +1,28 @@
+{
+  "id": "https://schema.radapp.dev/schemas/appliations/application.v1alpha1.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Application (v1alpha1)",
+  "description": "Application type (v1alpha1)",
+  "type": "object",
+  "required": [
+    "name"
+  ],
+  "properties": {
+    "name": {
+      "description": "Defines the name of the application.",
+      "type": "string"
+    },
+    "properties": {
+      "$ref": "#/definitions/Properties"
+    }
+  },
+  "definitions": {
+    "Properties": {
+      "title": "Application properties (v1alpha1)",
+      "description": "Defines the properties of the application.",
+      "type": "object",
+      "properties": {
+      }
+    }
+  }
+}
