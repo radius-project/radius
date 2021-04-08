@@ -232,7 +232,7 @@ To test it out, you can use the following command from the commandline:
 rad expose dapr-hello nodeapp 3000
 ```
 
-This will open a local tunnel on port 3000. Then you can visit the URL `http://localhost:3000/order` in the browser (or run `curl http://localhost:3000/order` if you're working in Codespaces). For now you should see a message like:
+This will open a local tunnel on port 3000. Then you can visit the URL `http://localhost:3000/order` in the browser. For now you should see a message like:
 
 ```txt
 {"message":"The container is running, but Dapr has not been configured."}
