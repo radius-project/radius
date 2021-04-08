@@ -354,7 +354,11 @@ Now you are ready to deploy.
 
    If your page matches, then it means that the container is able to communicate with the database. Just like before you can test the features of the todo app. Now your data is being stored in an actual database. Add a task or two. 
 
-1. Now that the app is using a database, we can cofirm that the task items persist across application restarts. Press CTRL+C to terminate the port-forward, redeploy the application via `rad deploy template.bicep`, then restart port-forwarding via `rad expose webapp todoapp 3000`. When you visit the URL `http://localhost:3000` in the browser again, you should see the tasks you previously created. 
+1. Now that the app is using a database, we can confirm that the task items persist across application restarts. 
+   1. Press CTRL+C to terminate the port-forward
+   1. Redeploy the application via `rad deploy template.bicep`
+   1. Restart port-forwarding via `rad expose webapp todoapp 3000`. 
+   1. Visit the URL `http://localhost:3000` in the browser again to see the tasks you previously created. 
 
 1. When you are done testing press CTRL+C to terminate the port-forward. You have completed this tutorial!
 
