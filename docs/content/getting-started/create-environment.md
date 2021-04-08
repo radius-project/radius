@@ -8,50 +8,56 @@ weight: 20
 
 Radius deploys a private resource provider, or control plane, that your `rad` cli connects to when managing your radius applications.
 
-As a one time operation deploy a radius environment into your Azure subscription through the following instructions:
+## Deploy a Radius environment
 
-## 1. Login to Azure
+As a one time operation deploy an [Azure Radius environment]({{< ref azure-environments >}}) into your Azure subscription through the following instructions.
 
-Use the `az` CLI to authenticate with Azure your Azure account
+{{% alert title="⚠ Caution" color="warning" %}}
+While Radius environments are optimized for cost, any costs incurred by the deployment and use of a Radius environment in an Azure subscription are the responsibility of the user. Learn more about Azure environments [here]({{< ref azure-environments >}}).
+{{% /alert %}}
 
-```sh
-az login
-```
+1. Use the `az` CLI to authenticate with Azure your Azure account:
 
-## 2. Select your subscription
+   ```sh
+   az login
+   ```
 
-Radius will use your default Azure subscription.  
+1. Select your Azure subscription:
 
-You can verify your enabled subscription:
+   Radius will use your default Azure subscription. You can verify your enabled subscription with:
 
-```sh
-az account show
-```
+   ```sh
+   az account show
+   ```
 
-If needed, you can switch your to your preferred subscription:
+   If needed, you can switch your to your preferred subscription:
 
-```sh
-az account set --subscription <SUB-ID>
-```
+   ```sh
+   az account set --subscription <SUB-ID>
+   ```
 
-## 3. Create a radius environment
+1. Create a Radius environment:
 
-Initialize the private resource provider (environment) in your Azure subscription using the `rad` CLI
+   Initialize the private resource provider (environment) in your Azure subscription using the `rad` CLI
 
-```sh
-rad env init azure -i
-```
+   ```sh
+   rad env init azure -i
+   ```
 
-This will prompt you for several inputs and then go create assets in your subscription (~5-10 mins). 
+   This will prompt you for several inputs and then go create assets in your subscription (~5-10 mins). 
 
-You can verify creation of your new environment:
+1. Verify creation of your new environment:
 
-```sh
-rad env list
-```
+   ```sh
+   rad env list
+   ```
 
-### Deleting an environment
+### Delete an environment
 
 The rad CLI also has an option to [delete an environment]({{< ref rad_env_delete.md >}}) if you need to remove or re-deploy an environment.
 
-<br /><a class="btn btn-primary" href="{{< ref deploy-application.md >}}" role="button">Next: Deploy an application</a>
+## Next steps
+
+Now that you have a Radius environment up and running head over to our tutorials section to walk through some applications and scenarios:
+
+<a class="btn btn-primary" href="{{< ref tutorial >}}" role="button">Next: Try a tutorial</a>
