@@ -8,7 +8,7 @@ weight: 20
 
 ## Azure environments
 
-An Azure Radius environment consists of various resources that act as both a private resource provider (control plane)), and the application hosting environment to which you deploy Radius applications (data plane):
+An Azure Radius environment consists of various resources that together act as the private resource provider (control plane) and the application hosting environment to which you deploy Radius applications (data plane):
 
 <img src="./azure-overview.png" width=900 alt="Overview of an Azure Radius environment">
 
