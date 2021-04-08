@@ -25,7 +25,7 @@ When a new Azure Radius environment is created, the following resources are crea
 | Resource | Description |
 |----------|-------------|
 |**Runtime**
-| Azure Kubernetes Service | Runtime into which containers and workloads are deployed. Note that an additional managed Resource Group, prefixed with "MC-", is also deployed to host the AKS cluste resources.
+| Azure Kubernetes Service | Runtime into which containers and workloads are deployed. Note that an additional managed Resource Group, prefixed with "MC-", is also deployed to host the AKS cluster resources.
 | [Other Resources] | When applications are deployed, any additional resources are deployed into the resource group.
 |**Control plane**
 | Azure CosmosDB account | All of the server-side tracking of what your application definition is and what resources Radius is managing.
@@ -47,7 +47,7 @@ These steps will walk through how to deploy, manage, and delete environments in 
 ### Deploy an environment
 
 {{% alert title="⚠ Caution" color="warning" %}}
-While Radius environments are optimized for cost, any costs incurred by the deployment and use of a Radius environment in an Azure subscription are the responsibility of the user.
+While Radius environments are optimized for cost, any costs incurred by the deployment and use of a Radius environment in an Azure subscription are the responsibility of the user. Azure environments currently include a single node AKS cluster, an Azure CosmosDB account, and an App Service which all incur cost if deployed for extended periods.
 {{% /alert %}}
 
 1. Sign into Azure using the az CLI:
