@@ -33,6 +33,9 @@ github_branch = "main"
   [[module.mounts]]
     source = "../examples"
     target = "content/examples"
+  [[module.mounts]]
+    source = "../schemas/rest-api-specs"
+    target = "content/reference/api"
 
 # Disable categories & tags
 disableKinds = ["taxonomy", "term"]
