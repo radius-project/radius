@@ -24,8 +24,6 @@ var appListCmd = &cobra.Command{
 	RunE:  listApplications,
 }
 
-const resourceType = "Applications"
-
 func init() {
 	applicationCmd.AddCommand(appListCmd)
 }
