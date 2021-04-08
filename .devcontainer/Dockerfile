@@ -1,38 +1,22 @@
-# See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.148.1/containers/go/.devcontainer/base.Dockerfile
+FROM mcr.microsoft.com/vscode/devcontainers/universal:1.3.0
 
-# [Choice] Go version: 1, 1.15, 1.14
-ARG VARIANT="1"
-FROM mcr.microsoft.com/vscode/devcontainers/go:0-${VARIANT}
+WORKDIR /home/
 
-ARG USERNAME="vscode"
+COPY . .
 
-# [Option] Install Node.js
-ARG INSTALL_NODE="false"
-ARG NODE_VERSION="lts/*"
-RUN if [ "${INSTALL_NODE}" = "true" ]; then su vscode -c "source /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi
-
-# Install pip3 and HTTPie
-RUN apt-get update \
-    && apt-get install -y python3 python3-pip httpie
-
-# Install Docker CE
-RUN apt-get update \
-    && apt-get install -y apt-transport-https ca-certificates curl gnupg2 lsb-release \
-    && curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | apt-key add - 2>/dev/null \
-    && echo "deb [arch=amd64] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list \
-    && apt-get update \
-    && apt-get install -y docker-ce-cli
+# Install Azure CLI
+USER root
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
 # Install kubectl
-RUN curl -sSL -o /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl \
-    && chmod +x /usr/local/bin/kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+RUN install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
-# Install Helm
-RUN curl -s https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash -
+# Install rad CLI (Linux)
+#    TODO: change to make binary directly inside this Dockerfile? 
+RUN wget -O /usr/local/bin/rad --no-check-certificate https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad
+RUN chmod +rx /usr/local/bin/rad
 
-# Update credentials for Kubernetes to match container environment
-# Script copies localhost's ~/.kube/config file into the container and swaps out 
-# localhost for host.docker.internal on bash/zsh start to keep them in sync.
-COPY init-profile.sh /usr/local/share/
-COPY copy-kube-config.sh /usr/local/share/
-RUN /usr/local/share/init-profile.sh ${USERNAME}
+# Download Radius VSCode extension
+RUN wget -O /home/rad-vscode-bicep.vsix https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix
+
