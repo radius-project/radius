@@ -1,0 +1,51 @@
+{
+  "id": "https://schema.radapp.dev/schemas/deployments/deployment.v1alpha1.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Deployment (v1alpha1)",
+  "description": "Deployment type (v1alpha1)",
+  "type": "object",
+  "required": [
+    "name",
+    "properties"
+  ],
+  "properties": {
+    "name": {
+      "description": "Defines the name of the deployment.",
+      "type": "string"
+    },
+    "properties": {
+      "$ref": "#/definitions/Properties"
+    }
+  },
+  "definitions": {
+    "Properties": {
+      "title": "Deployment properties (v1alpha1)",
+      "description": "Defines the properties of the deployment.",
+      "type": "object",
+      "required": [
+        "components"
+      ],
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Component"
+          }
+        }
+      }
+    },
+    "Component": {
+      "title": "Component",
+      "description": "Defines a reference to a component as part of a deployment.",
+      "type": "object",
+      "required": [
+        "componentName"
+      ],
+      "properties": {
+        "componentName": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
