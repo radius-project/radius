@@ -5,8 +5,8 @@
 
 package keyvaultv1alpha1
 
-// ServiceBusQueueComponent is the definition of the service bus queue component
-type ServiceBusQueueComponent struct {
+// KeyVaultComponent is the definition of the keyvault queue component
+type KeyVaultComponent struct {
 	Name      string                   `json:"name"`
 	Kind      string                   `json:"kind"`
 	Config    KeyVaultConfig           `json:"config,omitempty"`

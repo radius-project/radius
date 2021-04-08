@@ -16,12 +16,12 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-// Renderer is the WorkloadRenderer implementation for the service bus workload.
+// Renderer is the WorkloadRenderer implementation for the keyvault workload.
 type Renderer struct {
 	Arm armauth.ArmConfig
 }
 
-// Allocate is the WorkloadRenderer implementation for servicebus workload.
+// Allocate is the WorkloadRenderer implementation for keyvault workload.
 func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
 	if service.Kind != "azure.com/KeyVault" {
 		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
@@ -49,9 +49,9 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	return values, nil
 }
 
-// Render is the WorkloadRenderer implementation for servicebus workload.
+// Render is the WorkloadRenderer implementation for keyvault workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
-	component := ServiceBusQueueComponent{}
+	component := KeyVaultComponent{}
 	err := components.ConvertFromGeneric(w.Workload, &component)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err

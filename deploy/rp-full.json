@@ -100,7 +100,7 @@
         },
         "agentCount": {
             "type": "int",
-            "defaultValue": 3,
+            "defaultValue": 1,
             "metadata": {
                 "description": "The number of nodes for the cluster."
             },
@@ -243,7 +243,6 @@
                         "vmSize": "[parameters('agentVMSize')]",
                         "osType": "[parameters('osType')]",
                         "storageProfile": "ManagedDisks",
-                        "type": "VirtualMachineScaleSets",
                         "mode": "System"
                     }
                 ],
