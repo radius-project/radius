@@ -3,7 +3,7 @@
     "properties": {
         "config": {
             "managed": true,
-            "yes": "yes"
+            "yes": "maybe?"
         }
     }
 }

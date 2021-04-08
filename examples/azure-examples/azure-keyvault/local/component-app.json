@@ -7,13 +7,6 @@
                 "image": "vinayada/azure-keyvault-app:latest"
             }
         },
-        "provides": [
-            {
-                "name": "receiver",
-                "kind": "http",
-                "containerPort": 8080
-            }
-        ],
         "dependsOn": [
             {
                 "name": "kv",
