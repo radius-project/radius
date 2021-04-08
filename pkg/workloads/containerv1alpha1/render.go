@@ -90,7 +90,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, err
 	}
 
-	deployment, err := r.makeDeployment(ctx, w, cw)
+	deployment, podIdentity, err := r.makeDeployment(ctx, w, cw)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
 	}
@@ -104,6 +104,20 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resources = append(resources, workloads.NewKubernetesResource("Deployment", deployment))
 	if service != nil {
 		resources = append(resources, workloads.NewKubernetesResource("Service", service))
+	}
+
+	if podIdentity.Name != "" {
+		// Append the Pod identity created to the list of resources
+		resources = append(resources, workloads.WorkloadResource{
+			Type: "azure.aadpodidentity",
+			Resource: map[string]string{
+				"podidentityname":      podIdentity.Name,
+				"podidentitynamespace": podIdentity.Namespace,
+				"podidentitycluster":   podIdentity.ClusterName,
+			},
+		})
+
+		fmt.Println("Added aadpodidentity resource")
 	}
 
 	fmt.Printf("Container depends on: %v", w.Workload.DependsOn)
@@ -131,7 +145,7 @@ func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent
 	return container, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, error) {
+func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, AADPodIdentity, error) {
 	container := corev1.Container{
 		Name:  cc.Name,
 		Image: cc.Run.Container.Image,
@@ -151,7 +165,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	var podID string
+	var podID AADPodIdentity
 	var err error
 	for _, dep := range cc.DependsOn {
 		// If the container depends on a KeyVault, create a pod identity
@@ -161,17 +175,17 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 				for k, v := range dep.Set {
 					service, ok := w.ServiceValues[dep.Name]
 					if !ok {
-						return nil, fmt.Errorf("cannot resolve service %v", dep.Name)
+						return nil, AADPodIdentity{}, fmt.Errorf("cannot resolve service %v", dep.Name)
 					}
 
 					value, ok := service[v]
 					if !ok {
-						return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
+						return nil, AADPodIdentity{}, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
 					}
 
 					str, ok := value.(string)
 					if !ok {
-						return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+						return nil, AADPodIdentity{}, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
 					}
 
 					setVars[k] = str
@@ -179,7 +193,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			}
 			podID, err = r.createPodIdentity(ctx, w, cc, setVars)
 			if err != nil {
-				return nil, errors.New("unable to create pod identity")
+				return nil, AADPodIdentity{}, errors.New("unable to create pod identity")
 			}
 		}
 
@@ -190,17 +204,17 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		for k, v := range dep.SetEnv {
 			service, ok := w.ServiceValues[dep.Name]
 			if !ok {
-				return nil, fmt.Errorf("cannot resolve service %v", dep.Name)
+				return nil, AADPodIdentity{}, fmt.Errorf("cannot resolve service %v", dep.Name)
 			}
 
 			value, ok := service[v]
 			if !ok {
-				return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
+				return nil, AADPodIdentity{}, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
 			}
 
 			str, ok := value.(string)
 			if !ok {
-				return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+				return nil, AADPodIdentity{}, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
 			}
 
 			container.Env = append(container.Env, corev1.EnvVar{
@@ -255,7 +269,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 						"app.kubernetes.io/name":       cc.Name,
 						"app.kubernetes.io/part-of":    w.Application,
 						"app.kubernetes.io/managed-by": "radius-rp",
-						"aadpodidbinding":              podID,
+						"aadpodidbinding":              podID.Name,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -265,16 +279,17 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		},
 	}
 
-	// if podID != "" {
-	// 	fmt.Println("@@@@@ Adding podid to the deployment spec")
-	// 	deployment.Spec.Template.ObjectMeta.Labels["aadpodidbinding"] = podID
-	// 	fmt.Printf("@@@@ Deployment spec: %v\n", deployment)
-	// }
-
-	return &deployment, nil
+	return &deployment, podID, nil
 }
 
-func (r Renderer) createPodIdentity(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent, setVars map[string]string) (string, error) {
+// AADPodIdentity represents the AAD pod identity added to a Kubernetes cluster
+type AADPodIdentity struct {
+	Name        string
+	Namespace   string
+	ClusterName string
+}
+
+func (r Renderer) createPodIdentity(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent, setVars map[string]string) (AADPodIdentity, error) {
 
 	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
 	dc.Authorizer = r.Arm.Auth
@@ -289,7 +304,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, w workloads.Instantiate
 	var cluster *containerservice.ManagedCluster
 	for list, err := mcc.ListByResourceGroupComplete(ctx, r.Arm.ResourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
 		if err != nil {
-			return "", fmt.Errorf("cannot read AKS clusters: %w", err)
+			return AADPodIdentity{}, fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
 
 		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
@@ -302,20 +317,25 @@ func (r Renderer) createPodIdentity(ctx context.Context, w workloads.Instantiate
 	}
 
 	if cluster == nil {
-		return "", fmt.Errorf("could not find an AKS instance in resource group '%v'", r.Arm.ResourceGroup)
+		return AADPodIdentity{}, fmt.Errorf("could not find an AKS instance in resource group '%v'", r.Arm.ResourceGroup)
 	}
 
 	msiResourceID := setVars["MSI_ID"]
 	// Note: Pod Identity name cannot have camel case
 	podIdentityName := "podid-" + cc.Name
-	// Note: The pod identity namespace specified here has to match the namespace in which the application pod is deployed
+	// Note: The pod identity namespace specified here has to match the namespace in which the application is deployed
 	out, err := azcli.RunCLICommandWithOutput("aks", "pod-identity", "add", "--resource-group", r.Arm.ResourceGroup, "--cluster-name", *cluster.Name, "--namespace", w.Application, "--name", podIdentityName, "--identity-resource-id", msiResourceID)
 	if err != nil {
-		return "", fmt.Errorf("unable to create pod identity")
+		return AADPodIdentity{}, fmt.Errorf("unable to create pod identity")
 	}
 	fmt.Println("@@@@@@ created pod identity...")
 	fmt.Println(string(out))
-	return podIdentityName, nil
+	podIdentity := AADPodIdentity{
+		Name:        podIdentityName,
+		Namespace:   w.Application,
+		ClusterName: *cluster.Name,
+	}
+	return podIdentity, nil
 }
 
 func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*corev1.Service, error) {

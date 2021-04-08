@@ -154,6 +154,10 @@ type keyVaultHandler struct {
 	arm armauth.ArmConfig
 }
 
+type podIdentityHandler struct {
+	arm armauth.ArmConfig
+}
+
 // NewDeploymentProcessor initializes a deployment processor.
 func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
 	d := workloads.Dispatcher{
@@ -175,6 +179,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			"azure.cosmos.documentdb":          &cosmosDocumentDbHandler{arm},
 			"azure.servicebus.queue":           &serviceBusQueueHandler{arm},
 			"azure.keyvault":                   &keyVaultHandler{arm},
+			"azure.aadpodidentity":             &podIdentityHandler{arm},
 		},
 	}
 
@@ -1360,7 +1365,7 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 	}
 
 	identityName := vaultName + "-msi"
-	msi, err := createIdentity(identityName, *g.Name, *g.Location, kvh.arm.SubscriptionID)
+	msi, err := createManagedIdentity(identityName, *g.Name, *g.Location, kvh.arm.SubscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
@@ -1369,6 +1374,7 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 	// appID, _ := uuid1.FromString(msi.AppID)
 
 	// Grant access to the managed identity created to access the Keyvault
+	// TODO: Using Access policies for now. Can improve by enabling RBAC on the keyvault to assign granular permissions
 	accessPolicy := keyvault.AccessPolicyEntry{
 		TenantID: &tenantID,
 		ObjectID: &msi.ObjectID,
@@ -1426,6 +1432,7 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 }
 
 func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]string) error {
+	// Delete key vault
 	vaultName := properties["keyvaultname"]
 
 	kvClient := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
@@ -1434,6 +1441,56 @@ func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]st
 	_, err := kvClient.Delete(ctx, kvh.arm.ResourceGroup, vaultName)
 	if err != nil {
 		return fmt.Errorf("failed to DELETE keyvault: %w", err)
+	}
+
+	// Delete user assigned managed identity created
+	err = deleteManagedIdentity(properties["keyvaultmsiresourceid"])
+	if err != nil {
+		return fmt.Errorf("failed to DELETE user assigned managed identity: %w", err)
+	}
+
+	return nil
+}
+
+func (pih *podIdentityHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+	item, err := convertToUnstructured(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	p := map[string]string{
+		"kind":       item.GetKind(),
+		"apiVersion": item.GetAPIVersion(),
+		"namespace":  item.GetNamespace(),
+		"name":       item.GetName(),
+	}
+	return p, nil
+}
+
+func (pih *podIdentityHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
+	fmt.Println("@@@@ Put for pod identity called...")
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	mergeProperties(properties, existing)
+
+	return properties, nil
+}
+
+func (pih *podIdentityHandler) Delete(ctx context.Context, properties map[string]string) error {
+	// Delete AAD Pod Identity created
+	fmt.Println("@@@@ Trying to delete pod identity...")
+	podIdentityName := properties["podidentityname"]
+	podIdentityNamespace := properties["podidentitynamespace"]
+	podidentityCluster := properties["podidentitycluster"]
+
+	fmt.Println("Found properties: ", podIdentityName, podIdentityNamespace, podidentityCluster)
+
+	err := azcli.RunCLICommand("aks", "pod-identity", "delete", "--cluster-name", podidentityCluster, "--resource-group", pih.arm.ResourceGroup, "--namespace", podIdentityNamespace, "--name", podIdentityName)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE aad pod identity: %w", err)
 	}
 
 	return nil
@@ -1447,7 +1504,7 @@ type AzureManagedIdentity struct {
 	ResourceID string
 }
 
-func createIdentity(identityName, groupName, location, subscription string) (AzureManagedIdentity, error) {
+func createManagedIdentity(identityName, groupName, location, subscription string) (AzureManagedIdentity, error) {
 	// Create a user assigned managed identity
 	// TODO - Use SDK/templates. For now, using az cli
 	out, err := azcli.RunCLICommandWithOutput("identity", "create", "--name", identityName, "--resource-group", groupName, "--location", location, "--subscription", subscription)
@@ -1480,4 +1537,8 @@ func createIdentity(identityName, groupName, location, subscription string) (Azu
 		AppID:      appID,
 		ResourceID: resourceID,
 	}, nil
+}
+
+func deleteManagedIdentity(msiResourceID string) error {
+	return azcli.RunCLICommand("identity", "delete", "--ids", msiResourceID)
 }
