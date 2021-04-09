@@ -1,7 +1,8 @@
 # ------------------------------------------------------------
-# Copyright (c) Microsoft Corporation and Radius Contributors.
+# Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 # ------------------------------------------------------------
+
 param (
     [string]$Version,
     [string]$RadiusRoot = "c:\radius"
