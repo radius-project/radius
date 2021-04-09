@@ -74,14 +74,16 @@ Write-Output "Downloading $binaryUrl ..."
 
 $githubHeader.Accept = "application/octet-stream"
 $uri = [uri]$binaryUrl
-if (Test-Connection $uri.IdnHost -quiet) {
+try
+{
     Invoke-WebRequest -Headers $githubHeader -Uri $binaryUrl -OutFile $binaryFilePath
     if (!(Test-Path $binaryFilePath -PathType Leaf)) {
         throw "Failed to download Radius Cli binary - $binaryFilePath"
     }
 }
-else {
-    throw "The specified release version: $Version does not exist."
+catch [Net.WebException]
+{
+    throw "ERROR: The specified release version: $Version does not exist."
 }
 
 # TODO Check the Radius CLI version: Invoke-Expression "$RadiusCliFilePath --version"
