@@ -229,3 +229,10 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_VERSION }}/windows-x64/ --pattern rad.exe'
+      - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
+        with:
+          source_dir: install
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: true
+          extra_args: '--destination-path rad/ --pattern install.*'
