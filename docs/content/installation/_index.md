@@ -1,3 +1,10 @@
+---
+type: docs
+title: "Project Radius Installation Instructions"
+linkTitle: "Installation"
+weight: 10
+---
+
 # Radius CLI Installer
 
 ## Windows
