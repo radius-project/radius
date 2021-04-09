@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 
 	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/test/config"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -65,25 +66,20 @@ func useLocalEnvironment(ctx context.Context) (*TestEnvironment, error) {
 		return nil, fmt.Errorf("failed to read environment configuration: %w", err)
 	}
 
-	current, ok := env.GetDefaultEnvironment()
-	if !ok {
-		return nil, fmt.Errorf("no default environment is selected")
+	current, err := env.GetEnvironment("")
+	if err != nil {
+		return nil, err
 	}
 
-	subscriptionID, ok := current["subscriptionid"].(string)
-	if !ok {
-		return nil, fmt.Errorf("could not find a subscriptionId for current environment")
-	}
-
-	resourceGroup, ok := current["resourcegroup"].(string)
-	if !ok {
-		return nil, fmt.Errorf("could not find a resourceGroup for current environment")
+	azure, err := environments.RequireAzureCloud(current)
+	if err != nil {
+		return nil, err
 	}
 
 	return &TestEnvironment{
 		UsingReservedTestCluster: false,
-		SubscriptionID:           subscriptionID,
-		ResourceGroup:            resourceGroup,
+		SubscriptionID:           azure.SubscriptionID,
+		ResourceGroup:            azure.ResourceGroup,
 		ConfigPath:               v.ConfigFileUsed(),
 	}, nil
 }

@@ -19,12 +19,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/radius/cmd/cli/utils"
-	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/bicep"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // deployCmd represents the deploy command
@@ -51,7 +50,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	env, err := validateEnvironment()
+	env, err := validateDefaultEnvironment()
 	if err != nil {
 		return err
 	}
@@ -85,69 +84,6 @@ func validateBicepFile(filePath string) error {
 	}
 
 	return nil
-}
-
-func validateEnvironment() (deployableEnvironment, error) {
-	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
-	if err != nil {
-		return deployableEnvironment{}, err
-	}
-
-	if env.Default == "" {
-		return deployableEnvironment{}, errors.New("no environment set, run 'rad env switch'")
-	}
-
-	e, ok := env.Items[env.Default]
-	if !ok {
-		return deployableEnvironment{}, fmt.Errorf("could not find environment: %v", env.Default)
-	}
-
-	kind := ""
-	subscriptionID := ""
-	resourceGroup := ""
-	endpoint := ""
-
-	value, ok := e["kind"].(string)
-	if ok {
-		kind = value
-	}
-
-	value, ok = e["subscriptionid"].(string)
-	if ok {
-		subscriptionID = value
-	}
-
-	value, ok = e["resourcegroup"].(string)
-	if ok {
-		resourceGroup = value
-	}
-
-	value, ok = e["endpoint"].(string)
-	if ok {
-		endpoint = value
-	}
-
-	de := deployableEnvironment{
-		Kind:           kind,
-		SubscriptionID: subscriptionID,
-		ResourceGroup:  resourceGroup,
-		Endpoint:       endpoint,
-	}
-
-	if de.Kind != "azure" && de.Kind != "openarm" {
-		return deployableEnvironment{}, fmt.Errorf("unsupported kind: %v. supported kinds are 'azure' and 'openarm'", de.Kind)
-	}
-
-	if de.Kind == "openarm" && de.Endpoint == "" {
-		return deployableEnvironment{}, errors.New("endpoint is required for openarm environments")
-	}
-
-	if de.SubscriptionID == "" || de.ResourceGroup == "" {
-		return deployableEnvironment{}, fmt.Errorf("subscriptionId and resourceGroup are required")
-	}
-
-	return de, nil
 }
 
 func bicepBuild(filePath string) (string, error) {
@@ -207,7 +143,7 @@ func bicepBuild(filePath string) (string, error) {
 	return string(bytes), err
 }
 
-func deployApplication(ctx context.Context, content string, env deployableEnvironment) error {
+func deployApplication(ctx context.Context, content string, env *environments.AzureCloudEnvironment) error {
 	dc, err := createDeploymentClient(env)
 	if err != nil {
 		return err
@@ -244,36 +180,20 @@ func deployApplication(ctx context.Context, content string, env deployableEnviro
 	return err
 }
 
-func createDeploymentClient(env deployableEnvironment) (resources.DeploymentsClient, error) {
-	if env.Kind == "azure" {
-		armauth, err := utils.GetResourceManagerEndpointAuthorizer()
-		if err != nil {
-			return resources.DeploymentsClient{}, err
-		}
-
-		dc := resources.NewDeploymentsClient(env.SubscriptionID)
-		dc.Authorizer = armauth
-
-		// Poll faster than the default, many deployments are quick
-		dc.PollingDelay = 5 * time.Second
-
-		// Don't timeout, let the user cancel
-		dc.PollingDuration = 0
-
-		return dc, nil
-	} else if env.Kind == "openarm" {
-		// no auth for now - #YOLO
-		dc := resources.NewDeploymentsClient(env.SubscriptionID)
-		dc.BaseURI = "http://" + env.Endpoint
-		return dc, nil
+func createDeploymentClient(env *environments.AzureCloudEnvironment) (resources.DeploymentsClient, error) {
+	armauth, err := utils.GetResourceManagerEndpointAuthorizer()
+	if err != nil {
+		return resources.DeploymentsClient{}, err
 	}
 
-	panic(fmt.Sprintf("unexpected environment kind: %v", env.Kind))
-}
+	dc := resources.NewDeploymentsClient(env.SubscriptionID)
+	dc.Authorizer = armauth
 
-type deployableEnvironment struct {
-	Kind           string
-	SubscriptionID string
-	ResourceGroup  string
-	Endpoint       string // REST endpoint for ARM - only used for openarm
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
+
+	// Don't timeout, let the user cancel
+	dc.PollingDuration = 0
+
+	return dc, nil
 }
