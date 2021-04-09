@@ -16,7 +16,6 @@ To begin this tutorial you should have already completed the following steps:
 
 - [Install Radius CLI]({{< ref install-cli.md >}})
 - [Create a Radius environment]({{< ref create-environment.md >}})
-- [Install Kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [(recommended) Install Visual Studio Code](https://code.visualstudio.com/)
    - The [Radius VSCode extension]({{< ref "install-cli.md#2-install-custom-vscode-extension" >}}) provides syntax highlighting, completion, and linting.
 
@@ -197,7 +196,7 @@ Now you are ready to deploy the application for the first time.
    az login
    ```
 
-1. Then after that completes, run:
+2. Then after that completes, run:
 
    ```sh
    rad deploy template.bicep
@@ -205,17 +204,7 @@ Now you are ready to deploy the application for the first time.
 
    This will deploy the application and launch the container.
 
-3. Merge credentials
-   
-   {{% alert title="⚠️ Temporary" color="warning" %}}
-   Run this command at the commandline to gain access to the underlying AKS cluster in your Radius environment. This is temporary pending additions to the rad CLI:
-
-   ```sh
-   rad env merge-credentials --name azure 
-   ```
-   {{% /alert %}}
-
-1. Open a local tunnel to your application:
+3. Open a local tunnel to your application:
 
    ```sh
    rad expose webapp todoapp 3000
@@ -224,7 +213,7 @@ Now you are ready to deploy the application for the first time.
    The `rad expose` command provides the application name, followed by the component name, followed by a port. If you changed any of these names when deploying, update your command to match.
    {{% /alert %}}
 
-1. Visit the URL `http://localhost:3000` in the browser. For now you should see a page like:
+4. Visit the URL `http://localhost:3000` in the browser. For now you should see a page like:
 
    <img src="todoapp-nodb.png" width="400" alt="screenshot of the todo application with no database">
 
@@ -235,7 +224,7 @@ Now you are ready to deploy the application for the first time.
    - Mark a todo item as complete
    - Delete a todo item
 
-1. When you are done testing press CTRL+C to terminate the port-forward, and you are ready to move on to the next step.
+5. When you are done testing press CTRL+C to terminate the port-forward, and you are ready to move on to the next step.
 
 ## Step 3: Adding a database
 

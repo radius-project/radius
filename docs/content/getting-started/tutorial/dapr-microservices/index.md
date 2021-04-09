@@ -12,7 +12,6 @@ To begin this tutorial you should have already completed the following steps:
 
 - [Install Radius CLI]({{< ref install-cli.md >}})
 - [Create an environment]({{< ref create-environment.md >}})
-- [Install Kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [(Recommended) Install Visual Studio Code](https://code.visualstudio.com/)
 
 No prior knowledge of Radius is needed, this tutorial will walk you through authoring the deployment template and deploying a microservices application from first principles.
@@ -217,22 +216,13 @@ rad deploy template.bicep
 
 This will deploy the application and launch the container.
 
-{{% alert title="⚠️ Temporary" color="warning" %}}
-Run this command at the commandline, which is temporary pending additions to the rad CLI:
-
-```sh
-rad env merge-credentials --name azure 
-```
-
-{{% /alert %}}
-
 To test it out, you can use the following command from the commandline:
 
 ```sh
-rad expose dapr-hello nodeapp 3000
+rad expose dapr-hello nodeapp --port 3000
 ```
 
-This will open a local tunnel on port 3000. Then you can visit the URL `http://localhost:3000/order` in the browser. For now you should see a message like:
+This will open a local tunnel on port 3000 to port 3000 inside the container. Then you can visit the URL `http://localhost:3000/order` in the browser. For now you should see a message like:
 
 ```txt
 {"message":"The container is running, but Dapr has not been configured."}
