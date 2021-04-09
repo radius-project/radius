@@ -101,5 +101,4 @@ else {
 }
 
 Write-Output "`r`nRadius CLI is installed successfully."
-Write-Output "To get started with Radius, please visit https://github.com/Azure/radius."
-Write-Output "Ensure that Docker Desktop is set to Linux containers mode when you run Radius in self hosted mode."
+Write-Output "To get started with Radius, please visit https://docs.radapp.dev/getting-started/."
