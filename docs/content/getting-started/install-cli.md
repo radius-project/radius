@@ -20,7 +20,7 @@ These steps will setup the required tools and extensions to get you up and runni
 
 ### Install the latest stable version
 
-```
+```powershell
 powershell -Command "iwr -useb https://raw.githubusercontent.com/azure/radius/main/install/install.ps1 | iex"
 ```
 
