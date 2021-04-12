@@ -41,7 +41,7 @@ curl -fsSL "https://raw.githubusercontent.com/azure/radius/main/install/install.
 
 ### Install a specific version
 
-```
+```bash
 curl -fsSL "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash -s <Version>
 ```
 
