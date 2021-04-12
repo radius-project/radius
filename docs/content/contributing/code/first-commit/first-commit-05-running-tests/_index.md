@@ -2,6 +2,7 @@
 type: docs
 title: "Your first commit: running tests"
 linkTitle: "Running tests"
+description: How to run unit tests on your local machine
 weight: 100
 ---
 
@@ -60,7 +61,6 @@ The best way to run a single test or group of tests is from VS Code.
 
 Open `./pkg/rad/config_test.go` in the editor. Each test function has the options to run or debug the test right above it.
 
-<img width="600px" src="main-after-change.png" alt="editing main.go">
+<img width="600px" src="unittest-commands.png" alt="Commands to launch for a unit test"><br />
 
-
-![Commands to launch for a unit test](unittest-commands.png)
+{{< button text="Next step: Create a PR" page="first-commit-06-creating-a-pr.md" >}}

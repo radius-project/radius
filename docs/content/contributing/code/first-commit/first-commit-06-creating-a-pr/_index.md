@@ -2,6 +2,7 @@
 type: docs
 title: "Your first commit: creating a pull request"
 linkTitle: "Creating a pull request"
+description: Creating your first Radius PR
 weight: 110
 ---
 
