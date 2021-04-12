@@ -7,7 +7,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
@@ -40,13 +39,13 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate environment exists, retrieve associated resource group and subscription id
-	rg, subid, err := validateEnvironmentExists(args[0])
+	az, err := validateNamedEnvironment(args[0])
 	if err != nil {
 		return err
 	}
 
 	if !noPrompt {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource group %s with all its resources will be deleted. Continue deleting? [y/n]?", rg))
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource group %s with all its resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup))
 		if err != nil {
 			return err
 		}
@@ -63,7 +62,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = deleteResourceGroup(cmd.Context(), authorizer, rg, subid); err != nil {
+	if err = deleteResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 		return err
 	}
 
@@ -73,27 +72,6 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// Validates environment name exists in the config.
-// Returns resource group name and subscription id associated with the environment.
-func validateEnvironmentExists(envName string) (string, string, error) {
-	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
-	if err != nil {
-		return "", "", err
-	}
-
-	if len(env.Items) == 0 {
-		return "", "", errors.New("no environments found")
-	}
-
-	envConfig, exists := env.Items[envName]
-	if !exists {
-		return "", "", fmt.Errorf("could not find the environment %s. Use 'rad env list' to list all environments", envName)
-	}
-
-	return envConfig["resourcegroup"].(string), envConfig["subscriptionid"].(string), nil
 }
 
 // Deletes resource group and all its resources

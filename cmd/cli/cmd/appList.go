@@ -24,14 +24,12 @@ var appListCmd = &cobra.Command{
 	RunE:  listApplications,
 }
 
-const resourceType = "Applications"
-
 func init() {
 	applicationCmd.AddCommand(appListCmd)
 }
 
 func listApplications(cmd *cobra.Command, args []string) error {
-	env, err := validateEnvironment()
+	env, err := validateDefaultEnvironment()
 	if err != nil {
 		return err
 	}

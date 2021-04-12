@@ -1,3 +1,7 @@
+---
+toc_hide: true
+---
+
 # Project Radius examples
 
 This directory contains the code and templates to optionally update and change example code if desired.

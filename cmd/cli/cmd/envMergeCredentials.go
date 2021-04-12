@@ -11,10 +11,8 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/radius/cmd/cli/utils"
-	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azcli"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // mergeCredentialsCmd represents the mergeCredentials command
@@ -32,59 +30,9 @@ var envMergeCredentialsCmd = &cobra.Command{
 			return errors.New("name is required")
 		}
 
-		v := viper.GetViper()
-		section, err := rad.ReadEnvironmentSection(v)
+		az, err := validateNamedEnvironment(name)
 		if err != nil {
 			return err
-		}
-
-		props, ok := section.Items[name]
-		if !ok {
-			return fmt.Errorf("environment %v not found", name)
-		}
-
-		val, ok := props["kind"]
-		if !ok {
-			return fmt.Errorf("could not read environment %v", name)
-		}
-
-		kind, ok := val.(string)
-		if !ok {
-			return fmt.Errorf("could not read environment %v", name)
-		}
-
-		if kind != "azure" {
-			return errors.New("merge-credentials only supports Azure environments (for now...)")
-		}
-
-		val, ok = props["clustername"]
-		if !ok {
-			return fmt.Errorf("could not read environment %v", name)
-		}
-
-		clusterName, ok := val.(string)
-		if !ok {
-			return fmt.Errorf("could not read environment %v", name)
-		}
-
-		val, ok = props["resourcegroup"]
-		if !ok {
-			return fmt.Errorf("could not read environment %v", name)
-		}
-
-		resourceGroup, ok := val.(string)
-		if !ok {
-			return fmt.Errorf("could not read environment %v", name)
-		}
-
-		val, ok = props["subscriptionid"]
-		if !ok {
-			return fmt.Errorf("could not read environment %v", name)
-		}
-
-		subscriptionID, ok := val.(string)
-		if !ok {
-			return fmt.Errorf("could not read environment %v", name)
 		}
 
 		isServicePrincipalConfigured, err := utils.IsServicePrincipalConfigured()
@@ -104,7 +52,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 			}
 		}
 
-		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", subscriptionID, "--resource-group", resourceGroup, "--name", clusterName)
+		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", az.SubscriptionID, "--resource-group", az.ResourceGroup, "--name", az.ClusterName)
 		return err
 
 	},

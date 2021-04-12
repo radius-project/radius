@@ -1,9 +1,10 @@
 ---
 type: docs
-no_list: true
+title: "Project Radius Documentation"
+linkTitle: "Project Radius docs"
+description: "Documentation on the Project Radius application model"
+weight: 1
 ---
-
-## Project Radius
 
 Project Radius is a developer-centric cloud-native application platform.
 

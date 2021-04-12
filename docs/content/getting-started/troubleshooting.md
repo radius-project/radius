@@ -3,7 +3,7 @@ type: docs
 title: "Troubleshooting Radius issues and common problems"
 linkTitle: "Troubleshooting"
 description: "Common issues users may have with Radius and how to address them"
-weight: 35
+weight: 50
 ---
 
 ## Cloning repo
