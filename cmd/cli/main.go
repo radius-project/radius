@@ -6,8 +6,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/Azure/radius/cmd/cli/cmd"
 )
 
