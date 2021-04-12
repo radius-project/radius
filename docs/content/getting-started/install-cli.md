@@ -57,7 +57,7 @@ wget -q "https://raw.githubusercontent.com/azure/radius/main/install/install.sh"
 
 ### Install a specific version
 
-```
+```bash
 wget -q "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash -s <Version>
 ```
 
