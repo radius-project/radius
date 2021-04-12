@@ -1,25 +1,23 @@
 {
-    "name": "GitHub Codespaces (Default)",
-    "extensions": [
-        "coenraads.bracket-pair-colorizer-2",
-        "cschleiden.vscode-github-actions",
-        "eamodio.gitlens",
-        "github.vscode-pull-request-github",
-        "ms-azuretools.vscode-docker",
-        "ms-vscode-remote.remote-container",
-        "ms-vsliveshare.vsliveshare",
-        "vscode-icons-team.vscode-icons",
-	    "golang.Go",
-	    "ms-kubernetes-tools.vscode-kubernetes-tools",
-        "/home/rad-vscode-bicep.vsix",
-        "visualstudioexptteam.vscodeintellicode"
-    ],
-    "dockerFile": "Dockerfile",
-    "settings": {
-        "terminal.integrated.shell.linux": "/usr/bin/zsh",
-        "files.exclude": {
-            "**/CODE_OF_CONDUCT.md": true,
-            "**/LICENSE": true
-        }
-    }
+	"name": "Codespaces for Radius tutorials",
+		
+	// "dockerFile": "Dockerfile",
+	"image": "emilyregistry2.azurecr.io/radcodespace:latest",
+	
+	// Set *default* container specific settings.json values on container create.
+	"settings": {
+		"terminal.integrated.shell.linux": "/bin/bash"
+	},
+		
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"ms-vscode.azurecli",
+		"ms-dotnettools.vscode-dotnet-runtime",
+		"/home/rad-vscode-bicep.vsix"
+	],
+	
+	"forwardPorts": [3000],
+
+	// Uncomment to connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root.
+	"remoteUser": "vscode"
 }
