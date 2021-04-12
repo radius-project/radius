@@ -1,0 +1,73 @@
+---
+type: docs
+title: "Your first commit: building"
+linkTitle: "Building"
+weight: 70
+---
+
+## Building the code
+
+If you have not already done so, clone the repository and navigate there in your command shell.
+
+You can build the main outputs using `make`:
+
+```sh
+$ make
+```
+
+You should see output similar to the following:
+
+```txt
+➜ make
+=> Building RP from 'cmd/rp/main.go'
+=> Built RP in './dist/darwin_amd64/release/radius-rp'
+CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
+	go build \
+	-gcflags "" \
+	-ldflags "-s -w -X main.version=edge" \
+	-o ./dist/darwin_amd64/release/radius-rp \
+	./cmd/rp/main.go;
+=> Building CLI from 'cmd/cli/main.go'
+=> Built CLI in './dist/darwin_amd64/release/rad'
+CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
+	go build \
+	-gcflags "" \
+	-ldflags "-s -w -X main.version=edge" \
+	-o ./dist/darwin_amd64/release/rad \
+	./cmd/cli/main.go;
+```
+
+## Test it out
+
+You should be able to run the binary that was just produced for the CLI. Copy the path from the previous output and run it at the command line.
+
+```sh
+$ ./dist/darwin_amd64/release/rad
+```
+
+You should see the basic help text of the CLI. At the time of this writing it looks like:
+
+```txt
+Project Radius CLI
+
+Usage:
+  rad [command]
+
+Available Commands:
+  application Manage applications
+  bicep       Manage bicep compiler
+  component   Manage components
+  deploy      Deploy a RAD application
+  deployment  Manage deployments
+  env         Manage environments
+  expose      Expose local port
+  help        Help about any command
+
+Flags:
+      --config string   config file (default is $HOME/.rad/config.yaml)
+  -h, --help            help for rad
+
+Use "rad [command] --help" for more information about a command.
+```
+
+If you got this far then you're able to build, and you should move to the next step.
