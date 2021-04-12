@@ -1,4 +1,4 @@
-name: docs-site
+name: website
 
 on:
   push:
@@ -18,8 +18,8 @@ on:
       - '.github/workflows/docs-site.yml'
 
 jobs:
-  build_and_deploy_job:
-    name: Build and Deploy Site
+  build_and_deploy_docs:
+    name: Build and Deploy Website
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     env:
@@ -50,8 +50,8 @@ jobs:
           publish-profile: ${{ secrets.DOCS_SITE_PUBLISHPROFILE }}
           package: "./docs/public/"
 
-  build_job:
-    name: Build and Deploy Site
+  build_docs:
+    name: Build Website
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
     runs-on: ubuntu-latest
     env:
