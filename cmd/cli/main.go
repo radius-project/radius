@@ -12,6 +12,5 @@ import (
 )
 
 func main() {
-	fmt.Println("someone new was here")
 	cmd.Execute()
 }
