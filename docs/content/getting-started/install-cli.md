@@ -35,7 +35,7 @@ powershell -Command "$script=iwr -useb  https://raw.githubusercontent.com/azure/
 
 ### Install the latest stable version
 
-```
+```bash
 curl -fsSL "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash
 ```
 
