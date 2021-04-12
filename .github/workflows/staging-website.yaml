@@ -1,4 +1,4 @@
-name: docs
+name: staging-website
 
 on:
   push:
@@ -16,8 +16,9 @@ on:
       - 'test/**'
 
 jobs:
-  build_and_deploy_job:
+  build_and_deploy_docs:
     name: Build and Deploy Job
+    continue-on-error: true
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     env:
