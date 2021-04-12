@@ -1,9 +1,9 @@
 ---
 type: docs
-title: "Contributing to Project Radius codebase"
+title: "Developing Project Radius"
 linkTitle: "Code"
 description: "How to contribute to the Project Radius codebase"
-weight: 100
+weight: 40
 ---
 
 ## What to contribute
@@ -13,3 +13,5 @@ For now, we're looking for help with issues labeled as *Help Wanted*. You can fi
 ## Getting started
 
 For your first commit and PR to Project Radius you should start with the step-by-step [first-commit guide]({{< ref first-commit >}}).
+
+## Sections

@@ -1,7 +1,8 @@
 ---
 type: docs
-title: "Your first commit: development tools"
+title: "Your first commit: Development tools"
 linkTitle: "Development tools"
+description: "Configuring Visual Studio Code for Radius development"
 weight: 60
 ---
 
@@ -24,11 +25,14 @@ The extension will walk you through an automated install of some additional tool
 
 At ths point you should be able to open any of the Go files in the repo and see syntax highlighting working.
 
-{{% alert title="Launching VS Code" color="info" %}}
+{{% alert title="Launching VSCode" color="primary" %}}
 The best way to launch VS Code for Go is to do an *open folder* on the repository. 
 
-You can easily do this from the command shell with `code .` - which opens the current directory as a folder in VS Code.
+You can easily do this from the command shell with `code .`, which opens the current directory as a folder in VS Code.
 {{% /alert %}}
+
+
+{{< button text="Next step: Build Radius" page="first-commit-02-building.md" >}}
 
 ## Related links
 

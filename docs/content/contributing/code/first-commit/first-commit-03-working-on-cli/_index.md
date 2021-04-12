@@ -2,6 +2,7 @@
 type: docs
 title: "Your first commit: working on the CLI"
 linkTitle: "Working on the CLI"
+description: Try out updating and running the Radius CLI
 weight: 80
 ---
 
@@ -17,8 +18,8 @@ If you're using VS Code, entring `code .` at the command line from the root dire
 
 Open the file `cmd/cli/main.go`. This is the entry point of the `rad` CLI.
 
-{{% alert title="VS Code tip" color="info" %}}
-Using VS Code you can hit Command+P (or Ctrl+P) and get a search bar for files that does fuzzy searching. For instance typing `main` would let you pick the file from a short list. With practice this can make navigation very fast.
+{{% alert title="VSCode tip" color="primary" %}}
+Using VS Code you can hit `Command+P` (or `Ctrl+P`) and get a search bar for files that does fuzzy searching. For instance typing `main` would let you pick the file from a short list. With practice this can make navigation very fast.
 {{% /alert %}}
 
 You should see code like the following:
@@ -29,7 +30,7 @@ You should see code like the following:
 
 You can edit this code to show everyone that you were here. Place your cursor inside the `main()` function, and add the following on a blank line before `cmd.Execute()`
 
-```
+```go
 fmt.Println("<yourname> was here")
 ```
 
@@ -78,6 +79,8 @@ Flags:
 
 Use "rad [command] --help" for more information about a command.
 ```
+
+{{< button text="Next step: Debug the CLI" page="first-commit-04-debugging-cli.md" >}}
 
 ## Related Links
 
