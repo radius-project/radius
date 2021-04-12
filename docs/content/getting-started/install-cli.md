@@ -26,7 +26,7 @@ powershell -Command "iwr -useb https://raw.githubusercontent.com/azure/radius/ma
 
 ### Install a specific version
 
-```
+```powershell
 powershell -Command "$script=iwr -useb  https://raw.githubusercontent.com/azure/radius/main/install/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>"
 ```
 
