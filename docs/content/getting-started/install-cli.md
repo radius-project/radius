@@ -51,7 +51,7 @@ curl -fsSL "https://raw.githubusercontent.com/azure/radius/main/install/install.
 
 ### Install the latest stable version
 
-```
+```bash
 wget -q "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash
 ```
 
