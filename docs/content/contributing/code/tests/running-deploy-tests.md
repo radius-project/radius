@@ -10,23 +10,17 @@ These tests verify whether the bicep template deployment to the Radius environme
 
 ## Running via GitHub workflow
 
-These tests automatically run for every PR in the `build.yaml` github workflow.
+These tests automatically run for every PR in the `build.yaml` github workflow. 
+
+We use a CLI tool (`test-env`) to manage operations to make this work:
+
+- `test-env reserve ...` to wait for a cluster to be ready and reserve it
+- `test-env update-rp ...` to update the control plane for testing
+- `test-env release ...` to release the lease 
 
 ### Configuration
 
-These tests rely on the following environment variables for configuration:
-
-```
-export PATH=$PATH:<Radius Binary Path>
-export AZURE_TENANT_ID=Tenant ID of the Azure subscription
-export AZURE_CLIENT_ID=App ID of the Service Principal
-export AZURE_CLIENT_SECRET=Password for the Service Principal
-export INTEGRATION_TEST_SUBSCRIPTION_ID=Azure subscription ID
-export RP_DEPLOY=true
-export RP_IMAGE=docker image for the RP
-```
-
-`RP_DEPLOY` and `RP_IMAGE` are optional. If you set `RP_DEPLOY=true`, then the tests will deploy the image specified by `RP_IMAGE` to the test environment. You do not need to worry about cleanup, because every deploy tests job will deploy its own copy of the image.
+These tests use your local Azure credentials, and Radius environment for testing. In a GitHub workflow, our automation makes the CI environment resemble a local dev scenario.
 
 ## Running the tests locally
 
@@ -41,7 +35,6 @@ export RP_IMAGE=docker image for the RP
 
 When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`.
 
-You do not need to configure any environment variables to run the tests from your machine. You may want to configure `RP_DEPLOY` and `RP_IMAGE` to deploy a private build of your RP.
 
 ## Adding new test clusters
 
@@ -49,9 +42,5 @@ You do not need to configure any environment variables to run the tests from you
     ```
     rad env init azure -i
     ```
-2. Copy the radius config created to the test configuration:-
-    ```
-    cp ($HOME/.rad/config.yaml) to test/deploy-tests/<resource group of the env>.yaml
-    ```
-3. Add the resource group of the radius environment created to the list of available test clusters in test/deploy-tests/deploy-tests-clusters.txt
-4. Add tags to the resource group: RadiusTests:DO-NOT-DELETE using the Azure portal
+2. Add an entry to the `envionments` table of the `deploytests` storage account
+3. Add tags to the resource group: RadiusTests:DO-NOT-DELETE using the Azure portal
