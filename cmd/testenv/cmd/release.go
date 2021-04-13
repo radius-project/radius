@@ -51,6 +51,9 @@ var releaseCmd = &cobra.Command{
 			return errors.New("one of configpath or environment must be specified")
 		}
 
+		// Note: the environment name is significant - it is the key to our storage table.
+		// Most places in Radius environment names are just cosmetic, but for our tests
+		// we're using it for tracking.
 		if configpath != "" {
 			e, err = readEnvironmentNameFromConfigfile(configpath)
 			if err != nil {
@@ -117,7 +120,7 @@ func readEnvironmentNameFromConfigfile(configpath string) (string, error) {
 		return "", err
 	}
 
-	return az.ResourceGroup, nil
+	return az.Name, nil
 }
 
 func release(ctx context.Context, accountName string, accountKey string, tableName string, environmentName string) error {
@@ -137,11 +140,11 @@ func release(ctx context.Context, accountName string, accountKey string, tableNa
 		return fmt.Errorf("could not find entry for environment '%v'", environmentName)
 	}
 
-	err = entity.Get(30, storage.MinimalMetadata, &storage.GetEntityOptions{})
+	err = entity.Get(tableReadTimeout, storage.MinimalMetadata, &storage.GetEntityOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to read entity: %w", err)
 	}
 
-	entity.Properties["reservedat"] = ""
+	entity.Properties["ReservedTime"] = ""
 	return entity.Merge(false, &storage.EntityOptions{})
 }

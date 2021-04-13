@@ -169,6 +169,8 @@ jobs:
           --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
           --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
           --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+      # We select a test environment here and load it into the default 
+      # radius config so that it will be used by tests
     - name: Reserve test environment
       id: reserve
       run: |
@@ -190,7 +192,7 @@ jobs:
         export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
         export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
         export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
-        rad env merge-credentials --name test
+        rad env merge-credentials
     - name: Update test environment RP
       run: |
         export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
@@ -206,8 +208,6 @@ jobs:
         export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
         export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
         export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
-        export INTEGRATION_TEST_SUBSCRIPTION_ID="66d1209e-1382-45d3-99bb-650e6bf63fc0"
-        export CONFIG_PATH="~/.rad/config.yaml"
         cd $GITHUB_WORKSPACE
         echo "PATH is $PATH"
         which rad || { echo "cannot find rad"; exit 1; }
