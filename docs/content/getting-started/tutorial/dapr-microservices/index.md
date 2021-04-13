@@ -481,12 +481,17 @@ If your message matches, then it means that pythonapp is able to communicate wit
 
 You have completed this tutorial!
 
-## Step 3: Cleanup (optional)
+## Step 3: Cleanup
 
-When you are ready to clean up and delete the resources you can delete your environment. This will delete:
+If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}). 
 
-- The resource group
+If you're done with testing, clean up your environment to **prevent additional charges in your subscription**. 
+
+
+Deleting an environment will delete:
+
 - Your Radius environment
+- The related resource group
 - The application you just deployed
 
 ```sh

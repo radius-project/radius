@@ -362,12 +362,17 @@ Now you are ready to deploy.
 
 1. When you are done testing press CTRL+C to terminate the port-forward. You have completed this tutorial!
 
-## Step 4: Cleanup (optional)
+## Step 4: Cleanup
 
-When you are ready to clean up and delete the resources you can delete your environment. This will delete:
+If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}). 
 
-- The resource group
+If you're done with testing, clean up your environment to **prevent additional charges in your subscription**. 
+
+
+Deleting an environment will delete:
+
 - Your Radius environment
+- The related resource group
 - The application you just deployed
 
 ```sh
