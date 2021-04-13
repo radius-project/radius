@@ -6,7 +6,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -26,10 +25,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 			return err
 		}
 
-		if name == "" {
-			return errors.New("name is required")
-		}
-
+		// name can be empty if it wasn't provided, then we use the default environment
 		az, err := validateNamedEnvironment(name)
 		if err != nil {
 			return err

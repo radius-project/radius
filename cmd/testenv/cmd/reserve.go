@@ -18,6 +18,12 @@ import (
 
 const leaseTimeout = 30 * time.Minute
 
+// The wait interval while we're polling for an available environment
+const waitDuration = 30 * time.Second
+
+// Table storage requires an explicit timeout (in seconds) on reads
+const tableReadTimeout = 30
+
 var reserveCmd = &cobra.Command{
 	Use:   "reserve",
 	Short: "Reserves a test environment and updates rad environment config",
@@ -62,8 +68,11 @@ var reserveCmd = &cobra.Command{
 			return err
 		}
 
-		env.Default = "test"
-		env.Items["test"] = map[string]interface{}{
+		// Note: the environment name is significant - it is the key to our storage table.
+		// Most places in Radius environment names are just cosmetic, but for our tests
+		// we're using it for tracking.
+		env.Default = testenv.Name
+		env.Items[testenv.Name] = map[string]interface{}{
 			"kind":           "azure",
 			"subscriptionId": testenv.SubscriptionID,
 			"resourceGroup":  testenv.ResourceGroup,
@@ -129,7 +138,7 @@ func lease(ctx context.Context, accountName string, accountKey string, tableName
 	// Repeat until we can find a test environment that's available
 	for {
 		// list all entities - this will list all of the test environments
-		result, err := table.QueryEntities(30, storage.MinimalMetadata, &storage.QueryOptions{})
+		result, err := table.QueryEntities(tableReadTimeout, storage.MinimalMetadata, &storage.QueryOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("cannot query table '%v': %w", tableName, err)
 		}
@@ -139,6 +148,7 @@ func lease(ctx context.Context, accountName string, accountKey string, tableName
 		if available != nil {
 			// We've taken the lease on this cluster, return it.
 			return &testEnvironment{
+				Name:           available.RowKey,
 				SubscriptionID: available.Properties["subscriptionId"].(string),
 				ResourceGroup:  available.Properties["resourceGroup"].(string),
 				ClusterName:    available.Properties["clustername"].(string),
@@ -149,7 +159,7 @@ func lease(ctx context.Context, accountName string, accountKey string, tableName
 
 		// If we get here then all clusters are busy.
 		select {
-		case <-time.After(30 * time.Second):
+		case <-time.After(waitDuration):
 			fmt.Println("waking up...")
 			continue
 		case <-ctx.Done():
@@ -164,14 +174,14 @@ func findAvailableEnvironment(response *storage.EntityQueryResult) *storage.Enti
 	now := time.Now().UTC()
 	for _, env := range response.Entities {
 		fmt.Printf("checking environment '%v'...\n", env.RowKey)
-		obj := env.Properties["reservedat"]
+		obj := env.Properties["ReservedTime"]
 
 		if obj == nil || obj == "" {
 			// not reserved
 		} else {
 			text, ok := obj.(string)
 			if !ok {
-				fmt.Printf("reservedat column should contain a string, was %T\n", obj)
+				fmt.Printf("ReservedTime column should contain a string, was %T\n", obj)
 				continue
 			}
 
@@ -191,7 +201,7 @@ func findAvailableEnvironment(response *storage.EntityQueryResult) *storage.Enti
 		}
 
 		// We're ok to take this one, try to take it atomically.
-		env.Properties["reservedat"] = now.Format(time.RFC3339)
+		env.Properties["ReservedTime"] = now.Format(time.RFC3339)
 		err := env.Merge(false, &storage.EntityOptions{})
 		if err != nil {
 			fmt.Printf("failed to take lease on '%v': %v\n", env.RowKey, err)
@@ -205,6 +215,7 @@ func findAvailableEnvironment(response *storage.EntityQueryResult) *storage.Enti
 }
 
 type testEnvironment struct {
+	Name           string
 	ResourceGroup  string
 	SubscriptionID string
 	ClusterName    string
