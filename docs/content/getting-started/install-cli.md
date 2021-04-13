@@ -61,7 +61,7 @@ wget -q "https://raw.githubusercontent.com/azure/radius/main/install/install.sh"
 wget -q "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash -s <Version>
 ```
 
-{{% codetab %}}
+{{% /codetab %}}
 
 {{% codetab %}}
 
