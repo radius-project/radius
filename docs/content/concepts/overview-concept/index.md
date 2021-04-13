@@ -312,7 +312,7 @@ A **Trait** is a piece of configuration that specifies an operational behavior. 
 
 Traits are defined as:
 
-{{% alert title="📄 Radius Deployment" color="primary" %}}
+{{% alert title="📄 Radius Trait" color="primary" %}}
 A structured piece of orthogonal configuration that can applied to a Component as part of its definition or a Deployment definition.
 {{% /alert %}}
 
