@@ -1,2 +1,0 @@
-deploy-tests-cluster1
-deploy-tests-cluster2

@@ -169,19 +169,58 @@ jobs:
           --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
           --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
           --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+    - name: Reserve test environment
+      id: reserve
+      run: |
+        export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+        export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+        export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+        mkdir ~/.rad
+        go run cmd/testenv/main.go \
+          reserve \
+          --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
+          --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
+          --tablename environments \
+          --configpath ~/.rad/config.yaml \
+          --timeout 60
+        cat ~/.rad/config.yaml
+    - name: Merge Kubernetes credentials
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+        export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+        export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+        rad env merge-credentials --name test
+    - name: Update test environment RP
+      run: |
+        export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+        export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+        export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+        go run cmd/testenv/main.go \
+          update-rp \
+          --configpath ~/.rad/config.yaml \
+          --image radiusteam/radius-rp:${{ env.REL_VERSION }}
     - name: Run deploy tests
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        export RP_IMAGE=radiusteam/radius-rp:${{ env.REL_VERSION }}
-        export RP_DEPLOY=true
         export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
         export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
         export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
         export INTEGRATION_TEST_SUBSCRIPTION_ID="66d1209e-1382-45d3-99bb-650e6bf63fc0"
+        export CONFIG_PATH="~/.rad/config.yaml"
         cd $GITHUB_WORKSPACE
         echo "PATH is $PATH"
         which rad || { echo "cannot find rad"; exit 1; }
         make deploy-tests
+    - name: Release test environment
+      if: ${{ success() || steps.reserve.outcome == 'success' }}
+      run: |
+        go run cmd/testenv/main.go \
+          release \
+          --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
+          --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
+          --tablename environments \
+          --configpath ~/.rad/config.yaml
 
   publish:
     name: Publish rad CLI binaries

@@ -7,7 +7,6 @@ package deploytests
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,17 +30,8 @@ func TestDeployment(t *testing.T) {
 	env, err := environment.GetTestEnvironment(ctx, config)
 	require.NoError(t, err)
 
-	// Schedule test cluster cleanup
-	defer cleanup(ctx, t, config, *env)
-
-	err = env.DeployRP(ctx, config.Authorizer)
-	require.NoError(t, err)
-
-	// Merge the k8s credentials to the cluster if it's a leased one
-	if env.UsingReservedTestCluster {
-		err = utils.RunRadMergeCredentialsCommand(env.ConfigPath)
-		require.NoError(t, err)
-	}
+	// Delete applications
+	defer cleanup(context.TODO(), t, config, *env)
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -99,7 +89,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run(("Deploy dapr-hello (Tutorial)"), func(t *testing.T) {
-		templateFilePath := filepath.Join(cwd, "../../docs/content/tutorial/dapr-microservices/dapr-microservices.bicep")
+		templateFilePath := filepath.Join(cwd, "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep")
 
 		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
 		require.NoError(t, err)
@@ -120,11 +110,5 @@ func cleanup(ctx context.Context, t *testing.T, config *config.AzureConfig, env 
 	err := utils.RunRadDeleteApplicationsCommand(env.ResourceGroup)
 	if err != nil {
 		t.Log(err.Error())
-	}
-
-	// Nothing we can really do here other than log it. Using PrintLn because we want to log it unconditionally
-	err = environment.ReleaseTestEnvironment(ctx, config, env)
-	if err != nil {
-		fmt.Printf("failed to release test environment: %v", err)
 	}
 }
