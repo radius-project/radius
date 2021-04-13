@@ -1,1 +1,0 @@
-FROM emilyregistry2.azurecr.io/radcodespace:latest
