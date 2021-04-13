@@ -57,7 +57,7 @@ jobs:
           #file: ./.devcontainer/tutorials-codespace/Dockerfile ## default is {context}/Dockerfile anyways
           builder: ${{ steps.buildx.outputs.name }}
           push: true
-          tags:  radiusteam.azurecr.io/radcodespace:latest
+          tags:  radius.azurecr.io/radcodespace:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
