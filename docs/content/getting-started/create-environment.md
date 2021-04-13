@@ -38,13 +38,15 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
 1. Create a Radius environment:
 
-   Initialize the private resource provider (environment) in your Azure subscription using the `rad` CLI
+   Initialize the private resource provider (environment) in your Azure subscription using the `rad` CLI. The following command creates an environment in interactive mode and will prompt you for input like resource-group name and location. 
 
    ```sh
    rad env init azure -i
    ```
 
    This will prompt you for several inputs and then go create assets in your subscription (~5-10 mins). 
+
+   For more info about what's being created as part of an environment, see [environments]({{< ref environments >}}).
 
 1. Verify creation of your new environment:
 

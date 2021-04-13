@@ -29,7 +29,8 @@ Radius can be used with any text editor, but Radius-specific optimizations are a
       code --install-extension rad-vscode-bicep.vsix
       ```
 
-1. Disable the official Bicep extension if you have it installed.
+1. Disable the official Bicep extension if you have it installed. (Do NOT install the Bicep extension if you haven't already.)
    - Our custom extension needs to be responsible for handling `.bicep` files and you cannot have both extensions enabled at once.
+   Note: The Radius VS Code extension is not a requirement for the Radius tutorials. 
 
 <br /><a class="btn btn-primary" href="{{< ref create-environment.md >}}" role="button">Next: Create environment</a>
