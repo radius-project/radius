@@ -85,6 +85,9 @@ wget -q "https://raw.githubusercontent.com/azure/radius/main/install/install.sh"
 
 2. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
+{{% /codetab %}}
+
+{{< /tabs >}}
 
 ## Test it out
 
