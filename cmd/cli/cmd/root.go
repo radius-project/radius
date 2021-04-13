@@ -92,3 +92,17 @@ func saveConfig() error {
 	fmt.Printf("Successfully wrote configuration to %v\n", cfgFile)
 	return nil
 }
+
+// NamedPositionalArgs creates a positional argument validator for our commands.
+func NamedPositionalArgs(names []string) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if len(args) == len(names) {
+			return nil
+		} else if len(args) > len(names) {
+			return fmt.Errorf("unexpected value '%v', expected %v arguments", args[len(names)], len(names))
+		} else {
+			name := names[len(args)]
+			return fmt.Errorf("%v is required", name)
+		}
+	}
+}
