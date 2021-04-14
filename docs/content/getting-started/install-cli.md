@@ -21,13 +21,13 @@ These steps will setup the required tools and extensions to get you up and runni
 ### Install the latest stable version
 
 ```powershell
-powershell -Command "iwr -useb https://raw.githubusercontent.com/azure/radius/main/install/install.ps1 | iex"
+powershell -Command "iwr -useb https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1 | iex"
 ```
 
 ### Install a specific version
 
 ```powershell
-powershell -Command "$script=iwr -useb  https://raw.githubusercontent.com/azure/radius/main/install/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>"
+powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>"
 ```
 
 {{% /codetab %}}
@@ -36,13 +36,13 @@ powershell -Command "$script=iwr -useb  https://raw.githubusercontent.com/azure/
 ### Install the latest stable version
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash
+curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
 ```
 
 ### Install a specific version
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash -s <Version>
+curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s <Version>
 ```
 
 {{% /codetab %}}
@@ -52,13 +52,13 @@ curl -fsSL "https://raw.githubusercontent.com/azure/radius/main/install/install.
 ### Install the latest stable version
 
 ```bash
-wget -q "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
 ```
 
 ### Install a specific version
 
 ```bash
-wget -q "https://raw.githubusercontent.com/azure/radius/main/install/install.sh" | /bin/bash -s <Version>
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s <Version>
 ```
 
 {{% /codetab %}}
