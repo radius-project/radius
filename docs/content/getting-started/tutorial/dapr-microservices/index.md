@@ -469,8 +469,6 @@ Refresh the page multiple times, and you should see a message like before, but t
 
 If your message matches, then it means that pythonapp is able to communicate with nodeapp. When you are done testing press CTRL+C to terminate the port-forward.
 
-You have completed this tutorial!
-
 ## Step 3: Cleanup
 
 If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}). 
@@ -487,6 +485,8 @@ Deleting an environment will delete:
 ```sh
 rad env delete azure --yes
 ```
+
+You have completed this tutorial!
 
 ## Related links
 

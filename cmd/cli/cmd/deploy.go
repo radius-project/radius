@@ -55,21 +55,21 @@ func deploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	step := logger.BeginStep("building application...")
+	step := logger.BeginStep("Building Application...")
 	template, err := bicepBuild(filePath)
 	if err != nil {
 		return err
 	}
 	logger.CompleteStep(step)
 
-	step = logger.BeginStep("deploying application...")
+	step = logger.BeginStep("Deploying Application...")
 	err = deployApplication(cmd.Context(), template, env)
 	if err != nil {
 		return err
 	}
 	logger.CompleteStep(step)
 
-	logger.LogInfo("deployment complete")
+	logger.LogInfo("Deployment Complete")
 	return nil
 }
 
@@ -93,7 +93,7 @@ func bicepBuild(filePath string) (string, error) {
 	}
 
 	if !ok {
-		logger.LogInfo("downloading bicep...")
+		logger.LogInfo("Downloading Bicep...")
 		err = bicep.DownloadBicep()
 		if err != nil {
 			return "", fmt.Errorf("failed to download rad-bicep: %w", err)
