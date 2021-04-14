@@ -1,7 +1,6 @@
 {
 	"name": "Codespaces for Radius tutorials",
 		
-	// "dockerFile": "Dockerfile",
 	"image": "radius.azurecr.io/radcodespace:latest",
 	
 	// Set *default* container specific settings.json values on container create.
