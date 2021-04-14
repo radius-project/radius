@@ -351,7 +351,87 @@ Now you are ready to deploy.
 
 1. When you are done testing press CTRL+C to terminate the port-forward. You have completed this tutorial!
 
-## Step 4: Cleanup
+
+## Step 4: Inspect application
+
+### Review application's deployment 
+Now that the "webapp" application deployment is complete, you can inspect it by listing deployments. 
+
+```sh
+rad deployment list --application-name webapp
+```
+
+Your "db" and "todoapp" components have been created into a "default" deployment of the "webapp" application. 
+You should see something like this:
+
+```sh
+Using config file: /Users/tutorial-user/.rad/config.yaml
+{
+  "value": [
+    {
+      "id": "/subscriptions/76d1209e-1382-45d3-99bb-650e6bf63fc1/resourceGroups/tutorial-resource-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Deployments/default",
+      "name": "radius/webapp/default",
+      "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
+      "properties": {
+        "components": [
+          {
+            "componentName": "db"
+          },
+          {
+            "componentName": "todoapp"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### Inspect a specific component's details 
+
+View properties of a specific component: 
+
+```sh
+rad component get --application-name webapp --name todoapp
+```
+
+The details of the deployed component should match that component's definition from your template.bicep file. Example output:
+
+```sh
+Using config file: /Users/tutorial-user/.rad/config.yaml
+{
+  "id": "/subscriptions/76d1209e-1382-45d3-99bb-650e6bf63fc1/resourceGroups/tutorial-resource-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Components/todoapp",
+  "name": "radius/webapp/todoapp",
+  "type": "Microsoft.CustomProviders/resourceProviders/Applications/Components",
+  "kind": "radius.dev/Container@v1alpha1",
+  "properties": {
+    "dependsOn": [
+      {
+        "kind": "mongodb.com/Mongo",
+        "name": "db",
+        "setEnv": {
+          "DB_CONNECTION": "connectionString"
+        }
+      }
+    ],
+    "provides": [
+      {
+        "containerPort": 3000,
+        "kind": "http",
+        "name": "web"
+      }
+    ],
+    "revision": "89622fa78bc845079129b8722a20452156f1f80f",
+    "run": {
+      "container": {
+        "image": "radiusteam/tutorial-todoapp"
+      }
+    }
+  }
+}
+```
+
+## Step 5: Cleanup
 
 If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}). 
 
@@ -367,3 +447,5 @@ Deleting an environment will delete:
 ```sh
 rad env delete azure --yes
 ```
+
+You have completed this tutorial!
