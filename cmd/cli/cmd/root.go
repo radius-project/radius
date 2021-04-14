@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -38,6 +39,11 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Initialize support for --version
+	RootCmd.Version = version.Release()
+	template := fmt.Sprintf("Release: %s \nVersion: %s\nCommit: %s\n", version.Release(), version.Version(), version.Commit())
+	RootCmd.SetVersionTemplate(template)
 
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
 }
