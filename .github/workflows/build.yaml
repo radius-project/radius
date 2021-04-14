@@ -48,7 +48,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GOVER }}
-      - name: Parse release version and set REL_VERSION
+      - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make
         run: make
@@ -88,7 +88,7 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v2
-      - name: Parse release version and set REL_VERSION
+      - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: make docker
         run: make docker
@@ -100,13 +100,13 @@ jobs:
         if: startsWith(github.ref, 'refs/pull/')
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
       - name: make docker (release)
         run: make docker
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
       - uses: azure/docker-login@v1
         with:
           login-server: ${{ matrix.login_server }}
@@ -123,13 +123,13 @@ jobs:
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
       - name: make dockerpush (release)
         run: make dockerpush
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
 
   deploy_tests: 
     name: Run deployment tests
@@ -144,7 +144,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVER }}
-    - name: Parse release version and set REL_VERSION
+    - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
       uses: actions/download-artifact@v2
@@ -197,7 +197,7 @@ jobs:
         go run cmd/testenv/main.go \
           update-rp \
           --configpath ~/.rad/config.yaml \
-          --image radiusteam/radius-rp:${{ env.REL_VERSION }}
+          --image radiusteam/radius-rp:${{ env.REL_CHANNEL }}
     - name: Run deploy tests
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
@@ -226,7 +226,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Parse release version and set REL_VERSION
+      - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download release artifacts
         uses: actions/download-artifact@v2
@@ -249,21 +249,21 @@ jobs:
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad/${{ env.REL_VERSION }}/macos-x64/ --pattern rad'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad'
       - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: rad_cli_linux_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad/${{ env.REL_VERSION }}/linux-x64/ --pattern rad'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad'
       - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: rad_cli_windows_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad/${{ env.REL_VERSION }}/windows-x64/ --pattern rad.exe'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe'
       - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: install
