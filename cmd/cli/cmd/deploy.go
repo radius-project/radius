@@ -69,7 +69,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 	logger.CompleteStep(step)
 
-	logger.LogInfo("Deployment Complete")
+	logger.LogInfo("Deployment complete")
 	return nil
 }
 
