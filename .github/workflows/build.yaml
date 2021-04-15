@@ -95,12 +95,12 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
           DOCKER_TAG_VERSION: latest
-      - name: make docker (release)
+      - name: make docker (PR)
         run: make docker
         if: startsWith(github.ref, 'refs/pull/')
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
-          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make docker (release)
         run: make docker
         if: startsWith(github.ref, 'refs/tags/v')
@@ -123,7 +123,7 @@ jobs:
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
-          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make dockerpush (release)
         run: make dockerpush
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
@@ -134,6 +134,7 @@ jobs:
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
+    if: startsWith(github.ref, 'refs/pull/') # run on PR 
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
@@ -197,7 +198,7 @@ jobs:
         go run cmd/testenv/main.go \
           update-rp \
           --configpath ~/.rad/config.yaml \
-          --image radiusteam/radius-rp:${{ env.REL_CHANNEL }}
+          --image radiusteam/radius-rp:${{ env.REL_VERSION }}
     - name: Run deploy tests
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH

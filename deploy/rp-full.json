@@ -9,16 +9,23 @@
                 "description": "Location for all resources."
             }
         },
+        "channel": {
+            "type": "string",
+            "defaultValue": "edge",
+            "metadata": {
+                "description": "channel to use for RP image and deployment script"
+            }
+        },
         "_scriptUri": {
             "type": "string",
-            "defaultValue": "https://radiuspublic.blob.core.windows.net/environment/edge/initialize-cluster.sh",
+            "defaultValue": "[format('https://radiuspublic.blob.core.windows.net/environment/{0}/initialize-cluster.sh', parameters('channel'))]",
             "metadata": {
                 "description": "URI of the script to execute. Used for testing."
             }
         },
         "image": {
             "type": "string",
-            "defaultValue": "radiusteam/radius-rp:latest",
+            "defaultValue": "[format('radiusteam/radius-rp:{0}', if(equals(parameters('channel'), 'edge'), 'latest', parameters('channel')))]",
             "metadata": {
                 "description": "The container image to deploy."
             }

@@ -6,9 +6,12 @@
 # This script parses release version from Git tag and set the parsed version to
 # environment variable, REL_VERSION.
 
-# We set the environment variable REL_CHANNEL based on the kind of release. REL_CHANNEL is:
+# We set the environment variable REL_CHANNEL based on the kind of build. This is used for
+# versioning of our assets.
+#
+# REL_CHANNEL is:
 # 'edge': for most builds
-# 'pr-<pr number>': for PR builds
+# 'edge': for PR builds
 # '1.0.0-rc1' (the full version): for a tagged prerelease
 # '1.0' (major.minor): for a tagged release
 
@@ -53,7 +56,7 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
         print("Setting: {}".format(version))
         githubEnv.write(version + "\n")
 
-        channel = "REL_CHANNEL=pr-{}".format(match.group(1))
+        channel = "REL_CHANNEL=edge"
         print("Setting: {}".format(channel))
         githubEnv.write(channel + "\n")
 

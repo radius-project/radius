@@ -13,11 +13,14 @@ import (
 	"path"
 	"runtime"
 
+	"github.com/Azure/radius/pkg/version"
 	"github.com/mitchellh/go-homedir"
 )
 
 const radBicepEnvVar = "RAD_BICEP"
-const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/bicep/edge/%s/%s"
+
+// Placeholders are for: channel, platform, filename
+const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/bicep/%s/%s/%s"
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
 func IsBicepInstalled() (bool, error) {
@@ -63,6 +66,10 @@ func DownloadBicep() error {
 		return fmt.Errorf("failed to download bicep: %v", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("failed to download bicep from '%s'with status code: %d", uri, resp.StatusCode)
+	}
 
 	filepath, err := GetLocalBicepFilepath()
 	if err != nil {
@@ -145,11 +152,11 @@ func getDownloadURI() (string, error) {
 	}
 
 	if runtime.GOOS == "darwin" {
-		return fmt.Sprintf(downloadURIFmt, "macos-x64", filename), nil
+		return fmt.Sprintf(downloadURIFmt, version.Channel(), "macos-x64", filename), nil
 	} else if runtime.GOOS == "linux" {
-		return fmt.Sprintf(downloadURIFmt, "linux-x64", filename), nil
+		return fmt.Sprintf(downloadURIFmt, version.Channel(), "linux-x64", filename), nil
 	} else if runtime.GOOS == "windows" {
-		return fmt.Sprintf(downloadURIFmt, "windows-x64", filename), nil
+		return fmt.Sprintf(downloadURIFmt, version.Channel(), "windows-x64", filename), nil
 	} else {
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
