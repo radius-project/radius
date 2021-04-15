@@ -8,10 +8,10 @@ weight: 200
 
 ## Before you begin
 
-This tutorial will teach you how to use Radius to deploy a microservices application from first principles. You will learn  
+This tutorial will teach you how to use Radius to deploy a microservices application from first principles. You will learn:  
 
-- the concepts of the Radius application model 
-- the basic syntax of the Bicep language 
+- The concepts of the Radius application model 
+- The basic syntax of the Bicep language 
 
 The Radius application in this tutorial uses [Dapr](https://dapr.io). No prior knowledge of Dapr, Radius, or [Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) is needed.
 
@@ -140,7 +140,7 @@ A component can be:
 - A resource that works with data (eg. a message queue or database)
 - A configuration resource (eg. configuration for an API gateway)
 
-#### Component settings
+#### Kind
 
 The component *kind* specifies the type of resource to deploy. In this case, the kind is `radius.dev/Container@v1alpha1`, which represents a generic container.
 
