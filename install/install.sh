@@ -74,7 +74,7 @@ runAsRoot() {
 
 checkHttpRequestCLI() {
     if type "curl" > /dev/null; then
-        RADIUS_HTTP_REQUEST_CLI=wget
+        RADIUS_HTTP_REQUEST_CLI=curl
     elif type "wget" > /dev/null; then
         RADIUS_HTTP_REQUEST_CLI=wget
     else
