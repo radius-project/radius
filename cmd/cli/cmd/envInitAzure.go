@@ -30,13 +30,14 @@ import (
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-const armTemplateURI = "https://radiuspublic.blob.core.windows.net/environment/edge/rp-full.json"
-const clusterInitScriptURI = "https://radiuspublic.blob.core.windows.net/environment/edge/initialize-cluster.sh"
+// Placeholder is for the 'channel'
+const armTemplateURIFormat = "https://radiuspublic.blob.core.windows.net/environment/%s/rp-full.json"
 
 var envInitAzureCmd = &cobra.Command{
 	Use:   "azure",
@@ -448,7 +449,7 @@ func findKubernetesVersion(ctx context.Context, authorizer autorest.Authorizer, 
 }
 
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
-	step := logger.BeginStep("Deploying Environment...")
+	step := logger.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...", version.Channel()))
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
 
@@ -461,8 +462,8 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subs
 	// see https://github.com/Azure-Samples/azure-sdk-for-go-samples/blob/master/resources/testdata/parameters.json
 	// for an example
 	parameters := map[string]interface{}{
-		"_scriptUri": map[string]interface{}{
-			"value": clusterInitScriptURI,
+		"channel": map[string]interface{}{
+			"value": version.Channel(),
 		},
 		"kubernetesVersion": map[string]interface{}{
 			"value": params.KubernetesVersion,
@@ -476,7 +477,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subs
 
 	if params.DeploymentTemplate == "" {
 		deploymentProperties.TemplateLink = &resources.TemplateLink{
-			URI: to.StringPtr(armTemplateURI),
+			URI: to.StringPtr(fmt.Sprintf(armTemplateURIFormat, version.Channel())),
 		}
 	} else {
 		logger.LogInfo("overriding deployment template: %v", params.DeploymentTemplate)
