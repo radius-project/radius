@@ -1,7 +1,7 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
 
-  resource nodeapp 'Components' = {
+  resource nodeapplication 'Components' = {
     name: 'nodeapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
@@ -35,7 +35,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     }
   }
 
-  resource pythonapp 'Components' = {
+  resource pythonapplication 'Components' = {
     name: 'pythonapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
