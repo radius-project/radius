@@ -8,31 +8,34 @@ weight: 100
 
 ## Before you begin
 
-This is a tutorial that will teach you how to use Radius to deploy a web application from first principles. As part of this tutorial you will learn the basic syntax of the Bicep language as well as the concepts of the Radius application model. No prior knowledge of Radius is needed, this tutorial will cover the basics.
+This tutorial will teach you how to use Radius to deploy a web application from first principles. You will learn  
+
+- the concepts of the Radius application model 
+- the basic syntax of the Bicep language 
+
+No prior knowledge of Radius or [Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) is needed.
 
 ## Prerequisites
-
-To begin this tutorial you should have already completed the following steps:
 
 - [Install Radius CLI]({{< ref install-cli.md >}})
 - [Create a Radius environment]({{< ref create-environment.md >}})
 - [(recommended) Install Visual Studio Code](https://code.visualstudio.com/)
    - The [Radius VSCode extension]({{< ref "install-cli.md#2-install-custom-vscode-extension" >}}) provides syntax highlighting, completion, and linting.
+   - You can also complete this tutorial with any basic text editor.
 
-## Understanding the application
+## Overview of the tutorial application
 
-The application you will be deploying is a web application with a database. There are two components:
+You will be deploying a *To-Do List* web application. It will have two Radius *components*:
 
-- A *To-Do List* containerized web application written in Node.JS
-- An Azure CosmosDB database
+- A containerized web application written in Node.JS ("webapp")
+- An Azure CosmosDB database ("db")
 
-Here is a diagram of the complete application:
 
 <img src="./todoapp-diagram.png" width=400 alt="Simple app diagram">
 
-### Web appliation
+### Web application
 
-The web application (`todoapp`) is a single-page-application (SPA) with a Node.JS backend. The SPA sends requests HTTP requests to the Node.JS backend to read and store a lost of *todo* items.
+The example web application (`todoapp`) is a single-page-application (SPA) with a Node.JS backend. The SPA sends requests HTTP requests to the Node.JS backend to read and store *todo* items.
 
 The web application listens on port 3000 for HTTP requests. 
 
@@ -44,30 +47,33 @@ The database (`db`) is an Azure Cosmos MongoDB database.
 
 ## The Radius mindset
 
-To get into the right mindset for Radius, you should think about the application in *logical* terms. The diagrams shown so far document the communication flows of the application, but there are some details that are missing. 
+The diagrams shown so far document the communication flows, but a Radius application also describes additional details. 
 
-A Radius template includes all of the logical relationships of an application but also the operational details associated with those relationships. Here is an updated diagram that shows what the Radius template needs to capture:
+A Radius template includes 
+
+- the logical relationships of an application 
+- the operational details associated with those relationships 
+
+Here is an updated diagram that shows what the Radius template needs to capture:
 
 <img src="./todoapp-appdiagram.png" width=600 alt="App diagram with descriptions of all the details and relationships."><br />
 
 This diagram reflects important details of the Radius model that are different from other deployment technologies you may have used:
 
-- The data component (`db`) are part of the application
+- The data component (`db` here) is part of the application
 - Relationships between components are fully specified with protocols and other strongly-typed information
 
-In addition to this high level information, you will also need typical details like:
+In addition to this high level information, the Radius model also uses typical details like:
 
 - Container images
 - Listening ports
 - Configuration like connection strings
 
-Keep the diagram in mind as you proceed through the following steps. Creating a Radius deployment template is similar to process of understanding a diagram like this one.
+Keep the diagram in mind as you proceed through the following steps. Your Radius deployment template will aim to match it. 
 
 ## Step 1: Creating the application definition
 
-You can start by creating a new `template.bicep` file.
-
-Inside `template.bicep`, type or paste in the following content:
+Radius uses the Bicep langauge as its file-format and structure. Create a new `template.bicep` file with the following content:
 
 ```bash
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -78,10 +84,10 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 This defines the basic structure of an application. This declaration:
 
-- Defines an application resource with the variable name of `app`
-- Assigns the name `webapp` to the application resource that will be created
+- Defines an application resource with the variable name of `app`.
+- Assigns the name `webapp` to the application resource that will be created.
 
-Declarations in Bicep start with `resource`. They also declare a variable, and assign a resource type, and then are followed by an equals-sign `=` and then an object. 
+Declarations in Bicep start with `resource`. They also declare a variable, assign a resource type, and then are followed by an equals-sign `=` and then an object. 
 
 {{% alert title="💡 Declarations" color="primary" %}}
 Declarations in Bicep have symbolic (variable) names associated with them. The variable name `app` could be used in this file to reference the application in other declarations. The value of the `name` property (`webapp`) is what will be used to identify the application during management operations.
@@ -93,21 +99,21 @@ Objects in Bicep don't need quotes around property names like in JSON. Propertie
 While Bicep uses newlines to separate properties and other syntax, it is not sensitive to indention like YAML is. By convention Bicep uses 2 spaces for indentation, but it is just a convention and not required.
 {{% /alert %}}
 
-At this point you could deploy the application but it doesn't contain any components and so it won't do anything interesting. Move on to the next step where we will begin to fill in components.
+At this point you could deploy the application but it doesn't contain any components and so it won't do anything interesting. 
 
 ## Step 2: Deploying a single container
 
-Now that you've defined the shell for an application, you can add components inside.
+Now that you've defined the shell for an application, you can add components to it.
 
 ### Add a container component
 
-Type or paste the additional content from the following text inside your application definition. What's new is the `todoapp` component.
+Inside your application definition, add the `todoapp` component shown below:
 
 ```bash
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'webapp'
 
-  resource todoapp 'Components' = {
+  resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
@@ -121,41 +127,39 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-The content you added declares a *component*. If you visualize the structure of an application *as a graph*, then *components* represent the nodes and things to deploy.
+The content you added declares a *component*. If you visualize the structure of an application as a graph, then components represent the nodes and things to deploy.
 
 A component can be:
 
-- A resource that runs your code *(eg. a container)*
-- A resource that works with data *(eg. a message queue or database)*
-- A configuration resource *(eg. configuration for an API gateway)*
+- A resource that runs your code (eg. a container)
+- A resource that works with data (eg. a message queue or database)
+- A configuration resource (eg. configuration for an API gateway)
 
-#### Kind
+#### Component settings
 
-The specific type of resource to deploy is specified by the component *kind*. In this case the kind is `radius.dev/Container@v1alpha1`, which represents a generic container.
+The component *kind* specifies the type of resource to deploy. In this case, the kind is `radius.dev/Container@v1alpha1`, which represents a generic container.
 
 The set of properties and settings available inside the body of the component depends on the kind. The `run` section is used to specify how the component runs. In this case `run` specifies the container image to run. 
 
 {{% alert title="💡 Naming" color="primary" %}}
-Like the application declaration, components also declare a variable name. The variable name `todoapp` could be used in this file to reference the component in other declarations. The value of the `name` property (also `todoapp`) is what will be used to identify the component during management operations.
+Like the application declaration, components also declare a variable name. The variable name `todoapplication` could be used in this file to reference the component in other declarations. The value of the `name` property (`todoapp`) is what will be used to identify the component during management operations.
 {{% /alert %}}
 
 {{% alert title="💡 Run" color="primary" %}}
-The `run` section is one of several top level sections in a *component*. In general components that run your code will have a `run` section.
+The `run` section is one of several top level sections in a *component*. In general, components that run your code will have a `run` section.
 {{% /alert %}}
 
-### Add HTTP
+### Add an HTTP service
 
-If you were to deploy this application now it will run the `radiusteam/todoapp` image. However, you would have no way to interact with the running application.
+If you were to deploy the application now, it would run the `radiusteam/tutorial-todoapp` image but you would have no way to interact with the running application.
 
-You now need to add the ability to listen for HTTP traffic as depicted in the diagram above.
-
-Type or paste the additional content from the following text inside your application definition. What's new this time is the `provides` section of `todoapp`:
+Add the ability to listen for HTTP traffic as depicted in the diagram above. Expand your `todoapp` as shown below so that it includes a web service definition via a `provides` section:
 
 ```bash
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'webapp'
 
-  resource todoapp 'Components' = {
+  resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
@@ -196,7 +200,7 @@ Now you are ready to deploy the application for the first time.
    az login
    ```
 
-2. Then after that completes, run:
+1. Then after that completes, run:
 
    ```sh
    rad deploy template.bicep
@@ -204,36 +208,128 @@ Now you are ready to deploy the application for the first time.
 
    This will deploy the application and launch the container.
 
-3. Open a local tunnel to your application:
+1. Confirm that your web application was deployed
+
+   View deployed applications:
+
+   ```sh
+   rad application list
+   ```
+   
+   Example output with the `webapp` Radius application: 
+   ```sh
+   {
+     "value": [
+       {
+         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp",
+         "name": "radius/webapp",
+         "type": "Microsoft.CustomProviders/resourceProviders/Applications"
+       }
+     ]
+   }
+   ```
+
+   View deployments for a specific app: 
+
+   ```sh
+   rad deployment list --application-name webapp
+   ```
+
+   Your `todoapp` component has been created into a `default` deployment of the `webapp` application. 
+   You should see something like this:
+
+   ```sh
+   {
+     "value": [
+       {
+         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Deployments/default",
+         "name": "radius/webapp/default",
+         "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
+         "properties": {
+           "components": [
+             {
+               "componentName": "todoapp"
+             }
+           ]
+         }
+       }
+     ]
+   }
+   ```
+
+1. View the properties of the deployed `todoapp` component 
+
+   ```sh
+   rad component get --application-name webapp --name todoapp
+   ```
+ 
+   The details of the `todoapp` component should match its definition from your template.bicep file. Example output:
+
+   ```sh
+   Using config file: /Users/{USER}/.rad/config.yaml
+   {
+     "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Components/todoapp",
+     "name": "radius/webapp/todoapp",
+     "type": "Microsoft.CustomProviders/resourceProviders/Applications/Components",
+     "kind": "radius.dev/Container@v1alpha1",
+     "properties": {
+       "dependsOn": [
+         {
+           "kind": "mongodb.com/Mongo",
+           "name": "db",
+           "setEnv": {
+             "DB_CONNECTION": "connectionString"
+           }
+         }
+       ],
+       "provides": [
+         {
+           "containerPort": 3000,
+           "kind": "http",
+           "name": "web"
+         }
+       ],
+       "revision": "89622fa78bc845079129b8722a20452156f1f80f",
+       "run": {
+         "container": {
+           "image": "radiusteam/tutorial-todoapp"
+         }
+       }
+     }
+   }
+   ```
+
+1. To test out your `webapp` application, open a local tunnel to your application:
 
    ```sh
    rad expose webapp todoapp 3000
    ```
+
    {{% alert title="💡 rad expose" color="primary" %}}
    The `rad expose` command provides the application name, followed by the component name, followed by a port. If you changed any of these names when deploying, update your command to match.
    {{% /alert %}}
 
-4. Visit the URL `http://localhost:3000` in the browser. For now you should see a page like:
+1. Visit the URL `http://localhost:3000` in your browser. For now you should see a page like:
 
    <img src="todoapp-nodb.png" width="400" alt="screenshot of the todo application with no database">
 
-   If the page you are seeing matches the screenshot hat means that the container is running. As the message indicates no database has been configured yet.
+   If the page you are seeing matches the screenshot hat means that the container is running as expected. 
 
    You can play around with the application's features features:
    - Add a todo item
    - Mark a todo item as complete
    - Delete a todo item
 
-5. When you are done testing press CTRL+C to terminate the port-forward, and you are ready to move on to the next step.
+1. When you are done testing press CTRL+C to terminate the port-forward, and you are ready to move on to the next step.
 
 ## Step 3: Adding a database
 
-As the message from the previous step stated, you have not yet added a database. This means that the todo items you enter will be stored in memory inside the application. If the web application restarts then all of your data will be lost!
+As the message from the previous step stated, you have not yet configured a database, so the todo items you enter will be stored in memory inside the application. If the web application restarts then all of your data will be lost!
 
 In this step you will learn how to add a database and connect to it from the application.
 
 ### Add db component
-Type or paste the new component declaration (`db`) from the following text inside your application definition. Leave your existing declaration for todoapp unchanged.
+Add a new component declaration (`db`) to your application definition as shown below. Leave your existing declaration for `todoapp` unchanged.
 
 ```bash
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -256,21 +352,22 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 This declaration adds the database as a component of kind `azure.com/CosmosDocumentDb@v1alpha1`. You've seen component declarations before, so you can notice some differences with this one. `db` has a `config` section instead of a `run` section.
 
 {{% alert title="💡 Config" color="primary" %}}
-The `config` section is one of several top level sections in a *component*. In general component that represent a data store will have a `config` section
+The `config` section is one of several top level sections in a *component*. In general components that represent a data store will have a `config` section
 {{% /alert %}}
 
-Inside the `config` section you specified `managed: true`. This flag tells Radius to manage the lifetime of the database for you. The database will be deleted when you delete the application.
+Inside the `config` section, you specified `managed: true`. This flag tells Radius to manage the lifetime of the database for you. The database will be deleted when you delete the application.
 
 ### Reference db from todoapp
 
-Now that you've created the database as an component, you can reference it from todoapp to connect them.
+Now that you've created the database as a component, you can connect them by referencing the `db` component from the `todoapp` component.
 
-Type or paste the additional content from the following text inside your application definition. What's new this time is the `dependsOn` section:
+Type or paste the additional content from the following text inside your application definition. What's new is the `dependsOn` section:
+
 ```bash
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'webapp'
 
-  resource todoapp 'Components' = {
+  resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
@@ -311,10 +408,10 @@ Relations in Radius are based on protocols and services as a form of *loose-coup
 {{% /alert %}}
 
 
-The `setEnv` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result of this, `todoapp` will be able to use the `DB_CONNECTION` environment variable to access to the database connection string.
+The `setEnv` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DB_CONNECTION` environment variable to access to the database connection string.
 
 {{% alert title="💡 Relationships" color="primary" %}}
-Radius captures the relationships and intentions behind an application so that they can simplify deployment. Examples of this include wiring up connection strings, or granting permissions, or restarting components when a dependency changes.
+Radius captures the relationships and intentions behind an application so that they can simplify deployment. Examples of this include: wiring up connection strings, granting permissions, or restarting components when a dependency changes.
 {{% /alert %}}
 
 ### Deploy application with database
@@ -329,19 +426,48 @@ Now you are ready to deploy.
 
    This will deploy the application, including the Azure CosmosDB database. This may take a few minutes because of the extra time required to create the database.
 
-1. To test it out, you can use the following command from the commandline:
+1. Confirm that the database was deployed.
+
+   ```sh
+   rad deployment list --application-name webapp
+   ```
+
+   Now you should see both `db` and `todoapp` components in your `webapp` application, similar to:
+
+   ```sh
+   Using config file: /Users/{USER}/.rad/config.yaml
+   {
+     "value": [
+       {
+         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Deployments/default",
+         "name": "radius/webapp/default",
+         "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
+         "properties": {
+           "components": [
+             {
+               "componentName": "db"
+             },
+             {
+               "componentName": "todoapp"
+             }
+           ]
+         }
+       }
+     ]
+   }
+   ```
+
+1. To test out the database, open a local tunnel on port 3000 again:
 
    ```sh
    rad expose webapp todoapp 3000
    ```
 
-   This will open a local tunnel on port 3000.
-
-1. Visit the URL `http://localhost:3000` in the browser. For now you should see a page like:
+1. Visit the URL `http://localhost:3000` in your browser. You should see a page like:
 
    <img src="todoapp-withdb.png" width="400" alt="screenshot of the todo application with a database">
 
-   If your page matches, then it means that the container is able to communicate with the database. Just like before you can test the features of the todo app. Now your data is being stored in an actual database. Add a task or two. 
+   If your page matches, then it means that the container is able to communicate with the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database. 
 
 1. Now that the app is using a database, we can confirm that the task items persist across application restarts. 
    1. Press CTRL+C to terminate the port-forward
@@ -349,94 +475,13 @@ Now you are ready to deploy.
    1. Restart port-forwarding via `rad expose webapp todoapp 3000`. 
    1. Visit the URL `http://localhost:3000` in the browser again to see the tasks you previously created. 
 
-1. When you are done testing press CTRL+C to terminate the port-forward. You have completed this tutorial!
+1. When you are done testing press CTRL+C to terminate the port-forward. 
 
+## Step 4: Cleanup
 
-## Step 4: Inspect application
-
-### Review application's deployment 
-Now that the "webapp" application deployment is complete, you can inspect it by listing deployments. 
-
-```sh
-rad deployment list --application-name webapp
-```
-
-Your "db" and "todoapp" components have been created into a "default" deployment of the "webapp" application. 
-You should see something like this:
-
-```sh
-Using config file: /Users/tutorial-user/.rad/config.yaml
-{
-  "value": [
-    {
-      "id": "/subscriptions/76d1209e-1382-45d3-99bb-650e6bf63fc1/resourceGroups/tutorial-resource-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Deployments/default",
-      "name": "radius/webapp/default",
-      "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
-      "properties": {
-        "components": [
-          {
-            "componentName": "db"
-          },
-          {
-            "componentName": "todoapp"
-          }
-        ]
-      }
-    }
-  ]
-}
-```
-
-### Inspect a specific component's details 
-
-View properties of a specific component: 
-
-```sh
-rad component get --application-name webapp --name todoapp
-```
-
-The details of the deployed component should match that component's definition from your template.bicep file. Example output:
-
-```sh
-Using config file: /Users/tutorial-user/.rad/config.yaml
-{
-  "id": "/subscriptions/76d1209e-1382-45d3-99bb-650e6bf63fc1/resourceGroups/tutorial-resource-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Components/todoapp",
-  "name": "radius/webapp/todoapp",
-  "type": "Microsoft.CustomProviders/resourceProviders/Applications/Components",
-  "kind": "radius.dev/Container@v1alpha1",
-  "properties": {
-    "dependsOn": [
-      {
-        "kind": "mongodb.com/Mongo",
-        "name": "db",
-        "setEnv": {
-          "DB_CONNECTION": "connectionString"
-        }
-      }
-    ],
-    "provides": [
-      {
-        "containerPort": 3000,
-        "kind": "http",
-        "name": "web"
-      }
-    ],
-    "revision": "89622fa78bc845079129b8722a20452156f1f80f",
-    "run": {
-      "container": {
-        "image": "radiusteam/tutorial-todoapp"
-      }
-    }
-  }
-}
-```
-
-## Step 5: Cleanup
-
-If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}). 
+If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
 
 If you're done with testing, clean up your environment to **prevent additional charges in your subscription**. 
-
 
 Deleting an environment will delete:
 
@@ -449,3 +494,7 @@ rad env delete azure --yes
 ```
 
 You have completed this tutorial!
+
+## Related links
+
+- View the full template.bicep for this tutorial [here](https://github.com/Azure/radius/blob/main/docs/content/getting-started/tutorial/webapp/template.bicep)
