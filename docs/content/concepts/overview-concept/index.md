@@ -215,7 +215,7 @@ A Service may be **depended-upon** by multiple Components, which may specify:
 
 #### Computed values
 
-In addition to expressing a *logical* relationship, a Service may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a service can specify how wire up a *computed value* to an application concern. *eg. set the `DB_CONNECTION` environment variable to the database's connection string*
+In addition to expressing a *logical* relationship, a Service may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a service can specify how wire up a *computed value* to an application concern. *eg. set the `DB_CONNECTION` environment variable to the database's connection string*. These items are computed when the related resource is deployed. 
 
 {{% alert title="💡 Key concept" color="info" %}}
 A Service dependency between Components *may* affect the deployment order of Components or it *may not* depending on the kind of service. eg. HTTP communication between components *may* be bi-directional, so it does not affect deployment order.
