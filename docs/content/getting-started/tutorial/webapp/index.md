@@ -8,10 +8,10 @@ weight: 100
 
 ## Before you begin
 
-This tutorial will teach you how to use Radius to deploy a web application from first principles. You will learn  
+This tutorial will teach you how to use Radius to deploy a web application from first principles. You will learn:  
 
-- the concepts of the Radius application model 
-- the basic syntax of the Bicep language 
+- The concepts of the Radius application model 
+- The basic syntax of the Bicep language 
 
 No prior knowledge of Radius or [Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) is needed.
 
@@ -135,7 +135,7 @@ A component can be:
 - A resource that works with data (eg. a message queue or database)
 - A configuration resource (eg. configuration for an API gateway)
 
-#### Component settings
+#### Kind
 
 The component *kind* specifies the type of resource to deploy. In this case, the kind is `radius.dev/Container@v1alpha1`, which represents a generic container.
 
@@ -468,12 +468,6 @@ Now you are ready to deploy.
    <img src="todoapp-withdb.png" width="400" alt="screenshot of the todo application with a database">
 
    If your page matches, then it means that the container is able to communicate with the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database. 
-
-1. Now that the app is using a database, we can confirm that the task items persist across application restarts. 
-   1. Press CTRL+C to terminate the port-forward
-   1. Redeploy the application via `rad deploy template.bicep`
-   1. Restart port-forwarding via `rad expose webapp todoapp 3000`. 
-   1. Visit the URL `http://localhost:3000` in the browser again to see the tasks you previously created. 
 
 1. When you are done testing press CTRL+C to terminate the port-forward. 
 
