@@ -224,7 +224,7 @@ jobs:
 
   publish:
     name: Publish rad CLI binaries
-    needs: [ 'build', 'deploy_tests' ]
+    needs: [ 'build' ] # may want to add needs 'deploy_tests' as well in the future
     runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
