@@ -1,6 +1,8 @@
 #!/bin/bash -i
 set -eu
 
+#
+
 USERNAME=$1
 
 echo "running init-profile.sh"
