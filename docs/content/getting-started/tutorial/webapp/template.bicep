@@ -1,7 +1,7 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'webapp'
 
-  resource todoapp 'Components' = {
+  resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {

@@ -11,8 +11,6 @@ on:
       - main
     tags:
       - v*
-    paths-ignore:
-    - 'docs/**'
 jobs:
   publish:
     name: Assets
