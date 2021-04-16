@@ -102,7 +102,9 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin
    Available Commands:
      application Manage applications
      bicep       Manage bicep compiler
+     component   Manage components
      deploy      Deploy a RAD application
+     deployment  Manage deployments
      env         Manage environments
      expose      Expose local port
      help        Help about any command
@@ -110,6 +112,7 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin
    Flags:
          --config string   config file (default is $HOME/.rad/config.yaml)
      -h, --help            help for rad
+     -v, --version         version for rad
    
    Use "rad [command] --help" for more information about a command.
    ```
