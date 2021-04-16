@@ -22,24 +22,34 @@ import (
 var envDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete environment",
-	Long:  `Delete environment`,
-	Args:  cobra.ExactArgs(1),
+	Long:  `Delete the specified Radius environment`,
 	RunE:  deleteEnv,
 }
 
 func init() {
 	envCmd.AddCommand(envDeleteCmd)
-	envDeleteCmd.Flags().BoolP("yes", "y", false, "Do not prompt for confirmation")
+
+	envDeleteCmd.Flags().StringP("name", "n", "", "The environment name")
+	if err := envDeleteCmd.MarkFlagRequired("name"); err != nil {
+		panic(err)
+	}
+
+	envDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
 }
 
 func deleteEnv(cmd *cobra.Command, args []string) error {
+	envName, err := cmd.Flags().GetString("name")
+	if err != nil {
+		return err
+	}
+
 	noPrompt, err := cmd.Flags().GetBool("yes")
 	if err != nil {
 		return err
 	}
 
 	// Validate environment exists, retrieve associated resource group and subscription id
-	az, err := validateNamedEnvironment(args[0])
+	az, err := validateNamedEnvironment(envName)
 	if err != nil {
 		return err
 	}
@@ -67,7 +77,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	// Delete env from the config, update default env if needed
-	if err = deleteEnvFromConfig(args[0]); err != nil {
+	if err = deleteEnvFromConfig(envName); err != nil {
 		return err
 	}
 

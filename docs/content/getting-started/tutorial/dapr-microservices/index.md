@@ -600,7 +600,7 @@ Deleting an environment will delete:
 - The application you just deployed
 
 ```sh
-rad env delete azure --yes
+rad env delete --name azure --yes
 ```
 
 You have completed this tutorial!
