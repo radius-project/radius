@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
@@ -72,7 +73,7 @@ func getDeployment(cmd *cobra.Command, args []string) error {
 			return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 
-		return fmt.Errorf("Failed to get the deployment %s, %w", depName, err)
+		return utils.UnwrapErrorFromRawResponse(err)
 	}
 
 	deploymentResource := *response.DeploymentResource

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
@@ -53,7 +54,7 @@ func listComponents(cmd *cobra.Command, args []string) error {
 
 	response, err := componentClient.ListByApplication(cmd.Context(), env.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to list components in the application %s, %w", applicationName, err)
+		return utils.UnwrapErrorFromRawResponse(err)
 	}
 
 	componentsList := *response.ComponentList

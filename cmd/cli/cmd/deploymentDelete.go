@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
@@ -62,7 +63,7 @@ func deleteDeployment(cmd *cobra.Command, args []string) error {
 	dc := radclient.NewDeploymentClient(con, env.SubscriptionID)
 	_, err = dc.Delete(cmd.Context(), env.ResourceGroup, applicationName, depName, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to delete the deployment %s, %w", depName, err)
+		return utils.UnwrapErrorFromRawResponse(err)
 	}
 	fmt.Printf("Deployment '%s' deleted.\n", depName)
 
