@@ -7,6 +7,8 @@ on:
     paths:
       - 'docs/**'
       - 'test/**'
+      - 'cmd/cli/**'
+      - 'cmd/docgen/**'
       - '.github/workflows/**'
   pull_request:
     types: [opened, synchronize, reopened, closed]
@@ -15,7 +17,9 @@ on:
     paths:
       - 'docs/**'
       - 'test/**'
-      - '.github/workflows/docs-site.yml'
+      - 'cmd/cli/**'
+      - 'cmd/docgen/**'
+      - '.github/workflows/**'
 
 jobs:
   build_and_deploy_docs:
