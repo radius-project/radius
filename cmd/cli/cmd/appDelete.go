@@ -56,7 +56,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	// Retrieve all the deployments in the application
 	response, err := dc.ListByApplication(cmd.Context(), env.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return err
+		return utils.UnwrapErrorFromRawResponse(err)
 	}
 
 	// Delete the deployments
@@ -67,7 +67,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 
 		_, err := dc.Delete(cmd.Context(), env.ResourceGroup, applicationName, deploymentName, nil)
 		if err != nil {
-			return fmt.Errorf("Failed to delete the deployment %s, %w", deploymentName, err)
+			return utils.UnwrapErrorFromRawResponse(err)
 		}
 		fmt.Printf("Deleted deployment '%s'\n", deploymentName)
 	}
@@ -77,7 +77,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 
 	_, err = ac.Delete(cmd.Context(), env.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to delete the application %w", err)
+		return utils.UnwrapErrorFromRawResponse(err)
 	}
 	fmt.Printf("Application '%s' has been deleted\n", applicationName)
 

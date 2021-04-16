@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
@@ -51,7 +52,7 @@ func getApplication(cmd *cobra.Command, args []string) error {
 	ac := radclient.NewApplicationClient(con, env.SubscriptionID)
 	response, err := ac.Get(cmd.Context(), env.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to get the application %s, %w", applicationName, err)
+		return utils.UnwrapErrorFromRawResponse(err)
 	}
 
 	applicationResource := *response.ApplicationResource
