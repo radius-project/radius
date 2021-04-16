@@ -500,7 +500,7 @@ Now you are ready to deploy.
 1. To test out the state store, open a local tunnel on port 3000 again:
 
    ```sh
-   rad expose dapr-hello nodeapp 3000
+   rad expose dapr-hello nodeapp --port 3000
    ```
 
 1. Visit the the URL `http://localhost:3000/order` in your browser. You should see a message like:
@@ -572,7 +572,7 @@ Now you are ready to deploy.
 1. To test out the pythonapp microservice, open a local tunnel on port 3000 again:
 
    ```sh
-   rad expose dapr-hello nodeapp 3000
+   rad expose dapr-hello nodeapp --port 3000
    ```
 
 1. Visit the URL `http://localhost:3000/order` in your browser.

@@ -302,7 +302,7 @@ Now you are ready to deploy the application for the first time.
 1. To test out your `webapp` application, open a local tunnel to your application:
 
    ```sh
-   rad expose webapp todoapp 3000
+   rad expose webapp todoapp --port 3000
    ```
 
    {{% alert title="💡 rad expose" color="primary" %}}
@@ -460,7 +460,7 @@ Now you are ready to deploy.
 1. To test out the database, open a local tunnel on port 3000 again:
 
    ```sh
-   rad expose webapp todoapp 3000
+   rad expose webapp todoapp --port 3000
    ```
 
 1. Visit the URL `http://localhost:3000` in your browser. You should see a page like:
