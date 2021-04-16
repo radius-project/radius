@@ -31,7 +31,6 @@ var deployCmd = &cobra.Command{
 	Use:   "deploy [app.bicep]",
 	Short: "Deploy a RAD application",
 	Long:  "Deploy a RAD application",
-	Args:  cobra.ExactArgs(1),
 	RunE:  deploy,
 }
 

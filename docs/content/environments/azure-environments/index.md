@@ -85,7 +85,7 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 1. Use the rad CLI to delete the environment:
 
    ```bash
-   rad env delete azure --yes
+   rad env delete --name azure --yes
    ```
 
 ## Related links

@@ -57,5 +57,5 @@ var envMergeCredentialsCmd = &cobra.Command{
 func init() {
 	envCmd.AddCommand(envMergeCredentialsCmd)
 
-	envMergeCredentialsCmd.Flags().String("name", "", "The environment name")
+	envMergeCredentialsCmd.Flags().StringP("name", "n", "", "The environment name")
 }

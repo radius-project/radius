@@ -188,7 +188,7 @@ When you are ready to clean up and delete the resources you can delete your envi
 - The application you just deployed
 
 ```sh
-rad env delete azure --yes
+rad env delete --name azure --yes
 ```
 
 
