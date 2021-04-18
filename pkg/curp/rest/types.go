@@ -6,6 +6,7 @@
 package rest
 
 import (
+	"github.com/Azure/radius/pkg/curp/armerrors"
 	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/curp/revision"
 )
@@ -101,7 +102,8 @@ type Deployment struct {
 
 // DeploymentProperties respresents the properties of a deployment.
 type DeploymentProperties struct {
-	Components []DeploymentComponent `json:"components,omitempty"`
+	ProvisioningState OperationStatus       `json:"provisioningState,omitempty"`
+	Components        []DeploymentComponent `json:"components,omitempty"`
 }
 
 // DeploymentComponent respresents an entry for a component in a deployment.
@@ -131,6 +133,39 @@ type DeploymentComponentDataOutput struct {
 
 // DeploymentComponentDataInput specifies a data input needed by a component as part of a deployment.
 type DeploymentComponentDataInput struct {
+}
+
+// See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations
+type Operation struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+
+	// These should be in ISO8601 format
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+
+	PercentComplete float64                 `json:"percentComplete"`
+	Properties      map[string]interface{}  `json:"properties,omitempty"`
+	Error           *armerrors.ErrorDetails `json:"error"`
+}
+
+// See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations
+type OperationStatus string
+
+const (
+	// Terminal states
+	SuccededStatus OperationStatus = "Succeeded"
+	FailedStatus   OperationStatus = "Failed"
+	CanceledStatus OperationStatus = "Canceled"
+
+	// RP-defined statuses are used for non-terminal states
+	DeployingStatus OperationStatus = "Deploying"
+	DeletingStatus  OperationStatus = "Deleting"
+)
+
+func IsTeminalStatus(status OperationStatus) bool {
+	return status == SuccededStatus || status == FailedStatus || status == CanceledStatus
 }
 
 // GetID produces a ResourceID from a resource.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
+	"github.com/Azure/radius/pkg/curp/deployment"
 	"github.com/Azure/radius/pkg/curp/metadata"
 	"github.com/Azure/radius/pkg/curp/revision"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
@@ -157,7 +158,7 @@ func Test_DeploymentCreated_OneComponent_NoRevisionSpecified(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"].RevisionHistory[1], *action.Definition)
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)
@@ -208,7 +209,7 @@ func Test_DeploymentCreated_OneComponent_RevisionSpecified(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"].RevisionHistory[0], *action.Definition)
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)
@@ -295,7 +296,7 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"].RevisionHistory[1], *action.Definition)
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)
@@ -304,7 +305,7 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 
 	require.Contains(t, actions, "B")
 	action = actions["B"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "B", action.ComponentName)
 	require.Equal(t, app.Components["B"].RevisionHistory[0], *action.Definition)
 	require.Equal(t, newer.Properties.Components[1], action.Instantiation)
@@ -313,7 +314,7 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 
 	require.Contains(t, actions, "C")
 	action = actions["C"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "C", action.ComponentName)
 	require.Equal(t, app.Components["C"].RevisionHistory[0], *action.Definition)
 	require.Equal(t, newer.Properties.Components[2], action.Instantiation)
@@ -364,7 +365,7 @@ func Test_DeploymentUpdated_OneComponent_Deleted(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, DeleteWorkload, action.Operation)
+	require.Equal(t, deployment.DeleteWorkload, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
 	require.Nil(t, action.Definition)
 	require.Nil(t, action.Instantiation)
@@ -420,7 +421,7 @@ func Test_DeploymentUpdated_OneComponent_NoAction(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, None, action.Operation)
+	require.Equal(t, deployment.None, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"].RevisionHistory[1], *action.Definition)
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)
@@ -476,7 +477,7 @@ func Test_DeploymentUpdated_OneComponent_RevisionUpgraded(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, UpdateWorkload, action.Operation)
+	require.Equal(t, deployment.UpdateWorkload, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"].RevisionHistory[1], *action.Definition)
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)
@@ -565,15 +566,15 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
-	require.Equal(t, map[string]ServiceBinding{"B": {Name: "B", Kind: "http", Provider: "B"}}, action.ServiceBindings)
+	require.Equal(t, map[string]deployment.ServiceBinding{"B": {Name: "B", Kind: "http", Provider: "B"}}, action.ServiceBindings)
 
 	require.Contains(t, actions, "B")
 	action = actions["B"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "B", action.ComponentName)
-	require.Equal(t, map[string]ServiceBinding{"A": {Name: "A", Kind: "http", Provider: "A"}}, action.ServiceBindings)
+	require.Equal(t, map[string]deployment.ServiceBinding{"A": {Name: "A", Kind: "http", Provider: "A"}}, action.ServiceBindings)
 }
 
 func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
@@ -629,7 +630,7 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "myapp", action.ApplicationName)
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"].RevisionHistory[0], *action.Definition)
@@ -705,7 +706,7 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 
 	require.Contains(t, actions, "A")
 	action := actions["A"]
-	require.Equal(t, CreateWorkload, action.Operation)
+	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"].RevisionHistory[0], *action.Definition)
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)

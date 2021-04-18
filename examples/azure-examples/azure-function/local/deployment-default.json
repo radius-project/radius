@@ -1,9 +1,0 @@
-{
-    "properties": {
-        "components": [
-            {
-                "componentName": "radius/azure-function/function"
-            }
-        ]
-    }
-}

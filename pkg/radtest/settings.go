@@ -3,11 +3,9 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package curp
+package radtest
 
-import (
-	"errors"
+const (
+	TestSubscriptionID = "test-subscription"
+	TestResourceGroup  = "test-resourcegroup"
 )
-
-// ErrUnsupportedWorkload indicates an unsupported workload type.
-var ErrUnsupportedWorkload = errors.New("unsupported workload type")

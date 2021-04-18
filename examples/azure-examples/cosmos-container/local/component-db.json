@@ -1,9 +1,0 @@
-{
-    "kind": "azure.com/CosmosDocumentDb@v1alpha1",
-    "properties": {
-        "config": {
-            "managed": true,
-            "yes": "yes"
-        }
-    }
-}

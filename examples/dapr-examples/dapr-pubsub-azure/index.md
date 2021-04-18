@@ -12,4 +12,4 @@ You'll need to set `ARM_SUBSCRIPTION_ID` and `ARM_RESOURCE_GROUP` - this example
 
 ## Bicep file
 
-{{< rad file="azure-bicep/template.bicep">}}
+{{< rad file="template.bicep">}}

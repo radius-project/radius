@@ -38,7 +38,7 @@ func (client *ApplicationClient) CreateOrUpdate(ctx context.Context, resourceGro
 	if err != nil {
 		return ApplicationResourceResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated) {
+	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return ApplicationResourceResponse{}, client.createOrUpdateHandleError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)

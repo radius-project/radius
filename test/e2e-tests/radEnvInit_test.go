@@ -89,7 +89,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
 
 	// Deploy bicep template
-	templateFilePath := filepath.Join(cwd, "../../examples/frontend-backend/azure-bicep/template.bicep")
+	templateFilePath := filepath.Join(cwd, "../../examples/frontend-backend/template.bicep")
 	require.FileExists(t, templateFilePath, "could not find application template")
 
 	err = utils.RunRadDeployCommand(templateFilePath, "", time.Minute*5)

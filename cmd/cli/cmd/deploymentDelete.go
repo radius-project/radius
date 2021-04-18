@@ -61,10 +61,16 @@ func deleteDeployment(cmd *cobra.Command, args []string) error {
 	con := armcore.NewDefaultConnection(azcred, nil)
 
 	dc := radclient.NewDeploymentClient(con, env.SubscriptionID)
-	_, err = dc.Delete(cmd.Context(), env.ResourceGroup, applicationName, depName, nil)
+	poller, err := dc.BeginDelete(cmd.Context(), env.ResourceGroup, applicationName, depName, nil)
 	if err != nil {
 		return utils.UnwrapErrorFromRawResponse(err)
 	}
+
+	_, err = poller.PollUntilDone(cmd.Context(), radclient.PollInterval)
+	if err != nil {
+		return utils.UnwrapErrorFromRawResponse(err)
+	}
+
 	fmt.Printf("Deployment '%s' deleted.\n", depName)
 
 	return err

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 )
 
@@ -73,18 +72,23 @@ func RunRadMergeCredentialsCommand(configFilePath string) error {
 }
 
 // RunRadDeleteApplicationsCommand deletes all applications deployed by Radius in the specified resource group
-func RunRadDeleteApplicationsCommand(resourceGroupName string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+func RunRadApplicationDeleteCommand(applicationName, configFilePath string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	// TODO: Once we have a rad env delete command, replace this logic with that
-	currentPath, _ := os.Getwd()
-	scriptPath := filepath.Join(currentPath, "delete-applications")
-	cmd := exec.CommandContext(ctx, scriptPath, resourceGroupName)
-	err := RunCommand(ctx, cmd)
-	if err != nil {
-		fmt.Println("non-zero exit code:", err.Error())
+	// Create the command with our context
+	var cmd *exec.Cmd
+	if configFilePath == "" {
+		cmd = exec.CommandContext(ctx, "rad", "application", "delete", applicationName)
+	} else {
+		if _, err := os.Stat(configFilePath); err != nil {
+			return fmt.Errorf("error deploying template using configfile: %s - %w", configFilePath, err)
+		}
+
+		cmd = exec.CommandContext(ctx, "rad", "application", "delete", applicationName, "--config", configFilePath)
 	}
+
+	err := RunCommand(ctx, cmd)
 	return err
 }
 

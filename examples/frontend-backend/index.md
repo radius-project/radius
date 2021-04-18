@@ -10,4 +10,4 @@ This application showcases how Radius can deploy a simple application with a fro
 
 ## Bicep file
 
-{{< rad file="azure-bicep/template.bicep">}}
+{{< rad file="template.bicep">}}

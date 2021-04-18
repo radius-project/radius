@@ -7,7 +7,10 @@ package resources
 
 import (
 	"errors"
+	"fmt"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // baseResourceType declares the base resource type for the Radius RP - all of the Radius resource types are children.
@@ -21,6 +24,9 @@ const componentResourceType = "Components"
 
 // deploymentResourceType declares the resource type for a Deployment.
 const deploymentResourceType = "Deployments"
+
+// operationResourceType declares the resource type for an Operation.
+const operationResourceType = "OperationResults"
 
 // scopeResourceType declares the resource type for a Scope.
 const scopeResourceType = "Scopes"
@@ -77,6 +83,16 @@ var DeploymentResourceType = KnownType{
 	},
 }
 
+// DeploymentResourceType can be used to validate resource IDs with ValidateResourceType.
+var DeploymentOperationResourceType = KnownType{
+	[]ResourceType{
+		{Type: baseResourceType, Name: "*"},
+		{Type: applicationResourceType, Name: "*"},
+		{Type: deploymentResourceType, Name: "*"},
+		{Type: operationResourceType, Name: "*"},
+	},
+}
+
 // ScopeCollectionType can be used to validate resource IDs with ValidateResourceType.
 var ScopeCollectionType = KnownType{
 	[]ResourceType{
@@ -118,6 +134,10 @@ type ScopeID struct {
 	App      ApplicationID
 }
 
+type DeploymentOperationID struct {
+	Resource ResourceID
+}
+
 // Application gets an ApplicationID for the resource.
 func (ri ResourceID) Application() (ApplicationID, error) {
 	if len(ri.Types) < 2 ||
@@ -148,7 +168,7 @@ func (ri ResourceID) Application() (ApplicationID, error) {
 func (ri ResourceID) Component() (ComponentID, error) {
 	err := ri.ValidateResourceType(ComponentResourceType)
 	if err != nil {
-		return ComponentID{}, errors.New("not a valid Component resource")
+		return ComponentID{}, fmt.Errorf("not a valid Component resource: %w", err)
 	}
 
 	app, err := ri.Application()
@@ -163,7 +183,7 @@ func (ri ResourceID) Component() (ComponentID, error) {
 func (ri ResourceID) Deployment() (DeploymentID, error) {
 	err := ri.ValidateResourceType(DeploymentResourceType)
 	if err != nil {
-		return DeploymentID{}, errors.New("not a valid Deployment resource")
+		return DeploymentID{}, fmt.Errorf("not a valid Deployment resource: %w", err)
 	}
 
 	app, err := ri.Application()
@@ -178,7 +198,7 @@ func (ri ResourceID) Deployment() (DeploymentID, error) {
 func (ri ResourceID) Scope() (ScopeID, error) {
 	err := ri.ValidateResourceType(ScopeResourceType)
 	if err != nil {
-		return ScopeID{}, errors.New("not a valid Scope resource")
+		return ScopeID{}, fmt.Errorf("not a valid Scope resource: %w", err)
 	}
 
 	app, err := ri.Application()
@@ -187,4 +207,40 @@ func (ri ResourceID) Scope() (ScopeID, error) {
 	}
 
 	return ScopeID{ri, app}, nil
+}
+
+// DeploymentOperation gets a DeploymentOperationID for the resource.
+func (ri ResourceID) DeploymentOperation() (DeploymentOperationID, error) {
+	err := ri.ValidateResourceType(DeploymentOperationResourceType)
+	if err != nil {
+		return DeploymentOperationID{}, fmt.Errorf("not a valid Deployment Operation resource: %w", err)
+	}
+
+	return DeploymentOperationID{ri}, nil
+}
+
+// Deployment gets a DeploymentID for the DeploymentOperationID resource.
+func (d DeploymentOperationID) Deployment() (DeploymentID, error) {
+	text := MakeID(
+		d.Resource.SubscriptionID,
+		d.Resource.ResourceGroup,
+		d.Resource.Types[0],
+		d.Resource.Types[1:3]...)
+	ri, err := Parse(text)
+	if err != nil {
+		return DeploymentID{}, fmt.Errorf("not a valid Deployment Operation resource: %w", err)
+	}
+
+	return ri.Deployment()
+}
+
+// NewOperation creates a new (random) ID for an operation related to a deployment
+func (di DeploymentID) NewOperation() DeploymentOperationID {
+	name := uuid.New().String()
+	id, err := Parse(di.Resource.ID + "/OperationResults/" + name)
+	if err != nil {
+		panic(err)
+	}
+
+	return DeploymentOperationID{Resource: id}
 }
