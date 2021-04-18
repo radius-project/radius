@@ -65,10 +65,16 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		// This is needed until server side implementation is fixed https://github.com/Azure/radius/issues/159
 		deploymentName := utils.GetResourceNameFromFullyQualifiedPath(*deploymentResource.Name)
 
-		_, err := dc.Delete(cmd.Context(), env.ResourceGroup, applicationName, deploymentName, nil)
+		poller, err := dc.BeginDelete(cmd.Context(), env.ResourceGroup, applicationName, deploymentName, nil)
 		if err != nil {
 			return utils.UnwrapErrorFromRawResponse(err)
 		}
+
+		_, err = poller.PollUntilDone(cmd.Context(), radclient.PollInterval)
+		if err != nil {
+			return utils.UnwrapErrorFromRawResponse(err)
+		}
+
 		fmt.Printf("Deleted deployment '%s'\n", deploymentName)
 	}
 

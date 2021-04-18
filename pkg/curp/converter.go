@@ -155,7 +155,9 @@ func newRESTScopeFromDB(original *db.Scope) *rest.Scope {
 func newDBDeploymentFromREST(original *rest.Deployment) *db.Deployment {
 	d := &db.Deployment{
 		ResourceBase: newDBResourceBaseFromREST(original.ResourceBase),
-		Properties:   db.DeploymentProperties{},
+		Properties: db.DeploymentProperties{
+			ProvisioningState: string(original.Properties.ProvisioningState),
+		},
 	}
 
 	for _, c := range original.Properties.Components {
@@ -182,7 +184,9 @@ func newDBDeploymentFromREST(original *rest.Deployment) *db.Deployment {
 func newRESTDeploymentFromDB(original *db.Deployment) *rest.Deployment {
 	d := &rest.Deployment{
 		ResourceBase: newRESTResourceBaseFromDB(original.ResourceBase),
-		Properties:   rest.DeploymentProperties{},
+		Properties: rest.DeploymentProperties{
+			ProvisioningState: rest.OperationStatus(original.Properties.ProvisioningState),
+		},
 	}
 
 	for _, c := range original.Properties.Components {

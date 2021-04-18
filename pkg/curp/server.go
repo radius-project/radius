@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/certs"
 	"github.com/Azure/radius/pkg/curp/db"
+	"github.com/Azure/radius/pkg/curp/deployment"
 	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/gorilla/mux"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,16 +20,19 @@ import (
 
 // ServerOptions is
 type ServerOptions struct {
+	Address      string
 	Authenticate bool
+	Deploy       deployment.DeploymentProcessor
+	K8s          client.Client
+	DB           db.CurpDB
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
-func NewServer(db db.CurpDB, arm armauth.ArmConfig, k8s client.Client, addr string, options ServerOptions) *http.Server {
+func NewServer(options ServerOptions) *http.Server {
 	r := mux.NewRouter()
 	var s *mux.Router
 
-	deploy := NewDeploymentProcessor(arm, k8s)
-	rp := NewResourceProvider(db, deploy)
+	rp := NewResourceProvider(options.DB, options.Deploy)
 	h := &handler{rp}
 
 	r.Path(resources.MakeCollectionURITemplate(resources.ApplicationCollectionType)).Methods("GET").HandlerFunc(h.listApplications)
@@ -50,6 +53,9 @@ func NewServer(db db.CurpDB, arm armauth.ArmConfig, k8s client.Client, addr stri
 	s.Methods("PUT").HandlerFunc(h.updateDeployment)
 	s.Methods("DELETE").HandlerFunc(h.deleteDeployment)
 
+	s = r.Path(resources.MakeResourceURITemplate(resources.DeploymentOperationResourceType)).Subrouter()
+	s.Methods("GET").HandlerFunc(h.getDeploymentOperation)
+
 	r.Path(resources.MakeCollectionURITemplate(resources.ScopeCollectionType)).Methods("GET").HandlerFunc(h.listScopes)
 	s = r.Path(resources.MakeResourceURITemplate(resources.ScopeResourceType)).Subrouter()
 	s.Methods("GET").HandlerFunc(h.getScope)
@@ -63,7 +69,7 @@ func NewServer(db db.CurpDB, arm armauth.ArmConfig, k8s client.Client, addr stri
 	}
 
 	return &http.Server{
-		Addr:    addr,
+		Addr:    options.Address,
 		Handler: app,
 	}
 }
@@ -93,7 +99,6 @@ func rewrite(h http.Handler) http.Handler {
 
 func authenticateCert(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-
 		if !strings.HasPrefix(r.URL.Path, "/subscriptions/") {
 			log.Printf("request is not for a sensitive URL - allowing")
 			h.ServeHTTP(w, r)

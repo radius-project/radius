@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // DeploymentClient contains the methods for the Deployment group.
@@ -28,8 +29,135 @@ func NewDeploymentClient(con *armcore.Connection, subscriptionID string) *Deploy
 	return &DeploymentClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a deployment.
+func (client *DeploymentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, parameters DeploymentCreateParameters, options *DeploymentBeginCreateOrUpdateOptions) (DeploymentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, deploymentName, parameters, options)
+	if err != nil {
+		return DeploymentResourcePollerResponse{}, err
+	}
+	result := DeploymentResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewPoller("DeploymentClient.CreateOrUpdate", "original-uri", resp, client.createOrUpdateHandleError)
+	if err != nil {
+		return DeploymentResourcePollerResponse{}, err
+	}
+	poller := &deploymentResourcePoller{
+		pt: pt,
+		pipeline: client.con.Pipeline(),
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DeploymentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new DeploymentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to DeploymentResourcePoller.ResumeToken().
+func (client *DeploymentClient) ResumeCreateOrUpdate(token string) (DeploymentResourcePoller, error) {
+	pt, err := armcore.NewPollerFromResumeToken("DeploymentClient.CreateOrUpdate", token, client.createOrUpdateHandleError)
+	if err != nil {
+		return nil, err
+	}
+	return &deploymentResourcePoller{
+		pipeline: client.con.Pipeline(),
+		pt: pt,
+	}, nil
+}
+
+// CreateOrUpdate - Creates or updates a deployment.
+func (client *DeploymentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, parameters DeploymentCreateParameters, options *DeploymentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, deploymentName, parameters, options)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.con.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+		return nil, client.createOrUpdateHandleError(resp)
+	}
+	 return resp, nil
+}
+
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *DeploymentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, parameters DeploymentCreateParameters, options *DeploymentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Deployments/{deploymentName}"
+	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
+	urlPath = strings.ReplaceAll(urlPath, "{deploymentName}", url.PathEscape(deploymentName))
+	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	req.Telemetry(telemetryInfo)
+	query := req.URL.Query()
+	query.Set("api-version", "2018-09-01-preview")
+	req.URL.RawQuery = query.Encode()
+	req.Header.Set("Accept", "application/json")
+	return req, req.MarshalAsJSON(parameters)
+}
+
+// createOrUpdateHandleResponse handles the CreateOrUpdate response.
+func (client *DeploymentClient) createOrUpdateHandleResponse(resp *azcore.Response) (DeploymentResourceResponse, error) {
+	var val *DeploymentResource
+	if err := resp.UnmarshalAsJSON(&val); err != nil {
+		return DeploymentResourceResponse{}, err
+	}
+return DeploymentResourceResponse{RawResponse: resp.Response, DeploymentResource: val}, nil
+}
+
+// createOrUpdateHandleError handles the CreateOrUpdate error response.
+func (client *DeploymentClient) createOrUpdateHandleError(resp *azcore.Response) error {
+var err ErrorResponse
+	if err := resp.UnmarshalAsJSON(&err); err != nil {
+		return err
+	}
+	return azcore.NewResponseError(&err, resp.Response)
+}
+
+// BeginDelete - Deletes a deployment.
+func (client *DeploymentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.delete(ctx, resourceGroupName, applicationName, deploymentName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewPoller("DeploymentClient.Delete", "location", resp, client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+		pipeline: client.con.Pipeline(),
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *DeploymentClient) ResumeDelete(token string) (HTTPPoller, error) {
+	pt, err := armcore.NewPollerFromResumeToken("DeploymentClient.Delete", token, client.deleteHandleError)
+	if err != nil {
+		return nil, err
+	}
+	return &httpPoller{
+		pipeline: client.con.Pipeline(),
+		pt: pt,
+	}, nil
+}
+
 // Delete - Deletes a deployment.
-func (client *DeploymentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentDeleteOptions) (*http.Response, error) {
+func (client *DeploymentClient) delete(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, deploymentName, options)
 	if err != nil {
 		return nil, err
@@ -38,14 +166,14 @@ func (client *DeploymentClient) Delete(ctx context.Context, resourceGroupName st
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusNoContent) {
+	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DeploymentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentDeleteOptions) (*azcore.Request, error) {
+func (client *DeploymentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, deploymentName string, options *DeploymentBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Deployments/{deploymentName}"
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))

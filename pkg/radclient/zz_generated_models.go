@@ -8,8 +8,10 @@
 package radclient
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // ApplicationCreateOrUpdateOptions contains the optional parameters for the Application.CreateOrUpdate method.
@@ -69,6 +71,20 @@ type ApplicationResourceResponse struct {
 	RawResponse *http.Response
 }
 
+// ComponentCreateOrUpdateOptions contains the optional parameters for the Component.CreateOrUpdate method.
+type ComponentCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// Parameters used to create a component.
+type ComponentCreateParameters struct {
+	// Resource type of the component
+	Kind *string `json:"kind,omitempty"`
+
+	// Any object
+	Properties interface{} `json:"properties,omitempty"`
+}
+
 // ComponentDeleteOptions contains the optional parameters for the Component.Delete method.
 type ComponentDeleteOptions struct {
 	// placeholder for future optional parameters
@@ -118,9 +134,20 @@ type ComponentResourceResponse struct {
 	RawResponse *http.Response
 }
 
-// DeploymentDeleteOptions contains the optional parameters for the Deployment.Delete method.
-type DeploymentDeleteOptions struct {
+// DeploymentBeginCreateOrUpdateOptions contains the optional parameters for the Deployment.BeginCreateOrUpdate method.
+type DeploymentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
+}
+
+// DeploymentBeginDeleteOptions contains the optional parameters for the Deployment.BeginDelete method.
+type DeploymentBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// Parameters used to create a deployment.
+type DeploymentCreateParameters struct {
+	// Properties of a deployment.
+	Properties *DeploymentProperties `json:"properties,omitempty"`
 }
 
 // DeploymentGetOptions contains the optional parameters for the Deployment.Get method.
@@ -164,6 +191,18 @@ type DeploymentResource struct {
 	TrackedResource
 	// Properties of the deployment.
 	Properties *DeploymentProperties `json:"properties,omitempty"`
+}
+
+// DeploymentResourcePollerResponse is the response envelope for operations that asynchronously return a DeploymentResource type.
+type DeploymentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (DeploymentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller DeploymentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
 }
 
 // DeploymentResourceResponse is the response envelope for operations that return a DeploymentResource type.
@@ -234,6 +273,18 @@ func (e ErrorResponse) Error() string {
 		msg = "missing error info"
 	}
 	return msg
+}
+
+// HTTPPollerResponse contains the asynchronous HTTP response from the call to the service endpoint.
+type HTTPPollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (*http.Response, error)
+
+	// Poller contains an initialized poller.
+	Poller HTTPPoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
 }
 
 // Common fields that are returned in the response for all Azure Resource Manager resources

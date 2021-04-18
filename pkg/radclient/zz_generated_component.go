@@ -28,6 +28,59 @@ func NewComponentClient(con *armcore.Connection, subscriptionID string) *Compone
 	return &ComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
+// CreateOrUpdate - Creates or updates a component.
+func (client *ComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, componentName string, parameters ComponentCreateParameters, options *ComponentCreateOrUpdateOptions) (ComponentResourceResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, componentName, parameters, options)
+	if err != nil {
+		return ComponentResourceResponse{}, err
+	}
+	resp, err := client.con.Pipeline().Do(req)
+	if err != nil {
+		return ComponentResourceResponse{}, err
+	}
+	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+		return ComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+	}
+	return client.createOrUpdateHandleResponse(resp)
+}
+
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *ComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, componentName string, parameters ComponentCreateParameters, options *ComponentCreateOrUpdateOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Components/{componentName}"
+	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
+	urlPath = strings.ReplaceAll(urlPath, "{componentName}", url.PathEscape(componentName))
+	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	req.Telemetry(telemetryInfo)
+	query := req.URL.Query()
+	query.Set("api-version", "2018-09-01-preview")
+	req.URL.RawQuery = query.Encode()
+	req.Header.Set("Accept", "application/json")
+	return req, req.MarshalAsJSON(parameters)
+}
+
+// createOrUpdateHandleResponse handles the CreateOrUpdate response.
+func (client *ComponentClient) createOrUpdateHandleResponse(resp *azcore.Response) (ComponentResourceResponse, error) {
+	var val *ComponentResource
+	if err := resp.UnmarshalAsJSON(&val); err != nil {
+		return ComponentResourceResponse{}, err
+	}
+return ComponentResourceResponse{RawResponse: resp.Response, ComponentResource: val}, nil
+}
+
+// createOrUpdateHandleError handles the CreateOrUpdate error response.
+func (client *ComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
+var err ErrorResponse
+	if err := resp.UnmarshalAsJSON(&err); err != nil {
+		return err
+	}
+	return azcore.NewResponseError(&err, resp.Response)
+}
+
 // Delete - Deletes a component.
 func (client *ComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, componentName string, options *ComponentDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, componentName, options)

@@ -3,11 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package curp
+package main
 
 import (
-	"errors"
+	"github.com/Azure/radius/cmd/radtest/cmd"
 )
 
-// ErrUnsupportedWorkload indicates an unsupported workload type.
-var ErrUnsupportedWorkload = errors.New("unsupported workload type")
+func main() {
+	cmd.Execute()
+}

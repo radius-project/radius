@@ -194,4 +194,4 @@ rad env delete --name azure --yes
 
 ## Bicep file
 
-{{< rad file="azure-bicep/template.bicep">}}
+{{< rad file="template.bicep">}}

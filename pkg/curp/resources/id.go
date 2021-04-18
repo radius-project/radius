@@ -28,6 +28,15 @@ type KnownType struct {
 	types []ResourceType
 }
 
+// Type prints the fully-qualified resource type of a KnownType.
+func (t KnownType) Type() string {
+	types := make([]string, len(t.types))
+	for i, t := range t.types {
+		types[i] = t.Type
+	}
+	return strings.Join(types, "/")
+}
+
 // Kind returns the fully-qualified resource kind of a ResourceID.
 func (ri ResourceID) Kind() string {
 	types := make([]string, len(ri.Types))

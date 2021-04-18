@@ -141,6 +141,12 @@
               "$ref": "#/definitions/ApplicationResource"
             }
           },
+          "202": {
+            "description": "The existing application was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
           "default": {
             "description": "Error response describing why the operation failed.",
             "schema": {
@@ -258,11 +264,78 @@
           }
         }
       },
+      "put": {
+        "operationId": "Deployment_CreateOrUpdate",
+        "tags": [
+          "Deployment"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+            "final-state-via" : "original-uri"
+        },
+        "description": "Creates or updates a deployment.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DeploymentNameParameter"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DeploymentCreateParameters"
+            },
+            "description": "Parameters supplied to the Create Deployment operation."
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing deployment was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DeploymentResource"
+            }
+          },
+          "201": {
+            "description": "The new deployment was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DeploymentResource"
+            }
+          },
+          "202": {
+            "description": "The existing deployment was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DeploymentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
       "delete": {
         "operationId": "Deployment_Delete",
         "tags": [
           "Deployment"
         ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+            "final-state-via" : "location"
+        },
         "description": "Deletes a deployment.",
         "parameters": [
           {
@@ -282,6 +355,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the deployment will complete asynchronously."
+          },
           "204": {
             "description": "The deployment was successfully deleted."
           },
@@ -358,6 +434,65 @@
         "responses": {
           "200": {
             "description": "The application was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ComponentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "Component_CreateOrUpdate",
+        "tags": [
+          "Component"
+        ],
+        "description": "Creates or updates a component.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ComponentNameParameter"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ComponentCreateParameters"
+            },
+            "description": "Parameters supplied to the Create Component operation."
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing component was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ComponentResource"
+            }
+          },
+          "201": {
+            "description": "The new component was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/ComponentResource"
+            }
+          },
+          "202": {
+            "description": "The existing component was successfully updated.",
             "schema": {
               "$ref": "#/definitions/ComponentResource"
             }
@@ -533,6 +668,19 @@
         }
       }
     },
+    "DeploymentCreateParameters": {
+      "description": "Parameters used to create a deployment.",
+      "type": "object",
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/DeploymentProperties"
+        }
+      }
+    },
     "ComponentList": {
       "description": "Component list.",
       "type": "object",
@@ -583,6 +731,24 @@
       "description": "Properties of a component.",
       "type": "object",
       "properties": {
+      }
+    },
+    "ComponentCreateParameters": {
+      "description": "Parameters used to create a component.",
+      "type": "object",
+      "required": [
+        "kind",
+        "properties"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Resource type of the component"
+        },
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ComponentProperties"
+        }
       }
     }
   },
