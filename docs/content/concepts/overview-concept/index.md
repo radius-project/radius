@@ -6,7 +6,7 @@ description: An overview of Project Radius application model and what it provide
 weight: 10
 ---
 
-Project Radius provides an *application mdodel* - a descriptive framework for cloud native applications and their requirements. This section is a conceptual guide for how the Radius model is structured, and explains at high level the concepts at work when you describe and deploy an application with Radius.
+Project Radius provides an *application model* - a descriptive framework for cloud native applications and their requirements. This section is a conceptual guide for how the Radius model is structured, and explains at high level the concepts at work when you describe and deploy an application with Radius.
 
 Radius uses the [Bicep langauge](https://github.com/azure/bicep) as its file-format and structure. Examples will be presented with both diagrams and using Bicep for clarity. Minimal knowledge of Bicep will be needed to understand the examples here.
 
