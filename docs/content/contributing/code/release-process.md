@@ -15,7 +15,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 
 ## Pre-requisites
 
-- Find the storage account on Azure. It is called `radiuspublic`
+- Find the storage account on Azure under 'Radius Dev' subscription. It is called `radiuspublic`
 - Determine the release version. This is in the form `v.<major>.<minor>.<patch>`
 - Determine the release channel This is in the form `<major>.<minor>`
 
