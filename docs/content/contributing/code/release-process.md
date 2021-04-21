@@ -35,6 +35,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 
    ```bash
    az storage blob directory list -c tools -d bicep --account-name radiuspublic --output table
+   az storage blob directory list -c tools -d vscode --account-name radiuspublic --output table
    ```
 
 2. In the azure/radius repo:
