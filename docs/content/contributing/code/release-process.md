@@ -47,13 +47,13 @@ Next, check the timestamps in the `environment` container of the storage account
 
 3. Check the stable version marker
 
-If this is a patch release - you can stop here, you are done.
-
-If this is a new minor release - check the stable version marker.
-
-The file https://radiuspublic.blob.core.windows.net/version/stable.txt should contain (in plain text) the channel you just created.
-
-You can find this file in the storage account under `version/stable.txt`.
+   If this is a patch release - you can stop here, you are done.
+   
+   If this is a new minor release - check the stable version marker.
+   
+   The file https://radiuspublic.blob.core.windows.net/version/stable.txt should contain (in plain text) the channel you just created.
+   
+   You can find this file in the storage account under `version/stable.txt`.
 
 ## How releases work
 
