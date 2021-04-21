@@ -51,7 +51,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
    Next, check the timestamps in the `environment` container of the storage account. There should be new copies of our environment setup assets that correspond to the channel.  Look at the path `environment/<channel>/`. These should reflect the new build.
 
    ```bash
-   az storage blob directory list -c tools -d vscode --account-name radiuspublic --account-key <access_key> --output table
+   az storage blob directory list -c environment -d <channel> --account-name radiuspublic --output table
    ```
 
 3. Check the stable version marker
