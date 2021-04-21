@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Release process"
+title: "How to create and publish a Project Radius release"
 linkTitle: "Release process"
 description: "How we create Radius releases"
 weight: 80
