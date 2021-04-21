@@ -97,10 +97,10 @@ getLatestRelease() {
     local releaseUrl="https://radiuspublic.blob.core.windows.net/version/stable.txt"
     local latest_release=""
 
-    if [ "$DAPR_HTTP_REQUEST_CLI" == "curl" ]; then
-        latest_release=$(curl -s $daprReleaseUrl)
+    if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
+        latest_release=$(curl -s $releaseUrl)
     else
-        latest_release=$(wget -q -O - $daprReleaseUrl)
+        latest_release=$(wget -q -O - $releaseUrl)
     fi
 
     ret_val=$latest_release
