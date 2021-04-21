@@ -23,7 +23,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 
 1. In the Bicep fork:
 
-```
+```bash
 # replace v0.1.0 with the release version
 git tag v0.1.0
 git push --tags
