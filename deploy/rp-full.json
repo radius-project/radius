@@ -89,13 +89,6 @@
                 "description": "The instance size of the hosting plan (small, medium, or large)."
             }
         },
-        "kubernetesVersion": {
-            "type": "string",
-            "defaultValue": "1.18.14",
-            "metadata": {
-                "description": "The version of Kubernetes to use."
-            }
-        },
         "osDiskSizeGB": {
             "type": "int",
             "defaultValue": 0,
@@ -241,7 +234,6 @@
                 "type": "SystemAssigned"
             },
             "properties": {
-                "kubernetesVersion": "[parameters('kubernetesVersion')]",
                 "dnsPrefix": "[parameters('clusterName')]",
                 "agentPoolProfiles": [
                     {
