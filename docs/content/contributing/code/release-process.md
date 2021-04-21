@@ -3,7 +3,7 @@ type: docs
 title: "Release process"
 linkTitle: "Release process"
 description: "How we create Radius releases"
-weight: 50
+weight: 80
 ---
 
 ## Release process
