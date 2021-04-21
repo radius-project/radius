@@ -20,7 +20,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/customproviders/mgmt/customproviders"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
-	containerserviceclient "github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2018-03-31/containerservice"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
@@ -308,12 +307,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
-	kubernetesVersion, err := findKubernetesVersion(ctx, armauth, subscriptionID, resourceGroup)
-	if err != nil {
-		return err
-	}
-
-	params := deploymentParameters{DeploymentTemplate: deploymentTemplate, KubernetesVersion: kubernetesVersion}
+	params := deploymentParameters{DeploymentTemplate: deploymentTemplate}
 	deployment, err := deployEnvironment(ctx, armauth, subscriptionID, resourceGroup, params)
 	if err != nil {
 		return err
@@ -414,38 +408,6 @@ func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName,
 	}
 
 	return nil
-}
-
-func findKubernetesVersion(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (string, error) {
-	rgc := resources.NewGroupsClient(subscriptionID)
-	rgc.Authorizer = authorizer
-
-	group, err := rgc.Get(ctx, resourceGroup)
-	if err != nil {
-		return "", fmt.Errorf("cannot get resource group %v: %w", resourceGroup, err)
-	}
-
-	k8sc := containerserviceclient.NewContainerServicesClient(subscriptionID)
-	k8sc.Authorizer = authorizer
-
-	result, err := k8sc.ListOrchestrators(ctx, *group.Location, "")
-	if err != nil {
-		return "", fmt.Errorf("cannot get AKS version: %w", err)
-	}
-
-	if result.OrchestratorVersionProfileProperties == nil || result.OrchestratorVersionProfileProperties.Orchestrators == nil {
-		return "", errors.New("AKS version response has missing data")
-	}
-
-	for _, v := range *result.OrchestratorVersionProfileProperties.Orchestrators {
-		if v.Default == nil || !*v.Default {
-			continue
-		}
-
-		return *v.OrchestratorVersion, nil
-	}
-
-	return "", errors.New("could not find a default version for Kubernetes")
 }
 
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
