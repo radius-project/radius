@@ -19,7 +19,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 - Determine the release version. This is in the form `v.<major>.<minor>.<patch>`
 - Determine the release channel This is in the form `<major>.<minor>`
 
-Steps for performing a release:
+## Performing a release
 
 1. In the Bicep fork:
 
