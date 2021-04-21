@@ -29,6 +29,8 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           }
           set: {
             MSI_ID: 'msiId'
+            MSI_APPID: 'msiAppId'
+            MSI_OBJECTID: 'msiObjectId'
           }
         }
       ]

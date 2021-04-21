@@ -15,7 +15,9 @@
                     "KV_URI": "uri"
                 },
                 "set": {
-                    "MSI_ID": "msiId"
+                    "MSI_ID": "msiId",
+                    "MSI_APPID": "msiAppId",
+                    "MSI_OBJECTID": "msiObjectId"
                 }
             }
         ]

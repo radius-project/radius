@@ -6,23 +6,27 @@
 package deployment
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/authorization/mgmt/authorization"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
-	"github.com/Azure/radius/pkg/rad/azcli"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
@@ -1336,26 +1340,21 @@ func (kvh *keyVaultHandler) GetProperties(resource workloads.WorkloadResource) (
 }
 
 func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
-	if resource.Type != "azure.keyvault" {
-		return nil, errors.New("wrong resource type")
-	}
-
-	properties, ok := resource.Resource.(map[string]string)
-	if !ok {
-		return nil, errors.New("inner type was not a map[string]string")
+	properties, err := kvh.GetProperties(resource)
+	if err != nil {
+		return nil, err
 	}
 
 	mergeProperties(properties, existing)
 
 	vaultName := namegenerator.GenerateName("kv")
-	properties["keyvaultname"] = vaultName
 
 	rgc := resources.NewGroupsClient(kvh.arm.SubscriptionID)
 	rgc.Authorizer = kvh.arm.Auth
 
 	g, err := rgc.Get(ctx, kvh.arm.ResourceGroup)
 	if err != nil {
-		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
 	}
 
 	kvc := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
@@ -1365,20 +1364,18 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 	}
 
 	identityName := vaultName + "-msi"
-	msi, err := createManagedIdentity(identityName, *g.Name, *g.Location, kvh.arm.SubscriptionID)
+	msi, err := kvh.createManagedIdentity(ctx, identityName, *g.Location)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
 	tenantID, _ := uuid1.FromString(msi.TenantID)
-	// appID, _ := uuid1.FromString(msi.AppID)
 
 	// Grant access to the managed identity created to access the Keyvault
 	// TODO: Using Access policies for now. Can improve by enabling RBAC on the keyvault to assign granular permissions
 	accessPolicy := keyvault.AccessPolicyEntry{
 		TenantID: &tenantID,
 		ObjectID: &msi.ObjectID,
-		// ApplicationID: &appID,
 		Permissions: &keyvault.Permissions{
 			Keys: &[]keyvault.KeyPermissions{
 				keyvault.KeyPermissionsGet,
@@ -1431,6 +1428,8 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 	// store vault so we can use later
 	properties["keyvaultname"] = *kv.Name
 	properties["keyvaultmsiresourceid"] = msi.ResourceID
+	properties["keyvaultmsiappid"] = msi.AppID
+	properties["keyvaultmsiobjectid"] = msi.ObjectID
 
 	return properties, nil
 }
@@ -1448,7 +1447,7 @@ func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]st
 	}
 
 	// Delete user assigned managed identity created
-	err = deleteManagedIdentity(properties["keyvaultmsiresourceid"])
+	err = kvh.deleteManagedIdentity(ctx, properties["keyvaultmsiresourceid"])
 	if err != nil {
 		return fmt.Errorf("failed to DELETE user assigned managed identity: %w", err)
 	}
@@ -1472,7 +1471,6 @@ func (pih *podIdentityHandler) GetProperties(resource workloads.WorkloadResource
 }
 
 func (pih *podIdentityHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
-	fmt.Println("@@@@ Put for pod identity called...")
 	properties, ok := resource.Resource.(map[string]string)
 	if !ok {
 		return nil, errors.New("inner type was not a map[string]string")
@@ -1485,16 +1483,56 @@ func (pih *podIdentityHandler) Put(ctx context.Context, resource workloads.Workl
 
 func (pih *podIdentityHandler) Delete(ctx context.Context, properties map[string]string) error {
 	// Delete AAD Pod Identity created
-	fmt.Println("@@@@ Trying to delete pod identity...")
 	podIdentityName := properties["podidentityname"]
-	podIdentityNamespace := properties["podidentitynamespace"]
+	// podIdentityNamespace := properties["podidentitynamespace"]
 	podidentityCluster := properties["podidentitycluster"]
 
-	fmt.Println("Found properties: ", podIdentityName, podIdentityNamespace, podidentityCluster)
+	mcc := containerservice.NewManagedClustersClient(pih.arm.SubscriptionID)
+	mcc.Authorizer = pih.arm.Auth
 
-	err := azcli.RunCLICommand("aks", "pod-identity", "delete", "--cluster-name", podidentityCluster, "--resource-group", pih.arm.ResourceGroup, "--namespace", podIdentityNamespace, "--name", podIdentityName)
+	// Get the cluster and modify it to remove pod identity
+	managedCluster, err := mcc.Get(ctx, pih.arm.ResourceGroup, podidentityCluster)
 	if err != nil {
-		return fmt.Errorf("failed to DELETE aad pod identity: %w", err)
+		return fmt.Errorf("failed to get managed cluster: %w", err)
+	}
+
+	var identities []containerservice.ManagedClusterPodIdentity
+	if managedCluster.ManagedClusterProperties.PodIdentityProfile.UserAssignedIdentities == nil {
+		// Pod identity does not exist
+		return nil
+	}
+
+	identities = *managedCluster.PodIdentityProfile.UserAssignedIdentities
+
+	var i int
+	var identity containerservice.ManagedClusterPodIdentity
+	for i, identity = range *managedCluster.ManagedClusterProperties.PodIdentityProfile.UserAssignedIdentities {
+		if *identity.Name == podIdentityName {
+			break
+		}
+	}
+
+	// Remove the pod identity at the matching index
+	identities = append(identities[:i], identities[i+1:]...)
+
+	mcFuture, err := mcc.CreateOrUpdate(ctx, pih.arm.ResourceGroup, podidentityCluster, containerservice.ManagedCluster{
+		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
+			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
+				Enabled:                   to.BoolPtr(true),
+				AllowNetworkPluginKubenet: to.BoolPtr(false),
+				UserAssignedIdentities:    &identities,
+			},
+		},
+		Location: managedCluster.Location,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to delete pod identity on the cluster: %w", err)
+	}
+
+	err = mcFuture.WaitForCompletionRef(ctx, mcc.Client)
+	if err != nil {
+		return fmt.Errorf("failed to delete pod identity on the cluster: %w", err)
 	}
 
 	return nil
@@ -1508,41 +1546,108 @@ type AzureManagedIdentity struct {
 	ResourceID string
 }
 
-func createManagedIdentity(identityName, groupName, location, subscription string) (AzureManagedIdentity, error) {
+func (kvh *keyVaultHandler) createRoleAssignment(ctx context.Context, msiObjectID string) error {
+	// Assign the Managed Identity Operator role to the AKS Service Principal
+	rdc := authorization.NewRoleDefinitionsClient(kvh.arm.SubscriptionID)
+	rdc.Authorizer = kvh.arm.Auth
+
+	groupsClient := resources.NewGroupsClient(kvh.arm.SubscriptionID)
+	groupsClient.Authorizer = kvh.arm.Auth
+
+	g, err := groupsClient.Get(ctx, kvh.arm.ResourceGroup)
+	if err != nil {
+		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+	}
+
+	mcc := containerservice.NewManagedClustersClient(kvh.arm.SubscriptionID)
+	mcc.Authorizer = kvh.arm.Auth
+	var cluster *containerservice.ManagedCluster
+	for list, err := mcc.ListByResourceGroupComplete(ctx, kvh.arm.ResourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
+		if err != nil {
+			return fmt.Errorf("cannot read AKS clusters: %w", err)
+		}
+
+		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
+		tag, ok := list.Value().Tags["rad-environment"]
+		if ok && strings.EqualFold(*tag, "true") {
+			temp := list.Value()
+			cluster = &temp
+			break
+		}
+	}
+
+	if cluster == nil {
+		return fmt.Errorf("could not find an AKS instance in resource group '%v'", kvh.arm.ResourceGroup)
+	}
+
+	list, err := rdc.List(ctx, *g.ID, "roleName eq 'Managed Identity Operator'")
+	if err != nil {
+		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+	}
+
+	rac := authorization.NewRoleAssignmentsClient(kvh.arm.SubscriptionID)
+	rac.Authorizer = kvh.arm.Auth
+	raName, _ := uuid1.NewV1()
+	_, err = rac.Create(
+		ctx,
+		*g.ID,
+		raName.String(),
+		authorization.RoleAssignmentCreateParameters{
+			Properties: &authorization.RoleAssignmentProperties{
+				PrincipalID:      to.StringPtr(*cluster.Identity.PrincipalID),
+				RoleDefinitionID: to.StringPtr(*list.Values()[0].ID),
+			},
+		})
+
+	detailed := autorest.NewErrorWithError(err, "", "", nil, "")
+	// StatusCode = 409 indicates that the role assignment already exists. Ignore that error
+	if detailed.StatusCode != 409 {
+		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+	}
+
+	return nil
+}
+
+func (kvh *keyVaultHandler) createManagedIdentity(ctx context.Context, identityName, location string) (AzureManagedIdentity, error) {
 	// Create a user assigned managed identity
-	// TODO - Use SDK/templates. For now, using az cli
-	out, err := azcli.RunCLICommandWithOutput("identity", "create", "--name", identityName, "--resource-group", groupName, "--location", location, "--subscription", subscription)
+	msiClient := msi.NewUserAssignedIdentitiesClient(kvh.arm.SubscriptionID)
+	msiClient.Authorizer = kvh.arm.Auth
+	id, err := msiClient.CreateOrUpdate(context.Background(), kvh.arm.ResourceGroup, identityName, msi.Identity{
+		Location: to.StringPtr(location),
+	})
 	if err != nil {
 		return AzureManagedIdentity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
-	var tenantID, objectID, appID, resourceID string
-	scanner := bufio.NewScanner(strings.NewReader(string(out)))
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.ReplaceAll(line, "\"", "")
-		line = strings.ReplaceAll(line, ",", "")
-		line = strings.ReplaceAll(line, " ", "")
-		if strings.Contains(line, "clientSecretUrl") {
-			ids := strings.Split(strings.Split(line, "credentials?")[1], "&")
-			tenantID = strings.Split(ids[0], "=")[1]
-			objectID = strings.Split(ids[1], "=")[1]
-			appID = strings.Split(ids[2], "=")[1]
-		}
+	// Sometimes, the user assigned identity created takes a while to propagate
+	time.Sleep(60 * time.Second)
 
-		if strings.Contains(line, "id:") {
-			resourceID = strings.Split(line, ":")[1]
-		}
+	err = kvh.createRoleAssignment(ctx, id.PrincipalID.String())
+	if err != nil {
+		return AzureManagedIdentity{}, err
 	}
 
-	return AzureManagedIdentity{
-		TenantID:   tenantID,
-		ObjectID:   objectID,
-		AppID:      appID,
-		ResourceID: resourceID,
-	}, nil
+	azid := AzureManagedIdentity{
+		TenantID:   id.TenantID.String(),
+		ObjectID:   id.PrincipalID.String(),
+		AppID:      id.ClientID.String(),
+		ResourceID: *id.ID,
+	}
+
+	return azid, nil
 }
 
-func deleteManagedIdentity(msiResourceID string) error {
-	return azcli.RunCLICommand("identity", "delete", "--ids", msiResourceID)
+func (kvh *keyVaultHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
+	msiClient := msi.NewUserAssignedIdentitiesClient(kvh.arm.SubscriptionID)
+	msiClient.Authorizer = kvh.arm.Auth
+	msiResource, err := azure.ParseResourceID(msiResourceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
+	}
+	resp, err := msiClient.Delete(ctx, kvh.arm.ResourceGroup, msiResource.ResourceName)
+	if err != nil || (resp.StatusCode != 200 && resp.StatusCode != 204) {
+		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
+	}
+
+	return nil
 }

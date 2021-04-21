@@ -19,8 +19,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/rad/azcli"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -116,11 +116,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				"podidentitycluster":   podIdentity.ClusterName,
 			},
 		})
-
-		fmt.Println("Added aadpodidentity resource")
 	}
 
-	fmt.Printf("Container depends on: %v", w.Workload.DependsOn)
 	return resources, nil
 }
 
@@ -294,9 +291,6 @@ func (r Renderer) createPodIdentity(ctx context.Context, w workloads.Instantiate
 	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
 	dc.Authorizer = r.Arm.Auth
 
-	// TODO Use deployment templates/SDK
-	// For now using az cli
-
 	// Get AKS cluster name in current resource group
 	mcc := containerservice.NewManagedClustersClient(r.Arm.SubscriptionID)
 	mcc.Authorizer = r.Arm.Auth
@@ -321,15 +315,55 @@ func (r Renderer) createPodIdentity(ctx context.Context, w workloads.Instantiate
 	}
 
 	msiResourceID := setVars["MSI_ID"]
+	msiAppID := setVars["MSI_APPID"]
+	msiObjectID := setVars["MSI_OBJECTID"]
 	// Note: Pod Identity name cannot have camel case
 	podIdentityName := "podid-" + cc.Name
-	// Note: The pod identity namespace specified here has to match the namespace in which the application is deployed
-	out, err := azcli.RunCLICommandWithOutput("aks", "pod-identity", "add", "--resource-group", r.Arm.ResourceGroup, "--cluster-name", *cluster.Name, "--namespace", w.Application, "--name", podIdentityName, "--identity-resource-id", msiResourceID)
+
+	// Get the cluster and modify it to add pod identity
+	managedCluster, err := mcc.Get(ctx, r.Arm.ResourceGroup, *cluster.Name)
 	if err != nil {
-		return AADPodIdentity{}, fmt.Errorf("unable to create pod identity")
+		return AADPodIdentity{}, fmt.Errorf("failed to get managed cluster: %w", err)
 	}
-	fmt.Println("@@@@@@ created pod identity...")
-	fmt.Println(string(out))
+	managedCluster.PodIdentityProfile.Enabled = to.BoolPtr(true)
+	managedCluster.PodIdentityProfile.AllowNetworkPluginKubenet = to.BoolPtr(false)
+	podID := containerservice.ManagedClusterPodIdentity{
+		Name: &podIdentityName,
+		// Note: The pod identity namespace specified here has to match the namespace in which the application is deployed
+		Namespace: &w.Application,
+		Identity: &containerservice.UserAssignedIdentity{
+			ResourceID: &msiResourceID,
+			ClientID:   &msiAppID,
+			ObjectID:   &msiObjectID,
+		},
+	}
+
+	var identities []containerservice.ManagedClusterPodIdentity
+	if managedCluster.ManagedClusterProperties.PodIdentityProfile.UserAssignedIdentities != nil {
+		identities = *managedCluster.PodIdentityProfile.UserAssignedIdentities
+	}
+	identities = append(identities, podID)
+
+	mcFuture, err := mcc.CreateOrUpdate(ctx, r.Arm.ResourceGroup, *cluster.Name, containerservice.ManagedCluster{
+		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
+			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
+				Enabled:                   to.BoolPtr(true),
+				AllowNetworkPluginKubenet: to.BoolPtr(false),
+				UserAssignedIdentities:    &identities,
+			},
+		},
+		Location: managedCluster.Location,
+	})
+
+	if err != nil {
+		return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster: %w", err)
+	}
+
+	err = mcFuture.WaitForCompletionRef(ctx, mcc.Client)
+	if err != nil {
+		return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster: %w", err)
+	}
+
 	podIdentity := AADPodIdentity{
 		Name:        podIdentityName,
 		Namespace:   w.Application,

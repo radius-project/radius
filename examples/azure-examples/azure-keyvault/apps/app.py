@@ -10,7 +10,7 @@ from azure.keyvault.secrets import SecretClient
 from azure.identity import ManagedIdentityCredential
 from azure.core.exceptions import HttpResponseError
 
-
+# Test Application that tries to access Keyvault
 print("Getting vault url")
 VAULT_URL = os.environ["KV_URI"]
 print("Vault url: {0}".format(VAULT_URL))

@@ -5,7 +5,7 @@
 
 package keyvaultv1alpha1
 
-// KeyVaultComponent is the definition of the keyvault queue component
+// KeyVaultComponent is the definition of the keyvault component
 type KeyVaultComponent struct {
 	Name      string                   `json:"name"`
 	Kind      string                   `json:"kind"`

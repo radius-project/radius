@@ -3,7 +3,7 @@ module github.com/Azure/radius
 go 1.16
 
 require (
-	github.com/Azure/azure-sdk-for-go v52.3.1+incompatible
+	github.com/Azure/azure-sdk-for-go v53.3.0+incompatible
 	github.com/Azure/azure-sdk-for-go/sdk/armcore v0.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.14.2
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.8.0
