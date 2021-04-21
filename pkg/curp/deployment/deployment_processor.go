@@ -7,6 +7,7 @@ package deployment
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -1371,24 +1372,36 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 
 	tenantID, _ := uuid1.FromString(msi.TenantID)
 
+	// read key permissions config
+	var keyPermissions []keyvault.KeyPermissions
+	err = json.Unmarshal([]byte(properties["keypermissions"]), &keyPermissions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse key permissions in keyvault config: %w", err)
+	}
+
+	// read secret permissions config
+	var secretPermissions []keyvault.SecretPermissions
+	err = json.Unmarshal([]byte(properties["secretpermissions"]), &secretPermissions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse secret permissions in keyvault config: %w", err)
+	}
+
+	// read certificate permissions config
+	var certificatePermissions []keyvault.CertificatePermissions
+	err = json.Unmarshal([]byte(properties["certificatepermissions"]), &certificatePermissions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate permissions in keyvault config: %w", err)
+	}
+
 	// Grant access to the managed identity created to access the Keyvault
 	// TODO: Using Access policies for now. Can improve by enabling RBAC on the keyvault to assign granular permissions
 	accessPolicy := keyvault.AccessPolicyEntry{
 		TenantID: &tenantID,
 		ObjectID: &msi.ObjectID,
 		Permissions: &keyvault.Permissions{
-			Keys: &[]keyvault.KeyPermissions{
-				keyvault.KeyPermissionsGet,
-				keyvault.KeyPermissionsList,
-				keyvault.KeyPermissionsCreate,
-				keyvault.KeyPermissionsDelete,
-			},
-			Secrets: &[]keyvault.SecretPermissions{
-				keyvault.SecretPermissionsGet,
-				keyvault.SecretPermissionsSet,
-				keyvault.SecretPermissionsList,
-				keyvault.SecretPermissionsDelete,
-			},
+			Keys:         &keyPermissions,
+			Secrets:      &secretPermissions,
+			Certificates: &certificatePermissions,
 		},
 	}
 

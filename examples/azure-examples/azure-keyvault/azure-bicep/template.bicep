@@ -7,6 +7,24 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
         config: {
             managed: true
+            keypermissions: [
+              'list'
+              'get'
+              'create'
+              'delete'
+            ]
+            secretpermissions: [
+              'list'
+              'get'
+              'create'
+              'delete'
+            ]
+            certificatepermissions: [
+              'list'
+              'get'
+              'create'
+              'delete'
+            ]
         }
     }
   }

@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
+	"k8s.io/apimachinery/pkg/util/json"
 )
 
 // Renderer is the WorkloadRenderer implementation for the keyvault workload.
@@ -67,10 +68,18 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// generate data we can use to manage a keyvault instance
 
+	// serialize key, secret and cert permissions
+	keyPermissions, _ := json.Marshal(component.Config.KeyPermissions)
+	secretPermissions, _ := json.Marshal(component.Config.SecretPermissions)
+	certificatePermissions, _ := json.Marshal(component.Config.CertificatePermissions)
+
 	resource := workloads.WorkloadResource{
 		Type: "azure.keyvault",
 		Resource: map[string]string{
-			"name": w.Workload.Name,
+			"name":                   w.Workload.Name,
+			"keypermissions":         string(keyPermissions),
+			"secretpermissions":      string(secretPermissions),
+			"certificatepermissions": string(certificatePermissions),
 		},
 	}
 

@@ -3,7 +3,25 @@
     "properties": {
         "config": {
             "managed": true,
-            "yes": "maybe?"
+            "yes": "maybe?",
+            "keypermissions": [
+                "list",
+                "get",
+                "create",
+                "delete"
+              ],
+              "secretpermissions": [
+                "list",
+                "get",
+                "set",
+                "delete"
+              ],
+              "certificatepermissions": [
+                "list",
+                "get",
+                "create",
+                "delete"
+              ]
         }
     }
 }
