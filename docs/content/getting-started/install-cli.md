@@ -71,7 +71,7 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - |
 ### Install the latest unstable version
 
 ```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s edge
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s edge
 ```
 
 ### Install a specific version
@@ -83,6 +83,16 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - |
 {{% /codetab %}}
 
 {{% codetab %}}
+
+### Install the latest stable version
+
+1. Download the `rad` CLI from one of these URLs:
+
+   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/0.1/macos-x64/rad
+   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/0.1/linux-x64/rad
+   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/0.1/windows-x64/rad.exe
+
+1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
 ### Install the latest unstable version
 
