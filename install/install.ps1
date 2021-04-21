@@ -51,6 +51,7 @@ if (!(Test-Path $RadiusRoot -PathType Container)) {
 if($Version -eq "")
 {
     $Version = Invoke-WebRequest $StableVersionUrl
+    $Version = $Version.Trim()
 }
 $urlParts = @(
     $BaseDownloadUrl,
@@ -63,11 +64,10 @@ $binaryUrl =  $urlParts -join "/"
 $binaryFilePath = $RadiusRoot + "\" + $RadiusCliFileName
 Write-Output "Downloading $binaryUrl ..."
 
-$githubHeader.Accept = "application/octet-stream"
 $uri = [uri]$binaryUrl
 try
 {
-    Invoke-WebRequest -Headers $githubHeader -Uri $binaryUrl -OutFile $binaryFilePath
+    Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath
     if (!(Test-Path $binaryFilePath -PathType Leaf)) {
         throw "Failed to download Radius Cli binary - $binaryFilePath"
     }
