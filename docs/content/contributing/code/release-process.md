@@ -35,7 +35,7 @@ Next, check the timestamps in the `tools` container of the storage account. Ther
 
 2. In the azure/radius repo:
 
-```
+```bash
 # replace v0.1.0 with the release version
 git tag v0.1.0
 git push --tags
