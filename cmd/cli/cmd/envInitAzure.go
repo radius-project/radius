@@ -428,7 +428,7 @@ func findKubernetesVersion(ctx context.Context, authorizer autorest.Authorizer, 
 	k8sc := containerserviceclient.NewContainerServicesClient(subscriptionID)
 	k8sc.Authorizer = authorizer
 
-	result, err := k8sc.ListOrchestrators(ctx, *group.Location, "")
+	result, err := k8sc.ListOrchestrators(ctx, *group.Location, "managedClusters")
 	if err != nil {
 		return "", fmt.Errorf("cannot get AKS version: %w", err)
 	}
