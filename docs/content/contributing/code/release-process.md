@@ -66,7 +66,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 
 4. Update docs for latest stable binaries
    
-   Our getting started instructions refer to a hardcoded version number for the manual download section. If this is a new minor release, update this version and check it it.
+   Our getting started instructions refer to a hardcoded version number for the manual download section. If this is a new minor release, update this version and check it in.
 
 ## How releases work
 
