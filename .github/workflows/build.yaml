@@ -242,7 +242,7 @@ jobs:
 
   codespacesbuild:
     name: Build & publish Codespaces docker image
-    # needs: [ 'build' ] ### may change to depend on build & deploy tests in the future
+    needs: [ 'publish' ] 
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
