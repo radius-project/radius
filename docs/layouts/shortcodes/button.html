@@ -1,0 +1,8 @@
+{{ $color := .Get "color" | default "primary" }}
+{{ $page := .Get "page" }}
+{{ $link := .Get "link" | default "#" }}
+{{ $text := .Get "text" }}
+
+{{- if $page -}}{{- $link = ref . $page -}}{{- end -}}
+
+<a class="btn btn-{{ $color }}" href="{{ $link }}" role="button">{{ $text }}</a>

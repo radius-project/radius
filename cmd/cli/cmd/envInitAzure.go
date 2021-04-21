@@ -67,14 +67,14 @@ var envInitAzureCmd = &cobra.Command{
 func init() {
 	envInitCmd.AddCommand(envInitAzureCmd)
 
-	envInitAzureCmd.Flags().String("name", "azure", "The environment name")
-	envInitAzureCmd.Flags().String("subscription-id", "", "The subscription ID to use for the environment")
-	envInitAzureCmd.Flags().String("resource-group", "", "The resource group to use for the environment")
-	envInitAzureCmd.Flags().String("location", "", "The Azure location to use for the environment")
+	envInitAzureCmd.Flags().StringP("name", "n", "azure", "The environment name")
+	envInitAzureCmd.Flags().StringP("subscription-id", "s", "", "The subscription ID to use for the environment")
+	envInitAzureCmd.Flags().StringP("resource-group", "g", "", "The resource group to use for the environment")
+	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
 	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
 
 	// development support
-	envInitAzureCmd.Flags().String("deployment-template", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
+	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
 }
 
 type arguments struct {

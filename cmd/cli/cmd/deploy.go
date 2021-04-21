@@ -6,14 +6,11 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path"
 	"time"
 
@@ -31,7 +28,6 @@ var deployCmd = &cobra.Command{
 	Use:   "deploy [app.bicep]",
 	Short: "Deploy a RAD application",
 	Long:  "Deploy a RAD application",
-	Args:  cobra.ExactArgs(1),
 	RunE:  deploy,
 }
 
@@ -55,21 +51,34 @@ func deploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	step := logger.BeginStep("building application...")
-	template, err := bicepBuild(filePath)
+	ok, err := bicep.IsBicepInstalled()
+	if err != nil {
+		return fmt.Errorf("failed to find rad-bicep: %w", err)
+	}
+
+	if !ok {
+		logger.LogInfo("Downloading Bicep...")
+		err = bicep.DownloadBicep()
+		if err != nil {
+			return fmt.Errorf("failed to download rad-bicep: %w", err)
+		}
+	}
+
+	step := logger.BeginStep("Building Application...")
+	template, err := bicep.Build(filePath)
 	if err != nil {
 		return err
 	}
 	logger.CompleteStep(step)
 
-	step = logger.BeginStep("deploying application...")
+	step = logger.BeginStep("Deploying Application...")
 	err = deployApplication(cmd.Context(), template, env)
 	if err != nil {
 		return err
 	}
 	logger.CompleteStep(step)
 
-	logger.LogInfo("deployment complete")
+	logger.LogInfo("Deployment Complete")
 	return nil
 }
 
@@ -84,63 +93,6 @@ func validateBicepFile(filePath string) error {
 	}
 
 	return nil
-}
-
-func bicepBuild(filePath string) (string, error) {
-	ok, err := bicep.IsBicepInstalled()
-	if err != nil {
-		return "", fmt.Errorf("failed to find rad-bicep: %w", err)
-	}
-
-	if !ok {
-		logger.LogInfo("downloading bicep...")
-		err = bicep.DownloadBicep()
-		if err != nil {
-			return "", fmt.Errorf("failed to download rad-bicep: %w", err)
-		}
-	}
-
-	filepath, err := bicep.GetLocalBicepFilepath()
-	if err != nil {
-		return "", fmt.Errorf("failed to find rad-bicep: %w", err)
-	}
-
-	// runs 'rad-bicep build' on the file
-	//
-	// rad-bicep is being told to output the template to stdout and we will capture it
-	// rad-bicep will output compilation errors to stderr which will go to the user's console
-	c := exec.Command(filepath, "build", "--stdout", filePath)
-	c.Stderr = os.Stderr
-	stdout, err := c.StdoutPipe()
-	if err != nil {
-		return "", fmt.Errorf("failed to create pipe: %w", err)
-	}
-
-	err = c.Start()
-	if err != nil {
-		return "", fmt.Errorf("rad-bicep build failed: %w", err)
-	}
-
-	// asyncronously copy to our buffer, we don't really need to observe
-	// errors here since it's copying into memory
-	buf := bytes.Buffer{}
-	go func() {
-		_, _ = io.Copy(&buf, stdout)
-	}()
-
-	// wait will wait for us to finish draining stderr before returning the exit code
-	err = c.Wait()
-	if err != nil {
-		return "", fmt.Errorf("rad-bicep build failed: %w", err)
-	}
-
-	// read the content
-	bytes, err := io.ReadAll(&buf)
-	if err != nil {
-		return "", fmt.Errorf("failed to read rad-bicep output: %w", err)
-	}
-
-	return string(bytes), err
 }
 
 func deployApplication(ctx context.Context, content string, env *environments.AzureCloudEnvironment) error {

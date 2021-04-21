@@ -15,7 +15,6 @@ on:
     branches:
       - main
       - release/*
-
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -49,7 +48,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GOVER }}
-      - name: Parse release version and set REL_VERSION
+      - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make
         run: make
@@ -158,7 +157,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVER }}
-    - name: Parse release version and set REL_VERSION
+    - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
       uses: actions/download-artifact@v2
@@ -179,29 +178,68 @@ jobs:
           --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
           --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
           --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
-    - name: Run deploy tests
+      # We select a test environment here and load it into the default 
+      # radius config so that it will be used by tests
+    - name: Reserve test environment
+      id: reserve
       run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        export RP_IMAGE=radiusteam/radius-rp:${{ env.REL_VERSION }}
-        export RP_DEPLOY=true
         export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
         export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
         export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
-        export INTEGRATION_TEST_SUBSCRIPTION_ID="66d1209e-1382-45d3-99bb-650e6bf63fc0"
+        mkdir ~/.rad
+        go run cmd/testenv/main.go \
+          reserve \
+          --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
+          --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
+          --tablename environments \
+          --configpath ~/.rad/config.yaml \
+          --timeout 60
+        cat ~/.rad/config.yaml
+    - name: Merge Kubernetes credentials
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+        export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+        export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+        rad env merge-credentials
+    - name: Update test environment RP
+      run: |
+        export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+        export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+        export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+        go run cmd/testenv/main.go \
+          update-rp \
+          --configpath ~/.rad/config.yaml \
+          --image radiusteam/radius-rp:${{ env.REL_CHANNEL }}
+    - name: Run deploy tests
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+        export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+        export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
         cd $GITHUB_WORKSPACE
         echo "PATH is $PATH"
         which rad || { echo "cannot find rad"; exit 1; }
         make deploy-tests
+    - name: Release test environment
+      if: ${{ success() || steps.reserve.outcome == 'success' }}
+      run: |
+        go run cmd/testenv/main.go \
+          release \
+          --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
+          --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
+          --tablename environments \
+          --configpath ~/.rad/config.yaml
 
   publish:
     name: Publish rad CLI binaries
-    needs: [ 'build', 'deploy_tests' ]
+    needs: [ 'build' ] # may want to add needs 'deploy_tests' as well in the future
     runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Parse release version and set REL_VERSION
+      - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download release artifacts
         uses: actions/download-artifact@v2
@@ -224,14 +262,14 @@ jobs:
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad/${{ env.REL_VERSION }}/macos-x64/ --pattern rad'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad'
       - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: rad_cli_linux_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad/${{ env.REL_VERSION }}/linux-x64/ --pattern rad'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad'
       - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: rad_cli_windows_amd64
@@ -246,12 +284,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
-        
+        uses: actions/checkout@v2        
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
-    
       - name: Cache Docker layers
         uses: actions/cache@v2
         with:
@@ -259,14 +295,12 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
-    
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
           registry: radiusteam
           username: ${{ secrets.RADIUSTEAM_DOCKERHUB_USERNAME }}
           password: ${{ secrets.RADIUSTEAM_DOCKERHUB_PASSWORD }}
-
       - name: Build and push
         id: docker_build
         if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to main or tag 
@@ -278,6 +312,5 @@ jobs:
           tags:  radiusteam/radcodespace:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}

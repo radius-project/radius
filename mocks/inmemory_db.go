@@ -19,95 +19,114 @@ import (
 func NewInMemoryCurpDB(ctrl *gomock.Controller) *MockCurpDB {
 	base := NewMockCurpDB(ctrl)
 
-	store := &store{map[key]*map[string]*db.Application{}, sync.Mutex{}}
+	store := &store{
+		applications: map[applicationKey]*map[string]*db.Application{},
+		operations:   map[string]*db.Operation{},
+		mutex:        sync.Mutex{},
+	}
 
 	base.EXPECT().
 		ListApplicationsByResourceGroup(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.listApplicationsByResourceGroup)
+		AnyTimes().DoAndReturn(store.ListApplicationsByResourceGroup)
 
 	base.EXPECT().
 		GetApplicationByID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.getApplicationByID)
+		AnyTimes().DoAndReturn(store.GetApplicationByID)
 
 	base.EXPECT().
 		PatchApplication(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.patchApplication)
+		AnyTimes().DoAndReturn(store.PatchApplication)
 
 	base.EXPECT().
 		DeleteApplicationByID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.deleteApplicationByID)
+		AnyTimes().DoAndReturn(store.DeleteApplicationByID)
 
 	base.EXPECT().
 		ListComponentsByApplicationID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.listComponentsByApplicationID)
+		AnyTimes().DoAndReturn(store.ListComponentsByApplicationID)
 
 	base.EXPECT().
 		GetComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.getComponentByApplicationID)
+		AnyTimes().DoAndReturn(store.GetComponentByApplicationID)
 
 	base.EXPECT().
 		PatchComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.patchComponentByApplicationID)
+		AnyTimes().DoAndReturn(store.PatchComponentByApplicationID)
 
 	base.EXPECT().
 		DeleteComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.deleteComponentByApplicationID)
+		AnyTimes().DoAndReturn(store.DeleteComponentByApplicationID)
 
 	base.EXPECT().
 		ListDeploymentsByApplicationID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.listDeploymentsByApplicationID)
+		AnyTimes().DoAndReturn(store.ListDeploymentsByApplicationID)
 
 	base.EXPECT().
 		GetDeploymentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.getDeploymentByApplicationID)
+		AnyTimes().DoAndReturn(store.GetDeploymentByApplicationID)
 
 	base.EXPECT().
 		PatchDeploymentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.patchDeploymentByApplicationID)
+		AnyTimes().DoAndReturn(store.PatchDeploymentByApplicationID)
 
 	base.EXPECT().
 		DeleteDeploymentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.deleteDeploymentByApplicationID)
+		AnyTimes().DoAndReturn(store.DeleteDeploymentByApplicationID)
 
 	base.EXPECT().
 		ListScopesByApplicationID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.listScopesByApplicationID)
+		AnyTimes().DoAndReturn(store.ListScopesByApplicationID)
 
 	base.EXPECT().
 		GetScopeByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.getScopeByApplicationID)
+		AnyTimes().DoAndReturn(store.GetScopeByApplicationID)
 
 	base.EXPECT().
 		PatchScopeByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.patchScopeByApplicationID)
+		AnyTimes().DoAndReturn(store.PatchScopeByApplicationID)
 
 	base.EXPECT().
 		DeleteScopeByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.deleteScopeByApplicationID)
+		AnyTimes().DoAndReturn(store.DeleteScopeByApplicationID)
+
+	base.EXPECT().
+		GetOperationByID(gomock.Any(), gomock.Any()).
+		AnyTimes().DoAndReturn(store.GetOperationByID)
+
+	base.EXPECT().
+		PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes().DoAndReturn(store.PatchOperationByID)
+
+	base.EXPECT().
+		DeleteOperationByID(gomock.Any(), gomock.Any()).
+		AnyTimes().DoAndReturn(store.DeleteOperationByID)
 
 	return base
 }
 
-type key struct {
+type applicationKey struct {
 	subscriptionID string
 	resourceGroup  string
 }
 
 type store struct {
-	store map[key]*map[string]*db.Application
-	mutex sync.Mutex
+	applications map[applicationKey]*map[string]*db.Application
+	operations   map[string]*db.Operation
+	mutex        sync.Mutex
 }
 
-func keyFromID(id resources.ResourceID) key {
-	return key{
+func applicationKeyFromID(id resources.ResourceID) applicationKey {
+	return applicationKey{
 		subscriptionID: id.SubscriptionID,
 		resourceGroup:  id.ResourceGroup,
 	}
 }
 
+var _ db.CurpDB = &store{}
+
 func (s *store) findApplication(id resources.ApplicationID) *db.Application {
-	k := keyFromID(id.ResourceID)
-	list := s.store[k]
+	k := applicationKeyFromID(id.ResourceID)
+	list := s.applications[k]
 	if list == nil {
 		return nil
 	}
@@ -120,12 +139,12 @@ func (s *store) findApplication(id resources.ApplicationID) *db.Application {
 	return app
 }
 
-func (s *store) listApplicationsByResourceGroup(ctx context.Context, id resources.ResourceID) ([]db.Application, error) {
+func (s *store) ListApplicationsByResourceGroup(ctx context.Context, id resources.ResourceID) ([]db.Application, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	k := keyFromID(id)
-	list := s.store[k]
+	k := applicationKeyFromID(id)
+	list := s.applications[k]
 	if list == nil {
 		return []db.Application{}, nil
 	}
@@ -138,7 +157,7 @@ func (s *store) listApplicationsByResourceGroup(ctx context.Context, id resource
 	return apps, nil
 }
 
-func (s *store) getApplicationByID(ctx context.Context, id resources.ApplicationID) (*db.Application, error) {
+func (s *store) GetApplicationByID(ctx context.Context, id resources.ApplicationID) (*db.Application, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -150,15 +169,15 @@ func (s *store) getApplicationByID(ctx context.Context, id resources.Application
 	return app, nil
 }
 
-func (s *store) patchApplication(ctx context.Context, patch *db.ApplicationPatch) error {
+func (s *store) PatchApplication(ctx context.Context, patch *db.ApplicationPatch) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	k := key{patch.SubscriptionID, patch.ResourceGroup}
-	list := s.store[k]
+	k := applicationKey{patch.SubscriptionID, patch.ResourceGroup}
+	list := s.applications[k]
 	if list == nil {
 		list = &map[string]*db.Application{}
-		s.store[k] = list
+		s.applications[k] = list
 	}
 
 	old := (*list)[patch.FriendlyName()]
@@ -178,15 +197,15 @@ func (s *store) patchApplication(ctx context.Context, patch *db.ApplicationPatch
 	new.Properties = patch.Properties
 
 	(*list)[patch.FriendlyName()] = new
-	return nil
+	return old == nil, nil
 }
 
-func (s *store) deleteApplicationByID(ctx context.Context, id resources.ApplicationID) error {
+func (s *store) DeleteApplicationByID(ctx context.Context, id resources.ApplicationID) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	k := keyFromID(id.ResourceID)
-	list := s.store[k]
+	k := applicationKeyFromID(id.ResourceID)
+	list := s.applications[k]
 	if list == nil {
 		return nil
 	}
@@ -195,7 +214,7 @@ func (s *store) deleteApplicationByID(ctx context.Context, id resources.Applicat
 	return nil
 }
 
-func (s *store) listComponentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]db.Component, error) {
+func (s *store) ListComponentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]db.Component, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -219,7 +238,7 @@ func (s *store) listComponentsByApplicationID(ctx context.Context, id resources.
 	return items, nil
 }
 
-func (s *store) getComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, rev revision.Revision) (*db.Component, error) {
+func (s *store) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, rev revision.Revision) (*db.Component, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -262,14 +281,16 @@ func (s *store) getComponentByApplicationID(ctx context.Context, id resources.Ap
 	return &item, nil
 }
 
-func (s *store) patchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *db.Component, previous revision.Revision) error {
+func (s *store) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *db.Component, previous revision.Revision) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return db.ErrNotFound
+		return false, db.ErrNotFound
 	}
+
+	_, ok := app.Components[name]
 
 	// If this is the first revision, we need to make sure the component history record exists.
 	if previous == revision.Revision("") {
@@ -289,10 +310,10 @@ func (s *store) patchComponentByApplicationID(ctx context.Context, id resources.
 	ch.Revision = cr.Revision
 
 	app.Components[name] = ch
-	return nil
+	return !ok, nil
 }
 
-func (s *store) deleteComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
+func (s *store) DeleteComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -305,7 +326,7 @@ func (s *store) deleteComponentByApplicationID(ctx context.Context, id resources
 	return nil
 }
 
-func (s *store) listDeploymentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]db.Deployment, error) {
+func (s *store) ListDeploymentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]db.Deployment, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -322,7 +343,7 @@ func (s *store) listDeploymentsByApplicationID(ctx context.Context, id resources
 	return items, nil
 }
 
-func (s *store) getDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*db.Deployment, error) {
+func (s *store) GetDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*db.Deployment, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -339,20 +360,22 @@ func (s *store) getDeploymentByApplicationID(ctx context.Context, id resources.A
 	return &d, nil
 }
 
-func (s *store) patchDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *db.Deployment) error {
+func (s *store) PatchDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *db.Deployment) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return db.ErrNotFound
+		return false, db.ErrNotFound
 	}
 
+	_, ok := app.Deployments[name]
+
 	app.Deployments[name] = *patch
-	return nil
+	return !ok, nil
 }
 
-func (s *store) deleteDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
+func (s *store) DeleteDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -365,7 +388,7 @@ func (s *store) deleteDeploymentByApplicationID(ctx context.Context, id resource
 	return nil
 }
 
-func (s *store) listScopesByApplicationID(ctx context.Context, id resources.ApplicationID) ([]db.Scope, error) {
+func (s *store) ListScopesByApplicationID(ctx context.Context, id resources.ApplicationID) ([]db.Scope, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -382,7 +405,7 @@ func (s *store) listScopesByApplicationID(ctx context.Context, id resources.Appl
 	return items, nil
 }
 
-func (s *store) getScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*db.Scope, error) {
+func (s *store) GetScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*db.Scope, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -399,20 +422,22 @@ func (s *store) getScopeByApplicationID(ctx context.Context, id resources.Applic
 	return &scope, nil
 }
 
-func (s *store) patchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *db.Scope) error {
+func (s *store) PatchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *db.Scope) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return db.ErrNotFound
+		return false, db.ErrNotFound
 	}
 
+	_, ok := app.Scopes[name]
+
 	app.Scopes[name] = *patch
-	return nil
+	return !ok, nil
 }
 
-func (s *store) deleteScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
+func (s *store) DeleteScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -422,5 +447,34 @@ func (s *store) deleteScopeByApplicationID(ctx context.Context, id resources.App
 	}
 
 	delete(app.Scopes, name)
+	return nil
+}
+
+func (s *store) GetOperationByID(ctx context.Context, id resources.ResourceID) (*db.Operation, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	op := s.operations[id.ID]
+	if op == nil {
+		return nil, db.ErrNotFound
+	}
+
+	return op, nil
+}
+
+func (s *store) PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *db.Operation) (bool, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	_, ok := s.operations[id.ID]
+	s.operations[id.ID] = patch
+	return !ok, nil
+}
+
+func (s *store) DeleteOperationByID(ctx context.Context, id resources.ResourceID) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	delete(s.operations, id.ID)
 	return nil
 }

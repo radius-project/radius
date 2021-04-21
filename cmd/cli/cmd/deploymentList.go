@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
@@ -61,7 +62,7 @@ func listDeployments(cmd *cobra.Command, args []string) error {
 			return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 
-		return fmt.Errorf("Failed to list deployments in the application %s, %w", applicationName, err)
+		return utils.UnwrapErrorFromRawResponse(err)
 	}
 
 	deploymentsList := *response.DeploymentList

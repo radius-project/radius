@@ -11,9 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/Azure/radius/pkg/curp/armerrors"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
+	"github.com/Azure/radius/pkg/curp/deployment"
 	"github.com/Azure/radius/pkg/curp/metadata"
 	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/curp/rest"
@@ -23,29 +26,31 @@ import (
 
 // ResourceProvider defines the business logic of the resource provider for Radius.
 type ResourceProvider interface {
-	ListApplications(ctx context.Context, id resources.ResourceID) (*rest.ResourceList, error)
-	GetApplication(ctx context.Context, id resources.ResourceID) (*rest.Application, error)
-	UpdateApplication(ctx context.Context, app *rest.Application) (*rest.Application, error)
-	DeleteApplication(ctx context.Context, id resources.ResourceID) error
+	ListApplications(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+	GetApplication(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+	UpdateApplication(ctx context.Context, app *rest.Application) (rest.Response, error)
+	DeleteApplication(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 
-	ListComponents(ctx context.Context, id resources.ResourceID) (*rest.ResourceList, error)
-	GetComponent(ctx context.Context, id resources.ResourceID) (*rest.Component, error)
-	UpdateComponent(ctx context.Context, app *rest.Component) (*rest.Component, error)
-	DeleteComponent(ctx context.Context, id resources.ResourceID) error
+	ListComponents(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+	GetComponent(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+	UpdateComponent(ctx context.Context, app *rest.Component) (rest.Response, error)
+	DeleteComponent(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 
-	ListDeployments(ctx context.Context, id resources.ResourceID) (*rest.ResourceList, error)
-	GetDeployment(ctx context.Context, id resources.ResourceID) (*rest.Deployment, error)
-	UpdateDeployment(ctx context.Context, app *rest.Deployment) (*rest.Deployment, error)
-	DeleteDeployment(ctx context.Context, id resources.ResourceID) error
+	ListDeployments(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+	GetDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+	UpdateDeployment(ctx context.Context, app *rest.Deployment) (rest.Response, error)
+	DeleteDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 
-	ListScopes(ctx context.Context, id resources.ResourceID) (*rest.ResourceList, error)
-	GetScope(ctx context.Context, id resources.ResourceID) (*rest.Scope, error)
-	UpdateScope(ctx context.Context, app *rest.Scope) (*rest.Scope, error)
-	DeleteScope(ctx context.Context, id resources.ResourceID) error
+	ListScopes(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+	GetScope(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+	UpdateScope(ctx context.Context, app *rest.Scope) (rest.Response, error)
+	DeleteScope(ctx context.Context, id resources.ResourceID) (rest.Response, error)
+
+	GetDeploymentOperationByID(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 }
 
 // NewResourceProvider creates a new ResourceProvider.
-func NewResourceProvider(db db.CurpDB, deploy DeploymentProcessor) ResourceProvider {
+func NewResourceProvider(db db.CurpDB, deploy deployment.DeploymentProcessor) ResourceProvider {
 	return &rp{
 		db:     db,
 		v:      validator.New(),
@@ -57,14 +62,14 @@ func NewResourceProvider(db db.CurpDB, deploy DeploymentProcessor) ResourceProvi
 type rp struct {
 	db     db.CurpDB
 	v      *validator.Validate
-	deploy DeploymentProcessor
+	deploy deployment.DeploymentProcessor
 	meta   metadata.Registry
 }
 
-func (r *rp) ListApplications(ctx context.Context, id resources.ResourceID) (*rest.ResourceList, error) {
+func (r *rp) ListApplications(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	err := id.ValidateResourceType(resources.ApplicationCollectionType)
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	dbitems, err := r.db.ListApplicationsByResourceGroup(ctx, id)
@@ -78,10 +83,10 @@ func (r *rp) ListApplications(ctx context.Context, id resources.ResourceID) (*re
 	}
 
 	list := &rest.ResourceList{Value: items}
-	return list, nil
+	return rest.NewOKResponse(list), nil
 }
 
-func (r *rp) GetApplication(ctx context.Context, id resources.ResourceID) (*rest.Application, error) {
+func (r *rp) GetApplication(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	a, err := id.Application()
 	if err != nil {
 		return nil, err
@@ -89,77 +94,81 @@ func (r *rp) GetApplication(ctx context.Context, id resources.ResourceID) (*rest
 
 	dbitem, err := r.db.GetApplicationByID(ctx, a)
 	if err == db.ErrNotFound {
-		return nil, NotFoundError{ID: id}
+		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
 
 	item := newRESTApplicationFromDB(dbitem)
-	return item, nil
+	return rest.NewOKResponse(item), nil
 }
 
-func (r *rp) UpdateApplication(ctx context.Context, app *rest.Application) (*rest.Application, error) {
-	_, err := app.GetApplicationID()
+func (r *rp) UpdateApplication(ctx context.Context, a *rest.Application) (rest.Response, error) {
+	_, err := a.GetApplicationID()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	err = r.validate(app)
+	response, err := r.validate(a)
+	if err != nil {
+		return nil, err
+	} else if response != nil {
+		return response, nil
+	}
+
+	dbitem := newDBApplicationPatchFromREST(a)
+	created, err := r.db.PatchApplication(ctx, dbitem)
 	if err != nil {
 		return nil, err
 	}
 
-	dbitem := newDBApplicationPatchFromREST(app)
-	err = r.db.PatchApplication(ctx, dbitem)
-	if err != nil {
-		return nil, err
+	body := newRESTApplicationFromDBPatch(dbitem)
+	if created {
+		return rest.NewCreatedResponse(body), nil
 	}
 
-	app = newRESTApplicationFromDBPatch(dbitem)
-	return app, nil
+	return rest.NewOKResponse(body), nil
 }
 
-func (r *rp) DeleteApplication(ctx context.Context, id resources.ResourceID) error {
+func (r *rp) DeleteApplication(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	a, err := id.Application()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	app, err := r.db.GetApplicationByID(ctx, a)
 	if err == db.ErrNotFound {
 		// it's not an error to 'delete' something that's already gone
-		return nil
+		return rest.NewNoContentResponse(), nil
 	} else if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(app.Deployments) > 0 {
-		return ConflictError{
-			fmt.Sprintf("the application '%v' has existing deployments", id),
-		}
+		return rest.NewConflictResponse(fmt.Sprintf("the application '%v' has existing deployments", id)), nil
 	}
 
 	err = r.db.DeleteApplicationByID(ctx, a)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return rest.NewNoContentResponse(), nil
 }
 
-func (r *rp) ListComponents(ctx context.Context, id resources.ResourceID) (*rest.ResourceList, error) {
+func (r *rp) ListComponents(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	err := id.ValidateResourceType(resources.ComponentCollectionType)
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 	app, err := id.Application()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	dbitems, err := r.db.ListComponentsByApplicationID(ctx, app)
 	if err == db.ErrNotFound {
-		return nil, &NotFoundError{id}
+		return rest.NewNotFoundResponse(app.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -170,38 +179,40 @@ func (r *rp) ListComponents(ctx context.Context, id resources.ResourceID) (*rest
 	}
 
 	list := &rest.ResourceList{Value: items}
-	return list, nil
+	return rest.NewOKResponse(list), nil
 }
 
-func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (*rest.Component, error) {
+func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	c, err := id.Component()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	dbitem, err := r.db.GetComponentByApplicationID(ctx, c.App, c.Resource.ShortName(), revision.Revision(""))
 	if err == db.ErrNotFound {
-		return nil, &NotFoundError{ID: id}
+		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
 
 	item := newRESTComponentFromDB(dbitem)
-	return item, nil
+	return rest.NewOKResponse(item), nil
 }
 
-func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (*rest.Component, error) {
+func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Response, error) {
 	id, err := c.GetComponentID()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	// TODO - nothing here validates that the component is "known" type. We let the user declare any
 	// component types and versions they want.
 
-	err = r.validate(c)
+	response, err := r.validate(c)
 	if err != nil {
 		return nil, err
+	} else if response != nil {
+		return response, nil
 	}
 
 	// fetch the latest component so we can compare and generate a revision
@@ -224,7 +235,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (*rest.Comp
 
 	if equal {
 		// No changes to the component - nothing to do.
-		return newRESTComponentFromDB(olddbitem), nil
+		return rest.NewOKResponse(newRESTComponentFromDB(olddbitem)), nil
 	}
 
 	// Component has changes, update everything.
@@ -237,44 +248,52 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (*rest.Comp
 		return nil, err
 	}
 
-	err = r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.ShortName(), newdbitem, previous)
-	if err != nil {
+	created, err := r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.ShortName(), newdbitem, previous)
+	if err == db.ErrNotFound {
+		// If we get a not found here there's no application
+		return rest.NewNotFoundResponse(id.App.ResourceID), nil
+	} else if err != nil {
 		return nil, err
 	}
 
-	return newRESTComponentFromDB(newdbitem), nil
+	body := newRESTComponentFromDB(newdbitem)
+	if created {
+		return rest.NewCreatedResponse(body), nil
+	}
+
+	return rest.NewOKResponse(body), nil
 }
 
-func (r *rp) DeleteComponent(ctx context.Context, id resources.ResourceID) error {
+func (r *rp) DeleteComponent(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	c, err := id.Component()
 	if err != nil {
-		return &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	err = r.db.DeleteComponentByApplicationID(ctx, c.App, c.Resource.ShortName())
 	if err == db.ErrNotFound {
 		// it's not an error to 'delete' something that's already gone
-		return nil
+		return rest.NewNoContentResponse(), nil
 	} else if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return rest.NewNoContentResponse(), nil
 }
 
-func (r *rp) ListDeployments(ctx context.Context, id resources.ResourceID) (*rest.ResourceList, error) {
+func (r *rp) ListDeployments(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	err := id.ValidateResourceType(resources.DeploymentCollectionType)
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 	app, err := id.Application()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	dbitems, err := r.db.ListDeploymentsByApplicationID(ctx, app)
 	if err == db.ErrNotFound {
-		return nil, &NotFoundError{id}
+		return rest.NewNotFoundResponse(app.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -285,35 +304,37 @@ func (r *rp) ListDeployments(ctx context.Context, id resources.ResourceID) (*res
 	}
 
 	list := &rest.ResourceList{Value: items}
-	return list, nil
+	return rest.NewOKResponse(list), nil
 }
 
-func (r *rp) GetDeployment(ctx context.Context, id resources.ResourceID) (*rest.Deployment, error) {
+func (r *rp) GetDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	d, err := id.Deployment()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	dbitem, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
 	if err == db.ErrNotFound {
-		return nil, &NotFoundError{ID: id}
+		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
 
 	item := newRESTDeploymentFromDB(dbitem)
-	return item, nil
+	return rest.NewOKResponse(item), nil
 }
 
-func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (*rest.Deployment, error) {
+func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Response, error) {
 	id, err := d.GetDeploymentID()
 	if err != nil {
-		return nil, BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	err = r.validate(d)
+	response, err := r.validate(d)
 	if err != nil {
 		return nil, err
+	} else if response != nil {
+		return response, nil
 	}
 
 	// Start gathering all of the info we need to compose an update to the deployment
@@ -325,7 +346,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (*rest.De
 	newdbitem := newDBDeploymentFromREST(d)
 	app, err := r.db.GetApplicationByID(ctx, id.App)
 	if err == db.ErrNotFound {
-		return nil, NotFoundError{}
+		return rest.NewNotFoundResponse(id.App.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -339,14 +360,14 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (*rest.De
 	actions, err := r.computeDeploymentActions(app, olddbitem, newdbitem)
 	if err != nil {
 		// An error computing deployment actions is generally the users' fault.
-		return nil, BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	eq := deploymentIsNoOp(actions)
-	if eq {
+	if eq && olddbitem != nil {
 		// No changes to the deployment - nothing to do.
-		log.Printf("%T is unchanged.", newdbitem)
-		return newRESTDeploymentFromDB(olddbitem), nil
+		log.Printf("%T is unchanged.", olddbitem)
+		return rest.NewOKResponse(newRESTDeploymentFromDB(olddbitem)), nil
 	}
 
 	// Will update the deployment status in place - carry over existing status
@@ -361,63 +382,227 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (*rest.De
 		}
 	}
 
-	err = r.deploy.UpdateDeployment(ctx, app.FriendlyName(), newdbitem.Name, &newdbitem.Status, actions)
-	if _, ok := err.(*CompositeError); ok {
-		return nil, BadRequestError{err.Error()}
-	} else if err != nil {
-		return nil, err
+	// Now that we've computed the set of deployment actions we're ready to start the deployment
+	// asynchronously. We'll return an HTTP 201/202 status and link a to URL that can be used to
+	// track the status.
+	//
+	// We need to track the value of the provisioning state as part of the deployment for any
+	// asynchronous operations.
+	//
+	// When we start the operation we set the status to Deploying, and the background job
+	// will update it.
+
+	// First let's create the "operation" that tracks completion
+	oid := id.NewOperation()
+	operation := &db.Operation{
+		ID:     oid.Resource.ID,
+		Name:   oid.Resource.ShortName(),
+		Status: string(rest.DeployingStatus),
+
+		StartTime:       time.Now().UTC().Format(time.RFC3339),
+		PercentComplete: 0,
 	}
 
-	err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.ShortName(), newdbitem)
+	_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 	if err != nil {
 		return nil, err
 	}
 
-	return newRESTDeploymentFromDB(newdbitem), nil
+	newdbitem.Properties.ProvisioningState = string(rest.DeployingStatus)
+	_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.ShortName(), newdbitem)
+	if err != nil {
+		return nil, err
+	}
+
+	// OK we've updated the database to denote that the deployment is in process - now we're ready
+	// to start deploying in the background.
+	go func() {
+		ctx := context.Background()
+		log.Printf("processing deployment '%s' in the background", d.ID)
+		var failure *armerrors.ErrorDetails = nil
+		status := rest.SuccededStatus
+
+		err := r.deploy.UpdateDeployment(ctx, app.FriendlyName(), newdbitem.Name, &newdbitem.Status, actions)
+		if err != nil {
+			status = rest.FailedStatus
+			failure = &armerrors.ErrorDetails{
+				Message: err.Error(),
+				Target:  id.Resource.ID,
+			}
+		}
+
+		// If we get here the deployment is complete (possibly failed)
+		operation, err := r.db.GetOperationByID(ctx, oid.Resource)
+		if err != nil {
+			// If we get here we're not going to be able to update the operation
+			// try to update the deployment as a cleanup step (if possible).
+			log.Printf("failed to retrieve operation '%s' - marking deployment as failed: %v", oid.Resource.ID, err)
+			if status == rest.SuccededStatus {
+				status = rest.FailedStatus
+			}
+		} else {
+			operation.EndTime = time.Now().UTC().Format(time.RFC3339)
+			operation.PercentComplete = 100
+			operation.Status = string(status)
+			operation.Error = failure
+
+			_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
+			if err != nil {
+				log.Printf("failed to update operation '%s' - marking deployment as failed: %v", oid.Resource.ID, err)
+				if status == rest.SuccededStatus {
+					status = rest.FailedStatus
+				}
+			}
+		}
+
+		d, err := r.db.GetDeploymentByApplicationID(ctx, id.App, id.Resource.ShortName())
+		if err != nil {
+			log.Printf("failed to retrieve deployment '%s': %v", oid.Resource.ID, err)
+			return
+		}
+
+		d.Properties.ProvisioningState = string(status)
+		_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.ShortName(), d)
+		if err != nil {
+			log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
+			return
+		}
+
+		log.Printf("completed deployment '%s' in the background", d.ID)
+	}()
+
+	// As a limitation of custom resource providers, we have to use HTTP 202 for this.
+	body := newRESTDeploymentFromDB(newdbitem)
+	return rest.NewAcceptedAsyncResponse(body, oid.Resource.ID), nil
 }
 
-func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) error {
+func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	d, err := id.Deployment()
 	if err != nil {
-		return BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	current, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
 	if err == db.ErrNotFound {
 		// it's not an error to 'delete' something that's already gone
-		return nil
+		return rest.NewNoContentResponse(), nil
 	} else if err != nil {
-		return err
+		return nil, err
 	}
 
 	if current.Status.Services == nil {
 		current.Status.Services = map[string]db.DeploymentService{}
 	}
 
-	err = r.deploy.DeleteDeployment(ctx, d.Resource.ShortName(), &current.Status)
-	if _, ok := err.(*CompositeError); ok {
-		return BadRequestError{err.Error()}
-	} else if err != nil {
-		return err
+	// We'll do the actual deletion in the background asynchronously
+	//
+	// First we need to create an operation to track the overall deletion.
+	oid := d.NewOperation()
+	operation := &db.Operation{
+		ID:     oid.Resource.ID,
+		Name:   oid.Resource.ShortName(),
+		Status: string(rest.DeletingStatus),
+
+		StartTime:       time.Now().UTC().Format(time.RFC3339),
+		PercentComplete: 0,
 	}
 
-	return r.db.DeleteDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
+	_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
+	if err != nil {
+		return nil, err
+	}
+
+	// Next we update the deployment to say that it's deleting.
+	current.Properties.ProvisioningState = string(rest.DeletingStatus)
+	_, err = r.db.PatchDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName(), current)
+	if err != nil {
+		return nil, err
+	}
+
+	// OK we've updated the database to denote that the deployment is in process - now we're ready
+	// to start deploying in the background.
+	go func() {
+		ctx := context.Background()
+		log.Printf("processing deletion of deployment '%s' in the background", d.Resource.ID)
+		var failure *armerrors.ErrorDetails = nil
+		status := rest.SuccededStatus
+
+		err := r.deploy.DeleteDeployment(ctx, d.Resource.ShortName(), &current.Status)
+		if err != nil {
+			status = rest.FailedStatus
+			failure = &armerrors.ErrorDetails{
+				Message: err.Error(),
+				Target:  d.Resource.ID,
+			}
+		}
+
+		// If we get here the deployment is complete (possibly failed)
+		operation, err := r.db.GetOperationByID(ctx, oid.Resource)
+		if err != nil {
+			// If we get here we're not going to be able to update the operation
+			// try to update the deployment as a cleanup step (if possible).
+			log.Printf("failed to retrieve operation '%s' - marking deletion as failed: %v", oid.Resource.ID, err)
+			if status == rest.SuccededStatus {
+				status = rest.FailedStatus
+			}
+		} else {
+			operation.EndTime = time.Now().UTC().Format(time.RFC3339)
+			operation.PercentComplete = 100
+			operation.Status = string(status)
+			operation.Error = failure
+
+			_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
+			if err != nil {
+				log.Printf("failed to update operation '%s' - marking deployment as failed: %v", oid.Resource.ID, err)
+				if status == rest.SuccededStatus {
+					status = rest.FailedStatus
+				}
+			}
+		}
+
+		dd, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
+		if err != nil {
+			log.Printf("failed to retrieve deployment '%s': %v", oid.Resource.ID, err)
+			return
+		}
+
+		if status == rest.SuccededStatus {
+			err := r.db.DeleteDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
+			if err != nil {
+				log.Printf("failed to delete deployment '%s': %v", oid.Resource.ID, err)
+				return
+			}
+		} else {
+			// If we get here then something about the operation failed - don't delete the
+			// deployment record, mark it as failed.
+			dd.Properties.ProvisioningState = string(status)
+			_, err = r.db.PatchDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName(), dd)
+			if err != nil {
+				log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
+				return
+			}
+		}
+
+		log.Printf("completed deployment '%s' in the background", d.Resource.ID)
+	}()
+
+	return rest.NewAcceptedAsyncResponse(newRESTDeploymentFromDB(current), operation.ID), nil
 }
 
-func (r *rp) ListScopes(ctx context.Context, id resources.ResourceID) (*rest.ResourceList, error) {
+func (r *rp) ListScopes(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	err := id.ValidateResourceType(resources.ScopeCollectionType)
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	app, err := id.Application()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	dbitems, err := r.db.ListScopesByApplicationID(ctx, app)
 	if err == db.ErrNotFound {
-		return nil, &NotFoundError{id}
+		return rest.NewNotFoundResponse(app.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -428,73 +613,112 @@ func (r *rp) ListScopes(ctx context.Context, id resources.ResourceID) (*rest.Res
 	}
 
 	list := &rest.ResourceList{Value: items}
-	return list, nil
+	return rest.NewOKResponse(list), nil
 }
 
-func (r *rp) GetScope(ctx context.Context, id resources.ResourceID) (*rest.Scope, error) {
+func (r *rp) GetScope(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	s, err := id.Scope()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	dbitem, err := r.db.GetScopeByApplicationID(ctx, s.App, s.Resource.ShortName())
 	if err == db.ErrNotFound {
-		return nil, &NotFoundError{ID: id}
+		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
 
 	item := newRESTScopeFromDB(dbitem)
-	return item, nil
+	return rest.NewOKResponse(item), nil
 }
 
-func (r *rp) UpdateScope(ctx context.Context, s *rest.Scope) (*rest.Scope, error) {
+func (r *rp) UpdateScope(ctx context.Context, s *rest.Scope) (rest.Response, error) {
 	id, err := s.GetScopeID()
 	if err != nil {
-		return nil, &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	err = r.validate(s)
+	response, err := r.validate(s)
 	if err != nil {
 		return nil, err
+	} else if response != nil {
+		return response, nil
 	}
 
 	dbitem := newDBScopeFromREST(s)
-	err = r.db.PatchScopeByApplicationID(ctx, id.App, id.Resource.ShortName(), dbitem)
-	if err != nil {
+	created, err := r.db.PatchScopeByApplicationID(ctx, id.App, id.Resource.ShortName(), dbitem)
+	if err == db.ErrNotFound {
+		return rest.NewNotFoundResponse(id.App.ResourceID), nil
+	} else if err != nil {
 		return nil, err
 	}
 
-	return newRESTScopeFromDB(dbitem), nil
+	body := newRESTScopeFromDB(dbitem)
+	if created {
+		return rest.NewCreatedResponse(body), nil
+	}
+
+	return rest.NewOKResponse(body), nil
 }
 
-func (r *rp) DeleteScope(ctx context.Context, id resources.ResourceID) error {
+func (r *rp) DeleteScope(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	s, err := id.Scope()
 	if err != nil {
-		return &BadRequestError{err.Error()}
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	err = r.db.DeleteScopeByApplicationID(ctx, s.App, s.Resource.ShortName())
-	if err != nil {
-		return err
+	if err == db.ErrNotFound {
+		// It's not an error for the application to be missing here.
+		return rest.NewNoContentResponse(), nil
+	} else if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return rest.NewNoContentResponse(), nil
 }
 
-func (r *rp) validate(obj interface{}) error {
+// The contract of this function is a little wierd. We need to return the deployment resource.
+func (r *rp) GetDeploymentOperationByID(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
+	oid, err := id.DeploymentOperation()
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
+	did, err := oid.Deployment()
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
+	deployment, err := r.db.GetDeploymentByApplicationID(ctx, did.App, did.Resource.ShortName())
+	if err == db.ErrNotFound {
+		// If we get a 404 then this should mean that the resource was deleted successfully.
+		// Return a 204 for that case
+		return rest.NewNoContentResponse(), nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	if rest.IsTeminalStatus(rest.OperationStatus(deployment.Properties.ProvisioningState)) {
+		// Operation is complete
+		return rest.NewOKResponse(newRESTDeploymentFromDB(deployment)), nil
+	}
+
+	// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
+	return rest.NewAcceptedAsyncResponse(newRESTDeploymentFromDB(deployment), id.ID), nil
+}
+
+func (r *rp) validate(obj interface{}) (rest.Response, error) {
 	err := r.v.Struct(obj)
 	if val, ok := err.(validator.ValidationErrors); ok {
-		err = ValidationError{
-			Value:  obj,
-			Errors: val,
-		}
+		return rest.NewValidationErrorResponse(val), nil
 	}
 
-	return err
+	return nil, err
 }
 
-func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment, newer *db.Deployment) (map[string]ComponentAction, error) {
+func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment, newer *db.Deployment) (map[string]deployment.ComponentAction, error) {
 	active, err := assignRevisions(app, newer)
 	if err != nil {
 		return nil, err
@@ -524,12 +748,12 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		names[name] = true
 	}
 
-	actions := map[string]ComponentAction{}
+	actions := map[string]deployment.ComponentAction{}
 	for name := range names {
 		n := active[name]
 		o := current[name]
 
-		var s map[string]ServiceBinding
+		var s map[string]deployment.ServiceBinding
 		ninst, ok := newer.LookupComponent(name)
 		if ok {
 			s = serviceBindings[name]
@@ -547,10 +771,10 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 
 		provides := filterProvidersByComponent(name, providers)
 
-		wd := ComponentAction{
+		wd := deployment.ComponentAction{
 			ApplicationName:       app.FriendlyName(),
 			ComponentName:         name,
-			Operation:             None, // Assume none until we find otherwise
+			Operation:             deployment.None, // Assume none until we find otherwise
 			Definition:            n,
 			Instantiation:         ninst,
 			Provides:              provides,
@@ -565,7 +789,7 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 			return nil, err
 		}
 
-		if wd.Operation != DeleteWorkload {
+		if wd.Operation != deployment.DeleteWorkload {
 			wd.Component, err = convertToComponent(wd.ComponentName, *wd.Definition, traits)
 			if err != nil {
 				return nil, err
@@ -576,13 +800,13 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 	}
 
 	for _, action := range actions {
-		if action.Operation == CreateWorkload {
+		if action.Operation == deployment.CreateWorkload {
 			log.Printf("component %s is added in this update", action.ComponentName)
-		} else if action.Operation == DeleteWorkload {
+		} else if action.Operation == deployment.DeleteWorkload {
 			log.Printf("component %s is removed in this update", action.ComponentName)
-		} else if action.Operation == UpdateWorkload && action.PreviousDefinition.Revision != action.Definition.Revision {
+		} else if action.Operation == deployment.UpdateWorkload && action.PreviousDefinition.Revision != action.Definition.Revision {
 			log.Printf("component %s is upgraded %s->%s in this update", action.ComponentName, action.PreviousDefinition.Revision, action.Definition.Revision)
-		} else if action.Operation == UpdateWorkload && action.PreviousDefinition.Revision == action.Definition.Revision {
+		} else if action.Operation == deployment.UpdateWorkload && action.PreviousDefinition.Revision == action.Definition.Revision {
 			log.Printf("component %s has parameter changes in this update", action.ComponentName)
 		} else {
 			log.Printf("component %s is unchanged in this update", action.ComponentName)
@@ -592,9 +816,9 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 	return actions, nil
 }
 
-func deploymentIsNoOp(actions map[string]ComponentAction) bool {
+func deploymentIsNoOp(actions map[string]deployment.ComponentAction) bool {
 	for _, action := range actions {
-		if action.Operation != None {
+		if action.Operation != deployment.None {
 			return false
 		}
 	}
@@ -672,14 +896,14 @@ func gatherCurrentRevisions(app *db.Application, d *db.Deployment) (map[string]*
 	return current, nil
 }
 
-func assignOperation(wd *ComponentAction) error {
+func assignOperation(wd *deployment.ComponentAction) error {
 	if wd.Instantiation == nil && wd.PreviousInstanitation == nil {
 		return errors.New("can't figure out operation")
 	} else if wd.Instantiation != nil && wd.PreviousInstanitation == nil {
-		wd.Operation = CreateWorkload
+		wd.Operation = deployment.CreateWorkload
 		return nil
 	} else if wd.Instantiation == nil && wd.PreviousInstanitation != nil {
-		wd.Operation = DeleteWorkload
+		wd.Operation = deployment.DeleteWorkload
 		return nil
 	}
 
@@ -687,16 +911,16 @@ func assignOperation(wd *ComponentAction) error {
 	// or is the same - so we can safely dereference any properties.
 	if wd.Definition.Revision != wd.PreviousDefinition.Revision {
 		// revision does not match.
-		wd.Operation = UpdateWorkload
+		wd.Operation = deployment.UpdateWorkload
 		return nil
 	}
 
 	return nil
 }
 
-func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision) (map[string]ServiceBinding, error) {
+func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision) (map[string]deployment.ServiceBinding, error) {
 	// find all services provided by all components
-	providers := map[string]ServiceBinding{}
+	providers := map[string]deployment.ServiceBinding{}
 	for _, dc := range d.Properties.Components {
 		// We don't expect this to fail except in tests
 		c, ok := cs[dc.FriendlyName()]
@@ -706,7 +930,7 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 
 		// Intrinsic bindings are provided by traits and the workload types
 		// they can be overridden by declaring a service with the same name on the same component
-		intrinsic := map[string]ServiceBinding{}
+		intrinsic := map[string]deployment.ServiceBinding{}
 
 		s, ok := r.meta.WorkloadKindServices[c.Kind]
 		if ok {
@@ -718,7 +942,7 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 
 			// Found one - add to both list - it will get removed later if it's
 			// been rebound
-			intrinsic[s.Name] = ServiceBinding{
+			intrinsic[s.Name] = deployment.ServiceBinding{
 				Name:     s.Name,
 				Kind:     s.Kind,
 				Provider: dc.FriendlyName(),
@@ -727,7 +951,7 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 			// TODO: we currently allow a service from one component to 'hide' a service from another
 			_, ok = providers[s.Name]
 			if !ok {
-				providers[s.Name] = ServiceBinding{
+				providers[s.Name] = deployment.ServiceBinding{
 					Name:     s.Name,
 					Kind:     s.Kind,
 					Provider: dc.FriendlyName(),
@@ -746,7 +970,7 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 
 				// Found one - add to both list - it will get removed later if it's
 				// been rebound
-				intrinsic[s.Name] = ServiceBinding{
+				intrinsic[s.Name] = deployment.ServiceBinding{
 					Name:     s.Name,
 					Kind:     s.Kind,
 					Provider: dc.FriendlyName(),
@@ -754,7 +978,7 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 
 				_, ok = providers[s.Name]
 				if !ok {
-					providers[s.Name] = ServiceBinding{
+					providers[s.Name] = deployment.ServiceBinding{
 						Name:     s.Name,
 						Kind:     s.Kind,
 						Provider: dc.FriendlyName(),
@@ -774,7 +998,7 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 				}
 			}
 
-			providers[s.Name] = ServiceBinding{
+			providers[s.Name] = deployment.ServiceBinding{
 				Name:     s.Name,
 				Kind:     s.Kind,
 				Provider: dc.FriendlyName(),
@@ -785,9 +1009,9 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 	return providers, nil
 }
 
-func (r *rp) bindServices(d *db.Deployment, cs map[string]*db.ComponentRevision, providers map[string]ServiceBinding) (map[string]map[string]ServiceBinding, error) {
+func (r *rp) bindServices(d *db.Deployment, cs map[string]*db.ComponentRevision, providers map[string]deployment.ServiceBinding) (map[string]map[string]deployment.ServiceBinding, error) {
 	// find the relationship between services declared and the components that match
-	bindings := map[string]map[string]ServiceBinding{}
+	bindings := map[string]map[string]deployment.ServiceBinding{}
 
 	// Now loop through all of the consumers and match them up
 	for _, dc := range d.Properties.Components {
@@ -797,7 +1021,7 @@ func (r *rp) bindServices(d *db.Deployment, cs map[string]*db.ComponentRevision,
 			return nil, fmt.Errorf("cannot find matching revision for component %s", dc.FriendlyName())
 		}
 
-		b := map[string]ServiceBinding{}
+		b := map[string]deployment.ServiceBinding{}
 		for _, s := range c.Properties.DependsOn {
 			p, ok := providers[s.Name]
 			if !ok {
@@ -857,11 +1081,11 @@ func combineTraits(dc *db.DeploymentComponent, cr *db.ComponentRevision) ([]db.C
 	return traits, nil
 }
 
-func filterProvidersByComponent(componentName string, providers map[string]ServiceBinding) map[string]ComponentService {
-	results := map[string]ComponentService{}
+func filterProvidersByComponent(componentName string, providers map[string]deployment.ServiceBinding) map[string]deployment.ComponentService {
+	results := map[string]deployment.ComponentService{}
 	for _, sb := range providers {
 		if sb.Provider == componentName {
-			results[sb.Name] = ComponentService{
+			results[sb.Name] = deployment.ComponentService{
 				Name:     sb.Name,
 				Kind:     sb.Kind,
 				Provider: componentName,

@@ -1,8 +1,0 @@
-environment:
-  default: azure
-  items:
-    azure:
-      clusterName: radius-aks-uepx6fvy46lni
-      kind: azure
-      resourceGroup: deploy-tests-cluster2
-      subscriptionId: 66d1209e-1382-45d3-99bb-650e6bf63fc0

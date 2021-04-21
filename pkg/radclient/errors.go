@@ -7,7 +7,11 @@ package radclient
 
 import (
 	"fmt"
+	"time"
 )
+
+// The default poll interval that we use for async radclient operations.
+const PollInterval = 5 * time.Second
 
 // RadiusError represents errors returned by Radius.
 type RadiusError struct {

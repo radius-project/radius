@@ -11,8 +11,6 @@ on:
       - main
     tags:
       - v*
-    paths-ignore:
-    - 'docs/**'
 jobs:
   publish:
     name: Assets
@@ -20,19 +18,59 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Parse release version and set REL_VERSION
+      - name: Parse release version and set enviroment variables
         run: python ./.github/scripts/get_release_version.py
-      - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
+      - name: Upload deployment template
+        uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: 'deploy'
           container_name: 'environment'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path ${{ env.REL_VERSION }} --pattern rp-full.json'
-      - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
+          extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern rp-full.json'
+      - name: Upload deployment script
+        uses: bacongobbler/azure-blob-storage-upload@v1.1.1
         with:
           source_dir: 'deploy'
           container_name: 'environment'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path ${{ env.REL_VERSION }} --pattern initialize-cluster.sh'
+          extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern initialize-cluster.sh'
+      
+      # Logic: If this is a real release (tagged, non-rc) then compare to our existing full
+      # release and see if it's newer. This prevents a patch release of an older vintage from overwriting
+      # a newer release
+      - name: Download version marker file
+        run: |
+          curl https://radiuspublic.blob.core.windows.net/version/stable.txt -o current-stable.txt
+        if: ${{ success() && env.UPDATE_RELEASE == 'true' }}
+      - name: Get version
+        id: setcurrentversion
+        if: ${{ success() && env.UPDATE_RELEASE == 'true' }}
+        run: echo ::set-output name=version::$(cat current-stable.txt)
+      - name: Compare versions
+        uses: madhead/semver-utils@latest
+        if: ${{ success() && env.UPDATE_RELEASE == 'true' }}
+        id: compare
+        with:
+          version: ${{ env.REL_CHANNEL }}.0
+          compare-to: ${{ steps.setcurrentversion.outputs.version }}.0
+      - name: Print info (for sanity)
+        if: ${{ success() && env.UPDATE_RELEASE == 'true' }}
+        run: |
+          echo "current stable channel: ${{ steps.setcurrentversion.outputs.version }}"
+          echo "this build channel: ${{ env.REL_CHANNEL }}"
+          echo "comparison: ${{ steps.compare.outputs.comparison-result }}"
+      - name: Write stable.txt
+        if: ${{ success() && steps.compare.outputs.comparison-result == '>' }}
+        run: |
+          echo $REL_CHANNEL > stable.txt
+      - name: 'Update latest version marker'
+        uses: bacongobbler/azure-blob-storage-upload@v1.1.1
+        if: ${{ success() && steps.compare.outputs.comparison-result == '>' }}
+        with:
+          container_name: 'version'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: true
+          source_dir: .
+          extra_args: '--pattern stable.txt' 

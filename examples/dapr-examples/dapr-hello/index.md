@@ -19,4 +19,4 @@ Use the HTTPS URL - this configuration is set up for an Azure-hosted redis insta
 
 ## Bicep file
 
-{{< rad file="azure-bicep/template.bicep">}}
+{{< rad file="template.bicep">}}

@@ -19,7 +19,6 @@ var envSwitchCmd = &cobra.Command{
 	Use:   "switch [environment]",
 	Short: "Switch the current environment",
 	Long:  "Switch the current environment",
-	Args:  cobra.ExactArgs(1),
 	RunE:  switchEnv,
 }
 

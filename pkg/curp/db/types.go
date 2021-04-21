@@ -8,6 +8,7 @@ package db
 import (
 	"strings"
 
+	"github.com/Azure/radius/pkg/curp/armerrors"
 	"github.com/Azure/radius/pkg/curp/revision"
 )
 
@@ -160,7 +161,8 @@ type DeploymentResource struct {
 
 // DeploymentProperties respresents the properties of a deployment.
 type DeploymentProperties struct {
-	Components []*DeploymentComponent `bson:"components,omitempty" validate:"dive"`
+	ProvisioningState string                 `bson:"provisioningState"`
+	Components        []*DeploymentComponent `bson:"components,omitempty" validate:"dive"`
 }
 
 // DeploymentComponent respresents an entry for a component in a deployment.
@@ -175,6 +177,21 @@ type DeploymentComponent struct {
 type DeploymentComponentTrait struct {
 	Kind       string                 `bson:"kind"`
 	Properties map[string]interface{} `bson:"properties,omitempty"`
+}
+
+// See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations
+type Operation struct {
+	ID     string `bson:"id"`
+	Name   string `bson:"name"`
+	Status string `bson:"status"`
+
+	// These should be in ISO8601 format
+	StartTime string `bson:"startTime"`
+	EndTime   string `bson:"endTime"`
+
+	PercentComplete float64                 `bson:"percentComplete"`
+	Properties      map[string]interface{}  `bson:"properties,omitempty"`
+	Error           *armerrors.ErrorDetails `bson:"error"`
 }
 
 // Marshal implements revision.Marshal for Component.

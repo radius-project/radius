@@ -14,7 +14,6 @@ GIT_COMMIT  = $(shell git rev-list -1 HEAD)
 GIT_VERSION = $(shell git describe --always --abbrev=7 --dirty)
 CGO			?= 0
 
-
 WEBAPP_BINARY  = radius-rp
 CLI_BINARY = rad
 
@@ -71,7 +70,8 @@ endif
 OUT_DIR := ./dist
 
 BINS_OUT_DIR := $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)
-LDFLAGS := "-s -w -X main.version=$(REL_VERSION)"
+BASE_PACKAGE_NAME := github.com/Azure/radius
+LDFLAGS := "-s -w -X $(BASE_PACKAGE_NAME)/pkg/version.release=$(REL_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.commit=$(GIT_COMMIT) -X $(BASE_PACKAGE_NAME)/pkg/version.version=$(GIT_VERSION)"
 GOPATH := $(shell go env GOPATH)
 
 ifeq (,$(shell go env GOBIN))
@@ -79,6 +79,7 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
+
 
 ################################################################################
 # Docker build details                                                         #
@@ -92,7 +93,19 @@ DOCKER_IMAGE=$(DOCKER_REGISTRY)/radius-rp:$(DOCKER_TAG_VERSION)
 # Target: build                                                                #
 ################################################################################
 .PHONY: build
-build: buildrp buildcli
+build: buildpackages buildrp buildcli
+
+################################################################################
+# Target: build packages (build all sources)                                   #
+################################################################################
+.PHONY: buildpackages
+buildpackages:
+	$(info $(H) Building all packages)
+	go build \
+		-gcflags $(GCFLAGS) \
+		-ldflags $(LDFLAGS) \
+		./...
+	$(info $(H) Successfully built all packages)
 
 ################################################################################
 # Target: build rp                                                             #
@@ -104,10 +117,10 @@ $(WEBAPP_BINARY):
 	$(info $(H) Building RP from 'cmd/rp/main.go')
 	CGO_ENABLED=$(CGO) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 	go build \
-	-gcflags $(GCFLAGS) \
-	-ldflags $(LDFLAGS) \
-	-o $(BINS_OUT_DIR)/$(WEBAPP_BINARY)$(BINARY_EXT) \
-	./cmd/rp/main.go;
+		-gcflags $(GCFLAGS) \
+		-ldflags $(LDFLAGS) \
+		-o $(BINS_OUT_DIR)/$(WEBAPP_BINARY)$(BINARY_EXT) \
+		./cmd/rp/main.go
 	$(info $(H) Built RP in '$(BINS_OUT_DIR)/$(WEBAPP_BINARY)$(BINARY_EXT)')
 
 ################################################################################
@@ -120,10 +133,10 @@ $(CLI_BINARY):
 	$(info $(H) Building CLI from 'cmd/cli/main.go')
 	CGO_ENABLED=$(CGO) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 	go build \
-	-gcflags $(GCFLAGS) \
-	-ldflags $(LDFLAGS) \
-	-o $(BINS_OUT_DIR)/$(CLI_BINARY)$(BINARY_EXT) \
-	./cmd/cli/main.go;
+		-gcflags $(GCFLAGS) \
+		-ldflags $(LDFLAGS) \
+		-o $(BINS_OUT_DIR)/$(CLI_BINARY)$(BINARY_EXT) \
+		./cmd/cli/main.go
 	$(info $(H) Built CLI in '$(BINS_OUT_DIR)/$(CLI_BINARY)$(BINARY_EXT)')
 
 ################################################################################
@@ -189,14 +202,14 @@ test:
 ################################################################################
 .PHONY: deploy-tests
 deploy-tests:
-	go test ./test/deploy-tests/... -timeout 900s
+	go test ./test/deploy-tests/... -timeout 1800s
 
 ################################################################################
 # Target: e2e-tests - run nightly integration tests                            #
 ################################################################################
 .PHONY: e2e-tests
 e2e-tests:
-	go test ./test/e2e-tests/... -timeout 900s
+	go test ./test/e2e-tests/... -timeout 1800s
 
 ################################################################################
 # Target: clean                                                                #

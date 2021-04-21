@@ -25,8 +25,11 @@ var ErrNotFound = errors.New("the item was not found")
 // ErrConcurrency is an error returned when the item contains stale data and cannot be modified.
 var ErrConcurrency = errors.New("the item has been changed")
 
-// CollectionName represents the collection used to store applications in the db.
-const collectionName string = "applications"
+// applicationsCollection represents the collection used to store applications in the db.
+const applicationsCollection string = "applications"
+
+// operationsCollection represents the collection used to store operations in the db.
+const operationsCollection string = "operations"
 
 // NewCurpDB creates a new CurpDB.
 func NewCurpDB(m *mongo.Database) CurpDB {
@@ -38,26 +41,32 @@ func NewCurpDB(m *mongo.Database) CurpDB {
 //go:generate mockgen -destination=../../../mocks/mock_db.go -package=mocks github.com/Azure/radius/pkg/curp/db CurpDB
 
 // CurpDB is our database abstraction.
+//
+// Patch operations are an upsert operation. It creates or updates the entry. `true` will be returned for a new record.
 type CurpDB interface {
 	ListApplicationsByResourceGroup(ctx context.Context, id resources.ResourceID) ([]Application, error)
 	GetApplicationByID(ctx context.Context, id resources.ApplicationID) (*Application, error)
-	PatchApplication(ctx context.Context, patch *ApplicationPatch) error
+	PatchApplication(ctx context.Context, patch *ApplicationPatch) (bool, error)
 	DeleteApplicationByID(ctx context.Context, id resources.ApplicationID) error
 
 	ListComponentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Component, error)
 	GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, rev revision.Revision) (*Component, error)
-	PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component, previous revision.Revision) error
+	PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component, previous revision.Revision) (bool, error)
 	DeleteComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error
 
 	ListDeploymentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Deployment, error)
 	GetDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Deployment, error)
-	PatchDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Deployment) error
+	PatchDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Deployment) (bool, error)
 	DeleteDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error
 
 	ListScopesByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Scope, error)
 	GetScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Scope, error)
-	PatchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Scope) error
+	PatchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Scope) (bool, error)
 	DeleteScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error
+
+	GetOperationByID(ctx context.Context, id resources.ResourceID) (*Operation, error)
+	PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *Operation) (bool, error)
+	DeleteOperationByID(ctx context.Context, id resources.ResourceID) error
 }
 
 type curpDB struct {
@@ -70,7 +79,7 @@ func (d curpDB) ListApplicationsByResourceGroup(ctx context.Context, id resource
 
 	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup}}
 	log.Printf("listing Applications with: %s", filter)
-	col := d.db.Collection(collectionName)
+	col := d.db.Collection(applicationsCollection)
 	cursor, err := col.Find(ctx, filter)
 	if err != nil {
 		return items, fmt.Errorf("error querying Applications: %w", err)
@@ -91,7 +100,7 @@ func (d curpDB) GetApplicationByID(ctx context.Context, id resources.Application
 
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 	log.Printf("Getting %v", id)
-	col := d.db.Collection(collectionName)
+	col := d.db.Collection(applicationsCollection)
 	result := col.FindOne(ctx, filter)
 	err := result.Err()
 	if err == mongo.ErrNoDocuments {
@@ -110,27 +119,27 @@ func (d curpDB) GetApplicationByID(ctx context.Context, id resources.Application
 	return item, nil
 }
 
-func (d curpDB) PatchApplication(ctx context.Context, patch *ApplicationPatch) error {
+func (d curpDB) PatchApplication(ctx context.Context, patch *ApplicationPatch) (bool, error) {
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: patch.ResourceBase.ID}}
 	update := bson.D{{Key: "$set", Value: patch}}
 
 	log.Printf("Updating Application with _id: %s", patch.ResourceBase.ID)
-	col := d.db.Collection(collectionName)
-	_, err := col.UpdateOne(ctx, filter, update, options)
+	col := d.db.Collection(applicationsCollection)
+	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
-		return fmt.Errorf("error updating Application: %s", err)
+		return false, fmt.Errorf("error updating Application: %s", err)
 	}
 
-	log.Printf("Updated Application with _id: %s", patch.ResourceBase.ID)
-	return nil
+	log.Printf("Updated Application with _id: %s - %+v", patch.ResourceBase.ID, result)
+	return result.UpsertedCount > 1, nil
 }
 
 func (d curpDB) DeleteApplicationByID(ctx context.Context, id resources.ApplicationID) error {
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 
 	log.Printf("Deleting Application with _id: %s", id)
-	col := d.db.Collection(collectionName)
+	col := d.db.Collection(applicationsCollection)
 	result := col.FindOneAndDelete(ctx, filter)
 	err := result.Err()
 	if err == mongo.ErrNoDocuments {
@@ -215,8 +224,8 @@ func (d curpDB) GetComponentByApplicationID(ctx context.Context, id resources.Ap
 	return &item, nil
 }
 
-func (d curpDB) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component, previous revision.Revision) error {
-	col := d.db.Collection(collectionName)
+func (d curpDB) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component, previous revision.Revision) (bool, error) {
+	col := d.db.Collection(applicationsCollection)
 
 	log.Printf("Updating Component with Application id and name: %s, %s", id, name)
 
@@ -233,7 +242,7 @@ func (d curpDB) PatchComponentByApplicationID(ctx context.Context, id resources.
 		update = bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: ch}}}}
 		result, err := col.UpdateOne(ctx, filter, update)
 		if err != nil {
-			return fmt.Errorf("error updating Component: %s", err)
+			return false, fmt.Errorf("error updating Component: %s", err)
 		}
 
 		log.Printf("Updated Component with Application id and name: %s, %s - %+v to add component record", id, name, result)
@@ -255,19 +264,19 @@ func (d curpDB) PatchComponentByApplicationID(ctx context.Context, id resources.
 	}
 	result, err := col.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return fmt.Errorf("error updating Component: %s", err)
+		return false, fmt.Errorf("error updating Component: %s", err)
 	}
 
 	if result.MatchedCount == 0 {
 		log.Printf("Failed to update Component with Application id and name: %s, %s - %+v to add component revision due to concurrency", id, name, result)
-		return ErrConcurrency
+		return false, ErrConcurrency
 
 	}
 
 	log.Printf("Updated Component with Application id and name: %s, %s - %+v to add component revision", id, name, result)
 	log.Printf("Updated Component with Application id and name: %s, %s", id, name)
 
-	return nil
+	return result.UpsertedCount > 1, nil
 }
 
 func (d curpDB) DeleteComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
@@ -277,7 +286,7 @@ func (d curpDB) DeleteComponentByApplicationID(ctx context.Context, id resources
 	update := bson.D{{Key: "$unset", Value: bson.D{{Key: key, Value: ""}}}}
 
 	log.Printf("Deleting Component with Application id and name: %s, %s", id, name)
-	col := d.db.Collection(collectionName)
+	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return fmt.Errorf("error deleting Application: %s", err)
@@ -320,21 +329,21 @@ func (d curpDB) GetDeploymentByApplicationID(ctx context.Context, id resources.A
 	return &item, nil
 }
 
-func (d curpDB) PatchDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Deployment) error {
+func (d curpDB) PatchDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Deployment) (bool, error) {
 	options := options.Update().SetUpsert(true)
 	key := fmt.Sprintf("deployments.%s", name)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: patch}}}}
 
 	log.Printf("Updating Deployment with Application id and name: %s, %s", id, name)
-	col := d.db.Collection(collectionName)
+	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
-		return fmt.Errorf("error updating Application: %s", err)
+		return false, fmt.Errorf("error updating Application: %s", err)
 	}
 
 	log.Printf("Updated Application with Application id and name: %s, %s - %+v", id, name, result)
-	return nil
+	return result.UpsertedCount > 1, nil
 }
 
 func (d curpDB) DeleteDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
@@ -344,7 +353,7 @@ func (d curpDB) DeleteDeploymentByApplicationID(ctx context.Context, id resource
 	update := bson.D{{Key: "$unset", Value: bson.D{{Key: key}}}}
 
 	log.Printf("Deleting Deployment with Application id and name: %s, %s, %s", id, name, update)
-	col := d.db.Collection(collectionName)
+	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return fmt.Errorf("error deleting Application: %s", err)
@@ -387,21 +396,21 @@ func (d curpDB) GetScopeByApplicationID(ctx context.Context, id resources.Applic
 	return &item, nil
 }
 
-func (d curpDB) PatchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Scope) error {
+func (d curpDB) PatchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Scope) (bool, error) {
 	options := options.Update().SetUpsert(true)
 	key := fmt.Sprintf("scopes.%s", name)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: patch}}}}
 
 	log.Printf("Updating Scope with Application id and name: %s, %s", id, name)
-	col := d.db.Collection(collectionName)
+	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
-		return fmt.Errorf("error updating Scope: %s", err)
+		return false, fmt.Errorf("error updating Scope: %s", err)
 	}
 
 	log.Printf("Updated Scope with Application id and name: %s, %s - %+v", id, name, result)
-	return nil
+	return result.UpsertedCount > 1, nil
 }
 
 func (d curpDB) DeleteScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {
@@ -411,12 +420,69 @@ func (d curpDB) DeleteScopeByApplicationID(ctx context.Context, id resources.App
 	update := bson.D{{Key: "$unset", Value: bson.D{{Key: key, Value: ""}}}}
 
 	log.Printf("Deleting Scope with Application id and name: %s, %s", id, name)
-	col := d.db.Collection(collectionName)
+	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return fmt.Errorf("error deleting Application: %s", err)
 	}
 
 	log.Printf("Deleted Scope with Application id and name: %s, %s - %+v", id, name, result)
+	return nil
+}
+
+func (d curpDB) GetOperationByID(ctx context.Context, id resources.ResourceID) (*Operation, error) {
+	item := &Operation{}
+
+	filter := bson.D{{Key: "_id", Value: id.ID}}
+	log.Printf("Getting %v", id)
+	col := d.db.Collection(operationsCollection)
+	result := col.FindOne(ctx, filter)
+	err := result.Err()
+	if err == mongo.ErrNoDocuments {
+		log.Printf("%v was not found.", id)
+		return nil, ErrNotFound
+	} else if err != nil {
+		return nil, fmt.Errorf("error querying %v: %w", id, err)
+	}
+
+	log.Printf("Found %v", id)
+	err = result.Decode(item)
+	if err != nil {
+		return nil, fmt.Errorf("error reading %v: %w", id, err)
+	}
+
+	return item, nil
+}
+
+func (d curpDB) PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *Operation) (bool, error) {
+	options := options.Update().SetUpsert(true)
+	filter := bson.D{{Key: "_id", Value: id.ID}}
+	update := bson.D{{Key: "$set", Value: patch}}
+
+	log.Printf("Updating Operation with _id: %s", id.ID)
+	col := d.db.Collection(operationsCollection)
+	result, err := col.UpdateOne(ctx, filter, update, options)
+	if err != nil {
+		return false, fmt.Errorf("error updating Operation: %s", err)
+	}
+
+	log.Printf("Updated Operation with _id: %s - %+v", id.ID, result)
+	return result.UpsertedCount > 1, nil
+}
+
+func (d curpDB) DeleteOperationByID(ctx context.Context, id resources.ResourceID) error {
+	filter := bson.D{{Key: "_id", Value: id.ID}}
+
+	log.Printf("Deleting Operation with _id: %s", id)
+	col := d.db.Collection(operationsCollection)
+	result := col.FindOneAndDelete(ctx, filter)
+	err := result.Err()
+	if err == mongo.ErrNoDocuments {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error deleting Operation with _id: '%s': %w", id, err)
+	}
+
+	log.Printf("Deleted Operation with _id: %s", id)
 	return nil
 }

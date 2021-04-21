@@ -5,7 +5,9 @@
 
 package main
 
-import "github.com/Azure/radius/cmd/cli/cmd"
+import (
+	"github.com/Azure/radius/cmd/cli/cmd"
+)
 
 func main() {
 	cmd.Execute()

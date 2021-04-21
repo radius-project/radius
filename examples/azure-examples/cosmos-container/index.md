@@ -10,4 +10,4 @@ This application showcases how Radius can use an Azure CosmosDB
 
 ## Bicep file
 
-{{< rad file="azure-bicep/template.bicep">}}
+{{< rad file="template.bicep">}}

@@ -12,15 +12,84 @@ These steps will setup the required tools and extensions to get you up and runni
 
 - [Az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 
-## Install rad CLI
+## Install CLI
 
-1. Download the `rad` CLI from one of these links:
+{{< tabs Windows MacOS Linux Binaries >}}
 
-   - [MacOS](https://radiuspublic.blob.core.windows.net/tools/rad/edge/macos-x64/rad)
-   - [Linux](https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad)
-   - [Windows](https://radiuspublic.blob.core.windows.net/tools/rad/edge/windows-x64/rad.exe)
+{{% codetab %}}
+
+### Install the latest stable version
+
+```powershell
+powershell -Command "iwr -useb https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1 | iex"
+```
+
+### Install a specific version
+
+```powershell
+powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>"
+```
+
+{{% /codetab %}}
+{{% codetab %}}
+
+### Install the latest stable version
+
+```bash
+curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
+```
+
+### Install a specific version
+
+```bash
+curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s <Version>
+```
+
+{{% /codetab %}}
+
+{{% codetab %}}
+
+### Install the latest stable version
+
+```bash
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
+```
+
+### Install a specific version
+
+```bash
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s <Version>
+```
+
+{{% /codetab %}}
+
+{{% codetab %}}
+
+### Install the latest stable version
+
+1. Download the `rad` CLI from one of these URLs:
+
+   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/edge/macos-x64/rad
+   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad
+   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/edge/windows-x64/rad.exe
 
 1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
+
+### Install a specific version
+
+1. Download the `rad` CLI from one of these URLs (replace `<version>` with your desired version):
+
+   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/macos-x64/rad
+   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/linux-x64/rad
+   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/windows-x64/rad.exe
+
+2. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
+
+{{% /codetab %}}
+
+{{< /tabs >}}
+
+## Test it out
 
 1. Verify the rad CLI is installed correctly:
 
@@ -33,7 +102,9 @@ These steps will setup the required tools and extensions to get you up and runni
    Available Commands:
      application Manage applications
      bicep       Manage bicep compiler
+     component   Manage components
      deploy      Deploy a RAD application
+     deployment  Manage deployments
      env         Manage environments
      expose      Expose local port
      help        Help about any command
@@ -41,6 +112,7 @@ These steps will setup the required tools and extensions to get you up and runni
    Flags:
          --config string   config file (default is $HOME/.rad/config.yaml)
      -h, --help            help for rad
+     -v, --version         version for rad
    
    Use "rad [command] --help" for more information about a command.
    ```

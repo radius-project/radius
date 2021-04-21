@@ -7,7 +7,6 @@ package deploytests
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,18 +30,6 @@ func TestDeployment(t *testing.T) {
 	env, err := environment.GetTestEnvironment(ctx, config)
 	require.NoError(t, err)
 
-	// Schedule test cluster cleanup
-	defer cleanup(ctx, t, config, *env)
-
-	err = env.DeployRP(ctx, config.Authorizer)
-	require.NoError(t, err)
-
-	// Merge the k8s credentials to the cluster if it's a leased one
-	if env.UsingReservedTestCluster {
-		err = utils.RunRadMergeCredentialsCommand(env.ConfigPath)
-		require.NoError(t, err)
-	}
-
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
@@ -50,11 +37,15 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	t.Run("Deploy frontend-backend", func(t *testing.T) {
-		appName := "frontend-backend"
-		templateFilePath := filepath.Join(cwd, "../../examples/", appName, "/azure-bicep/template.bicep")
+		templateFilePath := filepath.Join(cwd, "../../examples/frontend-backend/template.bicep")
 
 		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
 		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			err := utils.RunRadApplicationDeleteCommand("frontend-backend", env.ConfigPath, time.Minute*5)
+			t.Logf("failed to delete application: %v", err)
+		})
 
 		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
 			Namespaces: map[string][]validation.Pod{
@@ -67,10 +58,15 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run(("Deploy azure-servicebus"), func(t *testing.T) {
-		templateFilePath := filepath.Join(cwd, "../../examples/azure-examples/azure-servicebus/azure-bicep/template.bicep")
+		templateFilePath := filepath.Join(cwd, "../../examples/azure-examples/azure-servicebus/template.bicep")
 
 		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
 		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			err := utils.RunRadApplicationDeleteCommand("radius-servicebus", env.ConfigPath, time.Minute*5)
+			t.Logf("failed to delete application: %v", err)
+		})
 
 		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
 			Namespaces: map[string][]validation.Pod{
@@ -83,10 +79,15 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run(("Deploy dapr pubsub"), func(t *testing.T) {
-		templateFilePath := filepath.Join(cwd, "../../examples/dapr-examples/dapr-pubsub-azure/azure-bicep/template.bicep")
+		templateFilePath := filepath.Join(cwd, "../../examples/dapr-examples/dapr-pubsub-azure/template.bicep")
 
 		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
 		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			err := utils.RunRadApplicationDeleteCommand("dapr-pubsub", env.ConfigPath, time.Minute*5)
+			t.Logf("failed to delete application: %v", err)
+		})
 
 		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
 			Namespaces: map[string][]validation.Pod{
@@ -99,10 +100,15 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run(("Deploy dapr-hello (Tutorial)"), func(t *testing.T) {
-		templateFilePath := filepath.Join(cwd, "../../docs/content/tutorial/dapr-microservices/dapr-microservices.bicep")
+		templateFilePath := filepath.Join(cwd, "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep")
 
 		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
 		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			err := utils.RunRadApplicationDeleteCommand("dapr-hello", env.ConfigPath, time.Minute*5)
+			t.Logf("failed to delete application: %v", err)
+		})
 
 		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
 			Namespaces: map[string][]validation.Pod{
@@ -113,18 +119,4 @@ func TestDeployment(t *testing.T) {
 			},
 		})
 	})
-}
-
-func cleanup(ctx context.Context, t *testing.T, config *config.AzureConfig, env environment.TestEnvironment) {
-	// Delete the template deployment
-	err := utils.RunRadDeleteApplicationsCommand(env.ResourceGroup)
-	if err != nil {
-		t.Log(err.Error())
-	}
-
-	// Nothing we can really do here other than log it. Using PrintLn because we want to log it unconditionally
-	err = environment.ReleaseTestEnvironment(ctx, config, env)
-	if err != nil {
-		fmt.Printf("failed to release test environment: %v", err)
-	}
 }

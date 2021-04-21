@@ -6,7 +6,7 @@ description: An overview of Project Radius application model and what it provide
 weight: 10
 ---
 
-Project Radius provides an *application mdodel* - a descriptive framework for cloud native applications and their requirements. This section is a conceptual guide for how the Radius model is structured, and explains at high level the concepts at work when you describe and deploy an application with Radius.
+Project Radius provides an *application model* - a descriptive framework for cloud native applications and their requirements. This section is a conceptual guide for how the Radius model is structured, and explains at high level the concepts at work when you describe and deploy an application with Radius.
 
 Radius uses the [Bicep langauge](https://github.com/azure/bicep) as its file-format and structure. Examples will be presented with both diagrams and using Bicep for clarity. Minimal knowledge of Bicep will be needed to understand the examples here.
 
@@ -215,7 +215,7 @@ A Service may be **depended-upon** by multiple Components, which may specify:
 
 #### Computed values
 
-In addition to expressing a *logical* relationship, a Service may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a service can specify how wire up a *computed value* to an application concern. *eg. set the `DB_CONNECTION` environment variable to the database's connection string*
+In addition to expressing a *logical* relationship, a Service may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a service can specify how wire up a *computed value* to an application concern. *eg. set the `DB_CONNECTION` environment variable to the database's connection string*. These items are computed when the related resource is deployed. 
 
 {{% alert title="💡 Key concept" color="info" %}}
 A Service dependency between Components *may* affect the deployment order of Components or it *may not* depending on the kind of service. eg. HTTP communication between components *may* be bi-directional, so it does not affect deployment order.
@@ -312,7 +312,7 @@ A **Trait** is a piece of configuration that specifies an operational behavior. 
 
 Traits are defined as:
 
-{{% alert title="📄 Radius Deployment" color="primary" %}}
+{{% alert title="📄 Radius Trait" color="primary" %}}
 A structured piece of orthogonal configuration that can applied to a Component as part of its definition or a Deployment definition.
 {{% /alert %}}
 

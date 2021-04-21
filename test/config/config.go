@@ -17,6 +17,7 @@ import (
 
 type AzureConfig struct {
 	Authorizer      autorest.Authorizer
+	ConfigPath      string
 	subscriptionID  string
 	locationDefault string
 	cloudName       string
@@ -41,6 +42,7 @@ func NewAzureConfig() (*AzureConfig, error) {
 
 	return &AzureConfig{
 		Authorizer:      authorizer,
+		ConfigPath:      os.Getenv("RADIUS_CONFIG_PATH"),
 		subscriptionID:  os.Getenv("INTEGRATION_TEST_SUBSCRIPTION_ID"),
 		locationDefault: os.Getenv("INTEGRATION_TEST_DEFAULT_LOCATION"),
 		baseGroupName:   os.Getenv("INTEGRATION_TEST_BASE_GROUP_NAME"),

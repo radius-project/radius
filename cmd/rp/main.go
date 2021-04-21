@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/curp"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/db"
+	"github.com/Azure/radius/pkg/curp/deployment"
 	"github.com/Azure/radius/pkg/curp/k8sauth"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -75,9 +76,16 @@ func main() {
 
 	db := db.NewCurpDB(client.Database(dbName))
 
-	addr := ":" + port
-	log.Printf("listening on: '%s'...", addr)
-	server := curp.NewServer(db, arm, k8s, addr, curp.ServerOptions{Authenticate: authenticate})
+	options := curp.ServerOptions{
+		Address:      ":" + port,
+		Authenticate: authenticate,
+		Deploy:       deployment.NewDeploymentProcessor(arm, k8s),
+		DB:           db,
+		K8s:          k8s,
+	}
+
+	log.Printf("listening on: '%s'...", options.Address)
+	server := curp.NewServer(options)
 	err = server.ListenAndServe()
 	if err != nil {
 		panic(err)
