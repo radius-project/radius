@@ -94,10 +94,14 @@ checkExistingRadius() {
 }
 
 getLatestRelease() {
-    local current_osarch="${OS}-${ARCH}"
-    local latest_release="edge"
-    
-    # TODO Add code to check the release versions and get the latest release
+    local releaseUrl="https://radiuspublic.blob.core.windows.net/version/stable.txt"
+    local latest_release=""
+
+    if [ "$DAPR_HTTP_REQUEST_CLI" == "curl" ]; then
+        latest_release=$(curl -s $daprReleaseUrl)
+    else
+        latest_release=$(wget -q -O - $daprReleaseUrl)
+    fi
 
     ret_val=$latest_release
 }
