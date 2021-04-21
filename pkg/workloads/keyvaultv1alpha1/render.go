@@ -33,10 +33,10 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	}
 
 	properties := wrp[0].Properties
-	vaultName := properties["keyvaultname"]
-	msiResourceID := properties["keyvaultmsiresourceid"]
-	msiAppID := properties["keyvaultmsiappid"]
-	msiObjectID := properties["keyvaultmsiobjectid"]
+	vaultName := properties[KeyVaultName]
+	msiResourceID := properties[KeyVaultMsiResourceID]
+	msiAppID := properties[KeyVaultMsiAppID]
+	msiObjectID := properties[KeyVaultMsiObjectID]
 	kvClient := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
 	kvClient.Authorizer = r.Arm.Auth
 	vault, err := kvClient.Get(ctx, r.Arm.ResourceGroup, vaultName)
@@ -45,10 +45,10 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	}
 
 	values := map[string]interface{}{
-		"uri":         *vault.Properties.VaultURI,
-		"msiId":       msiResourceID,
-		"msiAppId":    msiAppID,
-		"msiObjectId": msiObjectID,
+		VaultUri:    *vault.Properties.VaultURI,
+		MsiID:       msiResourceID,
+		MsiAppID:    msiAppID,
+		MsiObjectID: msiObjectID,
 	}
 
 	return values, nil
@@ -76,10 +76,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: "azure.keyvault",
 		Resource: map[string]string{
-			"name":                   w.Workload.Name,
-			"keypermissions":         string(keyPermissions),
-			"secretpermissions":      string(secretPermissions),
-			"certificatepermissions": string(certificatePermissions),
+			"name":                 w.Workload.Name,
+			KeyPermissions:         string(keyPermissions),
+			SecretPermissions:      string(secretPermissions),
+			CertificatePermissions: string(certificatePermissions),
 		},
 	}
 

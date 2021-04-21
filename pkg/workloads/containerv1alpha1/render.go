@@ -111,9 +111,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		resources = append(resources, workloads.WorkloadResource{
 			Type: "azure.aadpodidentity",
 			Resource: map[string]string{
-				"podidentityname":      podIdentity.Name,
-				"podidentitynamespace": podIdentity.Namespace,
-				"podidentitycluster":   podIdentity.ClusterName,
+				PodIdentityName:    podIdentity.Name,
+				PodIdentityCluster: podIdentity.ClusterName,
 			},
 		})
 	}

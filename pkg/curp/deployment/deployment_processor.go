@@ -1374,21 +1374,21 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 
 	// read key permissions config
 	var keyPermissions []keyvault.KeyPermissions
-	err = json.Unmarshal([]byte(properties["keypermissions"]), &keyPermissions)
+	err = json.Unmarshal([]byte(properties[keyvaultv1alpha1.KeyPermissions]), &keyPermissions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse key permissions in keyvault config: %w", err)
 	}
 
 	// read secret permissions config
 	var secretPermissions []keyvault.SecretPermissions
-	err = json.Unmarshal([]byte(properties["secretpermissions"]), &secretPermissions)
+	err = json.Unmarshal([]byte(properties[keyvaultv1alpha1.SecretPermissions]), &secretPermissions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse secret permissions in keyvault config: %w", err)
 	}
 
 	// read certificate permissions config
 	var certificatePermissions []keyvault.CertificatePermissions
-	err = json.Unmarshal([]byte(properties["certificatepermissions"]), &certificatePermissions)
+	err = json.Unmarshal([]byte(properties[keyvaultv1alpha1.CertificatePermissions]), &certificatePermissions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse certificate permissions in keyvault config: %w", err)
 	}
@@ -1439,17 +1439,17 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 	}
 
 	// store vault so we can use later
-	properties["keyvaultname"] = *kv.Name
-	properties["keyvaultmsiresourceid"] = msi.ResourceID
-	properties["keyvaultmsiappid"] = msi.AppID
-	properties["keyvaultmsiobjectid"] = msi.ObjectID
+	properties[keyvaultv1alpha1.KeyVaultName] = *kv.Name
+	properties[keyvaultv1alpha1.KeyVaultMsiResourceID] = msi.ResourceID
+	properties[keyvaultv1alpha1.KeyVaultMsiAppID] = msi.AppID
+	properties[keyvaultv1alpha1.KeyVaultMsiObjectID] = msi.ObjectID
 
 	return properties, nil
 }
 
 func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]string) error {
 	// Delete key vault
-	vaultName := properties["keyvaultname"]
+	vaultName := properties[keyvaultv1alpha1.KeyVaultName]
 
 	kvClient := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
 	kvClient.Authorizer = kvh.arm.Auth
@@ -1460,7 +1460,7 @@ func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]st
 	}
 
 	// Delete user assigned managed identity created
-	err = kvh.deleteManagedIdentity(ctx, properties["keyvaultmsiresourceid"])
+	err = kvh.deleteManagedIdentity(ctx, properties[keyvaultv1alpha1.KeyVaultMsiResourceID])
 	if err != nil {
 		return fmt.Errorf("failed to DELETE user assigned managed identity: %w", err)
 	}
@@ -1496,9 +1496,8 @@ func (pih *podIdentityHandler) Put(ctx context.Context, resource workloads.Workl
 
 func (pih *podIdentityHandler) Delete(ctx context.Context, properties map[string]string) error {
 	// Delete AAD Pod Identity created
-	podIdentityName := properties["podidentityname"]
-	// podIdentityNamespace := properties["podidentitynamespace"]
-	podidentityCluster := properties["podidentitycluster"]
+	podIdentityName := properties[containerv1alpha1.PodIdentityName]
+	podidentityCluster := properties[containerv1alpha1.PodIdentityCluster]
 
 	mcc := containerservice.NewManagedClustersClient(pih.arm.SubscriptionID)
 	mcc.Authorizer = pih.arm.Auth
