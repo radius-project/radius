@@ -14,7 +14,7 @@ Our release process for Project Radius is based on git tags. Pushing a new tag w
 Currently performing a release involves our custom Bicep compiler - which is in a private fork. We'll update these instructions in the future when this moves to a shared repository.
 {{% /alert %}}
 
-Before you begin:
+## Pre-requisites
 
 - Find the storage account on Azure. It is called `radiuspublic`
 - Determine the release version. This is in the form `v.<major>.<minor>.<patch>`
