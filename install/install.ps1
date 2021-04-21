@@ -19,15 +19,7 @@ $RadiusCliFileName = "rad.exe"
 $RadiusCliFilePath = "${RadiusRoot}\${RadiusCliFileName}"
 $OsArch = "windows-x64"
 $BaseDownloadUrl = "https://radiuspublic.blob.core.windows.net/tools/rad"
-
-# Set Github request authentication for basic authentication.
-if ($Env:GITHUB_USER) {
-    $basicAuth = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Env:GITHUB_USER + ":" + $Env:GITHUB_TOKEN));
-    $githubHeader = @{"Authorization" = "Basic $basicAuth" }
-}
-else {
-    $githubHeader = @{}
-}
+$StableVersionUrl = "https://radiuspublic.blob.core.windows.net/version/stable.txt"
 
 if ((Get-ExecutionPolicy) -gt 'RemoteSigned' -or (Get-ExecutionPolicy) -eq 'ByPass') {
     Write-Output "PowerShell requires an execution policy of 'RemoteSigned'."
@@ -56,10 +48,9 @@ if (!(Test-Path $RadiusRoot -PathType Container)) {
     throw "Cannot create $RadiusRoot"
 }
 
-# TODO Get the list of release from GitHub and get the latest version
 if($Version -eq "")
 {
-    $Version = "edge"
+    $Version = Invoke-WebRequest $StableVersionUrl
 }
 $urlParts = @(
     $BaseDownloadUrl,
