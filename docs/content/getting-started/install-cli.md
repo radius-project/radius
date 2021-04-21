@@ -52,13 +52,13 @@ curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /
 ### Install the latest stable version
 
 ```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash
 ```
 
 ### Install a specific version
 
 ```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s <Version>
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s <Version>
 ```
 
 {{% /codetab %}}
