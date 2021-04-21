@@ -427,9 +427,6 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subs
 		"channel": map[string]interface{}{
 			"value": version.Channel(),
 		},
-		"kubernetesVersion": map[string]interface{}{
-			"value": params.KubernetesVersion,
-		},
 	}
 
 	deploymentProperties := &resources.DeploymentProperties{
@@ -539,5 +536,4 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 
 type deploymentParameters struct {
 	DeploymentTemplate string
-	KubernetesVersion  string
 }
