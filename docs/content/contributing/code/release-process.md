@@ -23,27 +23,35 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 
 1. In the Bicep fork:
 
-```bash
-# replace v0.1.0 with the release version
-git tag v0.1.0
-git push --tags
-```
+   ```bash
+   # replace v0.1.0 with the release version
+   git tag v0.1.0
+   git push --tags
+   ```
 
-Verify that GitHub actions triggers a build in response to the tag, and that the build completes.
+   Verify that GitHub actions triggers a build in response to the tag, and that the build completes.
 
-Next, check the timestamps in the `tools` container of the storage account. There should be new builds of `rad-bicep` and the VS Code extension that correspond to the channel. Look at the paths `tools/bicep/<channel>/<architecture>/` and `tools/vscode/<channel>`. These should reflect the new build.
+   Next, check the timestamps in the `tools` container of the storage account. There should be new builds of `rad-bicep` and the VS Code extension that correspond to the channel. Look at the paths `tools/bicep/<channel>/<architecture>/` and `tools/vscode/<channel>`. These should reflect the new build.
+
+   ```bash
+   az storage blob directory list -c tools -d bicep --account-name radiuspublic --output table
+   ```
 
 2. In the azure/radius repo:
 
-```bash
-# replace v0.1.0 with the release version
-git tag v0.1.0
-git push --tags
-```
+   ```bash
+   # replace v0.1.0 with the release version
+   git tag v0.1.0
+   git push --tags
+   ```
 
-Verify that GitHub actions triggers a build in response to the tag, and that the build completes.
+   Verify that GitHub actions triggers a build in response to the tag, and that the build completes.
 
-Next, check the timestamps in the `environment` container of the storage account. There should be new copies of our environment setup assets that correspond to the channel.  Look at the path `environment/<channel>/`. These should reflect the new build.
+   Next, check the timestamps in the `environment` container of the storage account. There should be new copies of our environment setup assets that correspond to the channel.  Look at the path `environment/<channel>/`. These should reflect the new build.
+
+   ```bash
+   az storage blob directory list -c tools -d vscode --account-name radiuspublic --account-key <access_key> --output table
+   ```
 
 3. Check the stable version marker
 
@@ -54,6 +62,10 @@ Next, check the timestamps in the `environment` container of the storage account
    The file https://radiuspublic.blob.core.windows.net/version/stable.txt should contain (in plain text) the channel you just created.
    
    You can find this file in the storage account under `version/stable.txt`.
+
+4. Update docs for latest stable binaries
+   
+   Our getting started instructions refer to a hardcoded version number for the manual download section. If this is a new minor release, update this version and check it it.
 
 ## How releases work
 
