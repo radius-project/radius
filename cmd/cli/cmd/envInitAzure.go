@@ -35,6 +35,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+var supportedLocations = [5]string{
+	"australiaeast",
+	"eastus",
+	"northeurope",
+	"westeurope",
+	"westus2",
+}
+
 // Placeholder is for the 'channel'
 const armTemplateURIFormat = "https://radiuspublic.blob.core.windows.net/environment/%s/rp-full.json"
 
@@ -132,6 +140,12 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		}
 	}
 
+	if location != "" {
+		if !isSupportedLocation(location) {
+			return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
+		}
+	}
+
 	return arguments{
 		Name:               name,
 		Interactive:        interactive,
@@ -218,56 +232,44 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 
 	logger.LogInfo("Resource Group '%v' will be created...", name)
 
-	// We need to find the list of locations where custom resource providers are supported
-	locations, err := getSupportedLocations(ctx, authorizer, sub)
+	subc := subscription.NewSubscriptionsClient()
+	subc.Authorizer = authorizer
+
+	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
 	if err != nil {
-		return "", fmt.Errorf("cannot find supported locations: %w", err)
+		return "", fmt.Errorf("cannot list locations: %w", err)
 	}
 
-	index, err := prompt.Select("Select a location:", locations)
+	names := []string{}
+	nameToLocation := map[string]subscription.Location{}
+	for _, loc := range *locations.Value {
+		if !isSupportedLocation(*loc.Name) {
+			continue
+		}
+
+		// Use the display name for the prompt
+		names = append(names, *loc.DisplayName)
+		nameToLocation[*loc.DisplayName] = loc
+	}
+
+	// alphabetize so the list is stable and scannable
+	sort.Strings(names)
+
+	index, err := prompt.Select("Select a location:", names)
 	if err != nil {
 		return "", err
 	}
 
-	location := locations[index]
+	selected := names[index]
+	location := nameToLocation[selected]
 	_, err = rgc.CreateOrUpdate(ctx, name, resources.Group{
-		Location: to.StringPtr(location),
+		Location: to.StringPtr(*location.Name),
 	})
 	if err != nil {
 		return "", err
 	}
 
 	return name, nil
-}
-
-func getSupportedLocations(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription) ([]string, error) {
-	pc := resources.NewProvidersClient(sub.SubscriptionID)
-	pc.Authorizer = authorizer
-
-	provider, err := pc.Get(ctx, "Microsoft.CustomProviders", "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to find Microsoft.CustomProviders namespace: %w", err)
-	}
-
-	if provider.ResourceTypes == nil {
-		return nil, errors.New("provider response does not include resource types")
-	}
-
-	for _, t := range *provider.ResourceTypes {
-		if *t.ResourceType != "resourceProviders" {
-			continue
-		}
-
-		if t.Locations == nil {
-			return nil, errors.New("locations were nil for resourceProviders")
-		}
-
-		// alphabetize so the list is stable and scannable
-		sort.Strings(*t.Locations)
-		return *t.Locations, nil
-	}
-
-	return nil, errors.New("could not find resourceProviders resource type")
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string) error {
@@ -294,17 +296,19 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return nil
 	}
 
-	rgExists, err := validateSubscription(ctx, armauth, subscriptionID, resourceGroup)
+	group, err := validateSubscription(ctx, armauth, subscriptionID, resourceGroup)
 	if err != nil {
 		return err
 	}
 
-	if !rgExists {
+	if group == nil {
 		// Resource group specified was not found. Create it
 		err := createResourceGroup(ctx, subscriptionID, resourceGroup, location)
 		if err != nil {
 			return err
 		}
+	} else if !isSupportedLocation(*group.Location) {
+		return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
 	}
 
 	params := deploymentParameters{DeploymentTemplate: deploymentTemplate}
@@ -364,7 +368,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	return true, *cluster.Name, nil
 }
 
-func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (bool, error) {
+func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (*resources.Group, error) {
 	step := logger.BeginStep("Validating Subscription...")
 
 	sc := subscription.NewSubscriptionsClient()
@@ -372,20 +376,21 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 	_, err := sc.Get(ctx, subscriptionID)
 	if err != nil {
-		return false, fmt.Errorf("cannot find subscription with id '%v'", subscriptionID)
+		return nil, fmt.Errorf("cannot find subscription with id '%v'", subscriptionID)
 	}
 
 	rgc := resources.NewGroupsClient(subscriptionID)
 	rgc.Authorizer = authorizer
 
-	rgExists := true
-	resp, err := rgc.CheckExistence(ctx, resourceGroup)
-	if err != nil || resp.HasHTTPStatus(404) {
-		rgExists = false
+	group, err := rgc.Get(ctx, resourceGroup)
+	if group.StatusCode == 404 {
+		return nil, err
+	} else if err != nil {
+		return nil, err
 	}
 
 	logger.CompleteStep(step)
-	return rgExists, nil
+	return &group, nil
 }
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
@@ -532,6 +537,17 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 
 	logger.CompleteStep(step)
 	return nil
+}
+
+// operates on the *programmatic* location name ('eastus' not 'East US')
+func isSupportedLocation(name string) bool {
+	for _, loc := range supportedLocations {
+		if strings.EqualFold(name, loc) {
+			return true
+		}
+	}
+
+	return false
 }
 
 type deploymentParameters struct {
