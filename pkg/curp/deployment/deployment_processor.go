@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/authorization/mgmt/authorization"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
@@ -22,7 +21,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -1558,68 +1556,6 @@ type AzureManagedIdentity struct {
 	ResourceID string
 }
 
-func (kvh *keyVaultHandler) createRoleAssignment(ctx context.Context, msiObjectID string) error {
-	// Assign the Managed Identity Operator role to the AKS Service Principal
-	rdc := authorization.NewRoleDefinitionsClient(kvh.arm.SubscriptionID)
-	rdc.Authorizer = kvh.arm.Auth
-
-	groupsClient := resources.NewGroupsClient(kvh.arm.SubscriptionID)
-	groupsClient.Authorizer = kvh.arm.Auth
-
-	g, err := groupsClient.Get(ctx, kvh.arm.ResourceGroup)
-	if err != nil {
-		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
-	}
-
-	mcc := containerservice.NewManagedClustersClient(kvh.arm.SubscriptionID)
-	mcc.Authorizer = kvh.arm.Auth
-	var cluster *containerservice.ManagedCluster
-	for list, err := mcc.ListByResourceGroupComplete(ctx, kvh.arm.ResourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
-		if err != nil {
-			return fmt.Errorf("cannot read AKS clusters: %w", err)
-		}
-
-		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
-		tag, ok := list.Value().Tags["rad-environment"]
-		if ok && strings.EqualFold(*tag, "true") {
-			temp := list.Value()
-			cluster = &temp
-			break
-		}
-	}
-
-	if cluster == nil {
-		return fmt.Errorf("could not find an AKS instance in resource group '%v'", kvh.arm.ResourceGroup)
-	}
-
-	list, err := rdc.List(ctx, *g.ID, "roleName eq 'Managed Identity Operator'")
-	if err != nil {
-		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
-	}
-
-	rac := authorization.NewRoleAssignmentsClient(kvh.arm.SubscriptionID)
-	rac.Authorizer = kvh.arm.Auth
-	raName, _ := uuid1.NewV1()
-	_, err = rac.Create(
-		ctx,
-		*g.ID,
-		raName.String(),
-		authorization.RoleAssignmentCreateParameters{
-			Properties: &authorization.RoleAssignmentProperties{
-				PrincipalID:      to.StringPtr(*cluster.Identity.PrincipalID),
-				RoleDefinitionID: to.StringPtr(*list.Values()[0].ID),
-			},
-		})
-
-	detailed := autorest.NewErrorWithError(err, "", "", nil, "")
-	// StatusCode = 409 indicates that the role assignment already exists. Ignore that error
-	if detailed.StatusCode != 409 {
-		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
-	}
-
-	return nil
-}
-
 func (kvh *keyVaultHandler) createManagedIdentity(ctx context.Context, identityName, location string) (AzureManagedIdentity, error) {
 	// Create a user assigned managed identity
 	msiClient := msi.NewUserAssignedIdentitiesClient(kvh.arm.SubscriptionID)
@@ -1633,11 +1569,6 @@ func (kvh *keyVaultHandler) createManagedIdentity(ctx context.Context, identityN
 
 	// Sometimes, the user assigned identity created takes a while to propagate
 	time.Sleep(60 * time.Second)
-
-	err = kvh.createRoleAssignment(ctx, id.PrincipalID.String())
-	if err != nil {
-		return AzureManagedIdentity{}, err
-	}
 
 	azid := AzureManagedIdentity{
 		TenantID:   id.TenantID.String(),

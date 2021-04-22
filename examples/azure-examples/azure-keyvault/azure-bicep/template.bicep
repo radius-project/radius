@@ -16,7 +16,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
             secretpermissions: [
               'list'
               'get'
-              'create'
+              'set'
               'delete'
             ]
             certificatepermissions: [

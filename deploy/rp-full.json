@@ -142,6 +142,8 @@
         }
     },
     "variables": {
+        "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
+        "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), subscription().subscriptionId)]",
         "contributorRole": "b24988ac-6180-42a0-ab88-20f7382dd24c",
         "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
@@ -254,6 +256,21 @@
                     "networkPlugin": "azure"
                 }
             }
+        },
+        {
+          "apiVersion": "2019-04-01-preview",
+          "dependsOn": [
+            "[concat('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
+          ],
+          "name": "[variables('clusterIdentityRoleDefinitionName')]",
+          "properties": {
+            "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-11-01', 'full').identity.principalId]",
+            "principalType": "ServicePrincipal",
+            "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]",
+            "scope": "[resourceGroup().id]"
+          },
+          "tags": "[parameters('resourceTags')]",
+          "type": "Microsoft.Authorization/roleAssignments"
         },
         {
             "type": "Microsoft.Resources/deploymentScripts",
