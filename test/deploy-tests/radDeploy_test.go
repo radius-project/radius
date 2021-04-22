@@ -99,6 +99,27 @@ func TestDeployment(t *testing.T) {
 		})
 	})
 
+	t.Run(("Deploy azure keyvault"), func(t *testing.T) {
+		templateFilePath := filepath.Join(cwd, "../../examples/azure-examples/azure-keyvault/template.bicep")
+
+		// Adding pod identity takes time hence the longer timeout
+		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*15)
+		require.NoError(t, err)
+
+		t.Cleanup(func() {
+			err := utils.RunRadApplicationDeleteCommand("radius-keyvault", env.ConfigPath, time.Minute*5)
+			t.Logf("failed to delete application: %v", err)
+		})
+
+		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
+			Namespaces: map[string][]validation.Pod{
+				"radius-keyvault": {
+					validation.NewPodForComponent("radius-keyvault", "kvaccessor"),
+				},
+			},
+		})
+	})
+
 	t.Run(("Deploy dapr-hello (Tutorial)"), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep")
 

@@ -163,8 +163,8 @@ This step will eventually be removed.
 To see the sender and receiver applications working, you can check logs:
 
 ```sh
-kubectl logs <sender pod name> -n azure-servicebus
-kubectl logs <receiver pod name> -n azure-servicebus
+kubectl logs <sender pod name> -n radius-servicebus
+kubectl logs <receiver pod name> -n radius-servicebus
 ```
 
 You should see the sender sending messages and the receiver receiving them as below:
