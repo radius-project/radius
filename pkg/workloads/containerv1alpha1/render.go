@@ -265,7 +265,6 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 						"app.kubernetes.io/name":       cc.Name,
 						"app.kubernetes.io/part-of":    w.Application,
 						"app.kubernetes.io/managed-by": "radius-rp",
-						"aadpodidbinding":              podID.Name,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -273,6 +272,11 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 				},
 			},
 		},
+	}
+
+	if podID.Name != "" {
+		// Add the pod identity label
+		deployment.Spec.Template.ObjectMeta.Labels["aadpodidbinding"] = podID.Name
 	}
 
 	return &deployment, podID, nil

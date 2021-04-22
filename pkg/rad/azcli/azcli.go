@@ -32,22 +32,3 @@ func RunCLICommand(args ...string) error {
 	err := c.Run()
 	return err
 }
-
-// RunCLICommandWithOutput runs an az CLI command with stdout and stderr forwarded to this process's output.
-func RunCLICommandWithOutput(args ...string) ([]byte, error) {
-	var executableName string
-	var executableArgs []string
-	if runtime.GOOS == "windows" {
-		// Use shell on windows since az is a script not an executable
-		executableName = fmt.Sprintf("%s\\system32\\cmd.exe", os.Getenv("windir"))
-		executableArgs = append(executableArgs, "/c", "az")
-	} else {
-		executableName = "az"
-	}
-
-	executableArgs = append(executableArgs, args...)
-
-	c := exec.Command(executableName, executableArgs...)
-	out, err := c.CombinedOutput()
-	return out, err
-}
