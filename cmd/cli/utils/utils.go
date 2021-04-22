@@ -129,3 +129,11 @@ func GenerateErrorMessage(e radclient.ErrorResponse) string {
 	}
 	return msg
 }
+
+func GenerateResourceGroupUrl(subscriptionID string, resourceGroup string) (string) {
+	
+	rgUrl := "https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/" + subscriptionID + 
+		"/resourceGroups/" + resourceGroup + "/overview"
+	return rgUrl
+
+}

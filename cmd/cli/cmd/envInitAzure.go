@@ -300,9 +300,12 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
+	rgUrl := utils.GenerateResourceGroupUrl(subscriptionID, resourceGroup)
+
 	if exists {
 		// We already have a provider in this resource group
-		logger.LogInfo("Found existing environment...")
+		logger.LogInfo("Found existing environment...\n" +
+					   "Environment '%v' available at:\n%v", name, rgUrl)
 		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
 		if err != nil {
 			return err
@@ -327,6 +330,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		err := createResourceGroup(ctx, subscriptionID, resourceGroup, location)
 		if err != nil {
 			return err
+		logger.LogInfo("New Environment '%v' with Resource Group '%v' available at:\n%v", name, resourceGroup, rgUrl)
 		}
 	} else if !isSupportedLocation(*group.Location) {
 		return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))

@@ -78,7 +78,6 @@ func initConfig() {
 		// Set the default config file so we can write to it if desired
 		cfgFile = path.Join(home, ".rad", "config.yaml")
 	} else if err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
 		cfgFile = viper.ConfigFileUsed()
 	}
 }
