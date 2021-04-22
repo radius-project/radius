@@ -72,7 +72,11 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 	logger.CompleteStep(step)
 
-	step = logger.BeginStep("Deploying Application...")
+	rgUrl := utils.GenerateResourceGroupUrl(env.SubscriptionID, env.ResourceGroup)
+
+	step = logger.BeginStep("Deploying Application...\n" + 
+							"\nMeanwhile, you can view the Resource Group '%v' in the Azure portal:\n%v\n" +
+							"Deployment In Progress...", env.ResourceGroup, rgUrl)
 	err = deployApplication(cmd.Context(), template, env)
 	if err != nil {
 		return err
