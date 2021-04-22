@@ -78,9 +78,9 @@ func deploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	step = logger.BeginStep("Deploying Application into environment '%v'...\n\n" + 
-							"Meanwhile, you can view the environment '%v' at:\n%v\n\n" +
-							"Deployment In Progress...", env.Name, env.Name, envUrl)
+	step = logger.BeginStep("Deploying Application into environment '%v'...\n\n"+
+		"Meanwhile, you can view the environment '%v' at:\n%v\n\n"+
+		"Deployment In Progress...", env.Name, env.Name, envUrl)
 	err = deployApplication(cmd.Context(), template, env)
 	if err != nil {
 		return err

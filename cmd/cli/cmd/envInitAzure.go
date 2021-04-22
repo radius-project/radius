@@ -307,8 +307,8 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 
 	if exists {
 		// We already have a provider in this resource group
-		logger.LogInfo("Found existing environment...\n\n" +
-					   "Environment '%v' available at:\n%v\n", name, envUrl)
+		logger.LogInfo("Found existing environment...\n\n"+
+			"Environment '%v' available at:\n%v\n", name, envUrl)
 		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
 		if err != nil {
 			return err
@@ -333,8 +333,9 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		err := createResourceGroup(ctx, subscriptionID, resourceGroup, location)
 		if err != nil {
 			return err
-		logger.LogInfo("New Environment '%v' with Resource Group '%v' available at:\n%v", name, resourceGroup, envUrl)
 		}
+
+		logger.LogInfo("New Environment '%v' with Resource Group '%v' available at:\n%v", name, resourceGroup, envUrl)
 	} else if !isSupportedLocation(*group.Location) {
 		return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
 	}
@@ -460,15 +461,15 @@ func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName,
 }
 
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
-	
+
 	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, resourceGroup)
 	if err != nil {
 		return resources.DeploymentExtended{}, err
 	}
 
-	step := logger.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...\n\n" +
-										 "New Environment with Resource Group '%v' will be available at:\n%v\n\n" +
-										 "Deployment In Progress...", version.Channel(), resourceGroup, envUrl))
+	step := logger.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...\n\n"+
+		"New Environment with Resource Group '%v' will be available at:\n%v\n\n"+
+		"Deployment In Progress...", version.Channel(), resourceGroup, envUrl))
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
 
