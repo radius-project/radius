@@ -140,8 +140,7 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		}
 	}
 
-	if location != "" {
-		if !isSupportedLocation(location) {
+	if location != "" && !isSupportedLocation(location) {
 			return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
 		}
 	}
