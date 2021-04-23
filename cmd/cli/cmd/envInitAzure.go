@@ -461,7 +461,6 @@ func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName,
 }
 
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
-
 	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, resourceGroup)
 	if err != nil {
 		return resources.DeploymentExtended{}, err
