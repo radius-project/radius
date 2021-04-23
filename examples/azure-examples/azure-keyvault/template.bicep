@@ -7,24 +7,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
         config: {
             managed: true
-            keypermissions: [
-              'list'
-              'get'
-              'create'
-              'delete'
-            ]
-            secretpermissions: [
-              'list'
-              'get'
-              'set'
-              'delete'
-            ]
-            certificatepermissions: [
-              'list'
-              'get'
-              'create'
-              'delete'
-            ]
         }
     }
   }
@@ -43,12 +25,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           name: 'kv'
           kind: 'azure.com/KeyVault'
           setEnv: {
-            KV_URI: 'uri'
+            KV_URI: 'kvuri'
           }
           set: {
-            MSI_ID: 'msiId'
-            MSI_APPID: 'msiAppId'
-            MSI_OBJECTID: 'msiObjectId'
+            role: 'Secrets User'
+            scope: 'KeyVault'
           }
         }
       ]

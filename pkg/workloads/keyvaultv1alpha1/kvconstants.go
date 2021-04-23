@@ -5,12 +5,12 @@
 
 package keyvaultv1alpha1
 
+// Constants
 const (
-	// KeyPermissions configured for the Keyvault in the bicep template
 	KeyPermissions         = "keypermissions"
 	SecretPermissions      = "secretpermissions"
 	CertificatePermissions = "certificatepermissions"
-	VaultUri               = "uri"
+	VaultURI               = "kvuri"
 	MsiID                  = "msiId"
 	MsiAppID               = "msiAppId"
 	MsiObjectID            = "msiObjectId"

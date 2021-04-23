@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,10 +19,17 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
+	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
+	"github.com/Azure/azure-sdk-for-go/services/preview/subscription/mgmt/2019-10-01-preview/subscription"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
+	uuid1 "github.com/gofrs/uuid"
 )
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
@@ -83,6 +91,216 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	return map[string]interface{}{}, nil
 }
 
+func (r Renderer) createManagedIdentity(ctx context.Context, identityName, location string) (msi.Identity, error) {
+	// Create a user assigned managed identity
+	msiClient := msi.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID)
+	msiClient.Authorizer = r.Arm.Auth
+	id, err := msiClient.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, identityName, msi.Identity{
+		Location: to.StringPtr(location),
+	})
+	if err != nil {
+		return msi.Identity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+	}
+
+	// Sometimes, the user assigned identity created takes a while to propagate
+	time.Sleep(60 * time.Second)
+
+	return id, nil
+}
+
+func (r Renderer) readKeyVaultPermissions(dep ContainerDependsOn, w workloads.InstantiatedWorkload) (map[string]string, error) {
+	setVars := make(map[string]string)
+	if dep.Set != nil {
+		for k, v := range dep.Set {
+			service, ok := w.ServiceValues[dep.Name]
+			if !ok {
+				return setVars, fmt.Errorf("cannot resolve service %v", dep.Name)
+			}
+
+			value, ok := service[v]
+			if !ok {
+				return setVars, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
+			}
+
+			str, ok := value.(string)
+			if !ok {
+				return setVars, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+			}
+
+			setVars[k] = str
+		}
+	}
+	return setVars, nil
+}
+
+func (r Renderer) readKeyVaultURI(dep ContainerDependsOn, w workloads.InstantiatedWorkload) (string, error) {
+	if dep.SetEnv == nil {
+		return "", errors.New("unable to find keyvault uri. invalid spec")
+	}
+
+	for _, v := range dep.SetEnv {
+		if v != keyvaultv1alpha1.VaultURI {
+			continue
+		}
+
+		service, ok := w.ServiceValues[dep.Name]
+		if !ok {
+			return "", fmt.Errorf("cannot resolve service %v", dep.Name)
+		}
+
+		value, ok := service[v]
+		if !ok {
+			return "", fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
+		}
+
+		str, ok := value.(string)
+		if !ok {
+			return "", fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+		}
+
+		return str, nil
+	}
+
+	return "", errors.New("unable to find keyvault uri. invalid spec")
+}
+
+const (
+	PermissionsScopeSubscription  = "Subscription"
+	PermissionsScopeResourceGroup = "ResourceGroup"
+	PermissionsScopeKeyVault      = "KeyVault"
+)
+
+func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.Identity, kvID string, permissions map[string]string) error {
+	// Assign the Managed Identity Operator role to the AKS Service Principal
+	rdc := authorization.NewRoleDefinitionsClient(r.Arm.SubscriptionID)
+	rdc.Authorizer = r.Arm.Auth
+
+	// Read role and scope from the permissions list
+	scope := permissions["scope"]
+	role := permissions["role"]
+
+	sc := subscription.NewSubscriptionsClient()
+	sc.Authorizer = r.Arm.Auth
+	s, err := sc.Get(ctx, r.Arm.SubscriptionID)
+	if err != nil {
+		return fmt.Errorf("unable to find subscription: %w", err)
+	}
+
+	gc := resources.NewGroupsClient(r.Arm.SubscriptionID)
+	gc.Authorizer = r.Arm.Auth
+	rg, err := gc.Get(ctx, r.Arm.ResourceGroup)
+	if err != nil {
+		return fmt.Errorf("unable to find resource group: %w", err)
+	}
+
+	var scopeID string
+	if scope == PermissionsScopeSubscription {
+		scopeID = *s.ID
+	} else if scope == PermissionsScopeResourceGroup {
+		scopeID = *rg.ID
+	} else if scope == PermissionsScopeKeyVault {
+		scopeID = kvID
+	} else {
+		return fmt.Errorf("invalid permissions scope specified: %w", err)
+	}
+
+	filter := fmt.Sprintf("roleName eq '%s'", role)
+	roleList, err := rdc.List(ctx, scopeID, filter)
+	if err != nil || !roleList.NotDone() {
+		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+	}
+
+	rac := authorization.NewRoleAssignmentsClient(r.Arm.SubscriptionID)
+	rac.Authorizer = r.Arm.Auth
+	raName, _ := uuid1.NewV1()
+	_, err = rac.Create(
+		ctx,
+		scopeID,
+		raName.String(),
+		authorization.RoleAssignmentCreateParameters{
+			RoleAssignmentProperties: &authorization.RoleAssignmentProperties{
+				PrincipalID:      to.StringPtr(managedIdentity.PrincipalID.String()),
+				RoleDefinitionID: to.StringPtr(*roleList.Values()[0].ID),
+			},
+		})
+
+	if err != nil {
+		detailed := autorest.NewErrorWithError(err, "", "", nil, "")
+		// StatusCode = 409 indicates that the role assignment already exists. Ignore that error
+		if detailed.StatusCode != 409 {
+			return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, error) {
+	var podIdentity AADPodIdentity
+
+	for _, dep := range cw.DependsOn {
+		// If the container depends on a KeyVault, create a pod identity
+		if dep.Kind == "azure.com/KeyVault" {
+			// Read KV_URI
+			kvURI, err := r.readKeyVaultURI(dep, w)
+			if err != nil || kvURI == "" {
+				return AADPodIdentity{}, fmt.Errorf("failed to read keyvault uri: %w", err)
+			}
+
+			kvName := strings.Replace(strings.Split(kvURI, ".")[0], "https://", "", -1)
+			// Create user assigned managed identity
+			managedIdentityName := kvName + "-msi"
+
+			g := resources.NewGroupsClient(r.Arm.SubscriptionID)
+			g.Authorizer = r.Arm.Auth
+			rg, err := g.Get(ctx, r.Arm.ResourceGroup)
+			if err != nil {
+				return AADPodIdentity{}, fmt.Errorf("could not find resource group: %w", err)
+			}
+			msi, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
+			if err != nil {
+				return AADPodIdentity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+			}
+
+			// Read Key Vault Permissions to assign to the managed identity
+			// permissions, err := r.readKeyVaultPermissions(dep, w)
+			// if err != nil {
+			// 	return AADPodIdentity{}, fmt.Errorf("unable to read keyvault permissions: %w", err)
+			// }
+
+			kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
+			kvc.Authorizer = r.Arm.Auth
+			if err != nil {
+				return AADPodIdentity{}, err
+			}
+			kv, err := kvc.Get(ctx, r.Arm.ResourceGroup, kvName)
+			if err != nil {
+				return AADPodIdentity{}, fmt.Errorf("unable to find keyvault: %w", err)
+			}
+
+			// Assign specified permissions to the user assigned managed identity to access KeyVault
+			permissions := make(map[string]string)
+			permissions["scope"] = PermissionsScopeKeyVault
+			// TODO change to read only by default
+			permissions["role"] = "Key Vault Administrator"
+			err = r.createRoleAssignment(ctx, msi, *kv.ID, permissions)
+			if err != nil {
+				return AADPodIdentity{}, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+			}
+
+			// Create pod identity
+			podIdentity, err := r.createPodIdentity(ctx, msi, cw.Name, w.Application)
+			if err != nil {
+				return AADPodIdentity{}, fmt.Errorf("failed to create pod identity: %w", err)
+			}
+
+			return podIdentity, nil
+		}
+	}
+
+	return podIdentity, nil
+}
+
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
 	cw, err := r.convert(w)
@@ -90,7 +308,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, err
 	}
 
-	deployment, podIdentity, err := r.makeDeployment(ctx, w, cw)
+	deployment, err := r.makeDeployment(ctx, w, cw)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
 	}
@@ -106,8 +324,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		resources = append(resources, workloads.NewKubernetesResource("Service", service))
 	}
 
+	podIdentity, err := r.createPodIdentityResource(ctx, w, cw)
+	if err != nil {
+		return []workloads.WorkloadResource{}, fmt.Errorf("unable to add pod identity: %w", err)
+	}
 	if podIdentity.Name != "" {
 		// Append the Pod identity created to the list of resources
+		deployment.Spec.Template.ObjectMeta.Labels["aadpodidbinding"] = podIdentity.Name
 		resources = append(resources, workloads.WorkloadResource{
 			Type: "azure.aadpodidentity",
 			Resource: map[string]string{
@@ -141,7 +364,7 @@ func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent
 	return container, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, AADPodIdentity, error) {
+func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, error) {
 	container := corev1.Container{
 		Name:  cc.Name,
 		Image: cc.Run.Container.Image,
@@ -161,56 +384,21 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	var podID AADPodIdentity
-	var err error
 	for _, dep := range cc.DependsOn {
-		// If the container depends on a KeyVault, create a pod identity
-		if dep.Kind == "azure.com/KeyVault" {
-			setVars := make(map[string]string)
-			if dep.Set != nil {
-				for k, v := range dep.Set {
-					service, ok := w.ServiceValues[dep.Name]
-					if !ok {
-						return nil, AADPodIdentity{}, fmt.Errorf("cannot resolve service %v", dep.Name)
-					}
-
-					value, ok := service[v]
-					if !ok {
-						return nil, AADPodIdentity{}, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
-					}
-
-					str, ok := value.(string)
-					if !ok {
-						return nil, AADPodIdentity{}, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
-					}
-
-					setVars[k] = str
-				}
-			}
-			podID, err = r.createPodIdentity(ctx, w, cc, setVars)
-			if err != nil {
-				return nil, AADPodIdentity{}, errors.New("unable to create pod identity")
-			}
-		}
-
-		if dep.SetEnv == nil {
-			continue
-		}
-
 		for k, v := range dep.SetEnv {
 			service, ok := w.ServiceValues[dep.Name]
 			if !ok {
-				return nil, AADPodIdentity{}, fmt.Errorf("cannot resolve service %v", dep.Name)
+				return nil, fmt.Errorf("cannot resolve service %v", dep.Name)
 			}
 
 			value, ok := service[v]
 			if !ok {
-				return nil, AADPodIdentity{}, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
+				return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
 			}
 
 			str, ok := value.(string)
 			if !ok {
-				return nil, AADPodIdentity{}, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+				return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
 			}
 
 			container.Env = append(container.Env, corev1.EnvVar{
@@ -274,12 +462,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		},
 	}
 
-	if podID.Name != "" {
-		// Add the pod identity label
-		deployment.Spec.Template.ObjectMeta.Labels["aadpodidbinding"] = podID.Name
-	}
-
-	return &deployment, podID, nil
+	return &deployment, nil
 }
 
 // AADPodIdentity represents the AAD pod identity added to a Kubernetes cluster
@@ -289,7 +472,7 @@ type AADPodIdentity struct {
 	ClusterName string
 }
 
-func (r Renderer) createPodIdentity(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent, setVars map[string]string) (AADPodIdentity, error) {
+func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, containerName, podNamespace string) (AADPodIdentity, error) {
 
 	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
 	dc.Authorizer = r.Arm.Auth
@@ -317,11 +500,8 @@ func (r Renderer) createPodIdentity(ctx context.Context, w workloads.Instantiate
 		return AADPodIdentity{}, fmt.Errorf("could not find an AKS instance in resource group '%v'", r.Arm.ResourceGroup)
 	}
 
-	msiResourceID := setVars["MSI_ID"]
-	msiAppID := setVars["MSI_APPID"]
-	msiObjectID := setVars["MSI_OBJECTID"]
 	// Note: Pod Identity name cannot have camel case
-	podIdentityName := "podid-" + cc.Name
+	podIdentityName := "podid-" + containerName
 
 	// Get the cluster and modify it to add pod identity
 	managedCluster, err := mcc.Get(ctx, r.Arm.ResourceGroup, *cluster.Name)
@@ -333,11 +513,11 @@ func (r Renderer) createPodIdentity(ctx context.Context, w workloads.Instantiate
 	podID := containerservice.ManagedClusterPodIdentity{
 		Name: &podIdentityName,
 		// Note: The pod identity namespace specified here has to match the namespace in which the application is deployed
-		Namespace: &w.Application,
+		Namespace: &podNamespace,
 		Identity: &containerservice.UserAssignedIdentity{
-			ResourceID: &msiResourceID,
-			ClientID:   &msiAppID,
-			ObjectID:   &msiObjectID,
+			ResourceID: msi.ID,
+			ClientID:   to.StringPtr(msi.ClientID.String()),
+			ObjectID:   to.StringPtr(msi.PrincipalID.String()),
 		},
 	}
 
@@ -369,7 +549,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, w workloads.Instantiate
 
 	podIdentity := AADPodIdentity{
 		Name:        podIdentityName,
-		Namespace:   w.Application,
+		Namespace:   podNamespace,
 		ClusterName: *cluster.Name,
 	}
 	return podIdentity, nil

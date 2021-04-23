@@ -7,12 +7,10 @@ package deployment
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
@@ -20,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/Azure/azure-sdk-for-go/profiles/preview/resources/mgmt/subscriptions"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
@@ -1362,46 +1361,13 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 		return nil, err
 	}
 
-	identityName := vaultName + "-msi"
-	msi, err := kvh.createManagedIdentity(ctx, identityName, *g.Location)
+	sc := subscriptions.NewClient()
+	sc.Authorizer = kvh.arm.Auth
+	s, err := sc.Get(ctx, kvh.arm.SubscriptionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+		return nil, fmt.Errorf("unable to find subscription: %w", err)
 	}
-
-	tenantID, _ := uuid1.FromString(msi.TenantID)
-
-	// read key permissions config
-	var keyPermissions []keyvault.KeyPermissions
-	err = json.Unmarshal([]byte(properties[keyvaultv1alpha1.KeyPermissions]), &keyPermissions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse key permissions in keyvault config: %w", err)
-	}
-
-	// read secret permissions config
-	var secretPermissions []keyvault.SecretPermissions
-	err = json.Unmarshal([]byte(properties[keyvaultv1alpha1.SecretPermissions]), &secretPermissions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse secret permissions in keyvault config: %w", err)
-	}
-
-	// read certificate permissions config
-	var certificatePermissions []keyvault.CertificatePermissions
-	err = json.Unmarshal([]byte(properties[keyvaultv1alpha1.CertificatePermissions]), &certificatePermissions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse certificate permissions in keyvault config: %w", err)
-	}
-
-	// Grant access to the managed identity created to access the Keyvault
-	// TODO: Using Access policies for now. Can improve by enabling RBAC on the keyvault to assign granular permissions
-	accessPolicy := keyvault.AccessPolicyEntry{
-		TenantID: &tenantID,
-		ObjectID: &msi.ObjectID,
-		Permissions: &keyvault.Permissions{
-			Keys:         &keyPermissions,
-			Secrets:      &secretPermissions,
-			Certificates: &certificatePermissions,
-		},
-	}
+	tenantID, _ := uuid1.FromString(*s.TenantID)
 
 	vaultsFuture, err := kvc.CreateOrUpdate(
 		ctx,
@@ -1415,9 +1381,7 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 					Family: to.StringPtr("A"),
 					Name:   keyvault.Standard,
 				},
-				AccessPolicies: &[]keyvault.AccessPolicyEntry{
-					accessPolicy,
-				},
+				EnableRbacAuthorization: to.BoolPtr(true),
 			},
 		},
 	)
@@ -1438,9 +1402,6 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 
 	// store vault so we can use later
 	properties[keyvaultv1alpha1.KeyVaultName] = *kv.Name
-	properties[keyvaultv1alpha1.KeyVaultMsiResourceID] = msi.ResourceID
-	properties[keyvaultv1alpha1.KeyVaultMsiAppID] = msi.AppID
-	properties[keyvaultv1alpha1.KeyVaultMsiObjectID] = msi.ObjectID
 
 	return properties, nil
 }
@@ -1455,12 +1416,6 @@ func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]st
 	_, err := kvClient.Delete(ctx, kvh.arm.ResourceGroup, vaultName)
 	if err != nil {
 		return fmt.Errorf("failed to DELETE keyvault: %w", err)
-	}
-
-	// Delete user assigned managed identity created
-	err = kvh.deleteManagedIdentity(ctx, properties[keyvaultv1alpha1.KeyVaultMsiResourceID])
-	if err != nil {
-		return fmt.Errorf("failed to DELETE user assigned managed identity: %w", err)
 	}
 
 	return nil
@@ -1545,49 +1500,23 @@ func (pih *podIdentityHandler) Delete(ctx context.Context, properties map[string
 		return fmt.Errorf("failed to delete pod identity on the cluster: %w", err)
 	}
 
+	// Delete the managed identity
+	err = pih.deleteManagedIdentity(ctx, *identity.Identity.ResourceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
+	}
+
 	return nil
 }
 
-// AzureManagedIdentity represents a user assigned managed identity
-type AzureManagedIdentity struct {
-	TenantID   string
-	AppID      string
-	ObjectID   string
-	ResourceID string
-}
-
-func (kvh *keyVaultHandler) createManagedIdentity(ctx context.Context, identityName, location string) (AzureManagedIdentity, error) {
-	// Create a user assigned managed identity
-	msiClient := msi.NewUserAssignedIdentitiesClient(kvh.arm.SubscriptionID)
-	msiClient.Authorizer = kvh.arm.Auth
-	id, err := msiClient.CreateOrUpdate(context.Background(), kvh.arm.ResourceGroup, identityName, msi.Identity{
-		Location: to.StringPtr(location),
-	})
-	if err != nil {
-		return AzureManagedIdentity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
-	}
-
-	// Sometimes, the user assigned identity created takes a while to propagate
-	time.Sleep(60 * time.Second)
-
-	azid := AzureManagedIdentity{
-		TenantID:   id.TenantID.String(),
-		ObjectID:   id.PrincipalID.String(),
-		AppID:      id.ClientID.String(),
-		ResourceID: *id.ID,
-	}
-
-	return azid, nil
-}
-
-func (kvh *keyVaultHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
-	msiClient := msi.NewUserAssignedIdentitiesClient(kvh.arm.SubscriptionID)
-	msiClient.Authorizer = kvh.arm.Auth
+func (pih *podIdentityHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
+	msiClient := msi.NewUserAssignedIdentitiesClient(pih.arm.SubscriptionID)
+	msiClient.Authorizer = pih.arm.Auth
 	msiResource, err := azure.ParseResourceID(msiResourceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}
-	resp, err := msiClient.Delete(ctx, kvh.arm.ResourceGroup, msiResource.ResourceName)
+	resp, err := msiClient.Delete(ctx, pih.arm.ResourceGroup, msiResource.ResourceName)
 	if err != nil || (resp.StatusCode != 200 && resp.StatusCode != 204) {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}
