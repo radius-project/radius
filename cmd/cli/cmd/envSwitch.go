@@ -56,13 +56,13 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	envUrl, err := azure.GenerateAzureEnvUrl(az.SubscriptionID, az.ResourceGroup) 
+	envUrl, err := azure.GenerateAzureEnvUrl(az.SubscriptionID, az.ResourceGroup)
 	if err != nil {
 		return err
 	}
-	
-	logger.LogInfo("Default environment is now: %v\n\n" +
-				   "%v environment is available at:\n%v\n", name, name, envUrl)		   
+
+	logger.LogInfo("Default environment is now: %v\n\n"+
+		"%v environment is available at:\n%v\n", name, name, envUrl)
 
 	env.Default = name
 	rad.UpdateEnvironmentSection(v, env)
