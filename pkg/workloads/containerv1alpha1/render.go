@@ -235,61 +235,72 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 	return nil
 }
 
+func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep ContainerDependsOn, w workloads.InstantiatedWorkload) (*msi.Identity, error) {
+	// Read KV_URI
+	kvURI, err := r.readKeyVaultURI(dep, w)
+	if err != nil || kvURI == "" {
+		return nil, fmt.Errorf("failed to read keyvault uri: %w", err)
+	}
+
+	kvName := strings.Replace(strings.Split(kvURI, ".")[0], "https://", "", -1)
+	// Create user assigned managed identity
+	managedIdentityName := kvName + "-msi"
+
+	g := resources.NewGroupsClient(r.Arm.SubscriptionID)
+	g.Authorizer = r.Arm.Auth
+	rg, err := g.Get(ctx, r.Arm.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("could not find resource group: %w", err)
+	}
+	msi, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+	}
+
+	// Read Key Vault Permissions to assign to the managed identity
+	// permissions, err := r.readKeyVaultPermissions(dep, w)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("unable to read keyvault permissions: %w", err)
+	// }
+
+	kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
+	kvc.Authorizer = r.Arm.Auth
+	if err != nil {
+		return nil, err
+	}
+	kv, err := kvc.Get(ctx, r.Arm.ResourceGroup, kvName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find keyvault: %w", err)
+	}
+
+	// Assign specified permissions to the user assigned managed identity to access KeyVault
+	permissions := make(map[string]string)
+	permissions["scope"] = PermissionsScopeKeyVault
+	// TODO change to read only by default
+	permissions["role"] = "Key Vault Administrator"
+	err = r.createRoleAssignment(ctx, msi, *kv.ID, permissions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+	}
+
+	return &msi, nil
+}
+
 func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, error) {
 	var podIdentity AADPodIdentity
 
 	for _, dep := range cw.DependsOn {
-		// If the container depends on a KeyVault, create a pod identity
+		// If the container depends on a KeyVault, create a pod identity.
+		// The list of dependency kinds to check might grow in the future
 		if dep.Kind == "azure.com/KeyVault" {
-			// Read KV_URI
-			kvURI, err := r.readKeyVaultURI(dep, w)
-			if err != nil || kvURI == "" {
-				return AADPodIdentity{}, fmt.Errorf("failed to read keyvault uri: %w", err)
-			}
-
-			kvName := strings.Replace(strings.Split(kvURI, ".")[0], "https://", "", -1)
-			// Create user assigned managed identity
-			managedIdentityName := kvName + "-msi"
-
-			g := resources.NewGroupsClient(r.Arm.SubscriptionID)
-			g.Authorizer = r.Arm.Auth
-			rg, err := g.Get(ctx, r.Arm.ResourceGroup)
-			if err != nil {
-				return AADPodIdentity{}, fmt.Errorf("could not find resource group: %w", err)
-			}
-			msi, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
-			if err != nil {
-				return AADPodIdentity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
-			}
-
-			// Read Key Vault Permissions to assign to the managed identity
-			// permissions, err := r.readKeyVaultPermissions(dep, w)
-			// if err != nil {
-			// 	return AADPodIdentity{}, fmt.Errorf("unable to read keyvault permissions: %w", err)
-			// }
-
-			kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
-			kvc.Authorizer = r.Arm.Auth
+			// Create a user assigned managed identity and assign it the right permissions to access the KeyVault
+			msi, err := r.createManagedIdentityForKeyVault(ctx, dep, w)
 			if err != nil {
 				return AADPodIdentity{}, err
 			}
-			kv, err := kvc.Get(ctx, r.Arm.ResourceGroup, kvName)
-			if err != nil {
-				return AADPodIdentity{}, fmt.Errorf("unable to find keyvault: %w", err)
-			}
-
-			// Assign specified permissions to the user assigned managed identity to access KeyVault
-			permissions := make(map[string]string)
-			permissions["scope"] = PermissionsScopeKeyVault
-			// TODO change to read only by default
-			permissions["role"] = "Key Vault Administrator"
-			err = r.createRoleAssignment(ctx, msi, *kv.ID, permissions)
-			if err != nil {
-				return AADPodIdentity{}, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
-			}
 
 			// Create pod identity
-			podIdentity, err := r.createPodIdentity(ctx, msi, cw.Name, w.Application)
+			podIdentity, err := r.createPodIdentity(ctx, *msi, cw.Name, w.Application)
 			if err != nil {
 				return AADPodIdentity{}, fmt.Errorf("failed to create pod identity: %w", err)
 			}
@@ -319,18 +330,16 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	resources := []workloads.WorkloadResource{}
-	resources = append(resources, workloads.NewKubernetesResource("Deployment", deployment))
-	if service != nil {
-		resources = append(resources, workloads.NewKubernetesResource("Service", service))
-	}
 
 	podIdentity, err := r.createPodIdentityResource(ctx, w, cw)
 	if err != nil {
 		return []workloads.WorkloadResource{}, fmt.Errorf("unable to add pod identity: %w", err)
 	}
 	if podIdentity.Name != "" {
-		// Append the Pod identity created to the list of resources
+		// Add the aadpodidbinding label to the k8s spec for the container
 		deployment.Spec.Template.ObjectMeta.Labels["aadpodidbinding"] = podIdentity.Name
+
+		// Append the Pod identity created to the list of resources
 		resources = append(resources, workloads.WorkloadResource{
 			Type: "azure.aadpodidentity",
 			Resource: map[string]string{
@@ -338,6 +347,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				PodIdentityCluster: podIdentity.ClusterName,
 			},
 		})
+	}
+
+	resources = append(resources, workloads.NewKubernetesResource("Deployment", deployment))
+	if service != nil {
+		resources = append(resources, workloads.NewKubernetesResource("Service", service))
 	}
 
 	return resources, nil
