@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/spf13/cobra"
@@ -48,7 +49,10 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	logger.LogInfo("using environment %v", args[0])
+	envUrl := utils.GenerateEnvUrl(env.Items[args[0]]["kind"].(string), env.Items[args[0]]["subscriptionid"].(string), env.Items[args[0]]["resourcegroup"].(string)) 
+	
+	logger.LogInfo("Default environment is now: %v\n\n" +
+				   "%v environment is available at:\n%v\n", args[0], args[0], envUrl)		   
 
 	env.Default = args[0]
 	rad.UpdateEnvironmentSection(v, env)

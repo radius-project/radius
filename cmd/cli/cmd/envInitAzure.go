@@ -300,12 +300,12 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	rgUrl := utils.GenerateResourceGroupUrl(subscriptionID, resourceGroup)
-
 	if exists {
 		// We already have a provider in this resource group
-		logger.LogInfo("Found existing environment...\n" +
-					   "Environment '%v' available at:\n%v", name, rgUrl)
+		envUrl := utils.GenerateEnvUrl("azure", subscriptionID, resourceGroup)
+
+		logger.LogInfo("Found existing environment...\n\n" +
+					   "Environment '%v' available at:\n%v\n", name, envUrl)
 		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
 		if err != nil {
 			return err
@@ -457,7 +457,12 @@ func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName,
 }
 
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
-	step := logger.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...", version.Channel()))
+	
+	envUrl := utils.GenerateEnvUrl("azure", subscriptionID, resourceGroup)
+
+	step := logger.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...\n\n" +
+										 "New Environment with Resource Group '%v' will be available at:\n%v\n\n" +
+										 "Deployment In Progress...", version.Channel(), resourceGroup, envUrl))
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
 

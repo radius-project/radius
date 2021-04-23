@@ -72,11 +72,11 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 	logger.CompleteStep(step)
 
-	rgUrl := utils.GenerateResourceGroupUrl(env.SubscriptionID, env.ResourceGroup)
+	envUrl := utils.GenerateEnvUrl(env.Kind, env.SubscriptionID, env.ResourceGroup)
 
-	step = logger.BeginStep("Deploying Application...\n" + 
-							"\nMeanwhile, you can view the Resource Group '%v' in the Azure portal:\n%v\n" +
-							"Deployment In Progress...", env.ResourceGroup, rgUrl)
+	step = logger.BeginStep("Deploying Application into environment '%v'...\n\n" + 
+							"Meanwhile, you can view the environment '%v' at:\n%v\n\n" +
+							"Deployment In Progress...", env.Name, env.Name, envUrl)
 	err = deployApplication(cmd.Context(), template, env)
 	if err != nil {
 		return err
