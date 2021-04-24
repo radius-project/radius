@@ -152,14 +152,14 @@ type serviceBusQueueHandler struct {
 func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
 	d := workloads.Dispatcher{
 		Renderers: map[string]workloads.WorkloadRenderer{
-			"dapr.io/Component@v1alpha1":          &daprcomponentv1alpha1.Renderer{},
-			"dapr.io/StateStore@v1alpha1":         &daprstatestorev1alpha1.Renderer{},
-			"dapr.io/PubSubTopic@v1alpha1":        &daprpubsubv1alpha1.Renderer{},
-			"azure.com/CosmosDocumentDb@v1alpha1": &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
-			"azure.com/Function@v1alpha1":         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
-			"azure.com/WebApp@v1alpha1":           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
-			"radius.dev/Container@v1alpha1":       &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
-			"azure.com/ServiceBusQueue@v1alpha1":  &servicebusqueuev1alpha1.Renderer{Arm: arm},
+			"dapr.io/Component@v1alpha1":  &daprcomponentv1alpha1.Renderer{},
+			daprstatestorev1alpha1.Kind:   &daprstatestorev1alpha1.Renderer{},
+			daprpubsubv1alpha1.Kind:       &daprpubsubv1alpha1.Renderer{},
+			cosmosdocumentdbv1alpha1.Kind: &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
+			"azure.com/Function@v1alpha1": &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
+			"azure.com/WebApp@v1alpha1":   &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
+			containerv1alpha1.Kind:        &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
+			servicebusqueuev1alpha1.Kind:  &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		},
 	}
 

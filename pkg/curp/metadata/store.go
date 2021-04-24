@@ -5,6 +5,13 @@
 
 package metadata
 
+import (
+	"github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1"
+	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
+	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
+	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
+)
+
 // Registry defines the relationships between traits and workloads with built-in services.
 type Registry struct {
 	TraitServices        map[string]IntrinsicService
@@ -27,19 +34,19 @@ func NewRegistry() Registry {
 			},
 		},
 		WorkloadKindServices: map[string]IntrinsicService{
-			"dapr.io/StateStore@v1alpha1": {
+			daprstatestorev1alpha1.Kind: {
 				Name: "",
 				Kind: "dapr.io/StateStore",
 			},
-			"dapr.io/PubSubTopic@v1alpha1": {
+			daprpubsubv1alpha1.Kind: {
 				Name: "",
 				Kind: "dapr.io/PubSubTopic",
 			},
-			"azure.com/CosmosDocumentDb@v1alpha1": {
+			cosmosdocumentdbv1alpha1.Kind: {
 				Name: "",
 				Kind: "mongodb.com/Mongo",
 			},
-			"azure.com/ServiceBusQueue@v1alpha1": {
+			servicebusqueuev1alpha1.Kind: {
 				Name: "",
 				Kind: "azure.com/ServiceBusQueue",
 			},

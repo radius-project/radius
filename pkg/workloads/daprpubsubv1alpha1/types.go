@@ -5,6 +5,8 @@
 
 package daprpubsubv1alpha1
 
+const Kind = "dapr.io/PubSubTopic@v1alpha1"
+
 // DaprPubSubComponent is the definition of the container component
 type DaprPubSubComponent struct {
 	Name      string                   `json:"name"`
