@@ -67,6 +67,25 @@ func (generic GenericComponent) AsRequired(kind string, specific interface{}) er
 	return nil
 }
 
+func (generic GenericComponent) FindProvidesService(name string) *GenericDependency {
+	for _, p := range generic.Provides {
+		if name == p.Name {
+			return &p
+		}
+	}
+
+	return nil
+}
+
+func (generic GenericComponent) FindProvidesServiceRequired(name string) (*GenericDependency, error) {
+	provides := generic.FindProvidesService(name)
+	if provides == nil {
+		return nil, fmt.Errorf("the component should contain a provides service named '%s'", name)
+	}
+
+	return provides, nil
+}
+
 func (generic GenericComponent) FindTrait(kind string, trait interface{}) (bool, error) {
 	for _, t := range generic.Traits {
 		if kind == t.Kind {
@@ -140,6 +159,17 @@ func (generic GenericDependency) As(kind string, specific interface{}) (bool, er
 	}
 
 	return true, nil
+}
+
+func (generic GenericDependency) AsRequired(kind string, specific interface{}) error {
+	match, err := generic.As(kind, specific)
+	if err != nil {
+		return err
+	} else if !match {
+		return fmt.Errorf("the service was expected to have kind '%s' but was '%s", kind, generic.Kind)
+	}
+
+	return nil
 }
 
 func (generic GenericTrait) As(kind string, specific interface{}) (bool, error) {
