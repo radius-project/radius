@@ -22,7 +22,6 @@ type InstantiatedWorkload struct {
 	Name          string
 	Workload      components.GenericComponent
 	ServiceValues map[string]map[string]interface{}
-	Provides      map[string]map[string]interface{}
 }
 
 // WorkloadService represents a service that the workload provides.
