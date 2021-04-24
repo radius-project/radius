@@ -21,7 +21,7 @@ If you are using Visual Studio Code with the Project Radius extension you should
 
 ## Understanding the application
 
-The application you will be deploying is a simple python application that accesses Azure KeyVault for secrets. It has two components:
+The application you will be deploying is a simple python application that accesses Azure KeyVault for listing secrets. It has two components:
 
 - An Azure KeyVault
 - An Azure KeyVault accessor
@@ -30,7 +30,7 @@ You can find the source code for the keyvault accessor application [here](https:
 
 ### Azure KeyVault component
 
-The Radius application describes an Azure KeyVault and the access policy is configurable and can be specified as below:-
+The Radius application describes an Azure KeyVault as below:-
 
 ```
 resource kv 'Components' = {
@@ -39,24 +39,6 @@ resource kv 'Components' = {
   properties: {
       config: {
           managed: true
-          keypermissions: [
-            'list'
-            'get'
-            'create'
-            'delete'
-          ]
-          secretpermissions: [
-            'list'
-            'get'
-            'set'
-            'delete'
-          ]
-          certificatepermissions: [
-            'list'
-            'get'
-            'create'
-            'delete'
-          ]
       }
   }
 }
@@ -64,7 +46,7 @@ resource kv 'Components' = {
 
 ### KeyVault accessor application
 
-The keyvault accessor application is a simple python application that tries to access the keyvault at the KV_URI environment variable and then tries to create, get and delete a secret.
+The keyvault accessor application is a simple python application that tries to access the keyvault at the KV_URI environment variable and then tries to list the secrets.
 
 ```
 resource kvaccessor 'Components' = {
@@ -81,12 +63,7 @@ resource kvaccessor 'Components' = {
         name: 'kv'
         kind: 'azure.com/KeyVault'
         setEnv: {
-          KV_URI: 'uri'
-        }
-        set: {
-          MSI_ID: 'msiId'
-          MSI_APPID: 'msiAppId'
-          MSI_OBJECTID: 'msiObjectId'
+          KV_URI: 'kvuri'
         }
       }
     ]
@@ -150,16 +127,9 @@ You should see the application accessing the keyvault for secrets as below:
 
 ```
 Getting vault url
-Vault url: xxxxxxxxxxx
+Vault url: https://kv-blqmk.vault.azure.net/
 
-.. Create Secret
-Secret with name 'mysecret-455' created with value '455'
-
-.. Get the Secret by name
-Secret with name 'mysecret-455' was found with value '455'.
-
-.. Deleting Secret...
-Secret with name 'mysecret-455' was deleted.
+.. List Secrets
 ```
 
 You have completed this tutorial!

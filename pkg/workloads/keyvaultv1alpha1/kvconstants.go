@@ -11,11 +11,5 @@ const (
 	SecretPermissions      = "secretpermissions"
 	CertificatePermissions = "certificatepermissions"
 	VaultURI               = "kvuri"
-	MsiID                  = "msiId"
-	MsiAppID               = "msiAppId"
-	MsiObjectID            = "msiObjectId"
 	KeyVaultName           = "keyvaultname"
-	KeyVaultMsiResourceID  = "keyvaultmsiresourceid"
-	KeyVaultMsiAppID       = "keyvaultmsiappid"
-	KeyVaultMsiObjectID    = "keyvaultmsiobjectid"
 )

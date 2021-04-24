@@ -4,7 +4,7 @@ Let's look at the manual steps involved for an Azure Keyvault to be made accessi
 
 1. Create AKS cluster with Managed Identity and Pod Identity Profile enabled
 2. Grant at least "Managed Identity Operator" permissions to the AKS Cluster Identity to be able to associate pod identity with pod
-3. Create a User Assigned Managed Identity
+3. Create a User Assigned Managed Identity for each container that needs to access the KeyVault
 4. Grant Keyvault access to the User Assigned Managed Identity created
 5. Create an AAD Pod Identity which creates a binding between a pod label and the User Assigned Managed Identity created above. You can use the commands below to check the pod identity and the binding created.
 

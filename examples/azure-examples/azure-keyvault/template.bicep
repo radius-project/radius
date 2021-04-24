@@ -27,10 +27,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           setEnv: {
             KV_URI: 'kvuri'
           }
-          set: {
-            role: 'Secrets User'
-            scope: 'KeyVault'
-          }
         }
       ]
     }
