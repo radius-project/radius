@@ -64,7 +64,6 @@ type ComponentAction struct {
 	Instantiation   *db.DeploymentComponent
 	Provides        map[string]ComponentService
 	ServiceBindings map[string]ServiceBinding
-	Traits          []db.ComponentTrait
 
 	// Will be `nil` for a delete
 	Component             *components.GenericComponent
@@ -253,7 +252,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			}
 
 			traits := []workloads.WorkloadTrait{}
-			for _, t := range action.Traits {
+			for _, t := range action.Component.Traits {
 				traits = append(traits, workloads.WorkloadTrait{Kind: t.Kind, Properties: t.Properties})
 			}
 
