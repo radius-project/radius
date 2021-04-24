@@ -251,17 +251,11 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				values[binding.Name] = s.Properties
 			}
 
-			traits := []workloads.WorkloadTrait{}
-			for _, t := range action.Component.Traits {
-				traits = append(traits, workloads.WorkloadTrait{Kind: t.Kind, Properties: t.Properties})
-			}
-
 			inst := workloads.InstantiatedWorkload{
 				Application:   appName,
 				Name:          action.ComponentName,
 				Workload:      *action.Component,
 				ServiceValues: values,
-				Traits:        traits,
 			}
 
 			resources, err := dp.renderWorkload(ctx, inst)

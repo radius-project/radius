@@ -7,7 +7,6 @@ package ingress
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -35,13 +34,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, err
 	}
 
-	trait, err := r.findIngressTrait(w.Traits)
+	trait := Trait{}
+	found, err := w.Workload.FindTrait(Kind, &trait)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
-	}
-
-	if trait == nil {
-		// no ingress
+	} else if !found {
+		// no trait
 		return resources, err
 	}
 
@@ -130,47 +128,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	resources = append(resources, workloads.NewKubernetesResource("Ingress", ingress))
 	return resources, nil
-}
-
-type ingressTrait struct {
-	Kind       string                 `json:"kind"`
-	Properties ingressTraitProperties `json:"properties"`
-}
-
-type ingressTraitProperties struct {
-	Hostname string `json:"hostname"`
-	Service  string `json:"service"`
-}
-
-func (r Renderer) findIngressTrait(traits []workloads.WorkloadTrait) (*ingressTrait, error) {
-	var match *workloads.WorkloadTrait
-	for _, t := range traits {
-		if t.Kind == "radius.dev/Ingress@v1alpha1" {
-			match = &t
-			break
-		}
-	}
-
-	if match == nil {
-		return nil, nil
-	}
-
-	val := map[string]interface{}{
-		"kind":       match.Kind,
-		"properties": match.Properties,
-	}
-	b, err := json.Marshal(val)
-	if err != nil {
-		return nil, fmt.Errorf("error reading trait '%v': %w", match.Kind, err)
-	}
-
-	trait := &ingressTrait{}
-	err = json.Unmarshal(b, trait)
-	if err != nil {
-		return nil, fmt.Errorf("error reading trait '%v': %w", match.Kind, err)
-	}
-
-	return trait, nil
 }
 
 func (r Renderer) getName(o runtime.Object) string {
