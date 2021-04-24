@@ -23,7 +23,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	"github.com/Azure/azure-sdk-for-go/services/preview/subscription/mgmt/2019-10-01-preview/subscription"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -108,31 +107,6 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 	return id, nil
 }
 
-func (r Renderer) readKeyVaultPermissions(dep ContainerDependsOn, w workloads.InstantiatedWorkload) (map[string]string, error) {
-	setVars := make(map[string]string)
-	if dep.Set != nil {
-		for k, v := range dep.Set {
-			service, ok := w.ServiceValues[dep.Name]
-			if !ok {
-				return setVars, fmt.Errorf("cannot resolve service %v", dep.Name)
-			}
-
-			value, ok := service[v]
-			if !ok {
-				return setVars, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
-			}
-
-			str, ok := value.(string)
-			if !ok {
-				return setVars, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
-			}
-
-			setVars[k] = str
-		}
-	}
-	return setVars, nil
-}
-
 func (r Renderer) readKeyVaultURI(dep ContainerDependsOn, w workloads.InstantiatedWorkload) (string, error) {
 	if dep.SetEnv == nil {
 		return "", errors.New("unable to find keyvault uri. invalid spec")
@@ -164,48 +138,13 @@ func (r Renderer) readKeyVaultURI(dep ContainerDependsOn, w workloads.Instantiat
 	return "", errors.New("unable to find keyvault uri. invalid spec")
 }
 
-const (
-	PermissionsScopeSubscription  = "Subscription"
-	PermissionsScopeResourceGroup = "ResourceGroup"
-	PermissionsScopeKeyVault      = "KeyVault"
-)
-
-func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.Identity, kvID string, permissions map[string]string) error {
+func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.Identity, kvID string) error {
 	// Assign the Managed Identity Operator role to the AKS Service Principal
 	rdc := authorization.NewRoleDefinitionsClient(r.Arm.SubscriptionID)
 	rdc.Authorizer = r.Arm.Auth
 
-	// Read role and scope from the permissions list
-	scope := permissions["scope"]
-	role := permissions["role"]
-
-	sc := subscription.NewSubscriptionsClient()
-	sc.Authorizer = r.Arm.Auth
-	s, err := sc.Get(ctx, r.Arm.SubscriptionID)
-	if err != nil {
-		return fmt.Errorf("unable to find subscription: %w", err)
-	}
-
-	gc := resources.NewGroupsClient(r.Arm.SubscriptionID)
-	gc.Authorizer = r.Arm.Auth
-	rg, err := gc.Get(ctx, r.Arm.ResourceGroup)
-	if err != nil {
-		return fmt.Errorf("unable to find resource group: %w", err)
-	}
-
-	var scopeID string
-	if scope == PermissionsScopeSubscription {
-		scopeID = *s.ID
-	} else if scope == PermissionsScopeResourceGroup {
-		scopeID = *rg.ID
-	} else if scope == PermissionsScopeKeyVault {
-		scopeID = kvID
-	} else {
-		return fmt.Errorf("invalid permissions scope specified: %w", err)
-	}
-
-	filter := fmt.Sprintf("roleName eq '%s'", role)
-	roleList, err := rdc.List(ctx, scopeID, filter)
+	// By default grant Key Vault Reader role with scope = KeyVault which provides read-only access to the Keyvault for secrets, keys and certificates
+	roleList, err := rdc.List(ctx, kvID, "roleName eq 'Key Vault Reader'")
 	if err != nil || !roleList.NotDone() {
 		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
 	}
@@ -215,7 +154,7 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 	raName, _ := uuid1.NewV1()
 	_, err = rac.Create(
 		ctx,
-		scopeID,
+		kvID,
 		raName.String(),
 		authorization.RoleAssignmentCreateParameters{
 			RoleAssignmentProperties: &authorization.RoleAssignmentProperties{
@@ -257,12 +196,6 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
-	// Read Key Vault Permissions to assign to the managed identity
-	// permissions, err := r.readKeyVaultPermissions(dep, w)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("unable to read keyvault permissions: %w", err)
-	// }
-
 	kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
 	kvc.Authorizer = r.Arm.Auth
 	if err != nil {
@@ -273,12 +206,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 		return nil, fmt.Errorf("unable to find keyvault: %w", err)
 	}
 
-	// Assign specified permissions to the user assigned managed identity to access KeyVault
-	permissions := make(map[string]string)
-	permissions["scope"] = PermissionsScopeKeyVault
-	// TODO change to read only by default
-	permissions["role"] = "Key Vault Administrator"
-	err = r.createRoleAssignment(ctx, msi, *kv.ID, permissions)
+	err = r.createRoleAssignment(ctx, msi, *kv.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
 	}
