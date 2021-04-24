@@ -3,9 +3,9 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package ingress
+package inboundroute
 
-const Kind = "radius.dev/Ingress@v1alpha1"
+const Kind = "radius.dev/InboundRoute@v1alpha1"
 
 type Trait struct {
 	Kind       string          `json:"kind"`

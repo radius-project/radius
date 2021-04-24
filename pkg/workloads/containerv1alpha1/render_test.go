@@ -110,7 +110,7 @@ func Test_Render_Success(t *testing.T) {
 
 func findDeployment(resources []workloads.WorkloadResource) *appsv1.Deployment {
 	for _, r := range resources {
-		if r.Type != workloads.ResourceKindKubernetes {
+		if !r.IsKubernetesResource() {
 			continue
 		}
 
@@ -127,7 +127,7 @@ func findDeployment(resources []workloads.WorkloadResource) *appsv1.Deployment {
 
 func findService(resources []workloads.WorkloadResource) *corev1.Service {
 	for _, r := range resources {
-		if r.Type != workloads.ResourceKindKubernetes {
+		if !r.IsKubernetesResource() {
 			continue
 		}
 

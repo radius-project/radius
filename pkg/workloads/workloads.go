@@ -70,6 +70,10 @@ func NewKubernetesResource(localID string, obj runtime.Object) WorkloadResource 
 	return WorkloadResource{Type: ResourceKindKubernetes, LocalID: localID, Resource: obj}
 }
 
+func (wr WorkloadResource) IsKubernetesResource() bool {
+	return wr.Type == ResourceKindKubernetes
+}
+
 // Lookup implements the WorkloadDispatcher contract.
 func (d Dispatcher) Lookup(kind string) (WorkloadRenderer, error) {
 	r, ok := d.Renderers[kind]
