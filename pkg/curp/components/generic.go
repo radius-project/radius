@@ -33,6 +33,34 @@ type GenericTrait struct {
 	Properties map[string]interface{} `json:"properties"`
 }
 
+func (generic GenericComponent) As(kind string, specific interface{}) (bool, error) {
+	if generic.Kind != kind {
+		return false, nil
+	}
+
+	bytes, err := json.Marshal(generic)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal generic component value: %w", err)
+	}
+
+	err = json.Unmarshal(bytes, specific)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal as value of type %T: %w", specific, err)
+	}
+
+	return true, nil
+}
+
+func (generic GenericComponent) FindTrait(kind string, trait interface{}) (bool, error) {
+	for _, t := range generic.Traits {
+		if kind == t.Kind {
+			return t.As(kind, trait)
+		}
+	}
+
+	return false, nil
+}
+
 // Since it supports 'additional' arbitrary properties, we have to implement custom JSON logic.
 var _ json.Marshaler = &GenericDependency{}
 var _ json.Unmarshaler = &GenericDependency{}
@@ -78,6 +106,42 @@ func (d *GenericDependency) UnmarshalJSON(b []byte) error {
 	d.Extra = values
 
 	return nil
+}
+
+func (generic GenericDependency) As(kind string, specific interface{}) (bool, error) {
+	if generic.Kind != kind {
+		return false, nil
+	}
+
+	bytes, err := json.Marshal(generic)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal generic dependency value: %w", err)
+	}
+
+	err = json.Unmarshal(bytes, specific)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal JSON as value of type %T: %w", specific, err)
+	}
+
+	return true, nil
+}
+
+func (generic GenericTrait) As(kind string, specific interface{}) (bool, error) {
+	if generic.Kind != kind {
+		return false, nil
+	}
+
+	bytes, err := json.Marshal(generic)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal generic trait value: %w", err)
+	}
+
+	err = json.Unmarshal(bytes, specific)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal JSON as value of type %T: %w", specific, err)
+	}
+
+	return true, nil
 }
 
 func ConvertFromGeneric(generic GenericComponent, specific interface{}) error {
