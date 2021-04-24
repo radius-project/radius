@@ -711,10 +711,9 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 	require.Equal(t, app.Components["A"].RevisionHistory[0], *action.Definition)
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)
 
-	require.Len(t, action.Traits, 1)
-	require.Equal(t, "dapr.io/App@v1alpha1", action.Traits[0].Kind)
+	require.Equal(t, "dapr.io/App@v1alpha1", action.Component.Traits[0].Kind)
 	require.Equal(t, map[string]interface{}{
 		"appId":   "frontend",
-		"appPort": 80,
-	}, action.Traits[0].Properties)
+		"appPort": float64(80),
+	}, action.Component.Traits[0].Properties)
 }

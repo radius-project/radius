@@ -108,31 +108,9 @@ type DeploymentProperties struct {
 
 // DeploymentComponent respresents an entry for a component in a deployment.
 type DeploymentComponent struct {
-	ComponentName string                          `json:"componentName,omitempty"`
-	ID            string                          `json:"id,omitempty"`
-	Revision      revision.Revision               `json:"revision"`
-	DataOutputs   []DeploymentComponentDataOutput `json:"dataOutputs,omitempty"`
-	DataInputs    []DeploymentComponentDataInput  `json:"dataInputs,omitempty"`
-	Traits        []DeploymentComponentTrait      `json:"traits,omitempty"`
-	Scopes        []DeploymentComponentScope      `json:"scopes,omitempty"`
-}
-
-// DeploymentComponentTrait specifies a trait for a component as part of a deployment.
-type DeploymentComponentTrait struct {
-	Kind       string                 `json:"kind"`
-	Properties map[string]interface{} `json:"properties"`
-}
-
-// DeploymentComponentScope specifies a scope for a component as part of a deployment.
-type DeploymentComponentScope struct {
-}
-
-// DeploymentComponentDataOutput specifies a data output produced by a component as part of a deployment.
-type DeploymentComponentDataOutput struct {
-}
-
-// DeploymentComponentDataInput specifies a data input needed by a component as part of a deployment.
-type DeploymentComponentDataInput struct {
+	ComponentName string            `json:"componentName,omitempty"`
+	ID            string            `json:"id,omitempty"`
+	Revision      revision.Revision `json:"revision"`
 }
 
 // See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations

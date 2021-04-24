@@ -764,11 +764,6 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 			oinst, _ = older.LookupComponent(name)
 		}
 
-		traits, err := combineTraits(ninst, n)
-		if err != nil {
-			return nil, err
-		}
-
 		provides := filterProvidersByComponent(name, providers)
 
 		wd := deployment.ComponentAction{
@@ -779,7 +774,6 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 			Instantiation:         ninst,
 			Provides:              provides,
 			ServiceBindings:       s,
-			Traits:                traits,
 			PreviousDefinition:    o,
 			PreviousInstanitation: oinst,
 		}
@@ -790,7 +784,7 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		}
 
 		if wd.Operation != deployment.DeleteWorkload {
-			wd.Component, err = convertToComponent(wd.ComponentName, *wd.Definition, traits)
+			wd.Component, err = convertToComponent(wd.ComponentName, *wd.Definition, wd.Definition.Properties.Traits)
 			if err != nil {
 				return nil, err
 			}
@@ -1039,46 +1033,6 @@ func (r *rp) bindServices(d *db.Deployment, cs map[string]*db.ComponentRevision,
 	}
 
 	return bindings, nil
-}
-
-func combineTraits(dc *db.DeploymentComponent, cr *db.ComponentRevision) ([]db.ComponentTrait, error) {
-	if dc == nil || cr == nil {
-		return []db.ComponentTrait{}, nil
-	}
-
-	deployment := map[string]db.ComponentTrait{}
-	for _, t := range dc.Traits {
-		_, ok := deployment[t.Kind]
-		if ok {
-			return nil, fmt.Errorf("duplicate trait in deployment '%v'", t.Kind)
-		}
-
-		deployment[t.Kind] = db.ComponentTrait(t)
-	}
-
-	component := map[string]db.ComponentTrait{}
-	for _, t := range cr.Properties.Traits {
-		_, ok := component[t.Kind]
-		if ok {
-			return nil, fmt.Errorf("duplicate trait in component '%v'", t.Kind)
-		}
-
-		component[t.Kind] = db.ComponentTrait(t)
-	}
-
-	// traits defined in components are superseded by those in the deployment
-	traits := []db.ComponentTrait{}
-	for _, t := range deployment {
-		traits = append(traits, t)
-	}
-	for k, v := range component {
-		_, ok := deployment[k]
-		if !ok {
-			traits = append(traits, v)
-		}
-	}
-
-	return traits, nil
 }
 
 func filterProvidersByComponent(componentName string, providers map[string]deployment.ServiceBinding) map[string]deployment.ComponentService {
