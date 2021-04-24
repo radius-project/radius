@@ -51,6 +51,19 @@ func (generic GenericComponent) As(kind string, specific interface{}) (bool, err
 	return true, nil
 }
 
+func (generic GenericComponent) AsRequired(kind string, specific interface{}) error {
+	match, err := generic.As(kind, specific)
+	if err != nil {
+		return err
+	}
+
+	if !match {
+		return fmt.Errorf("the component was expected to have kind '%s', instead it is '%s'", kind, generic.Kind)
+	}
+
+	return nil
+}
+
 func (generic GenericComponent) FindTrait(kind string, trait interface{}) (bool, error) {
 	for _, t := range generic.Traits {
 		if kind == t.Kind {
@@ -142,18 +155,4 @@ func (generic GenericTrait) As(kind string, specific interface{}) (bool, error) 
 	}
 
 	return true, nil
-}
-
-func ConvertFromGeneric(generic GenericComponent, specific interface{}) error {
-	bytes, err := json.Marshal(generic)
-	if err != nil {
-		return fmt.Errorf("failed to marshal generic component value: %w", err)
-	}
-
-	err = json.Unmarshal(bytes, specific)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal as value of type %T: %w", specific, err)
-	}
-
-	return err
 }

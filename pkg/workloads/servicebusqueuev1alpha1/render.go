@@ -12,7 +12,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -61,7 +60,7 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 // Render is the WorkloadRenderer implementation for servicebus workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
 	component := ServiceBusQueueComponent{}
-	err := components.ConvertFromGeneric(w.Workload, &component)
+	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
 	}

@@ -8,7 +8,6 @@ package curp
 import (
 	"testing"
 
-	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/curp/deployment"
 	"github.com/Azure/radius/pkg/curp/metadata"
@@ -93,7 +92,7 @@ func Test_DeploymentCreated_ErrMissingComponentRevision(t *testing.T) {
 		Revision: revision.Revision("1"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -121,12 +120,12 @@ func Test_DeploymentCreated_OneComponent_NoRevisionSpecified(t *testing.T) {
 		Revision: revision.Revision("2"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("2"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -172,12 +171,12 @@ func Test_DeploymentCreated_OneComponent_RevisionSpecified(t *testing.T) {
 		Revision: revision.Revision("2"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("2"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -223,12 +222,12 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 		Revision: revision.Revision("2"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("2"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -238,12 +237,12 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 		Revision: revision.Revision("2"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("2"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -254,7 +253,7 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 		Revision: revision.Revision("1"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -328,12 +327,12 @@ func Test_DeploymentUpdated_OneComponent_Deleted(t *testing.T) {
 		Revision: revision.Revision("2"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("2"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -379,12 +378,12 @@ func Test_DeploymentUpdated_OneComponent_NoAction(t *testing.T) {
 		Revision: revision.Revision("2"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("2"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -435,12 +434,12 @@ func Test_DeploymentUpdated_OneComponent_RevisionUpgraded(t *testing.T) {
 		Revision: revision.Revision("2"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
 				Properties: *db.NewComponentProperties(),
 			},
 			{
-				Kind:       "radius.dev/Container@v1alpha1",
+				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("2"),
 				Properties: *db.NewComponentProperties(),
 			},
@@ -491,7 +490,7 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 		Revision: revision.Revision("1"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:     "radius.dev/Container@v1alpha1",
+				Kind:     containerv1alpha1.Kind,
 				Revision: revision.Revision("1"),
 				Properties: db.ComponentProperties{
 					Build: map[string]interface{}{},
@@ -517,7 +516,7 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 		Revision: revision.Revision("1"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:     "radius.dev/Container@v1alpha1",
+				Kind:     containerv1alpha1.Kind,
 				Revision: revision.Revision("1"),
 				Properties: db.ComponentProperties{
 					Build: map[string]interface{}{},
@@ -584,7 +583,7 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 		Revision: revision.Revision("1"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:     "radius.dev/Container@v1alpha1",
+				Kind:     containerv1alpha1.Kind,
 				Revision: revision.Revision("1"),
 				Properties: db.ComponentProperties{
 					Build: map[string]interface{}{},
@@ -637,11 +636,11 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 	require.Equal(t, newer.Properties.Components[0], action.Instantiation)
 
 	// validate the workload
-	require.Equal(t, "radius.dev/Container@v1alpha1", action.Component.Kind)
+	require.Equal(t, containerv1alpha1.Kind, action.Component.Kind)
 	require.Equal(t, "A", action.Component.Name)
 
 	component := containerv1alpha1.ContainerComponent{}
-	err = components.ConvertFromGeneric(*action.Component, &component)
+	err = action.Component.AsRequired(containerv1alpha1.Kind, &component)
 	require.NoError(t, err)
 
 	cont := component.Run.Container
@@ -661,7 +660,7 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 		Revision: revision.Revision("1"),
 		RevisionHistory: []db.ComponentRevision{
 			{
-				Kind:     "radius.dev/Container@v1alpha1",
+				Kind:     containerv1alpha1.Kind,
 				Revision: revision.Revision("1"),
 				Properties: db.ComponentProperties{
 					Build: map[string]interface{}{},

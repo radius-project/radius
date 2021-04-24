@@ -5,6 +5,8 @@
 
 package containerv1alpha1
 
+const Kind = "radius.dev/Container@v1alpha1"
+
 // ContainerComponent is the definition of the container component
 type ContainerComponent struct {
 	Name      string                   `json:"name"`

@@ -25,7 +25,7 @@ func Test_Render_Success(t *testing.T) {
 		Name:        "test-container",
 		Workload: components.GenericComponent{
 			Name: "test-container",
-			Kind: "radius.dev/Container@v1alpha1",
+			Kind: Kind,
 			Run: map[string]interface{}{
 				"container": map[string]interface{}{
 					"image": "test/test-image:latest",

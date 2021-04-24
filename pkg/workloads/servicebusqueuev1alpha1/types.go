@@ -5,6 +5,8 @@
 
 package servicebusqueuev1alpha1
 
+const Kind = "azure.com/ServiceBusQueue@v1alpha1"
+
 // ServiceBusQueueComponent is the definition of the service bus queue component
 type ServiceBusQueueComponent struct {
 	Name      string                   `json:"name"`
