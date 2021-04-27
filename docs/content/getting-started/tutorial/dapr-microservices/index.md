@@ -31,22 +31,25 @@ You will be deploying a microservices order processing application. It will have
 - A Dapr state store used to store the orders ("statestore")
 - An order generating microservice ("pythonapp")
 
-<img src="https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram_B.png" alt="The complete application" width=800>
+<img src="./overview.png" alt="A diagram of the complete application" width=800 />
 
 ### Order processing microservice
 
 The order processing microservice (`nodeapp`) accepts HTTP requests to create or display orders. Here is a diagram focused on the order processing service:
 
-<img src="https://raw.githubusercontent.com/dapr/quickstarts/v1.0.0/hello-world/img/Architecture_Diagram.png" alt="The nodeapp order processing service" width=700>
+<img src="./frontend.png" alt="A diagram of the nodeapp order processing service" width=700 />
 
 The nodeapp accepts HTTP requests on two endpoints: `GET /order` and `POST /neworder`.
 
 ### Dapr state store
+
 The state store (`statestore`) stores information about orders. It could be any compatible [Dapr state store](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/). In this tutorial we will use Azure Table Storage.
 
 ### Order generating service
 
 The order generting service (`pythonapp`) uses [Dapr service invocation](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/service-invocation-overview/) to send requests to nodeapp. It does not accept any incoming traffic. 
+
+<img src="./generator.png" alt="A diagram of the complete application" width=400 />
 
 ## The Radius mindset
 
@@ -54,12 +57,12 @@ The diagrams shown so far document the communication flows, but a Radius applica
 
 A Radius template includes 
 
-- the logical relationships of an application 
-- the operational details associated with those relationships 
+- The logical relationships of an application 
+- The operational details associated with those relationships 
 
 Here is an updated diagram that shows what the Radius template needs to capture:
 
-<img src="https://user-images.githubusercontent.com/1430011/111005089-04b3c280-833f-11eb-9ce1-bdd12beef78b.png" alt="The application logical diagram" width=800>
+<img src="radius-overview.png" alt="A diagram of the overall application with all of the Radius properties" width=800 />
 
 This diagram reflects important details of the Radius model that are different from other deployment technologies you may have used:
 
@@ -221,7 +224,7 @@ Now you are ready to deploy the application for the first time.
    ```
    
    Example output with the `dapr-hello` Radius application: 
-   ```sh
+   ```
    {
      "value": [
        {
@@ -242,7 +245,7 @@ Now you are ready to deploy the application for the first time.
    Your `nodeapp` component has been created into a `default` deployment of the `dapr-hello` application. 
    You should see something like this:
 
-   ```sh
+   ```
    {
      "value": [
        {
@@ -269,7 +272,7 @@ Now you are ready to deploy the application for the first time.
  
    The details of the `nodeapp` component should match its definition from your template.bicep file. Example output:
 
-   ```sh
+   ```
    Using config file: /Users/{USER}/.rad/config.yaml
    {
      "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/dapr-hello/Components/nodeapp",
@@ -306,13 +309,13 @@ Now you are ready to deploy the application for the first time.
 
 1. Visit the URL `http://localhost:3000/order` in your browser. For now you should see a message like:
 
-   ```txt
+   ```
    {"message":"The container is running, but Dapr has not been configured."}
    ```
 
    If the message matches, then it means that the container is running as expected.
 
-1. When you are done testing press CTRL+C to terminate the port-forward, and you are ready to move on to the next step.
+1. When you are done testing press `CTRL+C` to terminate the port-forward, and you are ready to move on to the next step.
 
 ## Step 3: Adding Dapr and the state store
 
@@ -364,6 +367,7 @@ The `traits` section is one of several top level sections in a *component*. Trai
 {{% /alert %}}
 
 ### Add statestore component
+
 Now the nodeapp is hooked up to Dapr, but we still need to define a state store to save information about orders.
 
 Add a new component declaration (`statestore`) to your application definition as shown below. Leave your existing declaration for `nodeapp` unchanged.
@@ -402,6 +406,7 @@ If you have used Dapr before, you may notice that your Radius template neither c
 {{% /alert %}}
 
 ### Reference statestore from nodeapp
+
 Now that you've created the state store as a component, you can connect them by referecing the `statestore` component from the `nodeapp` component. 
 
 Type or paste the additional content from the following text inside your application definition. What's new is the `dependsOn` section.
@@ -474,7 +479,7 @@ Now you are ready to deploy.
 
    Now you should see both `nodeapp` and `statestore` components in your `dapr-hello` application, similar to:
 
-   ```sh
+   ```
    Using config file: /Users/{USER}/.rad/config.yaml
    {
      "value": [
@@ -505,7 +510,7 @@ Now you are ready to deploy.
 
 1. Visit the the URL `http://localhost:3000/order` in your browser. You should see a message like:
 
-   ```txt
+   ```
    {"message":"no orders yet"}
    ```
 
@@ -579,7 +584,7 @@ Now you are ready to deploy.
 
    Refresh the page multiple times and you should see a message like before. The order number is steadily increasing after refresh. 
 
-   ```txt
+   ```
    {"orderId":7}
    ```
 
