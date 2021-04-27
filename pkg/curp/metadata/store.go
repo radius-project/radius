@@ -20,7 +20,6 @@ type Registry struct {
 
 // IntrinsicService respresents a service defined intrisicly
 type IntrinsicService struct {
-	Name string // TODO: remove Name from here.
 	Kind string
 }
 
@@ -29,25 +28,20 @@ func NewRegistry() Registry {
 	return Registry{
 		TraitServices: map[string]IntrinsicService{
 			"dapr.io/App@v1alpha1": {
-				Name: "",
 				Kind: "dapr.io/Invoke",
 			},
 		},
 		WorkloadKindServices: map[string]IntrinsicService{
 			daprstatestorev1alpha1.Kind: {
-				Name: "",
 				Kind: "dapr.io/StateStore",
 			},
 			daprpubsubv1alpha1.Kind: {
-				Name: "",
 				Kind: "dapr.io/PubSubTopic",
 			},
 			cosmosdocumentdbv1alpha1.Kind: {
-				Name: "",
 				Kind: "mongodb.com/Mongo",
 			},
 			servicebusqueuev1alpha1.Kind: {
-				Name: "",
 				Kind: "azure.com/ServiceBusQueue",
 			},
 		},

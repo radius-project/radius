@@ -35,7 +35,7 @@ func Test_Render_Success(t *testing.T) {
 				{
 					Name: "test-service",
 					Kind: "http",
-					Extra: map[string]interface{}{
+					AdditionalProperties: map[string]interface{}{
 						"containerPort": 3000,
 					},
 				},
