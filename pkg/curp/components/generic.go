@@ -21,13 +21,16 @@ type GenericComponent struct {
 	Traits    []GenericTrait         `json:"traits,omitempty"`
 }
 
+// GenericDependency is the payload for a dependsOn or provides entry in a generic form.
 type GenericDependency struct {
-	// JSON logic is custom, thats why there are no tags here.
-	Name  string
-	Kind  string
-	Extra map[string]interface{}
+	Name string
+	Kind string
+
+	// Absorb additional properties that are part of the dependsOn/provides.
+	AdditionalProperties map[string]interface{} // JSON logic is custom, thats why there are no tags here.
 }
 
+// GenericTrait is the payload for a trait in a generic form.
 type GenericTrait struct {
 	Kind       string                 `json:"kind"`
 	Properties map[string]interface{} `json:"properties"`
@@ -84,7 +87,7 @@ func (d GenericDependency) MarshalJSON() ([]byte, error) {
 		"kind": d.Kind,
 	}
 
-	for k, v := range d.Extra {
+	for k, v := range d.AdditionalProperties {
 		if k == "name" || k == "kind" {
 			return nil, fmt.Errorf("the property name '%s' should not appear in the extra properties", k)
 		}
@@ -116,7 +119,7 @@ func (d *GenericDependency) UnmarshalJSON(b []byte) error {
 
 	delete(values, "name")
 	delete(values, "kind")
-	d.Extra = values
+	d.AdditionalProperties = values
 
 	return nil
 }

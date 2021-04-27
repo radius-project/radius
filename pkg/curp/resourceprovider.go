@@ -928,25 +928,25 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 
 		s, ok := r.meta.WorkloadKindServices[c.Kind]
 		if ok {
-			s.Name = dc.FriendlyName()
-			_, ok := intrinsic[s.Name]
+			name := dc.FriendlyName()
+			_, ok := intrinsic[name]
 			if ok {
-				return nil, fmt.Errorf("service %v has multiple providers", s.Name)
+				return nil, fmt.Errorf("service %v has multiple providers", name)
 			}
 
 			// Found one - add to both list - it will get removed later if it's
 			// been rebound
-			intrinsic[s.Name] = deployment.ServiceBinding{
-				Name:     s.Name,
+			intrinsic[dc.FriendlyName()] = deployment.ServiceBinding{
+				Name:     name,
 				Kind:     s.Kind,
 				Provider: dc.FriendlyName(),
 			}
 
 			// TODO: we currently allow a service from one component to 'hide' a service from another
-			_, ok = providers[s.Name]
+			_, ok = providers[name]
 			if !ok {
-				providers[s.Name] = deployment.ServiceBinding{
-					Name:     s.Name,
+				providers[name] = deployment.ServiceBinding{
+					Name:     name,
 					Kind:     s.Kind,
 					Provider: dc.FriendlyName(),
 				}
@@ -956,24 +956,24 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 		for _, t := range c.Properties.Traits {
 			s, ok := r.meta.TraitServices[t.Kind]
 			if ok {
-				s.Name = dc.FriendlyName()
-				_, ok := intrinsic[s.Name]
+				name := dc.FriendlyName()
+				_, ok := intrinsic[name]
 				if ok {
-					return nil, fmt.Errorf("service %v has multiple providers", s.Name)
+					return nil, fmt.Errorf("service %v has multiple providers", name)
 				}
 
 				// Found one - add to both list - it will get removed later if it's
 				// been rebound
-				intrinsic[s.Name] = deployment.ServiceBinding{
-					Name:     s.Name,
+				intrinsic[name] = deployment.ServiceBinding{
+					Name:     name,
 					Kind:     s.Kind,
 					Provider: dc.FriendlyName(),
 				}
 
-				_, ok = providers[s.Name]
+				_, ok = providers[name]
 				if !ok {
-					providers[s.Name] = deployment.ServiceBinding{
-						Name:     s.Name,
+					providers[name] = deployment.ServiceBinding{
+						Name:     name,
 						Kind:     s.Kind,
 						Provider: dc.FriendlyName(),
 					}
