@@ -108,6 +108,7 @@ func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.Az
 	args := []string{
 		"webapp", "config", "container", "set",
 		"--resource-group", env.ResourceGroup,
+		"--subscription", env.SubscriptionID,
 		"--name", website,
 		"--docker-custom-image-name", image,
 	}
