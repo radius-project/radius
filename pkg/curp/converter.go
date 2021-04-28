@@ -174,6 +174,10 @@ func newDBDeploymentFromREST(original *rest.Deployment) *db.Deployment {
 }
 
 func newRESTDeploymentFromDB(original *db.Deployment) *rest.Deployment {
+	// NOTE: Deployment has some additional state that we don't include in REST responses
+	//
+	// We track things here like the resources associated with the application as well as
+	// any errors that occur during deployment.
 	d := &rest.Deployment{
 		ResourceBase: newRESTResourceBaseFromDB(original.ResourceBase),
 		Properties: rest.DeploymentProperties{
