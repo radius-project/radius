@@ -17,6 +17,7 @@ import (
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+	"golang.org/x/text/cases"
 )
 
 // EnvironmentKey is the key used for the environment section
@@ -70,7 +71,7 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 }
 
 func (env EnvironmentSection) decodeEnvironmentSection(name string) (environments.Environment, error) {
-	raw, ok := env.Items[name]
+	raw, ok := env.Items[cases.Fold().String(name)]
 	if !ok {
 		return nil, fmt.Errorf("the environment '%v' could not be found in the list of environments. use `rad env list` to list environments", name)
 	}
