@@ -23,9 +23,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	uuid1 "github.com/gofrs/uuid"
@@ -101,8 +101,7 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 		return msi.Identity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
-	// Sometimes, the user assigned identity created takes a while to propagate
-	time.Sleep(60 * time.Second)
+	fmt.Printf("Created managed identity for KeyVault access: %v", *id.ID)
 
 	return id, nil
 }
@@ -149,26 +148,50 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
 	}
 
-	rac := authorization.NewRoleAssignmentsClient(r.Arm.SubscriptionID)
-	rac.Authorizer = r.Arm.Auth
-	raName, _ := uuid1.NewV1()
-	_, err = rac.Create(
-		ctx,
-		kvID,
-		raName.String(),
-		authorization.RoleAssignmentCreateParameters{
-			RoleAssignmentProperties: &authorization.RoleAssignmentProperties{
-				PrincipalID:      to.StringPtr(managedIdentity.PrincipalID.String()),
-				RoleDefinitionID: to.StringPtr(*roleList.Values()[0].ID),
-			},
-		})
+	MaxRetries := 100
+	for i := 0; i < MaxRetries; i++ {
+		rac := authorization.NewRoleAssignmentsClient(r.Arm.SubscriptionID)
+		rac.Authorizer = r.Arm.Auth
+		raName, _ := uuid1.NewV1()
+		_, err = rac.Create(
+			ctx,
+			kvID,
+			raName.String(),
+			authorization.RoleAssignmentCreateParameters{
+				RoleAssignmentProperties: &authorization.RoleAssignmentProperties{
+					PrincipalID:      to.StringPtr(managedIdentity.PrincipalID.String()),
+					RoleDefinitionID: to.StringPtr(*roleList.Values()[0].ID),
+				},
+			})
 
-	if err != nil {
-		detailed := autorest.NewErrorWithError(err, "", "", nil, "")
-		// StatusCode = 409 indicates that the role assignment already exists. Ignore that error
-		if detailed.StatusCode != 409 {
-			return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+		if err == nil {
+			return nil
 		}
+
+		// Check the error and determine if it is ignorable/retryable
+		detailed, ok := util.ExtractDetailedError(err)
+		if !ok {
+			return err
+		}
+		// StatusCode = 409 indicates that the role assignment already exists. Ignore that error
+		if detailed.StatusCode == 409 {
+			return nil
+		}
+
+		// Sometimes, the managed identity takes a while to propagate and the role assignment creation fails with status code = 400
+		// For other reasons, fail.
+		if detailed.StatusCode != 400 {
+			return fmt.Errorf("failed to create role assignment with error: %v, statuscode: %v", detailed.Message, detailed.StatusCode)
+		}
+
+		// Retry to wait for the managed identity to propagate
+		if i >= MaxRetries {
+			return fmt.Errorf("failed to create role assignment for user assigned managed identity after retries: %w", err)
+		}
+
+		fmt.Println("failed to create role assignment. Retrying...")
+		time.Sleep(20 * time.Second)
+		continue
 	}
 
 	return nil
@@ -211,6 +234,8 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 		return nil, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
 	}
 
+	fmt.Printf("created role assignment for %v to access %v", *msi.ID, *kv.ID)
+
 	return &msi, nil
 }
 
@@ -233,6 +258,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				return AADPodIdentity{}, fmt.Errorf("failed to create pod identity: %w", err)
 			}
 
+			fmt.Printf("created pod identity %v to bind %v", podIdentity.Name, *msi.ID)
 			return podIdentity, nil
 		}
 	}
@@ -469,19 +495,44 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	}
 	identities = append(identities, podID)
 
-	mcFuture, err := mcc.CreateOrUpdate(ctx, r.Arm.ResourceGroup, *cluster.Name, containerservice.ManagedCluster{
-		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
-			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
-				Enabled:                   to.BoolPtr(true),
-				AllowNetworkPluginKubenet: to.BoolPtr(false),
-				UserAssignedIdentities:    &identities,
+	MaxRetries := 100
+	var mcFuture containerservice.ManagedClustersCreateOrUpdateFuture
+	for i := 0; i < MaxRetries; i++ {
+		mcFuture, err = mcc.CreateOrUpdate(ctx, r.Arm.ResourceGroup, *cluster.Name, containerservice.ManagedCluster{
+			ManagedClusterProperties: &containerservice.ManagedClusterProperties{
+				PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
+					Enabled:                   to.BoolPtr(true),
+					AllowNetworkPluginKubenet: to.BoolPtr(false),
+					UserAssignedIdentities:    &identities,
+				},
 			},
-		},
-		Location: managedCluster.Location,
-	})
+			Location: managedCluster.Location,
+		})
 
-	if err != nil {
-		return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster: %w", err)
+		if err == nil {
+			break
+		}
+
+		// Check the error and determine if it is retryable
+		detailed, ok := util.ExtractDetailedError(err)
+		if !ok {
+			return AADPodIdentity{}, err
+		}
+
+		// Sometimes, the managed identity takes a while to propagate and the pod identity creation fails with status code = 400
+		// For other reasons, fail
+		if detailed.StatusCode != 400 {
+			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster with error: %v, status code: %v", detailed.Message, detailed.StatusCode)
+		}
+
+		// Retry to wait for the managed identity to propagate
+		if i >= MaxRetries {
+			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster after retries: %w", err)
+		}
+
+		fmt.Println("failed to add pod identity. Retrying...")
+		time.Sleep(20 * time.Second)
+		continue
 	}
 
 	err = mcFuture.WaitForCompletionRef(ctx, mcc.Client)
