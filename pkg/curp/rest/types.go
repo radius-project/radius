@@ -164,7 +164,7 @@ func (app *Application) GetApplicationID() (resources.ApplicationID, error) {
 // SetID applies the properties from a resource ID to the application.
 func (app *Application) SetID(id resources.ResourceID) {
 	app.ResourceBase.ID = id.ID
-	app.ResourceBase.Name = id.QualifiedName()
+	app.ResourceBase.Name = id.ShortName()
 	app.ResourceBase.SubscriptionID = id.SubscriptionID
 	app.ResourceBase.ResourceGroup = id.ResourceGroup
 	app.ResourceBase.Type = id.Kind()
@@ -188,7 +188,7 @@ func (c *Component) GetComponentID() (resources.ComponentID, error) {
 // SetID applies the properties from a resource ID to the component.
 func (c *Component) SetID(id resources.ResourceID) {
 	c.ResourceBase.ID = id.ID
-	c.ResourceBase.Name = id.QualifiedName()
+	c.ResourceBase.Name = id.ShortName()
 	c.ResourceBase.SubscriptionID = id.SubscriptionID
 	c.ResourceBase.ResourceGroup = id.ResourceGroup
 	c.ResourceBase.Type = id.Kind()
@@ -212,7 +212,7 @@ func (d *Deployment) GetDeploymentID() (resources.DeploymentID, error) {
 // SetID applies the properties from a resource ID to the deployment.
 func (d *Deployment) SetID(id resources.ResourceID) {
 	d.ResourceBase.ID = id.ID
-	d.ResourceBase.Name = id.QualifiedName()
+	d.ResourceBase.Name = id.ShortName()
 	d.ResourceBase.SubscriptionID = id.SubscriptionID
 	d.ResourceBase.ResourceGroup = id.ResourceGroup
 	d.ResourceBase.Type = id.Kind()
@@ -236,7 +236,7 @@ func (s *Scope) GetScopeID() (resources.ScopeID, error) {
 // SetID applies the properties from a resource ID to the scope.
 func (s *Scope) SetID(id resources.ResourceID) {
 	s.ResourceBase.ID = id.ID
-	s.ResourceBase.Name = id.QualifiedName()
+	s.ResourceBase.Name = id.ShortName()
 	s.ResourceBase.SubscriptionID = id.SubscriptionID
 	s.ResourceBase.ResourceGroup = id.ResourceGroup
 	s.ResourceBase.Type = id.Kind()
