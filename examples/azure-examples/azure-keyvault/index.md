@@ -116,11 +116,10 @@ rad env merge-credentials --name azure
 This step will eventually be removed.
 {{% /alert %}}
 
-To see the sender and receiver applications working, you can check logs:
+To see the keyvault application working, you can check logs:
 
 ```sh
-kubectl logs <sender pod name> -n radius-keyvault
-kubectl logs <receiver pod name> -n radius-keyvault
+rad logs radius-keyvault kvaccessor
 ```
 
 You should see the application accessing the keyvault for secrets as below:

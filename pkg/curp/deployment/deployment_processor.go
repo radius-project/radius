@@ -14,12 +14,12 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/resources/mgmt/subscriptions"
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -35,8 +35,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads/ingress"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
-	uuid1 "github.com/gofrs/uuid"
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -649,7 +648,11 @@ func (sssh *storageStateStoreHandler) Put(ctx context.Context, resource workload
 
 		for i := 0; i < 10; i++ {
 			// 3-24 characters - all alphanumeric
-			name = base + strings.ReplaceAll(uuid.New().String(), "-", "")
+			uid, err := uuid.NewV4()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate storage account name: %w", err)
+			}
+			name = base + strings.ReplaceAll(uid.String(), "-", "")
 			name = name[0:24]
 
 			result, err := sc.CheckNameAvailability(ctx, storage.AccountCheckNameAvailabilityParameters{
@@ -1042,7 +1045,11 @@ func (cddh *cosmosDocumentDbHandler) Put(ctx context.Context, resource workloads
 
 		for i := 0; i < 10; i++ {
 			// 3-24 characters - all alphanumeric and '-'
-			name = base + strings.ReplaceAll(uuid.New().String(), "-", "")
+			uid, err := uuid.NewV4()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate storage account name: %w", err)
+			}
+			name = base + strings.ReplaceAll(uid.String(), "-", "")
 			name = name[0:24]
 
 			result, err := dac.CheckNameExists(ctx, name)
@@ -1367,7 +1374,7 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 	if err != nil {
 		return nil, fmt.Errorf("unable to find subscription: %w", err)
 	}
-	tenantID, _ := uuid1.FromString(*s.TenantID)
+	tenantID, _ := uuid.FromString(*s.TenantID)
 
 	vaultsFuture, err := kvc.CreateOrUpdate(
 		ctx,

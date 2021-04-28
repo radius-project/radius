@@ -20,15 +20,15 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
-	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
-	uuid1 "github.com/gofrs/uuid"
+	"github.com/gofrs/uuid"
 )
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
@@ -152,7 +152,7 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 	for i := 0; i < MaxRetries; i++ {
 		rac := authorization.NewRoleAssignmentsClient(r.Arm.SubscriptionID)
 		rac.Authorizer = r.Arm.Auth
-		raName, _ := uuid1.NewV1()
+		raName, _ := uuid.NewV4()
 		_, err = rac.Create(
 			ctx,
 			kvID,

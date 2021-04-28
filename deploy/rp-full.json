@@ -142,11 +142,12 @@
         }
     },
     "variables": {
-        "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
+        "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
         "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), subscription().subscriptionId)]",
-        "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
         "contributorRole": "b24988ac-6180-42a0-ab88-20f7382dd24c",
         "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
+        "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
+        "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
         "rpRoleDefinitionName": "[guid(parameters('siteName'), subscription().subscriptionId)]",
         "deploymentRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
@@ -259,19 +260,19 @@
             }
         },
         {
+          "type": "Microsoft.Authorization/roleAssignments",
           "apiVersion": "2019-04-01-preview",
+          "name": "[variables('clusterIdentityRoleDefinitionName')]",
+          "tags": "[parameters('resourceTags')]",
           "dependsOn": [
             "[concat('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
           ],
-          "name": "[variables('clusterIdentityRoleDefinitionName')]",
           "properties": {
             "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-11-01', 'full').identity.principalId]",
             "principalType": "ServicePrincipal",
             "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]",
             "scope": "[resourceGroup().id]"
-          },
-          "tags": "[parameters('resourceTags')]",
-          "type": "Microsoft.Authorization/roleAssignments"
+          }
         },
         {
             "type": "Microsoft.Resources/deploymentScripts",
