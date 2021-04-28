@@ -122,6 +122,7 @@ func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.Az
 	args = []string{
 		"webapp", "restart",
 		"--resource-group", env.ResourceGroup,
+		"--subscription", env.SubscriptionID,
 		"--name", website,
 	}
 
