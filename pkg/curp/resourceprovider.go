@@ -423,9 +423,19 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		status := rest.SuccededStatus
 
 		err := r.deploy.UpdateDeployment(ctx, app.FriendlyName(), newdbitem.Name, &newdbitem.Status, actions)
-		if err != nil {
+		if _, ok := err.(*deployment.CompositeError); ok {
+			// Composite error is what we use for validation problems
 			status = rest.FailedStatus
 			failure = &armerrors.ErrorDetails{
+				Code:    armerrors.CodeInvalid,
+				Message: err.Error(),
+				Target:  id.Resource.ID,
+			}
+		} else if err != nil {
+			// Other errors represent a generic failure, this should map to a 500.
+			status = rest.FailedStatus
+			failure = &armerrors.ErrorDetails{
+				Code:    armerrors.CodeInternal,
 				Message: err.Error(),
 				Target:  id.Resource.ID,
 			}
@@ -528,9 +538,18 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		status := rest.SuccededStatus
 
 		err := r.deploy.DeleteDeployment(ctx, d.Resource.ShortName(), &current.Status)
-		if err != nil {
+		if _, ok := err.(*deployment.CompositeError); ok {
+			// Composite error is what we use for validation problems
 			status = rest.FailedStatus
 			failure = &armerrors.ErrorDetails{
+				Code:    armerrors.CodeInvalid,
+				Message: err.Error(),
+				Target:  d.Resource.ID,
+			}
+		} else if err != nil {
+			status = rest.FailedStatus
+			failure = &armerrors.ErrorDetails{
+				Code:    armerrors.CodeInternal,
 				Message: err.Error(),
 				Target:  d.Resource.ID,
 			}
@@ -689,6 +708,28 @@ func (r *rp) GetDeploymentOperationByID(ctx context.Context, id resources.Resour
 	did, err := oid.Deployment()
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
+	operation, err := r.db.GetOperationByID(ctx, oid.Resource)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
+	// Handle the cases where the change to the deployment resource triggered an asynchronous failure.
+	//
+	// The resource body just has the provisioning status, and doesn't have the ability to give a reason
+	// for failure. We use the operation for that. If there's a failure, return it in the ARM format,
+	// otherwise we just want to return the same thing the deployment resource would return.
+	if operation.Error != nil && operation.Error.Code == armerrors.CodeInvalid {
+		// Operation failed with a validation or business logic error
+		return rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
+			Error: *operation.Error,
+		}), nil
+	} else if operation.Error != nil {
+		// Operation failed with an uncategorized error
+		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
+			Error: *operation.Error,
+		}), nil
 	}
 
 	deployment, err := r.db.GetDeploymentByApplicationID(ctx, did.App, did.Resource.ShortName())

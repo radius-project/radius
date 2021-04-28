@@ -265,56 +265,61 @@ func (test *test) ValidateDeploymentOperationInProgress(location string) *rest.D
 	return deployment
 }
 
-func (test *test) ValidateDeploymentOperationComplete(location string) *rest.Deployment {
-	// At this point deployment has started and is waiting for us to signal that channel to
-	// complete it. We should also be able to query the operation directly.
-	req := httptest.NewRequest("GET", location, nil)
-	w := httptest.NewRecorder()
-
-	test.server.Config.Handler.ServeHTTP(w, req)
-
-	if w.Code == 200 {
-		deployment := &rest.Deployment{}
-		err := json.Unmarshal(w.Body.Bytes(), deployment)
-		require.NoError(test.t, err)
-		return deployment
-	}
-
-	if w.Code == 204 {
-		return nil
-	}
-
-	require.Equal(test.t, 200, w.Code, "Operation is still running")
-	return nil
-}
-
-func (test *test) PollForOperationCompletion(id resources.ResourceID) rest.OperationStatus {
+func (test *test) PollForTerminalStatus(id resources.ResourceID) (*httptest.ResponseRecorder, *rest.Deployment) {
 	// Poll with a backoff for completion
-	status := rest.DeployingStatus
+	var w *httptest.ResponseRecorder
 	for i := 0; i < 10; i++ {
 		req := httptest.NewRequest("GET", id.ID, nil)
-		w := httptest.NewRecorder()
+		w = httptest.NewRecorder()
 
 		test.server.Config.Handler.ServeHTTP(w, req)
-		if w.Code == 200 {
-			actual := &rest.Deployment{}
-			err := json.Unmarshal(w.Body.Bytes(), actual)
-			require.NoError(test.t, err)
+		if w.Code == 404 {
+			return w, nil
+		}
 
-			if rest.IsTeminalStatus(actual.Properties.ProvisioningState) {
-				status = actual.Properties.ProvisioningState
-				break
-			}
-		} else if w.Code == 404 {
-			return rest.SuccededStatus
-		} else {
-			require.Equal(test.t, 200, w.Code)
+		actual := rest.Deployment{}
+		err := json.Unmarshal(w.Body.Bytes(), &actual)
+		require.NoError(test.t, err)
+
+		if rest.IsTeminalStatus(actual.Properties.ProvisioningState) {
+			return w, &actual
 		}
 
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	return status
+	require.Fail(test.t, "operation is still not complete after 1 second. Body: %s", w.Body.String())
+	return nil, nil
+}
+
+func (test *test) PollForSuccessfulPut(id resources.ResourceID) rest.Deployment {
+	w, deployment := test.PollForTerminalStatus(id)
+	require.Equal(test.t, 200, w.Code)
+
+	return *deployment
+}
+
+func (test *test) PollForSuccessfulDelete(id resources.ResourceID) {
+	w, _ := test.PollForTerminalStatus(id)
+	require.Equal(test.t, 404, w.Code)
+}
+
+func (test *test) PollForFailedOperation(id resources.ResourceID, location string) (int, rest.Deployment, armerrors.ErrorResponse) {
+	// We're going to check both the deployment object as well as the operation
+	// only the operation can tell us the root cause.
+	_, deployment := test.PollForTerminalStatus(id)
+
+	// Now fetch the operation so we can get the error
+	req := httptest.NewRequest("GET", location, nil)
+	w := httptest.NewRecorder()
+
+	test.server.Config.Handler.ServeHTTP(w, req)
+
+	armerr := armerrors.ErrorResponse{}
+	err := json.Unmarshal(w.Body.Bytes(), &armerr)
+	require.NoError(test.t, err)
+
+	return w.Code, *deployment, armerr
 }
 
 func Test_GetApplication_NotFound(t *testing.T) {
@@ -1064,8 +1069,8 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	status := test.PollForOperationCompletion(id)
-	require.Equal(t, rest.SuccededStatus, status)
+	actual := test.PollForSuccessfulPut(id)
+	require.Equal(t, rest.SuccededStatus, actual.Properties.ProvisioningState)
 }
 
 func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
@@ -1126,8 +1131,13 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	status := test.PollForOperationCompletion(id)
-	require.Equal(t, rest.FailedStatus, status)
+	code, actual, armerr := test.PollForFailedOperation(id, location)
+	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
+
+	require.Equal(t, 400, code)
+	require.NotNil(t, armerr)
+	require.Equal(t, armerrors.CodeInvalid, armerr.Error.Code)
+	require.Equal(t, "deployment was invalid :(", armerr.Error.Message)
 }
 
 func Test_UpdateDeployment_Create_Failure(t *testing.T) {
@@ -1141,11 +1151,7 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 		DoAndReturn(func(a, b, c, d, e interface{}) error {
 			select {
 			case <-complete:
-				return &deployment.CompositeError{
-					Errors: []error{
-						errors.New("deployment failed :("),
-					},
-				}
+				return errors.New("deployment failed :(")
 			case <-time.After(10 * time.Second):
 				return errors.New("Timeout!")
 			}
@@ -1188,8 +1194,14 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	status := test.PollForOperationCompletion(id)
-	require.Equal(t, rest.FailedStatus, status)
+	code, actual, armerr := test.PollForFailedOperation(id, location)
+	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
+
+	require.Equal(t, 500, code)
+	require.NotNil(t, armerr)
+	require.Equal(t, armerrors.CodeInternal, armerr.Error.Code)
+	require.Equal(t, "deployment failed :(", armerr.Error.Message)
+
 }
 
 func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
@@ -1261,8 +1273,8 @@ func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	status := test.PollForOperationCompletion(id)
-	require.Equal(t, rest.SuccededStatus, status)
+	deployment := test.PollForSuccessfulPut(id)
+	require.Equal(t, rest.SuccededStatus, deployment.Properties.ProvisioningState)
 }
 
 func Test_UpdateDeployment_UpdateNoOp(t *testing.T) {
@@ -1373,8 +1385,7 @@ func Test_DeleteDeployment_Found_Success(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	status := test.PollForOperationCompletion(id)
-	require.Equal(t, rest.SuccededStatus, status)
+	test.PollForSuccessfulDelete(id)
 }
 
 func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
@@ -1430,8 +1441,13 @@ func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	status := test.PollForOperationCompletion(id)
-	require.Equal(t, rest.FailedStatus, status)
+	code, actual, armerr := test.PollForFailedOperation(id, location)
+	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
+
+	require.Equal(t, 400, code)
+	require.NotNil(t, armerr)
+	require.Equal(t, armerrors.CodeInvalid, armerr.Error.Code)
+	require.Equal(t, "deletion was invalid :(", armerr.Error.Message)
 }
 
 func Test_DeleteDeployment_Found_Failed(t *testing.T) {
@@ -1483,8 +1499,13 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	status := test.PollForOperationCompletion(id)
-	require.Equal(t, rest.FailedStatus, status)
+	code, actual, armerr := test.PollForFailedOperation(id, location)
+	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
+
+	require.Equal(t, 500, code)
+	require.NotNil(t, armerr)
+	require.Equal(t, armerrors.CodeInternal, armerr.Error.Code)
+	require.Equal(t, "deletion failed :(", armerr.Error.Message)
 }
 
 func Test_GetScope_NoApplication(t *testing.T) {

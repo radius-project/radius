@@ -123,6 +123,7 @@ type Scope struct {
 type Deployment struct {
 	ResourceBase `bson:",inline"`
 	Status       DeploymentStatus     `bson:"status"`
+	Error        string               `bson:"error"`
 	Properties   DeploymentProperties `bson:"properties"`
 }
 
