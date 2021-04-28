@@ -15,7 +15,6 @@ To begin this tutorial you should have already completed the following steps:
 - [Install Radius CLI]({{< ref install-cli.md >}})
 - [Create an environment]({{< ref create-environment.md >}})
 - [Install Kubectl](https://kubernetes.io/docs/tasks/tools/)
-- [Register your subscription for the AAD Pod Identity preview feature](https://docs.microsoft.com/en-us/azure/aks/use-azure-ad-pod-identity#register-the-enablepodidentitypreview)
 
 If you are using Visual Studio Code with the Project Radius extension you should see syntax highlighting. If you have the offical Bicep extension installed, you should disable it for this tutorial. The instructions will refer to VS Code features like syntax highlighting and the problems windows - however, you can complete this tutorial with just a basic text editor.
 
