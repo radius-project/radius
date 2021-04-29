@@ -5,7 +5,7 @@
 
 package keyvaultv1alpha1
 
-import "github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
+const Kind = "azure.com/KeyVault@v1alpha1"
 
 // KeyVaultComponent is the definition of the keyvault component
 type KeyVaultComponent struct {
@@ -20,8 +20,5 @@ type KeyVaultComponent struct {
 
 // KeyVaultConfig is the defintion of the config section
 type KeyVaultConfig struct {
-	Managed                bool                              `json:"managed"`
-	KeyPermissions         []keyvault.KeyPermissions         `json:"keypermissions"`
-	SecretPermissions      []keyvault.SecretPermissions      `json:"secretpermissions"`
-	CertificatePermissions []keyvault.CertificatePermissions `json:"certificatepermissions"`
+	Managed bool `json:"managed"`
 }

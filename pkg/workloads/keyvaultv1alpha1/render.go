@@ -12,9 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
-	"k8s.io/apimachinery/pkg/util/json"
 )
 
 // Renderer is the WorkloadRenderer implementation for the keyvault workload.
@@ -57,7 +55,7 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 // Render is the WorkloadRenderer implementation for keyvault workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
 	component := KeyVaultComponent{}
-	err := components.ConvertFromGeneric(w.Workload, &component)
+	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
 	}
@@ -67,19 +65,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	// generate data we can use to manage a keyvault instance
-
-	// serialize key, secret and cert permissions
-	keyPermissions, _ := json.Marshal(component.Config.KeyPermissions)
-	secretPermissions, _ := json.Marshal(component.Config.SecretPermissions)
-	certificatePermissions, _ := json.Marshal(component.Config.CertificatePermissions)
-
 	resource := workloads.WorkloadResource{
 		Type: "azure.keyvault",
 		Resource: map[string]string{
-			"name":                 w.Workload.Name,
-			KeyPermissions:         string(keyPermissions),
-			SecretPermissions:      string(secretPermissions),
-			CertificatePermissions: string(certificatePermissions),
+			"name": w.Workload.Name,
 		},
 	}
 

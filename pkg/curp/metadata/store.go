@@ -45,7 +45,6 @@ func NewRegistry() Registry {
 				Kind: "azure.com/ServiceBusQueue",
 			},
 			"azure.com/KeyVault@v1alpha1": {
-				Name: "",
 				Kind: "azure.com/KeyVault",
 			},
 		},
