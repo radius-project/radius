@@ -219,6 +219,27 @@ clean:
 	rm -rf $(OUT_DIR)
 
 ################################################################################
+# Target: docker                                                               #
+################################################################################
+.PHONY: docker
+docker:
+	$(info $(H) Building image as '$(DOCKER_IMAGE)')
+	docker build . \
+		-f ./deploy/rp/Dockerfile \
+		-t $(DOCKER_IMAGE) \
+		--build-arg LDFLAGS=$(LDFLAGS) \
+		--label org.opencontainers.image.version="$(REL_VERSION)" \
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+
+################################################################################
+# Target: dockerpush                                                           #
+################################################################################
+.PHONY: dockerpush
+dockerpush:
+	$(info $(H) Pushing image '$(DOCKER_IMAGE)')
+	docker push $(DOCKER_IMAGE)
+
+################################################################################
 # Target: runmongo                                                             #
 ################################################################################
 .PHONY: runmongo
