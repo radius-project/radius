@@ -14,7 +14,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -71,7 +70,7 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 // Render is the WorkloadRenderer implementation for cosmos documentdb workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
 	component := CosmosDocumentDbComponent{}
-	err := components.ConvertFromGeneric(w.Workload, &component)
+	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
 	}

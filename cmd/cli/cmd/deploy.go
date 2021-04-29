@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
@@ -57,7 +58,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 
 	if !ok {
-		logger.LogInfo("Downloading Bicep...")
+		logger.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
 		err = bicep.DownloadBicep()
 		if err != nil {
 			return fmt.Errorf("failed to download rad-bicep: %w", err)

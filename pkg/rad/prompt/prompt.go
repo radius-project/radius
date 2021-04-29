@@ -88,7 +88,7 @@ func Select(prompt string, choices []string) (int, error) {
 			return 0, errors.New("nothing selected")
 		}
 
-		if selected > 0 && selected < len(choices) {
+		if selected >= 0 && selected < len(choices) {
 			break
 		}
 

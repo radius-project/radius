@@ -134,6 +134,7 @@ jobs:
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
+    if: startsWith(github.ref, 'refs/pull/') # run on PR 
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
@@ -197,7 +198,7 @@ jobs:
         go run cmd/testenv/main.go \
           update-rp \
           --configpath ~/.rad/config.yaml \
-          --image radiusteam/radius-rp:${{ env.REL_CHANNEL }}
+          --image radiusteam/radius-rp:${{ env.REL_VERSION }}
     - name: Run deploy tests
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH

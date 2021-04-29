@@ -24,6 +24,13 @@ These steps will setup the required tools and extensions to get you up and runni
 powershell -Command "iwr -useb https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1 | iex"
 ```
 
+### Install the latest unstable version
+
+```powershell
+powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList edge"
+```
+
+
 ### Install a specific version
 
 ```powershell
@@ -39,6 +46,12 @@ powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.n
 curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
 ```
 
+### Install the latest unstable version
+
+```bash
+curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s edge
+```
+
 ### Install a specific version
 
 ```bash
@@ -52,13 +65,19 @@ curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /
 ### Install the latest stable version
 
 ```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash
+```
+
+### Install the latest unstable version
+
+```bash
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s edge
 ```
 
 ### Install a specific version
 
 ```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s <Version>
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s <Version>
 ```
 
 {{% /codetab %}}
@@ -66,6 +85,16 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin
 {{% codetab %}}
 
 ### Install the latest stable version
+
+1. Download the `rad` CLI from one of these URLs:
+
+   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/0.1/macos-x64/rad
+   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/0.1/linux-x64/rad
+   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/0.1/windows-x64/rad.exe
+
+1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
+
+### Install the latest unstable version
 
 1. Download the `rad` CLI from one of these URLs:
 

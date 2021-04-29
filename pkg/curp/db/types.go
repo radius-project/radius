@@ -152,11 +152,6 @@ type DeploymentResource struct {
 	LocalID    string            `bson:"id"`
 	Type       string            `bson:"type"`
 	Properties map[string]string `bson:"properties"`
-
-	// Kind       string `bson:"kind"`
-	// APIVersion string `bson:"apiVersion"`
-	// Namespace  string `bson:"namespace"`
-	// Name       string `bson:"name"`
 }
 
 // DeploymentProperties respresents the properties of a deployment.
@@ -167,16 +162,9 @@ type DeploymentProperties struct {
 
 // DeploymentComponent respresents an entry for a component in a deployment.
 type DeploymentComponent struct {
-	ComponentName string                     `bson:"componentName,omitempty" validate:"required"`
-	ID            string                     `bson:"id,omitempty"`
-	Revision      revision.Revision          `bson:"revision"`
-	Traits        []DeploymentComponentTrait `bson:"traits,omitempty" validate:"dive"`
-}
-
-// DeploymentComponentTrait represents a trait for a component as part of a deployment.
-type DeploymentComponentTrait struct {
-	Kind       string                 `bson:"kind"`
-	Properties map[string]interface{} `bson:"properties,omitempty"`
+	ComponentName string            `bson:"componentName,omitempty" validate:"required"`
+	ID            string            `bson:"id,omitempty"`
+	Revision      revision.Revision `bson:"revision"`
 }
 
 // See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations

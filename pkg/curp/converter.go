@@ -167,14 +167,6 @@ func newDBDeploymentFromREST(original *rest.Deployment) *db.Deployment {
 			Revision:      c.Revision,
 		}
 
-		for _, t := range c.Traits {
-			tt := db.DeploymentComponentTrait{
-				Kind:       t.Kind,
-				Properties: t.Properties,
-			}
-			cc.Traits = append(cc.Traits, tt)
-		}
-
 		d.Properties.Components = append(d.Properties.Components, cc)
 	}
 
@@ -194,14 +186,6 @@ func newRESTDeploymentFromDB(original *db.Deployment) *rest.Deployment {
 			ID:            c.ID,
 			ComponentName: c.ComponentName,
 			Revision:      c.Revision,
-		}
-
-		for _, t := range c.Traits {
-			tt := rest.DeploymentComponentTrait{
-				Kind:       t.Kind,
-				Properties: t.Properties,
-			}
-			cc.Traits = append(cc.Traits, tt)
 		}
 
 		d.Properties.Components = append(d.Properties.Components, cc)

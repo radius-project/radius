@@ -5,6 +5,8 @@
 
 package cosmosdocumentdbv1alpha1
 
+const Kind = "azure.com/CosmosDocumentDb@v1alpha1"
+
 // CosmosDocumentDbComponent is the definition of the container component
 type CosmosDocumentDbComponent struct {
 	Name      string                   `json:"name"`

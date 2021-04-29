@@ -5,6 +5,8 @@
 
 package daprstatestorev1alpha1
 
+const Kind = "dapr.io/StateStore@v1alpha1"
+
 // DaprStateStoreComponent is the definition of the container component
 type DaprStateStoreComponent struct {
 	Name      string                   `json:"name"`
