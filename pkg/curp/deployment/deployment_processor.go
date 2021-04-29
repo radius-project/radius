@@ -166,7 +166,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			daprstatestorev1alpha1.Kind:   &daprstatestorev1alpha1.Renderer{},
 			daprpubsubv1alpha1.Kind:       &daprpubsubv1alpha1.Renderer{},
 			cosmosdocumentdbv1alpha1.Kind: &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
-			containerv1alpha1.Kind:        &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
+			containerv1alpha1.Kind:        &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
 			servicebusqueuev1alpha1.Kind:  &servicebusqueuev1alpha1.Renderer{Arm: arm},
 			keyvaultv1alpha1.Kind:         &keyvaultv1alpha1.Renderer{Arm: arm},
 		},
