@@ -17,9 +17,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/subscriptions"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
-	"github.com/Azure/azure-sdk-for-go/profiles/preview/resources/mgmt/subscriptions"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -1374,7 +1374,10 @@ func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.Workload
 	if err != nil {
 		return nil, fmt.Errorf("unable to find subscription: %w", err)
 	}
-	tenantID, _ := uuid.FromString(*s.TenantID)
+	tenantID, err := uuid.FromString(*s.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert tenantID to UUID: %w", err)
+	}
 
 	vaultsFuture, err := kvc.CreateOrUpdate(
 		ctx,

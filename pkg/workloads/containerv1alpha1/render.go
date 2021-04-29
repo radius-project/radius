@@ -138,7 +138,7 @@ func (r Renderer) readKeyVaultURI(dep ContainerDependsOn, w workloads.Instantiat
 }
 
 func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.Identity, kvID string) error {
-	// Assign the Managed Identity Operator role to the AKS Service Principal
+	// Assign KeyVault Reader permissions to the managed identity for the pod
 	rdc := authorization.NewRoleDefinitionsClient(r.Arm.SubscriptionID)
 	rdc.Authorizer = r.Arm.Auth
 
@@ -148,11 +148,12 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
 	}
 
+	rac := authorization.NewRoleAssignmentsClient(r.Arm.SubscriptionID)
+	rac.Authorizer = r.Arm.Auth
+	raName, _ := uuid.NewV4()
+
 	MaxRetries := 100
 	for i := 0; i < MaxRetries; i++ {
-		rac := authorization.NewRoleAssignmentsClient(r.Arm.SubscriptionID)
-		rac.Authorizer = r.Arm.Auth
-		raName, _ := uuid.NewV4()
 		_, err = rac.Create(
 			ctx,
 			kvID,
@@ -519,9 +520,9 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 			return AADPodIdentity{}, err
 		}
 
-		// Sometimes, the managed identity takes a while to propagate and the pod identity creation fails with status code = 400
+		// Sometimes, the managed identity takes a while to propagate and the pod identity creation fails with status code = 0
 		// For other reasons, fail
-		if detailed.StatusCode != 400 {
+		if detailed.StatusCode != 0 {
 			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster with error: %v, status code: %v", detailed.Message, detailed.StatusCode)
 		}
 

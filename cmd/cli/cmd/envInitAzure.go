@@ -419,11 +419,11 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	fc := features.NewClient(subscriptionID)
 	fc.Authorizer = authorizer
 	for feature, namespace := range requiredFeatures {
-		result, err := fc.Register(ctx, namespace, feature)
-		if err != nil || result.StatusCode != 200 {
-			return fmt.Errorf("failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
+		_, err := fc.Register(ctx, namespace, feature)
+		if err != nil {
+			return fmt.Errorf("Failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
 		}
-		logger.LogInfo("sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
+		logger.LogInfo("Sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
 	}
 	logger.CompleteStep(step)
 	return nil
