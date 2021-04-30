@@ -191,7 +191,7 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 			return fmt.Errorf("failed to create role assignment for user assigned managed identity after retries: %w", err)
 		}
 
-		log.Println("failed to create role assignment. Retrying...")
+		log.Println("Failed to create role assignment. Retrying...")
 		time.Sleep(20 * time.Second)
 		continue
 	}
@@ -236,7 +236,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 		return nil, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
 	}
 
-	log.Printf("created role assignment for %v to access %v", *msi.ID, *kv.ID)
+	log.Printf("Created role assignment for %v to access %v", *msi.ID, *kv.ID)
 
 	return &msi, nil
 }
@@ -260,7 +260,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				return AADPodIdentity{}, fmt.Errorf("failed to create pod identity: %w", err)
 			}
 
-			log.Printf("created pod identity %v to bind %v", podIdentity.Name, *msi.ID)
+			log.Printf("Created pod identity %v to bind %v", podIdentity.Name, *msi.ID)
 			return podIdentity, nil
 		}
 	}
