@@ -28,11 +28,12 @@ import (
 )
 
 const (
-	TestSubscriptionID = "test-subscription"
-	TestResourceGroup  = "test-resourcegroup"
-)
+	TestSubscriptionID  = "test-subscription"
+	TestResourceGroup   = "test-resourcegroup"
+	TestApplicationName = "myapp"
 
-const baseURI = "/subscriptions/test-subscription/resourceGroups/test-resourcegroup/providers/Microsoft.CustomProviders/resourceProviders/radius"
+	baseURI = "/subscriptions/test-subscription/resourceGroups/test-resourcegroup/providers/Microsoft.CustomProviders/resourceProviders/radius"
+)
 
 type test struct {
 	t      *testing.T
@@ -76,32 +77,32 @@ func applicationList() resources.ResourceID {
 	return parseOrPanic(baseURI + "/Applications/")
 }
 
-func applicationID(application string) resources.ResourceID {
-	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s", application))
+func applicationID(applicationName string) resources.ResourceID {
+	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s", applicationName))
 }
 
-func componentList(application string) resources.ResourceID {
-	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Components", application))
+func componentList(applicationName string) resources.ResourceID {
+	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Components", applicationName))
 }
 
-func componentID(application string, component string) resources.ResourceID {
-	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Components/%s", application, component))
+func componentID(applicationName string, componentName string) resources.ResourceID {
+	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Components/%s", applicationName, componentName))
 }
 
-func deploymentList(application string) resources.ResourceID {
-	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Deployments", application))
+func deploymentList(applicationName string) resources.ResourceID {
+	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Deployments", applicationName))
 }
 
 func deploymentID(application string, deployment string) resources.ResourceID {
 	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Deployments/%s", application, deployment))
 }
 
-func scopeList(application string) resources.ResourceID {
-	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Scopes", application))
+func scopeList(applicationName string) resources.ResourceID {
+	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Scopes", applicationName))
 }
 
-func scopeID(application string, scope string) resources.ResourceID {
-	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Scopes/%s", application, scope))
+func scopeID(applicationName string, scopeName string) resources.ResourceID {
+	return parseOrPanic(baseURI + fmt.Sprintf("/Applications/%s/Scopes/%s", applicationName, scopeName))
 }
 
 func parseOrPanic(id string) resources.ResourceID {
@@ -118,15 +119,15 @@ func requireJSON(t *testing.T, expected interface{}, w *httptest.ResponseRecorde
 	require.JSONEq(t, string(bytes), w.Body.String())
 }
 
-func (test *test) DBCreateApplication(application string, properties map[string]interface{}) {
-	id := applicationID(application)
+func (test *test) DBCreateApplication(applicationName string, properties map[string]interface{}) {
+	applicationID := applicationID(applicationName)
 	_, err := test.db.PatchApplication(context.TODO(), &db.ApplicationPatch{
 		ResourceBase: db.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             applicationID.ID,
+			SubscriptionID: applicationID.SubscriptionID,
+			ResourceGroup:  applicationID.ResourceGroup,
+			Name:           applicationID.Name(),
+			Type:           applicationID.Kind(),
 		},
 		Properties: properties,
 	})
@@ -142,25 +143,25 @@ func (test *test) DBDeleteApplication(application string) {
 	require.NoError(test.t, err)
 }
 
-func (test *test) DBCreateComponent(application string, component string, kind string, properties db.ComponentProperties) revision.Revision {
-	id := componentID(application, component)
-	a, err := id.Application()
+func (test *test) DBCreateComponent(applicationName string, componentName string, kind string, properties db.ComponentProperties) revision.Revision {
+	componentID := componentID(applicationName, componentName)
+	applicationID, err := componentID.Application()
 	require.NoError(test.t, err)
 
-	c := &db.Component{
+	component := &db.Component{
 		ResourceBase: db.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
 		},
 		Kind:       kind,
 		Properties: properties,
 	}
 
 	previous := revision.Revision("")
-	old, err := test.db.GetComponentByApplicationID(context.TODO(), a, component, revision.Revision(""))
+	old, err := test.db.GetComponentByApplicationID(context.TODO(), applicationID, componentName, revision.Revision(""))
 	if err == db.ErrNotFound {
 		// this is fine - we don't have a previous version to compare against
 	} else if err != nil {
@@ -169,12 +170,12 @@ func (test *test) DBCreateComponent(application string, component string, kind s
 		previous = old.Revision
 	}
 
-	rev, err := revision.Compute(c, previous, []revision.Revision{})
+	rev, err := revision.Compute(component, previous, []revision.Revision{})
 	require.NoError(test.t, err)
 
-	c.Revision = rev
+	component.Revision = rev
 
-	_, err = test.db.PatchComponentByApplicationID(context.TODO(), a, component, c, previous)
+	_, err = test.db.PatchComponentByApplicationID(context.TODO(), applicationID, componentName, component, previous)
 	require.NoError(test.t, err)
 
 	return rev
@@ -189,23 +190,23 @@ func (test *test) DBDeleteComponent(application string, component string) {
 	require.NoError(test.t, err)
 }
 
-func (test *test) DBCreateDeployment(application string, deployment string, properties db.DeploymentProperties) {
-	id := deploymentID(application, deployment)
-	a, err := id.Application()
+func (test *test) DBCreateDeployment(applicationName string, deploymentName string, properties db.DeploymentProperties) {
+	deploymentID := deploymentID(applicationName, deploymentName)
+	applicationID, err := deploymentID.Application()
 	require.NoError(test.t, err)
 
-	d := &db.Deployment{
+	deployment := &db.Deployment{
 		ResourceBase: db.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: properties,
 	}
 
-	_, err = test.db.PatchDeploymentByApplicationID(context.TODO(), a, deployment, d)
+	_, err = test.db.PatchDeploymentByApplicationID(context.TODO(), applicationID, deploymentName, deployment)
 	require.NoError(test.t, err)
 }
 
@@ -218,23 +219,23 @@ func (test *test) DBDeleteDeployment(application string, deployment string) {
 	require.NoError(test.t, err)
 }
 
-func (test *test) DBCreateScope(application string, scope string, properties map[string]interface{}) {
-	id := scopeID(application, scope)
-	a, err := id.Application()
+func (test *test) DBCreateScope(applicationName string, scopeName string, properties map[string]interface{}) {
+	scopeID := scopeID(applicationName, scopeName)
+	applicationID, err := scopeID.Application()
 	require.NoError(test.t, err)
 
-	s := &db.Scope{
+	scope := &db.Scope{
 		ResourceBase: db.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             scopeID.ID,
+			SubscriptionID: scopeID.SubscriptionID,
+			ResourceGroup:  scopeID.ResourceGroup,
+			Name:           scopeID.Name(),
+			Type:           scopeID.Kind(),
 		},
 		Properties: properties,
 	}
 
-	_, err = test.db.PatchScopeByApplicationID(context.TODO(), a, scope, s)
+	_, err = test.db.PatchScopeByApplicationID(context.TODO(), applicationID, scopeName, scope)
 	require.NoError(test.t, err)
 }
 
@@ -325,7 +326,7 @@ func (test *test) PollForFailedOperation(id resources.ResourceID, location strin
 func Test_GetApplication_NotFound(t *testing.T) {
 	test := start(t)
 
-	id := applicationID("myapp")
+	id := applicationID(TestApplicationName)
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -345,10 +346,10 @@ func Test_GetApplication_NotFound(t *testing.T) {
 func Test_GetApplication_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := applicationID("myapp")
-	req := httptest.NewRequest("GET", id.ID, nil)
+	applicationID := applicationID(TestApplicationName)
+	req := httptest.NewRequest("GET", applicationID.ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -357,11 +358,11 @@ func Test_GetApplication_Found(t *testing.T) {
 
 	expected := &rest.Application{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             applicationID.ID,
+			SubscriptionID: applicationID.SubscriptionID,
+			ResourceGroup:  applicationID.ResourceGroup,
+			Name:           applicationID.Name(),
+			Type:           applicationID.Kind(),
 		},
 	}
 	requireJSON(t, expected, w)
@@ -384,7 +385,7 @@ func Test_ListApplications_Empty(t *testing.T) {
 func Test_ListApplications_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
 	req := httptest.NewRequest("GET", applicationList().ID, nil)
 	w := httptest.NewRecorder()
@@ -393,15 +394,15 @@ func Test_ListApplications_Found(t *testing.T) {
 
 	require.Equal(t, 200, w.Code)
 
-	id := applicationID("myapp")
+	applicationID := applicationID(TestApplicationName)
 	expected := &rest.ResourceList{Value: []interface{}{
 		&rest.Application{
 			ResourceBase: rest.ResourceBase{
-				ID:             id.ID,
-				SubscriptionID: id.SubscriptionID,
-				ResourceGroup:  id.ResourceGroup,
-				Name:           id.QualifiedName(),
-				Type:           id.Kind(),
+				ID:             applicationID.ID,
+				SubscriptionID: applicationID.SubscriptionID,
+				ResourceGroup:  applicationID.ResourceGroup,
+				Name:           applicationID.Name(),
+				Type:           applicationID.Kind(),
 			},
 		},
 	}}
@@ -417,8 +418,8 @@ func Test_UpdateApplication_Create(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := applicationID("myapp")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	applicationID := applicationID(TestApplicationName)
+	req := httptest.NewRequest("PUT", applicationID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -431,11 +432,11 @@ func Test_UpdateApplication_Create(t *testing.T) {
 
 	expected := &rest.Application{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             applicationID.ID,
+			SubscriptionID: applicationID.SubscriptionID,
+			ResourceGroup:  applicationID.ResourceGroup,
+			Name:           applicationID.Name(),
+			Type:           applicationID.Kind(),
 		},
 		Properties: map[string]interface{}{},
 	}
@@ -445,7 +446,7 @@ func Test_UpdateApplication_Create(t *testing.T) {
 func Test_UpdateApplication_Update(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
 		"properties": map[string]interface{}{},
@@ -453,8 +454,8 @@ func Test_UpdateApplication_Update(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := applicationID("myapp")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	applicationID := applicationID(TestApplicationName)
+	req := httptest.NewRequest("PUT", applicationID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -467,11 +468,11 @@ func Test_UpdateApplication_Update(t *testing.T) {
 
 	expected := &rest.Application{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             applicationID.ID,
+			SubscriptionID: applicationID.SubscriptionID,
+			ResourceGroup:  applicationID.ResourceGroup,
+			Name:           applicationID.Name(),
+			Type:           applicationID.Kind(),
 		},
 		Properties: map[string]interface{}{},
 	}
@@ -481,7 +482,7 @@ func Test_UpdateApplication_Update(t *testing.T) {
 func Test_DeleteApplication_NotFound(t *testing.T) {
 	test := start(t)
 
-	id := applicationID("myapp")
+	id := applicationID(TestApplicationName)
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -493,9 +494,9 @@ func Test_DeleteApplication_NotFound(t *testing.T) {
 func Test_DeleteApplication_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := applicationID("myapp")
+	id := applicationID(TestApplicationName)
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -507,7 +508,7 @@ func Test_DeleteApplication_Found(t *testing.T) {
 func Test_GetComponent_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := componentID("myapp", "A")
+	id := componentID(TestApplicationName, "A")
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -527,9 +528,9 @@ func Test_GetComponent_NoApplication(t *testing.T) {
 func Test_GetComponent_NotFound(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := componentID("myapp", "A")
+	id := componentID(TestApplicationName, "A")
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -549,11 +550,11 @@ func Test_GetComponent_NotFound(t *testing.T) {
 func Test_GetComponent_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	rev := test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
 
-	id := componentID("myapp", "A")
-	req := httptest.NewRequest("GET", id.ID, nil)
+	componentID := componentID(TestApplicationName, "A")
+	req := httptest.NewRequest("GET", componentID.ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -562,11 +563,11 @@ func Test_GetComponent_Found(t *testing.T) {
 
 	expected := &rest.Component{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -579,7 +580,7 @@ func Test_GetComponent_Found(t *testing.T) {
 func Test_ListComponents_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := componentList("myapp")
+	id := componentList(TestApplicationName)
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -602,9 +603,9 @@ func Test_ListComponents_NoApplication(t *testing.T) {
 func Test_ListComponents_Empty(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := componentList("myapp")
+	id := componentList(TestApplicationName)
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -619,25 +620,25 @@ func Test_ListComponents_Empty(t *testing.T) {
 func Test_ListComponents_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	rev := test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
 
-	req := httptest.NewRequest("GET", componentList("myapp").ID, nil)
+	req := httptest.NewRequest("GET", componentList(TestApplicationName).ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
-	id := componentID("myapp", "A")
+	componentID := componentID(TestApplicationName, "A")
 	expected := &rest.ResourceList{Value: []interface{}{
 		&rest.Component{
 			ResourceBase: rest.ResourceBase{
-				ID:             id.ID,
-				SubscriptionID: id.SubscriptionID,
-				ResourceGroup:  id.ResourceGroup,
-				Name:           id.QualifiedName(),
-				Type:           id.Kind(),
+				ID:             componentID.ID,
+				SubscriptionID: componentID.SubscriptionID,
+				ResourceGroup:  componentID.ResourceGroup,
+				Name:           componentID.Name(),
+				Type:           componentID.Kind(),
 			},
 			Kind: "radius.dev/Test@v1alpha1",
 			Properties: rest.ComponentProperties{
@@ -658,7 +659,7 @@ func Test_UpdateComponent_NoApplication(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := componentID("myapp", "A")
+	id := componentID(TestApplicationName, "A")
 	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
@@ -681,11 +682,11 @@ func Test_UpdateComponent_NoApplication(t *testing.T) {
 func Test_UpdateComponent_Create(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
 	// simulate the operation to get the revision
-	rev := test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
-	test.DBDeleteComponent("myapp", "A")
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	test.DBDeleteComponent(TestApplicationName, "A")
 
 	body := map[string]interface{}{
 		"kind":       "radius.dev/Test@v1alpha1",
@@ -694,8 +695,8 @@ func Test_UpdateComponent_Create(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := componentID("myapp", "A")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	componentID := componentID(TestApplicationName, "A")
+	req := httptest.NewRequest("PUT", componentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -704,11 +705,11 @@ func Test_UpdateComponent_Create(t *testing.T) {
 
 	expected := &rest.Component{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -721,8 +722,8 @@ func Test_UpdateComponent_Create(t *testing.T) {
 func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	rev := test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
 
 	body := map[string]interface{}{
 		"kind":       "radius.dev/Test@v1alpha1",
@@ -731,8 +732,8 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := componentID("myapp", "A")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	componentID := componentID(TestApplicationName, "A")
+	req := httptest.NewRequest("PUT", componentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -741,11 +742,11 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 
 	expected := &rest.Component{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -758,16 +759,16 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 func Test_UpdateComponent_Update(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 	// Simulate the operation to get the revision
-	test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
-	rev := test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
+	test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
 		Run: map[string]interface{}{
 			"cool": true,
 		},
 	})
-	test.DBDeleteComponent("myapp", "A")
-	test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	test.DBDeleteComponent(TestApplicationName, "A")
+	test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
 
 	body := map[string]interface{}{
 		"kind": "radius.dev/Test@v1alpha1",
@@ -780,8 +781,8 @@ func Test_UpdateComponent_Update(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := componentID("myapp", "A")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	componentID := componentID(TestApplicationName, "A")
+	req := httptest.NewRequest("PUT", componentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -790,11 +791,11 @@ func Test_UpdateComponent_Update(t *testing.T) {
 
 	expected := &rest.Component{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -810,7 +811,7 @@ func Test_UpdateComponent_Update(t *testing.T) {
 func Test_DeleteComponent_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := componentID("myapp", "A")
+	id := componentID(TestApplicationName, "A")
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -822,9 +823,9 @@ func Test_DeleteComponent_NoApplication(t *testing.T) {
 func Test_DeleteComponent_NotFound(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := componentID("myapp", "A")
+	id := componentID(TestApplicationName, "A")
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -836,10 +837,10 @@ func Test_DeleteComponent_NotFound(t *testing.T) {
 func Test_DeleteComponent_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
 
-	id := componentID("myapp", "default")
+	id := componentID(TestApplicationName, "default")
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -851,7 +852,7 @@ func Test_DeleteComponent_Found(t *testing.T) {
 func Test_GetDeployment_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := deploymentID("myapp", "default")
+	id := deploymentID(TestApplicationName, "default")
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -871,9 +872,9 @@ func Test_GetDeployment_NoApplication(t *testing.T) {
 func Test_GetDeployment_NotFound(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := deploymentID("myapp", "default")
+	id := deploymentID(TestApplicationName, "default")
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -893,11 +894,11 @@ func Test_GetDeployment_NotFound(t *testing.T) {
 func Test_GetDeployment_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateDeployment("myapp", "default", db.DeploymentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("GET", id.ID, nil)
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("GET", deploymentID.ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -906,11 +907,11 @@ func Test_GetDeployment_Found(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{},
 	}
@@ -920,7 +921,7 @@ func Test_GetDeployment_Found(t *testing.T) {
 func Test_ListDeployments_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := deploymentList("myapp")
+	id := deploymentList(TestApplicationName)
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -943,9 +944,9 @@ func Test_ListDeployments_NoApplication(t *testing.T) {
 func Test_ListDeployments_Empty(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := deploymentList("myapp")
+	id := deploymentList(TestApplicationName)
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -960,25 +961,25 @@ func Test_ListDeployments_Empty(t *testing.T) {
 func Test_ListDeployments_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateDeployment("myapp", "default", db.DeploymentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
 
-	req := httptest.NewRequest("GET", deploymentList("myapp").ID, nil)
+	req := httptest.NewRequest("GET", deploymentList(TestApplicationName).ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
-	id := deploymentID("myapp", "default")
+	deploymentID := deploymentID(TestApplicationName, "default")
 	expected := &rest.ResourceList{Value: []interface{}{
 		&rest.Deployment{
 			ResourceBase: rest.ResourceBase{
-				ID:             id.ID,
-				SubscriptionID: id.SubscriptionID,
-				ResourceGroup:  id.ResourceGroup,
-				Name:           id.QualifiedName(),
-				Type:           id.Kind(),
+				ID:             deploymentID.ID,
+				SubscriptionID: deploymentID.SubscriptionID,
+				ResourceGroup:  deploymentID.ResourceGroup,
+				Name:           deploymentID.Name(),
+				Type:           deploymentID.Kind(),
 			},
 			Properties: rest.DeploymentProperties{},
 		},
@@ -995,7 +996,7 @@ func Test_UpdateDeployment_NoApplication(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := deploymentID("myapp", "default")
+	id := deploymentID(TestApplicationName, "default")
 	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
@@ -1028,11 +1029,11 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 			case <-complete:
 				return nil
 			case <-time.After(10 * time.Second):
-				return errors.New("Timeout!")
+				return errors.New("timed out")
 			}
 		})
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
 		"properties": map[string]interface{}{},
@@ -1040,8 +1041,8 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1052,11 +1053,11 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeployingStatus,
@@ -1069,7 +1070,7 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	actual := test.PollForSuccessfulPut(id)
+	actual := test.PollForSuccessfulPut(deploymentID)
 	require.Equal(t, rest.SuccededStatus, actual.Properties.ProvisioningState)
 }
 
@@ -1090,11 +1091,11 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 					},
 				}
 			case <-time.After(10 * time.Second):
-				return errors.New("Timeout!")
+				return errors.New("timed out")
 			}
 		})
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
 		"properties": map[string]interface{}{},
@@ -1102,8 +1103,8 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1114,11 +1115,11 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeployingStatus,
@@ -1131,7 +1132,7 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	code, actual, armerr := test.PollForFailedOperation(id, location)
+	code, actual, armerr := test.PollForFailedOperation(deploymentID, location)
 	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
 
 	require.Equal(t, 400, code)
@@ -1157,7 +1158,7 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 			}
 		})
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
 		"properties": map[string]interface{}{},
@@ -1165,8 +1166,8 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1177,11 +1178,11 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeployingStatus,
@@ -1194,7 +1195,7 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	code, actual, armerr := test.PollForFailedOperation(id, location)
+	code, actual, armerr := test.PollForFailedOperation(deploymentID, location)
 	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
 
 	require.Equal(t, 500, code)
@@ -1217,13 +1218,13 @@ func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
 			case <-complete:
 				return nil
 			case <-time.After(10 * time.Second):
-				return errors.New("Timeout!")
+				return errors.New("timed out")
 			}
 		})
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateDeployment("myapp", "default", db.DeploymentProperties{})
-	rev := test.DBCreateComponent("myapp", "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
 
 	body := map[string]interface{}{
 		"properties": rest.DeploymentProperties{
@@ -1238,8 +1239,8 @@ func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1250,11 +1251,11 @@ func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeployingStatus,
@@ -1273,15 +1274,15 @@ func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	deployment := test.PollForSuccessfulPut(id)
+	deployment := test.PollForSuccessfulPut(deploymentID)
 	require.Equal(t, rest.SuccededStatus, deployment.Properties.ProvisioningState)
 }
 
 func Test_UpdateDeployment_UpdateNoOp(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateDeployment("myapp", "default", db.DeploymentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
 
 	body := map[string]interface{}{
 		"properties": map[string]interface{}{},
@@ -1289,8 +1290,8 @@ func Test_UpdateDeployment_UpdateNoOp(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1299,11 +1300,11 @@ func Test_UpdateDeployment_UpdateNoOp(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{},
 	}
@@ -1313,7 +1314,7 @@ func Test_UpdateDeployment_UpdateNoOp(t *testing.T) {
 func Test_DeleteDeployment_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := deploymentID("myapp", "default")
+	id := deploymentID(TestApplicationName, "default")
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -1325,9 +1326,9 @@ func Test_DeleteDeployment_NoApplication(t *testing.T) {
 func Test_DeleteDeployment_NotFound(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := deploymentID("myapp", "default")
+	id := deploymentID(TestApplicationName, "default")
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -1349,15 +1350,15 @@ func Test_DeleteDeployment_Found_Success(t *testing.T) {
 			case <-complete:
 				return nil
 			case <-time.After(10 * time.Second):
-				return errors.New("Timeout!")
+				return errors.New("timed out")
 			}
 		})
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateDeployment("myapp", "default", db.DeploymentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("DELETE", id.ID, nil)
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("DELETE", deploymentID.ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1368,11 +1369,11 @@ func Test_DeleteDeployment_Found_Success(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeletingStatus,
@@ -1385,7 +1386,7 @@ func Test_DeleteDeployment_Found_Success(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	test.PollForSuccessfulDelete(id)
+	test.PollForSuccessfulDelete(deploymentID)
 }
 
 func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
@@ -1405,15 +1406,15 @@ func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
 					},
 				}
 			case <-time.After(10 * time.Second):
-				return errors.New("Timeout!")
+				return errors.New("timed out")
 			}
 		})
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateDeployment("myapp", "default", db.DeploymentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("DELETE", id.ID, nil)
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("DELETE", deploymentID.ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1424,11 +1425,11 @@ func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeletingStatus,
@@ -1441,7 +1442,7 @@ func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	code, actual, armerr := test.PollForFailedOperation(id, location)
+	code, actual, armerr := test.PollForFailedOperation(deploymentID, location)
 	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
 
 	require.Equal(t, 400, code)
@@ -1463,15 +1464,15 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 			case <-complete:
 				return errors.New("deletion failed :(")
 			case <-time.After(10 * time.Second):
-				return errors.New("Timeout!")
+				return errors.New("timed out")
 			}
 		})
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateDeployment("myapp", "default", db.DeploymentProperties{})
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
 
-	id := deploymentID("myapp", "default")
-	req := httptest.NewRequest("DELETE", id.ID, nil)
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("DELETE", deploymentID.ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1482,11 +1483,11 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 
 	expected := &rest.Deployment{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeletingStatus,
@@ -1499,7 +1500,7 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 	// Now unblock the completion of the deployment
 	complete <- struct{}{}
 
-	code, actual, armerr := test.PollForFailedOperation(id, location)
+	code, actual, armerr := test.PollForFailedOperation(deploymentID, location)
 	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
 
 	require.Equal(t, 500, code)
@@ -1511,7 +1512,7 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 func Test_GetScope_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := scopeID("myapp", "scope1")
+	id := scopeID(TestApplicationName, "scope1")
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -1531,9 +1532,9 @@ func Test_GetScope_NoApplication(t *testing.T) {
 func Test_GetScope_NotFound(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := scopeID("myapp", "scope1")
+	id := scopeID(TestApplicationName, "scope1")
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -1553,11 +1554,11 @@ func Test_GetScope_NotFound(t *testing.T) {
 func Test_GetScope_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateScope("myapp", "scope1", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateScope(TestApplicationName, "scope1", nil)
 
-	id := scopeID("myapp", "scope1")
-	req := httptest.NewRequest("GET", id.ID, nil)
+	scopeID := scopeID(TestApplicationName, "scope1")
+	req := httptest.NewRequest("GET", scopeID.ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1566,11 +1567,11 @@ func Test_GetScope_Found(t *testing.T) {
 
 	expected := &rest.Scope{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             scopeID.ID,
+			SubscriptionID: scopeID.SubscriptionID,
+			ResourceGroup:  scopeID.ResourceGroup,
+			Name:           scopeID.Name(),
+			Type:           scopeID.Kind(),
 		},
 	}
 	requireJSON(t, expected, w)
@@ -1579,7 +1580,7 @@ func Test_GetScope_Found(t *testing.T) {
 func Test_ListScopes_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := scopeList("myapp")
+	id := scopeList(TestApplicationName)
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -1602,9 +1603,9 @@ func Test_ListScopes_NoApplication(t *testing.T) {
 func Test_ListScopes_Empty(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := scopeList("myapp")
+	id := scopeList(TestApplicationName)
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -1619,25 +1620,25 @@ func Test_ListScopes_Empty(t *testing.T) {
 func Test_ListScopes_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateScope("myapp", "scope1", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateScope(TestApplicationName, "scope1", nil)
 
-	req := httptest.NewRequest("GET", scopeList("myapp").ID, nil)
+	req := httptest.NewRequest("GET", scopeList(TestApplicationName).ID, nil)
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
-	id := scopeID("myapp", "scope1")
+	scopeID := scopeID(TestApplicationName, "scope1")
 	expected := &rest.ResourceList{Value: []interface{}{
 		&rest.Scope{
 			ResourceBase: rest.ResourceBase{
-				ID:             id.ID,
-				SubscriptionID: id.SubscriptionID,
-				ResourceGroup:  id.ResourceGroup,
-				Name:           id.QualifiedName(),
-				Type:           id.Kind(),
+				ID:             scopeID.ID,
+				SubscriptionID: scopeID.SubscriptionID,
+				ResourceGroup:  scopeID.ResourceGroup,
+				Name:           scopeID.Name(),
+				Type:           scopeID.Kind(),
 			},
 		},
 	}}
@@ -1654,7 +1655,7 @@ func Test_UpdateScopes_NoApplication(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := scopeID("myapp", "scope1")
+	id := scopeID(TestApplicationName, "scope1")
 	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
@@ -1677,7 +1678,7 @@ func Test_UpdateScopes_NoApplication(t *testing.T) {
 func Test_UpdateScopes_Create(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
 		"kind":       "radius.dev/Test@v1alpha1",
@@ -1686,8 +1687,8 @@ func Test_UpdateScopes_Create(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := scopeID("myapp", "scope1")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	scopeID := scopeID(TestApplicationName, "scope1")
+	req := httptest.NewRequest("PUT", scopeID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1696,11 +1697,11 @@ func Test_UpdateScopes_Create(t *testing.T) {
 
 	expected := &rest.Scope{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             scopeID.ID,
+			SubscriptionID: scopeID.SubscriptionID,
+			ResourceGroup:  scopeID.ResourceGroup,
+			Name:           scopeID.Name(),
+			Type:           scopeID.Kind(),
 		},
 		Properties: map[string]interface{}{},
 	}
@@ -1710,8 +1711,8 @@ func Test_UpdateScopes_Create(t *testing.T) {
 func Test_UpdateScopes_UpdateNoOp(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateScope("myapp", "scope1", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateScope(TestApplicationName, "scope1", nil)
 
 	body := map[string]interface{}{
 		"properties": map[string]interface{}{},
@@ -1719,8 +1720,8 @@ func Test_UpdateScopes_UpdateNoOp(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := scopeID("myapp", "scope1")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	scopeID := scopeID(TestApplicationName, "scope1")
+	req := httptest.NewRequest("PUT", scopeID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1729,11 +1730,11 @@ func Test_UpdateScopes_UpdateNoOp(t *testing.T) {
 
 	expected := &rest.Scope{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             scopeID.ID,
+			SubscriptionID: scopeID.SubscriptionID,
+			ResourceGroup:  scopeID.ResourceGroup,
+			Name:           scopeID.Name(),
+			Type:           scopeID.Kind(),
 		},
 		Properties: map[string]interface{}{},
 	}
@@ -1743,8 +1744,8 @@ func Test_UpdateScopes_UpdateNoOp(t *testing.T) {
 func Test_UpdateScopes_Update(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateScope("myapp", "scope1", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateScope(TestApplicationName, "scope1", nil)
 
 	body := map[string]interface{}{
 		"properties": map[string]interface{}{},
@@ -1752,8 +1753,8 @@ func Test_UpdateScopes_Update(t *testing.T) {
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	id := scopeID("myapp", "scope1")
-	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
+	scopeID := scopeID(TestApplicationName, "scope1")
+	req := httptest.NewRequest("PUT", scopeID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
 	test.server.Config.Handler.ServeHTTP(w, req)
@@ -1762,11 +1763,11 @@ func Test_UpdateScopes_Update(t *testing.T) {
 
 	expected := &rest.Scope{
 		ResourceBase: rest.ResourceBase{
-			ID:             id.ID,
-			SubscriptionID: id.SubscriptionID,
-			ResourceGroup:  id.ResourceGroup,
-			Name:           id.QualifiedName(),
-			Type:           id.Kind(),
+			ID:             scopeID.ID,
+			SubscriptionID: scopeID.SubscriptionID,
+			ResourceGroup:  scopeID.ResourceGroup,
+			Name:           scopeID.Name(),
+			Type:           scopeID.Kind(),
 		},
 		Properties: map[string]interface{}{},
 	}
@@ -1776,7 +1777,7 @@ func Test_UpdateScopes_Update(t *testing.T) {
 func Test_DeleteScope_NoApplication(t *testing.T) {
 	test := start(t)
 
-	id := scopeID("myapp", "scope1")
+	id := scopeID(TestApplicationName, "scope1")
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -1788,9 +1789,9 @@ func Test_DeleteScope_NoApplication(t *testing.T) {
 func Test_DeleteScope_NotFound(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
 
-	id := scopeID("myapp", "scope1")
+	id := scopeID(TestApplicationName, "scope1")
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
@@ -1802,10 +1803,10 @@ func Test_DeleteScope_NotFound(t *testing.T) {
 func Test_DeleteScope_Found(t *testing.T) {
 	test := start(t)
 
-	test.DBCreateApplication("myapp", nil)
-	test.DBCreateScope("myapp", "scope1", nil)
+	test.DBCreateApplication(TestApplicationName, nil)
+	test.DBCreateScope(TestApplicationName, "scope1", nil)
 
-	id := scopeID("myapp", "scope1")
+	id := scopeID(TestApplicationName, "scope1")
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
