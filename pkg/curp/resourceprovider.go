@@ -188,7 +188,7 @@ func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (rest.Re
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	dbitem, err := r.db.GetComponentByApplicationID(ctx, c.App, c.Resource.ShortName(), revision.Revision(""))
+	dbitem, err := r.db.GetComponentByApplicationID(ctx, c.App, c.Resource.Name(), revision.Revision(""))
 	if err == db.ErrNotFound {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -216,7 +216,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	// fetch the latest component so we can compare and generate a revision
-	olddbitem, err := r.db.GetComponentByApplicationID(ctx, id.App, id.Resource.ShortName(), revision.Revision(""))
+	olddbitem, err := r.db.GetComponentByApplicationID(ctx, id.App, id.Resource.Name(), revision.Revision(""))
 	if err == db.ErrNotFound {
 		// this is fine - we don't have a previous version to compare against
 	} else if err != nil {
@@ -248,7 +248,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 		return nil, err
 	}
 
-	created, err := r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.ShortName(), newdbitem, previous)
+	created, err := r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.Name(), newdbitem, previous)
 	if err == db.ErrNotFound {
 		// If we get a not found here there's no application
 		return rest.NewNotFoundResponse(id.App.ResourceID), nil
@@ -270,7 +270,7 @@ func (r *rp) DeleteComponent(ctx context.Context, id resources.ResourceID) (rest
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	err = r.db.DeleteComponentByApplicationID(ctx, c.App, c.Resource.ShortName())
+	err = r.db.DeleteComponentByApplicationID(ctx, c.App, c.Resource.Name())
 	if err == db.ErrNotFound {
 		// it's not an error to 'delete' something that's already gone
 		return rest.NewNoContentResponse(), nil
@@ -313,7 +313,7 @@ func (r *rp) GetDeployment(ctx context.Context, id resources.ResourceID) (rest.R
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	dbitem, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
+	dbitem, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 	if err == db.ErrNotFound {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -352,7 +352,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	}
 
 	var olddbitem *db.Deployment
-	obj, ok := app.Deployments[id.Resource.ShortName()]
+	obj, ok := app.Deployments[id.Resource.Name()]
 	if ok {
 		olddbitem = &obj
 	}
@@ -396,7 +396,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	oid := id.NewOperation()
 	operation := &db.Operation{
 		ID:     oid.Resource.ID,
-		Name:   oid.Resource.ShortName(),
+		Name:   oid.Resource.Name(),
 		Status: string(rest.DeployingStatus),
 
 		StartTime:       time.Now().UTC().Format(time.RFC3339),
@@ -409,7 +409,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	}
 
 	newdbitem.Properties.ProvisioningState = string(rest.DeployingStatus)
-	_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.ShortName(), newdbitem)
+	_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.Name(), newdbitem)
 	if err != nil {
 		return nil, err
 	}
@@ -465,14 +465,14 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			}
 		}
 
-		d, err := r.db.GetDeploymentByApplicationID(ctx, id.App, id.Resource.ShortName())
+		d, err := r.db.GetDeploymentByApplicationID(ctx, id.App, id.Resource.Name())
 		if err != nil {
 			log.Printf("failed to retrieve deployment '%s': %v", oid.Resource.ID, err)
 			return
 		}
 
 		d.Properties.ProvisioningState = string(status)
-		_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.ShortName(), d)
+		_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.Name(), d)
 		if err != nil {
 			log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
 			return
@@ -492,7 +492,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	current, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
+	current, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 	if err == db.ErrNotFound {
 		// it's not an error to 'delete' something that's already gone
 		return rest.NewNoContentResponse(), nil
@@ -510,7 +510,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 	oid := d.NewOperation()
 	operation := &db.Operation{
 		ID:     oid.Resource.ID,
-		Name:   oid.Resource.ShortName(),
+		Name:   oid.Resource.Name(),
 		Status: string(rest.DeletingStatus),
 
 		StartTime:       time.Now().UTC().Format(time.RFC3339),
@@ -524,7 +524,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 
 	// Next we update the deployment to say that it's deleting.
 	current.Properties.ProvisioningState = string(rest.DeletingStatus)
-	_, err = r.db.PatchDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName(), current)
+	_, err = r.db.PatchDeploymentByApplicationID(ctx, d.App, d.Resource.Name(), current)
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +537,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		var failure *armerrors.ErrorDetails = nil
 		status := rest.SuccededStatus
 
-		err := r.deploy.DeleteDeployment(ctx, d.Resource.ShortName(), &current.Status)
+		err := r.deploy.DeleteDeployment(ctx, d.Resource.Name(), &current.Status)
 		if _, ok := err.(*deployment.CompositeError); ok {
 			// Composite error is what we use for validation problems
 			status = rest.FailedStatus
@@ -579,14 +579,14 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 			}
 		}
 
-		dd, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
+		dd, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 		if err != nil {
 			log.Printf("failed to retrieve deployment '%s': %v", oid.Resource.ID, err)
 			return
 		}
 
 		if status == rest.SuccededStatus {
-			err := r.db.DeleteDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName())
+			err := r.db.DeleteDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 			if err != nil {
 				log.Printf("failed to delete deployment '%s': %v", oid.Resource.ID, err)
 				return
@@ -595,7 +595,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 			// If we get here then something about the operation failed - don't delete the
 			// deployment record, mark it as failed.
 			dd.Properties.ProvisioningState = string(status)
-			_, err = r.db.PatchDeploymentByApplicationID(ctx, d.App, d.Resource.ShortName(), dd)
+			_, err = r.db.PatchDeploymentByApplicationID(ctx, d.App, d.Resource.Name(), dd)
 			if err != nil {
 				log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
 				return
@@ -641,7 +641,7 @@ func (r *rp) GetScope(ctx context.Context, id resources.ResourceID) (rest.Respon
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	dbitem, err := r.db.GetScopeByApplicationID(ctx, s.App, s.Resource.ShortName())
+	dbitem, err := r.db.GetScopeByApplicationID(ctx, s.App, s.Resource.Name())
 	if err == db.ErrNotFound {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -666,7 +666,7 @@ func (r *rp) UpdateScope(ctx context.Context, s *rest.Scope) (rest.Response, err
 	}
 
 	dbitem := newDBScopeFromREST(s)
-	created, err := r.db.PatchScopeByApplicationID(ctx, id.App, id.Resource.ShortName(), dbitem)
+	created, err := r.db.PatchScopeByApplicationID(ctx, id.App, id.Resource.Name(), dbitem)
 	if err == db.ErrNotFound {
 		return rest.NewNotFoundResponse(id.App.ResourceID), nil
 	} else if err != nil {
@@ -687,7 +687,7 @@ func (r *rp) DeleteScope(ctx context.Context, id resources.ResourceID) (rest.Res
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	err = r.db.DeleteScopeByApplicationID(ctx, s.App, s.Resource.ShortName())
+	err = r.db.DeleteScopeByApplicationID(ctx, s.App, s.Resource.Name())
 	if err == db.ErrNotFound {
 		// It's not an error for the application to be missing here.
 		return rest.NewNoContentResponse(), nil
@@ -732,7 +732,7 @@ func (r *rp) GetDeploymentOperationByID(ctx context.Context, id resources.Resour
 		}), nil
 	}
 
-	deployment, err := r.db.GetDeploymentByApplicationID(ctx, did.App, did.Resource.ShortName())
+	deployment, err := r.db.GetDeploymentByApplicationID(ctx, did.App, did.Resource.Name())
 	if err == db.ErrNotFound {
 		// If we get a 404 then this should mean that the resource was deleted successfully.
 		// Return a 204 for that case
