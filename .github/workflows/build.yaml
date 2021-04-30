@@ -265,10 +265,57 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe'
-      - uses: bacongobbler/azure-blob-storage-upload@v1.1.1
+
+  codespaces:
+    name: Codespaces container image build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Cache Docker layers
+        uses: actions/cache@v2
         with:
-          source_dir: install
-          container_name: 'tools'
-          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-          sync: true
-          extra_args: '--destination-path rad/ --pattern install.*'
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: '${{ secrets.RADIUSTEAM_DOCKERHUB_USERNAME }}' 
+          password: '${{ secrets.RADIUSTEAM_DOCKERHUB_PASSWORD }}' 
+      - name: Build and push - Codespaces (latest)
+        if: (github.ref == 'refs/heads/main') # push image on push to main
+        uses: docker/build-push-action@v2
+        with:
+          context: ./.devcontainer/tutorials-codespace/
+          builder: ${{ steps.buildx.outputs.name }}
+          push: true
+          tags:  radiusteam/radcodespace:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Build and push - Codespaces (PR)
+        if: startsWith(github.ref, 'refs/pull/') # push image on pr
+        uses: docker/build-push-action@v2
+        with:
+          context: ./.devcontainer/tutorials-codespace/
+          builder: ${{ steps.buildx.outputs.name }}
+          push: false # don't push image on pr
+          tags:  radiusteam/radcodespace:${{ env.REL_VERSION }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Build and push - Codespaces (release)
+        if: startsWith(github.ref, 'refs/tags/v') # push image on tag
+        uses: docker/build-push-action@v2
+        with:
+          context: ./.devcontainer/tutorials-codespace/
+          builder: ${{ steps.buildx.outputs.name }}
+          push: true
+          tags:  radiusteam/radcodespace:${{ env.REL_CHANNEL }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
