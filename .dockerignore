@@ -4,27 +4,29 @@
 .github/
 .vscode/
 build/
+bin/
+config/
 deploy/
 docs/
 diagrams/
 dist/
+docs/
+examples/
 install/
 mocks/
 schemas/
 test/
 
 # Specific files in our repo to ignore
+*.md
 .gitattributes
+.dockerignore
 .gitignore
 .gitmodules
 boilerplate.go.txt
-CODE_OF_CONDUCT.md
-CONTRIBUTING.md
 LICENSE
 Makefile
-README.md
-SECURITY.md
-SUPPORT.md
+PROJECT
 
 # Generated files to ignore
 radius-rp

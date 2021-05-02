@@ -1,0 +1,7 @@
+apiVersion: applications.radius.dev/v1alpha1
+kind: Deployment
+metadata:
+  name: deployment-sample
+spec:
+  # Add fields here
+  foo: bar

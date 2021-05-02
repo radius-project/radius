@@ -30,7 +30,7 @@ docker-push-$(1):
 endef
 
 # defines a target for each image
-DOCKER_IMAGES := radius-rp
+DOCKER_IMAGES := radius-rp radius-controller
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),./deploy/images/$(IMAGE)/Dockerfile)))
 
 # list of 'outputs' to build all images

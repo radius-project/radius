@@ -1,4 +1,5 @@
 FROM golang:alpine AS build-env
+ARG LDFLAGS="-w -s"
 RUN apk --no-cache add build-base git gcc
 WORKDIR /src
 COPY go.mod ./

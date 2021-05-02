@@ -81,8 +81,11 @@ $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITE
 # 'rad' deviates from our convention
 $(eval $(call generateBuildTarget,rad,./cmd/cli))
 
+# 'rad-controller' deviates from our convention
+$(eval $(call generateBuildTarget,rad-controller,./cmd/k8s))
+
 # list of 'outputs' to build for all binaries
-BINARY_TARGETS:=$(foreach ITEM,$(BINARIES),build-$(ITEM)) build-rad
+BINARY_TARGETS:=$(foreach ITEM,$(BINARIES),build-$(ITEM)) build-rad build-rad-controller
 
 .PHONY: build-binaries
 build-binaries: $(BINARY_TARGETS) ## Builds all go binaries.
