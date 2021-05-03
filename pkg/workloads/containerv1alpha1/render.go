@@ -154,7 +154,13 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 	raName, _ := uuid.NewV4()
 
 	MaxRetries := 100
-	for i := 0; i < MaxRetries; i++ {
+	for i := 0; i <= MaxRetries; i++ {
+
+		// Retry to wait for the managed identity to propagate
+		if i >= MaxRetries {
+			return fmt.Errorf("failed to create role assignment for user assigned managed identity after retries: %w", err)
+		}
+
 		_, err = rac.Create(
 			ctx,
 			kvID,
@@ -184,11 +190,6 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 		// For other reasons, fail.
 		if detailed.StatusCode != 400 {
 			return fmt.Errorf("failed to create role assignment with error: %v, statuscode: %v", detailed.Message, detailed.StatusCode)
-		}
-
-		// Retry to wait for the managed identity to propagate
-		if i >= MaxRetries {
-			return fmt.Errorf("failed to create role assignment for user assigned managed identity after retries: %w", err)
 		}
 
 		log.Println("Failed to create role assignment. Retrying...")
@@ -499,7 +500,12 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 
 	MaxRetries := 100
 	var mcFuture containerservice.ManagedClustersCreateOrUpdateFuture
-	for i := 0; i < MaxRetries; i++ {
+	for i := 0; i <= MaxRetries; i++ {
+		// Retry to wait for the managed identity to propagate
+		if i >= MaxRetries {
+			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster after retries: %w", err)
+		}
+
 		mcFuture, err = mcc.CreateOrUpdate(ctx, r.Arm.ResourceGroup, *cluster.Name, containerservice.ManagedCluster{
 			ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 				PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
@@ -527,13 +533,8 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster with error: %v, status code: %v", detailed.Message, detailed.StatusCode)
 		}
 
-		// Retry to wait for the managed identity to propagate
-		if i >= MaxRetries {
-			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster after retries: %w", err)
-		}
-
 		fmt.Println("failed to add pod identity. Retrying...")
-		time.Sleep(20 * time.Second)
+		time.Sleep(5 * time.Second)
 		continue
 	}
 
