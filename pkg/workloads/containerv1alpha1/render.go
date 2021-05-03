@@ -193,7 +193,7 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 		}
 
 		log.Println("Failed to create role assignment. Retrying...")
-		time.Sleep(20 * time.Second)
+		time.Sleep(5 * time.Second)
 		continue
 	}
 
