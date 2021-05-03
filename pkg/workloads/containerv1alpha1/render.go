@@ -200,7 +200,7 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 	return nil
 }
 
-func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep ContainerDependsOn, w workloads.InstantiatedWorkload) (*msi.Identity, error) {
+func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep ContainerDependsOn, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, error) {
 	// Read KV_URI
 	kvURI, err := r.readKeyVaultURI(dep, w)
 	if err != nil || kvURI == "" {
@@ -209,7 +209,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 
 	kvName := strings.Replace(strings.Split(kvURI, ".")[0], "https://", "", -1)
 	// Create user assigned managed identity
-	managedIdentityName := kvName + "-msi"
+	managedIdentityName := kvName + "-" + cw.Name + "-msi"
 
 	g := resources.NewGroupsClient(r.Arm.SubscriptionID)
 	g.Authorizer = r.Arm.Auth
@@ -250,7 +250,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 		// The list of dependency kinds to check might grow in the future
 		if dep.Kind == "azure.com/KeyVault" {
 			// Create a user assigned managed identity and assign it the right permissions to access the KeyVault
-			msi, err := r.createManagedIdentityForKeyVault(ctx, dep, w)
+			msi, err := r.createManagedIdentityForKeyVault(ctx, dep, w, cw)
 			if err != nil {
 				return AADPodIdentity{}, err
 			}
@@ -472,7 +472,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	}
 
 	// Note: Pod Identity name cannot have camel case
-	podIdentityName := "podid-" + containerName
+	podIdentityName := "podid-" + strings.ToLower(containerName)
 
 	// Get the cluster and modify it to add pod identity
 	managedCluster, err := mcc.Get(ctx, r.Arm.ResourceGroup, *cluster.Name)
