@@ -28,7 +28,7 @@ The Radius application you will be deploying is a simple python application that
 
 ### Azure KeyVault component
 
-The Radius application describes an Azure KeyVault as below:-
+The following Radius application component describes a managed Azure KeyVault:
 
 ```
 resource kv 'Components' = {
