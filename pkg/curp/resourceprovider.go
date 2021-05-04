@@ -472,6 +472,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		}
 
 		d.Properties.ProvisioningState = string(status)
+		d.Status = newdbitem.Status
 		_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.Name(), d)
 		if err != nil {
 			log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
