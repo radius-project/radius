@@ -6,11 +6,11 @@ description: "How to initialize the private Radius resource provider in your Azu
 weight: 30
 ---
 
-Radius deploys a private resource provider, or control plane, that your `rad` cli connects to when managing your radius applications.
+Radius depends on a [private resource provider](https://docs.microsoft.com/en-us/azure/azure-resource-manager/custom-providers/overview), acting as a control-plane environment, that your `rad` cli connects to when managing your Radius applications.
 
 ## Deploy a Radius environment
 
-As a one time operation deploy an [Azure Radius environment]({{< ref azure-environments >}}) into your Azure subscription through the following instructions.
+As a one time operation deploy an [Azure Radius environment]({{< ref azure-environments >}}) into your Azure subscription through the following instructions:
 
 {{% alert title="⚠ Caution" color="warning" %}}
 While Radius environments are optimized for cost, any costs incurred by the deployment and use of a Radius environment in an Azure subscription are the responsibility of the user. Learn more about Azure environments [here]({{< ref azure-environments >}}).
@@ -38,7 +38,7 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
 1. Create a Radius environment:
 
-   Initialize the private resource provider (environment) in your Azure subscription using the `rad` CLI. The following command creates an environment in interactive mode and will prompt you for input like the name of a new Resource Group and location. 
+   Initialize the private resource provider (environment) in your Azure subscription using the [`rad` CLI]({{< ref rad_env_init_azure >}}). The following command creates an environment in interactive mode and will prompt you for input like the name of a new Resource Group and location. 
 
    ```sh
    rad env init azure -i

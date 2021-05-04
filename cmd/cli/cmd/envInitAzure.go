@@ -48,8 +48,20 @@ const armTemplateURIFormat = "https://radiuspublic.blob.core.windows.net/environ
 
 var envInitAzureCmd = &cobra.Command{
 	Use:   "azure",
-	Short: "Create a RAD environment on Azure",
-	Long:  `Create a RAD environment on Azure`,
+	Short: "Create a Radius environment on Azure",
+	Long:  `Create a Radius environment and deploy to a specified Azure resource group and subscription.`,
+	Example: `
+# Create a Radius environment in interactive mode
+## If an environment of the same name, resource group, and subscription
+## already exists, Radius will attach to it instead and update the
+## local config with these details.
+rad env init azure -i
+
+# Create a Radius environment using flags
+## If an environment of the same name, resource group, and subscription
+## already exists Radius will connect to it instead of deploying a new one.
+rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group RG-NAME --location westus2
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a, err := validate(cmd, args)
 		if err != nil {

@@ -75,6 +75,10 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
    <img src="./azure-resources.png" width=500 alt="New resource group that was created">
 
+## Connect to an existing environment
+
+If you wish to attach to an existing environment instead of deploying a new one, simply specify the name, subscription, and resource group of an existing Radius environment when using the above steps for `rad env init azure`. The rad CLI will append the config for the existing environment to your local config file.
+
 ### Delete an environment
 
 1. Ensure you are still signed into Azure using the az CLI:
