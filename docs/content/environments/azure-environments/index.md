@@ -77,7 +77,7 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
 ## Connect to an existing environment
 
-If you wish to connect to an existing environment instead of deploying a new one, simply specify the name, location, subscription, and resource group of a Radius environment when using the above steps for `rad env init azure`. The rad CLI will append the config for the existing environment to your local config file.
+If you wish to attach to an existing environment instead of deploying a new one, simply specify the name, subscription, and resource group of an existing Radius environment when using the above steps for `rad env init azure`. The rad CLI will append the config for the existing environment to your local config file.
 
 ### Delete an environment
 
