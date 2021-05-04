@@ -25,17 +25,19 @@ func Test_Render_Success(t *testing.T) {
 		Name:        "test-container",
 		Workload: components.GenericComponent{
 			Name: "test-container",
-			Kind: "radius.dev/Container@v1alpha1",
+			Kind: Kind,
 			Run: map[string]interface{}{
 				"container": map[string]interface{}{
 					"image": "test/test-image:latest",
 				},
 			},
-			Provides: []map[string]interface{}{
-				map[string]interface{}{
-					"name":          "test-service",
-					"kind":          "http",
-					"containerPort": 3000,
+			Provides: []components.GenericDependency{
+				{
+					Name: "test-service",
+					Kind: "http",
+					AdditionalProperties: map[string]interface{}{
+						"containerPort": 3000,
+					},
 				},
 			},
 		},

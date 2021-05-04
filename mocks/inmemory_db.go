@@ -131,7 +131,7 @@ func (s *store) findApplication(id resources.ApplicationID) *db.Application {
 		return nil
 	}
 
-	app, ok := (*list)[id.ShortName()]
+	app, ok := (*list)[id.Name()]
 	if !ok {
 		return nil
 	}
@@ -210,7 +210,7 @@ func (s *store) DeleteApplicationByID(ctx context.Context, id resources.Applicat
 		return nil
 	}
 
-	delete(*list, id.ShortName())
+	delete(*list, id.Name())
 	return nil
 }
 

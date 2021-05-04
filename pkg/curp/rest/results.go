@@ -202,6 +202,12 @@ func NewBadRequestResponse(message string) Response {
 	}
 }
 
+func NewBadRequestARMResponse(body armerrors.ErrorResponse) Response {
+	return &BadRequestResponse{
+		Body: body,
+	}
+}
+
 func (r *BadRequestResponse) Apply(w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -318,6 +324,32 @@ func (r *ConflictResponse) Apply(w http.ResponseWriter, req *http.Request) error
 
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
+
+	return nil
+}
+
+type InternalServerErrorResponse struct {
+	Body armerrors.ErrorResponse
+}
+
+func NewInternalServerErrorARMResponse(body armerrors.ErrorResponse) Response {
+	return &InternalServerErrorResponse{
+		Body: body,
+	}
+}
+
+func (r *InternalServerErrorResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(500)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)

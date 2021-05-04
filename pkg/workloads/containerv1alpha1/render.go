@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -106,7 +105,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent, error) {
 	container := &ContainerComponent{}
-	err := components.ConvertFromGeneric(w.Workload, container)
+	err := w.Workload.AsRequired(Kind, container)
 	if err != nil {
 		return nil, err
 	}

@@ -46,23 +46,13 @@ func (ri ResourceID) Kind() string {
 	return strings.Join(types, "/")
 }
 
-// ShortName gets the (non-qualified) resource name.
-func (ri ResourceID) ShortName() string {
+// Name gets the resource name.
+func (ri ResourceID) Name() string {
 	if len(ri.Types) == 0 {
 		return ""
 	}
 
 	return ri.Types[len(ri.Types)-1].Name
-}
-
-// QualifiedName gets the (qualified) resource name.
-func (ri ResourceID) QualifiedName() string {
-	parts := make([]string, len(ri.Types))
-	for i, rt := range ri.Types {
-		parts[i] = rt.Name
-	}
-
-	return strings.Join(parts, "/")
 }
 
 // Format implements formating for use in logging.

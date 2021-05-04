@@ -25,13 +25,10 @@ import (
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/dapr"
-	"github.com/Azure/radius/pkg/workloads/daprcomponentv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
-	"github.com/Azure/radius/pkg/workloads/functionv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/ingress"
 	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
-	"github.com/Azure/radius/pkg/workloads/webappv1alpha1"
 	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -64,7 +61,6 @@ type ComponentAction struct {
 	Instantiation   *db.DeploymentComponent
 	Provides        map[string]ComponentService
 	ServiceBindings map[string]ServiceBinding
-	Traits          []db.ComponentTrait
 
 	// Will be `nil` for a delete
 	Component             *components.GenericComponent
@@ -153,14 +149,11 @@ type serviceBusQueueHandler struct {
 func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
 	d := workloads.Dispatcher{
 		Renderers: map[string]workloads.WorkloadRenderer{
-			"dapr.io/Component@v1alpha1":          &daprcomponentv1alpha1.Renderer{},
-			"dapr.io/StateStore@v1alpha1":         &daprstatestorev1alpha1.Renderer{},
-			"dapr.io/PubSubTopic@v1alpha1":        &daprpubsubv1alpha1.Renderer{},
-			"azure.com/CosmosDocumentDb@v1alpha1": &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
-			"azure.com/Function@v1alpha1":         &dapr.Renderer{Inner: &functionv1alpha1.Renderer{}},
-			"azure.com/WebApp@v1alpha1":           &dapr.Renderer{Inner: &webappv1alpha1.Renderer{}},
-			"radius.dev/Container@v1alpha1":       &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
-			"azure.com/ServiceBusQueue@v1alpha1":  &servicebusqueuev1alpha1.Renderer{Arm: arm},
+			daprstatestorev1alpha1.Kind:   &daprstatestorev1alpha1.Renderer{},
+			daprpubsubv1alpha1.Kind:       &daprpubsubv1alpha1.Renderer{},
+			cosmosdocumentdbv1alpha1.Kind: &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
+			containerv1alpha1.Kind:        &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
+			servicebusqueuev1alpha1.Kind:  &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		},
 	}
 
@@ -252,17 +245,11 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				values[binding.Name] = s.Properties
 			}
 
-			traits := []workloads.WorkloadTrait{}
-			for _, t := range action.Traits {
-				traits = append(traits, workloads.WorkloadTrait{Kind: t.Kind, Properties: t.Properties})
-			}
-
 			inst := workloads.InstantiatedWorkload{
 				Application:   appName,
 				Name:          action.ComponentName,
 				Workload:      *action.Component,
 				ServiceValues: values,
-				Traits:        traits,
 			}
 
 			resources, err := dp.renderWorkload(ctx, inst)

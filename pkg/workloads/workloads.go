@@ -22,21 +22,12 @@ type InstantiatedWorkload struct {
 	Name          string
 	Workload      components.GenericComponent
 	ServiceValues map[string]map[string]interface{}
-	Traits        []WorkloadTrait
-	Provides      map[string]map[string]interface{}
-	// TODO scopes go here.
 }
 
 // WorkloadService represents a service that the workload provides.
 type WorkloadService struct {
 	Name string
 	Kind string
-}
-
-// WorkloadTrait represents the trait data made available to a workload.
-type WorkloadTrait struct {
-	Kind       string
-	Properties map[string]interface{}
 }
 
 // WorkloadRenderer defines the interface for rendering a Kubernetes workload definition

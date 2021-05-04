@@ -5,6 +5,17 @@
 
 package armerrors
 
+// See: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/common-deployment-errors
+//
+// We get to define our own codes and document them, these are just examples, but consistency doesn't hurt.
+const (
+	// Used for generic validation errors.
+	CodeInvalid = "BadRequest"
+
+	// Used for internal/unclassified failures.
+	CodeInternal = "Internal"
+)
+
 // see : https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#error-response-content
 
 // ErrorResponse represents an error HTTP response as defined by the ARM API.
