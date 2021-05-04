@@ -20,7 +20,7 @@ If you are using Visual Studio Code with the Project Radius extension you should
 
 ## Understanding the application
 
-The application you will be deploying is a simple python application that accesses Azure KeyVault for listing secrets. It has two components:
+The Radius application you will be deploying is a simple python application that accesses Azure KeyVault for listing secrets. It has two components:
 
 - An Azure KeyVault
 - An Azure KeyVault accessor
