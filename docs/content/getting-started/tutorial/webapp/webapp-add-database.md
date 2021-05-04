@@ -1,12 +1,12 @@
 ---
 type: docs
-title: "Add a database to the app"
-linkTitle: "3. Add a database"
-description: "Connect a CosmosDB resource to your website application"
-weight: 60
+title: "Add a database to the website tutorial app"
+linkTitle: "Add a database"
+description: "Connect a CosmosDB resource to the website tutorial application"
+weight: 3000
 ---
 
-As the message from the previous step stated, you have not yet configured a database, so the todo items you enter will be stored in memory inside the application. If the website restarts then all of your data will be lost!
+So far you have not yet configured a database, so the todo items you enter will be stored in memory inside the application. If the website restarts then all of your data will be lost!
 
 In this step you will learn how to add a database and connect to it from the application.
 
@@ -15,8 +15,8 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add db component
 A `db` database component is used to specify a few properties about the database: 
 
-- **kind:** `azure.com/CosmosDocumentDb@v1alpha1`, which represents a Cosmos DB database. 
-- **managed:** `true`, which tells Radius to manage the lifetime of the component for you. 
+- **kind:** `azure.com/CosmosDocumentDb@v1alpha1` represents a Cosmos DB database. 
+- **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
 ```
   resource db 'Components' = {
@@ -37,6 +37,8 @@ Radius captures both logical relationships and related operational details. Exam
 Once the database is defined as a component, you can connect to it by referencing the `db` component from within the `todoapp` component via a `dependsOn` section. 
 
 The `dependsOn` section is used to configure relationships between a component and services provided by other components. The `db` is of kind `azure.com/CosmosDocumentDb@v1alpha1`, which supports the MongoDB protocol. `db` is considered to provide a service of kind `mongodb.com/Mongo` implicitly. Configuring a dependency on a service is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
+
+Here's what the todoapp component will look like with the `dependsOn` section added within its properties:
 
 ```
   resource todoapplication 'Components' = {
@@ -62,7 +64,7 @@ The `setEnv` section declares operations to perform *based on* the relationship.
 
 ## Update your template.bicep file 
 
-Update your file to match the full application definition:
+Update your `template.bicep` file to match the full application definition:
 
 ```sh
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -172,4 +174,4 @@ If you're done with testing, use the rad CLI to [delete an environment]({{< ref 
 
 You have completed this tutorial!
 
-<a class="btn btn-primary" href="{{< ref tutorial >}}" role="button">Try more tutorials</a>
+{{< button text="Try another tutorial" page="tutorial" >}}

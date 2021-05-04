@@ -1,17 +1,17 @@
 ---
 type: docs
-title: "Deploy a basic website app"
-linkTitle: "2. Deploy the website"
-description: "Deploy the website frontend in a container"
-weight: 50
+title: "Deploy the website tutorial frontend"
+linkTitle: "Deploy frontend"
+description: "Deploy the website tutorial frontend in a container"
+weight: 2000
 ---
 
 
 ## Define a Radius app as a .bicep file
 
-Radius uses the [Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) langauge as its file-format and structure. Create a new file named `template.bicep`.
+Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) as its file-format and structure. In this tutorial you will define an app named `webapp` that will contain the container and database components, all described in Bicep.
 
-In this tutorial, you'll define an app named `webapp` that will eventually contain components. 
+Create a new file named `template.bicep` and paste the following:
 
 ```
 resource app 'radius.dev/Applications@v1alpha1' = {
@@ -27,9 +27,12 @@ Next you'll add a `todoapp` component for the website's frontend.
 Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `todoapp` component in your template.bicep file will contain everything needed for the website frontend to run. 
 
 Your `todoapp` component will specify:  
-- **kind:** `radius.dev/Container@v1alpha1`, which represents a generic container. 
-- **container image:** `radiusteam/tutorial-todoapp`, which says which Docker image the countainer will run. This is where your website's front end code lives. 
-- **provides:** `http`, which is a Radius service that adds the ability to listen for HTTP traffic (on port 3000 here).
+- **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
+- **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives. 
+- **provides:** `http`, a Radius service that adds the ability to listen for HTTP traffic (on port 3000 here).
+
+
+
 
 Update your template.bicep file to match the full application definition:
 
@@ -58,14 +61,15 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-Note that you don't have to interact with multiple Resource Providers or manage details like Connection String injection.   
+Note that you don't have to interact with multiple Resource Providers or manage details like connection string injection.   
 
 ## Deploy the application 
 
 Now you are ready to deploy the application for the first time. 
-Reminder: At this point, you should already be logged into the az CLI and already have an environment initialized. 
 
-1. Run:
+> **Reminder:** At this point, you should already be logged into the az CLI and already have an environment initialized. 
+
+1. Deploy to your Radius environment via the rad CLI:
 
    ```sh
    rad deploy template.bicep
@@ -115,4 +119,4 @@ Reminder: At this point, you should already be logged into the az CLI and alread
 
 1. When you're done testing press CTRL+C to terminate the port-forward.
 
-<br /><a class="btn btn-primary" href="{{< ref add-database.md >}}" role="button">Next: Add a database to the app</a>
+{{< button text="Next: Add a database to the app" page="webapp-add-database.md" >}}

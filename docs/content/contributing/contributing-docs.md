@@ -101,7 +101,9 @@ description: "A quick overview of Dapr service invocation and how to use it to i
 ---
 ```
 
-> Weight determines the order of the pages in the left sidebar, with 0 being the top-most.
+> **Weight** determines the order of the pages in the left sidebar, with 0 being the top-most. 
+> - Index file weights follow the parent directory's ordering. 
+> - For the first page in a new directory, reset the counter and set weight to be an order of magnitude greater. 
 
 Front-matter should be completed with all fields including type, title, linkTitle, weight, and description.
 - `title` should be 1 sentence, no period at the end

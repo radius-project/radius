@@ -23,4 +23,4 @@ Radius consists of:
 
 You can begin with Radius by downloading and installing the Radius CLI
 
-<a class="btn btn-primary" href="{{< ref install-cli.md >}}" role="button">Get Started 🚀</a>
+{{< button text="Get Started 🚀" page="install-cli.md" >}}
