@@ -6,7 +6,7 @@ description: "How to initialize the private Radius resource provider in your Azu
 weight: 30
 ---
 
-Radius deploys a private resource provider, or control plane environment, that your `rad` cli connects to when managing your Radius applications.
+Radius depends on a [private resource provider](https://docs.microsoft.com/en-us/azure/azure-resource-manager/custom-providers/overview), acting as a control-plane environment, that your `rad` cli connects to when managing your Radius applications.
 
 ## Deploy a Radius environment
 
