@@ -25,7 +25,6 @@ The Radius application you will be deploying is a simple python application that
 - An Azure KeyVault
 - An Azure KeyVault accessor
 
-You can find the source code for the keyvault accessor application [here](https://github.com/Azure/radius/tree/main/examples/azure-examples/azure-keyvault/apps).
 
 ### Azure KeyVault component
 
