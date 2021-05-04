@@ -17,7 +17,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'vinayada/azure-keyvault-app:latest'
+          image: 'radiusteam/azure-keyvault-app:latest'
         }
       }
       dependsOn: [

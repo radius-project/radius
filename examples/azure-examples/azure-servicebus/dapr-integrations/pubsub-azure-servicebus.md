@@ -159,18 +159,11 @@ rad deploy template.bicep
 This will deploy the application, create the ServiceBus queue and launch the containers.
 
 
-Run this command at the commandline, which is temporary pending additions to the rad CLI:
-
-```sh
-rad env merge-credentials --name azure 
-```
-
-
 To see the publisher and subscriber applications working, you can check logs:
 
 ```sh
-kubectl logs <subscriber pod name> -n dapr-pubsub
-kubectl logs <publisher pod name> -n dapr-pubsub
+rad logs dapr-pubsub pythonpublisher
+rad logs dapr-pubsub nodesubscriber
 ```
 
 You should see the publisher sending messages and the subscriber receiving them as below:-

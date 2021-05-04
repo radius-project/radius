@@ -53,7 +53,7 @@ resource kvaccessor 'Components' = {
   properties: {
     run: {
       container: {
-        image: 'vinayada/azure-keyvault-app:latest'
+        image: 'radiusteam/azure-keyvault-app:latest'
       }
     }
     dependsOn: [
@@ -94,14 +94,6 @@ rad deploy template.bicep
 This will deploy the application, create the Azure KeyVault, and launch the container.
 
 ### Access the application
-
-{{% alert title="⚠️ Temporary" color="warning" %}}
-To gain access to the application now that it is deployed, make sure to merge the underlying AKS cluster into your Kubectl config:
-```sh
-rad env merge-credentials --name azure 
-```
-This step will eventually be removed.
-{{% /alert %}}
 
 To see the keyvault application working, you can check logs:
 
