@@ -52,8 +52,8 @@ var envInitAzureCmd = &cobra.Command{
 	Long:  `Create a Radius environment and deploy to a specified Azure resource group and subscription.`,
 	Example: `
 # Create a Radius environment in interactive mode
-## If an environment of the same name, resource group, and subscription
-## already exists Radius will connect to it instead of deploying a new one.
+## If an environment of the same name, resource group, and subscription already
+## exists, Radius will update the local config with these details and not deploy a new one.
 rad env init azure -i
 
 # Create a Radius environment using flags
