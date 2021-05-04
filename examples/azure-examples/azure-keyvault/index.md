@@ -71,17 +71,6 @@ resource kvaccessor 'Components' = {
 
 Here, Radius creates the Azure KeyVault and injects the KV_URI environment variable into the container with the uri. The application reads this environment variable to access the KeyVault. By default, the container is granted access as KeyVault Reader with scope as KeyVault
 
-#### (optional) Updating the application
-
-If you wish to modify the application code, you can do so and create a new image as follows:
-
-```bash
-cd <Radius Path>/examples/azure-examples/azure-examples/apps/app
-docker build -t <your docker hub>/azure-keyvault-app:change1 .
-docker push <your docker hub>/azure-keyvault-app:change1
-```
-
-Make sure to update the container images in the application resource of your deployment template if you create your own image.
 
 ## Deploy application
 
