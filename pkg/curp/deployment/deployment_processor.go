@@ -969,13 +969,13 @@ func (pssb *servicebusPubSubTopicHandler) Delete(ctx context.Context, properties
 	tc := servicebus.NewTopicsClient(pssb.arm.SubscriptionID)
 	tc.Authorizer = pssb.arm.Auth
 
-	_, err = tc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName, topicName)
-	if err != nil {
+	result, err := tc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName, topicName)
+	if err != nil && result.StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus topic: %w", err)
 	}
 
 	tItr, err := tc.ListByNamespaceComplete(ctx, pssb.arm.ResourceGroup, namespaceName, nil, nil)
-	if err != nil {
+	if err != nil && tItr.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus topic: %w", err)
 	}
 
@@ -991,8 +991,7 @@ func (pssb *servicebusPubSubTopicHandler) Delete(ctx context.Context, properties
 	sbc.Authorizer = pssb.arm.Auth
 
 	sbNamespaceFuture, err := sbc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName)
-
-	if err != nil {
+	if err != nil && sbNamespaceFuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus: %w", err)
 	}
 
@@ -1293,13 +1292,13 @@ func (sbh *serviceBusQueueHandler) Delete(ctx context.Context, properties map[st
 	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
 	qc.Authorizer = sbh.arm.Auth
 
-	_, err := qc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName, queueName)
-	if err != nil {
+	result, err := qc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName, queueName)
+	if err != nil && result.StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
 	}
 
 	qItr, err := qc.ListByNamespaceComplete(ctx, sbh.arm.ResourceGroup, namespaceName, nil, nil)
-	if err != nil {
+	if err != nil && qItr.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
 	}
 
@@ -1313,8 +1312,7 @@ func (sbh *serviceBusQueueHandler) Delete(ctx context.Context, properties map[st
 	sbc.Authorizer = sbh.arm.Auth
 
 	sbNamespaceFuture, err := sbc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName)
-
-	if err != nil {
+	if err != nil && sbNamespaceFuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus: %w", err)
 	}
 
