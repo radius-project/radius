@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/2017-03-09/resources/mgmt/features"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/customproviders/mgmt/customproviders"
@@ -45,6 +46,10 @@ var supportedLocations = [5]string{
 
 // Placeholder is for the 'channel'
 const armTemplateURIFormat = "https://radiuspublic.blob.core.windows.net/environment/%s/rp-full.json"
+
+var requiredFeatures = map[string]string{
+	"EnablePodIdentityPreview": "Microsoft.ContainerService",
+}
 
 var envInitAzureCmd = &cobra.Command{
 	Use:   "azure",
@@ -311,6 +316,12 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
+	// Register the subscription for required features
+	err = registerSubscription(ctx, armauth, subscriptionID)
+	if err != nil {
+		return err
+	}
+
 	if group == nil {
 		// Resource group specified was not found. Create it
 		err := createResourceGroup(ctx, subscriptionID, resourceGroup, location)
@@ -401,6 +412,21 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 	logger.CompleteStep(step)
 	return &group, nil
+}
+
+func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string) error {
+	step := logger.BeginStep("Registering Subscription for required features...")
+	fc := features.NewClient(subscriptionID)
+	fc.Authorizer = authorizer
+	for feature, namespace := range requiredFeatures {
+		_, err := fc.Register(ctx, namespace, feature)
+		if err != nil {
+			return fmt.Errorf("Failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
+		}
+		logger.LogInfo("Sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
+	}
+	logger.CompleteStep(step)
+	return nil
 }
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {

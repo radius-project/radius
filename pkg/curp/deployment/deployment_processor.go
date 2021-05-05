@@ -12,10 +12,15 @@ import (
 	"log"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/subscriptions"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
@@ -28,8 +33,9 @@ import (
 	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/workloads/ingress"
+	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -145,6 +151,14 @@ type serviceBusQueueHandler struct {
 	arm armauth.ArmConfig
 }
 
+type keyVaultHandler struct {
+	arm armauth.ArmConfig
+}
+
+type podIdentityHandler struct {
+	arm armauth.ArmConfig
+}
+
 // NewDeploymentProcessor initializes a deployment processor.
 func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
 	d := workloads.Dispatcher{
@@ -152,8 +166,9 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			daprstatestorev1alpha1.Kind:   &daprstatestorev1alpha1.Renderer{},
 			daprpubsubv1alpha1.Kind:       &daprpubsubv1alpha1.Renderer{},
 			cosmosdocumentdbv1alpha1.Kind: &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
-			containerv1alpha1.Kind:        &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{}}},
+			containerv1alpha1.Kind:        &ingress.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
 			servicebusqueuev1alpha1.Kind:  &servicebusqueuev1alpha1.Renderer{Arm: arm},
+			keyvaultv1alpha1.Kind:         &keyvaultv1alpha1.Renderer{Arm: arm},
 		},
 	}
 
@@ -164,6 +179,8 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			"dapr.pubsubtopic.azureservicebus": &servicebusPubSubTopicHandler{arm, k8s},
 			"azure.cosmos.documentdb":          &cosmosDocumentDbHandler{arm},
 			"azure.servicebus.queue":           &serviceBusQueueHandler{arm},
+			"azure.keyvault":                   &keyVaultHandler{arm},
+			"azure.aadpodidentity":             &podIdentityHandler{arm},
 		},
 	}
 
@@ -631,7 +648,11 @@ func (sssh *storageStateStoreHandler) Put(ctx context.Context, resource workload
 
 		for i := 0; i < 10; i++ {
 			// 3-24 characters - all alphanumeric
-			name = base + strings.ReplaceAll(uuid.New().String(), "-", "")
+			uid, err := uuid.NewV4()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate storage account name: %w", err)
+			}
+			name = base + strings.ReplaceAll(uid.String(), "-", "")
 			name = name[0:24]
 
 			result, err := sc.CheckNameAvailability(ctx, storage.AccountCheckNameAvailabilityParameters{
@@ -948,13 +969,13 @@ func (pssb *servicebusPubSubTopicHandler) Delete(ctx context.Context, properties
 	tc := servicebus.NewTopicsClient(pssb.arm.SubscriptionID)
 	tc.Authorizer = pssb.arm.Auth
 
-	_, err = tc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName, topicName)
-	if err != nil {
+	result, err := tc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName, topicName)
+	if err != nil && result.StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus topic: %w", err)
 	}
 
 	tItr, err := tc.ListByNamespaceComplete(ctx, pssb.arm.ResourceGroup, namespaceName, nil, nil)
-	if err != nil {
+	if err != nil && tItr.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus topic: %w", err)
 	}
 
@@ -970,8 +991,7 @@ func (pssb *servicebusPubSubTopicHandler) Delete(ctx context.Context, properties
 	sbc.Authorizer = pssb.arm.Auth
 
 	sbNamespaceFuture, err := sbc.Delete(ctx, pssb.arm.ResourceGroup, namespaceName)
-
-	if err != nil {
+	if err != nil && sbNamespaceFuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus: %w", err)
 	}
 
@@ -1024,7 +1044,11 @@ func (cddh *cosmosDocumentDbHandler) Put(ctx context.Context, resource workloads
 
 		for i := 0; i < 10; i++ {
 			// 3-24 characters - all alphanumeric and '-'
-			name = base + strings.ReplaceAll(uuid.New().String(), "-", "")
+			uid, err := uuid.NewV4()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate storage account name: %w", err)
+			}
+			name = base + strings.ReplaceAll(uid.String(), "-", "")
 			name = name[0:24]
 
 			result, err := dac.CheckNameExists(ctx, name)
@@ -1063,6 +1087,7 @@ func (cddh *cosmosDocumentDbHandler) Put(ctx context.Context, resource workloads
 			},
 		},
 	})
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT cosmosdb account: %w", err)
 	}
@@ -1267,13 +1292,13 @@ func (sbh *serviceBusQueueHandler) Delete(ctx context.Context, properties map[st
 	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
 	qc.Authorizer = sbh.arm.Auth
 
-	_, err := qc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName, queueName)
-	if err != nil {
+	result, err := qc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName, queueName)
+	if err != nil && result.StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
 	}
 
 	qItr, err := qc.ListByNamespaceComplete(ctx, sbh.arm.ResourceGroup, namespaceName, nil, nil)
-	if err != nil {
+	if err != nil && qItr.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
 	}
 
@@ -1287,8 +1312,7 @@ func (sbh *serviceBusQueueHandler) Delete(ctx context.Context, properties map[st
 	sbc.Authorizer = sbh.arm.Auth
 
 	sbNamespaceFuture, err := sbc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName)
-
-	if err != nil {
+	if err != nil && sbNamespaceFuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE servicebus: %w", err)
 	}
 
@@ -1300,6 +1324,209 @@ func (sbh *serviceBusQueueHandler) Delete(ctx context.Context, properties map[st
 	_, err = sbNamespaceFuture.Result(sbc)
 	if err != nil {
 		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+	}
+
+	return nil
+}
+
+func (kvh *keyVaultHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+	if resource.Type != "azure.keyvault" {
+		return nil, errors.New("wrong resource type")
+	}
+
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	return properties, nil
+}
+
+func (kvh *keyVaultHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
+	properties, err := kvh.GetProperties(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	mergeProperties(properties, existing)
+
+	vaultName := namegenerator.GenerateName("kv")
+
+	rgc := resources.NewGroupsClient(kvh.arm.SubscriptionID)
+	rgc.Authorizer = kvh.arm.Auth
+
+	g, err := rgc.Get(ctx, kvh.arm.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
+	}
+
+	kvc := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
+	kvc.Authorizer = kvh.arm.Auth
+	if err != nil {
+		return nil, err
+	}
+
+	sc := subscriptions.NewClient()
+	sc.Authorizer = kvh.arm.Auth
+	s, err := sc.Get(ctx, kvh.arm.SubscriptionID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find subscription: %w", err)
+	}
+	tenantID, err := uuid.FromString(*s.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert tenantID to UUID: %w", err)
+	}
+
+	vaultsFuture, err := kvc.CreateOrUpdate(
+		ctx,
+		kvh.arm.ResourceGroup,
+		vaultName,
+		keyvault.VaultCreateOrUpdateParameters{
+			Location: g.Location,
+			Properties: &keyvault.VaultProperties{
+				TenantID: &tenantID,
+				Sku: &keyvault.Sku{
+					Family: to.StringPtr("A"),
+					Name:   keyvault.Standard,
+				},
+				EnableRbacAuthorization: to.BoolPtr(true),
+			},
+		},
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
+	}
+
+	err = vaultsFuture.WaitForCompletionRef(ctx, kvc.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
+	}
+
+	kv, err := vaultsFuture.Result(kvc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
+	}
+
+	// store vault so we can use later
+	properties[keyvaultv1alpha1.KeyVaultName] = *kv.Name
+
+	return properties, nil
+}
+
+func (kvh *keyVaultHandler) Delete(ctx context.Context, properties map[string]string) error {
+	// Delete key vault
+	vaultName := properties[keyvaultv1alpha1.KeyVaultName]
+
+	kvClient := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
+	kvClient.Authorizer = kvh.arm.Auth
+
+	_, err := kvClient.Delete(ctx, kvh.arm.ResourceGroup, vaultName)
+	if err != nil {
+		return fmt.Errorf("failed to DELETE keyvault: %w", err)
+	}
+
+	return nil
+}
+
+func (pih *podIdentityHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+	item, err := convertToUnstructured(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	p := map[string]string{
+		"kind":       item.GetKind(),
+		"apiVersion": item.GetAPIVersion(),
+		"namespace":  item.GetNamespace(),
+		"name":       item.GetName(),
+	}
+	return p, nil
+}
+
+func (pih *podIdentityHandler) Put(ctx context.Context, resource workloads.WorkloadResource, existing *db.DeploymentResource) (map[string]string, error) {
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		return nil, errors.New("inner type was not a map[string]string")
+	}
+
+	mergeProperties(properties, existing)
+
+	return properties, nil
+}
+
+func (pih *podIdentityHandler) Delete(ctx context.Context, properties map[string]string) error {
+	// Delete AAD Pod Identity created
+	podIdentityName := properties[containerv1alpha1.PodIdentityName]
+	podidentityCluster := properties[containerv1alpha1.PodIdentityCluster]
+
+	mcc := containerservice.NewManagedClustersClient(pih.arm.SubscriptionID)
+	mcc.Authorizer = pih.arm.Auth
+
+	// Get the cluster and modify it to remove pod identity
+	managedCluster, err := mcc.Get(ctx, pih.arm.ResourceGroup, podidentityCluster)
+	if err != nil {
+		return fmt.Errorf("failed to get managed cluster: %w", err)
+	}
+
+	var identities []containerservice.ManagedClusterPodIdentity
+	if managedCluster.ManagedClusterProperties.PodIdentityProfile.UserAssignedIdentities == nil {
+		// Pod identity does not exist
+		return nil
+	}
+
+	identities = *managedCluster.PodIdentityProfile.UserAssignedIdentities
+
+	var i int
+	var identity containerservice.ManagedClusterPodIdentity
+	for i, identity = range *managedCluster.ManagedClusterProperties.PodIdentityProfile.UserAssignedIdentities {
+		if *identity.Name == podIdentityName {
+			break
+		}
+	}
+
+	// Remove the pod identity at the matching index
+	identities = append(identities[:i], identities[i+1:]...)
+
+	mcFuture, err := mcc.CreateOrUpdate(ctx, pih.arm.ResourceGroup, podidentityCluster, containerservice.ManagedCluster{
+		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
+			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
+				Enabled:                   to.BoolPtr(true),
+				AllowNetworkPluginKubenet: to.BoolPtr(false),
+				UserAssignedIdentities:    &identities,
+			},
+		},
+		Location: managedCluster.Location,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to delete pod identity on the cluster: %w", err)
+	}
+
+	err = mcFuture.WaitForCompletionRef(ctx, mcc.Client)
+	if err != nil {
+		return fmt.Errorf("failed to delete pod identity on the cluster: %w", err)
+	}
+
+	// Delete the managed identity
+	err = pih.deleteManagedIdentity(ctx, *identity.Identity.ResourceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
+	}
+
+	return nil
+}
+
+func (pih *podIdentityHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
+	msiClient := msi.NewUserAssignedIdentitiesClient(pih.arm.SubscriptionID)
+	msiClient.Authorizer = pih.arm.Auth
+	msiResource, err := azure.ParseResourceID(msiResourceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
+	}
+	resp, err := msiClient.Delete(ctx, pih.arm.ResourceGroup, msiResource.ResourceName)
+	if err != nil || (resp.StatusCode != 200 && resp.StatusCode != 204) {
+		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}
 
 	return nil

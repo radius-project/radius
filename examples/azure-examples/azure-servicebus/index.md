@@ -41,7 +41,7 @@ resource receiver 'Components' = {
     properties: {
       run: {
         container: {
-          image: 'vinayada/servicebus-receiver:latest'
+          image: 'radiusteam/servicebus-receiver:latest'
         }
       }
       dependsOn: [
@@ -82,7 +82,7 @@ resource sender 'Components' = {
     properties: {
       run: {
         container: {
-          image: 'vinayada/servicebus-sender:latest'
+          image: 'radiusteam/servicebus-sender:latest'
         }
       }
       dependsOn: [
@@ -152,19 +152,11 @@ This will deploy the application, create the ServiceBus queue, and launch the co
 
 ### Access the application
 
-{{% alert title="⚠️ Temporary" color="warning" %}}
-To gain access to the application now that it is deployed, make sure to merge the underlying AKS cluster into your Kubectl config:
-```sh
-rad env merge-credentials --name azure 
-```
-This step will eventually be removed.
-{{% /alert %}}
-
 To see the sender and receiver applications working, you can check logs:
 
 ```sh
-kubectl logs <sender pod name> -n azure-servicebus
-kubectl logs <receiver pod name> -n azure-servicebus
+rad logs radius-servicebus sender
+rad logs radius-servicebus receiver
 ```
 
 You should see the sender sending messages and the receiver receiving them as below:

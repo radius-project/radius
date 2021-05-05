@@ -3,7 +3,7 @@ module github.com/Azure/radius
 go 1.16
 
 require (
-	github.com/Azure/azure-sdk-for-go v52.3.1+incompatible
+	github.com/Azure/azure-sdk-for-go v53.3.0+incompatible
 	github.com/Azure/azure-sdk-for-go/sdk/armcore v0.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.14.2
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.8.0
@@ -32,6 +32,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/onsi/gomega v1.11.0 // indirect
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0

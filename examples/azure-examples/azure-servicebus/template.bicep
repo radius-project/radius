@@ -7,7 +7,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'vinayada/servicebus-sender:latest'
+          image: 'radiusteam/servicebus-sender:latest'
         }
       }
       dependsOn: [
@@ -30,7 +30,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'vinayada/servicebus-receiver:latest'
+          image: 'radiusteam/servicebus-receiver:latest'
         }
       }
       dependsOn: [

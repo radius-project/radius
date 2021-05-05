@@ -7,7 +7,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'vinayada/dapr-pubsub-nodesubscriber:latest'
+          image: 'radiusteam/dapr-pubsub-nodesubscriber:latest'
         }
       }
       dependsOn: [
@@ -38,7 +38,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'vinayada/dapr-pubsub-pythonpublisher:latest'
+          image: 'radiusteam/dapr-pubsub-pythonpublisher:latest'
         }
       }
       dependsOn: [
