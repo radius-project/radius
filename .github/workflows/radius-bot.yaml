@@ -35,7 +35,7 @@ jobs:
             command = matches[1]
           }
 
-          console.log("Command is: " + command");
+          console.log("Command is: " + command);
           return command
 
     - name: Run create-environment
