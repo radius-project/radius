@@ -1,75 +1,99 @@
 name: radius-bot
 
 on:
-  issue_comment: {types: created}
+  issue_comment: 
+    types: 
+    - created
 
 jobs:
   radiusbot:
     name: bot-processor
     runs-on: ubuntu-latest
     steps:
-      - name: Comment analyzer
-        uses: actions/github-script@v1
-        with:
-          github-token: ${{secrets.RADIUS_BOT_TOKEN}}
-          script: |
-            // list of owner who can control radius-bot workflow
-            // TODO: Read owners from OWNERS file.
-            const owners = [
-              "vinayada1",
-              "rynowak",
-              "kachawla"
-            ];
-            const payload = context.payload;
-            const issue = context.issue;
-            const isFromPulls = !!payload.issue.pull_request;
-            const commentBody = payload.comment.body;
-            if (owners.indexOf(context.actor) < 0) {
-              return;
-            }
-            // Pollyfill: register createDispatchEvent because actions/github-script@0.3.0 
-            // does not have createDispatchEvent.
-            github.registerEndpoints({
-              repos: {
-                createDispatchEvent: {
-                  "headers": { "accept": "application/vnd.github.everest-preview+json" },
-                  "method": "POST",
-                  "params": {
-                    "client_payload": { "type": "object" },
-                    "event_type": { "type": "string" },
-                    "owner": { "required": true, "type": "string" },
-                    "repo": { "required": true, "type": "string" }
-                  },
-                  "url": "/repos/:owner/:repo/dispatches"
-                }
-              }
-            });
-            if (isFromPulls && commentBody) {
-              if (commentBody.indexOf("/run-e2e-tests") == 0) {
-                  // Get pull request
-                  const pull = await github.pulls.get({
-                    owner: issue.owner,
-                    repo: issue.repo,
-                    pull_number: issue.number
-                  });
-                  if (pull && pull.data) {                
-                    // Get commit id and repo from pull head
-                    const e2eTestsPayload = {
-                      pull_head_ref: pull.data.head.sha,
-                      pull_head_repo: pull.data.head.repo.full_name,
-                      command: "run-e2e-tests",
-                      issue: issue,
-                    };
-        
-                    // Fire repository_dispatch event to trigger e2e test
-                    await github.repos.createDispatchEvent({
-                      owner: issue.owner,
-                      repo: issue.repo,
-                      event_type: "e2e-tests",
-                      client_payload: e2eTestsPayload,
-                    });
-                    
-                    console.log(`Trigger end to end tests for ${JSON.stringify(e2eTestsPayload)}`);
-                  }
-                }
-              }
+    - name: Analyze context
+      uses: actions/github-script@v4
+      id: analyze
+      with:
+        script: |
+          const owners = [
+            "vinayada1",
+            "rynowak",
+            "kachawla"
+          ];
+
+          console.log("Analyzing comment with: " + JSON.stringify(context));
+          if (owners.indexOf(context.actor) < 0) {
+            console.log(`User ${context.actor} is not trusted`);
+            return { };
+          }
+
+          const regex = /^\/([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)$/;
+          const matches = context.payload.comment.body.match(regex)
+          let command = null;
+          if (matches.length > 0) {
+            command = matches[1]
+          }
+
+          const result = {
+            isPullRequest: !!context.payload.issue.pull_request,
+            command: command,
+          }
+          console.log("Analysis done: " + JSON.stringify(result));
+          return result
+    - name: Analyze context
+      uses: actions/github-script@v4
+      id: analyze
+      if: success() && steps.analyze.outputs.result.command == 'create-environment' && steps.analyze.outputs.result.isPullRequest == true
+      with:
+        github-token: ${{secrets.RADIUS_BOT_TOKEN}}
+        script: |
+          const pull = await github.pulls.get({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            pull_number: context.issue.number
+          });
+
+          const payload = {
+            ref: pull.data.head.sha,
+          };
+      
+          // Fire repository_dispatch event to trigger e2e test
+          await github.repos.createDispatchEvent({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            event_type: "create-environment",
+            client_payload: payload,
+          });
+                  
+          console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
+
+    - name: Analyze context
+      uses: actions/github-script@v4
+      id: analyze
+      if: success() && steps.analyze.outputs.result.command == 'run-e2e-tests' && steps.analyze.outputs.result.isPullRequest == true
+      with:
+        github-token: ${{secrets.RADIUS_BOT_TOKEN}}
+        script: |
+          const pull = await github.pulls.get({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            pull_number: context.issue.number
+          });
+
+          // Get commit id and repo from pull head
+          const e2eTestsPayload = {
+            pull_head_ref: pull.data.head.sha,
+            pull_head_repo: pull.data.head.repo.full_name,
+            command: "run-e2e-tests",
+            issue: context.issue,
+          };
+
+          // Fire repository_dispatch event to trigger e2e test
+          await github.repos.createDispatchEvent({
+            owner: issue.owner,
+            repo: issue.repo,
+            event_type: "e2e-tests",
+            client_payload: e2eTestsPayload,
+          });
+
+          console.log(`Triggering end to end tests for ${JSON.stringify(e2eTestsPayload)}`);

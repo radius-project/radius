@@ -55,10 +55,12 @@ var releaseCmd = &cobra.Command{
 		// Most places in Radius environment names are just cosmetic, but for our tests
 		// we're using it for tracking.
 		if configpath != "" {
-			e, err = readEnvironmentNameFromConfigfile(configpath)
+			azureenv, err := readEnvironmentFromConfigfile(configpath, "")
 			if err != nil {
 				return err
 			}
+
+			e = azureenv.Name
 		}
 
 		fmt.Printf("releasing environment '%v'\n", e)
@@ -97,30 +99,30 @@ func init() {
 	releaseCmd.Flags().StringP("environment", "e", "", "specifies name of test environment to release")
 }
 
-func readEnvironmentNameFromConfigfile(configpath string) (string, error) {
+func readEnvironmentFromConfigfile(configpath string, name string) (*environments.AzureCloudEnvironment, error) {
 	v := viper.GetViper()
 	v.SetConfigFile(configpath)
 	err := v.ReadInConfig()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	env, err := rad.ReadEnvironmentSection(v)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	testenv, err := env.GetEnvironment("")
+	testenv, err := env.GetEnvironment(name)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	az, err := environments.RequireAzureCloud(testenv)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return az.Name, nil
+	return az, nil
 }
 
 func release(ctx context.Context, accountName string, accountKey string, tableName string, environmentName string) error {

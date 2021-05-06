@@ -1,0 +1,112 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: create-environment
+
+on:
+  # This job is always triggered manually
+  workflow_dispatch:
+    ref:
+      description: 'Github ref to use in checkout'
+      required: false
+      default: 'refs/heads/main'
+jobs:
+  create-environment:
+    name: Create Environment
+    runs-on: ubuntu-latest
+    env:
+      GOVER: '^1.16.0'
+      GOPROXY: https://proxy.golang.org
+
+      # Radius Test subscription
+      INTEGRATION_TEST_SUBSCRIPTION_ID: "85716382-7362-45c3-ae03-2126e459a123"
+
+    # Rough order of logic here
+    #
+    # - Get code (we need to build/run `rad env init`)
+    # - select location randomly
+    # - az login
+    # - Generate unique resource group name
+    # - Create environment
+    # - Add environment to environment table
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.ref }}
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
+        # we use node for generating a UUID for the resource group name
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 14
+      - name: Select location
+        uses: actions/github-script@v4
+        id: select-location
+        with:
+          result-encoding: string
+          script: |
+            const locations = [
+              "australiaeast",
+              "eastus",
+              "northeurope",
+              "westeurope",
+              "westus2",
+            ];
+            return locations[Math.floor(Math.random() * locations.length)];
+      # uuid module is used for generating the resource group name
+      - run: npm install uuid
+      - name: Generate resource group name
+        uses: actions/github-script@v4
+        id: generate-resource-group-name
+        with:
+          result-encoding: string
+          script: |
+            const const { v4: uuidv4 }  = require('uuid')
+            return `rad-test-${uuidv4()}`;
+      - name: Azure Login
+        run: |
+          az login --service-principal \
+            --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+            --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+            --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+      - name: Create Environment
+        run: |
+          go run cmd/cli/main.go \
+            env init azure \
+            --name ${{ steps.generate-resource-group-name.outputs.result }} \
+            --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
+            --location "${{ steps.select-location.outputs.result }}"
+      - name: Display Environment (Sanity Check)
+        run: go run cmd/cli/main.go env list
+      - name: Register Environment
+        run: |
+          go run cmd/testenv/main.go \
+            register \
+            --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
+            --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
+            --tablename environments \
+            --environment ${{ steps.generate-resource-group-name.outputs.result }}
+      - name: Create issue on failure
+        uses: JasonEtco/create-an-issue@v2
+        if: failed()
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOWID: ${{ env.GITHUB_RUN_ID }}
+          WORKFLOWURL: 'https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}'
+        with:
+          filename: .github/ISSUE_TEMPLATE/environment-failure.md
+      - name: Cleanup on failure
+        if: failed()
+        continue-on-error: true
+        run: |
+          az group delete \
+            --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
+            --yes
+          
