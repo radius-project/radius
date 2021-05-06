@@ -40,9 +40,8 @@ jobs:
           }
           console.log("Analysis done: " + JSON.stringify(result));
           return result
-    - name: Analyze context
+    - name: Run create-environment
       uses: actions/github-script@v4
-      id: analyze
       if: success() && steps.analyze.outputs.result.command == 'create-environment' && steps.analyze.outputs.result.isPullRequest == true
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
@@ -67,9 +66,8 @@ jobs:
                   
           console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
 
-    - name: Analyze context
+    - name: Run e2e-tests
       uses: actions/github-script@v4
-      id: analyze
       if: success() && steps.analyze.outputs.result.command == 'run-e2e-tests' && steps.analyze.outputs.result.isPullRequest == true
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
