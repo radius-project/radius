@@ -96,7 +96,7 @@ jobs:
             --environment ${{ steps.generate-resource-group-name.outputs.result }}
       - name: Create issue on failure
         uses: JasonEtco/create-an-issue@v2
-        if: failed()
+        if: failure()
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,7 +105,7 @@ jobs:
         with:
           filename: .github/ISSUE_TEMPLATE/environment-failure.md
       - name: Cleanup on failure
-        if: failed()
+        if: failure()
         continue-on-error: true
         run: |
           az group delete \
