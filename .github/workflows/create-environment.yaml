@@ -6,7 +6,9 @@
 name: create-environment
 
 on:
-  # This job is always triggered manually
+  repository_dispatch:
+    types:
+    - create-environment
   workflow_dispatch:
     ref:
       description: 'Github ref to use in checkout'
