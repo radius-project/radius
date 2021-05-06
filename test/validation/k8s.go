@@ -109,6 +109,21 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 	}
 }
 
+func ValidateNoPodsInNamespace(t *testing.T, k8s *kubernetes.Clientset, namespace string) bool {
+	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Logf("failed to list pods in namespace %v, %v", namespace, err)
+	}
+
+	if actualPods != nil && len(actualPods.Items) > 0 {
+		// log all the data so its there if we need to analyze a failure
+		logPods(t, actualPods.Items)
+		return false
+	}
+
+	return true
+}
+
 func logPods(t *testing.T, pods []corev1.Pod) {
 	t.Log("Found the following pods:")
 	for _, pod := range pods {
