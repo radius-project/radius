@@ -14,6 +14,7 @@ jobs:
       uses: actions/github-script@v4
       id: analyze
       with:
+        output-encoding: string
         script: |
           const owners = [
             "vinayada1",
@@ -24,7 +25,7 @@ jobs:
           console.log("Analyzing comment with: " + JSON.stringify(context));
           if (owners.indexOf(context.actor) < 0) {
             console.log(`User ${context.actor} is not trusted`);
-            return { };
+            return "";
           }
 
           const regex = /^\/([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)$/;
@@ -34,18 +35,20 @@ jobs:
             command = matches[1]
           }
 
-          const result = {
-            isPullRequest: !!context.payload.issue.pull_request,
-            command: command,
-          }
-          console.log("Analysis done: " + JSON.stringify(result));
-          return result
+          console.log("Command is: " + command");
+          return command
+
     - name: Run create-environment
       uses: actions/github-script@v4
-      if: success() && steps.analyze.outputs.result.command == 'create-environment' && steps.analyze.outputs.result.isPullRequest == true
+      if: success() && steps.analyze.outputs.result == 'create-environment'
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
+          const isPullRequest = !!context.payload.issue.pull_request
+          if (!isPullRequest) {
+            return
+          }
+
           const pull = await github.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
@@ -68,10 +71,15 @@ jobs:
 
     - name: Run e2e-tests
       uses: actions/github-script@v4
-      if: success() && steps.analyze.outputs.result.command == 'run-e2e-tests' && steps.analyze.outputs.result.isPullRequest == true
+      if: success() && steps.analyze.outputs.result == 'run-e2e-tests'
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
+          const isPullRequest = !!context.payload.issue.pull_request
+          if (!isPullRequest) {
+            return
+          }
+
           const pull = await github.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
