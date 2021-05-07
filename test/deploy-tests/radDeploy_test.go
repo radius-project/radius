@@ -12,10 +12,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	cliutils "github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,22 +41,34 @@ func TestDeployment(t *testing.T) {
 	k8s, err := utils.GetKubernetesClient()
 	require.NoError(t, err, "failed to create kubernetes client")
 
+	// Build rad application client
+	azcred, err := azidentity.NewDefaultAzureCredential(nil)
+	require.NoErrorf(t, err, "Failed to obtain Azure credentials")
+	con := armcore.NewDefaultConnection(azcred, nil)
+	radAppClient := radclient.NewApplicationClient(con, env.SubscriptionID)
+
 	t.Run("Deploy frontend-backend", func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, "../../examples/frontend-backend/template.bicep")
+		applicationName := "frontend-backend"
 
 		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
 		require.NoError(t, err)
 
+		// get application and verify name
+		response, err := radAppClient.Get(ctx, env.ResourceGroup, applicationName, nil)
+		require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+		assert.Equal(t, applicationName, *response.ApplicationResource.Name)
+
 		t.Cleanup(func() {
-			err := utils.RunRadApplicationDeleteCommand("frontend-backend", env.ConfigPath, time.Minute*5)
+			err := utils.RunRadApplicationDeleteCommand(applicationName, env.ConfigPath, time.Minute*5)
 			t.Logf("failed to delete application: %v", err)
 		})
 
 		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
 			Namespaces: map[string][]validation.Pod{
-				"frontend-backend": {
-					validation.NewPodForComponent("frontend-backend", "frontend"),
-					validation.NewPodForComponent("frontend-backend", "backend"),
+				applicationName: {
+					validation.NewPodForComponent(applicationName, "frontend"),
+					validation.NewPodForComponent(applicationName, "backend"),
 				},
 			},
 		})
