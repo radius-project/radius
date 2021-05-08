@@ -28,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
+      TUTORIAL_PATH: './docs/content/getting-started/tutorial/'
+      CODE_ZIP_PATH: './docs/static/tutorial/'
     steps:
       - uses: actions/checkout@v2
         with:
@@ -45,6 +47,8 @@ jobs:
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
       - name: Generate CLI Docs
         run: go run ./cmd/docgen/main.go ./docs/content/reference/cli
+      - name: Generate Code ZIP Packages
+        run: mkdir -p $CODE_ZIP_PATH && for tutorial in $TUTORIAL_PATH*; do if [ -d "${tutorial}/code" ]; then cp -r $tutorial/code ./$(basename $tutorial) && zip -r $CODE_ZIP_PATH$(basename $tutorial).zip ./$(basename $tutorial) ; fi; done
       - name: Build Site
         run: cd docs && hugo
       - name: Deploy to WebApp
@@ -60,6 +64,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
+      TUTORIAL_PATH: './docs/content/getting-started/tutorial/'
+      CODE_ZIP_PATH: './docs/static/tutorial/'
     steps:
       - uses: actions/checkout@v2
         with:
@@ -77,5 +83,7 @@ jobs:
         run: cd docs && git submodule update --init --recursive && sudo npm install -D --save autoprefixer && sudo npm install -D --save postcss-cli
       - name: Generate CLI Docs
         run: go run ./cmd/docgen/main.go ./docs/content/reference/cli
+      - name: Generate Code ZIP Packages
+        run: mkdir -p $CODE_ZIP_PATH && for tutorial in $TUTORIAL_PATH*; do if [ -d "${tutorial}/code" ]; then cp -r $tutorial/code ./$(basename $tutorial) && zip -r $CODE_ZIP_PATH$(basename $tutorial).zip ./$(basename $tutorial) ; fi; done
       - name: Build Site
         run: cd docs && hugo
