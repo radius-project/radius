@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
 	//+kubebuilder:scaffold:imports
@@ -34,6 +35,8 @@ func init() {
 
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+
+	scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, controllers.ConvertComponentToInternal)
 }
 
 func main() {

@@ -15,14 +15,29 @@ import (
 
 // ComponentSpec defines the desired state of Component
 type ComponentSpec struct {
-	Application string                  `json:"application"`
-	Name        string                  `json:"name"`
-	Kind        string                  `json:"kind"`
-	Config      *runtime.RawExtension   `json:"config,omitempty"`
-	Run         *runtime.RawExtension   `json:"run,omitempty"`
-	DependsOn   *[]runtime.RawExtension `json:"dependsOn,omitempty"`
-	Provides    *[]runtime.RawExtension `json:"provides,omitempty"`
-	Traits      *[]runtime.RawExtension `json:"traits,omitempty"`
+	Application string `json:"application"`
+	Name        string `json:"name"`
+	Kind        string `json:"kind"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Config *runtime.RawExtension `json:"config,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Run *runtime.RawExtension `json:"run,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Uses *[]runtime.RawExtension `json:"dependsOn,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Bindings map[string]runtime.RawExtension `json:"provides,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Traits *[]runtime.RawExtension `json:"traits,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component

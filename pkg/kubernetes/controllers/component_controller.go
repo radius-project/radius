@@ -7,15 +7,16 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/model"
@@ -26,8 +27,9 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	recorder record.EventRecorder
 
 	Model model.ApplicationModel
 }
@@ -53,13 +55,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		"component", component.Spec.Name,
 		"componentkind", component.Spec.Kind)
 
-	generic, err := r.convert(component)
+	generic := &components.GenericComponent{}
+	err = r.Scheme.Convert(component, generic, ctx)
 	if err != nil {
 		log.Error(err, "failed to convert component")
 		return ctrl.Result{}, err
 	}
-
-	log.Info("here's run!", "run", generic.Run)
 
 	componentKind, err := r.Model.LookupComponent(generic.Kind)
 	if err != nil {
@@ -80,6 +81,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	log.Info("rendered output resources", "count", len(resources))
+
 	for _, cr := range resources {
 		obj, ok := cr.Resource.(client.Object)
 		if !ok {
@@ -91,17 +94,28 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		obj.SetNamespace(component.Namespace)
 		obj.SetName(fmt.Sprintf("%s-%s", component.Spec.Application, obj.GetName()))
 
-		log.Info(
-			"applying output resource for component",
+		log := log.WithValues(
 			"resourcenamespace", obj.GetNamespace(),
 			"resourcename", obj.GetName(),
 			"resourcekind", obj.GetObjectKind().GroupVersionKind().String())
+
+		err := controllerutil.SetControllerReference(component, obj, r.Scheme)
+		if err != nil {
+			log.Error(err, "failed to set owner reference for resource")
+			return ctrl.Result{}, err
+		}
+
+		log.Info("applying output resource for component")
 		err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"))
 		if err != nil {
 			log.Error(err, "failed to apply resources for component", "kind", generic.Kind)
 			return ctrl.Result{}, err
 		}
+
+		log.Info("applied output resource for component")
 	}
+
+	log.Info("applied output resources", "count", len(resources))
 
 	return ctrl.Result{}, nil
 }
@@ -109,30 +123,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.Model = model.NewKubernetesModel(&r.Client)
+	r.recorder = mgr.GetEventRecorderFor("radius")
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&radiusv1alpha1.Component{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Complete(r)
-}
-
-func (r *ComponentReconciler) convert(original *radiusv1alpha1.Component) (*components.GenericComponent, error) {
-	// TODO make conversions work
-	original.Spec.Run.MarshalJSON()
-
-	b, err := json.Marshal(uns["spec"])
-	if err != nil {
-		return nil, err
-	}
-
-	r.Log.Info("here's JSON!", "json", string(b))
-
-	result := components.GenericComponent{}
-	err = json.Unmarshal(b, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
 }

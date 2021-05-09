@@ -174,8 +174,8 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 		*out = new(runtime.RawExtension)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.DependsOn != nil {
-		in, out := &in.DependsOn, &out.DependsOn
+	if in.Uses != nil {
+		in, out := &in.Uses, &out.Uses
 		*out = new([]runtime.RawExtension)
 		if **in != nil {
 			in, out := *in, *out
@@ -185,15 +185,11 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 			}
 		}
 	}
-	if in.Provides != nil {
-		in, out := &in.Provides, &out.Provides
-		*out = new([]runtime.RawExtension)
-		if **in != nil {
-			in, out := *in, *out
-			*out = make([]runtime.RawExtension, len(*in))
-			for i := range *in {
-				(*in)[i].DeepCopyInto(&(*out)[i])
-			}
+	if in.Bindings != nil {
+		in, out := &in.Bindings, &out.Bindings
+		*out = make(map[string]runtime.RawExtension, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	if in.Traits != nil {
