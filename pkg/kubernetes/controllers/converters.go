@@ -14,7 +14,6 @@ import (
 )
 
 func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.Scope) error {
-
 	original := a.(*radiusv1alpha1.Component)
 	result := b.(*components.GenericComponent)
 	result.Name = original.Spec.Name

@@ -21,6 +21,7 @@ type InstantiatedWorkload struct {
 	Name          string
 	Workload      components.GenericComponent
 	BindingValues map[components.BindingKey]components.BindingState
+	Namespace     string
 }
 
 // WorkloadRenderer defines the interface for rendering a Kubernetes workload definition

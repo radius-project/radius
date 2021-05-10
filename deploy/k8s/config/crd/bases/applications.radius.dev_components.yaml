@@ -71,6 +71,21 @@ spec:
           status:
             description: ComponentStatus defines the observed state of Component
             properties:
+              bindings:
+                items:
+                  properties:
+                    kind:
+                      type: string
+                    name:
+                      type: string
+                    values:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  required:
+                  - kind
+                  - name
+                  type: object
+                type: array
               conditions:
                 items:
                   description: Information about the condition of a component.

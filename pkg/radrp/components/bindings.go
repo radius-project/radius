@@ -138,6 +138,21 @@ func (be *BindingExpression) UnmarshalBSONValue(t bsontype.Type, data []byte) er
 	return nil
 }
 
+func (expr BindingExpression) TryGetBindingKey() *BindingKey {
+	if expr.Kind == KindStatic {
+		return nil
+	} else if expr.Kind == KindComponentBinding {
+		component, ok := expr.Value.(*ComponentBindingValue)
+		if !ok {
+			return nil
+		}
+
+		return &BindingKey{Component: component.Component, Binding: component.Binding}
+	} else {
+		return nil
+	}
+}
+
 func (expr BindingExpression) GetMatchingBinding(state map[BindingKey]BindingState) (BindingState, error) {
 	if expr.Kind == KindStatic {
 		return BindingState{}, errors.New("a component binding is required")

@@ -7,8 +7,10 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/model"
@@ -30,8 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const ApplicationKey = "spec.application"
-const OwnerKey = "metadata.controller"
+const (
+	CacheKeySpecApplication = "spec.application"
+	CacheKeyController      = "metadata.controller"
+	AnnotationLocalID       = "radius.dev/local-id"
+	CacheKeyProvidesBinding = "spec.provides"
+)
 
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
@@ -72,7 +78,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// Application is not found
 		r.recorder.Eventf(component, "Normal", "Waiting", "Application %s does not exist", component.Spec.Application)
 		log.Info("application does not exist... waiting")
-		return ctrl.Result{}, nil
+
+		// Keep going, we'll turn this into an "empty" render
+
 	} else if err != nil {
 		log.Error(err, "failed to retrieve application")
 		return ctrl.Result{}, err
@@ -84,10 +92,195 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	desired, err := r.RenderComponent(ctx, log, component)
+	desired, bindings, rendered, err := r.RenderComponent(ctx, log, application, component)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
+	err = r.ApplyState(ctx, log, application, component, actual, desired, bindings)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if rendered {
+		r.recorder.Event(component, "Normal", "Rendered", "Component has been processed successfully")
+		return ctrl.Result{}, nil
+	}
+
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+func (r *ComponentReconciler) FetchActualResources(ctx context.Context, log logr.Logger, component *radiusv1alpha1.Component) ([]client.Object, error) {
+	log.Info("fetching existing resources for component")
+	results := []client.Object{}
+
+	deployments := &appsv1.DeploymentList{}
+	err := r.Client.List(ctx, deployments, client.InNamespace(component.Namespace), client.MatchingFields{CacheKeyController: component.Name})
+	if err != nil {
+		log.Error(err, "failed to retrieve deployments")
+		return nil, err
+	}
+
+	for _, d := range (*deployments).Items {
+		obj := d
+		results = append(results, &obj)
+	}
+
+	services := &corev1.ServiceList{}
+	err = r.Client.List(ctx, services, client.InNamespace(component.Namespace), client.MatchingFields{CacheKeyController: component.Name})
+	if err != nil {
+		log.Error(err, "failed to retrieve services")
+		return nil, err
+	}
+
+	for _, s := range (*services).Items {
+		obj := s
+		results = append(results, &obj)
+	}
+
+	log.Info("found existing resource for component", "count", len(results))
+	return results, nil
+}
+
+func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, component *radiusv1alpha1.Component) ([]workloads.WorkloadResource, []radiusv1alpha1.ComponentStatusBinding, bool, error) {
+	// If the application hasn't been defined yet, then just produce no output.
+	if application == nil {
+		r.recorder.Eventf(component, "Normal", "Waiting", "Component is waiting for application: %s", component.Spec.Application)
+		return nil, nil, false, nil
+	}
+
+	generic := &components.GenericComponent{}
+	err := r.Scheme.Convert(component, generic, ctx)
+	if err != nil {
+		r.recorder.Eventf(component, "Warning", "Invalid", "Component could not be converted: %v", err)
+		log.Error(err, "failed to convert component")
+		return nil, nil, false, err
+	}
+
+	componentKind, err := r.Model.LookupComponent(generic.Kind)
+	if err != nil {
+		r.recorder.Eventf(component, "Warning", "Invalid", "Component kind '%s' is not supported'", generic.Kind)
+		log.Error(err, "unsupported kind for component")
+		return nil, nil, false, err
+	}
+
+	w := workloads.InstantiatedWorkload{
+		Application:   component.Spec.Application,
+		Name:          component.Spec.Name,
+		Workload:      *generic,
+		BindingValues: map[components.BindingKey]components.BindingState{},
+	}
+
+	missing := []components.BindingKey{}
+	for _, dependency := range generic.Uses {
+		key := dependency.Binding.TryGetBindingKey()
+		if key == nil {
+			continue
+		}
+
+		// TODO use an index
+		providers := radiusv1alpha1.ComponentList{}
+		err := r.Client.List(ctx, &providers, client.InNamespace(component.Namespace))
+		if err != nil {
+			log.Error(err, "failed to list components")
+			return nil, nil, false, err
+		}
+
+		found := false
+		for _, pp := range providers.Items {
+			if pp.Spec.Application != component.Spec.Application {
+				continue
+			}
+
+			if pp.Spec.Name != key.Component {
+				continue
+			}
+
+			// TODO detect duplicates and kind mismatches
+			for _, binding := range pp.Status.Bindings {
+				if binding.Name == key.Binding {
+					values := map[string]interface{}{}
+					err := json.Unmarshal(binding.Values.Raw, &values)
+					if err != nil {
+						log.Error(err, "failed to list components")
+						return nil, nil, false, err
+					}
+
+					w.BindingValues[*key] = components.BindingState{
+						Component:  key.Component,
+						Binding:    key.Binding,
+						Kind:       binding.Kind,
+						Properties: values,
+					}
+					found = true
+					break
+				}
+			}
+
+			if found {
+				break
+			}
+		}
+
+		if !found {
+			missing = append(missing, *key)
+		}
+	}
+
+	resources := []workloads.WorkloadResource{}
+	if len(missing) > 0 {
+		missingNames := []string{}
+		for _, key := range missing {
+			missingNames = append(missingNames, fmt.Sprintf("%s:%s", key.Component, key.Binding))
+		}
+		r.recorder.Eventf(component, "Normal", "Waiting", "Component is waiting for bindings: %s", strings.Join(missingNames, ", "))
+		log.Info("component is waiting for bindings", "missing", missing)
+	} else {
+		resources, err = componentKind.Renderer().Render(ctx, w)
+		if err != nil {
+			r.recorder.Eventf(component, "Warning", "Invalid", "Component had errors during rendering: %v'", err)
+			log.Error(err, "failed to render resources for component")
+			return nil, nil, false, err
+		}
+	}
+
+	bindings := []radiusv1alpha1.ComponentStatusBinding{}
+	for name, binding := range generic.Bindings {
+		kind := binding.Kind
+
+		values, err := componentKind.Renderer().AllocateBindings(ctx, w, []workloads.WorkloadResourceProperties{})
+		if err != nil {
+			r.recorder.Eventf(component, "Warning", "Invalid", "Component had errors during rendering: %v'", err)
+			log.Error(err, "failed to render bindings for component")
+			return nil, nil, false, err
+		}
+
+		b, err := json.Marshal(values)
+		if err != nil {
+			r.recorder.Eventf(component, "Warning", "Invalid", "Component had errors during rendering: %v'", err)
+			log.Error(err, "failed to render bindings for component")
+			return nil, nil, false, err
+		}
+
+		bindings = append(bindings, radiusv1alpha1.ComponentStatusBinding{
+			Name:   name,
+			Kind:   kind,
+			Values: runtime.RawExtension{Raw: b},
+		})
+	}
+
+	log.Info("rendered output resources", "count", len(resources))
+	return resources, bindings, len(missing) == 0, nil
+}
+
+func (r *ComponentReconciler) ApplyState(
+	ctx context.Context,
+	log logr.Logger,
+	application *radiusv1alpha1.Application,
+	component *radiusv1alpha1.Component,
+	actual []client.Object,
+	desired []workloads.WorkloadResource,
+	bindings []radiusv1alpha1.ComponentStatusBinding) error {
 
 	// First we go through the desired state and apply all of those resources.
 	//
@@ -96,7 +289,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	//
 	// We also trample over the 'resources' part of the status so that it's clean.
 
-	statuschanged := false
 	oldstatus := component.Status.Resources
 	if oldstatus == nil {
 		oldstatus = map[string]corev1.ObjectReference{}
@@ -108,16 +300,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if !ok {
 			err := fmt.Errorf("resource is not a kubernetes resource, was: %T", cr.Resource)
 			log.Error(err, "failed to render resources for component")
-			return ctrl.Result{}, err
+			return err
 		}
 
+		// TODO: configure all of the metadata at the top-level
 		obj.SetNamespace(component.Namespace)
-		obj.SetName(fmt.Sprintf("%s-%s-%s", component.Spec.Application, obj.GetName(), strings.ToLower(cr.LocalID)))
 		annotations := obj.GetAnnotations()
 		if annotations == nil {
 			annotations = map[string]string{}
 		}
-		annotations["radius.dev/local-id"] = cr.LocalID
+		annotations[AnnotationLocalID] = cr.LocalID
 		obj.SetAnnotations(annotations)
 
 		// Remove items with the same identity from the 'actual' list
@@ -137,7 +329,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		err := controllerutil.SetControllerReference(component, obj, r.Scheme)
 		if err != nil {
 			log.Error(err, "failed to set owner reference for resource")
-			return ctrl.Result{}, err
+			return err
 		}
 
 		// We don't have to diff the actual resource - server side apply is magic.
@@ -145,19 +337,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
 		if err != nil {
 			log.Error(err, "failed to apply resources for component")
-			return ctrl.Result{}, err
+			return err
 		}
 
 		or, err := ref.GetReference(r.Scheme, obj)
 		if err != nil {
 			log.Error(err, "failed to get resource reference for resource")
-			return ctrl.Result{}, err
+			return err
 		}
 
 		component.Status.Resources[cr.LocalID] = *or
-		if oldstatus[cr.LocalID].UID != or.UID {
-			statuschanged = true
-		}
 
 		log.Info("applied output resource for component")
 	}
@@ -174,90 +363,22 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// ignore
 		} else if err != nil {
 			log.Error(err, "failed to delete resource for component")
-			return ctrl.Result{}, err
+			return err
 		}
 
 		log.Info("deleted unused resource")
 	}
 
-	if statuschanged || len(oldstatus) != len(component.Status.Resources) {
-		err = r.Status().Update(ctx, component)
-		if err != nil {
-			log.Error(err, "failed to update resource status for component")
-			return ctrl.Result{}, err
-		}
+	component.Status.Bindings = bindings
+
+	err := r.Status().Update(ctx, component)
+	if err != nil {
+		log.Error(err, "failed to update resource status for component")
+		return err
 	}
 
 	log.Info("applied output resources", "count", len(desired), "deleted", len(actual))
-	r.recorder.Event(component, "Normal", "Rendered", "Component has been processed successfully")
-
-	return ctrl.Result{}, nil
-}
-
-func (r *ComponentReconciler) FetchActualResources(ctx context.Context, log logr.Logger, component *radiusv1alpha1.Component) ([]client.Object, error) {
-	log.Info("fetching existing resources for component")
-	results := []client.Object{}
-
-	deployments := &appsv1.DeploymentList{}
-	err := r.Client.List(ctx, deployments, client.InNamespace(component.Namespace), client.MatchingFields{OwnerKey: component.Name})
-	if err != nil {
-		log.Error(err, "failed to retrieve deployments")
-		return nil, err
-	}
-
-	for _, d := range (*deployments).Items {
-		obj := d
-		results = append(results, &obj)
-	}
-
-	services := &corev1.ServiceList{}
-	err = r.Client.List(ctx, services, client.InNamespace(component.Namespace), client.MatchingFields{OwnerKey: component.Name})
-	if err != nil {
-		log.Error(err, "failed to retrieve services")
-		return nil, err
-	}
-
-	for _, s := range (*services).Items {
-		obj := s
-		results = append(results, &obj)
-	}
-
-	log.Info("found existing resource for component", "count", len(results))
-	return results, nil
-}
-
-func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, component *radiusv1alpha1.Component) ([]workloads.WorkloadResource, error) {
-	generic := &components.GenericComponent{}
-	err := r.Scheme.Convert(component, generic, ctx)
-	if err != nil {
-		r.recorder.Eventf(component, "Warning", "Invalid", "Component could not be converted: %v", err)
-		log.Error(err, "failed to convert component")
-		return nil, err
-	}
-
-	componentKind, err := r.Model.LookupComponent(generic.Kind)
-	if err != nil {
-		r.recorder.Eventf(component, "Warning", "Invalid", "Component kind '%s' is not supported'", generic.Kind)
-		log.Error(err, "unsupported kind for component")
-		return nil, err
-	}
-
-	w := workloads.InstantiatedWorkload{
-		Application:   component.Spec.Application,
-		Name:          component.Spec.Name,
-		Workload:      *generic,
-		BindingValues: map[components.BindingKey]components.BindingState{},
-	}
-
-	resources, err := componentKind.Renderer().Render(ctx, w)
-	if err != nil {
-		r.recorder.Eventf(component, "Warning", "Invalid", "Component had errors during rendering: %v'", err)
-		log.Error(err, "failed to render resources for component")
-		return nil, err
-	}
-
-	log.Info("rendered output resources", "count", len(resources))
-	return resources, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -266,19 +387,19 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.recorder = mgr.GetEventRecorderFor("radius")
 
 	// Index components by application
-	err := mgr.GetFieldIndexer().IndexField(context.Background(), &radiusv1alpha1.Component{}, ApplicationKey, extractOwnerKey)
+	err := mgr.GetFieldIndexer().IndexField(context.Background(), &radiusv1alpha1.Component{}, CacheKeySpecApplication, extractOwnerKey)
 	if err != nil {
 		return err
 	}
 
 	// Index deployments by the owner (component)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, OwnerKey, extractOwnerKey)
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
 	if err != nil {
 		return err
 	}
 
 	// Index services by the owner (component)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, OwnerKey, extractOwnerKey)
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
 	if err != nil {
 		return err
 	}
@@ -288,7 +409,7 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	applicationHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []ctrl.Request {
 		application := obj.(*radiusv1alpha1.Application)
 		components := &radiusv1alpha1.ComponentList{}
-		err := cache.List(context.Background(), components, client.InNamespace(application.Namespace), client.MatchingFields{ApplicationKey: application.Name})
+		err := cache.List(context.Background(), components, client.InNamespace(application.Namespace), client.MatchingFields{CacheKeySpecApplication: application.Name})
 		if err != nil {
 			mgr.GetLogger().Error(err, "failed to list components")
 			return nil

@@ -72,8 +72,20 @@ type ComponentCondition struct {
 	Message string `json:"message,omitempty" protobuf:"bytes,6,opt,name=message"`
 }
 
+type ComponentStatusBinding struct {
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Values runtime.RawExtension `json:"values,omitempty"`
+}
+
 // ComponentStatus defines the observed state of Component
 type ComponentStatus struct {
+	// +optional
+	Bindings []ComponentStatusBinding `json:"bindings,omitempty"`
+
 	// +optional
 	Conditions []corev1.ComponentCondition `json:"conditions,omitempty"`
 
