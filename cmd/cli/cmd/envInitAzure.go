@@ -405,7 +405,8 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 	group, err := rgc.Get(ctx, resourceGroup)
 	if group.StatusCode == 404 {
-		return nil, err
+		// Ignore the NotFound error
+		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}

@@ -129,6 +129,9 @@ func cleanup(ctx context.Context, t *testing.T, config *config.AzureConfig, reso
 	groupc := resources.NewGroupsClient(config.SubscriptionID())
 	groupc.Authorizer = config.Authorizer
 
-	_, err := groupc.Delete(ctx, resourceGroupName)
+	groupsFuture, err := groupc.Delete(ctx, resourceGroupName)
+	require.NoError(t, err, "failed to delete resource group")
+
+	err = groupsFuture.WaitForCompletionRef(ctx, groupc.Client)
 	require.NoError(t, err, "failed to delete resource group")
 }
