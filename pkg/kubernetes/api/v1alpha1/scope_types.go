@@ -28,6 +28,7 @@ type ScopeStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:categories={"all","radius"}
 //+kubebuilder:subresource:status
 
 // Scope is the Schema for the scopes API

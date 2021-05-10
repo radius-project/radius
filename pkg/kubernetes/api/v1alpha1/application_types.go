@@ -19,6 +19,7 @@ type ApplicationStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:categories={"all","radius"}
 //+kubebuilder:subresource:status
 
 // Application is the Schema for the applications API

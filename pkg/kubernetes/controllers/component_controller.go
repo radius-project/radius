@@ -97,6 +97,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	if rendered {
+		component.Status.Phrase = "Ready"
+	} else {
+		component.Status.Phrase = "Waiting"
+	}
+
 	err = r.ApplyState(ctx, log, application, component, actual, desired, bindings)
 	if err != nil {
 		return ctrl.Result{}, err

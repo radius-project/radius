@@ -10,13 +10,29 @@ metadata:
 spec:
   group: applications.radius.dev
   names:
+    categories:
+    - all
+    - radius
     kind: Component
     listKind: ComponentList
     plural: components
     singular: component
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.application
+      name: Application
+      type: string
+    - jsonPath: .spec.name
+      name: Component
+      type: string
+    - jsonPath: .spec.kind
+      name: Kind
+      type: string
+    - jsonPath: .status.phrase
+      name: Status
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Component is the Schema for the components API
@@ -111,6 +127,8 @@ spec:
                   - type
                   type: object
                 type: array
+              phrase:
+                type: string
               resources:
                 additionalProperties:
                   description: 'ObjectReference contains enough information to let

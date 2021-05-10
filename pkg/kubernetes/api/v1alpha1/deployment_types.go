@@ -28,6 +28,7 @@ type DeploymentStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:categories={"all","radius"}
 //+kubebuilder:subresource:status
 
 // Deployment is the Schema for the deployments API

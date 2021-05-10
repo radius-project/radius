@@ -10,6 +10,9 @@ metadata:
 spec:
   group: applications.radius.dev
   names:
+    categories:
+    - all
+    - radius
     kind: Application
     listKind: ApplicationList
     plural: applications
