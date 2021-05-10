@@ -10,6 +10,10 @@ github_repo = "https://github.com/Azure/radius"
 github_subdir = "docs"
 github_branch = "main"
 
+# Google Analytics
+[services.googleAnalytics]
+id = "G-9JR8B6TPF9"
+
 # Mounts
 [module]
   [[module.mounts]]
