@@ -6,12 +6,10 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // ComponentSpec defines the desired state of Component
 type ComponentSpec struct {
@@ -40,8 +38,47 @@ type ComponentSpec struct {
 	Traits *[]runtime.RawExtension `json:"traits,omitempty"`
 }
 
+type ComponentConditionType string
+
+// These are valid conditions of components.
+const (
+	ComponentReady ComponentConditionType = "Ready"
+)
+
+const (
+	ComponentReasonApplicationMissing = "ApplicationMissing"
+
+	ComponentReasonDependencyMissing = "DependencyMissing"
+)
+
+type ComponentCondition struct {
+	// Type is the type of the condition.
+	Type ComponentConditionType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=PodConditionType"`
+	// Status is the status of the condition.
+	// Can be True, False, Unknown.
+	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
+	Status corev1.ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status,casttype=ConditionStatus"`
+	// Last time we probed the condition.
+	// +optional
+	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty" protobuf:"bytes,3,opt,name=lastProbeTime"`
+	// Last time the condition transitioned from one status to another.
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty" protobuf:"bytes,4,opt,name=lastTransitionTime"`
+	// Unique, one-word, CamelCase reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,5,opt,name=reason"`
+	// Human-readable message indicating details about last transition.
+	// +optional
+	Message string `json:"message,omitempty" protobuf:"bytes,6,opt,name=message"`
+}
+
 // ComponentStatus defines the observed state of Component
 type ComponentStatus struct {
+	// +optional
+	Conditions []corev1.ComponentCondition `json:"conditions,omitempty"`
+
+	// +optional
+	Resources map[string]corev1.ObjectReference `json:"resources,omitempty"`
 }
 
 //+kubebuilder:object:root=true
