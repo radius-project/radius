@@ -28,7 +28,7 @@ func GenerateAzureEnvUrl(subscriptionID string, resourceGroup string) (string, e
 		return "Unable to find tenant ID for this subscription.", nil
 	}
 	
-	envUrl := fmt.Sprintf("https://ms.portal.azure.com/#@%s/resource/subscriptions/%s/resourceGroups/%s/overview", 
+	envUrl := fmt.Sprintf("https://portal.azure.com/#@%s/resource/subscriptions/%s/resourceGroups/%s/overview", 
 						tenantId, subscriptionID, resourceGroup)
 
 	return envUrl, nil
