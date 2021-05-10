@@ -16,6 +16,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
@@ -72,7 +73,10 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 	logger.CompleteStep(step)
 
-	envUrl := utils.GenerateEnvUrl(env.Kind, env.SubscriptionID, env.ResourceGroup)
+	envUrl, err := azure.GenerateAzureEnvUrl(env.SubscriptionID, env.ResourceGroup)
+	if err != nil {
+		return err
+	}
 
 	step = logger.BeginStep("Deploying Application into environment '%v'...\n\n" + 
 							"Meanwhile, you can view the environment '%v' at:\n%v\n\n" +
