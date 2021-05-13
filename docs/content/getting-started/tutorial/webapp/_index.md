@@ -30,4 +30,4 @@ In this tutorial, you will:
    - The [Radius VSCode extension]({{< ref "install-cli.md#2-install-custom-vscode-extension" >}}) provides syntax highlighting, completion, and linting.
    - You can also complete this tutorial with any basic text editor.
 
-{{< button text="Application overview" page="webapp-overview.md" >}}
+<br>{{< button text="Application overview" page="webapp-overview.md" >}}

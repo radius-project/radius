@@ -13,7 +13,7 @@ Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-re
 
 Create a new file named `template.bicep` and paste the following:
 
-```
+```sh
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'webapp'
 
@@ -119,4 +119,4 @@ Now you are ready to deploy the application for the first time.
 
 1. When you're done testing press CTRL+C to terminate the port-forward.
 
-{{< button text="Next: Add a database to the app" page="webapp-add-database.md" >}}
+<br>{{< button text="Next: Add a database to the app" page="webapp-add-database.md" >}}

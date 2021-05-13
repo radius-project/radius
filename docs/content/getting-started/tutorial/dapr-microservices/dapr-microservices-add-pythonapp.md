@@ -1,0 +1,177 @@
+---
+type: docs
+title: "Add a content generator to the app"
+linkTitle: "Add a content generator"
+description: "Add a content generator 'pythonapp' to the tutorial application"
+weight: 4000
+---
+
+
+To complete the application, you'll add another component for the order generating microservice. 
+
+Again, we'll discuss changes to template.bicep and then provide the full, updated file before deployment.
+
+## Add pythonapp component
+Another container component is used to specify a few properties about the order generator: 
+
+- **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
+- **container image:** `radiusteam/tutorial-pythonapp`, a Docker image the container will run.
+- **dependsOn:** `nodeapp`, which declares the intention for `pythonapp` to communicate with `nodeapp` using `dapr.io/Invoke` as the protocol.
+- **traits:** `appId: pythonapp`, required Dapr configuration. 
+
+```
+  resource pythonapplication 'Components' = {
+    name: 'pythonapp'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: {
+        container: {
+          image: 'radiusteam/tutorial-pythonapp'
+        }
+      }
+      dependsOn: [
+        {
+          kind: 'dapr.io/Invoke'
+          name: 'nodeapp'
+        }
+      ]
+      traits: [
+        {
+          kind: 'dapr.io/App@v1alpha1'
+          properties: {
+            appId: 'pythonapp'
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+A few notable differences between `pythonapp` and the previously-deployed `nodeapp`:
+
+- `pythonapp` doesn't listen for HTTP traffic, so it configures neither a Dapr app-port nor a service for HTTP.
+- `pythonapp` needs to communicate with `nodeapp` using the Dapr service invocation protocol.
+
+## Update your template.bicep file 
+
+**Update your `template.bicep` file to match the full application definition:**
+
+{{%expand "❗️ EXPAND FOR FULL CODE BLOCK" %}}
+```sh
+resource app 'radius.dev/Applications@v1alpha1' = {
+  name: 'dapr-hello'
+
+  resource nodeapplication 'Components' = {
+    name: 'nodeapp'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: {
+        container: {
+          image: 'radiusteam/tutorial-nodeapp'
+        }
+      }
+      dependsOn: [
+        {
+          kind: 'dapr.io/StateStore'
+          name: 'statestore'
+        }
+      ]
+      provides: [
+        {
+          kind: 'http'
+          name: 'web'
+          containerPort: 3000
+        }
+      ]
+      traits: [
+        {
+          kind: 'dapr.io/App@v1alpha1'
+          properties: {
+            appId: 'nodeapp'
+            appPort: 3000
+          }
+        }
+      ]
+    }
+  }
+
+  resource pythonapplication 'Components' = {
+    name: 'pythonapp'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: {
+        container: {
+          image: 'radiusteam/tutorial-pythonapp'
+        }
+      }
+      dependsOn: [
+        {
+          kind: 'dapr.io/Invoke'
+          name: 'nodeapp'
+        }
+      ]
+      traits: [
+        {
+          kind: 'dapr.io/App@v1alpha1'
+          properties: {
+            appId: 'pythonapp'
+          }
+        }
+      ]
+    }
+  }
+
+  resource statestore 'Components' = {
+    name: 'statestore'
+    kind: 'dapr.io/StateStore@v1alpha1'
+    properties: {
+      config: {
+        kind: 'state.azure.tablestorage'
+        managed: true
+      }
+    }
+  }
+}
+```
+{{% /expand%}}  
+  
+## Deploy application with pythonapp
+
+1. Switch to the command line and run:
+
+   ```sh
+   rad deploy template.bicep
+   ```
+
+1. To test out the pythonapp microservice, open a local tunnel on port 3000 once more:
+
+   ```sh
+   rad expose dapr-hello nodeapp --port 3000
+   ```
+
+1. Visit [http://localhost:3000](http://localhost:3000) in your browser.
+
+   Refresh the page multiple times and you should see a message like before. The order number is steadily increasing after refresh (incremented by `pythonapp`). For example:
+
+   `{"orderId":27}`
+
+   If your message is similar, then `pythonapp` is able to communicate with `nodeapp`. 
+
+1. When you're done testing press CTRL+C to terminate the port-forward. 
+
+## Next steps
+- To view the application code used in this tutorial, download the [zipped application code](/dapr-microservices/code.zip).
+
+- If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
+
+- If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
+
+- Related links for Dapr:
+  - [Dapr documentation](https://docs.dapr.io/)
+  - [Dapr quickstarts](https://github.com/dapr/quickstarts/tree/v1.0.0/hello-world)
+
+
+You have completed this tutorial!
+
+<br>{{< button text="Try another tutorial" page="tutorial" >}}

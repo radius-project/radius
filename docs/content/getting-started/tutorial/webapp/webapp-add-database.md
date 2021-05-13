@@ -134,7 +134,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
      "value": [
        {
          "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Deployments/default",
-         "name": "radius/webapp/default",
+         "name": "default",
          "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
          "properties": {
            "components": [
@@ -166,7 +166,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 
 ## Next steps
-- To view the website application code used in this tutorial, download the [zipped application code](./docs/content/getting-started/tutorial/webapp/code).
+- To view the website application code used in this tutorial, download the [zipped application code](/webapp/code.zip).
 
 - If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
 
@@ -175,4 +175,4 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 You have completed this tutorial!
 
-{{< button text="Try another tutorial" page="tutorial" >}}
+<br>{{< button text="Try another tutorial" page="tutorial" >}}
