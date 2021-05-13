@@ -79,7 +79,8 @@ type ComponentDependsOn struct {
 	Kind string `json:"kind"`
 
 	// TODO this should support more settings
-	SetEnv map[string]string `json:"setEnv,omitempty"`
+	SetEnv    map[string]string `json:"setEnv,omitempty"`
+	SetSecret map[string]string `json:"setSecret,omitempty"`
 }
 
 // ComponentTrait represents a trait for an Radius component.

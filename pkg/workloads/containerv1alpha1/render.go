@@ -21,10 +21,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	kvclient "github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
@@ -345,7 +348,9 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
+	keyvaults := make(map[string]string)
 	for _, dep := range cc.DependsOn {
+		// Set environment variables in the container
 		for k, v := range dep.SetEnv {
 			service, ok := w.ServiceValues[dep.Name]
 			if !ok {
@@ -366,6 +371,59 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 				Name:  k,
 				Value: str,
 			})
+
+			if dep.Kind == "azure.com/KeyVault" {
+				// Cache the KV URIs and use it for setting secrets, if any
+				keyvaults[dep.Name] = str
+			}
+		}
+	}
+
+	// By now, all keyvault URIs have been cached
+	for _, dep := range cc.DependsOn {
+		secrets := make(map[string]string)
+		var kvURI string
+		for k, v := range dep.SetSecret {
+			// Each setSecret blocks consists of a KV and other secrets
+			service, ok := w.ServiceValues[dep.Name]
+			if !ok {
+				return nil, fmt.Errorf("cannot resolve service %v", dep.Name)
+			}
+
+			var str string
+			if k == KeyVaultIdentifier {
+				// Read the keyvault name and then look up the keyvault dependency to get the URI
+				kvURI = keyvaults[v]
+			} else {
+				value, ok := service[v]
+				if !ok {
+					return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
+				}
+
+				str, ok = value.(string)
+				if !ok {
+					return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+				}
+				secrets[k] = str
+			}
+		}
+
+		// Create secrets in the specified keyvault
+		for s, sv := range secrets {
+			var secretValue kvclient.SecretSetParameters
+			secretValue.Value = &sv
+			// kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
+			// kvc.Authorizer = r.Arm.Auth
+			// vaultName := strings.Split(strings.Split(kvURI, "https://")[1], ".vault.azure.net")[0]
+			// vault, err := kvc.Get(ctx, r.Arm.ResourceGroup, vaultName)
+			// if err != nil {
+			// 	return nil, err
+			// }
+			err := r.createSecret(ctx, kvURI, s, secretValue)
+			if err != nil {
+				fmt.Printf("err: %v", err.Error())
+				return nil, fmt.Errorf("Could not create secret: %v: %w", s, err)
+			}
 		}
 	}
 
@@ -543,6 +601,47 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 		ClusterName: *cluster.Name,
 	}
 	return podIdentity, nil
+}
+
+func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue kvclient.SecretSetParameters) error {
+	kvc := kvclient.New()
+
+	webc := web.NewAppsClient(r.Arm.SubscriptionID)
+	webc.Authorizer = r.Arm.Auth
+	list, err := webc.ListByResourceGroupComplete(ctx, r.Arm.ResourceGroup, nil)
+	if err != nil {
+		return fmt.Errorf("cannot read web sites: %w", err)
+	}
+	if !list.NotDone() {
+		return fmt.Errorf("failed to find website in resource group '%v'", r.Arm.ResourceGroup)
+	}
+	website := *list.Value().ID
+	fmt.Printf("found website '%v' in resource group '%v'", website, r.Arm.ResourceGroup)
+
+	mc := msi.NewSystemAssignedIdentitiesClient(r.Arm.SubscriptionID)
+	mc.Authorizer = r.Arm.Auth
+	si, err := mc.GetByScope(ctx, website)
+	if err != nil {
+		return fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", website, err)
+	}
+
+	msiKeyConfig := &auth.MSIConfig{
+		Resource: "https://vault.azure.net",
+		ClientID: si.PrincipalID.String(),
+	}
+
+	// kvAuth, err := auth.NewAuthorizerFromCLIWithResource("https://vault.azure.net")
+	kvAuth, err := msiKeyConfig.Authorizer()
+	if err != nil {
+		return err
+	}
+	kvc.Authorizer = kvAuth
+	_, err = kvc.SetSecret(ctx, kvURI, secretName, secretValue)
+	if err != nil {
+		return err
+	}
+	log.Printf("Created secret: %v in KeyVault: %v", secretName, kvURI)
+	return nil
 }
 
 func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*corev1.Service, error) {

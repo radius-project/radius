@@ -29,9 +29,10 @@ type ContainerRunContainer struct {
 
 // ContainerDependsOn is the definition of the dependsOn section
 type ContainerDependsOn struct {
-	Name   string            `json:"name"`
-	Kind   string            `json:"kind"`
-	SetEnv map[string]string `json:"setEnv"`
+	Name      string            `json:"name"`
+	Kind      string            `json:"kind"`
+	SetEnv    map[string]string `json:"setEnv"`
+	SetSecret map[string]string `json:"setSecret"`
 }
 
 // ContainerEnvVar is the definition of an environment variable
