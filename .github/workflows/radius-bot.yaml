@@ -31,7 +31,7 @@ jobs:
           const regex = /^\/([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)$/;
           const matches = context.payload.comment.body.match(regex)
           let command = null;
-          if (matches.length > 0) {
+          if (!!matches && matches.length > 0) {
             command = matches[1]
           }
 
