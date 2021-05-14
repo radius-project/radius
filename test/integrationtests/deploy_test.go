@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	cliutils "github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
@@ -47,6 +48,14 @@ func TestDeployment(t *testing.T) {
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	require.NoErrorf(t, err, "Failed to obtain Azure credentials")
 	con := armcore.NewDefaultConnection(azcred, nil)
+
+	// Ensure rad-bicep has been downloaded before we go parallel
+	installed, err := bicep.IsBicepInstalled()
+	require.NoErrorf(t, err, "Failed to local rad-bicep")
+	if !installed {
+		err = bicep.DownloadBicep()
+		require.NoErrorf(t, err, "Failed to download rad-bicep")
+	}
 
 	options := Options{
 		Environment:   env,
@@ -164,6 +173,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 	//
 	// In the future we can extend this to multi-phase tests that do more than just deploy and delete by adding more
 	// intermediate sub-tests.
+
+	// Each of our tests are isolated to a single application, so they can run in parallel.
+	t.Parallel()
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
