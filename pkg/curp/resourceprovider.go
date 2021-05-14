@@ -357,6 +357,9 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		olddbitem = &obj
 	}
 
+	// TODO: support for cancellation of a deployment in flight. We don't have a good way now to
+	// cancel a deployment that's in progress. If you deploy twice at once the results are not determinisitic.
+
 	actions, err := r.computeDeploymentActions(app, olddbitem, newdbitem)
 	if err != nil {
 		// An error computing deployment actions is generally the users' fault.
@@ -424,6 +427,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 		err := r.deploy.UpdateDeployment(ctx, app.FriendlyName(), newdbitem.Name, &newdbitem.Status, actions)
 		if _, ok := err.(*deployment.CompositeError); ok {
+			log.Printf("deployment '%s' failed with error: %v", d.ID, err)
 			// Composite error is what we use for validation problems
 			status = rest.FailedStatus
 			failure = &armerrors.ErrorDetails{
@@ -432,6 +436,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 				Target:  id.Resource.ID,
 			}
 		} else if err != nil {
+			log.Printf("deployment '%s' failed with error: %v", d.ID, err)
 			// Other errors represent a generic failure, this should map to a 500.
 			status = rest.FailedStatus
 			failure = &armerrors.ErrorDetails{
@@ -451,6 +456,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 				status = rest.FailedStatus
 			}
 		} else {
+			log.Printf("updating operation '%s'", oid.Resource.ID)
 			operation.EndTime = time.Now().UTC().Format(time.RFC3339)
 			operation.PercentComplete = 100
 			operation.Status = string(status)
@@ -463,6 +469,8 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 					status = rest.FailedStatus
 				}
 			}
+
+			log.Printf("updated operation '%s' with status %s", oid.Resource.ID, status)
 		}
 
 		d, err := r.db.GetDeploymentByApplicationID(ctx, id.App, id.Resource.Name())
@@ -471,6 +479,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			return
 		}
 
+		log.Printf("updating deployment '%s'", d.ID)
 		d.Properties.ProvisioningState = string(status)
 		d.Status = newdbitem.Status
 		_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.Name(), d)
@@ -479,7 +488,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			return
 		}
 
-		log.Printf("completed deployment '%s' in the background", d.ID)
+		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)
 	}()
 
 	// As a limitation of custom resource providers, we have to use HTTP 202 for this.
@@ -781,6 +790,15 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		return nil, err
 	}
 
+	// If we previously deployed this deployment but failed, make sure we retry, treat
+	// each component as an upgrade if it's unchanged.
+	forceUpgradeToRetry := false
+	if older != nil &&
+		older.Properties.ProvisioningState != "" &&
+		rest.OperationStatus(older.Properties.ProvisioningState) != rest.SuccededStatus {
+		forceUpgradeToRetry = true
+	}
+
 	// gather all component names
 	names := map[string]bool{}
 	for name := range active {
@@ -820,7 +838,7 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 			PreviousInstanitation: oinst,
 		}
 
-		err = assignOperation(&wd)
+		err = assignOperation(&wd, forceUpgradeToRetry)
 		if err != nil {
 			return nil, err
 		}
@@ -932,7 +950,7 @@ func gatherCurrentRevisions(app *db.Application, d *db.Deployment) (map[string]*
 	return current, nil
 }
 
-func assignOperation(wd *deployment.ComponentAction) error {
+func assignOperation(wd *deployment.ComponentAction, forceUpgradeToRetry bool) error {
 	if wd.Instantiation == nil && wd.PreviousInstanitation == nil {
 		return errors.New("can't figure out operation")
 	} else if wd.Instantiation != nil && wd.PreviousInstanitation == nil {
@@ -947,6 +965,13 @@ func assignOperation(wd *deployment.ComponentAction) error {
 	// or is the same - so we can safely dereference any properties.
 	if wd.Definition.Revision != wd.PreviousDefinition.Revision {
 		// revision does not match.
+		wd.Operation = deployment.UpdateWorkload
+		return nil
+	}
+
+	// If the last deployment failed, then treat every unchanged component like an
+	// upgrade so that it's applied again.
+	if forceUpgradeToRetry {
 		wd.Operation = deployment.UpdateWorkload
 		return nil
 	}

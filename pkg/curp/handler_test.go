@@ -1202,7 +1202,112 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 	require.NotNil(t, armerr)
 	require.Equal(t, armerrors.CodeInternal, armerr.Error.Code)
 	require.Equal(t, "deployment failed :(", armerr.Error.Message)
+}
 
+// Regressiont test for: https://github.com/Azure/radius/issues/375
+func Test_UpdateDeployment_FailureCanBeRetried(t *testing.T) {
+	test := start(t)
+
+	// This test will call through to the deployment processor to create a deployment. For now we don't validate any
+	// of the data, and just simulate a failure.
+	fail := true
+	complete := make(chan struct{})
+	test.deploy.EXPECT().
+		UpdateDeployment(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes().
+		DoAndReturn(func(a, b, c, d, e interface{}) error {
+			select {
+			case <-complete:
+				if fail {
+					return errors.New("deployment failed :(")
+				}
+
+				return nil
+			case <-time.After(10 * time.Second):
+				return errors.New("Timeout!")
+			}
+		})
+
+	test.DBCreateApplication(TestApplicationName, nil)
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+
+	body := map[string]interface{}{
+		"properties": rest.DeploymentProperties{
+			Components: []rest.DeploymentComponent{
+				{
+					ComponentName: "A",
+					Revision:      rev,
+				},
+			},
+		},
+	}
+	b, err := json.Marshal(body)
+	require.NoError(t, err)
+
+	deploymentID := deploymentID(TestApplicationName, "default")
+	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
+	w := httptest.NewRecorder()
+
+	test.server.Config.Handler.ServeHTTP(w, req)
+
+	require.Equal(t, 202, w.Code)
+	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
+	require.NotEmpty(t, location)
+
+	expected := &rest.Deployment{
+		ResourceBase: rest.ResourceBase{
+			ID:             deploymentID.ID,
+			SubscriptionID: deploymentID.SubscriptionID,
+			ResourceGroup:  deploymentID.ResourceGroup,
+			Name:           deploymentID.Name(),
+			Type:           deploymentID.Kind(),
+		},
+		Properties: rest.DeploymentProperties{
+			ProvisioningState: rest.DeployingStatus,
+			Components: []rest.DeploymentComponent{
+				{
+					ComponentName: "A",
+					Revision:      rev,
+				},
+			},
+		},
+	}
+	requireJSON(t, expected, w)
+
+	test.ValidateDeploymentOperationInProgress(location)
+
+	// Now unblock the completion of the deployment
+	complete <- struct{}{}
+
+	code, actual, armerr := test.PollForFailedOperation(deploymentID, location)
+	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
+
+	require.Equal(t, 500, code)
+	require.NotNil(t, armerr)
+	require.Equal(t, armerrors.CodeInternal, armerr.Error.Code)
+	require.Equal(t, "deployment failed :(", armerr.Error.Message)
+
+	// Now retry and it should succeed
+	fail = false
+
+	req = httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
+	w = httptest.NewRecorder()
+
+	test.server.Config.Handler.ServeHTTP(w, req)
+
+	require.Equal(t, 202, w.Code)
+	location = w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
+	require.NotEmpty(t, location)
+
+	requireJSON(t, expected, w)
+
+	test.ValidateDeploymentOperationInProgress(location)
+
+	// Now unblock the completion of the deployment
+	complete <- struct{}{}
+
+	deployment := test.PollForSuccessfulPut(deploymentID)
+	require.Equal(t, rest.SuccededStatus, deployment.Properties.ProvisioningState)
 }
 
 func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
