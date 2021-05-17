@@ -147,8 +147,14 @@ func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.
 	rdc := authorization.NewRoleDefinitionsClient(r.Arm.SubscriptionID)
 	rdc.Authorizer = r.Arm.Auth
 
-	// By default grant Key Vault Reader role with scope = KeyVault which provides read-only access to the Keyvault for secrets, keys and certificates
-	roleList, err := rdc.List(ctx, kvID, "roleName eq 'Key Vault Reader'")
+	// // By default grant Key Vault Reader role with scope = KeyVault which provides read-only access to the Keyvault for secrets, keys and certificates
+	// roleList, err := rdc.List(ctx, kvID, "roleName eq 'Key Vault Reader'")
+	// if err != nil || !roleList.NotDone() {
+	// 	return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+	// }
+
+	// By default grant Key Vault Secrets User role with scope = KeyVault which provides read-only access to the Keyvault for secrets
+	roleList, err := rdc.List(ctx, kvID, "roleName eq 'Key Vault Secrets User'")
 	if err != nil || !roleList.NotDone() {
 		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
 	}
