@@ -180,7 +180,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", msi.Name, err)
 	}
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for encryption keys
-	roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID, *kv.ID, "Key Vault Crypto User")
+	err = roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID, *kv.ID, "Key Vault Crypto User")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", msi.Name, err)
 	}
