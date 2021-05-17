@@ -9,7 +9,7 @@ no_list: true
 
 ## Overview
 
-This tutorial will teach you how to deploy a microservices application using Radius. You will learn:  
+This tutorial will teach you how to deploy a Dapr microservices application using Radius. You will learn:  
 
 - The concepts of the Radius application model 
 - How Dapr and Radius seamlessly work together  

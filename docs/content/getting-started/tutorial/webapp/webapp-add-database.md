@@ -166,7 +166,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 
 ## Next steps
-- To view the website application code used in this tutorial, download the [zipped application code](/webapp/code.zip).
+- To view the website application code used in this tutorial, download the [zipped application code](/tutorial/webapp.zip).
 
 - If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
 

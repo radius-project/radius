@@ -95,7 +95,7 @@ Once the state store is defined as a component, you can connect to it by referen
 
 **Update your `template.bicep` file to match the full application definition:** 
 
-{{%expand "❗️ EXPAND FOR FULL CODE BLOCK" %}}
+{{%expand "❗️ Expand for the full code block" %}}
 
 ```sh
 resource app 'radius.dev/Applications@v1alpha1' = {

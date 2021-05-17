@@ -57,7 +57,7 @@ A few notable differences between `pythonapp` and the previously-deployed `nodea
 
 **Update your `template.bicep` file to match the full application definition:**
 
-{{%expand "❗️ EXPAND FOR FULL CODE BLOCK" %}}
+{{%expand "❗️ Expand for the full code block" %}}
 ```sh
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'dapr-hello'
@@ -161,7 +161,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 
 ## Next steps
-- To view the application code used in this tutorial, download the [zipped application code](/dapr-microservices/code.zip).
+- To view the application code used in this tutorial, download the [zipped application code](tutorial/dapr-microservices.zip).
 
 - If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
 
