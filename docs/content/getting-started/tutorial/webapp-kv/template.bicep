@@ -7,7 +7,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'radiusteam/tutorial-todoapp'
+          image: 'radiusteam/tutorial-webappkv'
         }
       }
       dependsOn: [

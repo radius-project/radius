@@ -19,11 +19,9 @@ import (
 
 // CreateRoleAssignment assigns the specified role name to the Identity over the specified scope
 func CreateRoleAssignment(ctx context.Context, auth autorest.Authorizer, subscriptionID string, resourceGroup string, principalID *uuid.UUID, scope string, roleName string) error {
-	// Assign KeyVault Reader permissions to the managed identity for the pod
 	rdc := authorization.NewRoleDefinitionsClient(subscriptionID)
 	rdc.Authorizer = auth
 
-	// By default grant Key Vault Reader role with scope = KeyVault which provides read-only access to the Keyvault for secrets, keys and certificates
 	roleFilter := fmt.Sprintf("roleName eq '%s'", roleName)
 	roleList, err := rdc.List(ctx, scope, roleFilter)
 	if err != nil || !roleList.NotDone() {

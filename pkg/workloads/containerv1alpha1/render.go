@@ -26,15 +26,14 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
-	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/roleassignment"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
-	"github.com/gofrs/uuid"
 )
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
@@ -142,74 +141,6 @@ func (r Renderer) readKeyVaultURI(dep ContainerDependsOn, w workloads.Instantiat
 	return "", errors.New("unable to find keyvault uri. invalid spec")
 }
 
-func (r Renderer) createRoleAssignment(ctx context.Context, managedIdentity msi.Identity, kvID string) error {
-	// Assign KeyVault Reader permissions to the managed identity for the pod
-	rdc := authorization.NewRoleDefinitionsClient(r.Arm.SubscriptionID)
-	rdc.Authorizer = r.Arm.Auth
-
-	// // By default grant Key Vault Reader role with scope = KeyVault which provides read-only access to the Keyvault for secrets, keys and certificates
-	// roleList, err := rdc.List(ctx, kvID, "roleName eq 'Key Vault Reader'")
-	// if err != nil || !roleList.NotDone() {
-	// 	return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
-	// }
-
-	// By default grant Key Vault Secrets User role with scope = KeyVault which provides read-only access to the Keyvault for secrets
-	roleList, err := rdc.List(ctx, kvID, "roleName eq 'Key Vault Secrets User'")
-	if err != nil || !roleList.NotDone() {
-		return fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
-	}
-
-	rac := authorization.NewRoleAssignmentsClient(r.Arm.SubscriptionID)
-	rac.Authorizer = r.Arm.Auth
-	raName, _ := uuid.NewV4()
-
-	MaxRetries := 100
-	for i := 0; i <= MaxRetries; i++ {
-
-		// Retry to wait for the managed identity to propagate
-		if i >= MaxRetries {
-			return fmt.Errorf("failed to create role assignment for user assigned managed identity after retries: %w", err)
-		}
-
-		_, err = rac.Create(
-			ctx,
-			kvID,
-			raName.String(),
-			authorization.RoleAssignmentCreateParameters{
-				RoleAssignmentProperties: &authorization.RoleAssignmentProperties{
-					PrincipalID:      to.StringPtr(managedIdentity.PrincipalID.String()),
-					RoleDefinitionID: to.StringPtr(*roleList.Values()[0].ID),
-				},
-			})
-
-		if err == nil {
-			return nil
-		}
-
-		// Check the error and determine if it is ignorable/retryable
-		detailed, ok := util.ExtractDetailedError(err)
-		if !ok {
-			return err
-		}
-		// StatusCode = 409 indicates that the role assignment already exists. Ignore that error
-		if detailed.StatusCode == 409 {
-			return nil
-		}
-
-		// Sometimes, the managed identity takes a while to propagate and the role assignment creation fails with status code = 400
-		// For other reasons, fail.
-		if detailed.StatusCode != 400 {
-			return fmt.Errorf("failed to create role assignment with error: %v, statuscode: %v", detailed.Message, detailed.StatusCode)
-		}
-
-		log.Println("Failed to create role assignment. Retrying...")
-		time.Sleep(5 * time.Second)
-		continue
-	}
-
-	return nil
-}
-
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep ContainerDependsOn, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, error) {
 	// Read KV_URI
 	kvURI, err := r.readKeyVaultURI(dep, w)
@@ -242,9 +173,16 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 		return nil, fmt.Errorf("unable to find keyvault: %w", err)
 	}
 
-	err = r.createRoleAssignment(ctx, msi, *kv.ID)
+	// Create Role Assignment to grant the managed identity appropriate access permissions to the Key Vault
+	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for secrets and certificates
+	err = roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID, *kv.ID, "Key Vault Secrets User")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", msi.Name, err)
+	}
+	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for encryption keys
+	roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID, *kv.ID, "Key Vault Crypto User")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", msi.Name, err)
 	}
 
 	log.Printf("Created role assignment for %v to access %v", *msi.ID, *kv.ID)
@@ -418,13 +356,6 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		for s, sv := range secrets {
 			var secretValue kvclient.SecretSetParameters
 			secretValue.Value = &sv
-			// kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
-			// kvc.Authorizer = r.Arm.Auth
-			// vaultName := strings.Split(strings.Split(kvURI, "https://")[1], ".vault.azure.net")[0]
-			// vault, err := kvc.Get(ctx, r.Arm.ResourceGroup, vaultName)
-			// if err != nil {
-			// 	return nil, err
-			// }
 			err := r.createSecret(ctx, kvURI, s, secretValue)
 			if err != nil {
 				fmt.Printf("err: %v", err.Error())
@@ -631,12 +562,13 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		return fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", website, err)
 	}
 
+	// Get a token for the RP system assigned identity for the Key Vault resource
+	// The RP has previously been granted permission earlier to create secrets
 	msiKeyConfig := &auth.MSIConfig{
 		Resource: "https://vault.azure.net",
 		ClientID: si.PrincipalID.String(),
 	}
 
-	// kvAuth, err := auth.NewAuthorizerFromCLIWithResource("https://vault.azure.net")
 	kvAuth, err := msiKeyConfig.Authorizer()
 	if err != nil {
 		return err
