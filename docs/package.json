@@ -12,7 +12,6 @@
     "url": "https://github.com/Azure/radius/issues"
   },
   "homepage": "https://radius.azurewebapp.net",
-  "dependencies": {},
   "devDependencies": {
     "autoprefixer": "^9.8.6",
     "postcss-cli": "^7.1.2"
