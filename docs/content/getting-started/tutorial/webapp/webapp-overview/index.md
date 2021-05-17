@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Website tutorial app overview"
-linkTitle: "App Overview"
+linkTitle: "App overview"
 description: "Overview of the website tutorial application"
 weight: 1000
 ---

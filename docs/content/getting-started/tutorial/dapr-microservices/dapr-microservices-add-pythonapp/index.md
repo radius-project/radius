@@ -2,7 +2,7 @@
 type: docs
 title: "Add a content generator to the app"
 linkTitle: "Add a content generator"
-description: "Add a content generator 'pythonapp' to the tutorial application"
+description: "How to add a content generator to the tutorial application"
 weight: 4000
 ---
 
@@ -19,7 +19,7 @@ Another container component is used to specify a few properties about the order 
 - **dependsOn:** `nodeapp`, which declares the intention for `pythonapp` to communicate with `nodeapp` using `dapr.io/Invoke` as the protocol.
 - **traits:** `appId: pythonapp`, required Dapr configuration. 
 
-```
+```sh
   resource pythonapplication 'Components' = {
     name: 'pythonapp'
     kind: 'radius.dev/Container@v1alpha1'
@@ -55,7 +55,7 @@ A few notable differences between `pythonapp` and the previously-deployed `nodea
 
 ## Update your template.bicep file 
 
-**Update your `template.bicep` file to match the full application definition:**
+Update your `template.bicep` file to match the full application definition:
 
 {{%expand "❗️ Expand for the full code block" %}}
 ```sh
@@ -161,16 +161,12 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 
 ## Next steps
-- To view the application code used in this tutorial, download the [zipped application code](tutorial/dapr-microservices.zip).
 
 - If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
-
 - If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
-
 - Related links for Dapr:
   - [Dapr documentation](https://docs.dapr.io/)
   - [Dapr quickstarts](https://github.com/dapr/quickstarts/tree/v1.0.0/hello-world)
-
 
 You have completed this tutorial!
 
