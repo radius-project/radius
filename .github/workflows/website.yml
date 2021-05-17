@@ -30,6 +30,7 @@ jobs:
       GOVER: '^1.16.0'
       TUTORIAL_PATH: './docs/content/getting-started/tutorial/'
       CODE_ZIP_PATH: './docs/static/tutorial/'
+      HUGO_ENV: production
     steps:
       - uses: actions/checkout@v2
         with:
@@ -66,6 +67,7 @@ jobs:
       GOVER: '^1.16.0'
       TUTORIAL_PATH: './docs/content/getting-started/tutorial/'
       CODE_ZIP_PATH: './docs/static/tutorial/'
+      HUGO_ENV: production
     steps:
       - uses: actions/checkout@v2
         with:
