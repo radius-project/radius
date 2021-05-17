@@ -38,4 +38,4 @@ You can access other versions of the Radius extension from the following URLs:
 
 - [Latest unstable](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix)
 
-<br /><a class="btn btn-primary" href="{{< ref create-environment.md >}}" role="button">Next: Create environment</a>
+{{< button text="Next: Create environment" page="create-environment.md" >}}

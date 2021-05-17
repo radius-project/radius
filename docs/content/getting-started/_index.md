@@ -9,4 +9,5 @@ no_list: true
 
 Welcome to Project Radius! In just a couple minutes this guide will get you up and running with Radius tooling an environment so you can start deploying your applications.
 
-<br /><a class="btn btn-primary" href="{{< ref install-cli.md >}}" role="button">Get started with the rad CLI 🚀</a>
+<br />
+{{< button text="Get started with the rad CLI 🚀" page="install-cli.md" >}}

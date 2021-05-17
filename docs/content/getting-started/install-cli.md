@@ -146,4 +146,4 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - |
    Use "rad [command] --help" for more information about a command.
    ```
 
-<br /><a class="btn btn-primary" href="{{< ref setup-vscode.md >}}" role="button">Next: Setup VSCode</a>
+{{< button text="Next: Setup VSCode" page="setup-vscode.md" >}}
