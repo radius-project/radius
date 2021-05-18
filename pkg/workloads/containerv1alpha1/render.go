@@ -48,10 +48,10 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 		}
 
 		// we've got a match
-		if service.Kind != "http" || generic.Kind != "http" {
+		if service.Kind != KindHTTP || generic.Kind != KindHTTP {
 			// TODO this just does the most basic thing - in theory we could define lots of different
 			// types here. This is good enough for a prototype.
-			return nil, fmt.Errorf("port cannot fulfil service kind: %v", service.Kind)
+			return nil, fmt.Errorf("port cannot fulfill service kind: %v", service.Kind)
 		}
 
 		if len(values) > 0 {
