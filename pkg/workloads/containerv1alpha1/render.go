@@ -316,7 +316,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 				Value: str,
 			})
 
-			if dep.Kind == "azure.com/KeyVault" {
+			if dep.Kind == "azure.com/KeyVault" && v == KeyVaultURIIdentifier {
 				// Cache the KV URIs and use it for setting secrets, if any
 				keyvaults[dep.Name] = str
 			}
@@ -328,27 +328,30 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		secrets := make(map[string]string)
 		var kvURI string
 		for k, v := range dep.SetSecret {
-			// Each setSecret blocks consists of a KV and other secrets
 			service, ok := w.ServiceValues[dep.Name]
 			if !ok {
 				return nil, fmt.Errorf("cannot resolve service %v", dep.Name)
 			}
 
-			var str string
-			if k == KeyVaultIdentifier {
+			if k == SecretStoreIdentifier {
 				// Read the keyvault name and then look up the keyvault dependency to get the URI
-				kvURI = keyvaults[v]
-			} else {
-				value, ok := service[v]
-				if !ok {
-					return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
-				}
+				kvURI = keyvaults[v.(string)]
+			} else if k == SecretKeysIdentifier {
+				// Read the secrets
+				setSecrets := v.(map[string]interface{})
+				for sn, sv := range setSecrets {
+					var str string
+					value, ok := service[sv.(string)]
+					if !ok {
+						return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
+					}
 
-				str, ok = value.(string)
-				if !ok {
-					return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+					str, ok = value.(string)
+					if !ok {
+						return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
+					}
+					secrets[sn] = str
 				}
-				secrets[k] = str
 			}
 		}
 

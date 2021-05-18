@@ -22,8 +22,10 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           kind: 'mongodb.com/Mongo'
           name: 'db'
           setSecret: {
-            KV: kv.name
-            DBCONNECTION: 'connectionString'
+            store: kv.name
+            keys: {
+              DBCONNECTION: 'connectionString'
+            }
           }
         }
       ]
