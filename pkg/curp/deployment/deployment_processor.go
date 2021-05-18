@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/curp/handlers"
+	"github.com/Azure/radius/pkg/curp/revision"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1"
@@ -51,15 +52,16 @@ type ComponentAction struct {
 	ApplicationName string
 	ComponentName   string
 	Operation       DeploymentOperation
-	Definition      *db.ComponentRevision
-	Instantiation   *db.DeploymentComponent
+
 	Provides        map[string]ComponentService
 	ServiceBindings map[string]ServiceBinding
+	NewRevision     revision.Revision
+	OldRevision     revision.Revision
 
 	// Will be `nil` for a delete
-	Component             *components.GenericComponent
-	PreviousDefinition    *db.ComponentRevision
-	PreviousInstanitation *db.DeploymentComponent
+	Definition *db.Component
+	// Will be `nil` for a delete
+	Component *components.GenericComponent
 }
 
 // ComponentService represents a service provided by this component

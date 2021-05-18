@@ -161,7 +161,7 @@ func (test *test) DBCreateComponent(applicationName string, componentName string
 	}
 
 	previous := revision.Revision("")
-	old, err := test.db.GetComponentByApplicationID(context.TODO(), applicationID, componentName, revision.Revision(""))
+	old, err := test.db.GetComponentByApplicationID(context.TODO(), applicationID, componentName)
 	if err == db.ErrNotFound {
 		// this is fine - we don't have a previous version to compare against
 	} else if err != nil {
@@ -175,7 +175,7 @@ func (test *test) DBCreateComponent(applicationName string, componentName string
 
 	component.Revision = rev
 
-	_, err = test.db.PatchComponentByApplicationID(context.TODO(), applicationID, componentName, component, previous)
+	_, err = test.db.PatchComponentByApplicationID(context.TODO(), applicationID, componentName, component)
 	require.NoError(test.t, err)
 
 	return rev

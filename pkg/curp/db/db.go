@@ -12,9 +12,7 @@ import (
 	"log"
 
 	"github.com/Azure/radius/pkg/curp/resources"
-	"github.com/Azure/radius/pkg/curp/revision"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -50,8 +48,8 @@ type CurpDB interface {
 	DeleteApplicationByID(ctx context.Context, id resources.ApplicationID) error
 
 	ListComponentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Component, error)
-	GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, rev revision.Revision) (*Component, error)
-	PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component, previous revision.Revision) (bool, error)
+	GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Component, error)
+	PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component) (bool, error)
 	DeleteComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error
 
 	ListDeploymentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Deployment, error)
@@ -160,19 +158,7 @@ func (d curpDB) ListComponentsByApplicationID(ctx context.Context, id resources.
 	}
 
 	items := make([]Component, 0, len(application.Components))
-	for _, ch := range application.Components {
-		if len(ch.RevisionHistory) == 0 {
-			log.Printf("Component %s has no revision history.", ch.Name)
-			continue
-		}
-
-		cr := ch.RevisionHistory[0]
-		item := Component{
-			ResourceBase: ch.ResourceBase,
-			Kind:         cr.Kind,
-			Revision:     cr.Revision,
-			Properties:   cr.Properties,
-		}
+	for _, item := range application.Components {
 		items = append(items, item)
 	}
 
@@ -180,100 +166,36 @@ func (d curpDB) ListComponentsByApplicationID(ctx context.Context, id resources.
 	return items, nil
 }
 
-func (d curpDB) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, rev revision.Revision) (*Component, error) {
-	log.Printf("Getting Component with Application id, name, and revision: %s, %s, %s", id, name, rev)
+func (d curpDB) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Component, error) {
+	log.Printf("Getting Component with Application id, name, and revision: %s, %s", id, name)
 	application, err := d.GetApplicationByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	history, ok := application.Components[name]
+	item, ok := application.Components[name]
 	if !ok {
-		log.Printf("Failed to find Component with Application id, name, and revision: %s, %s, %s", id, name, rev)
+		log.Printf("Failed to find Component with Application id, name, and revision: %s, %s", id, name)
 		return nil, ErrNotFound
 	}
 
-	var cr *ComponentRevision
-	if len(history.RevisionHistory) == 0 {
-		// no revisions
-	} else if rev == revision.Revision("") {
-		// "latest", return the first one
-		cr = &history.RevisionHistory[len(history.RevisionHistory)-1]
-	} else {
-		for _, r := range history.RevisionHistory {
-			if rev == r.Revision {
-				cr = &r
-				break
-			}
-		}
-	}
-
-	if cr == nil {
-		log.Printf("Failed to find Component with Application id, name, and revision: %s, %s, %s", id, name, rev)
-		return nil, ErrNotFound
-	}
-
-	item := Component{
-		ResourceBase: history.ResourceBase,
-		Kind:         cr.Kind,
-		Revision:     cr.Revision,
-		Properties:   cr.Properties,
-	}
-
-	log.Printf("Found Component with Application id, name, and revision: %s, %s, %s", id, name, rev)
+	log.Printf("Found Component with Application id, name, and revision: %s, %s, %s", id, name, item.Revision)
 	return &item, nil
 }
 
-func (d curpDB) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component, previous revision.Revision) (bool, error) {
-	col := d.db.Collection(applicationsCollection)
+func (d curpDB) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component) (bool, error) {
+	options := options.Update().SetUpsert(true)
+	key := fmt.Sprintf("components.%s", name)
+	filter := bson.D{{Key: "_id", Value: id.ID}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: patch}}}}
 
 	log.Printf("Updating Component with Application id and name: %s, %s", id, name)
-
-	var filter, update primitive.D
-
-	// If this is the first revision, we need to make sure the component history record exists.
-	if previous == revision.Revision("") {
-		log.Printf("Updating Component with Application id and name: %s, %s to add component record", id, name)
-		ch := &ComponentHistory{
-			ResourceBase: patch.ResourceBase,
-		}
-		key := fmt.Sprintf("components.%s", name)
-		filter = bson.D{{Key: "_id", Value: id.ID}, {Key: key, Value: bson.D{{Key: "$exists", Value: false}}}}
-		update = bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: ch}}}}
-		result, err := col.UpdateOne(ctx, filter, update)
-		if err != nil {
-			return false, fmt.Errorf("error updating Component: %s", err)
-		}
-
-		log.Printf("Updated Component with Application id and name: %s, %s - %+v to add component record", id, name, result)
-	}
-
-	// Now update the component record to add a new history entry
-	log.Printf("Updating Component with Application id and name: %s, %s to add component revision", id, name)
-	cr := &ComponentRevision{
-		Kind:       patch.Kind,
-		Revision:   patch.Revision,
-		Properties: patch.Properties,
-	}
-
-	// Update the document where the revision is the previous revision
-	filter = bson.D{{Key: "_id", Value: id.ID}, {Key: fmt.Sprintf("components.%s.revision", name), Value: previous}}
-	update = bson.D{
-		{Key: "$set", Value: bson.D{{Key: fmt.Sprintf("components.%s.revision", name), Value: cr.Revision}}},
-		{Key: "$push", Value: bson.D{{Key: fmt.Sprintf("components.%s.revisionHistory", name), Value: cr}}},
-	}
-	result, err := col.UpdateOne(ctx, filter, update)
+	col := d.db.Collection(applicationsCollection)
+	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return false, fmt.Errorf("error updating Component: %s", err)
 	}
 
-	if result.MatchedCount == 0 {
-		log.Printf("Failed to update Component with Application id and name: %s, %s - %+v to add component revision due to concurrency", id, name, result)
-		return false, ErrConcurrency
-
-	}
-
-	log.Printf("Updated Component with Application id and name: %s, %s - %+v to add component revision", id, name, result)
 	log.Printf("Updated Component with Application id and name: %s, %s", id, name)
 
 	return result.UpsertedCount > 1, nil

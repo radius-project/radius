@@ -164,7 +164,8 @@ func newDBDeploymentFromREST(original *rest.Deployment) *db.Deployment {
 		cc := &db.DeploymentComponent{
 			ID:            c.ID,
 			ComponentName: c.ComponentName,
-			Revision:      c.Revision,
+
+			// We don't allow a REST deployment to specify the revision - it's readonly.
 		}
 
 		d.Properties.Components = append(d.Properties.Components, cc)
