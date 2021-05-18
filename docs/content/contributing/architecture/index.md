@@ -130,13 +130,11 @@ In the future it's likely that we'll need to talk to some other data plane for t
 #### Kubernetes
 
 {{% alert title="🚀 Future State 🚀" color="success" %}}
-Environment setup for Kubernetes will install required infrastructure via Helm charts to perform required setup on the cluster. Each cluster will need a one-time setup operation to install all of the Radius control-plane components.
+Environment setup for Kubernetes will install required infrastructure via Helm charts to perform required setup on the cluster. Each cluster will need a one-time setup operation to install all of the Radius control-plane components. For example, we might install the Radius API (`radius-operator`) and Deployment Engine to the `radius-system` namespace.
 
-Once Radius has been installed for the cluster, users then become free to treat each namespace as an environment.
+Once Radius has been installed for the cluster, users then become free to treat each namespace as an environment. Each application must be defined in a single namespace including both the Radius resources (`Application`, `Component`) as well as the supporting output resources (Kubernetes types like `Deployment` and `Service`). Users are free to use namespaces as an organization and RBAC tool - multiple applications per-namespace are allowed. 
 
-We can use much of `kubectl`s functionality as libraries to enable interop with Kubernetes, for example we can use the full suite of `kubectl`s authentication libraries.
-
-Management operations and troubleshooting operations will use the Kubernetes client libraries to interact with Radius concepts and the Kubernetes data plane.
+On the implementation side, we can use much of `kubectl`s functionality as libraries to enable interop with Kubernetes, for example we can use the full suite of `kubectl`s authentication libraries. Management operations and troubleshooting operations will use the Kubernetes client libraries to interact with Radius concepts and the Kubernetes data plane.
 {{% /alert %}}
 
 ### Application Model & Bicep
@@ -168,12 +166,10 @@ This translation needs to occur at the Bicep compiler level. We need to build in
 
 Example user-facing representation (Future):
 
-TODO: AARON THIS DOES NOT FORMAT CORRECTLY WHAT AM I DOING WRONG
 
-```txt
+```sh
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'app'
-
   resource website 'Components' = {
     name: 'website'
     run: {
@@ -298,7 +294,7 @@ Example of an ARM JSON template:
 }
 ```
 
-Each resource object in the template represent on operation on an individual resource (ARM resource or Kubernetes resource). For an understanding of Radius, it's important to know that we only handle operations on individual resources, not the Bicep file or ARM JSON template as a whole. This is also how interop between Radius types and resources of the hosting platform work deployed in the same template works - the deployment engine manages this.
+Each resource object in the template represent an operation on an individual resource (ARM resource or Kubernetes resource). For an understanding of Radius, it's important to know that we only handle operations on individual resources, not the Bicep file or ARM JSON template as a whole. This is also how interop between Radius types and resources of the hosting platform work deployed in the same template works - the deployment engine manages this.
 
 ### Radius API
 
@@ -307,7 +303,7 @@ The Radius API implements the contract between the Radius control plane and the 
 - Azure: Radius API is implemented as a resource provider to give full interop with ARM types and ARM-related tools 
 - Kubernetes: Radius API is implemented as a controller to give full interop with Kubernetes types and Kubernetes-related tools
 
-The Radius API will recieve application data in the native format of the hosting platform:
+The Radius API will receive application data in the native format of the hosting platform:
 
 - Azure: ARM resources in JSON format
 - Kubernetes: Kubernetes CRDs
@@ -322,7 +318,7 @@ The Radius API is responsible for data storage of status and tracked output reso
 The Radius API is responsible for communicating changes in status and failures via the appropriate channel for the hosting platform:
 
 - Azure: Radius API implements the ARM-RPC protocol in accordance with ARM's strong consistency semantics
-- Kubernetes: Radius API implements validation using webhooks, communciates changes in status using events and the CRD status field
+- Kubernetes: Radius API implements validation using webhooks, communicates changes in status using events and the CRD status field
 
 {{% alert title="🚧 Under Construction 🚧" color="info" %}}
 Currently in Azure we implement this with a Custom Resource Provider. This is a feature for public extensibility of the ARM control plane and comes with some limitiations.
@@ -331,7 +327,7 @@ Custom resource providers are per-resource-group, meaning that the RP has to be 
 
 Custom resource providers have a simplified model for interactions between the RP and ARM and don't include all of the features like preflight validation or what-if. Custom resource provider objects are not visible in the Azure portal.
 
-We are operating in this mode because building a production RP is a significant investment in upfront cost and ongoing maintenance. Opening up an RP as a preview service for public access is has a significant ongoing maintenance cost due to the long deprecation period.
+We are operating in this mode because building a production RP is a significant investment in upfront cost and ongoing maintenance. Opening up an RP as a preview service for public access  has a significant ongoing maintenance cost due to the long deprecation period.
 {{% /alert %}}
 
 {{% alert title="🚀 Future State 🚀" color="success" %}}
