@@ -11,7 +11,6 @@ import (
 
 	db "github.com/Azure/radius/pkg/curp/db"
 	resources "github.com/Azure/radius/pkg/curp/resources"
-	revision "github.com/Azure/radius/pkg/curp/revision"
 	"github.com/golang/mock/gomock"
 )
 
@@ -46,11 +45,11 @@ func NewInMemoryCurpDB(ctrl *gomock.Controller) *MockCurpDB {
 		AnyTimes().DoAndReturn(store.ListComponentsByApplicationID)
 
 	base.EXPECT().
-		GetComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		GetComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
 		AnyTimes().DoAndReturn(store.GetComponentByApplicationID)
 
 	base.EXPECT().
-		PatchComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		PatchComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		AnyTimes().DoAndReturn(store.PatchComponentByApplicationID)
 
 	base.EXPECT().
@@ -184,7 +183,7 @@ func (s *store) PatchApplication(ctx context.Context, patch *db.ApplicationPatch
 	new := &db.Application{}
 
 	if old == nil {
-		new.Components = map[string]db.ComponentHistory{}
+		new.Components = map[string]db.Component{}
 		new.Deployments = map[string]db.Deployment{}
 		new.Scopes = map[string]db.Scope{}
 	} else {
@@ -224,21 +223,14 @@ func (s *store) ListComponentsByApplicationID(ctx context.Context, id resources.
 	}
 
 	items := []db.Component{}
-	for _, ch := range app.Components {
-		cr := ch.RevisionHistory[0]
-		item := db.Component{
-			ResourceBase: ch.ResourceBase,
-			Kind:         cr.Kind,
-			Revision:     cr.Revision,
-			Properties:   cr.Properties,
-		}
+	for _, item := range app.Components {
 		items = append(items, item)
 	}
 
 	return items, nil
 }
 
-func (s *store) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, rev revision.Revision) (*db.Component, error) {
+func (s *store) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*db.Component, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -247,41 +239,15 @@ func (s *store) GetComponentByApplicationID(ctx context.Context, id resources.Ap
 		return nil, db.ErrNotFound
 	}
 
-	history, ok := app.Components[name]
+	item, ok := app.Components[name]
 	if !ok {
 		return nil, db.ErrNotFound
-	}
-
-	var cr *db.ComponentRevision
-	if len(history.RevisionHistory) == 0 {
-		// no revisions
-	} else if rev == revision.Revision("") {
-		// "latest", return the first one
-		cr = &history.RevisionHistory[len(history.RevisionHistory)-1]
-	} else {
-		for _, r := range history.RevisionHistory {
-			if rev == r.Revision {
-				cr = &r
-				break
-			}
-		}
-	}
-
-	if cr == nil {
-		return nil, db.ErrNotFound
-	}
-
-	item := db.Component{
-		ResourceBase: history.ResourceBase,
-		Kind:         cr.Kind,
-		Revision:     cr.Revision,
-		Properties:   cr.Properties,
 	}
 
 	return &item, nil
 }
 
-func (s *store) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *db.Component, previous revision.Revision) (bool, error) {
+func (s *store) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *db.Component) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -292,24 +258,7 @@ func (s *store) PatchComponentByApplicationID(ctx context.Context, id resources.
 
 	_, ok := app.Components[name]
 
-	// If this is the first revision, we need to make sure the component history record exists.
-	if previous == revision.Revision("") {
-		app.Components[name] = db.ComponentHistory{
-			ResourceBase: patch.ResourceBase,
-		}
-	}
-
-	cr := db.ComponentRevision{
-		Kind:       patch.Kind,
-		Revision:   patch.Revision,
-		Properties: patch.Properties,
-	}
-
-	ch := app.Components[name]
-	ch.RevisionHistory = append(ch.RevisionHistory, cr)
-	ch.Revision = cr.Revision
-
-	app.Components[name] = ch
+	app.Components[name] = *patch
 	return !ok, nil
 }
 
