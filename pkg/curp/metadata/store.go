@@ -6,7 +6,7 @@
 package metadata
 
 import (
-	"github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1"
+	"github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
@@ -38,7 +38,7 @@ func NewRegistry() Registry {
 			daprpubsubv1alpha1.Kind: {
 				Kind: "dapr.io/PubSubTopic",
 			},
-			cosmosdocumentdbv1alpha1.Kind: {
+			cosmosdbmongov1alpha1.Kind: {
 				Kind: "mongodb.com/Mongo",
 			},
 			servicebusqueuev1alpha1.Kind: {

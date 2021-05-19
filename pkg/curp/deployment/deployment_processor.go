@@ -19,7 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/curp/revision"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
-	"github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1"
+	"github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"
 	"github.com/Azure/radius/pkg/workloads/dapr"
 	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
@@ -117,12 +117,12 @@ type resourceManager struct {
 func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
 	d := workloads.Dispatcher{
 		Renderers: map[string]workloads.WorkloadRenderer{
-			daprstatestorev1alpha1.Kind:   &daprstatestorev1alpha1.Renderer{},
-			daprpubsubv1alpha1.Kind:       &daprpubsubv1alpha1.Renderer{},
-			cosmosdocumentdbv1alpha1.Kind: &cosmosdocumentdbv1alpha1.Renderer{Arm: arm},
-			containerv1alpha1.Kind:        &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
-			servicebusqueuev1alpha1.Kind:  &servicebusqueuev1alpha1.Renderer{Arm: arm},
-			keyvaultv1alpha1.Kind:         &keyvaultv1alpha1.Renderer{Arm: arm},
+			daprstatestorev1alpha1.Kind:  &daprstatestorev1alpha1.Renderer{},
+			daprpubsubv1alpha1.Kind:      &daprpubsubv1alpha1.Renderer{},
+			cosmosdbmongov1alpha1.Kind:   &cosmosdbmongov1alpha1.Renderer{Arm: arm},
+			containerv1alpha1.Kind:       &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
+			servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
+			keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
 		},
 	}
 

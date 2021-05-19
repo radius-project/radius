@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package cosmosdocumentdbv1alpha1
+package cosmosdbmongov1alpha1
 
 import (
 	"context"
@@ -17,14 +17,14 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-// Renderer is the WorkloadRenderer implementation for the cosmos documentdb workload.
+// Renderer is the WorkloadRenderer implementation for the CosmosDB for MongoDB workload.
 type Renderer struct {
 	Arm armauth.ArmConfig
 }
 
-// Allocate is the WorkloadRenderer implementation for cosmos documentdb  workload.
+// Allocate is the WorkloadRenderer implementation for CosmosDB for MongoDB workload.
 func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	if service.Kind != "mongodb.com/Mongo" && service.Kind != "azure.com/CosmosDocumentDb" {
+	if service.Kind != "mongodb.com/Mongo" && service.Kind != "azure.com/CosmosDBMongo" {
 		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
 	}
 
@@ -67,9 +67,9 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	return values, nil
 }
 
-// Render is the WorkloadRenderer implementation for cosmos documentdb workload.
+// Render WorkloadRenderer implementation for CosmosDB for MongoDB workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
-	component := CosmosDocumentDbComponent{}
+	component := CosmosDBMongoComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return []workloads.WorkloadResource{}, err
