@@ -6,12 +6,23 @@
 package armauth
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 
+	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/radius/pkg/rad/azcli"
+)
+
+const (
+	ServicePrincipalAuth = "ServicePrincipal"
+	ManagedIdentityAuth  = "ManagedIdentity"
+	CliAuth              = "CLI"
 )
 
 // ArmConfig is the configuration we use for managing ARM resources
@@ -24,11 +35,10 @@ type ArmConfig struct {
 
 // GetArmConfig gets the configuration we use for managing ARM resources
 func GetArmConfig() (ArmConfig, error) {
-	auth, clientID, err := GetArmAuthorizerAndClientID()
+	auth, err := GetArmAuthorizer()
 	if err != nil {
 		return ArmConfig{}, err
 	}
-	log.Printf("@@@ using client id: %v", clientID)
 
 	subscriptionID := os.Getenv("ARM_SUBSCRIPTION_ID")
 	if subscriptionID == "" {
@@ -49,6 +59,12 @@ func GetArmConfig() (ArmConfig, error) {
 	}
 
 	log.Printf("Using SubscriptionId = '%v' and Resource Group = '%v'", subscriptionID, resourceGroup)
+
+	clientID, err := GetClientIDForRP(subscriptionID, resourceGroup, *auth)
+	if err != nil || clientID == "" {
+		return ArmConfig{}, errors.New("unable to get clientID to use for role assignments")
+	}
+
 	return ArmConfig{
 		Auth:           *auth,
 		SubscriptionID: subscriptionID,
@@ -57,78 +73,108 @@ func GetArmConfig() (ArmConfig, error) {
 	}, nil
 }
 
-// GetArmAuthorizerAndClientID returns an ARM authorizer and the client ID for the current process
-func GetArmAuthorizerAndClientID() (*autorest.Authorizer, string, error) {
-	clientID, ok := os.LookupEnv("CLIENT_ID")
-
-	if ok && clientID != "" {
+// GetArmAuthorizer returns an ARM authorizer and the client ID for the current process
+func GetArmAuthorizer() (*autorest.Authorizer, error) {
+	authMethod := getAuthMethod()
+	if authMethod == ServicePrincipalAuth {
 		log.Println("Service Principal detected - using SP auth to get credentials")
-		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("CLIENT_ID"), os.Getenv("CLIENT_SECRET"), os.Getenv("TENANT_ID"))
+		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("AZURE_CLIENT_ID"), os.Getenv("AZURE_CLIENT_SECRET"), os.Getenv("AZURE_TENANT_ID"))
 		auth, err := clientcfg.Authorizer()
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
 		token, err := clientcfg.ServicePrincipalToken()
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
 		err = token.EnsureFresh()
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		log.Println("Using Service Principal auth.")
-		return &auth, clientcfg.ClientID, nil
-	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
+		return &auth, nil
+	} else if authMethod == ManagedIdentityAuth {
 		log.Println("Managed Identity detected - using Managed Identity to get credentials")
-
-		env, _ := auth.GetSettingsFromEnvironment()
-		msiconfig := env.GetMSI()
-		log.Printf("@@@ msiconfig clientid: %s, resource: %s", msiconfig.ClientID, msiconfig.Resource)
 
 		config := auth.NewMSIConfig()
 		token, err := config.ServicePrincipalToken()
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
 		err = token.EnsureFresh()
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
 		auth, err := config.Authorizer()
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
-		log.Printf("Using Managed Identity auth. Client ID: %s", config.ClientID)
-		return &auth, config.ClientID, nil
+		log.Println("Using Managed Identity auth.")
+		return &auth, nil
 	} else {
 		log.Println("No Service Principal detected.")
 
 		auth, err := auth.NewAuthorizerFromCLIWithResource("https://management.azure.com")
 
-		// cli.Profile
-		// var token *cli.Token
-		// token, err = cli.GetTokenFromCLI("https://management.azure.com")
-		// fmt.Println(token.ClientID)
-
-		// // u := graphrbac.NewSignedInUserClient("72f988bf-86f1-41af-91ab-2d7cd011db47")
-		// // u.Authorizer = auth
-		// // user, err := u.Get(context.TODO())
-		// // fmt.Printf("@@@ current user: %v", user)
-
-		// // ac := graphrbac.NewApplicationsClient("72f988bf-86f1-41af-91ab-2d7cd011db47")
-		// // ac.Authorizer = auth
-		// // list, err := ac.List(context.TODO(), "")
-		// // fmt.Println(list)
-
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		log.Println("Using CLI auth.")
-		return &auth, "", nil
+		return &auth, nil
+	}
+}
+
+func getAuthMethod() string {
+	clientID, ok := os.LookupEnv("AZURE_CLIENT_ID")
+
+	if ok && clientID != "" {
+		return ServicePrincipalAuth
+	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
+		return ManagedIdentityAuth
+	} else {
+		return CliAuth
+	}
+}
+
+// GetClientIDForRP gets the Identity for the RP.
+// This will be either a serviceprincipal clientID, SystemAssigned Identity or ObjectID for the CLI user based on the auth mechanism
+func GetClientIDForRP(subscriptionID, resourceGroup string, auth autorest.Authorizer) (string, error) {
+	authMethod := getAuthMethod()
+	if authMethod == ServicePrincipalAuth {
+		return os.Getenv("AZURE_CLIENT_ID"), nil
+	} else if authMethod == ManagedIdentityAuth {
+		log.Println("Managed Identity detected - using Managed Identity to get credentials")
+
+		rpName, ok := os.LookupEnv("RP_NAME")
+		if !ok {
+			log.Fatalln("Could not read RadiusRP name")
+		}
+
+		rp := azure.Resource{
+			SubscriptionID: subscriptionID,
+			ResourceGroup:  resourceGroup,
+			Provider:       "Microsoft.Web",
+			ResourceType:   "sites",
+			ResourceName:   rpName,
+		}
+		mc := msi.NewSystemAssignedIdentitiesClient(subscriptionID)
+		mc.Authorizer = auth
+		si, err := mc.GetByScope(context.TODO(), rp.String())
+		if err != nil {
+			return "", fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", rp.String(), err)
+		}
+
+		return si.PrincipalID.String(), nil
+	} else {
+		rpClientID, err := azcli.RunCLICommandWithOutput("ad", "signed-in-user", "show", "--query", "objectId", "--output", "tsv")
+		if err != nil {
+			return "", fmt.Errorf("Unable to get objectID for current user: %w", err)
+		}
+		return rpClientID, nil
 	}
 }
