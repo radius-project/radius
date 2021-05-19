@@ -18,7 +18,7 @@ import (
 var envShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show RAD environment details",
-	Long:  "Show RAD environment details. Uses current default env by default.",
+	Long:  "Show Radius environment details. Uses the current user's default environment by default.",
 	RunE:  showEnvironment,
 }
 
