@@ -25,6 +25,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
@@ -563,20 +564,20 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 	// 	return fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", website, err)
 	// }
 
-	// // Get a token for the RP system assigned identity for the Key Vault resource
-	// // The RP has previously been granted permission earlier to create secrets
-	// msiKeyConfig := &auth.MSIConfig{
-	// 	Resource: "https://vault.azure.net",
-	// 	ClientID: si.PrincipalID.String(),
-	// }
+	// Get a token for the RP system assigned identity for the Key Vault resource
+	// The RP has previously been granted permission earlier to create secrets
+	msiKeyConfig := &auth.MSIConfig{
+		Resource: "https://vault.azure.net",
+		ClientID: r.Arm.ClientID,
+	}
 
-	// kvAuth, err := msiKeyConfig.Authorizer()
-	// if err != nil {
-	// 	return err
-	// }
-	// kvc.Authorizer = kvAuth
+	kvAuth, err := msiKeyConfig.Authorizer()
+	if err != nil {
+		return err
+	}
+	kvc.Authorizer = kvAuth
 	kvc.Authorizer = r.Arm.Auth
-	_, err := kvc.SetSecret(ctx, kvURI, secretName, secretValue)
+	_, err = kvc.SetSecret(ctx, kvURI, secretName, secretValue)
 	if err != nil {
 		return err
 	}

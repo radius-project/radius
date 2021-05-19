@@ -65,6 +65,8 @@ func GetArmConfig() (ArmConfig, error) {
 		return ArmConfig{}, errors.New("unable to get clientID to use for role assignments")
 	}
 
+	log.Printf("@@@@ using clientID for auth: %s", clientID)
+
 	return ArmConfig{
 		Auth:           *auth,
 		SubscriptionID: subscriptionID,
@@ -145,12 +147,14 @@ func getAuthMethod() string {
 // This will be either a serviceprincipal clientID, SystemAssigned Identity or ObjectID for the CLI user based on the auth mechanism
 func GetClientIDForRP(subscriptionID, resourceGroup string, auth autorest.Authorizer) (string, error) {
 	authMethod := getAuthMethod()
+	authMethod = ManagedIdentityAuth
 	if authMethod == ServicePrincipalAuth {
 		return os.Getenv("AZURE_CLIENT_ID"), nil
 	} else if authMethod == ManagedIdentityAuth {
 		log.Println("Managed Identity detected - using Managed Identity to get credentials")
 
-		rpName, ok := os.LookupEnv("RP_NAME")
+		// rpName, ok := os.LookupEnv("RP_NAME")
+		rpName = 
 		if !ok {
 			log.Fatalln("Could not read RadiusRP name")
 		}
