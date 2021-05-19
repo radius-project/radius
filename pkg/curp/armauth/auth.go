@@ -60,6 +60,7 @@ func GetArmConfig() (ArmConfig, error) {
 // GetArmAuthorizerAndClientID returns an ARM authorizer and the client ID for the current process
 func GetArmAuthorizerAndClientID() (*autorest.Authorizer, string, error) {
 	clientID, ok := os.LookupEnv("CLIENT_ID")
+
 	if ok && clientID != "" {
 		log.Println("Service Principal detected - using SP auth to get credentials")
 		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("CLIENT_ID"), os.Getenv("CLIENT_SECRET"), os.Getenv("TENANT_ID"))
@@ -81,6 +82,10 @@ func GetArmAuthorizerAndClientID() (*autorest.Authorizer, string, error) {
 		return &auth, clientcfg.ClientID, nil
 	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
 		log.Println("Managed Identity detected - using Managed Identity to get credentials")
+
+		env, _ := auth.GetSettingsFromEnvironment()
+		msiconfig := env.GetMSI()
+		log.Printf("@@@ msiconfig clientid: %s, resource: %s", msiconfig.ClientID, msiconfig.Resource)
 
 		config := auth.NewMSIConfig()
 		token, err := config.ServicePrincipalToken()
