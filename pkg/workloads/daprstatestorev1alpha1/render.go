@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -19,13 +20,22 @@ type Renderer struct {
 }
 
 // Allocate is the WorkloadRenderer implementation for dapr statestore workload.
-func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	if service.Kind != "dapr.io/StateStore" {
-		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	if len(workload.Workload.Bindings) > 0 {
+		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	// no values
-	return map[string]interface{}{}, nil
+	bindings := map[string]components.BindingState{
+		"default": {
+			Component: workload.Name,
+			Binding:   "default",
+			Properties: map[string]interface{}{
+				"stateStoreName": workload.Name,
+			},
+		},
+	}
+
+	return bindings, nil
 }
 
 // Render is the WorkloadRenderer implementation for dapr statestore workload.

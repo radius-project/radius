@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/curp/resources"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
@@ -21,27 +22,34 @@ type Renderer struct {
 }
 
 // Allocate is the WorkloadRenderer implementation for dapr pubsub workload.
-func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	if service.Kind != "dapr.io/PubSubTopic" {
-		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	if len(workload.Workload.Bindings) > 0 {
+		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(wrp) != 1 || wrp[0].Type != workloads.ResourceKindDaprPubSubTopicAzureServiceBus {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", workloads.ResourceKindDaprPubSubTopicAzureServiceBus)
+	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindDaprPubSubTopicAzureServiceBus {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", workloads.ResourceKindDaprPubSubTopicAzureServiceBus)
 	}
 
-	properties := wrp[0].Properties
+	properties := resources[0].Properties
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
 	pubsubName := properties[handlers.KubernetesNameKey]
 	topicName := properties[handlers.ServiceBusTopicNameKey]
 
-	values := map[string]interface{}{
-		"namespace":  namespaceName,
-		"pubsubName": pubsubName,
-		"topic":      topicName,
+	bindings := map[string]components.BindingState{
+		"default": {
+			Component: workload.Name,
+			Binding:   "default",
+			Kind:      "dapr.io/PubSubTopic",
+			Properties: map[string]interface{}{
+				"namespace":  namespaceName,
+				"pubSubName": pubsubName,
+				"topic":      topicName,
+			},
+		},
 	}
 
-	return values, nil
+	return bindings, nil
 }
 
 // Render is the WorkloadRenderer implementation for dapr pubsub workload.

@@ -10,26 +10,25 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-nodeapp'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          kind: 'dapr.io/StateStore'
-          name: 'statestore'
+          binding: statestore.properties.bindings.default
         }
       ]
-      provides: [
-        {
+      bindings: {
+        web: {
           kind: 'http'
-          name: 'web'
-          containerPort: 3000
+          targetPort: 3000
         }
-      ]
+        invoke: {
+          kind: 'dapr.io/Invoke'
+        }
+      }
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'nodeapp'
-            appPort: 3000
-          }
+          appId: 'nodeapp'
+          appPort: 3000
         }
       ]
     }
@@ -44,18 +43,15 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-pythonapp'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          kind: 'dapr.io/Invoke'
-          name: 'nodeapp'
+          binding: nodeapplication.properties.bindings.invoke
         }
       ]
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'pythonapp'
-          }
+          appId: 'pythonapp'
         }
       ]
     }

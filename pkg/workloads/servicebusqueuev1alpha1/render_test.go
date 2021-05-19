@@ -29,7 +29,7 @@ func Test_Render_Unanaged_Failure(t *testing.T) {
 				// Queue is required
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	_, err := renderer.Render(context.Background(), workload)
@@ -51,7 +51,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 				"queue":   "cool-queue",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	resources, err := renderer.Render(context.Background(), workload)
@@ -83,7 +83,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	resources, err := renderer.Render(context.Background(), workload)
@@ -118,7 +118,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/queues/test-queue",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	_, err := renderer.Render(context.Background(), workload)

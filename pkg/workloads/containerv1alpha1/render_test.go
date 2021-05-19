@@ -31,12 +31,11 @@ func Test_Render_Success(t *testing.T) {
 					"image": "test/test-image:latest",
 				},
 			},
-			Provides: []components.GenericDependency{
-				{
-					Name: "test-service",
+			Bindings: map[string]components.GenericBinding{
+				"test-service": {
 					Kind: "http",
 					AdditionalProperties: map[string]interface{}{
-						"containerPort": 3000,
+						"targetPort": 3000,
 					},
 				},
 			},

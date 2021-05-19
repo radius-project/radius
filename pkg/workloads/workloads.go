@@ -21,13 +21,7 @@ type InstantiatedWorkload struct {
 	Application   string
 	Name          string
 	Workload      components.GenericComponent
-	ServiceValues map[string]map[string]interface{}
-}
-
-// WorkloadService represents a service that the workload provides.
-type WorkloadService struct {
-	Name string
-	Kind string
+	BindingValues map[components.BindingKey]components.BindingState
 }
 
 // WorkloadRenderer defines the interface for rendering a Kubernetes workload definition
@@ -36,7 +30,9 @@ type WorkloadService struct {
 // The idea is that this represents *fan-out* in terms of the implementation. All of the APIs here
 // could be replaced with REST calls.
 type WorkloadRenderer interface {
-	Allocate(ctx context.Context, workload InstantiatedWorkload, resources []WorkloadResourceProperties, service WorkloadService) (map[string]interface{}, error)
+	// AllocateBindings is called for the component to provide its supported bindings and their values.
+	AllocateBindings(ctx context.Context, workload InstantiatedWorkload, resources []WorkloadResourceProperties) (map[string]components.BindingState, error)
+	// Render is called for the component to provide its output resources.
 	Render(ctx context.Context, workload InstantiatedWorkload) ([]WorkloadResource, error)
 }
 

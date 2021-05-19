@@ -21,19 +21,19 @@ A `kv` secret store component is used to specify a few properties about the KeyV
     name: 'kv'
     kind: 'azure.com/KeyVault@v1alpha1'
     properties: {
-        config: {
-            managed: true
-        }
+      config: {
+        managed: true
+      }
     }
   }
 ```
 
 ## Reference kv from todoapp
 
-Once the secret store is defined as a component, you can connect to it by referencing the `kv` component from within the `todoapp` component via a `dependsOn` section. 
+Once the secret store is defined as a component, you can connect to it by referencing the `kv` component from within the `todoapp` component via a `uses` section. 
 
-The `dependsOn` section is used to configure relationships between a component and services provided by other components. The `kv` is of kind `azure.com/AzureKeyVault@v1alpha1`.
-Here's what the todoapp component will look like with the `dependsOn` section added within its properties:
+The `uses` section is used to configure relationships between a component and bindings provided by other components. The `kv` is of kind `azure.com/AzureKeyVault@v1alpha1`.
+Here's what the todoapp component will look like with the `uses` section added within its properties:
 
 ```sh
   resource todoapplication 'Components' = {
@@ -41,49 +41,49 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: { ... }
-      dependsOn: [
+      uses: [
         {
-          name: 'kv'
-          kind: 'azure.com/KeyVault'
-          setEnv: {
-            KV_URI: 'keyvaulturi'
+          bindings: kv.properties.bindings.default
+          env: {
+            KV_URI: kv.properties.bindings.default.uri
           }
         }
+        {
+          ...
+        }
       ]
-      provides: [ ... ]
+      bindings: [ ... ]
     }
   }
 ```
 
-The `setEnv` section declares operations to perform *based on* the relationship. In this case the `kvuri` value will be retrieved from the key vault and set as an environment variable on the component. As a result, `todoapp` will be able to use the `KV_URI` environment variable to access to the key vault.
+The `env` section declares operations to perform *based on* the relationship. In this case the `uri` value will be retrieved from the key vault and set as an environment variable on the component. As a result, `todoapp` will be able to use the `KV_URI` environment variable to access to the key vault.
 
 ## Modify the db dependency to create a secret
 
-Now, we no longer want the application to access the connection string to the database in clear text as an environment variable. Instead, we want to create a secret in the secret store which will store the connection string. For this, modify the `dependsOn` section as below:-
+Now, we no longer want the application to access the connection string to the database in clear text as an environment variable. Instead, we want to create a secret in the secret store which will store the connection string. For this, modify the `uses` section as below:-
 
 ```sh
-  dependsOn: [
+  uses: [
     {
-      name: 'kv'
-      kind: 'azure.com/KeyVault'
-      setEnv: {
-        KV_URI: 'keyvaulturi'
+      binding: kv.properties.bindings.default
+      env: {
+        KV_URI: kv.properties.bindings.default.uri
       }
     }
     {
-      kind: 'mongodb.com/Mongo'
-      name: 'db'
+      binding: db.properties.bindings.mongo
       setSecret: {
-        store: kv.name
+        store: kv.properties.bindings.default
         keys: {
-          DBCONNECTION: 'connectionString'
+          DBCONNECTION: binding: db.properties.bindings.mongo.connectionString
         }
       }
     }
   ]
 ```
 
-Here, the `setSecret` section declares the secrets to be created for the container to access the `db` component. In this case the `connectionString` value will be retrieved from the database and set as a secret in the secret store (named `kv` here) and the secret name will be `DBCONNECTION`.
+Here, the `secret` section declares the secrets to be created for the container to access the `db` component. In this case the `connectionString` value will be retrieved from the database and set as a secret in the secret store (identified by `store`) and the secret name will be `DBCONNECTION`.
 
 ## Update your template.bicep file 
 
@@ -102,32 +102,29 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-todoapp'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'kv'
-          kind: 'azure.com/KeyVault'
-          setEnv: {
-            KV_URI: 'keyvaulturi'
+          binding: kv.properties.bindings.default
+          env: {
+            KV_URI: kv.properties.bindings.default.uri
           }
         }
         {
-          kind: 'mongodb.com/Mongo'
-          name: 'db'
+          binding: db.properties.bindings.mongo
           setSecret: {
-            store: kv.name
+            store: kv.properties.bindings.default
             keys: {
-              DBCONNECTION: 'connectionString'
+              DBCONNECTION: binding: db.properties.bindings.mongo.connectionString
             }
           }
         }
       ]
-      provides: [
-        {
+      bindings: {
+        web: {
           kind: 'http'
-          name: 'web'
-          containerPort: 3000
+          targetPort: 3000
         }
-      ]
+      }
     }
   }
 

@@ -67,30 +67,37 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 		},
 	}
 
-	for _, d := range original.Properties.DependsOn {
-		dd := db.ComponentDependsOn{
-			Name:      d.Name,
-			Kind:      d.Kind,
-			SetEnv:    d.SetEnv,
-			SetSecret: d.SetSecret,
+	for _, d := range original.Properties.Uses {
+		dd := db.ComponentDependency{
+			Binding: d.Binding,
+			Env:     d.Env,
 		}
-		c.Properties.DependsOn = append(c.Properties.DependsOn, dd)
+
+		if d.Secrets != nil {
+			dd.Secrets = &db.ComponentDependencySecrets{
+				Store: d.Secrets.Store,
+				Keys:  d.Secrets.Keys,
+			}
+		}
+
+		c.Properties.Uses = append(c.Properties.Uses, dd)
 	}
 
-	for _, p := range original.Properties.Provides {
-		pp := db.ComponentProvides{
-			Name:          p.Name,
-			Kind:          p.Kind,
-			Port:          p.Port,
-			ContainerPort: p.ContainerPort,
+	c.Properties.Bindings = map[string]db.ComponentBinding{}
+	if original.Properties.Bindings != nil {
+		for name, b := range original.Properties.Bindings {
+			bb := db.ComponentBinding{
+				Kind:                 b.Kind,
+				AdditionalProperties: b.AdditionalProperties,
+			}
+			c.Properties.Bindings[name] = bb
 		}
-		c.Properties.Provides = append(c.Properties.Provides, pp)
 	}
 
 	for _, t := range original.Properties.Traits {
 		tt := db.ComponentTrait{
-			Kind:       t.Kind,
-			Properties: t.Properties,
+			Kind:                 t.Kind,
+			AdditionalProperties: t.AdditionalProperties,
 		}
 		c.Properties.Traits = append(c.Properties.Traits, tt)
 	}
@@ -110,28 +117,36 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 		},
 	}
 
-	for _, d := range original.Properties.DependsOn {
-		dd := rest.ComponentDependsOn{
-			Name:   d.Name,
-			Kind:   d.Kind,
-			SetEnv: d.SetEnv,
+	for _, d := range original.Properties.Uses {
+		dd := rest.ComponentDependency{
+			Binding: d.Binding,
+			Env:     d.Env,
 		}
-		c.Properties.DependsOn = append(c.Properties.DependsOn, dd)
+
+		if d.Secrets != nil {
+			dd.Secrets = &rest.ComponentDependencySecrets{
+				Store: d.Secrets.Store,
+				Keys:  d.Secrets.Keys,
+			}
+		}
+		c.Properties.Uses = append(c.Properties.Uses, dd)
 	}
 
-	for _, p := range original.Properties.Provides {
-		pp := rest.ComponentProvides{
-			Name:          p.Name,
-			Kind:          p.Kind,
-			ContainerPort: p.ContainerPort,
+	c.Properties.Bindings = map[string]rest.ComponentBinding{}
+	if original.Properties.Bindings != nil {
+		for name, b := range original.Properties.Bindings {
+			bb := rest.ComponentBinding{
+				Kind:                 b.Kind,
+				AdditionalProperties: b.AdditionalProperties,
+			}
+			c.Properties.Bindings[name] = bb
 		}
-		c.Properties.Provides = append(c.Properties.Provides, pp)
 	}
 
 	for _, t := range original.Properties.Traits {
 		tt := rest.ComponentTrait{
-			Kind:       t.Kind,
-			Properties: t.Properties,
+			Kind:                 t.Kind,
+			AdditionalProperties: t.AdditionalProperties,
 		}
 		c.Properties.Traits = append(c.Properties.Traits, tt)
 	}

@@ -6,6 +6,7 @@
 package dapr
 
 const Kind = "dapr.io/App@v1alpha1"
+const BindingKind = "dapr.io/Invoke"
 
 type Trait struct {
 	Kind       string          `json:"kind"`

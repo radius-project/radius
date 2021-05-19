@@ -10,32 +10,26 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-todoapp'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'kv'
-          kind: 'azure.com/KeyVault'
-          setEnv: {
-            KV_URI: 'keyvaulturi'
-          }
+          binding: kv.properties.bindings.default
         }
         {
-          kind: 'mongodb.com/Mongo'
-          name: 'db'
-          setSecret: {
-            store: kv.name
+          binding: db.properties.bindings.mongo
+          secrets: {
+            store: kv.properties.bindings.default
             keys: {
-              DBCONNECTION: 'connectionString'
+              DBCONNECTION: db.properties.bindings.mongo.connectionString
             }
           }
         }
       ]
-      provides: [
-        {
+      bindings: {
+        web: {
           kind: 'http'
-          name: 'web'
-          containerPort: 3000
+          targetPort: 3000
         }
-      ]
+      }
     }
   }
 
@@ -53,9 +47,9 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     name: 'kv'
     kind: 'azure.com/KeyVault@v1alpha1'
     properties: {
-        config: {
-            managed: true
-        }
+      config: {
+        managed: true
+      }
     }
   }
 }

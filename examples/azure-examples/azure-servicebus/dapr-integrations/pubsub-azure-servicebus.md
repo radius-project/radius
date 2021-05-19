@@ -40,7 +40,7 @@ docker push <your docker hub>/dapr-pubsub-nodesubscriber:latest
 
 Note: You need to reference your new image as the container image in the deployment template:-
 ```
-resource nodesubscriber 'Components' = {
+  resource nodesubscriber 'Components' = {
     name: 'nodesubscriber'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
@@ -49,23 +49,20 @@ resource nodesubscriber 'Components' = {
           image: '<your docker hub>/dapr-pubsub-nodesubscriber:latest'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'pubsub'
-          kind: 'dapr.io/PubSubTopic'
-          setEnv: {
-            SB_PUBSUBNAME: 'pubsubName'
-            SB_TOPIC: 'topic'
+          binding: pubsub.properties.bindings.default
+          env: {
+            SB_PUBSUBNAME: pubsub.properties.bindings.default.pubSubName
+            SB_TOPIC: pubsub.properties.bindings.default.topic
           }
         }
       ]
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'nodesubscriber'
-            appPort: 50051
-          }
+          appId: 'nodesubscriber'
+          appPort: 50051
         }
       ]
     }
@@ -86,35 +83,32 @@ docker push <your docker hub>/dapr-pubsub-pythonpublisher:latest
 
 Note: You need to reference your new image as the container image in the deployment template:-
 ```
-resource pythonpublisher 'Components' = {
-  name: 'pythonpublisher'
-  kind: 'radius.dev/Container@v1alpha1'
-  properties: {
-    run: {
-      container: {
-        image: '<your docker hub>/dapr-pubsub-pythonpublisher:latest'
-      }
-    }
-    dependsOn: [
-      {
-        name: 'pubsub'
-        kind: 'dapr.io/PubSubTopic'
-        setEnv: {
-          SB_PUBSUBNAME: 'pubsubName'
-          SB_TOPIC: 'topic'
+  resource pythonpublisher 'Components' = {
+    name: 'pythonpublisher'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: {
+        container: {
+          image: '<your docker hub>/dapr-pubsub-pythonpublisher:latest'
         }
       }
-    ]
-    traits: [
-      {
-        kind: 'dapr.io/App@v1alpha1'
-        properties: {
+      uses: [
+        {
+          binding: pubsub.properties.bindings.default
+          env: {
+            SB_PUBSUBNAME: pubsub.properties.bindings.default.pubSubName
+            SB_TOPIC: pubsub.properties.bindings.default.topic
+          }
+        }
+      ]
+      traits: [
+        {
+          kind: 'dapr.io/App@v1alpha1'
           appId: 'pythonpublisher'
         }
-      }
-    ]
+      ]
+    }
   }
-}
 ```
 
 The environment variables `SB_PUBSUBNAME` and `SB_TOPIC` are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec

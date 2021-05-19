@@ -7,11 +7,11 @@ package deployment
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"strings"
 
+	"github.com/Azure/radius/pkg/algorithm/graph"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
@@ -54,10 +54,8 @@ type ComponentAction struct {
 	ComponentName   string
 	Operation       DeploymentOperation
 
-	Provides        map[string]ComponentService
-	ServiceBindings map[string]ServiceBinding
-	NewRevision     revision.Revision
-	OldRevision     revision.Revision
+	NewRevision revision.Revision
+	OldRevision revision.Revision
 
 	// Will be `nil` for a delete
 	Definition *db.Component
@@ -65,18 +63,23 @@ type ComponentAction struct {
 	Component *components.GenericComponent
 }
 
-// ComponentService represents a service provided by this component
-type ComponentService struct {
-	Name     string
-	Kind     string
-	Provider string
+// DependencyItem implementation
+func (action ComponentAction) Key() string {
+	return action.ComponentName
 }
 
-// ServiceBinding represents the binding between a component that provides a service, and those that consume it.
-type ServiceBinding struct {
-	Name     string
-	Kind     string
-	Provider string
+func (action ComponentAction) GetDependencies() []string {
+	dependencies := []string{}
+	for _, dependency := range action.Component.Uses {
+		if dependency.Binding.Kind == components.KindStatic {
+			continue
+		}
+
+		expr := dependency.Binding.Value.(*components.ComponentBindingValue)
+		dependencies = append(dependencies, expr.Component)
+	}
+
+	return dependencies
 }
 
 //go:generate mockgen -destination=../../../mocks/mock_deployment_processor.go -package=mocks github.com/Azure/radius/pkg/curp/deployment DeploymentProcessor
@@ -184,6 +187,8 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 		log.Printf("%v - %s", i, action.ComponentName)
 	}
 
+	bindingValues := map[components.BindingKey]components.BindingState{}
+
 	// Process each action and update the deployment status as we go ...
 	for _, action := range ordered {
 		log.Printf("executing action %s for component %s", action.Operation, action.ComponentName)
@@ -193,6 +198,40 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 		case None:
 			// Don't update resources or services - we should already have them from the DB
+			//
+			// However we should process bindings for these so the values are accessible to
+			// other components that need them.
+			//
+			// We need to fetch the properties for the existing resources from the database
+			// in order to do this.
+
+			resources := []workloads.WorkloadResourceProperties{}
+			for _, status := range d.Workloads {
+				if status.ComponentName != action.Component.Name {
+					continue
+				}
+
+				for _, resource := range status.Resources {
+					wr := workloads.WorkloadResourceProperties{
+						Type:       resource.Type,
+						Properties: resource.Properties,
+					}
+					resources = append(resources, wr)
+				}
+			}
+
+			inst := workloads.InstantiatedWorkload{
+				Application:   appName,
+				Name:          action.ComponentName,
+				Workload:      *action.Component,
+				BindingValues: bindingValues,
+			}
+
+			err = dp.processBindings(ctx, inst, resources, bindingValues)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("error applying bindings for component %v : %w", action.ComponentName, err))
+				continue
+			}
 
 		case CreateWorkload, UpdateWorkload:
 			// For an update, just blow away the existing workload record
@@ -201,29 +240,11 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				Kind:          action.Definition.Kind,
 			}
 
-			// Retrieve the services this component depends on - they should already be populated
-			// either from a previous deployment or from rendering during this one.
-			values := map[string]map[string]interface{}{}
-			for _, binding := range action.ServiceBindings {
-				s, ok := d.Services[binding.Name]
-				if !ok {
-					errs = append(errs, fmt.Errorf("cannot find service %v : %v - provider should be %v", binding.Name, binding.Kind, binding.Provider))
-					continue
-				}
-
-				if s.Kind != binding.Kind {
-					errs = append(errs, fmt.Errorf("service %v : %v - is not of expected kind %v - provider should be %v", s.Name, s.Kind, binding.Kind, binding.Provider))
-					continue
-				}
-
-				values[binding.Name] = s.Properties
-			}
-
 			inst := workloads.InstantiatedWorkload{
 				Application:   appName,
 				Name:          action.ComponentName,
 				Workload:      *action.Component,
-				ServiceValues: values,
+				BindingValues: bindingValues,
 			}
 
 			resources, err := dp.renderWorkload(ctx, inst)
@@ -276,20 +297,21 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				dw.Resources = append(dw.Resources, dr)
 			}
 
-			// Fetch all the services this component provides
-			services, err := dp.renderServices(ctx, inst, dw.Resources, action.Provides)
+			wrps := []workloads.WorkloadResourceProperties{}
+			for _, resource := range dw.Resources {
+				wr := workloads.WorkloadResourceProperties{
+					Type:       resource.Type,
+					Properties: resource.Properties,
+				}
+				wrps = append(wrps, wr)
+			}
+
+			// Populate data for the bindings that this component provides
+			err = dp.processBindings(ctx, inst, wrps, bindingValues)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("error applying workload services %v: %w", action.ComponentName, err))
+				errs = append(errs, fmt.Errorf("error applying workload bindings %v: %w", action.ComponentName, err))
 				continue
 			}
-
-			// Track services centrally
-			for _, s := range services {
-				d.Services[s.Name] = s
-			}
-
-			// Remove services this component provides, they are not eligible anymore
-			removeUnreachableServices(*d, action.ComponentName, action.Provides)
 
 			updated := false
 			for i, existing := range d.Workloads {
@@ -317,16 +339,12 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 			}
 
-			// Remove services this component provides, they are not eligible anymore
-			removeUnreachableServices(*d, action.ComponentName, action.Provides)
-
 			if match.ComponentName == "" {
 				errs = append(errs, fmt.Errorf("cannot find deployment record for %v", action.ComponentName))
 				continue
 			}
 
 			for _, resource := range match.Resources {
-
 				h, ok := dp.rm.handlers[resource.Type]
 				if !ok {
 					errs = append(errs, fmt.Errorf("cannot find handler for resource type %s", resource.Type))
@@ -364,62 +382,28 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 	return nil
 }
 
-func removeUnreachableServices(d db.DeploymentStatus, componentName string, providers map[string]ComponentService) {
-	remove := map[string]bool{}
-	for k, s := range d.Services {
-		// looking for services that were defined by this component but are no longer
-		_, provides := providers[k]
-		if s.Provider == componentName && !provides {
-			remove[k] = true
-		}
-	}
-
-	for k := range remove {
-		delete(d.Services, k)
-	}
-}
-
 func (dp *deploymentProcessor) orderActions(actions map[string]ComponentAction) ([]ComponentAction, error) {
-	// TODO: reimplement this as an in-place sort on a single slice rather than this O(N^3) monstrosity
-	done := map[string]bool{}
-	ordered := []ComponentAction{}
-
-	for {
-		if len(done) == len(actions) {
-			// all actions ordered
-			return ordered, nil
-		}
-
-		progress := false
-		for name, action := range actions {
-			if _, ok := done[name]; ok {
-				// already ordered
-				continue
-			}
-
-			ready := true
-			for _, binding := range action.ServiceBindings {
-				if _, ok := done[binding.Provider]; !ok {
-					// this component has an outstanding dependency
-					ready = false
-					break
-				}
-			}
-
-			if ready {
-				ordered = append(ordered, action)
-				done[name] = true
-				progress = true
-				break
-			}
-
-			// else, try the next component
-		}
-
-		if !progress {
-			return []ComponentAction{}, errors.New("circular dependency detected")
-		}
+	unordered := []graph.DependencyItem{}
+	for _, action := range actions {
+		unordered = append(unordered, action)
 	}
+
+	dg, err := graph.ComputeDependencyGraph(unordered)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := dg.Order()
+	if err != nil {
+		return nil, err
+	}
+
+	ordered := []ComponentAction{}
+	for _, item := range items {
+		ordered = append(ordered, item.(ComponentAction))
+	}
+
+	return ordered, nil
 }
 
 func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus) error {
@@ -470,30 +454,43 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 	return resources, nil
 }
 
-func (dp *deploymentProcessor) renderServices(ctx context.Context, w workloads.InstantiatedWorkload, dr []db.DeploymentResource, services map[string]ComponentService) ([]db.DeploymentService, error) {
-	r, err := dp.dispatcher.Lookup(w.Workload.Kind)
+func (dp *deploymentProcessor) processBindings(ctx context.Context, w workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties, bindingValues map[components.BindingKey]components.BindingState) error {
+
+	renderer, err := dp.dispatcher.Lookup(w.Workload.Kind)
 	if err != nil {
-		return []db.DeploymentService{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
+		return fmt.Errorf("could not find renderer for workload of kind %v: %w", w.Workload.Kind, err)
 	}
 
-	resources := []workloads.WorkloadResourceProperties{}
-	for _, r := range dr {
-		resources = append(resources, workloads.WorkloadResourceProperties{
-			Type:       r.Type,
-			Properties: r.Properties,
-		})
+	bindings, err := renderer.AllocateBindings(ctx, w, resources)
+	if err != nil {
+		return fmt.Errorf("could not allocate bindings for component %s of kind %v: %w", w.Name, w.Workload.Kind, err)
 	}
 
-	results := []db.DeploymentService{}
-	for _, s := range services {
-		service := workloads.WorkloadService{Name: s.Name, Kind: s.Kind}
-		values, err := r.Allocate(ctx, w, resources, service)
-		if err != nil {
-			return []db.DeploymentService{}, fmt.Errorf("could not allocate service of kind %v: %v", s.Kind, err)
+	for name, state := range bindings {
+		key := components.BindingKey{
+			Component: w.Name,
+			Binding:   name,
 		}
 
-		results = append(results, db.DeploymentService{Name: s.Name, Kind: s.Kind, Provider: w.Workload.Kind, Properties: values})
+		bindingValues[key] = state
 	}
 
-	return results, nil
+	// Validate that all user-specified bindings are present
+	for name, binding := range w.Workload.Bindings {
+		key := components.BindingKey{
+			Component: w.Name,
+			Binding:   name,
+		}
+		_, ok := bindingValues[key]
+		if !ok {
+			return fmt.Errorf(
+				"the binding %s with kind %s of component %s is not supported by component kind %s",
+				name,
+				binding.Kind,
+				w.Workload.Name,
+				w.Workload.Kind)
+		}
+	}
+
+	return nil
 }
