@@ -5,16 +5,18 @@
 
 package containerv1alpha1
 
+import "github.com/Azure/radius/pkg/curp/components"
+
 const Kind = "radius.dev/Container@v1alpha1"
 
 // ContainerComponent is the definition of the container component
 type ContainerComponent struct {
-	Name      string                   `json:"name"`
-	Kind      string                   `json:"kind"`
-	Config    map[string]interface{}   `json:"config,omitempty"`
-	Run       ContainerRun             `json:"run,omitempty"`
-	DependsOn []ContainerDependsOn     `json:"dependson,omitempty"`
-	Traits    []map[string]interface{} `json:"traits,omitempty"`
+	Name   string                         `json:"name"`
+	Kind   string                         `json:"kind"`
+	Config map[string]interface{}         `json:"config,omitempty"`
+	Run    ContainerRun                   `json:"run,omitempty"`
+	Uses   []components.GenericDependency `json:"uses,omitempty"`
+	Traits []map[string]interface{}       `json:"traits,omitempty"`
 }
 
 // ContainerRun is the defintion of the run section of a container
@@ -27,14 +29,6 @@ type ContainerRunContainer struct {
 	Environment []ContainerEnvVar `json:"env,omitempty"`
 }
 
-// ContainerDependsOn is the definition of the dependsOn section
-type ContainerDependsOn struct {
-	Name      string                 `json:"name"`
-	Kind      string                 `json:"kind"`
-	SetEnv    map[string]string      `json:"setEnv"`
-	SetSecret map[string]interface{} `json:"setSecret"`
-}
-
 // ContainerEnvVar is the definition of an environment variable
 type ContainerEnvVar struct {
 	Name  string  `json:"name"`
@@ -43,27 +37,26 @@ type ContainerEnvVar struct {
 
 const KindHTTP = "http"
 
-// HTTPProvidesService is the definition of an 'http' service for a container.
-type HTTPProvidesService struct {
-	Name          string `json:"name"`
-	Kind          string `json:"kind"`
-	Port          *int   `json:"port"`
-	ContainerPort *int   `json:"containerPort"`
+// HTTPProvidesService is the definition of an 'http' binding for a container.
+type HTTPBinding struct {
+	Kind       string `json:"kind"`
+	Port       *int   `json:"port"`
+	TargetPort *int   `json:"targetPort"`
 }
 
-func (h HTTPProvidesService) GetEffectivePort() int {
+func (h HTTPBinding) GetEffectivePort() int {
 	if h.Port != nil {
 		return *h.Port
-	} else if h.ContainerPort != nil {
-		return *h.ContainerPort
+	} else if h.TargetPort != nil {
+		return *h.TargetPort
 	} else {
 		return 80
 	}
 }
 
-func (h HTTPProvidesService) GetEffectiveContainerPort() int {
-	if h.ContainerPort != nil {
-		return *h.ContainerPort
+func (h HTTPBinding) GetEffectiveContainerPort() int {
+	if h.TargetPort != nil {
+		return *h.TargetPort
 	} else if h.Port != nil {
 		return *h.Port
 	} else {

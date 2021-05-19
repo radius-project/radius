@@ -10,30 +10,44 @@ import (
 	"fmt"
 )
 
-// GenericComponent the payload for a component in a generic form.
+// GenericComponent represents a binding used by an Radius Component.
 type GenericComponent struct {
-	Name      string                 `json:"name"`
-	Kind      string                 `json:"kind"`
-	Config    map[string]interface{} `json:"config,omitempty"`
-	Run       map[string]interface{} `json:"run,omitempty"`
-	DependsOn []GenericDependency    `json:"dependsOn,omitempty"`
-	Provides  []GenericDependency    `json:"provides,omitempty"`
-	Traits    []GenericTrait         `json:"traits,omitempty"`
+	Name     string                    `json:"name"`
+	Kind     string                    `json:"kind"`
+	Config   map[string]interface{}    `json:"config,omitempty"`
+	Run      map[string]interface{}    `json:"run,omitempty"`
+	Bindings map[string]GenericBinding `json:"provides,omitempty"`
+	Uses     []GenericDependency       `json:"uses,omitempty"`
+	Traits   []GenericTrait            `json:"traits,omitempty"`
 }
 
-// GenericDependency is the payload for a dependsOn or provides entry in a generic form.
+// GenericBinding represents a binding provided by an Radius Component in a generic form.
+type GenericBinding struct {
+	Kind                 string
+	AdditionalProperties map[string]interface{}
+
+	// GenericBinding has custom marshaling code
+}
+
+// GenericDependency represents a binding used by an Radius Component.
 type GenericDependency struct {
-	Name string
-	Kind string
-
-	// Absorb additional properties that are part of the dependsOn/provides.
-	AdditionalProperties map[string]interface{} // JSON logic is custom, thats why there are no tags here.
+	Binding BindingExpression            `json:"binding"`
+	Env     map[string]BindingExpression `json:"env,omitempty"`
+	Secrets *GenericDependencySecrets    `json:"secrets,omitempty"`
 }
 
-// GenericTrait is the payload for a trait in a generic form.
+// GenericDependencySecrets represents actions to take on a secret store as part of a binding.
+type GenericDependencySecrets struct {
+	Store BindingExpression            `json:"store"`
+	Keys  map[string]BindingExpression `json:"keys,omitempty"`
+}
+
+// GenericTrait represents a trait for an Radius component.
 type GenericTrait struct {
-	Kind       string                 `json:"kind"`
-	Properties map[string]interface{} `json:"properties"`
+	Kind                 string
+	AdditionalProperties map[string]interface{}
+
+	// GenericTrait has custom marshaling code
 }
 
 func (generic GenericComponent) As(kind string, specific interface{}) (bool, error) {
@@ -67,25 +81,6 @@ func (generic GenericComponent) AsRequired(kind string, specific interface{}) er
 	return nil
 }
 
-func (generic GenericComponent) FindProvidesService(name string) *GenericDependency {
-	for _, p := range generic.Provides {
-		if name == p.Name {
-			return &p
-		}
-	}
-
-	return nil
-}
-
-func (generic GenericComponent) FindProvidesServiceRequired(name string) (*GenericDependency, error) {
-	provides := generic.FindProvidesService(name)
-	if provides == nil {
-		return nil, fmt.Errorf("the component should contain a provides service named '%s'", name)
-	}
-
-	return provides, nil
-}
-
 func (generic GenericComponent) FindTrait(kind string, trait interface{}) (bool, error) {
 	for _, t := range generic.Traits {
 		if kind == t.Kind {
@@ -96,54 +91,7 @@ func (generic GenericComponent) FindTrait(kind string, trait interface{}) (bool,
 	return false, nil
 }
 
-// Since it supports 'additional' arbitrary properties, we have to implement custom JSON logic.
-var _ json.Marshaler = &GenericDependency{}
-var _ json.Unmarshaler = &GenericDependency{}
-
-func (d GenericDependency) MarshalJSON() ([]byte, error) {
-	values := map[string]interface{}{
-		"name": d.Name,
-		"kind": d.Kind,
-	}
-
-	for k, v := range d.AdditionalProperties {
-		if k == "name" || k == "kind" {
-			return nil, fmt.Errorf("the property name '%s' should not appear in the extra properties", k)
-		}
-
-		values[k] = v
-	}
-
-	return json.Marshal(values)
-}
-
-func (d *GenericDependency) UnmarshalJSON(b []byte) error {
-	keys := struct {
-		Name string `json:"name"`
-		Kind string `json:"kind"`
-	}{}
-	err := json.Unmarshal(b, &keys)
-	if err != nil {
-		return err
-	}
-
-	values := map[string]interface{}{}
-	err = json.Unmarshal(b, &values)
-	if err != nil {
-		return err
-	}
-
-	d.Name = keys.Name
-	d.Kind = keys.Kind
-
-	delete(values, "name")
-	delete(values, "kind")
-	d.AdditionalProperties = values
-
-	return nil
-}
-
-func (generic GenericDependency) As(kind string, specific interface{}) (bool, error) {
+func (generic GenericBinding) As(kind string, specific interface{}) (bool, error) {
 	if generic.Kind != kind {
 		return false, nil
 	}
@@ -161,12 +109,12 @@ func (generic GenericDependency) As(kind string, specific interface{}) (bool, er
 	return true, nil
 }
 
-func (generic GenericDependency) AsRequired(kind string, specific interface{}) error {
+func (generic GenericBinding) AsRequired(kind string, specific interface{}) error {
 	match, err := generic.As(kind, specific)
 	if err != nil {
 		return err
 	} else if !match {
-		return fmt.Errorf("the service was expected to have kind '%s' but was '%s", kind, generic.Kind)
+		return fmt.Errorf("the binding was expected to have kind '%s' but was '%s", kind, generic.Kind)
 	}
 
 	return nil

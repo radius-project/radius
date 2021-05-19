@@ -10,12 +10,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: '<container registry>/todoapp:latest'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'db'
-          kind: 'microsoft.com/SQL'
-          setEnv: {
-            DBCONNECTION: 'connectionString'
+          binding: db.properties.bindings.sql
+          env: {
+            DBCONNECTION: db.properties.bindings.sql.connectionString
           }
         }
       ]

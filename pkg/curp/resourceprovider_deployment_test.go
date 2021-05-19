@@ -8,9 +8,9 @@ package curp
 import (
 	"testing"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/curp/deployment"
-	"github.com/Azure/radius/pkg/curp/metadata"
 	"github.com/Azure/radius/pkg/curp/revision"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	"github.com/stretchr/testify/require"
@@ -19,9 +19,7 @@ import (
 func Test_DeploymentCreated_NoComponents(t *testing.T) {
 	app := db.NewApplication()
 	newer := db.NewDeployment()
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, nil, newer)
 	require.NoError(t, err)
@@ -39,9 +37,7 @@ func Test_DeploymentCreated_ValidationError(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	_, err := rp.computeDeploymentActions(app, nil, newer)
 	require.Error(t, err)
@@ -56,9 +52,7 @@ func Test_DeploymentCreated_ErrMissingComponent(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	_, err := rp.computeDeploymentActions(app, nil, newer)
 	require.Error(t, err)
@@ -79,9 +73,7 @@ func Test_DeploymentCreated_OneComponent(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, nil, newer)
 	require.NoError(t, err)
@@ -132,9 +124,7 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, nil, newer)
 	require.NoError(t, err)
@@ -193,9 +183,7 @@ func Test_DeploymentUpdated_OneComponent_Deleted(t *testing.T) {
 	newer := db.NewDeployment()
 	newer.Properties.Components = []*db.DeploymentComponent{}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, older, newer)
 	require.NoError(t, err)
@@ -238,9 +226,7 @@ func Test_DeploymentUpdated_OneComponent_NoAction(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, older, newer)
 	require.NoError(t, err)
@@ -283,9 +269,7 @@ func Test_DeploymentUpdated_OneComponent_RevisionUpgraded(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, older, newer)
 	require.NoError(t, err)
@@ -306,22 +290,21 @@ func Test_DeploymentUpdated_OneComponent_RevisionUpgraded(t *testing.T) {
 
 func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 	app := db.NewApplication()
+	app.Name = "testapp"
 	app.Components["A"] = db.Component{
 		Kind:     containerv1alpha1.Kind,
 		Revision: revision.Revision("1"),
 		Properties: db.ComponentProperties{
 			Build: map[string]interface{}{},
 			Run:   map[string]interface{}{},
-			Provides: []db.ComponentProvides{
-				{
-					Name: "A",
+			Bindings: map[string]db.ComponentBinding{
+				"web": {
 					Kind: "http",
 				},
 			},
-			DependsOn: []db.ComponentDependsOn{
+			Uses: []db.ComponentDependency{
 				{
-					Name: "B",
-					Kind: "http",
+					Binding: components.NewComponentBindingExpression(app.Name, "B", "web", ""),
 				},
 			},
 		},
@@ -333,17 +316,17 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 		Properties: db.ComponentProperties{
 			Build: map[string]interface{}{},
 			Run:   map[string]interface{}{},
-			Provides: []db.ComponentProvides{
-				{
-					Name:          "B",
-					Kind:          "http",
-					ContainerPort: (func() *int { x := 80; return &x })(),
+			Bindings: map[string]db.ComponentBinding{
+				"web": {
+					Kind: "http",
+					AdditionalProperties: map[string]interface{}{
+						"port": 80,
+					},
 				},
 			},
-			DependsOn: []db.ComponentDependsOn{
+			Uses: []db.ComponentDependency{
 				{
-					Name: "A",
-					Kind: "http",
+					Binding: components.NewComponentBindingExpression(app.Name, "A", "web", ""),
 				},
 			},
 		},
@@ -361,9 +344,7 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, nil, newer)
 	require.NoError(t, err)
@@ -377,13 +358,11 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 	action := actions["A"]
 	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "A", action.ComponentName)
-	require.Equal(t, map[string]deployment.ServiceBinding{"B": {Name: "B", Kind: "http", Provider: "B"}}, action.ServiceBindings)
 
 	require.Contains(t, actions, "B")
 	action = actions["B"]
 	require.Equal(t, deployment.CreateWorkload, action.Operation)
 	require.Equal(t, "B", action.ComponentName)
-	require.Equal(t, map[string]deployment.ServiceBinding{"A": {Name: "A", Kind: "http", Provider: "A"}}, action.ServiceBindings)
 }
 
 func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
@@ -420,9 +399,7 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, nil, newer)
 	require.NoError(t, err)
@@ -473,7 +450,7 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 			Traits: []db.ComponentTrait{
 				{
 					Kind: "dapr.io/App@v1alpha1",
-					Properties: map[string]interface{}{
+					AdditionalProperties: map[string]interface{}{
 						"appId":   "frontend",
 						"appPort": 80,
 					},
@@ -490,9 +467,7 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 		},
 	}
 
-	rp := rp{
-		meta: metadata.NewRegistry(),
-	}
+	rp := rp{}
 
 	actions, err := rp.computeDeploymentActions(app, nil, newer)
 	require.NoError(t, err)
@@ -511,6 +486,6 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 	require.Equal(t, "dapr.io/App@v1alpha1", action.Component.Traits[0].Kind)
 	require.Equal(t, map[string]interface{}{
 		"appId":   "frontend",
-		"appPort": float64(80),
-	}, action.Component.Traits[0].Properties)
+		"appPort": 80,
+	}, action.Component.Traits[0].AdditionalProperties)
 }

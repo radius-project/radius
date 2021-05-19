@@ -5,9 +5,9 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     name: 'kv'
     kind: 'azure.com/KeyVault@v1alpha1'
     properties: {
-        config: {
-            managed: true
-        }
+      config: {
+        managed: true
+      }
     }
   }
 
@@ -20,12 +20,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/azure-keyvault-app:latest'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'kv'
-          kind: 'azure.com/KeyVault'
-          setEnv: {
-            KV_URI: 'keyvaulturi'
+          binding: kv.properties.bindings.default
+          env: {
+            KV_URI: kv.properties.bindings.default.uri
           }
         }
       ]

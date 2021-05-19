@@ -10,23 +10,20 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/dapr-pubsub-nodesubscriber:latest'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'pubsub'
-          kind: 'dapr.io/PubSubTopic'
-          setEnv: {
-            SB_PUBSUBNAME: 'pubsubName'
-            SB_TOPIC: 'topic'
+          binding: pubsub.properties.bindings.default
+          env: {
+            SB_PUBSUBNAME: pubsub.properties.bindings.default.pubSubName
+            SB_TOPIC: pubsub.properties.bindings.default.topic
           }
         }
       ]
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'nodesubscriber'
-            appPort: 50051
-          }
+          appId: 'nodesubscriber'
+          appPort: 50051
         }
       ]
     }
@@ -41,22 +38,19 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/dapr-pubsub-pythonpublisher:latest'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'pubsub'
-          kind: 'dapr.io/PubSubTopic'
-          setEnv: {
-            SB_PUBSUBNAME: 'pubsubName'
-            SB_TOPIC: 'topic'
+          binding: pubsub.properties.bindings.default
+          env: {
+            SB_PUBSUBNAME: pubsub.properties.bindings.default.pubSubName
+            SB_TOPIC: pubsub.properties.bindings.default.topic
           }
         }
       ]
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'pythonpublisher'
-          }
+          appId: 'pythonpublisher'
         }
       ]
     }

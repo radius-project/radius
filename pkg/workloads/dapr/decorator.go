@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -17,17 +18,52 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// Renderer is the WorkloadRenderer implementation for the dapr deployment decorator.
+// Renderer is the WorkloadRenderer implementation for the dapr trait decorator.
 type Renderer struct {
 	Inner workloads.WorkloadRenderer
 }
 
-// Allocate is the WorkloadRenderer implementation for the dapr deployment decorator.
-func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	return r.Inner.Allocate(ctx, w, wrp, service)
+// Allocate is the WorkloadRenderer implementation for the dapr trait decorator.
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	// TODO verify return a binding for dapr invoke
+	bindings, err := r.Inner.AllocateBindings(ctx, workload, resources)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the component declares an invoke binding, handle it here so others can depend on it.
+	for name, binding := range workload.Workload.Bindings {
+		if binding.Kind != BindingKind {
+			continue
+		}
+
+		trait := Trait{}
+		found, err := workload.Workload.FindTrait(Kind, &trait)
+		if err != nil {
+			return nil, err
+		} else if !found {
+			// no trait
+			return nil, fmt.Errorf("the trait %s is required to use binding %s", Kind, BindingKind)
+		}
+
+		if trait.Properties.AppID == "" {
+			trait.Properties.AppID = workload.Workload.Name
+		}
+
+		bindings[name] = components.BindingState{
+			Component: workload.Name,
+			Binding:   name,
+			Kind:      binding.Kind,
+			Properties: map[string]interface{}{
+				"appId": trait.Properties.AppID,
+			},
+		}
+	}
+
+	return bindings, nil
 }
 
-// Render is the WorkloadRenderer implementation for the dapr deployment decorator.
+// Render is the WorkloadRenderer implementation for the dapr trait decorator.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
 	// Let the inner renderer do its work
 	resources, err := r.Inner.Render(ctx, w)

@@ -148,6 +148,10 @@ func (test *test) DBCreateComponent(applicationName string, componentName string
 	applicationID, err := componentID.Application()
 	require.NoError(test.t, err)
 
+	if properties.Bindings == nil {
+		properties.Bindings = map[string]db.ComponentBinding{}
+	}
+
 	component := &db.Component{
 		ResourceBase: db.ResourceBase{
 			ID:             componentID.ID,

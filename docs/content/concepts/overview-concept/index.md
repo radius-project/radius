@@ -15,7 +15,7 @@ Radius uses the [Bicep langauge](https://github.com/azure/bicep) as its file-for
 To start understanding Radius - think about how cloud-native applications are first designed. It's typical to create a *lines-and-boxes* architecture diagram as the starting point.
 
 {{< imgproc app-diagram Fit "700x500">}}
-An simple example of an online shopping app has a collection of services and resources.
+An simple example of an online shopping app has a collection of bindings and resources.
 {{< /imgproc >}}
 
 An architecture diagram would include all of the pieces of the application both the components that run your code as well as other components like databases, messages queues, api gateways, secret stores, and more. These components make up the nodes of the diagram.
@@ -43,7 +43,7 @@ Primary concepts in Radius are surfaced in the Bicep programming model as *resou
 ### Secondary concepts
 
 Secondary concepts in Radius are part of your other definitions. They can be inspected and managed as part of those definitions. They include:
-- Services
+- Bindings
 - Traits
 
 ## Developing with Radius
@@ -99,8 +99,8 @@ Often, components will describe a runnable unit of code like a container, or a w
 - **Kind**: what kind of thing is this? *eg. a container*
 - **Name**: the logical name of the Component, must be unique per-Application
 - **Essentials**: how do I run this? *eg. container image and tag*
-- **Dependencies**: what services do I need to access? (services will be described later)
-- **Services**: what services do I provide for others?
+- **Dependencies**: what bindings do I need to access? (bindings will be described later)
+- **Bindings**: what capabilities do I provide for others?
 - **Traits**: what operational behaviors do I interact with? (traits will be described later)
 
 These details can generally be separated into two categories:
@@ -147,8 +147,8 @@ When a component defines a non-runnable unit of code: like a database or message
 - **Kind**: what kind of thing is this? *eg. a PostgreSQL database*
 - **Name**: the logical name of the Component, must be unique per-Application
 - **Essentials**: how do I configure this? *eg. name of the database*
-- **Dependencies**:  what services do I need to access? (services will be described later)
-- **Services**: what services do I provide for others?
+- **Dependencies**:  what bindings do I need to access? (bindings will be described later)
+- **Services**: what capabilities do I provide for others?
 - **Traits**: what operational behaviors do I interact with? (traits will be described later)
 
 The difference between a runnable and non-runnable Component is that typically more will be done *for you* in a non-runnable component. It's easier to describe a PostgreSQL database than it is to describe a container, because the database has many standard behaviors.
@@ -176,54 +176,49 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-### Services
+### Bindings
 
-The Service concept is used to describe the connections and relationships between components. In one line, Services are defined as:
+The Binding concept is used to describe the connections and relationships between components. In one line, Bindings are defined as:
 
-{{% alert title="📄 Radius Service" color="primary" %}}
+{{% alert title="📄 Radius Binding" color="primary" %}}
 A **logical** unit of communication between Components.
 {{% /alert %}}
 
-{{% alert title="😱 Work in progress" color="warning" %}}
-We might end up finding a different name for this concept. I'm using Service as a placeholder for now, and it appears in the code, but the term might be too overloaded.
-{{% /alert %}}
-
-The Services of an Application define the *logical* relationships and patterns of communication between its Components. The use cases for Services are flexible, and include features like: 
+The Bindings of an Application define the *logical* relationships and patterns of communication between its Components. The use cases for Bindings are flexible, and include features like: 
 
 - Configuring routes
 - Accessing secret stores
 - Generating connection strings
 - Granting access to IAM permissions.
 
-Each Service is provided by a single Component, which may specify:
+Each Binding is provided by a single Component, which may specify:
 
-- **Kind**: what kind of Service or protocol is this? *eg. HTTP*
-- **Name**: the logical name of the Service, must be unique per-Application
-- **Essentials**: the configuration of the Service *eg. the TCP port used for HTTP*
+- **Kind**: what kind of Binding or protocol is this? *eg. HTTP*
+- **Name**: the logical name of the Binding, must be unique per-Component
+- **Essentials**: the configuration of the Binding *eg. the TCP port used for HTTP*
 
 {{% alert title="💡 Key concept" color="info" %}}
-A Service might be provided *implicitily* as part of the Component's kind or as part of Component Trait (discussed later). *eg. A PostgreSQL Component will also provide a PostgreSQL Service without manual annotations.* It is typical for compute Components (your code) to require manual annotation of Services, and non-compute Components (databases, infrastructure) to provide them implicitly.
+A Binding might be provided *implicitily* as part of the Component's kind. *eg. A PostgreSQL Component will also provide a PostgreSQL Binding without manual annotations.* It is typical for compute Components (your code) to require manual annotation of Binding, and non-compute Components (databases, infrastructure) to provide them implicitly.
 {{% /alert %}} 
 
 #### Dependencies
 
-A Service may be **depended-upon** by multiple Components, which may specify:
+A Binding may be **depended-upon** by multiple Components, which may specify:
 
-- **Kind** - what kind of Service or protocol is this? eg. HTTP
-- **Name** - the logical name of the Service, must be unique per-Application
-- **Actions** - the ability to inject data into the dependent Component eg. Set an environment variable to contain the connection string to a database
+- **Name** - the logical name of the Binding and Component that is being used
+- **Actions** - the ability to inject data into the dependent Component. eg. Set an environment variable to contain the connection string to a database
 
 #### Computed values
 
-In addition to expressing a *logical* relationship, a Service may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a service can specify how wire up a *computed value* to an application concern. *eg. set the `DBCONNECTION` environment variable to the database's connection string*. These items are computed when the related resource is deployed. 
+In addition to expressing a *logical* relationship, a Binding may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a binding can specify how wire up a *computed value* to an application concern. *eg. set the `DBCONNECTION` environment variable to the database's connection string*. These items are computed when the related resource is deployed. 
 
 {{% alert title="💡 Key concept" color="info" %}}
-A Service dependency between Components *may* affect the deployment order of Components or it *may not* depending on the kind of service. eg. HTTP communication between components *may* be bi-directional, so it does not affect deployment order.
+A Binding dependency between Components *may* affect the deployment order of Components or it *may not* depending on the kind of binding. eg. HTTP communication between components *may* be bi-directional, so it does not affect deployment order.
 {{% /alert %}} 
 
 #### Kind
 
-Services have a **Kind** that is protocol-oriented so that Components are minimally-coupled. Documenting protocols provides flexiblity when deploying to multiple environments.
+Bindings have a **Kind** that is protocol-oriented so that Components are minimally-coupled. Documenting protocols provides flexiblity when deploying to multiple environments.
 
 For example, in development you can use MongoDB in a container as a database. In production you might use Azure CosmosDB's MongoDB support. You can swap out a single Component definition (the database component) to make this change since all of your application code Components express a dependency on the MongoDB protocol, rather than a specific implementation.
 
@@ -242,17 +237,15 @@ resource app 'radius.dev/Applications@v1alpha1' = {
                     image: 'radiusteam/storefront'
                 }
             }
-            dependsOn: [
-                {
-                    kind: 'dapr.io/StateStore'
-                    name: 'inventory-store'
-                }
-            ]
-            provides: [
-                {
+            bindings: {
+                web: {
                     kind: 'http'
-                    name: 'web'
-                    containerPort: 80
+                    targetPort: 80
+                }
+            }
+            uses: [
+                {
+                    binding: inventory.properties.bindings.default
                 }
             ]
         }
@@ -367,26 +360,25 @@ resource app 'radius.dev/Applications@v1alpha1' = {
                     image: 'radiusteam/storefront'
                 }
             }
-            dependsOn: [
-                {
-                    kind: 'dapr.io/StateStore'
-                    name: 'inventory-store'
-                }
-            ]
-            provides: [
-                {
+            bindings: {
+                web: {
                     kind: 'http'
-                    name: 'web'
-                    containerPort: 80
+                    targetPort: 80
+                }
+                invoke: {
+                    kind: 'dapr.io/Invoke'
+                }
+            }
+            uses: [
+                {
+                    binding: inventory.properties.bindings.default
                 }
             ]
             traits: [
                 {
                     kind: 'dapr.io/App@v1alpha1'
-                    properties: {
-                        appId: 'storefront'
-                        appPort: 80
-                    }
+                    appId: 'storefront'
+                    appPort: 80
                 }
             ]
         }
@@ -401,18 +393,15 @@ resource app 'radius.dev/Applications@v1alpha1' = {
                         image: 'radiusteam/cart-api'
                     }
                 }
-                dependsOn: [
+                uses: [
                     {
-                        kind: 'dapr.io/Invoke'
-                        name: 'storefront'
+                        binding: store.properties.bindings.invoke
                     }
                 ]
                 traits: [
                     {
                         kind: 'dapr.io/App@v1alpha1'
-                        properties: {
-                            appId: 'cart-api'
-                        }
+                        appId: 'cart-api'
                     }
                 ]
             }

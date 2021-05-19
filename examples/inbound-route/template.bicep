@@ -21,29 +21,25 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'rynowak/frontend:0.5.0-dev'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'backend'
-          kind: 'http'
-          setEnv: {
-            SERVICE__BACKEND__HOST: 'host'
-            SERVICE__BACKEND__PORT: 'port'
+          binding: backend.properties.bindings.web
+          env: {
+            SERVICE__BACKEND__HOST: backend.properties.bindings.web.host
+            SERVICE__BACKEND__PORT: backend.properties.bindings.web.port
           }
         }
       ]
-      provides: [
-        {
-          name: 'frontend'
+      bindings: {
+        web: {
           kind: 'http'
-          containerPort: 80
+          targetPort: 80
         }
-      ]
+      }
       traits: [
         {
           kind: 'radius.dev/InboundRoute@v1alpha1'
-          properties: {
-            service: 'frontend'
-          }
+          binding: 'web'
         }
       ]
     }
@@ -58,13 +54,12 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'rynowak/backend:0.5.0-dev'
         }
       }
-      provides: [
-        {
-          name: 'backend'
+      bindings: {
+        web: {
           kind: 'http'
-          containerPort: 80
+          targetPort: 80
         }
-      ]
+      }
     }
   }
 }

@@ -7,6 +7,7 @@ package rest
 
 import (
 	"github.com/Azure/radius/pkg/curp/armerrors"
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/curp/revision"
 )
@@ -54,39 +55,40 @@ type Component struct {
 
 // ComponentProperties represents the properties element of an Radius component.
 type ComponentProperties struct {
-	Revision  revision.Revision      `json:"revision"`
-	Build     map[string]interface{} `json:"build,omitempty"`
-	Config    map[string]interface{} `json:"config,omitempty"`
-	Run       map[string]interface{} `json:"run,omitempty"`
-	Provides  []ComponentProvides    `json:"provides,omitempty"`
-	DependsOn []ComponentDependsOn   `json:"dependsOn,omitempty"`
-	Traits    []ComponentTrait       `json:"traits,omitempty"`
+	Revision revision.Revision           `json:"revision"`
+	Build    map[string]interface{}      `json:"build,omitempty"`
+	Config   map[string]interface{}      `json:"config,omitempty"`
+	Run      map[string]interface{}      `json:"run,omitempty"`
+	Bindings map[string]ComponentBinding `json:"bindings,omitempty"`
+	Uses     []ComponentDependency       `json:"uses,omitempty"`
+	Traits   []ComponentTrait            `json:"traits,omitempty"`
 }
 
-// ComponentProvides represents a service provided by an Radius Component.
-type ComponentProvides struct {
-	Name string `json:"name"`
-	Kind string `json:"kind"`
+// ComponentBinding represents a binding provided by an Radius Component.
+type ComponentBinding struct {
+	Kind                 string
+	AdditionalProperties map[string]interface{}
 
-	// TODO this should support arbirary data
-	Port          *int `json:"port,omitempty"`
-	ContainerPort *int `json:"containerPort,omitempty"`
+	// ComponentBinding has custom marshaling code
 }
 
-// ComponentDependsOn represents a service used by an Radius Component.
-type ComponentDependsOn struct {
-	Name string `json:"name"`
-	Kind string `json:"kind"`
+// ComponentDependency represents a binding used by an Radius Component.
+type ComponentDependency struct {
+	Binding components.BindingExpression            `json:"binding"`
+	Env     map[string]components.BindingExpression `json:"env,omitempty"`
+	Secrets *ComponentDependencySecrets             `json:"secrets,omitempty"`
+}
 
-	// TODO this should support more settings
-	SetEnv    map[string]string      `json:"setEnv,omitempty"`
-	SetSecret map[string]interface{} `json:"setSecret,omitempty"`
+// ComponentDependencySecrets represents actions to take on a secret store as part of a binding.
+type ComponentDependencySecrets struct {
+	Store components.BindingExpression            `json:"store"`
+	Keys  map[string]components.BindingExpression `json:"keys,omitempty"`
 }
 
 // ComponentTrait represents a trait for an Radius component.
 type ComponentTrait struct {
-	Kind       string                 `json:"kind"`
-	Properties map[string]interface{} `json:"properties,omitempty"`
+	Kind                 string
+	AdditionalProperties map[string]interface{}
 }
 
 // Scope represents an Radius Scope.

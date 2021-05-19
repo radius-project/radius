@@ -19,7 +19,7 @@ import (
 type noop struct {
 }
 
-func (n *noop) Allocate(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
+func (n *noop) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	return nil, errors.New("should not be called in this test")
 }
 
@@ -35,15 +35,16 @@ func Test_Render_Simple(t *testing.T) {
 
 	trait := components.GenericTrait{
 		Kind: Kind,
-		Properties: map[string]interface{}{
-			"service": "web",
+		AdditionalProperties: map[string]interface{}{
+			"binding": "web",
 		},
 	}
-	provides := components.GenericDependency{
-		Name: "web",
-		Kind: "http",
+	bindings := map[string]components.GenericBinding{
+		"web": {
+			Kind: "http",
+		},
 	}
-	w := makeContainerComponent(trait, provides)
+	w := makeContainerComponent(trait, bindings)
 
 	resources, err := renderer.Render(context.Background(), w)
 	require.NoError(t, err)
@@ -84,16 +85,17 @@ func Test_Render_WithHostname(t *testing.T) {
 
 	trait := components.GenericTrait{
 		Kind: Kind,
-		Properties: map[string]interface{}{
+		AdditionalProperties: map[string]interface{}{
 			"hostname": "example.com",
-			"service":  "web",
+			"binding":  "web",
 		},
 	}
-	provides := components.GenericDependency{
-		Name: "web",
-		Kind: "http",
+	bindings := map[string]components.GenericBinding{
+		"web": {
+			Kind: "http",
+		},
 	}
-	w := makeContainerComponent(trait, provides)
+	w := makeContainerComponent(trait, bindings)
 
 	resources, err := renderer.Render(context.Background(), w)
 	require.NoError(t, err)
@@ -137,7 +139,7 @@ func Test_Render_WithHostname(t *testing.T) {
 }
 
 // The inboundroute trait doesn't look at much of the data here, just the provides section.
-func makeContainerComponent(trait components.GenericTrait, httpProvides components.GenericDependency) workloads.InstantiatedWorkload {
+func makeContainerComponent(trait components.GenericTrait, bindings map[string]components.GenericBinding) workloads.InstantiatedWorkload {
 	return workloads.InstantiatedWorkload{
 		Application: "test-app",
 		Name:        "test-container",
@@ -149,9 +151,7 @@ func makeContainerComponent(trait components.GenericTrait, httpProvides componen
 					"image": "test/test-image:latest",
 				},
 			},
-			Provides: []components.GenericDependency{
-				httpProvides,
-			},
+			Bindings: bindings,
 			Traits: []components.GenericTrait{
 				trait,
 			},

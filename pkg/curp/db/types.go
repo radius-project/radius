@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Azure/radius/pkg/curp/armerrors"
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/revision"
 )
 
@@ -61,44 +62,43 @@ type ApplicationPatch struct {
 type Component struct {
 	ResourceBase `bson:",inline"`
 	Kind         string              `bson:"kind"`
-	Revision     revision.Revision   `bson:"revision,omitempty"`
+	Revision     revision.Revision   `bson:"revision"`
 	Properties   ComponentProperties `bson:"properties,omitempty"`
 }
 
 // ComponentProperties represents the properties of an Radius Component.
 type ComponentProperties struct {
-	Build     map[string]interface{} `bson:"build,omitempty"`
-	Config    map[string]interface{} `bson:"config,omitempty"`
-	Run       map[string]interface{} `bson:"run,omitempty"`
-	Provides  []ComponentProvides    `bson:"provides,omitempty"`
-	DependsOn []ComponentDependsOn   `bson:"dependsOn,omitempty"`
-	Traits    []ComponentTrait       `bson:"traits,omitempty"`
+	Build    map[string]interface{}      `bson:"build,omitempty"`
+	Config   map[string]interface{}      `bson:"config,omitempty"`
+	Run      map[string]interface{}      `bson:"run,omitempty"`
+	Bindings map[string]ComponentBinding `bson:"provides,omitempty"`
+	Uses     []ComponentDependency       `bson:"dependsOn,omitempty"`
+	Traits   []ComponentTrait            `bson:"traits,omitempty"`
 }
 
-// ComponentProvides represents a service provided by an Radius Component.
-type ComponentProvides struct {
-	Name string `bson:"name"`
-	Kind string `bson:"kind"`
-
-	// TODO this should support arbirary data
-	Port          *int `bson:"port,omitemtpy"`
-	ContainerPort *int `bson:"containerPort,omitempty"`
+// ComponentBinding represents a binding provided by an Radius Component.
+type ComponentBinding struct {
+	Kind                 string                 `bson:"kind"`
+	AdditionalProperties map[string]interface{} `bson:",inline"`
 }
 
-// ComponentDependsOn represents a service used by an Radius Component.
-type ComponentDependsOn struct {
-	Name string `bson:"name"`
-	Kind string `bson:"kind"`
+// ComponentDependency represents a binding used by an Radius Component.
+type ComponentDependency struct {
+	Binding components.BindingExpression            `bson:"binding"`
+	Env     map[string]components.BindingExpression `bson:"env,omitempty"`
+	Secrets *ComponentDependencySecrets             `bson:"secrets,omitempty"`
+}
 
-	// TODO this should support more settings
-	SetEnv    map[string]string      `bson:"setEnv,omitempty"`
-	SetSecret map[string]interface{} `bson:"setSecret,omitempty"`
+// ComponentDependencySecrets represents actions to take on a secret store as part of a binding.
+type ComponentDependencySecrets struct {
+	Store components.BindingExpression            `bson:"store"`
+	Keys  map[string]components.BindingExpression `bson:"keys,omitempty"`
 }
 
 // ComponentTrait represents a trait for an Radius component.
 type ComponentTrait struct {
-	Kind       string                 `bson:"kind"`
-	Properties map[string]interface{} `bson:"properties,omitempty"`
+	Kind                 string                 `bson:"kind"`
+	AdditionalProperties map[string]interface{} `bson:",inline"`
 }
 
 // Scope represents an Radius Scope.
@@ -117,8 +117,7 @@ type Deployment struct {
 
 // DeploymentStatus represents the status of the deployment.
 type DeploymentStatus struct {
-	Services  map[string]DeploymentService `bson:"services"`
-	Workloads []DeploymentWorkload         `bson:"workloads,omitempty"`
+	Workloads []DeploymentWorkload `bson:"workloads,omitempty"`
 }
 
 // DeploymentWorkload represents the status of a deployed workload.
@@ -126,14 +125,6 @@ type DeploymentWorkload struct {
 	ComponentName string               `bson:"componentName"`
 	Kind          string               `bson:"kind"`
 	Resources     []DeploymentResource `bson:"resources,omitempty"`
-}
-
-// DeploymentService represents the status of a deployed service.
-type DeploymentService struct {
-	Name       string                 `bson:"name"`
-	Kind       string                 `bson:"kind"`
-	Provider   string                 `bson:"provider"`
-	Properties map[string]interface{} `bson:"properties"`
 }
 
 // DeploymentResource represents a deployed kubernetes resource.
