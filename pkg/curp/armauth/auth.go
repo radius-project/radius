@@ -153,8 +153,7 @@ func GetClientIDForRP(subscriptionID, resourceGroup string, auth autorest.Author
 	} else if authMethod == ManagedIdentityAuth {
 		log.Println("Managed Identity detected - using Managed Identity to get credentials")
 
-		// rpName, ok := os.LookupEnv("RP_NAME")
-		rpName = 
+		rpName, ok := os.LookupEnv("RP_NAME")
 		if !ok {
 			log.Fatalln("Could not read RadiusRP name")
 		}
@@ -169,6 +168,8 @@ func GetClientIDForRP(subscriptionID, resourceGroup string, auth autorest.Author
 		mc := msi.NewSystemAssignedIdentitiesClient(subscriptionID)
 		mc.Authorizer = auth
 		si, err := mc.GetByScope(context.TODO(), rp.String())
+		log.Printf("@@@ Getting system id for scope: %s", rp.String())
+
 		if err != nil {
 			return "", fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", rp.String(), err)
 		}
