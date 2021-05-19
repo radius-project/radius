@@ -579,7 +579,6 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		return err
 	}
 	kvc.Authorizer = kvAuth
-	kvc.Authorizer = r.Arm.Auth
 	_, err = kvc.SetSecret(ctx, kvURI, secretName, secretValue)
 	if err != nil {
 		return err
