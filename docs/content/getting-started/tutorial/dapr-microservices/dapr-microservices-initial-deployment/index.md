@@ -104,7 +104,7 @@ Now you are ready to deploy the application for the first time.
    The `rad expose` command provides the application name, followed by the component name, followed by a port. If you changed any of these names when deploying, update your command to match.
    {{% /alert %}}
 
-1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. For now you should see a message like:
+1. Visit the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. For now you should see a message like:
 
    `{"message":"The container is running, but Dapr has not been configured."}`
 
