@@ -18,7 +18,7 @@ import (
 )
 
 // CreateRoleAssignment assigns the specified role name to the Identity over the specified scope
-func CreateRoleAssignment(ctx context.Context, auth autorest.Authorizer, subscriptionID string, resourceGroup string, principalID *uuid.UUID, scope string, roleName string) error {
+func CreateRoleAssignment(ctx context.Context, auth autorest.Authorizer, subscriptionID string, resourceGroup string, principalID string, scope string, roleName string) error {
 	rdc := authorization.NewRoleDefinitionsClient(subscriptionID)
 	rdc.Authorizer = auth
 
@@ -46,7 +46,7 @@ func CreateRoleAssignment(ctx context.Context, auth autorest.Authorizer, subscri
 			raName.String(),
 			authorization.RoleAssignmentCreateParameters{
 				RoleAssignmentProperties: &authorization.RoleAssignmentProperties{
-					PrincipalID:      to.StringPtr(principalID.String()),
+					PrincipalID:      &principalID,
 					RoleDefinitionID: to.StringPtr(*roleList.Values()[0].ID),
 				},
 			})

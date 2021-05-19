@@ -19,11 +19,12 @@ type ArmConfig struct {
 	Auth           autorest.Authorizer
 	SubscriptionID string
 	ResourceGroup  string
+	ClientID       string
 }
 
 // GetArmConfig gets the configuration we use for managing ARM resources
 func GetArmConfig() (ArmConfig, error) {
-	auth, err := GetArmAuthorizer()
+	auth, clientID, err := GetArmAuthorizerAndClientID()
 	if err != nil {
 		return ArmConfig{}, err
 	}
@@ -51,59 +52,77 @@ func GetArmConfig() (ArmConfig, error) {
 		Auth:           *auth,
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,
+		ClientID:       clientID,
 	}, nil
 }
 
-// GetArmAuthorizer returns an ARM authorizer for the current process
-func GetArmAuthorizer() (*autorest.Authorizer, error) {
+// GetArmAuthorizerAndClientID returns an ARM authorizer and the client ID for the current process
+func GetArmAuthorizerAndClientID() (*autorest.Authorizer, string, error) {
 	clientID, ok := os.LookupEnv("CLIENT_ID")
 	if ok && clientID != "" {
 		log.Println("Service Principal detected - using SP auth to get credentials")
 		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("CLIENT_ID"), os.Getenv("CLIENT_SECRET"), os.Getenv("TENANT_ID"))
 		auth, err := clientcfg.Authorizer()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		token, err := clientcfg.ServicePrincipalToken()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		err = token.EnsureFresh()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		log.Println("Using Service Principal auth.")
-		return &auth, nil
+		return &auth, clientcfg.ClientID, nil
 	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
 		log.Println("Managed Identity detected - using Managed Identity to get credentials")
 
 		config := auth.NewMSIConfig()
 		token, err := config.ServicePrincipalToken()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		err = token.EnsureFresh()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		auth, err := config.Authorizer()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		log.Println("Using Managed Identity auth.")
-		return &auth, nil
+		return &auth, config.ClientID, nil
 	} else {
 		log.Println("No Service Principal detected.")
+
 		auth, err := auth.NewAuthorizerFromCLIWithResource("https://management.azure.com")
+
+		// cli.Profile
+		// var token *cli.Token
+		// token, err = cli.GetTokenFromCLI("https://management.azure.com")
+		// fmt.Println(token.ClientID)
+
+		// // u := graphrbac.NewSignedInUserClient("72f988bf-86f1-41af-91ab-2d7cd011db47")
+		// // u.Authorizer = auth
+		// // user, err := u.Get(context.TODO())
+		// // fmt.Printf("@@@ current user: %v", user)
+
+		// // ac := graphrbac.NewApplicationsClient("72f988bf-86f1-41af-91ab-2d7cd011db47")
+		// // ac.Authorizer = auth
+		// // list, err := ac.List(context.TODO(), "")
+		// // fmt.Println(list)
+
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		log.Println("Using CLI auth.")
-		return &auth, nil
+		return &auth, "", nil
 	}
 }

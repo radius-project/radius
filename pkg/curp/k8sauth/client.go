@@ -122,7 +122,7 @@ func createRemote() (*rest.Config, error) {
 	}
 
 	aks := containerservice.NewManagedClustersClient(subscriptionID)
-	auth, err := armauth.GetArmAuthorizer()
+	auth, _, err := armauth.GetArmAuthorizerAndClientID()
 	if err != nil {
 		return nil, fmt.Errorf("cannot authorize with ARM: %w", err)
 	}

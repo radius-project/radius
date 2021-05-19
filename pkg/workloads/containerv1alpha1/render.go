@@ -25,8 +25,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
@@ -175,12 +173,12 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 
 	// Create Role Assignment to grant the managed identity appropriate access permissions to the Key Vault
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for secrets and certificates
-	err = roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID, *kv.ID, "Key Vault Secrets User")
+	err = roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", msi.Name, err)
 	}
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for encryption keys
-	err = roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID, *kv.ID, "Key Vault Crypto User")
+	err = roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", msi.Name, err)
 	}
@@ -546,42 +544,46 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue kvclient.SecretSetParameters) error {
 	kvc := kvclient.New()
 
-	webc := web.NewAppsClient(r.Arm.SubscriptionID)
-	webc.Authorizer = r.Arm.Auth
-	list, err := webc.ListByResourceGroupComplete(ctx, r.Arm.ResourceGroup, nil)
-	if err != nil {
-		return fmt.Errorf("cannot read web sites: %w", err)
-	}
-	if !list.NotDone() {
-		return fmt.Errorf("failed to find website in resource group '%v'", r.Arm.ResourceGroup)
-	}
-	website := *list.Value().ID
-	fmt.Printf("found website '%v' in resource group '%v'", website, r.Arm.ResourceGroup)
+	// webc := web.NewAppsClient(r.Arm.SubscriptionID)
+	// webc.Authorizer = r.Arm.Auth
+	// list, err := webc.ListByResourceGroupComplete(ctx, r.Arm.ResourceGroup, nil)
+	// if err != nil {
+	// 	return fmt.Errorf("cannot read web sites: %w", err)
+	// }
+	// if !list.NotDone() {
+	// 	return fmt.Errorf("failed to find website in resource group '%v'", r.Arm.ResourceGroup)
+	// }
+	// website := *list.Value().ID
+	// fmt.Printf("found website '%v' in resource group '%v'", website, r.Arm.ResourceGroup)
 
-	mc := msi.NewSystemAssignedIdentitiesClient(r.Arm.SubscriptionID)
-	mc.Authorizer = r.Arm.Auth
-	si, err := mc.GetByScope(ctx, website)
-	if err != nil {
-		return fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", website, err)
-	}
+	// mc := msi.NewSystemAssignedIdentitiesClient(r.Arm.SubscriptionID)
+	// mc.Authorizer = r.Arm.Auth
+	// si, err := mc.GetByScope(ctx, website)
+	// if err != nil {
+	// 	return fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", website, err)
+	// }
 
-	// Get a token for the RP system assigned identity for the Key Vault resource
-	// The RP has previously been granted permission earlier to create secrets
-	msiKeyConfig := &auth.MSIConfig{
-		Resource: "https://vault.azure.net",
-		ClientID: si.PrincipalID.String(),
-	}
+	// // Get a token for the RP system assigned identity for the Key Vault resource
+	// // The RP has previously been granted permission earlier to create secrets
+	// msiKeyConfig := &auth.MSIConfig{
+	// 	Resource: "https://vault.azure.net",
+	// 	ClientID: si.PrincipalID.String(),
+	// }
 
-	kvAuth, err := msiKeyConfig.Authorizer()
-	if err != nil {
-		return err
-	}
-	kvc.Authorizer = kvAuth
-	_, err = kvc.SetSecret(ctx, kvURI, secretName, secretValue)
+	// kvAuth, err := msiKeyConfig.Authorizer()
+	// if err != nil {
+	// 	return err
+	// }
+	// kvc.Authorizer = kvAuth
+	kvc.Authorizer = r.Arm.Auth
+	_, err := kvc.SetSecret(ctx, kvURI, secretName, secretValue)
 	if err != nil {
 		return err
 	}
 	log.Printf("Created secret: %v in KeyVault: %v", secretName, kvURI)
+
+	// ??? remove role assignment TODO
+
 	return nil
 }
 

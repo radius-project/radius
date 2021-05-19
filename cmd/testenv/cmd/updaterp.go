@@ -56,7 +56,7 @@ var updateRPCmd = &cobra.Command{
 			return err
 		}
 
-		auth, err := armauth.GetArmAuthorizer()
+		auth, _, err := armauth.GetArmAuthorizerAndClientID()
 		if err != nil {
 			return err
 		}
