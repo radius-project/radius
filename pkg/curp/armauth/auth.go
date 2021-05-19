@@ -28,6 +28,7 @@ func GetArmConfig() (ArmConfig, error) {
 	if err != nil {
 		return ArmConfig{}, err
 	}
+	log.Printf("@@@ using client id: %v", clientID)
 
 	subscriptionID := os.Getenv("ARM_SUBSCRIPTION_ID")
 	if subscriptionID == "" {
