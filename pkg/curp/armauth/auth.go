@@ -97,7 +97,7 @@ func GetArmAuthorizerAndClientID() (*autorest.Authorizer, string, error) {
 			return nil, "", err
 		}
 
-		log.Println("Using Managed Identity auth.")
+		log.Printf("Using Managed Identity auth. Client ID: %s", config.ClientID)
 		return &auth, config.ClientID, nil
 	} else {
 		log.Println("No Service Principal detected.")
