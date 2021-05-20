@@ -197,7 +197,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
    rad expose dapr-hello nodeapp --port 3000
    ```
 
-1. Visit the the URL [http://localhost:3000](http://localhost:3000) in your browser. You should see the following message:
+1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:
 
   
    `{"message":"no orders yet"}`
