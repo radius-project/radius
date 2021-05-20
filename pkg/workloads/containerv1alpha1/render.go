@@ -25,7 +25,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -543,49 +543,39 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	return podIdentity, nil
 }
 
+// getAuthorizerForResource returns an authorizer over the specified scope based on the auth method
+func (r Renderer) getAuthorizerForResource(ctx context.Context, scope string) (autorest.Authorizer, error) {
+	authMethod := armauth.GetAuthMethod()
+	if authMethod == armauth.ServicePrincipalAuth {
+		auth.NewAuthorizerFromEnvironmentWithResource(scope)
+	} else if authMethod == armauth.ManagedIdentityAuth {
+		msiKeyConfig := &auth.MSIConfig{
+			Resource: scope,
+			ClientID: r.Arm.ClientID,
+		}
+		return msiKeyConfig.Authorizer()
+	} else {
+		return auth.NewAuthorizerFromCLIWithResource(scope)
+	}
+
+	return nil, nil
+}
+
 func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue kvclient.SecretSetParameters) error {
-	kvc := kvclient.New()
-
-	webc := web.NewAppsClient(r.Arm.SubscriptionID)
-	webc.Authorizer = r.Arm.Auth
-	list, err := webc.ListByResourceGroupComplete(ctx, r.Arm.ResourceGroup, nil)
-	if err != nil {
-		return fmt.Errorf("cannot read web sites: %w", err)
-	}
-	if !list.NotDone() {
-		return fmt.Errorf("failed to find website in resource group '%v'", r.Arm.ResourceGroup)
-	}
-	website := *list.Value().ID
-	fmt.Printf("found website '%v' in resource group '%v'", website, r.Arm.ResourceGroup)
-
-	mc := msi.NewSystemAssignedIdentitiesClient(r.Arm.SubscriptionID)
-	mc.Authorizer = r.Arm.Auth
-	si, err := mc.GetByScope(ctx, website)
-	if err != nil {
-		return fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", website, err)
-	}
-
-	fmt.Printf("@@@@@@ SystemAssigned ID computed: %s and clientID in armconfig: %s", si.PrincipalID.String(), r.Arm.ClientID)
-
 	// Get a token for the RP system assigned identity for the Key Vault resource
 	// The RP has previously been granted permission earlier to create secrets
-	msiKeyConfig := &auth.MSIConfig{
-		Resource: "https://vault.azure.net",
-		ClientID: r.Arm.ClientID,
-	}
-
-	kvAuth, err := msiKeyConfig.Authorizer()
+	kvauth, err := r.getAuthorizerForResource(ctx, "https://vault.azure.net")
 	if err != nil {
 		return err
 	}
-	kvc.Authorizer = kvAuth
+
+	kvc := kvclient.New()
+	kvc.Authorizer = kvauth
 	_, err = kvc.SetSecret(ctx, kvURI, secretName, secretValue)
 	if err != nil {
 		return err
 	}
 	log.Printf("Created secret: %v in KeyVault: %v", secretName, kvURI)
-
-	// ??? remove role assignment TODO
 
 	return nil
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/radius/pkg/rad/azcli"
 )
 
 const (
@@ -62,10 +61,8 @@ func GetArmConfig() (ArmConfig, error) {
 
 	clientID, err := GetClientIDForRP(subscriptionID, resourceGroup, *auth)
 	if err != nil || clientID == "" {
-		return ArmConfig{}, errors.New("unable to get clientID to use for role assignments")
+		return ArmConfig{}, fmt.Errorf("unable to get clientID to use for role assignments: %w", err)
 	}
-
-	log.Printf("@@@@ using clientID for auth: %s", clientID)
 
 	return ArmConfig{
 		Auth:           *auth,
@@ -77,7 +74,7 @@ func GetArmConfig() (ArmConfig, error) {
 
 // GetArmAuthorizer returns an ARM authorizer and the client ID for the current process
 func GetArmAuthorizer() (*autorest.Authorizer, error) {
-	authMethod := getAuthMethod()
+	authMethod := GetAuthMethod()
 	if authMethod == ServicePrincipalAuth {
 		log.Println("Service Principal detected - using SP auth to get credentials")
 		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("AZURE_CLIENT_ID"), os.Getenv("AZURE_CLIENT_SECRET"), os.Getenv("AZURE_TENANT_ID"))
@@ -131,7 +128,8 @@ func GetArmAuthorizer() (*autorest.Authorizer, error) {
 	}
 }
 
-func getAuthMethod() string {
+// GetAuthMethod returns the authentication method used by the RP
+func GetAuthMethod() string {
 	clientID, ok := os.LookupEnv("AZURE_CLIENT_ID")
 
 	if ok && clientID != "" {
@@ -146,8 +144,7 @@ func getAuthMethod() string {
 // GetClientIDForRP gets the Identity for the RP.
 // This will be either a serviceprincipal clientID, SystemAssigned Identity or ObjectID for the CLI user based on the auth mechanism
 func GetClientIDForRP(subscriptionID, resourceGroup string, auth autorest.Authorizer) (string, error) {
-	authMethod := getAuthMethod()
-	authMethod = ManagedIdentityAuth
+	authMethod := GetAuthMethod()
 	if authMethod == ServicePrincipalAuth {
 		return os.Getenv("AZURE_CLIENT_ID"), nil
 	} else if authMethod == ManagedIdentityAuth {
@@ -168,7 +165,6 @@ func GetClientIDForRP(subscriptionID, resourceGroup string, auth autorest.Author
 		mc := msi.NewSystemAssignedIdentitiesClient(subscriptionID)
 		mc.Authorizer = auth
 		si, err := mc.GetByScope(context.TODO(), rp.String())
-		log.Printf("@@@ Getting system id for scope: %s", rp.String())
 
 		if err != nil {
 			return "", fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", rp.String(), err)
@@ -176,9 +172,9 @@ func GetClientIDForRP(subscriptionID, resourceGroup string, auth autorest.Author
 
 		return si.PrincipalID.String(), nil
 	} else {
-		rpClientID, err := azcli.RunCLICommandWithOutput("ad", "signed-in-user", "show", "--query", "objectId", "--output", "tsv")
-		if err != nil {
-			return "", fmt.Errorf("Unable to get objectID for current user: %w", err)
+		rpClientID, ok := os.LookupEnv("AZURE_USER_OBJECT_ID")
+		if !ok {
+			return "", errors.New("Unable to get AZURE_USER_OBJECT_ID environment variable. Please set this to the output of 'az ad signed-in-user show --query objectId --output tsv'")
 		}
 		return rpClientID, nil
 	}
