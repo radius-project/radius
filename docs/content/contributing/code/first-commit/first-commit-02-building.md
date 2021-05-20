@@ -13,7 +13,7 @@ If you have not already done so, clone the repository and navigate there in your
 You can build the main outputs using `make`:
 
 ```sh
-$ make
+make
 ```
 
 You should see output similar to the following:
@@ -43,7 +43,7 @@ CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
 You should be able to run the binary that was just produced for the CLI. Copy the path from the previous output and run it at the command line.
 
 ```sh
-$ ./dist/darwin_amd64/release/rad
+./dist/darwin_amd64/release/rad
 ```
 
 You should see the basic help text of the CLI. At the time of this writing it looks like:

@@ -11,7 +11,7 @@ weight: 100
 To run the all unit tests for the project from the command line:
 
 ```sh
-$ make test
+make test
 ```
 
 After tests run, you should see a big list of all of the project's packages:

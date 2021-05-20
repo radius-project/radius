@@ -20,10 +20,10 @@ Now you've got something to work on. Once you've developed and tested your chang
 
 ## One last check
 
-Before proceeding, make sure your changes pass all the unit tests as well as golint.
+Before proceeding, make sure your changes pass all the unit tests as well as [golint](https://golangci-lint.run/usage/install/#local-installation).
 
 ```sh
-$ make lint && make test
+make lint && make test
 ```
 
 It is best if you can resolve problems identified here before submitting.
