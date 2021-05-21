@@ -13,7 +13,9 @@ weight: 50
 
 ## Mission
 
-> Radius is an intelligent application model that empowers developers to easily deploy and manage applications with a serverless experience. Radius significantly improves developer productivity, application reliability and time to market delivery.
+{{% alert title="Project Radius mission" color="primary" %}}
+Radius is an intelligent application model that empowers developers to easily deploy and manage applications with a serverless experience. Radius significantly improves developer productivity, application reliability and time to market delivery.
+{{% /alert **%}}
 
 This mission has the following pillars:
 
