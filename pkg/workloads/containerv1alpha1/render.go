@@ -589,7 +589,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 func (r Renderer) getAuthorizerForResource(ctx context.Context, scope string) (autorest.Authorizer, error) {
 	authMethod := armauth.GetAuthMethod()
 	if authMethod == armauth.ServicePrincipalAuth {
-		auth.NewAuthorizerFromEnvironmentWithResource(scope)
+		return auth.NewAuthorizerFromEnvironmentWithResource(scope)
 	} else if authMethod == armauth.ManagedIdentityAuth {
 		msiKeyConfig := &auth.MSIConfig{
 			Resource: scope,
@@ -599,8 +599,6 @@ func (r Renderer) getAuthorizerForResource(ctx context.Context, scope string) (a
 	} else {
 		return auth.NewAuthorizerFromCLIWithResource(scope)
 	}
-
-	return nil, nil
 }
 
 func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue kvclient.SecretSetParameters) error {
