@@ -141,6 +141,29 @@ func (r Renderer) readKeyVaultURI(dep ContainerDependsOn, w workloads.Instantiat
 	return "", errors.New("unable to find keyvault uri. invalid spec")
 }
 
+func (r Renderer) readKeyVaultRPRoleAssignmentID(dep ContainerDependsOn, w workloads.InstantiatedWorkload) (string, error) {
+	if dep.Kind != "azure.com/KeyVault" {
+		return "", nil
+	}
+
+	service, ok := w.ServiceValues[dep.Name]
+	if !ok {
+		return "", fmt.Errorf("cannot resolve service %v", dep.Name)
+	}
+
+	value, ok := service[KeyVaultRPRoleID]
+	if !ok {
+		return "", fmt.Errorf("cannot resolve value %v for service %v", KeyVaultRPRoleID, dep.Name)
+	}
+
+	str, ok := value.(string)
+	if !ok {
+		return "", fmt.Errorf("value %v for service %v is not a string", KeyVaultRPRoleID, dep.Name)
+	}
+
+	return str, nil
+}
+
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep ContainerDependsOn, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, error) {
 	// Read KV_URI
 	kvURI, err := r.readKeyVaultURI(dep, w)
@@ -175,12 +198,12 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 
 	// Create Role Assignment to grant the managed identity appropriate access permissions to the Key Vault
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for secrets and certificates
-	err = roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
+	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", msi.Name, err)
 	}
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for encryption keys
-	err = roleassignment.CreateRoleAssignment(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
+	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", msi.Name, err)
 	}
@@ -367,6 +390,21 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
+	// By now all secrets for all KeyVaults have been created.
+	// Now delete RP role assignment for writing secrets to the KeyVault
+	for _, dep := range cc.DependsOn {
+		if dep.Kind != "azure.com/KeyVault" {
+			raID, err := r.readKeyVaultRPRoleAssignmentID(dep, w)
+			if err != nil {
+				return nil, err
+			}
+			err = roleassignment.Delete(ctx, r.Arm.Auth, r.Arm.SubscriptionID, raID)
+			if err != nil {
+				return nil, fmt.Errorf("Unable to delete role assignment to RP for write secrets: %w", err)
+			}
+		}
+	}
+
 	for _, generic := range w.Workload.Provides {
 		if generic.Kind == KindHTTP {
 			httpProvides := HTTPProvidesService{}
@@ -374,7 +412,11 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			if err != nil {
 				return nil, err
 			}
+		}
+	}
 
+	for _, p := range cc.Provides {
+		if p.ContainerPort != nil {
 			port := corev1.ContainerPort{
 				Name:          httpProvides.Name,
 				ContainerPort: int32(httpProvides.GetEffectiveContainerPort()),

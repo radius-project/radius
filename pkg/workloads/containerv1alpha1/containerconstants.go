@@ -12,4 +12,5 @@ const (
 	SecretStoreIdentifier = "store"
 	SecretKeysIdentifier  = "keys"
 	KeyVaultURIIdentifier = "kvuri"
+	KeyVaultRPRoleID      = "rproleid"
 )

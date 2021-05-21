@@ -40,7 +40,8 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 	}
 
 	values := map[string]interface{}{
-		VaultURI: *vault.Properties.VaultURI,
+		VaultURI:         *vault.Properties.VaultURI,
+		KeyVaultRPRoleID: properties[KeyVaultRPRoleID],
 	}
 
 	return values, nil
