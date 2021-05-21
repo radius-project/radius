@@ -147,7 +147,7 @@ The application model is represented in Bicep as a set of ARM-like types. They a
 
 For example:
 
-```txt
+```sh
 resource app 'radius.dev/Applications@v1alpha1' = {
   ...
 }
