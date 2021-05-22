@@ -26,8 +26,8 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
 	}
 
-	if len(wrp) != 1 || wrp[0].Type != "azure.keyvault" {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.keyvault")
+	if len(wrp) != 1 || wrp[0].Type != workloads.ResourceKindAzureKeyVault {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", workloads.ResourceKindAzureKeyVault)
 	}
 
 	properties := wrp[0].Properties

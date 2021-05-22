@@ -13,6 +13,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const TimeoutForPodShutdown = 60 * time.Second
+const IntervalForPodShutdown = 10 * time.Second
+
 type PodSet struct {
 	Namespaces map[string][]Pod
 }
@@ -109,19 +112,37 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 	}
 }
 
-func ValidateNoPodsInNamespace(t *testing.T, k8s *kubernetes.Clientset, namespace string) bool {
+func ValidateNoPodsInNamespace(t *testing.T, k8s *kubernetes.Clientset, namespace string) {
 	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		t.Logf("failed to list pods in namespace %v, %v", namespace, err)
+	assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
+
+	logPods(t, actualPods.Items)
+
+	// There's an inherent race condition in verifying that the Pods are gone. We're at the
+	// mercy of the Kubernetes event loop. We'll wait for pods to disappear if we find them.
+	if len(actualPods.Items) == 0 {
+		return
 	}
 
-	if actualPods != nil && len(actualPods.Items) > 0 {
-		// log all the data so its there if we need to analyze a failure
-		logPods(t, actualPods.Items)
-		return false
-	}
+	timeout := time.After(TimeoutForPodShutdown)
+	for {
+		select {
 
-	return true
+		case <-timeout:
+			assert.Fail(t, "timed out waiting for pods to be deleted")
+
+		// allow max of N seconds to pass between checking
+		case <-time.After(IntervalForPodShutdown):
+			actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+			assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
+
+			logPods(t, actualPods.Items)
+			if len(actualPods.Items) == 0 {
+				// Success! pods are gone.
+				return
+			}
+		}
+	}
 }
 
 func logPods(t *testing.T, pods []corev1.Pod) {

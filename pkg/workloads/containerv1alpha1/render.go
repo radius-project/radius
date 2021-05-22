@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
@@ -298,7 +299,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// Append the Pod identity created to the list of resources
 		resources = append(resources, workloads.WorkloadResource{
-			Type: "azure.aadpodidentity",
+			Type: workloads.ResourceKindAzurePodIdentity,
 			Resource: map[string]string{
 				PodIdentityName:    podIdentity.Name,
 				PodIdentityCluster: podIdentity.ClusterName,
@@ -458,9 +459,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 			return AADPodIdentity{}, fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
 
-		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
-		tag, ok := list.Value().Tags["rad-environment"]
-		if ok && strings.EqualFold(*tag, "true") {
+		if radresources.HasRadiusEnvironmentTag(list.Value().Tags) {
 			temp := list.Value()
 			cluster = &temp
 			break

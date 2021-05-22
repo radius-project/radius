@@ -26,8 +26,8 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
 	}
 
-	if len(wrp) != 1 || wrp[0].Type != "azure.servicebus.queue" {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.servicebus.queue")
+	if len(wrp) != 1 || wrp[0].Type != workloads.ResourceKindAzureServiceBusQueue {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", workloads.ResourceKindAzureServiceBusQueue)
 	}
 
 	properties := wrp[0].Properties
@@ -72,7 +72,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	// generate data we can use to manage a servicebus instance
 
 	resource := workloads.WorkloadResource{
-		Type: "azure.servicebus.queue",
+		Type: workloads.ResourceKindAzureServiceBusQueue,
 		Resource: map[string]string{
 			"name":            w.Workload.Name,
 			"servicebusqueue": component.Config.Queue,

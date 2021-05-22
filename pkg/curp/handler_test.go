@@ -1449,8 +1449,8 @@ func Test_DeleteDeployment_Found_Success(t *testing.T) {
 	// of the data, and just simulate a successful deployment.
 	complete := make(chan struct{}, 1)
 	test.deploy.EXPECT().
-		DeleteDeployment(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(a, b, c interface{}) error {
+		DeleteDeployment(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(a, b, c, d interface{}) error {
 			select {
 			case <-complete:
 				return nil
@@ -1501,8 +1501,8 @@ func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
 	// of the data, and just simulate invalid data.
 	complete := make(chan struct{}, 1)
 	test.deploy.EXPECT().
-		DeleteDeployment(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(a, b, c interface{}) error {
+		DeleteDeployment(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(a, b, c, d interface{}) error {
 			select {
 			case <-complete:
 				return &deployment.CompositeError{
@@ -1563,8 +1563,8 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 	// of the data, and just simulate a failure.
 	complete := make(chan struct{}, 1)
 	test.deploy.EXPECT().
-		DeleteDeployment(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(a, b, c interface{}) error {
+		DeleteDeployment(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(a, b, c, d interface{}) error {
 			select {
 			case <-complete:
 				return errors.New("deletion failed :(")

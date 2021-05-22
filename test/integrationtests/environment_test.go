@@ -9,7 +9,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"
@@ -31,14 +32,20 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	resourceMap := make(map[string]string)
-	resc := resources.NewClient(env.SubscriptionID)
+	resc := azresources.NewClient(env.SubscriptionID)
 	resc.Authorizer = config.Authorizer
 
 	for page, err := resc.ListByResourceGroup(ctx, env.ResourceGroup, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
 		require.NoError(t, err, "failed to list resources")
 
+		// Filter to the set of resources we deploy - this allows this test to run concurrently
+		// with others.
 		for _, r := range page.Values() {
-			resourceMap[*r.Type] = *r.ID
+			if radresources.HasRadiusEnvironmentTag(r.Tags) {
+				resourceMap[*r.Type] = *r.ID
+			}
+
+			t.Logf("skipping non-environment resource: %s", *r.ID)
 		}
 	}
 
