@@ -103,14 +103,9 @@ jobs:
           console.log("Command is: " + command);
           console.log("Args are: " + args);
 
-          let split = args.split(' ')
-          console.log(split)
-          split.forEach(function(item, index, array) {
-            console.log(item, index)
-          })
-          
+          const split = args.split(' ')
           const env = split[1]
-          if (!!env) {
+          if (!env) {
             throw new Error("environment is required");
           }
 
