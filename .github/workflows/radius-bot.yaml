@@ -105,6 +105,10 @@ jobs:
 
           let split = args.split(' ')
           console.log(split)
+          split.forEach(function(item, index, array) {
+            console.log(item, index)
+          })
+          
           const env = split[1]
           if (!!env) {
             throw new Error("environment is required");
