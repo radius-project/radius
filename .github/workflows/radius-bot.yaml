@@ -93,6 +93,7 @@ jobs:
           const matches = context.payload.comment.body.match(regex)
           let environment = null;
           if (!!matches && matches.length > 0) {
+            console.log(`Args: '${matches.groups.args}'`);
             environment = matches.groups.args.split(' ')[1]
           }
 
