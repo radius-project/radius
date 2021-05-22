@@ -28,8 +28,8 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
 	}
 
-	if len(wrp) != 1 || wrp[0].Type != "azure.cosmos.documentdb" {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for azure.cosmos.documentdb")
+	if len(wrp) != 1 || wrp[0].Type != workloads.ResourceKindAzureCosmosDocumentDB {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", workloads.ResourceKindAzureCosmosDocumentDB)
 	}
 
 	properties := wrp[0].Properties
@@ -81,7 +81,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// generate data we can use to manage a cosmosdb instance
 	resource := workloads.WorkloadResource{
-		Type: "azure.cosmos.documentdb",
+		Type: workloads.ResourceKindAzureCosmosDocumentDB,
 		Resource: map[string]string{
 			"name": w.Workload.Name,
 		},

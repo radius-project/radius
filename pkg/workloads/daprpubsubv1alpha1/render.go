@@ -25,8 +25,8 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
 	}
 
-	if len(wrp) != 1 || wrp[0].Type != "dapr.pubsubtopic.azureservicebus" {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for dapr.pubsubtopic.azureservicebus")
+	if len(wrp) != 1 || wrp[0].Type != workloads.ResourceKindDaprPubSubTopicAzureServiceBus {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", workloads.ResourceKindDaprPubSubTopicAzureServiceBus)
 	}
 
 	properties := wrp[0].Properties
@@ -58,7 +58,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	// generate data we can use to manage a servicebus instance
 
 	resource := workloads.WorkloadResource{
-		Type: "dapr.pubsubtopic.azureservicebus",
+		Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 		Resource: map[string]string{
 			"name":                 w.Workload.Name,
 			"namespace":            w.Application,

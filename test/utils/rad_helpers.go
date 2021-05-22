@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package utils
 
 import (
@@ -12,7 +17,7 @@ import (
 func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.Duration) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
-		return fmt.Errorf("error deploying template file: %s - %w", templateFilePath, err)
+		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -24,7 +29,7 @@ func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.D
 		cmd = exec.CommandContext(ctx, "rad", "deploy", templateFilePath)
 	} else {
 		if _, err := os.Stat(configFilePath); err != nil {
-			return fmt.Errorf("error deploying template using configfile: %s - %w", configFilePath, err)
+			return fmt.Errorf("could not find radius config file: %s - %w", configFilePath, err)
 		}
 
 		cmd = exec.CommandContext(ctx, "rad", "deploy", templateFilePath, "--config", configFilePath)

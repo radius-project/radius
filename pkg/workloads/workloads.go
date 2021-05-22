@@ -67,7 +67,7 @@ type Dispatcher struct {
 
 // NewKubernetesResource creates a Kubernetes WorkloadResource
 func NewKubernetesResource(localID string, obj runtime.Object) WorkloadResource {
-	return WorkloadResource{Type: "kubernetes", LocalID: localID, Resource: obj}
+	return WorkloadResource{Type: ResourceKindKubernetes, LocalID: localID, Resource: obj}
 }
 
 // Lookup implements the WorkloadDispatcher contract.

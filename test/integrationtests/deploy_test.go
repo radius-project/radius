@@ -7,6 +7,7 @@ package integrationtests
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,6 +23,7 @@ import (
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/kubernetes"
 )
 
 const DeployTimeout = 30 * time.Minute
@@ -38,9 +40,6 @@ func TestDeployment(t *testing.T) {
 	env, err := environment.GetTestEnvironment(ctx, config)
 	require.NoError(t, err)
 
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-
 	k8s, err := utils.GetKubernetesClient()
 	require.NoError(t, err, "failed to create kubernetes client")
 
@@ -48,144 +47,151 @@ func TestDeployment(t *testing.T) {
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	require.NoErrorf(t, err, "Failed to obtain Azure credentials")
 	con := armcore.NewDefaultConnection(azcred, nil)
-	radAppClient := radclient.NewApplicationClient(con, env.SubscriptionID)
 
-	t.Run("Deploy frontend-backend", func(t *testing.T) {
-		applicationName := "frontend-backend"
-		templateFilePath := filepath.Join(cwd, "../../examples/frontend-backend/template.bicep")
+	options := Options{
+		Environment:   env,
+		ARMConnection: con,
+		K8s:           k8s,
+	}
 
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
-		require.NoError(t, err)
-
-		// get application and verify name
-		response, err := radAppClient.Get(ctx, env.ResourceGroup, applicationName, nil)
-		require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-		assert.Equal(t, applicationName, *response.ApplicationResource.Name)
-
-		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
-			Namespaces: map[string][]validation.Pod{
-				applicationName: {
-					validation.NewPodForComponent(applicationName, "frontend"),
-					validation.NewPodForComponent(applicationName, "backend"),
+	table := []Row{
+		{
+			Application: "frontend-backend",
+			Description: "frontend-backend",
+			Template:    "../../examples/frontend-backend/template.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"frontend-backend": {
+						validation.NewPodForComponent("frontend-backend", "frontend"),
+						validation.NewPodForComponent("frontend-backend", "backend"),
+					},
 				},
 			},
-		})
+			Verify: func(t *testing.T, at ApplicationTest) {
+				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
-		t.Cleanup(func() {
-			if err := utils.RunRadApplicationDeleteCommand(applicationName, env.ConfigPath, time.Minute*5); err != nil {
-				t.Errorf("failed to delete application: %w", err)
-			}
-			if ok := validation.ValidateNoPodsInNamespace(t, k8s, applicationName); !ok {
-				t.Logf("Some pods in the namespace %v are still not delete", applicationName)
-			}
-		})
-	})
-
-	t.Run(("Deploy azure-servicebus"), func(t *testing.T) {
-		applicationName := "radius-servicebus"
-		templateFilePath := filepath.Join(cwd, "../../examples/azure-examples/azure-servicebus/template.bicep")
-
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
-		require.NoError(t, err)
-
-		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
-			Namespaces: map[string][]validation.Pod{
-				applicationName: {
-					validation.NewPodForComponent(applicationName, "sender"),
-					validation.NewPodForComponent(applicationName, "receiver"),
+				// get application and verify name
+				response, err := appclient.Get(ctx, env.ResourceGroup, "frontend-backend", nil)
+				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+				assert.Equal(t, "frontend-backend", *response.ApplicationResource.Name)
+			},
+		},
+		{
+			Application: "radius-servicebus",
+			Description: "azure-servicebus",
+			Template:    "../../examples/azure-examples/azure-servicebus/template.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"radius-servicebus": {
+						validation.NewPodForComponent("radius-servicebus", "sender"),
+						validation.NewPodForComponent("radius-servicebus", "receiver"),
+					},
 				},
 			},
-		})
-
-		t.Cleanup(func() {
-			if err := utils.RunRadApplicationDeleteCommand(applicationName, env.ConfigPath, time.Minute*5); err != nil {
-				t.Errorf("failed to delete application: %w", err)
-			}
-
-			if ok := validation.ValidateNoPodsInNamespace(t, k8s, applicationName); !ok {
-				t.Logf("Some pods in the namespace %v are still not delete", applicationName)
-			}
-		})
-	})
-
-	t.Run(("Deploy dapr pubsub"), func(t *testing.T) {
-		applicationName := "dapr-pubsub"
-		templateFilePath := filepath.Join(cwd, "../../examples/dapr-examples/dapr-pubsub-azure/template.bicep")
-
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
-		require.NoError(t, err)
-
-		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
-			Namespaces: map[string][]validation.Pod{
-				applicationName: {
-					validation.NewPodForComponent(applicationName, "nodesubscriber"),
-					validation.NewPodForComponent(applicationName, "pythonpublisher"),
+		},
+		{
+			Application: "dapr-pubsub",
+			Description: "dapr-pubsub (Azure)",
+			Template:    "../../examples/dapr-examples/dapr-pubsub-azure/template.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"dapr-pubsub": {
+						validation.NewPodForComponent("dapr-pubsub", "nodesubscriber"),
+						validation.NewPodForComponent("dapr-pubsub", "pythonpublisher"),
+					},
 				},
 			},
-		})
-
-		t.Cleanup(func() {
-			if err := utils.RunRadApplicationDeleteCommand(applicationName, env.ConfigPath, time.Minute*5); err != nil {
-				t.Errorf("failed to delete application: %w", err)
-			}
-
-			if ok := validation.ValidateNoPodsInNamespace(t, k8s, applicationName); !ok {
-				t.Logf("Some pods in the namespace %v are still not delete", applicationName)
-			}
-		})
-	})
-
-	t.Run(("Deploy azure keyvault"), func(t *testing.T) {
-		applicationName := "radius-keyvault"
-		templateFilePath := filepath.Join(cwd, "../../examples/azure-examples/azure-keyvault/template.bicep")
-
-		// Adding pod identity takes time hence the longer timeout
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
-		require.NoError(t, err)
-
-		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
-			Namespaces: map[string][]validation.Pod{
-				applicationName: {
-					validation.NewPodForComponent(applicationName, "kvaccessor"),
+		},
+		{
+			Application: "radius-keyvault",
+			Description: "azure-keyvault",
+			Template:    "../../examples/azure-examples/azure-keyvault/template.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"radius-keyvault": {
+						validation.NewPodForComponent("radius-keyvault", "kvaccessor"),
+					},
 				},
 			},
-		})
-
-		t.Cleanup(func() {
-			if err := utils.RunRadApplicationDeleteCommand(applicationName, env.ConfigPath, time.Minute*5); err != nil {
-				t.Errorf("failed to delete application: %w", err)
-			}
-
-			if ok := validation.ValidateNoPodsInNamespace(t, k8s, applicationName); !ok {
-				t.Logf("Some pods in the namespace %v are still not delete", applicationName)
-			}
-		})
-	})
-
-	t.Run(("Deploy dapr-hello (Tutorial)"), func(t *testing.T) {
-		applicationName := "dapr-hello"
-		templateFilePath := filepath.Join(cwd, "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep")
-
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
-		require.NoError(t, err)
-
-		validation.ValidatePodsRunning(t, k8s, validation.PodSet{
-			Namespaces: map[string][]validation.Pod{
-				applicationName: {
-					validation.NewPodForComponent(applicationName, "nodeapp"),
-					validation.NewPodForComponent(applicationName, "pythonapp"),
+		},
+		{
+			Application: "dapr-hello",
+			Description: "dapr-hello (Tutorial)",
+			Template:    "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"dapr-hello": {
+						validation.NewPodForComponent("dapr-hello", "nodeapp"),
+						validation.NewPodForComponent("dapr-hello", "pythonapp"),
+					},
 				},
 			},
-		})
+		},
+	}
 
-		t.Cleanup(func() {
-			if err := utils.RunRadApplicationDeleteCommand(applicationName, env.ConfigPath, time.Minute*5); err != nil {
-				t.Errorf("failed to delete application: %w", err)
-			}
+	for _, row := range table {
+		test := NewApplicationTest(options, row)
+		t.Run(row.Description, test.Test)
+	}
+}
 
-			if ok := validation.ValidateNoPodsInNamespace(t, k8s, applicationName); !ok {
-				t.Logf("Some pods in the namespace %v are still not delete", applicationName)
-			}
-		})
+type Row struct {
+	Application string
+	Description string
+	Template    string
+	Pods        validation.PodSet
+	Verify      func(*testing.T, ApplicationTest)
+}
+
+type Options struct {
+	Environment   *environment.TestEnvironment
+	K8s           *kubernetes.Clientset
+	ARMConnection *armcore.Connection
+}
+
+type ApplicationTest struct {
+	Options Options
+	Row     Row
+}
+
+func NewApplicationTest(options Options, row Row) ApplicationTest {
+	return ApplicationTest{Options: options, Row: row}
+}
+
+func (at ApplicationTest) Test(t *testing.T) {
+	// This runs each application deploy as a nested test, with the cleanup as part of the surrounding test.
+	// This way we can catch deletion failures and report them as test failures.
+	//
+	// In the future we can extend this to multi-phase tests that do more than just deploy and delete by adding more
+	// intermediate sub-tests.
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	// Deploy the application
+	t.Run(fmt.Sprintf("deploy %s", at.Row.Description), func(t *testing.T) {
+		templateFilePath := filepath.Join(cwd, at.Row.Template)
+		t.Logf("deploying %s from file %s", at.Row.Description, at.Row.Template)
+
+		err := utils.RunRadDeployCommand(templateFilePath, at.Options.Environment.ConfigPath, DeployTimeout)
+		require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
+
+		// ValidatePodsRunning triggers its own assertions, no need to handle errors
+		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods)
+
+		// Custom verification is expected to use `t` to trigger its own assertions
+		if at.Row.Verify != nil {
+			at.Row.Verify(t, at)
+		}
 	})
+
+	// In the future we can add more subtests here for multi-phase tests that change what's deployed.
+
+	// Cleanup code here will run regardless of pass/fail of subtests
+	err = utils.RunRadApplicationDeleteCommand(at.Row.Application, at.Options.Environment.ConfigPath, DeleteTimeout)
+	require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
+
+	for ns := range at.Row.Pods.Namespaces {
+		validation.ValidateNoPodsInNamespace(t, at.Options.K8s, ns)
+	}
 }
