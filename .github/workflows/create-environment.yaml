@@ -9,11 +9,6 @@ on:
   repository_dispatch:
     types:
     - create-environment
-  workflow_dispatch:
-    ref:
-      description: 'Github ref to use in checkout'
-      required: false
-      default: 'refs/heads/main'
 jobs:
   create-environment:
     name: Create Environment
@@ -37,7 +32,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ github.event.client_payload.ref }}
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v2
         with:

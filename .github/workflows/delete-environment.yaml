@@ -9,14 +9,6 @@ on:
   repository_dispatch:
     types:
     - delete-environment
-  workflow_dispatch:
-    ref:
-      description: 'Github ref to use in checkout'
-      required: false
-      default: 'refs/heads/main'
-    environemnt:
-      description: 'Environment to delete'
-      required: true
 jobs:
   delete-environment:
     name: Delete Environment
@@ -38,7 +30,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ github.event.client_payload.ref }}
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v2
         with:
@@ -56,12 +48,12 @@ jobs:
             --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
             --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
             --tablename environments \
-            --environment ${{ github.event.inputs.environment }}
+            --environment ${{ github.event.client_payload.environment }}
       - name: Delete Environment
         run: |
           az group delete \
             --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-            --resource-group ${{ github.event.inputs.environment }}
+            --resource-group ${{ github.event.client_payload.environment}}
       - name: Create issue on failure
         uses: JasonEtco/create-an-issue@v2
         if: failure()
