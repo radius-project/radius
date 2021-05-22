@@ -27,6 +27,11 @@ jobs:
     # - Remove environment from environment table
     # - Delete environment
     steps:
+      - name: Sanity Check
+        uses: actions/github-script@v4
+        with:
+          script: |
+            console.log("Handling event with: " + JSON.stringify(context));
       - name: Check out code
         uses: actions/checkout@v2
         with:

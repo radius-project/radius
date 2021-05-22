@@ -105,16 +105,15 @@ jobs:
 
           let split = args.split(' ')
           console.log(split)
-          while (split[0] === '') {
-            split.pop();
+          const env = split[1]
+          if (!!env) {
+            throw new Error("environment is required");
           }
 
-          const environment = split[0]
-          console.log("Environment is: " + environment);
-
+          console.log("Environment is: " + env);
           const payload = {
             ref: pull.data.head.sha,
-            environment: environment,
+            environment: env,
           };
       
           // Fire repository_dispatch event to trigger e2e test
