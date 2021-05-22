@@ -94,7 +94,8 @@ jobs:
             --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
             --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
             --tablename environments \
-            --environment ${{ steps.generate-resource-group-name.outputs.result }}
+            --environment ${{ steps.generate-resource-group-name.outputs.result }} \
+            --configpath ~/.rad/config.yaml
       - name: Create issue on failure
         uses: JasonEtco/create-an-issue@v2
         if: failure()
@@ -110,6 +111,7 @@ jobs:
         continue-on-error: true
         run: |
           az group delete \
+            --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
             --yes
           
