@@ -166,6 +166,29 @@ jobs:
           --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
           --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
           --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+
+    # We create a new test environment in the background so they get cycled through
+    # If there are no enviroments available we'll wait for this one to succeed and take it.
+    - name: Create new test environment (async)
+      uses: actions/github-script@v4
+      with:
+        script: |
+          const pull = await github.pulls.get({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            pull_number: context.issue.number
+          });
+
+          // Fire repository_dispatch event to trigger e2e test
+          await github.repos.createDispatchEvent({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            event_type: "create-environment",
+            client_payload: { },
+          });
+                  
+          console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
+
       # We select a test environment here and load it into the default 
       # radius config so that it will be used by tests
     - name: Reserve test environment
@@ -182,7 +205,10 @@ jobs:
           --tablename environments \
           --configpath ~/.rad/config.yaml \
           --timeout 60
+        # Print config for sanity check
         cat ~/.rad/config.yaml
+        # Output environment name
+        echo "::set-output name=environment::$(cat ~/.rad/config.yaml | sed -n 's/.*default: \(.*\)/\1/p')"
     - name: Merge Kubernetes credentials
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
@@ -209,19 +235,36 @@ jobs:
         echo "PATH is $PATH"
         which rad || { echo "cannot find rad"; exit 1; }
         make deploy-tests
-    - name: Release test environment
+
+    # Now we'll delete the test environment we used. This prevents PRs from
+    # dirtying state in a preserved environment
+    - name: Delete test environment (async)
       if: ${{ success() || steps.reserve.outcome == 'success' }}
-      run: |
-        go run cmd/testenv/main.go \
-          release \
-          --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
-          --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
-          --tablename environments \
-          --configpath ~/.rad/config.yaml
+      uses: actions/github-script@v4
+      with:
+        script: |
+          const pull = await github.pulls.get({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            pull_number: context.issue.number
+          });
+
+          // Fire repository_dispatch event delete environment
+          await github.repos.createDispatchEvent({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            event_type: "delete-environment",
+            client_payload: { 
+              environment: ${{ steps.reserve.outputs.environment }},
+            },
+          });
+                  
+          console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
+
 
   publish:
     name: Publish rad CLI binaries
-    needs: [ 'build' ] # may want to add needs 'deploy_tests' as well in the future
+    needs: [ 'build' ]
     runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
