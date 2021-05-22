@@ -1,12 +1,71 @@
 ---
 type: docs
-title: "Use PubSub over Azure ServiceBus with Dapr and Radius"
-linkTitle: "PubSub with Dapr"
-description: "Learn how to create a working application using Dapr PubSub over Azure ServiceBus and Radius"
-weight: 20
+title: "Use Dapr Pub/Sub over Azure ServiceBus with Radius"
+linkTitle: "Azure ServiceBus"
+description: "Learn how to use Dapr Pub/Sub with Azure ServiceBus and Radius"
+weight: 200
 ---
 
-## Prerequisites
+## Dapr Pub/Sub with Azure ServiceBus
+
+Radius components for Dapr Pub/Sub with Azure ServiceBus offers:
+
+- Managed deployment and management of the underlying Azure ServiceBus
+- Setup and configuration of Managed Identities and RBAC for consuming components
+- Creation and configuration of the Dapr component spec
+
+## Create a Dapr Pub/Sub with Azure ServiceBus
+
+To add a new managed Dapr Pub/Sub with Azure ServiceBus, add the following Radius component:
+
+```sh
+resource pubsub 'Components' = {
+  name: 'pubsub'
+  kind: 'dapr.io/PubSubTopic@v1alpha1'
+  properties: {
+    config: {
+      kind: 'pubsub.azure.servicebus'
+      topic: 'TOPIC_A'
+      managed: true
+    }
+  }
+}
+```
+
+## Access from a container
+
+To access the Dapr PubSub component from a container, add the following traits and dependencies:
+
+```sh
+resource nodesubscriber 'Components' = {
+  name: 'nodesubscriber'
+  kind: 'radius.dev/Container@v1alpha1'
+  properties: {...}
+  dependsOn: [
+    {
+      name: 'pubsub'
+      kind: 'dapr.io/PubSubTopic'
+      setEnv: {
+        SB_PUBSUBNAME: 'pubsubName'
+        SB_TOPIC: 'topic'
+      }
+    }
+  ]
+  traits: [
+    {
+      kind: 'dapr.io/App@v1alpha1'
+      properties: {
+        appId: 'nodesubscriber'
+        appPort: 50051
+      }
+    }
+  ]
+}
+```
+
+## Tutorial
+
+### Pre-requisites
 
 To begin this tutorial you should have already completed the following steps:
 
@@ -18,7 +77,7 @@ No prior knowledge of Radius is needed, this tutorial will walk you through auth
 
 If you are using Visual Studio Code with the Project Radius extension you should see syntax highlighting. If you have the offical Bicep extension installed, you should disable it for this tutorial. The instructions will refer to VS Code features like syntax highlighting and the problems windows - however, you can complete this tutorial with just a basic text editor.
 
-## Understanding the application
+### Understanding the application
 
 The application you will be deploying is a simple publisher-subscriber application using Dapr PubSub over Azure ServiceBus topics for communication. It has three components:
 
@@ -28,7 +87,7 @@ The application you will be deploying is a simple publisher-subscriber applicati
 
 You can find the source code for the sender and receiver applications [here](https://github.com/Azure/radius/tree/main/examples/dapr-examples/dapr-pubsub-azure/apps).
 
-### Subscriber application
+#### Subscriber application
 
 The subscriber application listens to a pubsub component named "pubsub" and an Azure ServiceBus topic named "TOPIC_A" and prints out the messages received. If you wish to modify the application code, you can do so and create a new image as follows:-
 
@@ -39,7 +98,8 @@ docker push <your docker hub>/dapr-pubsub-nodesubscriber:latest
 ```
 
 Note: You need to reference your new image as the container image in the deployment template:-
-```
+
+```sh
 resource nodesubscriber 'Components' = {
     name: 'nodesubscriber'
     kind: 'radius.dev/Container@v1alpha1'
@@ -74,7 +134,7 @@ resource nodesubscriber 'Components' = {
 
 The environment variables `SB_PUBSUBNAME` and `SB_TOPIC` are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec
 
-### Publisher application
+#### Publisher application
 
 The publisher application sends messages to a pubsub component named "pubsub" and an Azure ServiceBus topic named "TOPIC_A". If you wish to modify the application code, you can do so and create a new image as follows:-
 
@@ -85,7 +145,8 @@ docker push <your docker hub>/dapr-pubsub-pythonpublisher:latest
 ```
 
 Note: You need to reference your new image as the container image in the deployment template:-
-```
+
+```sh
 resource pythonpublisher 'Components' = {
   name: 'pythonpublisher'
   kind: 'radius.dev/Container@v1alpha1'
@@ -119,14 +180,15 @@ resource pythonpublisher 'Components' = {
 
 The environment variables `SB_PUBSUBNAME` and `SB_TOPIC` are injected into the container by Radius. These correspond to the pubsub name and topic name specified in the Dapr PubSub component spec
 
-### Dapr pubsub component
+#### Dapr pubsub component
+
 Radius will create a new ServiceBus namespace if one does not already exist in the resource group and add the topic name "TOPIC_A" as specified in the deployment template below.
 
 {{% alert title="Note" color="warning" %}}
 Note that the name 'pubsub' used below should match the names used by the publisher and sender applications:-
 {{% /alert %}}
 
-```
+```sh
 resource pubsub 'Components' = {
   name: 'pubsub'
   kind: 'dapr.io/PubSubTopic@v1alpha1'
@@ -140,7 +202,7 @@ resource pubsub 'Components' = {
 }
 ```
 
-## Deploying the application
+### Deploy the application
 
 Now you are ready to deploy this application.
 
@@ -157,7 +219,6 @@ rad deploy template.bicep
 ```
 
 This will deploy the application, create the ServiceBus queue and launch the containers.
-
 
 To see the publisher and subscriber applications working, you can check logs:
 
@@ -181,7 +242,7 @@ TOPIC_A :  hello world
 
 You have completed this tutorial!
 
-## (optional) Cleanup
+### (optional) Cleanup
 
 When you are ready to clean up and delete the resources you can delete your environment. This will delete:
 

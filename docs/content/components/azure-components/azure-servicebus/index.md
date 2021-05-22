@@ -1,14 +1,63 @@
 ---
 type: docs
-title: "Azure ServiceBus application"
-linkTitle: "Azure ServiceBus"
-description: "Sample application that deploys Azure ServiceBus"
-weight: 20
+title: "Azure ServiceBus component"
+linkTitle: "ServiceBus"
+description: "Deploy and orchestrate Azure KeyVault using Radius"
 ---
 
-This application showcases how Radius can deploy Azure ServiceBus.
+## ServiceBus component
 
-## Prerequisites
+The Radius KeyVault component offers to the user:
+
+- Managed resource deployment and lifecycle of the ServiceBus Queue
+- Automatic configuration of Azure Managed Identities and RBAC between consuming components and the ServiceBus
+- Injection of connection information into connected containers
+- Automatic secret injection for configured components
+
+### Create ServiceBus component
+
+A ServiceBus Queue resource can be modeled with the `azure.com/ServiceBusQueue@v1alpha1` kind:
+
+```sh
+resource sbq 'Components' = {
+  name: 'sbq'
+  kind: 'azure.com/ServiceBusQueue@v1alpha1'
+  properties: {
+      config: {
+          managed: true
+          queue: 'radius-queue1'
+      }
+  }
+}
+```
+
+### Access ServiceBus from container
+
+ServiceBus Queues can be referenced from Radius container components through the connection and queue environment variables injected into the container:
+
+```sh
+resource receiver 'Components' = {
+    name: 'receiver'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {...}
+    dependsOn: [
+      {
+        name: 'sbq'
+        kind: 'azure.com/ServiceBusQueue'
+        setEnv: {
+          SB_CONNECTION: 'connectionString'
+          SB_NAMESPACE: 'namespace'
+          SB_QUEUE: 'queue'
+        }
+      }
+    ]
+  }
+}
+```
+
+## Tutorial
+
+### Pre-requisites
 
 To begin this tutorial you should have already completed the following steps:
 
@@ -20,7 +69,7 @@ No prior knowledge of Radius is needed, this tutorial will walk you through auth
 
 If you are using Visual Studio Code with the Project Radius extension you should see syntax highlighting. If you have the offical Bicep extension installed, you should disable it for this tutorial. The instructions will refer to VS Code features like syntax highlighting and the problems windows - however, you can complete this tutorial with just a basic text editor.
 
-## Understanding the application
+### Understanding the application
 
 The application you will be deploying is a simple sender-receiver application using Azure ServiceBus queue for communication between the send and receiver. It has three components:
 
@@ -30,11 +79,11 @@ The application you will be deploying is a simple sender-receiver application us
 
 You can find the source code for the sender and receiver applications at the [here](https://github.com/Azure/radius/tree/main/examples/azure-examples/azure-servicebus/apps).
 
-### Receiver application
+#### Receiver application
 
 The receiver application is a simple listener that listens to an Azure ServiceBus queue named `radius-queue1` and prints out the messages received:
 
-```
+```sh
 resource receiver 'Components' = {
     name: 'receiver'
     kind: 'radius.dev/Container@v1alpha1'
@@ -59,7 +108,7 @@ resource receiver 'Components' = {
   }
 ```
 
-#### (optional) Updating the application
+##### (optional) Updating the application
 
 If you wish to modify the application code, you can do so and create a new image as follows:
 
@@ -71,11 +120,11 @@ docker push <your docker hub>/servicebus-receiver
 
 Make sure to update the container images in the receiver resource of your deployment template if you create your own image.
 
-### Sender application
+#### Sender application
 
 The sender application sends messages over an Azure ServiceBus queue named `radius-queue1` with a delay of 1s:
 
-```
+```sh
 resource sender 'Components' = {
     name: 'sender'
     kind: 'radius.dev/Container@v1alpha1'
@@ -100,7 +149,7 @@ resource sender 'Components' = {
   }
 ```
 
-#### (optional) Updating the application
+##### (optional) Updating the application
 
 If you wish to modify the application code, you can do so and create a new image as follows:
 
@@ -112,11 +161,11 @@ docker push <your docker hub>/servicebus-sender
 
 Make sure to update the container images in the sender resource of your deployment template if you create your own image.
 
-### Azure Service Bus
+#### Azure Service Bus
 
 Radius will create a new ServiceBus namespace if one does not already exist in the resource group and add the queue name `radius-queue1` as specified in the deployment template below. If you change the queue name, it is automatically injected into the sender/receiver app containers and they start sending/listening on the new queue accoridingly.
 
-```
+```sh
 resource sbq 'Components' = {
   name: 'sbq'
   kind: 'azure.com/ServiceBusQueue@v1alpha1'
@@ -129,18 +178,18 @@ resource sbq 'Components' = {
 }
 ```
 
-## Deploy application
+### Deploy application
 
-### Pre-requisites
+#### Pre-requisites
 
 - Make sure you have an active [Radius environment]({{< ref create-environment.md >}}).
 - Ensure you are logged into Azure using `az login`
 
-### Download Bicep file
+#### Download Bicep file
 
 Begin by creating a file named `template.bicep` and pasting the above components. Alternately you can download it [below](#bicep-file).
 
-### Deploy template file
+#### Deploy template file
 
 Submit the Radius template to Azure using:
 
@@ -171,7 +220,7 @@ Messages: Cool Message 3
 
 You have completed this tutorial!
 
-## Cleanup (optional)
+### Cleanup (optional)
 
 When you are ready to clean up and delete the resources you can delete your environment. This will delete:
 
@@ -183,7 +232,6 @@ When you are ready to clean up and delete the resources you can delete your envi
 rad env delete --name azure --yes
 ```
 
-
-## Bicep file
+### Bicep file
 
 {{< rad file="template.bicep">}}

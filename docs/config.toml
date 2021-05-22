@@ -35,9 +35,6 @@ id = "G-9JR8B6TPF9"
     source = "archetypes"
     target = "archetypes"
   [[module.mounts]]
-    source = "../examples"
-    target = "content/examples"
-  [[module.mounts]]
     source = "../schemas/rest-api-specs"
     target = "content/reference/api"
 
