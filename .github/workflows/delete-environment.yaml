@@ -57,7 +57,7 @@ jobs:
       - name: Delete Environment
         run: |
           az group delete \
-            --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ github.event.client_payload.environment}}
       - name: Create issue on failure
         uses: JasonEtco/create-an-issue@v2
