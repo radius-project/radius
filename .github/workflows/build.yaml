@@ -172,6 +172,7 @@ jobs:
     - name: Create new test environment (async)
       uses: actions/github-script@v4
       with:
+        github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
           const pull = await github.pulls.get({
             owner: context.issue.owner,
@@ -179,15 +180,13 @@ jobs:
             pull_number: context.issue.number
           });
 
-          // Fire repository_dispatch event to trigger e2e test
+          // Fire repository_dispatch event to trigger environment creation
           await github.repos.createDispatchEvent({
             owner: context.issue.owner,
             repo: context.issue.repo,
             event_type: "create-environment",
             client_payload: { },
           });
-                  
-          console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
 
       # We select a test environment here and load it into the default 
       # radius config so that it will be used by tests
@@ -242,6 +241,7 @@ jobs:
       if: ${{ success() || steps.reserve.outcome == 'success' }}
       uses: actions/github-script@v4
       with:
+        github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
           const pull = await github.pulls.get({
             owner: context.issue.owner,
@@ -255,12 +255,9 @@ jobs:
             repo: context.issue.repo,
             event_type: "delete-environment",
             client_payload: { 
-              environment: ${{ steps.reserve.outputs.environment }},
-            },
+              environment: "${{ steps.reserve.outputs.environment }}"
+            }
           });
-                  
-          console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
-
 
   publish:
     name: Publish rad CLI binaries

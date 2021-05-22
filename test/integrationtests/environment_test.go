@@ -3,60 +3,38 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package itests
+package integrationtests
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/radius/test/config"
+	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
-// Radius env setup test
 func TestAzureEnvironmentSetup(t *testing.T) {
 	ctx := context.Background()
 
 	config, err := config.NewAzureConfig()
 	require.NoError(t, err, "failed to initialize azure config")
-	require.NotEmpty(t, config.SubscriptionID(), "Subscription Id must be set via INTEGRATION_TEST_SUBSCRIPTION_ID")
 
-	cwd, err := os.Getwd()
-	require.NoError(t, err, "failed to get working directory")
-
-	resourceGroupName := config.GenerateGroupName()
-	t.Cleanup(func() {
-		cleanup(ctx, t, config, resourceGroupName)
-	})
-
-	// use the local copy of the deployment template - this is needed for correctness when running as part of a PR
-	deploymentTemplateFilePath := filepath.Join(cwd, "../../deploy/rp-full.json")
-	require.FileExists(t, deploymentTemplateFilePath)
-
-	// Run the rad cli init command and look for errors
-	t.Log("Deploying in resource group: " + resourceGroupName)
-	err = utils.RunRadInitCommand(config.SubscriptionID(), resourceGroupName, config.DefaultLocation(), deploymentTemplateFilePath, time.Minute*15)
+	// Find a test cluster
+	env, err := environment.GetTestEnvironment(ctx, config)
 	require.NoError(t, err)
 
-	// Check whether the resource group is created
-	groupc := resources.NewGroupsClient(config.SubscriptionID())
-	groupc.Authorizer = config.Authorizer
-
-	rg, err := groupc.Get(ctx, resourceGroupName)
-	require.NoError(t, err, "failed to find resource group")
-	require.Equal(t, resourceGroupName, *rg.Name)
+	k8s, err := utils.GetKubernetesClient()
+	require.NoError(t, err, "failed to create kubernetes client")
 
 	resourceMap := make(map[string]string)
-	resc := resources.NewClient(config.SubscriptionID())
+	resc := resources.NewClient(env.SubscriptionID)
 	resc.Authorizer = config.Authorizer
 
-	for page, err := resc.ListByResourceGroup(ctx, resourceGroupName, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
+	for page, err := resc.ListByResourceGroup(ctx, env.ResourceGroup, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
 		require.NoError(t, err, "failed to list resources")
 
 		for _, r := range page.Values() {
@@ -88,26 +66,8 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	_, found = resourceMap["Microsoft.Resources/deploymentScripts"]
 	require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
 
-	// Deploy bicep template
-	templateFilePath := filepath.Join(cwd, "../../examples/frontend-backend/template.bicep")
-	require.FileExists(t, templateFilePath, "could not find application template")
-
-	err = utils.RunRadDeployCommand(templateFilePath, "", time.Minute*5)
-	require.NoError(t, err, "application deployment failed")
-
-	// Merge the k8s credentials to the cluster
-	err = utils.RunRadMergeCredentialsCommand("")
-	require.NoError(t, err, "failed to run merge credentials")
-
 	expectedPods := validation.PodSet{
 		Namespaces: map[string][]validation.Pod{
-
-			// verify app
-			"frontend-backend": {
-				validation.NewPodForComponent("frontend-backend", "frontend"),
-				validation.NewPodForComponent("frontend-backend", "backend"),
-			},
-
 			// verify dapr
 			"dapr-system": {
 				validation.Pod{Labels: map[string]string{"app": "dapr-dashboard"}},
@@ -119,19 +79,5 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 		},
 	}
 
-	k8s, err := utils.GetKubernetesClient()
-	require.NoError(t, err, "failed to create kubernetes client")
-
 	validation.ValidatePodsRunning(t, k8s, expectedPods)
-}
-
-func cleanup(ctx context.Context, t *testing.T, config *config.AzureConfig, resourceGroupName string) {
-	groupc := resources.NewGroupsClient(config.SubscriptionID())
-	groupc.Authorizer = config.Authorizer
-
-	groupsFuture, err := groupc.Delete(ctx, resourceGroupName)
-	require.NoError(t, err, "failed to delete resource group")
-
-	err = groupsFuture.WaitForCompletionRef(ctx, groupc.Client)
-	require.NoError(t, err, "failed to delete resource group")
 }

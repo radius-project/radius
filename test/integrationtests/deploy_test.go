@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package deploytests
+package integrationtests
 
 import (
 	"context"
