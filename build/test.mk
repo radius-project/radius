@@ -3,7 +3,12 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-ARROW := \033[34;1m=>\033[0m
+##@ Test
 
-# order matters for these
-include build/help.mk build/version.mk build/build.mk build/generate.mk build/test.mk build/docker.mk
+.PHONY: test
+test: ## Runs unit tests.
+	go test ./pkg/...
+
+.PHONY: test-integration
+test-integration: ## Runs integration tests
+	go test ./test/integrationtests/... -timeout 1800s

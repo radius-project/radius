@@ -51,7 +51,7 @@ jobs:
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make
-        run: make
+        run: make build
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm'
         run: make test
@@ -90,19 +90,19 @@ jobs:
         uses: actions/checkout@v2
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
-      - name: make docker
-        run: make docker
+      - name: make docker-build
+        run: make docker-build
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
           DOCKER_TAG_VERSION: latest
-      - name: make docker (PR)
-        run: make docker
+      - name: make docker-build (PR)
+        run: make docker-build
         if: startsWith(github.ref, 'refs/pull/')
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: make docker (release)
-        run: make docker
+      - name: make docker-build (release)
+        run: make docker-build
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
@@ -112,20 +112,20 @@ jobs:
           login-server: ${{ matrix.login_server }}
           username: '${{ secrets[matrix.username_secret] }}'
           password: '${{ secrets[matrix.password_secret] }}'
-      - name: make dockerpush (latest)
-        run: make dockerpush
+      - name: make docker-push (latest)
+        run: make docker-push
         if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to main or tag
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
           DOCKER_TAG_VERSION: latest
-      - name: make dockerpush (PR)
-        run: make dockerpush
+      - name: make docker-push (PR)
+        run: make docker-push
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: make dockerpush (release)
-        run: make dockerpush
+      - name: make docker-push (release)
+        run: make docker-push
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
@@ -224,7 +224,7 @@ jobs:
           update-rp \
           --configpath ~/.rad/config.yaml \
           --image radiusteam/radius-rp:${{ env.REL_VERSION }}
-    - name: Run deploy tests
+    - name: Run integration tests
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
@@ -233,7 +233,7 @@ jobs:
         cd $GITHUB_WORKSPACE
         echo "PATH is $PATH"
         which rad || { echo "cannot find rad"; exit 1; }
-        make deploy-tests
+        make test-integration
 
     # Now we'll delete the test environment we used. This prevents PRs from
     # dirtying state in a preserved environment

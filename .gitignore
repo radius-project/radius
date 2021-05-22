@@ -20,6 +20,7 @@ docs/content/reference/cli/rad*
 # Build Output 
 dist/
 radius-rp
+!radius-rp/
 radius-rp.exe
 rad
 !rad/
