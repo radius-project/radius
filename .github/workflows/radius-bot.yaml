@@ -19,7 +19,8 @@ jobs:
           const owners = [
             "vinayada1",
             "rynowak",
-            "kachawla"
+            "kachawla",
+            "jkotalik"
           ];
 
           console.log("Analyzing comment with: " + JSON.stringify(context));
@@ -124,38 +125,3 @@ jobs:
           });
 
           console.log(`Triggering environment deletion for ${JSON.stringify(payload)}`);
-
-    - name: Run e2e-tests
-      uses: actions/github-script@v4
-      if: success() && steps.analyze.outputs.result == 'run-e2e-tests'
-      with:
-        github-token: ${{secrets.RADIUS_BOT_TOKEN}}
-        script: |
-          const isPullRequest = !!context.payload.issue.pull_request
-          if (!isPullRequest) {
-            return
-          }
-
-          const pull = await github.pulls.get({
-            owner: context.issue.owner,
-            repo: context.issue.repo,
-            pull_number: context.issue.number
-          });
-
-          // Get commit id and repo from pull head
-          const e2eTestsPayload = {
-            pull_head_ref: pull.data.head.sha,
-            pull_head_repo: pull.data.head.repo.full_name,
-            command: "run-e2e-tests",
-            issue: context.issue,
-          };
-
-          // Fire repository_dispatch event to trigger e2e test
-          await github.repos.createDispatchEvent({
-            owner: issue.owner,
-            repo: issue.repo,
-            event_type: "e2e-tests",
-            client_payload: e2eTestsPayload,
-          });
-
-          console.log(`Triggering end to end tests for ${JSON.stringify(e2eTestsPayload)}`);

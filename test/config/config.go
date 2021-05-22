@@ -6,22 +6,16 @@
 package config
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/marstr/randname"
 )
 
 type AzureConfig struct {
-	Authorizer      autorest.Authorizer
-	ConfigPath      string
-	subscriptionID  string
-	locationDefault string
-	cloudName       string
-	baseGroupName   string
+	Authorizer autorest.Authorizer
+	ConfigPath string
 }
 
 func NewAzureConfig() (*AzureConfig, error) {
@@ -41,33 +35,7 @@ func NewAzureConfig() (*AzureConfig, error) {
 	}
 
 	return &AzureConfig{
-		Authorizer:      authorizer,
-		ConfigPath:      os.Getenv("RADIUS_CONFIG_PATH"),
-		subscriptionID:  os.Getenv("INTEGRATION_TEST_SUBSCRIPTION_ID"),
-		locationDefault: os.Getenv("INTEGRATION_TEST_DEFAULT_LOCATION"),
-		baseGroupName:   os.Getenv("INTEGRATION_TEST_BASE_GROUP_NAME"),
-		cloudName:       "AzurePublicCloud",
+		Authorizer: authorizer,
+		ConfigPath: os.Getenv("RADIUS_CONFIG_PATH"),
 	}, nil
-}
-
-// GenerateGroupName generates a resource group name with INTEGRATION_TEST_BASE_GROUP_NAME as the prefix
-// and adds a 5-character random string to it.
-func (config *AzureConfig) GenerateGroupName(affixes ...string) string {
-	b := bytes.NewBufferString(config.baseGroupName)
-	b.WriteRune('-')
-	for _, affix := range affixes {
-		b.WriteString(affix)
-		b.WriteRune('-')
-	}
-	return randname.GenerateWithPrefix(b.String(), 5)
-}
-
-// SubscriptionID returns the subscription ID
-func (config *AzureConfig) SubscriptionID() string {
-	return config.subscriptionID
-}
-
-// DefaultLocation returns the location default
-func (config *AzureConfig) DefaultLocation() string {
-	return config.locationDefault
 }

@@ -6,25 +6,23 @@
 package utils
 
 import (
-	"flag"
+	"fmt"
 	"path/filepath"
 
+	"github.com/mitchellh/go-homedir"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 )
 
 // GetKubernetesClient returns a kubernetes client
 func GetKubernetesClient() (*kubernetes.Clientset, error) {
-	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	home, err := homedir.Dir()
+	if err != nil {
+		return nil, fmt.Errorf("no HOME directory, cannot find kubeconfig: %w", err)
 	}
-	flag.Parse()
 
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	kubeconfig := filepath.Join(home, ".kube", "config")
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, err
 	}
