@@ -68,7 +68,7 @@ jobs:
         with:
           result-encoding: string
           script: |
-            const const { v4: uuidv4 }  = require('uuid')
+            const { v4: uuidv4 }  = require('uuid')
             return `rad-test-${uuidv4()}`;
       - name: Azure Login
         run: |
