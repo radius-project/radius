@@ -33,8 +33,8 @@ jobs:
           let command = null;
           let args = null;
           if (!!matches && matches.length > 0) {
-            command = matches.groups.command
-            args = matches.groups.args
+            command = matches.groups.command;
+            args = matches.groups.args;
           }
 
           console.log("Command is: " + command);
@@ -91,12 +91,19 @@ jobs:
 
           const regex = /^\/(?<command>[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)(?<args>(.*))$/;
           const matches = context.payload.comment.body.match(regex)
-          let environment = null;
+          let command = null;
+          let args = null;
           if (!!matches && matches.length > 0) {
-            console.log(`Args: '${matches.groups.args}'`);
-            environment = matches.groups.args.split(' ')[1]
+            command = matches.groups.command;
+            args = matches.groups.args;
+          } else {
+            throw new Error("cannot parse comment body: " + context.payload.comment.body);
           }
 
+          console.log("Command is: " + command);
+          console.log("Args are: " + args);
+
+          const environment = args.split(' ')[1]
           if (!!environment) {
             throw new Error("cannot parse comment body: " + context.payload.comment.body);
           }
