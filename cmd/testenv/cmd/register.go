@@ -108,11 +108,11 @@ func register(ctx context.Context, accountName string, accountKey string, tableN
 
 	entity := table.GetEntityReference(env.Name, env.Name)
 	entity.Properties = map[string]interface{}{
-		"CreatedTime":    time.Now().UTC().Format(time.RFC3339),
-		"ReservedTime":   "",
-		"subscriptionId": env.SubscriptionID,
-		"resourceGroup":  env.ResourceGroup,
-		"clusterName":    env.ClusterName,
+		PropertyCreatedTime:    time.Now().UTC().Format(time.RFC3339),
+		PropertyReservedTime:   "",
+		PropertySubscriptionID: env.SubscriptionID,
+		PropertyResourceGroup:  env.ResourceGroup,
+		PropertyClusterName:    env.ClusterName,
 	}
 
 	err = entity.Insert(storage.MinimalMetadata, &storage.EntityOptions{})
