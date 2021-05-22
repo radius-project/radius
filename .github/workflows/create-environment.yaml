@@ -69,7 +69,8 @@ jobs:
           result-encoding: string
           script: |
             const { v4: uuidv4 }  = require('uuid')
-            return `rad-${uuidv4().replaceAll('-', '')}`;
+            const suffix = uuidv4();
+            return `rad-${suffix.replaceAll('-', '')}`;
       - name: Azure Login
         run: |
           az login --service-principal \
