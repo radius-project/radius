@@ -93,7 +93,11 @@ jobs:
           const matches = context.payload.comment.body.match(regex)
           let environment = null;
           if (!!matches && matches.length > 0) {
-            environment = match.groups.args.split(' ')[1]
+            environment = matches.groups.args.split(' ')[1]
+          }
+
+          if (!!environment) {
+            throw new Error("cannot parse comment body: " + context.payload.comment.body);
           }
 
           const payload = {
