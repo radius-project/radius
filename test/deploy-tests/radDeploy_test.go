@@ -24,6 +24,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const DeployTimeout = 30 * time.Minute
+const DeleteTimeout = 30 * time.Minute
+
 // Tests application deployment using radius
 func TestDeployment(t *testing.T) {
 	ctx := context.Background()
@@ -51,7 +54,7 @@ func TestDeployment(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, "../../examples/frontend-backend/template.bicep")
 		applicationName := "frontend-backend"
 
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
+		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
 		require.NoError(t, err)
 
 		// get application and verify name
@@ -60,7 +63,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, applicationName, *response.ApplicationResource.Name)
 
 		t.Cleanup(func() {
-			err := utils.RunRadApplicationDeleteCommand(applicationName, env.ConfigPath, time.Minute*5)
+			err := utils.RunRadApplicationDeleteCommand(applicationName, env.ConfigPath, DeleteTimeout)
 			t.Logf("failed to delete application: %v", err)
 		})
 
@@ -77,11 +80,11 @@ func TestDeployment(t *testing.T) {
 	t.Run(("Deploy azure-servicebus"), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, "../../examples/azure-examples/azure-servicebus/template.bicep")
 
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
+		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
 		require.NoError(t, err)
 
 		t.Cleanup(func() {
-			err := utils.RunRadApplicationDeleteCommand("radius-servicebus", env.ConfigPath, time.Minute*5)
+			err := utils.RunRadApplicationDeleteCommand("radius-servicebus", env.ConfigPath, DeleteTimeout)
 			t.Logf("failed to delete application: %v", err)
 		})
 
@@ -98,11 +101,11 @@ func TestDeployment(t *testing.T) {
 	t.Run(("Deploy dapr pubsub"), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, "../../examples/dapr-examples/dapr-pubsub-azure/template.bicep")
 
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
+		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
 		require.NoError(t, err)
 
 		t.Cleanup(func() {
-			err := utils.RunRadApplicationDeleteCommand("dapr-pubsub", env.ConfigPath, time.Minute*5)
+			err := utils.RunRadApplicationDeleteCommand("dapr-pubsub", env.ConfigPath, DeleteTimeout)
 			t.Logf("failed to delete application: %v", err)
 		})
 
@@ -120,11 +123,11 @@ func TestDeployment(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, "../../examples/azure-examples/azure-keyvault/template.bicep")
 
 		// Adding pod identity takes time hence the longer timeout
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*15)
+		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
 		require.NoError(t, err)
 
 		t.Cleanup(func() {
-			err := utils.RunRadApplicationDeleteCommand("radius-keyvault", env.ConfigPath, time.Minute*5)
+			err := utils.RunRadApplicationDeleteCommand("radius-keyvault", env.ConfigPath, DeleteTimeout)
 			t.Logf("failed to delete application: %v", err)
 		})
 
@@ -140,11 +143,11 @@ func TestDeployment(t *testing.T) {
 	t.Run(("Deploy dapr-hello (Tutorial)"), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep")
 
-		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, time.Minute*5)
+		err = utils.RunRadDeployCommand(templateFilePath, env.ConfigPath, DeployTimeout)
 		require.NoError(t, err)
 
 		t.Cleanup(func() {
-			err := utils.RunRadApplicationDeleteCommand("dapr-hello", env.ConfigPath, time.Minute*5)
+			err := utils.RunRadApplicationDeleteCommand("dapr-hello", env.ConfigPath, DeleteTimeout)
 			t.Logf("failed to delete application: %v", err)
 		})
 
