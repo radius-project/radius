@@ -103,10 +103,14 @@ jobs:
           console.log("Command is: " + command);
           console.log("Args are: " + args);
 
-          const environment = args.split(' ')[1]
-          if (!!environment) {
-            throw new Error("cannot parse comment body: " + context.payload.comment.body);
+          let split = args.split(' ')
+          console.log(split)
+          while (split[0] === '') {
+            split.pop();
           }
+
+          const environment = split[0]
+          console.log("Environment is: " + environment);
 
           const payload = {
             ref: pull.data.head.sha,
