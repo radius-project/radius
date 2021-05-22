@@ -51,7 +51,7 @@ var unregisterCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(registerCmd)
+	RootCmd.AddCommand(unregisterCmd)
 	unregisterCmd.Flags().StringP("accountname", "a", "", "specifies storage account name")
 	err := registerCmd.MarkFlagRequired("accountname")
 	if err != nil {
