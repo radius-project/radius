@@ -28,14 +28,17 @@ jobs:
             return "";
           }
 
-          const regex = /^\/([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)$/;
+          const regex = /^\/(?<command>[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)(?<args>(.*))$/;
           const matches = context.payload.comment.body.match(regex)
           let command = null;
+          let args = null;
           if (!!matches && matches.length > 0) {
-            command = matches[1]
+            command = matches.groups.command
+            args = matches.groups.args
           }
 
           console.log("Command is: " + command);
+          console.log("Args are: " + args);
           return command
 
     - name: Run create-environment
@@ -68,6 +71,45 @@ jobs:
           });
                   
           console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
+
+    - name: Run delete-environment
+      uses: actions/github-script@v4
+      if: success() && steps.analyze.outputs.result == 'delete-environment'
+      with:
+        github-token: ${{secrets.RADIUS_BOT_TOKEN}}
+        script: |
+          const isPullRequest = !!context.payload.issue.pull_request
+          if (!isPullRequest) {
+            return
+          }
+
+          const pull = await github.pulls.get({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            pull_number: context.issue.number
+          });
+
+          const regex = /^\/(?<command>[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)(?<args>(.*))$/;
+          const matches = context.payload.comment.body.match(regex)
+          let environment = null;
+          if (!!matches && matches.length > 0) {
+            environment = match.groups.args.split(' ')[1]
+          }
+
+          const payload = {
+            ref: pull.data.head.sha,
+            environment: environment,
+          };
+      
+          // Fire repository_dispatch event to trigger e2e test
+          await github.repos.createDispatchEvent({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            event_type: "delete-environment",
+            client_payload: payload,
+          });
+
+          console.log(`Triggering environment deletion for ${JSON.stringify(payload)}`);
 
     - name: Run e2e-tests
       uses: actions/github-script@v4
