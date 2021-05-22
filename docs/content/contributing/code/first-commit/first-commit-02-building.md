@@ -13,13 +13,13 @@ If you have not already done so, clone the repository and navigate there in your
 You can build the main outputs using `make`:
 
 ```sh
-make
+make build
 ```
 
 You should see output similar to the following:
 
 ```txt
-➜ make
+➜ make build
 => Building RP from 'cmd/rp/main.go'
 => Built RP in './dist/darwin_amd64/release/radius-rp'
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
@@ -37,6 +37,8 @@ CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
 	-o ./dist/darwin_amd64/release/rad \
 	./cmd/cli/main.go;
 ```
+
+Our makefile also has a built-in help command. Run `make` or `make help` to see the list of targets.
 
 ## Test it out
 
