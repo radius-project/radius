@@ -58,7 +58,8 @@ jobs:
         run: |
           az group delete \
             --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-            --resource-group ${{ github.event.client_payload.environment}}
+            --resource-group ${{ github.event.client_payload.environment}} \
+            --yes
       - name: Create issue on failure
         uses: JasonEtco/create-an-issue@v2
         if: failure()
