@@ -152,19 +152,22 @@ func (cddh *azureCosmosMongoDBHandler) Delete(ctx context.Context, options Delet
 	mrc := documentdb.NewMongoDBResourcesClient(cddh.arm.SubscriptionID)
 	mrc.Authorizer = cddh.arm.Auth
 
+	// It's possible that this is a retry and we already deleted the account on a previous attempt.
+	// When that happens a delete for the database (a nested resource) can fail with a 404, but it's
+	// benign.
 	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, cddh.arm.ResourceGroup, accountname, dbname)
-	if err != nil {
+	if err != nil && dbfuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
-	}
+	} else if dbfuture.Response().StatusCode != 404 {
+		err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
+		if err != nil {
+			return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+		}
 
-	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
-	if err != nil {
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
-	}
-
-	_, err = dbfuture.Result(mrc)
-	if err != nil {
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+		response, err := dbfuture.Result(mrc)
+		if err != nil && response.StatusCode != 404 { // See comment on DeleteMongoDBDatabase
+			return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+		}
 	}
 
 	dac := documentdb.NewDatabaseAccountsClient(cddh.arm.SubscriptionID)
