@@ -29,7 +29,9 @@ do
   curl -LO "https://dl.k8s.io/$KUBECTL_VERSION/bin/linux/amd64/kubectl.sha256"
   curl -LO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
   
-  if echo "$(<kubectl.sha256) kubectl" | sha256sum --check
+  # on Busybox certain versions only support the `-c` shorthand
+  # see: https://github.com/Azure/radius/issues/404
+  if echo "$(<kubectl.sha256) kubectl" | sha256sum -c
   then
     echo "kubectl verified"
     break
