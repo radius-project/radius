@@ -19,9 +19,9 @@ Radius is an intelligent application model that empowers developers to easily de
 
 This mission has the following pillars:
 
-- Application Model: Radius applications describe the whole application from the developer's point of view. This includes compute resources (things that run your code) as well as supporting infrastructure like databases and API gateways.
-- Portability: Radius applications describe the requirements and intentions of the code, not the exact configuration of the infrastructure. The Radius toolset (rad, Bicep, and VS Code tools) work the same way across different hosting platforms.
-- Intelligence: Radius codifies and automates best-practices based on developer intentions. The Radius control plane has the intelligence to perform common operations like managing permissions and secrets.
+- **Application Model**: Radius applications describe the whole application from the developer's point of view. This includes compute resources (things that run your code) as well as supporting infrastructure like databases and API gateways.
+- **Portability**: Radius applications describe the requirements and intentions of the code, not the exact configuration of the infrastructure. The Radius toolset (rad, Bicep, and VS Code tools) work the same way across different hosting platforms.
+- **Intelligence**: Radius codifies and automates best-practices based on developer intentions. The Radius control plane has the intelligence to perform common operations like managing permissions and secrets.
 
 ## Platform strategy
 
