@@ -564,6 +564,9 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 
 	data := map[string]interface{}{}
 	err := json.Unmarshal([]byte(template), &data)
+	if err != nil {
+		return fmt.Errorf("Unable to create secret: %w", err)
+	}
 	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
 	dc.Authorizer = r.Arm.Auth
 	parameters := map[string]interface{}{}
