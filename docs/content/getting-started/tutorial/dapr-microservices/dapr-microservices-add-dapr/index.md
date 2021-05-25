@@ -47,7 +47,7 @@ Now the nodeapp is hooked up to Dapr, but we still need to define a state store 
 
 A `statestore` component is used to specify a few properties about the state store: 
 
-- **kind:** `adapr.io/StateStore@v1alpha1` represents a resource that Dapr uses to communicate with a database.
+- **kind:** `dapr.io/StateStore@v1alpha1` represents a resource that Dapr uses to communicate with a database.
   - **config > kind:** `state.azure.tablestorage` corresponds to the kind of Dapr state store used for [Azure Table Storage](https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/setup-azure-tablestorage/)
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
