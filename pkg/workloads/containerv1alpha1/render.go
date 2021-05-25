@@ -543,7 +543,6 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 	// Create secret in the Key Vault using ARM since ARM has write permissions to create secrets
 	// and no special role assignment is needed.
 	kvAPIVersion := strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " ")[0]
-	fmt.Println(kvAPIVersion)
 	vaultName := strings.Split(strings.Split(kvURI, "https://")[1], ".vault.azure.net")[0]
 	secretFullName := vaultName + "/" + secretName
 	template := fmt.Sprintf(`{
@@ -565,7 +564,6 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 
 	data := map[string]interface{}{}
 	err := json.Unmarshal([]byte(template), &data)
-	fmt.Println(template)
 	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
 	dc.Authorizer = r.Arm.Auth
 	parameters := map[string]interface{}{}
