@@ -366,21 +366,6 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	// // By now all secrets for all KeyVaults have been created.
-	// // Now delete RP role assignment for writing secrets to the KeyVault
-	// for _, dep := range cc.DependsOn {
-	// 	if dep.Kind != "azure.com/KeyVault" {
-	// 		raID, err := r.readKeyVaultRPRoleAssignmentID(dep, w)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 		err = roleassignment.Delete(ctx, r.Arm.Auth, r.Arm.SubscriptionID, raID)
-	// 		if err != nil {
-	// 			return nil, fmt.Errorf("Unable to delete role assignment to RP for write secrets: %w", err)
-	// 		}
-	// 	}
-	// }
-
 	for _, generic := range w.Workload.Provides {
 		if generic.Kind == KindHTTP {
 			httpProvides := HTTPProvidesService{}
@@ -388,11 +373,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			if err != nil {
 				return nil, err
 			}
-		}
-	}
 
-	for _, p := range cc.Provides {
-		if p.ContainerPort != nil {
 			port := corev1.ContainerPort{
 				Name:          httpProvides.Name,
 				ContainerPort: int32(httpProvides.GetEffectiveContainerPort()),

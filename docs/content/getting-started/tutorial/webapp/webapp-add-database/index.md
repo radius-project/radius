@@ -48,10 +48,20 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
       run: { ... }
       dependsOn: [
         {
+          name: 'kv'
+          kind: 'azure.com/KeyVault'
+          setEnv: {
+            KV_URI: 'kvuri'
+          }
+        }
+        {
           kind: 'mongodb.com/Mongo'
           name: 'db'
-          setEnv: {
-            DB_CONNECTION: 'connectionString'
+          setSecret: {
+            store: kv.name
+            keys: {
+              DBCONNECTION: 'connectionString'
+            }
           }
         }
       ]
@@ -60,7 +70,7 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
   }
 ```
 
-The `setEnv` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DB_CONNECTION` environment variable to access to the database connection string.
+The `setSecret` section declares the secrets to be created after creation of the `db` component. In this case the `connectionString` value will be retrieved from the database and set as a secret in the secret store named (`kv` here) with the secret name `DBCONNECTION`.
 
 ## Update your template.bicep file 
 
@@ -81,10 +91,20 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
       dependsOn: [
         {
+          name: 'kv'
+          kind: 'azure.com/KeyVault'
+          setEnv: {
+            KV_URI: 'kvuri'
+          }
+        }
+        {
           kind: 'mongodb.com/Mongo'
           name: 'db'
-          setEnv: {
-            DB_CONNECTION: 'connectionString'
+          setSecret: {
+            store: kv.name
+            keys: {
+              DBCONNECTION: 'connectionString'
+            }
           }
         }
       ]
@@ -107,6 +127,16 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
     }
   }
+
+  resource kv 'Components' = {
+    name: 'kv'
+    kind: 'azure.com/KeyVault@v1alpha1'
+    properties: {
+        config: {
+            managed: true
+        }
+    }
+  }
 }
 ```
 
@@ -126,7 +156,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
    rad deployment list --application-name webapp
    ```
 
-   You should see both `db` and `todoapp` components in your `webapp` application. Example output: 
+   You should see `kv`, `db` and `todoapp` components in your `webapp` application. Example output: 
 
    ```
    Using config file: /Users/{USER}/.rad/config.yaml
@@ -140,6 +170,9 @@ resource app 'radius.dev/Applications@v1alpha1' = {
            "components": [
              {
                "componentName": "db"
+             },
+             {
+               "componentName": "kv"
              },
              {
                "componentName": "todoapp"
@@ -161,7 +194,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
    <img src="todoapp-withdb.png" width="400" alt="screenshot of the todo application with a database">
 
-   If your page matches, then it means that the container is able to communicate with the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database. 
+   If your page matches, then it means that the container is able to communicate with the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database.
 
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 
