@@ -45,7 +45,6 @@ Another container component is used to specify a few properties about the order 
       ]
     }
   }
-}
 ```
 
 A few notable differences between `pythonapp` and the previously-deployed `nodeapp`:
