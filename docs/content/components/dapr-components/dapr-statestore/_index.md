@@ -22,4 +22,4 @@ resource orderstore 'Components' = {
   }
 ```
 
-## Supported Dapr pub/sub kinds
+## Supported Dapr state management kinds
