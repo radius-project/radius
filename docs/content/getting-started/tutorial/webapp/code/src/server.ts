@@ -1,12 +1,27 @@
 import express from 'express';
 import path from 'path';
 import * as routes from "./routes";
+import { SecretClient } from "@azure/keyvault-secrets";
+import { ManagedIdentityCredential } from "@azure/identity";
 
+export async function main(): Promise<void> {
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Using the DB_CONNECTION env-var to pass the connection string
-const connectionString = process.env.DB_CONNECTION;
+// Using the KV_URI env-var to get the KeyVault URI
+const kvURI = process.env.KV_URI || '';
+console.log("kvuri: ", kvURI)
+
+// Using the DBCONNECTION env-var to get the secret name for the DB connection string
+const secretName = "DBCONNECTION";
+console.log("Secret name: ", secretName)
+
+// Access the key vault to fetch the DB connection string
+const credential = new ManagedIdentityCredential();
+const client = new SecretClient(kvURI, credential);
+const connectionString = await (await client.getSecret(secretName)).value;
+console.log("Retrieved DB connection string from Key Vault")
+
 if (connectionString) {
   app.set("connectionString", connectionString);
 }
@@ -34,3 +49,6 @@ process.on('SIGINT', function() {
 app.listen(port, () =>
   console.log(`App listening on port ${port}!`),
 );
+}
+
+main()

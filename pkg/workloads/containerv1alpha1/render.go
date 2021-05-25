@@ -7,6 +7,7 @@ package containerv1alpha1
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -21,12 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
-	kvclient "github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
@@ -139,29 +137,6 @@ func (r Renderer) readKeyVaultURI(dep ContainerDependsOn, w workloads.Instantiat
 	}
 
 	return "", errors.New("unable to find keyvault uri. invalid spec")
-}
-
-func (r Renderer) readKeyVaultRPRoleAssignmentID(dep ContainerDependsOn, w workloads.InstantiatedWorkload) (string, error) {
-	if dep.Kind != "azure.com/KeyVault" {
-		return "", nil
-	}
-
-	service, ok := w.ServiceValues[dep.Name]
-	if !ok {
-		return "", fmt.Errorf("cannot resolve service %v", dep.Name)
-	}
-
-	value, ok := service[KeyVaultRPRoleID]
-	if !ok {
-		return "", fmt.Errorf("cannot resolve value %v for service %v", KeyVaultRPRoleID, dep.Name)
-	}
-
-	str, ok := value.(string)
-	if !ok {
-		return "", fmt.Errorf("value %v for service %v is not a string", KeyVaultRPRoleID, dep.Name)
-	}
-
-	return str, nil
 }
 
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep ContainerDependsOn, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, error) {
@@ -380,9 +355,10 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 
 		// Create secrets in the specified keyvault
 		for s, sv := range secrets {
-			var secretValue kvclient.SecretSetParameters
-			secretValue.Value = &sv
-			err := r.createSecret(ctx, kvURI, s, secretValue)
+			// var secretValue kvclient.SecretSetParameters
+			// secretValue.Value = &sv
+
+			err := r.createSecret(ctx, kvURI, s, sv)
 			if err != nil {
 				fmt.Printf("err: %v", err.Error())
 				return nil, fmt.Errorf("Could not create secret: %v: %w", s, err)
@@ -390,20 +366,20 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	// By now all secrets for all KeyVaults have been created.
-	// Now delete RP role assignment for writing secrets to the KeyVault
-	for _, dep := range cc.DependsOn {
-		if dep.Kind != "azure.com/KeyVault" {
-			raID, err := r.readKeyVaultRPRoleAssignmentID(dep, w)
-			if err != nil {
-				return nil, err
-			}
-			err = roleassignment.Delete(ctx, r.Arm.Auth, r.Arm.SubscriptionID, raID)
-			if err != nil {
-				return nil, fmt.Errorf("Unable to delete role assignment to RP for write secrets: %w", err)
-			}
-		}
-	}
+	// // By now all secrets for all KeyVaults have been created.
+	// // Now delete RP role assignment for writing secrets to the KeyVault
+	// for _, dep := range cc.DependsOn {
+	// 	if dep.Kind != "azure.com/KeyVault" {
+	// 		raID, err := r.readKeyVaultRPRoleAssignmentID(dep, w)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 		err = roleassignment.Delete(ctx, r.Arm.Auth, r.Arm.SubscriptionID, raID)
+	// 		if err != nil {
+	// 			return nil, fmt.Errorf("Unable to delete role assignment to RP for write secrets: %w", err)
+	// 		}
+	// 	}
+	// }
 
 	for _, generic := range w.Workload.Provides {
 		if generic.Kind == KindHTTP {
@@ -480,9 +456,6 @@ type AADPodIdentity struct {
 }
 
 func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, containerName, podNamespace string) (AADPodIdentity, error) {
-
-	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
-	dc.Authorizer = r.Arm.Auth
 
 	// Get AKS cluster name in current resource group
 	mcc := containerservice.NewManagedClustersClient(r.Arm.SubscriptionID)
@@ -585,37 +558,60 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	return podIdentity, nil
 }
 
-// getAuthorizerForResource returns an authorizer over the specified scope based on the auth method
-func (r Renderer) getAuthorizerForResource(ctx context.Context, scope string) (autorest.Authorizer, error) {
-	authMethod := armauth.GetAuthMethod()
-	if authMethod == armauth.ServicePrincipalAuth {
-		return auth.NewAuthorizerFromEnvironmentWithResource(scope)
-	} else if authMethod == armauth.ManagedIdentityAuth {
-		msiKeyConfig := &auth.MSIConfig{
-			Resource: scope,
-			ClientID: r.Arm.ClientID,
-		}
-		return msiKeyConfig.Authorizer()
-	} else {
-		return auth.NewAuthorizerFromCLIWithResource(scope)
-	}
-}
+func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue string) error {
+	// Create secret in the Key Vault using ARM since ARM has write permissions to create secrets
+	// and no special role assignment is needed.
+	kvAPIVersion := strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " ")[0]
+	fmt.Println(kvAPIVersion)
+	vaultName := strings.Split(strings.Split(kvURI, "https://")[1], ".vault.azure.net")[0]
+	secretFullName := vaultName + "/" + secretName
+	template := fmt.Sprintf(`{
+		"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+		"contentVersion": "1.0.0.0",
+		"parameters": {},
+		"resources": [
+			{
+				"type":"Microsoft.KeyVault/vaults/secrets",
+				"name":"%s",
+				"apiVersion":"%s",
+				"properties":{
+					"contentType":"text/plain",
+					"value":"%s"
+				}
+			}
+		]
+	  }`, secretFullName, kvAPIVersion, secretValue)
 
-func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue kvclient.SecretSetParameters) error {
-	// Get a token for the RP system assigned identity for the Key Vault resource
-	// The RP has previously been granted permission earlier to create secrets
-	kvauth, err := r.getAuthorizerForResource(ctx, "https://vault.azure.net")
+	data := map[string]interface{}{}
+	err := json.Unmarshal([]byte(template), &data)
+	fmt.Println(template)
+	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
+	dc.Authorizer = r.Arm.Auth
+	parameters := map[string]interface{}{}
+
+	deploymentProperties := &resources.DeploymentProperties{
+		Parameters: parameters,
+		Mode:       resources.Incremental,
+		Template:   data,
+	}
+	deploymentName := "create-secret-" + vaultName + "-" + secretName
+	op, err := dc.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, deploymentName, resources.Deployment{
+		Properties: deploymentProperties,
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("Unable to create secret: %w", err)
 	}
 
-	kvc := kvclient.New()
-	kvc.Authorizer = kvauth
-	_, err = kvc.SetSecret(ctx, kvURI, secretName, secretValue)
+	err = op.WaitForCompletionRef(context.Background(), dc.Client)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error: %w", err)
 	}
-	log.Printf("Created secret: %v in KeyVault: %v", secretName, kvURI)
+
+	_, err = op.Result(dc)
+	if err != nil {
+		return fmt.Errorf("Error: %w", err)
+	}
+	log.Printf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName)
 
 	return nil
 }

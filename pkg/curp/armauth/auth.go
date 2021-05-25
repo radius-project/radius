@@ -6,18 +6,15 @@
 package armauth
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 
-	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
+// Authentication methods
 const (
 	ServicePrincipalAuth = "ServicePrincipal"
 	ManagedIdentityAuth  = "ManagedIdentity"
@@ -29,7 +26,6 @@ type ArmConfig struct {
 	Auth           autorest.Authorizer
 	SubscriptionID string
 	ResourceGroup  string
-	ClientID       string
 }
 
 // GetArmConfig gets the configuration we use for managing ARM resources
@@ -59,16 +55,10 @@ func GetArmConfig() (ArmConfig, error) {
 
 	log.Printf("Using SubscriptionId = '%v' and Resource Group = '%v'", subscriptionID, resourceGroup)
 
-	clientID, err := GetClientIDForRP(subscriptionID, resourceGroup, *auth)
-	if err != nil || clientID == "" {
-		return ArmConfig{}, fmt.Errorf("unable to get clientID to use for role assignments: %w", err)
-	}
-
 	return ArmConfig{
 		Auth:           *auth,
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,
-		ClientID:       clientID,
 	}, nil
 }
 
@@ -138,44 +128,5 @@ func GetAuthMethod() string {
 		return ManagedIdentityAuth
 	} else {
 		return CliAuth
-	}
-}
-
-// GetClientIDForRP gets the Identity for the RP.
-// This will be either a serviceprincipal clientID, SystemAssigned Identity or ObjectID for the CLI user based on the auth mechanism
-func GetClientIDForRP(subscriptionID, resourceGroup string, auth autorest.Authorizer) (string, error) {
-	authMethod := GetAuthMethod()
-	if authMethod == ServicePrincipalAuth {
-		return os.Getenv("AZURE_CLIENT_ID"), nil
-	} else if authMethod == ManagedIdentityAuth {
-		log.Println("Managed Identity detected - using Managed Identity to get credentials")
-
-		rpName, ok := os.LookupEnv("RP_NAME")
-		if !ok {
-			log.Fatalln("Could not read RadiusRP name")
-		}
-
-		rp := azure.Resource{
-			SubscriptionID: subscriptionID,
-			ResourceGroup:  resourceGroup,
-			Provider:       "Microsoft.Web",
-			ResourceType:   "sites",
-			ResourceName:   rpName,
-		}
-		mc := msi.NewSystemAssignedIdentitiesClient(subscriptionID)
-		mc.Authorizer = auth
-		si, err := mc.GetByScope(context.TODO(), rp.String())
-
-		if err != nil {
-			return "", fmt.Errorf("Unable to get system assigned identity over scope: %v: %w", rp.String(), err)
-		}
-
-		return si.PrincipalID.String(), nil
-	} else {
-		rpClientID, ok := os.LookupEnv("AZURE_USER_OBJECT_ID")
-		if !ok {
-			return "", errors.New("Unable to get AZURE_USER_OBJECT_ID environment variable. Please set this to the output of 'az ad signed-in-user show --query objectId --output tsv'")
-		}
-		return rpClientID, nil
 	}
 }

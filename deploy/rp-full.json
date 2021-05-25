@@ -360,10 +360,6 @@
                         {
                             "name": "K8S_SUBSCRIPTION_ID",
                             "value": "[subscription().subscriptionId]"
-                        },
-                        {
-                            "name": "RP_NAME",
-                            "value": "[parameters('siteName')]"
                         }
                     ]
                 }
