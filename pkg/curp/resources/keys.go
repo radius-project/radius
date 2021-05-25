@@ -5,17 +5,19 @@
 
 package resources
 
-// SubscriptionIDKey is the route parameter key for the subscription ID segment of the URL.
-const SubscriptionIDKey = "subscriptionId"
+const (
+	// SubscriptionIDKey is the route parameter key for the subscription ID segment of the URL.
+	SubscriptionIDKey = "subscriptionId"
 
-// ResourceGroupKey is the route parameter key for the resource group segment of the URL.
-const ResourceGroupKey = "resourceGroup"
+	// ResourceGroupKey is the route parameter key for the resource group segment of the URL.
+	ResourceGroupKey = "resourceGroup"
 
-// ResourceProviderKey is the route parameter key for the resource provider name segment of the URL.
-const ResourceProviderKey = "resourceProvider"
+	// ResourceProviderKey is the route parameter key for the resource provider name segment of the URL.
+	ResourceProviderKey = "resourceProvider"
 
-// ResourceNameKey is the route parameter key for the resource name segment of the URL.
-const ResourceNameKey = "resourceName"
+	// ResourceNameKey is the route parameter key for the resource name segment of the URL.
+	ResourceNameKey = "resourceName"
 
-// ApplicationNameKey is the route parameter key for the application name segment of the URL.
-const ApplicationNameKey = "applicationName"
+	// ApplicationNameKey is the route parameter key for the application name segment of the URL.
+	ApplicationNameKey = "applicationName"
+)

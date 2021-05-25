@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"
+	"github.com/Azure/radius/pkg/workloads/cosmosdbsqlv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/dapr"
 	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
@@ -120,6 +121,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			daprstatestorev1alpha1.Kind:  &daprstatestorev1alpha1.Renderer{},
 			daprpubsubv1alpha1.Kind:      &daprpubsubv1alpha1.Renderer{},
 			cosmosdbmongov1alpha1.Kind:   &cosmosdbmongov1alpha1.Renderer{Arm: arm},
+			cosmosdbsqlv1alpha1.Kind:     &cosmosdbsqlv1alpha1.Renderer{Arm: arm},
 			containerv1alpha1.Kind:       &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
 			servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
 			keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
@@ -131,7 +133,8 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 			workloads.ResourceKindKubernetes:                     handlers.NewKubernetesHandler(k8s),
 			workloads.ResourceKindDaprStateStoreAzureStorage:     handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
 			workloads.ResourceKindDaprPubSubTopicAzureServiceBus: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
-			workloads.ResourceKindAzureCosmosDocumentDB:          handlers.NewAzureCosmosMongoDBHandler(arm),
+			workloads.ResourceKindAzureCosmosDBMongo:             handlers.NewAzureCosmosDBMongoHandler(arm),
+			workloads.ResourceKindAzureCosmosDBSQL:               handlers.NewAzureCosmosDBSQLHandler(arm),
 			workloads.ResourceKindAzureServiceBusQueue:           handlers.NewAzureServiceBusQueueHandler(arm),
 			workloads.ResourceKindAzureKeyVault:                  handlers.NewAzureKeyVaultHandler(arm),
 			workloads.ResourceKindAzurePodIdentity:               handlers.NewAzurePodIdentityHandler(arm),
