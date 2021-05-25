@@ -83,6 +83,10 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 				validation.Pod{Labels: map[string]string{"app": "dapr-sentry"}},
 				validation.Pod{Labels: map[string]string{"app": "dapr-sidecar-injector"}},
 			},
+			// verify ingress-nginx
+			"radius-system": {
+				validation.Pod{Labels: map[string]string{"app.kubernetes.io/name": "ingress-nginx"}},
+			},
 		},
 	}
 
