@@ -139,7 +139,7 @@ Here, Radius creates the Azure KeyVault and injects the KV_URI environment varia
 
 #### Download Bicep file
 
-Begin by creating a file named `template.bicep` and pasting the above components. Alternately you can download it [below](#bicep-file).
+Begin by creating a file named `template.bicep` and pasting the above components into an `app` resource. Alternately you can download it [below](#bicep-file).
 
 #### Deploy template file
 
