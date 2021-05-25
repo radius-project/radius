@@ -69,12 +69,16 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 
+	if component.Config.Managed && component.Config.Queue == "" {
+		return []workloads.WorkloadResource{}, errors.New("the 'topic' field is require when 'managed=true'")
+	}
+
 	// generate data we can use to manage a servicebus instance
 
 	resource := workloads.WorkloadResource{
 		Type: workloads.ResourceKindAzureServiceBusQueue,
 		Resource: map[string]string{
-			"name":            w.Workload.Name,
+			"servicebusname":  w.Workload.Name,
 			"servicebusqueue": component.Config.Queue,
 		},
 	}
