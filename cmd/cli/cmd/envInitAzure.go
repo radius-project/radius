@@ -81,6 +81,10 @@ rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group R
 			}
 		}
 
+		if a.Name == "" {
+			a.Name = a.ResourceGroup
+		}
+
 		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate)
 		if err != nil {
 			return err
@@ -93,7 +97,7 @@ rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group R
 func init() {
 	envInitCmd.AddCommand(envInitAzureCmd)
 
-	envInitAzureCmd.Flags().StringP("name", "n", "azure", "The environment name")
+	envInitAzureCmd.Flags().StringP("name", "n", "", "The environment name")
 	envInitAzureCmd.Flags().StringP("subscription-id", "s", "", "The subscription ID to use for the environment")
 	envInitAzureCmd.Flags().StringP("resource-group", "g", "", "The resource group to use for the environment")
 	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
