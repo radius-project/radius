@@ -7,7 +7,7 @@ description: "Learn how to use Dapr state management with Azure Table Storage an
 
 ## Dapr state management with Azure Table Storage
 
-Radius components for Dapr state management with Azure Table Storage offers:
+Radius components for Dapr state management with [Azure Table Storage](https://azure.microsoft.com/en-us/services/storage/tables/) offers:
 
 - Managed deployment and management of the underlying Azure Storage Account
 - Setup and configuration of Managed Identities and RBAC for consuming components
