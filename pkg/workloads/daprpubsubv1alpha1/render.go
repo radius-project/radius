@@ -10,13 +10,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
 // Renderer is the WorkloadRenderer implementation for the dapr pubsub workload.
 type Renderer struct {
-	Arm armauth.ArmConfig
 }
 
 // Allocate is the WorkloadRenderer implementation for dapr pubsub workload.
@@ -31,7 +29,7 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 	properties := wrp[0].Properties
 	namespaceName := properties["servicebusnamespace"]
-	pubsubName := properties["servicebuspubsubname"]
+	pubsubName := properties["servicebusname"]
 	topicName := properties["servicebustopic"]
 
 	values := map[string]interface{}{
@@ -55,17 +53,21 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 
+	if component.Config.Managed && component.Config.Topic == "" {
+		return []workloads.WorkloadResource{}, errors.New("the 'topic' field is require when 'managed=true'")
+	}
+
 	// generate data we can use to manage a servicebus instance
 
 	resource := workloads.WorkloadResource{
 		Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 		Resource: map[string]string{
-			"name":                 w.Workload.Name,
-			"namespace":            w.Application,
-			"apiVersion":           "dapr.io/v1alpha1",
-			"kind":                 "Component",
-			"servicebuspubsubname": component.Config.Name,
-			"servicebustopic":      component.Config.Topic,
+			"name":            w.Workload.Name,
+			"namespace":       w.Application,
+			"apiVersion":      "dapr.io/v1alpha1",
+			"kind":            "Component",
+			"servicebusname":  component.Config.Name,
+			"servicebustopic": component.Config.Topic,
 		},
 	}
 

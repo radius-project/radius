@@ -20,8 +20,9 @@ type DaprPubSubComponent struct {
 
 // DaprPubSubConfig is the defintion of the config section
 type DaprPubSubConfig struct {
-	Kind    string `json:"kind"`
-	Managed bool   `json:"managed"`
-	Name    string `json:"name"`
-	Topic   string `json:"topic"`
+	Kind     string `json:"kind"`
+	Managed  bool   `json:"managed"`
+	Resource string `json:"resource"`
+	Name     string `json:"name"`
+	Topic    string `json:"topic"`
 }
