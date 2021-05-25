@@ -17,12 +17,15 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	cliutils "github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -74,6 +77,32 @@ func TestDeployment(t *testing.T) {
 				response, err := appclient.Get(ctx, env.ResourceGroup, "frontend-backend", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
 				assert.Equal(t, "frontend-backend", *response.ApplicationResource.Name)
+			},
+		},
+		{
+			Application: "inbound-route",
+			Description: "inbound-route",
+			Template:    "../../examples/inbound-route/template.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"inbound-route": {
+						validation.NewPodForComponent("inbound-route", "frontend"),
+						validation.NewPodForComponent("inbound-route", "backend"),
+					},
+				},
+			},
+			Verify: func(t *testing.T, at ApplicationTest) {
+				// Verify that we've created an ingress resource. We don't verify reachability because allocating
+				// a public IP can take a few minutes.
+				labelset := map[string]string{
+					workloads.LabelRadiusApplication: "inbound-route",
+					workloads.LabelRadiusComponent:   "frontend",
+				}
+				matches, err := at.Options.K8s.NetworkingV1().Ingresses("inbound-route").List(context.Background(), v1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(labelset).String(),
+				})
+				require.NoError(t, err, "failed to list ingresses")
+				require.Lenf(t, matches.Items, 1, "items should contain one match, instead it had: %+v", matches.Items)
 			},
 		},
 		{
