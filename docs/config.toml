@@ -54,6 +54,16 @@ disableKinds = ["taxonomy", "term"]
 [params]
 copyright = "Project Radius"
 
+# Versioning
+version_menu = "Releases"
+[[params.versions]]
+  version = "edge (preview)"
+  url = "https://edge.radapp.dev"
+
+[[params.versions]]
+  version = "v0.1 (latest)"
+  url = "https://radapp.dev"
+
 # Markdown Engine - Allow inline html
 [markup]
   [markup.goldmark]
