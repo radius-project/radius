@@ -61,7 +61,7 @@ resource kvaccessor 'Components' = {
         name: 'kv'
         kind: 'azure.com/KeyVault'
         setEnv: {
-          KV_URI: 'kvuri'
+          KV_URI: 'keyvaulturi'
         }
       }
     ]

@@ -46,7 +46,7 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
           name: 'kv'
           kind: 'azure.com/KeyVault'
           setEnv: {
-            KV_URI: 'kvuri'
+            KV_URI: 'keyvaulturi'
           }
         }
       ]
@@ -62,25 +62,25 @@ The `setEnv` section declares operations to perform *based on* the relationship.
 Now, we no longer want the application to access the connection string to the database in clear text as an environment variable. Instead, we want to create a secret in the secret store which will store the connection string. For this, modify the `dependsOn` section as below:-
 
 ```sh
-dependsOn: [
-        {
-          name: 'kv'
-          kind: 'azure.com/KeyVault'
-          setEnv: {
-            KV_URI: 'kvuri'
-          }
+  dependsOn: [
+    {
+      name: 'kv'
+      kind: 'azure.com/KeyVault'
+      setEnv: {
+        KV_URI: 'keyvaulturi'
+      }
+    }
+    {
+      kind: 'mongodb.com/Mongo'
+      name: 'db'
+      setSecret: {
+        store: kv.name
+        keys: {
+          DBCONNECTION: 'connectionString'
         }
-        {
-          kind: 'mongodb.com/Mongo'
-          name: 'db'
-          setSecret: {
-            store: kv.name
-            keys: {
-              DBCONNECTION: 'connectionString'
-            }
-          }
-        }
-      ]
+      }
+    }
+  ]
 ```
 
 Here, the `setSecret` section declares the secrets to be created for the container to access the `db` component. In this case the `connectionString` value will be retrieved from the database and set as a secret in the secret store (named `kv` here) and the secret name will be `DBCONNECTION`.
@@ -106,7 +106,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           name: 'kv'
           kind: 'azure.com/KeyVault'
           setEnv: {
-            KV_URI: 'kvuri'
+            KV_URI: 'keyvaulturi'
           }
         }
         {

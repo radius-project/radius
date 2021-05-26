@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'webapp-kv'
+  name: 'webapp'
 
   resource todoapplication 'Components' = {
     name: 'todoapp'
@@ -7,7 +7,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'radiusteam/tutorial-webappkv'
+          image: 'radiusteam/tutorial-todoapp'
         }
       }
       dependsOn: [
@@ -15,7 +15,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           name: 'kv'
           kind: 'azure.com/KeyVault'
           setEnv: {
-            KV_URI: 'kvuri'
+            KV_URI: 'keyvaulturi'
           }
         }
         {

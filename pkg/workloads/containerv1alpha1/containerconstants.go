@@ -11,5 +11,5 @@ const (
 	PodIdentityCluster    = "podidentitycluster"
 	SecretStoreIdentifier = "store"
 	SecretKeysIdentifier  = "keys"
-	KeyVaultURIIdentifier = "kvuri"
+	KeyVaultURIIdentifier = "keyvaulturi"
 )

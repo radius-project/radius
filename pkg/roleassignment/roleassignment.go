@@ -38,7 +38,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 
 		// Retry to wait for the managed identity to propagate
 		if i >= MaxRetries {
-			return "", fmt.Errorf("failed to create role assignment for user assigned managed identity after retries: %w", err)
+			return "", fmt.Errorf("failed to create role assignment for user assigned managed identity after %d retries: %w", i, err)
 		}
 
 		ra, err = rac.Create(
@@ -72,26 +72,9 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 			return "", fmt.Errorf("failed to create role assignment with error: %v, statuscode: %v", detailed.Message, detailed.StatusCode)
 		}
 
-		log.Println("Failed to create role assignment. Retrying...")
+		log.Printf("Failed to create role assignment. Retrying: %d attempt ...", i)
 		time.Sleep(5 * time.Second)
-		continue
 	}
 
 	return "", nil
-}
-
-// Delete deletes the specified role assignment
-func Delete(ctx context.Context, auth autorest.Authorizer, subscriptionID, raID string) error {
-	rac := authorization.NewRoleAssignmentsClient(subscriptionID)
-	rac.Authorizer = auth
-
-	_, err := rac.DeleteByID(
-		ctx,
-		raID)
-
-	if err != nil {
-		return nil
-	}
-
-	return nil
 }

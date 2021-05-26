@@ -337,9 +337,9 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			} else if k == SecretKeysIdentifier {
 				// Read the secrets
 				setSecrets := v.(map[string]interface{})
-				for sn, sv := range setSecrets {
+				for secretName, secretValue := range setSecrets {
 					var str string
-					value, ok := service[sv.(string)]
+					value, ok := service[secretValue.(string)]
 					if !ok {
 						return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
 					}
@@ -348,20 +348,17 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 					if !ok {
 						return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
 					}
-					secrets[sn] = str
+					secrets[secretName] = str
 				}
 			}
 		}
 
 		// Create secrets in the specified keyvault
-		for s, sv := range secrets {
-			// var secretValue kvclient.SecretSetParameters
-			// secretValue.Value = &sv
-
-			err := r.createSecret(ctx, kvURI, s, sv)
+		for secretName, secretValue := range secrets {
+			err := r.createSecret(ctx, kvURI, secretName, secretValue)
 			if err != nil {
 				fmt.Printf("err: %v", err.Error())
-				return nil, fmt.Errorf("Could not create secret: %v: %w", s, err)
+				return nil, fmt.Errorf("Could not create secret: %v: %w", secretName, err)
 			}
 		}
 	}
@@ -542,7 +539,11 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue string) error {
 	// Create secret in the Key Vault using ARM since ARM has write permissions to create secrets
 	// and no special role assignment is needed.
+
+	// UserAgent() returns a string of format: Azure-SDK-For-Go/v52.2.0 keyvault/2019-09-01 profiles/latest
 	kvAPIVersion := strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " ")[0]
+
+	// KeyVault URI has the format: "https://<kv name>.vault.azure.net"
 	vaultName := strings.Split(strings.Split(kvURI, "https://")[1], ".vault.azure.net")[0]
 	secretFullName := vaultName + "/" + secretName
 	template := fmt.Sprintf(`{
