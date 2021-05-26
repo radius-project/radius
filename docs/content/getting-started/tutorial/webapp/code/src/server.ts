@@ -13,7 +13,7 @@ export async function main(): Promise<void> {
   var connectionString:string = '';
 
   if (kvURI) {
-    // Using the DBCONNECTION env-var to get the secret name for the DB connection string
+    // Using the DBCONNECTION secret to get the secret name for the DB connection string
     const secretName = "DBCONNECTION";
     console.log("Secret name: ", secretName)
 
