@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Use Dapr Pub/Sub over Azure ServiceBus with Radius"
+title: "Use Dapr Pub/Sub with Radius"
 linkTitle: "Pub/Sub"
 description: "Learn how to use Dapr Pub/Sub in Radius"
 weight: 300

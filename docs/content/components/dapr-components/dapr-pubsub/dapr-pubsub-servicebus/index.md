@@ -40,7 +40,7 @@ To access the Dapr PubSub component from a container, add the following traits a
 resource nodesubscriber 'Components' = {
   name: 'nodesubscriber'
   kind: 'radius.dev/Container@v1alpha1'
-  properties: {...}
+  properties: {
   dependsOn: [
     {
       name: 'pubsub'

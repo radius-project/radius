@@ -7,7 +7,7 @@ description: "Deploy and orchestrate Azure KeyVault using Radius"
 
 ## ServiceBus component
 
-The Radius KeyVault component offers to the user:
+The Azure ServiceBus component offers to the user:
 
 - Managed resource deployment and lifecycle of the ServiceBus Queue
 - Automatic configuration of Azure Managed Identities and RBAC between consuming components and the ServiceBus

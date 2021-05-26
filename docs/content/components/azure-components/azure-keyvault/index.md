@@ -46,13 +46,15 @@ resource kv 'Components' = {
 
 ### Access KeyVault from container
 
-KeyVaults can be referenced from Radius container components through the KeyVault URL which is injected as an environment variable:
+KeyVaults can be referenced from Radius container components through the KeyVault URL which is injected as an environment variable.
+
+In this example the URI used to access KeyVault is injected into the environment variable `KV_URI` within the container:
 
 ```sh
 resource kvaccessor 'Components' = {
   name: 'kvaccessor'
   kind: 'radius.dev/Container@v1alpha1'
-  properties: {...}
+  properties: {
     dependsOn: [
       {
         name: 'kv'
@@ -84,6 +86,8 @@ The Radius application you will be deploying is a simple python application that
 
 - An Azure KeyVault
 - An Azure KeyVault accessor
+
+The accessor uses an [Azure managed identity](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview) to access the KeyVault without any connection strings.
 
 #### Azure KeyVault component
 
