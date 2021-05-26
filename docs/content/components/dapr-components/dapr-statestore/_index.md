@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Use Dapr State Management with Radius"
-linkTitle: "State management"
+linkTitle: "State"
 description: "Learn how to use Dapr state management components in Radius"
 weight: 100
 ---
