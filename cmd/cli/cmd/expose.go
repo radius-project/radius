@@ -15,7 +15,7 @@ import (
 	"os/signal"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
-	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/spf13/cobra"
@@ -120,7 +120,7 @@ func init() {
 }
 
 func getMonitoringCredentials(ctx context.Context, env environments.AzureCloudEnvironment) (*rest.Config, error) {
-	armauth, err := utils.GetResourceManagerEndpointAuthorizer()
+	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return nil, err
 	}

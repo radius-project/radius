@@ -32,10 +32,10 @@ func (kh *kubernetesHandler) Put(ctx context.Context, options PutOptions) (map[s
 
 	// For a Kubernetes resource we only need to store the ObjectMeta and TypeMeta data
 	p := map[string]string{
-		"kind":       item.GetKind(),
-		"apiVersion": item.GetAPIVersion(),
-		"namespace":  item.GetNamespace(),
-		"name":       item.GetName(),
+		KubernetesKindKey:       item.GetKind(),
+		KubernetesAPIVersionKey: item.GetAPIVersion(),
+		KubernetesNamespaceKey:  item.GetNamespace(),
+		KubernetesNameKey:       item.GetName(),
 	}
 
 	err = kh.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
@@ -50,11 +50,11 @@ func (kh *kubernetesHandler) Delete(ctx context.Context, options DeleteOptions) 
 	properties := options.Existing.Properties
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": properties["apiVersion"],
-			"kind":       properties["kind"],
+			"apiVersion": properties[KubernetesAPIVersionKey],
+			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
-				"namespace": properties["namespace"],
-				"name":      properties["name"],
+				"namespace": properties[KubernetesNamespaceKey],
+				"name":      properties[KubernetesNameKey],
 			},
 		},
 	}

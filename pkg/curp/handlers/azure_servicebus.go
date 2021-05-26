@@ -7,7 +7,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
@@ -16,6 +15,15 @@ import (
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
+)
+
+const (
+	ServiceBusNamespaceIDKey   = "servicebusid"
+	ServiceBusNamespaceNameKey = "servicebusnamespace"
+	ServiceBusQueueNameKey     = "servicebusqueue"
+	ServiceBusQueueIDKey       = "servicebusqueueid"
+	ServiceBusTopicNameKey     = "servicebustopic"
+	ServiceBusTopicIDKey       = "servicebustopicid"
 )
 
 func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -32,78 +40,130 @@ type azureServiceBusQueueHandler struct {
 	azureServiceBusBaseHandler
 }
 
-func (sbh *azureServiceBusQueueHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	// 'servicebusqueue' is a name that must be specified by the user
-	queueName, ok := properties["servicebusqueue"]
+	// queue name must be specified by the user
+	queueName, ok := properties[ServiceBusQueueNameKey]
 	if !ok {
-		return nil, errors.New("missing required property 'servicebusqueue'")
+		return nil, fmt.Errorf("missing required property '%s'", ServiceBusQueueNameKey)
 	}
 
-	namespace, err := sbh.GetExistingNamespaceFromResourceGroup(ctx, options.Application)
-	if err != nil {
-		return nil, err
+	// This assertion is important so we don't start creating/modifying an unmanaged resource
+	if properties[ManagedKey] != "true" && (properties[ServiceBusNamespaceIDKey] == "" || properties[ServiceBusQueueIDKey] == "") {
+		return nil, fmt.Errorf("missing required properties '%s' and '%s' for an unmanaged resource", ServiceBusNamespaceIDKey, ServiceBusQueueIDKey)
 	}
 
-	if namespace == nil {
-		namespace, err = sbh.CreateNamespace(ctx, options.Application)
+	var namespace *servicebus.SBNamespace
+	var err error
+	if properties[ServiceBusNamespaceIDKey] == "" {
+		// If we don't have an ID already then we will need to create a new one.
+		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.Application)
+		if err != nil {
+			return nil, err
+		}
+
+		if namespace == nil {
+			namespace, err = handler.CreateNamespace(ctx, options.Application)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		properties[ServiceBusNamespaceNameKey] = *namespace.Name
+		properties[ServiceBusNamespaceIDKey] = *namespace.ID
+	} else {
+		// This is mostly called for the side-effect of verifying that the servicebus namespace exists.
+		namespace, err = handler.GetNamespaceByID(ctx, properties[ServiceBusNamespaceIDKey])
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	properties["servicebusnamespace"] = *namespace.Name
-	properties["servicebusid"] = *namespace.ID
-
-	_, err = sbh.CreateQueue(ctx, *namespace.Name, queueName)
-	if err != nil {
-		return nil, err
+	if properties[ServiceBusQueueIDKey] == "" {
+		queue, err := handler.CreateQueue(ctx, *namespace.Name, queueName)
+		if err != nil {
+			return nil, err
+		}
+		properties[ServiceBusQueueIDKey] = *queue.ID
+	} else {
+		// This is mostly called for the side-effect of verifying that the servicebus queue exists.
+		_, err := handler.GetQueueByID(ctx, properties[ServiceBusQueueIDKey])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return properties, nil
 }
 
-func (sbh *azureServiceBusQueueHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *azureServiceBusQueueHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
-	namespaceName := properties["servicebusnamespace"]
-	queueName := properties["servicebusqueue"]
-
-	qc := servicebus.NewQueuesClient(sbh.arm.SubscriptionID)
-	qc.Authorizer = sbh.arm.Auth
-
-	result, err := qc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName, queueName)
-	if err != nil && result.StatusCode != 404 {
-		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
-	}
-
-	qItr, err := qc.ListByNamespaceComplete(ctx, sbh.arm.ResourceGroup, namespaceName, nil, nil)
-	if err != nil && qItr.Response().StatusCode != 404 {
-		return fmt.Errorf("failed to DELETE servicebus queue: %w", err)
-	}
-
-	if qItr.NotDone() {
-		// There are other queues in the same service bus namespace. Do not remove the namespace as a part of this delete deployment
+	if properties[ManagedKey] != "true" {
+		// For an 'unmanaged' resource we don't need to do anything, just forget it.
 		return nil
 	}
 
-	// The last queue in the service bus namespace was deleted. Now delete the namespace as well
-	sbc := servicebus.NewNamespacesClient(sbh.arm.SubscriptionID)
-	sbc.Authorizer = sbh.arm.Auth
+	namespaceName := properties[ServiceBusNamespaceNameKey]
+	queueName := properties[ServiceBusQueueNameKey]
 
-	sbNamespaceFuture, err := sbc.Delete(ctx, sbh.arm.ResourceGroup, namespaceName)
-	if err != nil && sbNamespaceFuture.Response().StatusCode != 404 {
-		return fmt.Errorf("failed to DELETE servicebus: %w", err)
-	}
+	qc := servicebus.NewQueuesClient(handler.arm.SubscriptionID)
+	qc.Authorizer = handler.arm.Auth
 
-	err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
+	deleteNamespace, err := handler.DeleteQueue(ctx, namespaceName, queueName)
 	if err != nil {
-		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+		return err
 	}
 
-	response, err := sbNamespaceFuture.Result(sbc)
-	if err != nil && response.StatusCode != 404 {
-		return fmt.Errorf("failed to DELETE servicebus: %w", err)
+	if deleteNamespace {
+		// The last queue in the service bus namespace was deleted. Now delete the namespace as well
+		err = handler.DeleteNamespace(ctx, namespaceName)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func (handler *azureServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
+	parsed, err := radresources.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse servicebus queue resource id: %w", err)
+	}
+
+	sbc := servicebus.NewNamespacesClient(parsed.SubscriptionID)
+	sbc.Authorizer = handler.arm.Auth
+
+	// Check if a service bus namespace exists in the resource group for this application
+	namespace, err := sbc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get servicebus namespace: %w", err)
+	}
+
+	return &namespace, nil
+}
+
+func (handler *azureServiceBusBaseHandler) LookupSharedManagedNamespaceFromResourceGroup(ctx context.Context, application string) (*servicebus.SBNamespace, error) {
+	sbc := servicebus.NewNamespacesClient(handler.arm.SubscriptionID)
+	sbc.Authorizer = handler.arm.Auth
+
+	// Check if a service bus namespace exists in the resource group for this application
+	list, err := sbc.ListByResourceGroupComplete(ctx, handler.arm.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to list service bus namespaces: %w", err)
+	}
+
+	// Azure Service Bus needs StandardTier or higher SKU to support topics
+	if list.NotDone() &&
+		list.Value().Sku.Tier != servicebus.SkuTierBasic &&
+		radresources.HasRadiusApplicationTag(list.Value().Tags, application) {
+		// A service bus namespace already exists
+		namespace := list.Value()
+		return &namespace, nil
+	}
+
+	return nil, nil
 }
 
 func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, application string) (*servicebus.SBNamespace, error) {
@@ -113,8 +173,6 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 	sbc := servicebus.NewNamespacesClient(handler.arm.SubscriptionID)
 	sbc.Authorizer = handler.arm.Auth
 
-	// TODO: for now we just use the resource-groups location. This would be a place where we'd plug
-	// in something to do with data locality.
 	g, err := rgc.Get(ctx, handler.arm.ResourceGroup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get resource group: %w", err)
@@ -169,6 +227,23 @@ func (handler *azureServiceBusBaseHandler) CreateTopic(ctx context.Context, name
 	return &topic, nil
 }
 
+func (handler *azureServiceBusBaseHandler) GetTopicByID(ctx context.Context, id string) (*servicebus.SBTopic, error) {
+	parsed, err := radresources.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
+	}
+
+	tc := servicebus.NewTopicsClient(parsed.SubscriptionID)
+	tc.Authorizer = handler.arm.Auth
+
+	topic, err := tc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get servicebus queue: %w", err)
+	}
+
+	return &topic, nil
+}
+
 func (handler *azureServiceBusBaseHandler) CreateQueue(ctx context.Context, namespaceName string, queueName string) (*servicebus.SBQueue, error) {
 	qc := servicebus.NewQueuesClient(handler.arm.SubscriptionID)
 	qc.Authorizer = handler.arm.Auth
@@ -182,6 +257,23 @@ func (handler *azureServiceBusBaseHandler) CreateQueue(ctx context.Context, name
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create servicebus queue: %w", err)
+	}
+
+	return &queue, nil
+}
+
+func (handler *azureServiceBusBaseHandler) GetQueueByID(ctx context.Context, id string) (*servicebus.SBQueue, error) {
+	parsed, err := radresources.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
+	}
+
+	qc := servicebus.NewQueuesClient(parsed.ID)
+	qc.Authorizer = handler.arm.Auth
+
+	queue, err := qc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get servicebus queue: %w", err)
 	}
 
 	return &queue, nil
@@ -276,26 +368,4 @@ func (handler *azureServiceBusBaseHandler) DeleteQueue(ctx context.Context, name
 
 	// Namespace is empty, it can be deleted if it is unused
 	return true, nil
-}
-
-func (handler *azureServiceBusBaseHandler) GetExistingNamespaceFromResourceGroup(ctx context.Context, application string) (*servicebus.SBNamespace, error) {
-	sbc := servicebus.NewNamespacesClient(handler.arm.SubscriptionID)
-	sbc.Authorizer = handler.arm.Auth
-
-	// Check if a service bus namespace exists in the resource group for this application
-	list, err := sbc.ListByResourceGroupComplete(ctx, handler.arm.ResourceGroup)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to list service bus namespaces: %w", err)
-	}
-
-	// Azure Service Bus needs StandardTier or higher SKU to support topics
-	if list.NotDone() &&
-		list.Value().Sku.Tier != servicebus.SkuTierBasic &&
-		radresources.HasRadiusApplicationTag(list.Value().Tags, application) {
-		// A service bus namespace already exists
-		namespace := list.Value()
-		return &namespace, nil
-	}
-
-	return nil, nil
 }

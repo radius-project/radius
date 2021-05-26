@@ -7,9 +7,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,38 +27,66 @@ type daprPubSubServiceBusHandler struct {
 	k8s client.Client
 }
 
-func (pssb *daprPubSubServiceBusHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	// 'servicbustopic' is a name that must be specified by the user
-	topicName, ok := properties["servicebustopic"]
+	// topic name must be specified by the user
+	topicName, ok := properties[ServiceBusTopicNameKey]
 	if !ok {
-		return nil, errors.New("missing required property 'servicebustopic'")
+		return nil, fmt.Errorf("missing required property '%s'", ServiceBusTopicIDKey)
 	}
 
-	namespace, err := pssb.GetExistingNamespaceFromResourceGroup(ctx, options.Application)
+	// This assertion is important so we don't start creating/modifying an unmanaged resource
+	if properties[ManagedKey] != "true" && (properties[ServiceBusNamespaceIDKey] == "" || properties[ServiceBusTopicIDKey] == "") {
+		return nil, fmt.Errorf("missing required properties '%s' and '%s' for an unmanaged resource", ServiceBusNamespaceIDKey, ServiceBusTopicIDKey)
+	}
+
+	var namespace *servicebus.SBNamespace
+	var err error
+	if properties[ServiceBusNamespaceIDKey] == "" {
+		// If we don't have an ID already then we will need to create a new one.
+		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.Application)
+		if err != nil {
+			return nil, err
+		}
+
+		if namespace == nil {
+			namespace, err = handler.CreateNamespace(ctx, options.Application)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		properties[ServiceBusNamespaceNameKey] = *namespace.Name
+		properties[ServiceBusNamespaceIDKey] = *namespace.ID
+	} else {
+		// This is mostly called for the side-effect of verifying that the servicebus namespace exists.
+		namespace, err = handler.GetNamespaceByID(ctx, properties[ServiceBusNamespaceIDKey])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if properties[ServiceBusTopicIDKey] == "" {
+		queue, err := handler.CreateTopic(ctx, *namespace.Name, topicName)
+		if err != nil {
+			return nil, err
+		}
+		properties[ServiceBusTopicIDKey] = *queue.ID
+	} else {
+		// This is mostly called for the side-effect of verifying that the servicebus queue exists.
+		_, err := handler.GetTopicByID(ctx, properties[ServiceBusTopicIDKey])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cs, err := handler.GetConnectionString(ctx, *namespace.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	if namespace == nil {
-		namespace, err = pssb.CreateNamespace(ctx, options.Application)
-	}
-
-	properties["servicebusnamespace"] = *namespace.Name
-	properties["servicebusid"] = *namespace.ID
-
-	_, err = pssb.CreateTopic(ctx, *namespace.Name, topicName)
-	if err != nil {
-		return nil, err
-	}
-
-	cs, err := pssb.GetConnectionString(ctx, *namespace.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	err = pssb.PatchDaprPubSub(ctx, properties, *cs)
+	err = handler.PatchDaprPubSub(ctx, properties, *cs)
 	if err != nil {
 		return nil, err
 	}
@@ -66,25 +94,27 @@ func (pssb *daprPubSubServiceBusHandler) Put(ctx context.Context, options PutOpt
 	return properties, nil
 }
 
-func (pssb *daprPubSubServiceBusHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
-	namespaceName := properties["servicebusnamespace"]
-	topicName := properties["servicebustopic"]
+	namespaceName := properties[ServiceBusNamespaceNameKey]
+	topicName := properties[ServiceBusTopicNameKey]
 
-	err := pssb.DeleteDaprPubSub(ctx, properties)
+	err := handler.DeleteDaprPubSub(ctx, properties)
 	if err != nil {
 		return err
 	}
 
-	deleteNamespace, err := pssb.DeleteTopic(ctx, namespaceName, topicName)
-	if err != nil {
-		return err
-	}
-
-	if deleteNamespace {
-		err = pssb.DeleteNamespace(ctx, namespaceName)
+	if properties[ManagedKey] == "true" {
+		deleteNamespace, err := handler.DeleteTopic(ctx, namespaceName, topicName)
 		if err != nil {
 			return err
+		}
+
+		if deleteNamespace {
+			err = handler.DeleteNamespace(ctx, namespaceName)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -94,11 +124,11 @@ func (pssb *daprPubSubServiceBusHandler) Delete(ctx context.Context, options Del
 func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context, properties map[string]string, cs string) error {
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": properties["apiVersion"],
-			"kind":       properties["kind"],
+			"apiVersion": properties[KubernetesAPIVersionKey],
+			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
-				"namespace": properties["namespace"],
-				"name":      properties["name"],
+				"namespace": properties[KubernetesNamespaceKey],
+				"name":      properties[KubernetesNameKey],
 			},
 			"spec": map[string]interface{}{
 				"type":    "pubsub.azure.servicebus",
@@ -124,11 +154,11 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]string) error {
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": properties["apiVersion"],
-			"kind":       properties["kind"],
+			"apiVersion": properties[KubernetesAPIVersionKey],
+			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
-				"namespace": properties["namespace"],
-				"name":      properties["name"],
+				"namespace": properties[KubernetesNamespaceKey],
+				"name":      properties[KubernetesNameKey],
 			},
 		},
 	}

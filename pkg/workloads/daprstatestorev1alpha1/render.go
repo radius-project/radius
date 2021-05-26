@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -47,10 +48,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: workloads.ResourceKindDaprStateStoreAzureStorage,
 		Resource: map[string]string{
-			"name":       w.Name,
-			"namespace":  w.Application,
-			"apiVersion": "dapr.io/v1alpha1",
-			"kind":       "Component",
+			handlers.KubernetesNameKey:       w.Name,
+			handlers.KubernetesNamespaceKey:  w.Application,
+			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+			handlers.KubernetesKindKey:       "Component",
 		},
 	}
 
