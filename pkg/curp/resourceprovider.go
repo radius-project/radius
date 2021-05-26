@@ -547,7 +547,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		var failure *armerrors.ErrorDetails = nil
 		status := rest.SuccededStatus
 
-		err := r.deploy.DeleteDeployment(ctx, d.Resource.Name(), &current.Status)
+		err := r.deploy.DeleteDeployment(ctx, d.App.Name(), d.Resource.Name(), &current.Status)
 		if _, ok := err.(*deployment.CompositeError); ok {
 			// Composite error is what we use for validation problems
 			status = rest.FailedStatus

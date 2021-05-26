@@ -9,11 +9,6 @@ on:
   repository_dispatch:
     types:
     - create-environment
-  workflow_dispatch:
-    ref:
-      description: 'Github ref to use in checkout'
-      required: false
-      default: 'refs/heads/main'
 jobs:
   create-environment:
     name: Create Environment
@@ -37,7 +32,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ github.event.client_payload.ref }}
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v2
         with:
@@ -53,9 +48,9 @@ jobs:
           result-encoding: string
           script: |
             const locations = [
-              "australiaeast",
               "eastus",
-              "northeurope",
+              // northeurope has been causing capacity problems for us and has been unrelable. 
+              //"northeurope",
               "westeurope",
               "westus2",
             ];
@@ -68,8 +63,9 @@ jobs:
         with:
           result-encoding: string
           script: |
-            const const { v4: uuidv4 }  = require('uuid')
-            return `rad-test-${uuidv4()}`;
+            const { v4: uuidv4 }  = require('uuid')
+            const suffix = uuidv4().replace(/-/g, '');
+            return `rad-${suffix}`;
       - name: Azure Login
         run: |
           az login --service-principal \
@@ -93,7 +89,8 @@ jobs:
             --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
             --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
             --tablename environments \
-            --environment ${{ steps.generate-resource-group-name.outputs.result }}
+            --environment ${{ steps.generate-resource-group-name.outputs.result }} \
+            --configpath ~/.rad/config.yaml
       - name: Create issue on failure
         uses: JasonEtco/create-an-issue@v2
         if: failure()
@@ -109,6 +106,7 @@ jobs:
         continue-on-error: true
         run: |
           az group delete \
+            --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
             --yes
           

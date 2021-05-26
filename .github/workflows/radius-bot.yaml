@@ -19,7 +19,8 @@ jobs:
           const owners = [
             "vinayada1",
             "rynowak",
-            "kachawla"
+            "kachawla",
+            "jkotalik"
           ];
 
           console.log("Analyzing comment with: " + JSON.stringify(context));
@@ -28,14 +29,17 @@ jobs:
             return "";
           }
 
-          const regex = /^\/([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)$/;
+          const regex = /^\/(?<command>[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)(?<args>(.*))$/;
           const matches = context.payload.comment.body.match(regex)
           let command = null;
+          let args = null;
           if (!!matches && matches.length > 0) {
-            command = matches[1]
+            command = matches.groups.command;
+            args = matches.groups.args;
           }
 
           console.log("Command is: " + command);
+          console.log("Args are: " + args);
           return command
 
     - name: Run create-environment
@@ -69,9 +73,9 @@ jobs:
                   
           console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
 
-    - name: Run e2e-tests
+    - name: Run delete-environment
       uses: actions/github-script@v4
-      if: success() && steps.analyze.outputs.result == 'run-e2e-tests'
+      if: success() && steps.analyze.outputs.result == 'delete-environment'
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
@@ -86,20 +90,38 @@ jobs:
             pull_number: context.issue.number
           });
 
-          // Get commit id and repo from pull head
-          const e2eTestsPayload = {
-            pull_head_ref: pull.data.head.sha,
-            pull_head_repo: pull.data.head.repo.full_name,
-            command: "run-e2e-tests",
-            issue: context.issue,
-          };
+          const regex = /^\/(?<command>[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*)(?<args>(.*))$/;
+          const matches = context.payload.comment.body.match(regex)
+          let command = null;
+          let args = null;
+          if (!!matches && matches.length > 0) {
+            command = matches.groups.command;
+            args = matches.groups.args;
+          } else {
+            throw new Error("cannot parse comment body: " + context.payload.comment.body);
+          }
 
+          console.log("Command is: " + command);
+          console.log("Args are: " + args);
+
+          const split = args.split(' ')
+          const env = split[1]
+          if (!env) {
+            throw new Error("environment is required");
+          }
+
+          console.log("Environment is: " + env);
+          const payload = {
+            ref: pull.data.head.sha,
+            environment: env,
+          };
+      
           // Fire repository_dispatch event to trigger e2e test
           await github.repos.createDispatchEvent({
-            owner: issue.owner,
-            repo: issue.repo,
-            event_type: "e2e-tests",
-            client_payload: e2eTestsPayload,
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            event_type: "delete-environment",
+            client_payload: payload,
           });
 
-          console.log(`Triggering end to end tests for ${JSON.stringify(e2eTestsPayload)}`);
+          console.log(`Triggering environment deletion for ${JSON.stringify(payload)}`);

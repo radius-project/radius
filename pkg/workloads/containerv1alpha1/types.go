@@ -14,7 +14,6 @@ type ContainerComponent struct {
 	Config    map[string]interface{}   `json:"config,omitempty"`
 	Run       ContainerRun             `json:"run,omitempty"`
 	DependsOn []ContainerDependsOn     `json:"dependson,omitempty"`
-	Provides  []ContainerProvides      `json:"provides,omitempty"`
 	Traits    []map[string]interface{} `json:"traits,omitempty"`
 }
 
@@ -35,16 +34,38 @@ type ContainerDependsOn struct {
 	SetEnv map[string]string `json:"setEnv"`
 }
 
-// ContainerProvides is the definition of the provides section
-type ContainerProvides struct {
+// ContainerEnvVar is the definition of an environment variable
+type ContainerEnvVar struct {
+	Name  string  `json:"name"`
+	Value *string `json:"value,omitempty"`
+}
+
+const KindHTTP = "http"
+
+// HTTPProvidesService is the definition of an 'http' service for a container.
+type HTTPProvidesService struct {
 	Name          string `json:"name"`
 	Kind          string `json:"kind"`
 	Port          *int   `json:"port"`
 	ContainerPort *int   `json:"containerPort"`
 }
 
-// ContainerEnvVar is the definition of an environment variable
-type ContainerEnvVar struct {
-	Name  string  `json:"name"`
-	Value *string `json:"value,omitempty"`
+func (h HTTPProvidesService) GetEffectivePort() int {
+	if h.Port != nil {
+		return *h.Port
+	} else if h.ContainerPort != nil {
+		return *h.ContainerPort
+	} else {
+		return 80
+	}
+}
+
+func (h HTTPProvidesService) GetEffectiveContainerPort() int {
+	if h.ContainerPort != nil {
+		return *h.ContainerPort
+	} else if h.Port != nil {
+		return *h.Port
+	} else {
+		return 80
+	}
 }

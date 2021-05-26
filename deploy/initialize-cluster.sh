@@ -29,7 +29,9 @@ do
   curl -LO "https://dl.k8s.io/$KUBECTL_VERSION/bin/linux/amd64/kubectl.sha256"
   curl -LO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
   
-  if echo "$(<kubectl.sha256) kubectl" | sha256sum --check
+  # on Busybox certain versions only support the `-c` shorthand
+  # see: https://github.com/Azure/radius/issues/404
+  if echo "$(<kubectl.sha256) kubectl" | sha256sum -c
   then
     echo "kubectl verified"
     break
@@ -42,10 +44,6 @@ chmod +x ./kubectl
 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 helm version
 
-# Install Dapr CLI
-wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s 1.0.0
-dapr --version
-
 # Install Dapr
 helm repo add dapr https://dapr.github.io/helm-charts/
 helm repo update
@@ -55,7 +53,8 @@ helm upgrade \
   --install \
   --create-namespace \
   --namespace dapr-system \
-  --version 1.0.0
+  --version 1.0.0 \
+  --wait
 
 # Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
 # ex: https://github.com/Azure/radius/issues/29 https://github.com/Azure/radius/issues/39
@@ -63,6 +62,29 @@ for i in {1..5}
 do
   echo "listing dapr pods - attempt $i"
   if ./kubectl get pods -n dapr-system
+  then
+    break
+  fi
+done
+
+# Install nginx-ingress
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm upgrade \
+  radius-ingress-nginx ingress-nginx/ingress-nginx \
+  --install \
+  --create-namespace \
+  --namespace radius-system \
+  --version 3.29.0 \
+  --wait
+
+# Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
+# ex: https://github.com/Azure/radius/issues/29 https://github.com/Azure/radius/issues/39
+for i in {1..5}
+do
+  echo "listing radius-ingress-nginx pods - attempt $i"
+  if ./kubectl get pods -n radius-system
   then
     break
   fi

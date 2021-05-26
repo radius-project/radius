@@ -1,0 +1,72 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: delete-environment
+
+on:
+  repository_dispatch:
+    types:
+    - delete-environment
+jobs:
+  delete-environment:
+    name: Delete Environment
+    runs-on: ubuntu-latest
+    env:
+      GOVER: '^1.16.0'
+      GOPROXY: https://proxy.golang.org
+
+      # Radius Test subscription
+      INTEGRATION_TEST_SUBSCRIPTION_ID: "85716382-7362-45c3-ae03-2126e459a123"
+
+    # Rough order of logic here
+    #
+    # - Get code (we need to build/run `rad env delete`)
+    # - az login
+    # - Remove environment from environment table
+    # - Delete environment
+    steps:
+      - name: Sanity Check
+        uses: actions/github-script@v4
+        with:
+          script: |
+            console.log("Handling event with: " + JSON.stringify(context));
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.client_payload.ref }}
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Azure Login
+        run: |
+          az login --service-principal \
+            --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+            --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+            --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+      - name: Unregister Environment
+        run: |
+          go run cmd/testenv/main.go \
+            unregister \
+            --accountkey ${{ secrets.INTEGRATION_TEST_STORAGE_KEY }} \
+            --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
+            --tablename environments \
+            --environment ${{ github.event.client_payload.environment }}
+      - name: Delete Environment
+        run: |
+          az group delete \
+            --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --resource-group ${{ github.event.client_payload.environment}} \
+            --yes
+      - name: Create issue on failure
+        uses: JasonEtco/create-an-issue@v2
+        if: failure()
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOWID: ${{ env.GITHUB_RUN_ID }}
+          WORKFLOWURL: 'https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}'
+        with:
+          filename: .github/ISSUE_TEMPLATE/environment-failure.md

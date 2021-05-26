@@ -149,9 +149,9 @@ func lease(ctx context.Context, accountName string, accountKey string, tableName
 			// We've taken the lease on this cluster, return it.
 			return &testEnvironment{
 				Name:           available.RowKey,
-				SubscriptionID: available.Properties["subscriptionId"].(string),
-				ResourceGroup:  available.Properties["resourceGroup"].(string),
-				ClusterName:    available.Properties["clustername"].(string),
+				SubscriptionID: available.Properties[PropertySubscriptionID].(string),
+				ResourceGroup:  available.Properties[PropertyResourceGroup].(string),
+				ClusterName:    available.Properties[PropertyClusterName].(string),
 			}, nil
 		}
 
@@ -174,14 +174,14 @@ func findAvailableEnvironment(response *storage.EntityQueryResult) *storage.Enti
 	now := time.Now().UTC()
 	for _, env := range response.Entities {
 		fmt.Printf("checking environment '%v'...\n", env.RowKey)
-		obj := env.Properties["ReservedTime"]
+		obj := env.Properties[PropertyReservedTime]
 
 		if obj == nil || obj == "" {
 			// not reserved
 		} else {
 			text, ok := obj.(string)
 			if !ok {
-				fmt.Printf("ReservedTime column should contain a string, was %T\n", obj)
+				fmt.Printf("%s column should contain a string, was %T\n", PropertyReservedTime, obj)
 				continue
 			}
 
@@ -201,7 +201,7 @@ func findAvailableEnvironment(response *storage.EntityQueryResult) *storage.Enti
 		}
 
 		// We're ok to take this one, try to take it atomically.
-		env.Properties["ReservedTime"] = now.Format(time.RFC3339)
+		env.Properties[PropertyReservedTime] = now.Format(time.RFC3339)
 		err := env.Merge(false, &storage.EntityOptions{})
 		if err != nil {
 			fmt.Printf("failed to take lease on '%v': %v\n", env.RowKey, err)

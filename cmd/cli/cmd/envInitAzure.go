@@ -25,6 +25,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/cmd/cli/utils"
+	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/logger"
@@ -381,9 +382,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 			return false, "", fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
 
-		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
-		tag, ok := list.Value().Tags["rad-environment"]
-		if ok && strings.EqualFold(*tag, "true") {
+		if radresources.HasRadiusEnvironmentTag(list.Value().Tags) {
 			temp := list.Value()
 			cluster = &temp
 			break

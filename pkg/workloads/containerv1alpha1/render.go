@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
@@ -26,6 +27,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
@@ -39,49 +41,48 @@ type Renderer struct {
 
 // Allocate is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	cw, err := r.convert(w)
-	if err != nil {
-		return nil, err
-	}
-
 	values := []map[string]interface{}{}
-	for _, p := range cw.Provides {
-		if p.Name == service.Name {
-			// we've got a match
-			if service.Kind != "http" {
-				// TODO this just does the most basic thing - in theory we could define lots of different
-				// types here. This is good enough for a prototype.
-				return nil, fmt.Errorf("port cannot fulfil service kind: %v", service.Kind)
-			}
-
-			if len(values) > 0 {
-				return nil, errors.New("more than one value source was found for this service")
-			}
-
-			uri := url.URL{
-				Scheme: service.Kind,
-				Host:   fmt.Sprintf("%v.%v.svc.cluster.local", w.Name, w.Application),
-			}
-
-			if p.Port != nil && *p.Port != 80 {
-				uri.Host = uri.Host + fmt.Sprintf(":%d", *p.Port)
-			}
-
-			mapping := map[string]interface{}{}
-
-			mapping["uri"] = uri.String()
-			mapping["scheme"] = uri.Scheme
-			mapping["host"] = uri.Hostname()
-			if p.Port != nil {
-				mapping["port"] = fmt.Sprintf("%d", *p.Port)
-			} else {
-				mapping["port"] = "80"
-			}
-
-			values = append(values, mapping)
-
-			// keep going even after first success so we can find errors
+	for _, generic := range w.Workload.Provides {
+		if generic.Name != service.Name {
+			continue
 		}
+
+		// we've got a match
+		if service.Kind != KindHTTP || generic.Kind != KindHTTP {
+			// TODO this just does the most basic thing - in theory we could define lots of different
+			// types here. This is good enough for a prototype.
+			return nil, fmt.Errorf("port cannot fulfill service kind: %v", service.Kind)
+		}
+
+		if len(values) > 0 {
+			return nil, errors.New("more than one value source was found for this service")
+		}
+
+		http := HTTPProvidesService{}
+		err := generic.AsRequired(KindHTTP, &http)
+		if err != nil {
+			return nil, err
+		}
+
+		uri := url.URL{
+			Scheme: service.Kind,
+			Host:   fmt.Sprintf("%v.%v.svc.cluster.local", w.Name, w.Application),
+		}
+
+		if http.GetEffectivePort() != 80 {
+			uri.Host = uri.Host + fmt.Sprintf(":%d", http.GetEffectivePort())
+		}
+
+		mapping := map[string]interface{}{}
+
+		mapping["uri"] = uri.String()
+		mapping["scheme"] = uri.Scheme
+		mapping["host"] = uri.Hostname()
+		mapping["port"] = fmt.Sprintf("%d", http.GetEffectivePort())
+
+		values = append(values, mapping)
+
+		// keep going even after first success so we can find errors
 	}
 
 	if len(values) == 1 {
@@ -298,7 +299,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// Append the Pod identity created to the list of resources
 		resources = append(resources, workloads.WorkloadResource{
-			Type: "azure.aadpodidentity",
+			Type: workloads.ResourceKindAzurePodIdentity,
 			Resource: map[string]string{
 				PodIdentityName:    podIdentity.Name,
 				PodIdentityCluster: podIdentity.ClusterName,
@@ -319,17 +320,6 @@ func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent
 	err := w.Workload.AsRequired(Kind, container)
 	if err != nil {
 		return nil, err
-	}
-
-	// Fixup ports so that port and container port are always both assigned or neither are.
-	for i := range container.Provides {
-		if container.Provides[i].ContainerPort != nil && container.Provides[i].Port == nil {
-			container.Provides[i].Port = container.Provides[i].ContainerPort
-		}
-
-		if container.Provides[i].Port != nil && container.Provides[i].ContainerPort == nil {
-			container.Provides[i].ContainerPort = container.Provides[i].Port
-		}
 	}
 
 	return container, nil
@@ -379,11 +369,17 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	for _, p := range cc.Provides {
-		if p.ContainerPort != nil {
+	for _, generic := range w.Workload.Provides {
+		if generic.Kind == KindHTTP {
+			httpProvides := HTTPProvidesService{}
+			err := generic.AsRequired(KindHTTP, &httpProvides)
+			if err != nil {
+				return nil, err
+			}
+
 			port := corev1.ContainerPort{
-				Name:          p.Name,
-				ContainerPort: int32(*p.ContainerPort),
+				Name:          httpProvides.Name,
+				ContainerPort: int32(httpProvides.GetEffectiveContainerPort()),
 			}
 
 			port.Protocol = "TCP"
@@ -458,9 +454,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 			return AADPodIdentity{}, fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
 
-		// For SOME REASON the value 'true' in a tag gets normalized to 'True'
-		tag, ok := list.Value().Tags["rad-environment"]
-		if ok && strings.EqualFold(*tag, "true") {
+		if radresources.HasRadiusEnvironmentTag(list.Value().Tags) {
 			temp := list.Value()
 			cluster = &temp
 			break
@@ -579,12 +573,19 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 		},
 	}
 
-	for _, provides := range cc.Provides {
-		if provides.ContainerPort != nil {
+	for _, generic := range w.Workload.Provides {
+		if generic.Kind == KindHTTP {
+			httpProvides := HTTPProvidesService{}
+			err := generic.AsRequired(KindHTTP, &httpProvides)
+			if err != nil {
+				return nil, err
+			}
+
 			port := corev1.ServicePort{
-				Name:     provides.Name,
-				Port:     int32(*provides.ContainerPort),
-				Protocol: corev1.ProtocolTCP,
+				Name:       httpProvides.Name,
+				Port:       int32(httpProvides.GetEffectivePort()),
+				TargetPort: intstr.FromInt(httpProvides.GetEffectiveContainerPort()),
+				Protocol:   corev1.ProtocolTCP,
 			}
 
 			service.Spec.Ports = append(service.Spec.Ports, port)

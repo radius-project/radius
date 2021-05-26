@@ -45,7 +45,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// generate data we can use to manage a state-store
 	resource := workloads.WorkloadResource{
-		Type: "dapr.statestore.azurestorage",
+		Type: workloads.ResourceKindDaprStateStoreAzureStorage,
 		Resource: map[string]string{
 			"name":       w.Name,
 			"namespace":  w.Application,
