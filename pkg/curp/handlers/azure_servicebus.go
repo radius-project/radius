@@ -108,9 +108,6 @@ func (handler *azureServiceBusQueueHandler) Delete(ctx context.Context, options 
 	namespaceName := properties[ServiceBusNamespaceNameKey]
 	queueName := properties[ServiceBusQueueNameKey]
 
-	qc := servicebus.NewQueuesClient(handler.arm.SubscriptionID)
-	qc.Authorizer = handler.arm.Auth
-
 	deleteNamespace, err := handler.DeleteQueue(ctx, namespaceName, queueName)
 	if err != nil {
 		return err
