@@ -15,13 +15,13 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add db component
 A `db` database component is used to specify a few properties about the database: 
 
-- **kind:** `azure.com/CosmosDocumentDb@v1alpha1` represents a Cosmos DB database. 
+- **kind:** `azure.com/CosmosDBMongo@v1alpha1` represents a Cosmos DB database.
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
 ```sh
   resource db 'Components' = {
     name: 'db'
-    kind: 'azure.com/CosmosDocumentDb@v1alpha1'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
       config: {
         managed: true
@@ -36,7 +36,7 @@ Radius captures both logical relationships and related operational details. Exam
 
 Once the database is defined as a component, you can connect to it by referencing the `db` component from within the `todoapp` component via a `dependsOn` section. 
 
-The `dependsOn` section is used to configure relationships between a component and services provided by other components. The `db` is of kind `azure.com/CosmosDocumentDb@v1alpha1`, which supports the MongoDB protocol. `db` is considered to provide a service of kind `mongodb.com/Mongo` implicitly. Configuring a dependency on a service is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
+The `dependsOn` section is used to configure relationships between a component and services provided by other components. The `db` is of kind `azure.com/CosmosDBMongo@v1alpha1`, which supports the MongoDB protocol. `db` is considered to provide a service of kind `mongodb.com/Mongo` implicitly. Configuring a dependency on a service is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
 
 Here's what the todoapp component will look like with the `dependsOn` section added within its properties:
 
@@ -100,7 +100,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
   resource db 'Components' = {
     name: 'db'
-    kind: 'azure.com/CosmosDocumentDb@v1alpha1'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
       config: {
         managed: true

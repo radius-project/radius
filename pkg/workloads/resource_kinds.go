@@ -5,10 +5,13 @@
 
 package workloads
 
-const ResourceKindKubernetes = "kubernetes"
-const ResourceKindDaprStateStoreAzureStorage = "dapr.statestore.azurestorage"
-const ResourceKindDaprPubSubTopicAzureServiceBus = "dapr.pubsubtopic.azureservicebus"
-const ResourceKindAzureCosmosDocumentDB = "azure.cosmos.documentdb"
-const ResourceKindAzureServiceBusQueue = "azure.servicebus.queue"
-const ResourceKindAzureKeyVault = "azure.keyvault"
-const ResourceKindAzurePodIdentity = "azure.aadpodidentity"
+const (
+	ResourceKindKubernetes                     = "kubernetes"
+	ResourceKindDaprStateStoreAzureStorage     = "dapr.statestore.azurestorage"
+	ResourceKindDaprPubSubTopicAzureServiceBus = "dapr.pubsubtopic.azureservicebus"
+	ResourceKindAzureCosmosDBMongo             = "azure.cosmosdb.mongo"
+	ResourceKindAzureCosmosDBSQL               = "azure.cosmosdb.sql"
+	ResourceKindAzureServiceBusQueue           = "azure.servicebus.queue"
+	ResourceKindAzureKeyVault                  = "azure.keyvault"
+	ResourceKindAzurePodIdentity               = "azure.aadpodidentity"
+)
