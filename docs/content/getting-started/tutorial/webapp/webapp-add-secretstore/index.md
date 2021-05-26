@@ -28,9 +28,7 @@ A `kv` secret store component is used to specify a few properties about the data
   }
 ```
 
-## Reference db from todoapp
-
-Radius captures both logical relationships and related operational details. Examples of this include: wiring up connection strings, granting permissions, or restarting components when a dependency changes.
+## Reference kv from todoapp
 
 Once the secret store is defined as a component, you can connect to it by referencing the `kv` component from within the `todoapp` component via a `dependsOn` section. 
 
@@ -59,6 +57,33 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
 
 The `setEnv` section declares operations to perform *based on* the relationship. In this case the `kvuri` value will be retrieved from the key vault and set as an environment variable on the component. As a result, `todoapp` will be able to use the `KV_URI` environment variable to access to the key vault.
 
+## Modify the db dependency to create a secret
+
+Now, we no longer want the application to access the connection string to the database in clear text as an environment variable. Instead, we want to create a secret in the secret store which will store the connection string. For this, modify the `dependsOn` section as below:-
+
+```sh
+dependsOn: [
+        {
+          name: 'kv'
+          kind: 'azure.com/KeyVault'
+          setEnv: {
+            KV_URI: 'kvuri'
+          }
+        }
+        {
+          kind: 'mongodb.com/Mongo'
+          name: 'db'
+          setSecret: {
+            store: kv.name
+            keys: {
+              DBCONNECTION: 'connectionString'
+            }
+          }
+        }
+      ]
+```
+
+Here, the `setSecret` section declares the secrets to be created for the container to access the `db` component. In this case the `connectionString` value will be retrieved from the database and set as a secret in the secret store (named `kv` here) and the secret name will be `DBCONNECTION`.
 ## Update your template.bicep file 
 
 Update your `template.bicep` file to match the full application definition:
@@ -78,10 +103,20 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
       dependsOn: [
         {
+          name: 'kv'
+          kind: 'azure.com/KeyVault'
+          setEnv: {
+            KV_URI: 'kvuri'
+          }
+        }
+        {
           kind: 'mongodb.com/Mongo'
           name: 'db'
-          setEnv: {
-            DB_CONNECTION: 'connectionString'
+          setSecret: {
+            store: kv.name
+            keys: {
+              DBCONNECTION: 'connectionString'
+            }
           }
         }
       ]
@@ -104,12 +139,84 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
     }
   }
+
+  resource kv 'Components' = {
+    name: 'kv'
+    kind: 'azure.com/KeyVault@v1alpha1'
+    properties: {
+        config: {
+            managed: true
+        }
+    }
+  }
 }
 ```
 
+## Deploy application with database and secret store
+
+1. Now you are ready to re-deploy the application, including the Azure CosmosDB database and Azure KeyVault. Switch to the command-line and run: 
+
+   ```sh
+   rad deploy template.bicep
+   ```
+
+   This may take a few minutes because of the time required to create the database.
+
+1. You can confirm that the new `kv` component was deployed by running:
+
+   ```sh
+   rad deployment list --application-name webapp
+   ```
+
+   You should see `kv`, `db` and `todoapp` components in your `webapp` application. Example output: 
+
+   ```
+   Using config file: /Users/{USER}/.rad/config.yaml
+   {
+     "value": [
+       {
+         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Deployments/default",
+         "name": "default",
+         "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
+         "properties": {
+           "components": [
+             {
+               "componentName": "db"
+             },
+             {
+               "componentName": "kv"
+             },
+             {
+               "componentName": "todoapp"
+             }
+           ]
+         }
+       }
+     ]
+   }
+   ```
+
+1. To test the database, open a local tunnel on port 3000 again:
+
+   ```sh
+   rad expose webapp todoapp --port 3000
+   ```
+
+1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. You should see a page like:
+
+   <img src="todoapp-withdb.png" width="400" alt="screenshot of the todo application with a database">
+
+   If your page matches, then it means that the container is able to access the connection string to the database from the secret store and use it to connect to the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database.
+
+1. When you're done testing press CTRL+C to terminate the port-forward. 
+
 ## Next steps
 
-Next, we will add a database to the todoapp and store the connection string for this database in the secret store we just created
+- To view the website application code used in this tutorial, download the [zipped application code](/tutorial/webapp.zip).
+- If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
+- If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
 
-<br>{{< button text="Next: Add a database to the app" page="webapp-add-database.md" >}}
+You have completed this tutorial!
+
+{{< button text="Try another tutorial" page="tutorial" >}}
 
