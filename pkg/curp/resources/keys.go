@@ -20,7 +20,4 @@ const (
 
 	// ApplicationNameKey is the route parameter key for the application name segment of the URL.
 	ApplicationNameKey = "applicationName"
-
-	// WorkloadResourceNameKey Resource details are stored in a properties map, this key track key for resource name in the map
-	WorkloadResourceNameKey = "name"
 )

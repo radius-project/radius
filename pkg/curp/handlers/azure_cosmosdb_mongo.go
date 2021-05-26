@@ -38,7 +38,7 @@ func (cddh *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptio
 	mrc := documentdb.NewMongoDBResourcesClient(cddh.arm.SubscriptionID)
 	mrc.Authorizer = cddh.arm.Auth
 
-	dbName := properties[resources.WorkloadResourceNameKey]
+	dbName := properties["name"]
 	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, cddh.arm.ResourceGroup, *account.Name, dbName, documentdb.MongoDBDatabaseCreateUpdateParameters{
 		MongoDBDatabaseCreateUpdateProperties: &documentdb.MongoDBDatabaseCreateUpdateProperties{
 			Resource: &documentdb.MongoDBDatabaseResource{

@@ -15,7 +15,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/handlers"
-	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -85,7 +84,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: workloads.ResourceKindAzureCosmosDBMongo,
 		Resource: map[string]string{
-			resources.WorkloadResourceNameKey: w.Workload.Name,
+			"name": w.Workload.Name,
 		},
 	}
 

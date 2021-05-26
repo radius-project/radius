@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/curp/resources"
 )
 
 func NewAzureCosmosDBSQLHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -38,7 +37,7 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 	sqlClient := documentdb.NewSQLResourcesClient(handler.arm.SubscriptionID)
 	sqlClient.Authorizer = handler.arm.Auth
 
-	dbName := properties[resources.WorkloadResourceNameKey]
+	dbName := properties["name"]
 	dbfuture, err := sqlClient.CreateUpdateSQLDatabase(ctx, handler.arm.ResourceGroup, *account.Name, dbName, documentdb.SQLDatabaseCreateUpdateParameters{
 		SQLDatabaseCreateUpdateProperties: &documentdb.SQLDatabaseCreateUpdateProperties{
 			Resource: &documentdb.SQLDatabaseResource{

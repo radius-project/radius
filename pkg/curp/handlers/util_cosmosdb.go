@@ -10,7 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
-	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/gofrs/uuid"
 )
 
@@ -107,7 +106,7 @@ func generateCosmosDBAccountName(ctx context.Context,
 	name, ok := properties[CosmosDBAccountNameKey]
 	if !ok {
 		// properties["name"] is the component (database) name passed through the template, this is used as a prefix for the account name
-		base := properties[radresources.WorkloadResourceNameKey] + "-"
+		base := properties["name"] + "-"
 		name = ""
 
 		for i := 0; i < retryAttempts; i++ {
