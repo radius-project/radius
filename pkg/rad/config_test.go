@@ -178,6 +178,38 @@ environment:
 	require.Equal(t, map[string]interface{}{"extra": "testextra"}, aenv.Properties)
 }
 
+func Test_ReadApplicationSection_NoContent(t *testing.T) {
+	var yaml = ``
+
+	v, err := makeConfig(yaml)
+	require.NoError(t, err)
+
+	as, err := ReadApplicationSection(v)
+	require.NoError(t, err)
+	require.Empty(t, as.Default)
+}
+
+func Test_ReadApplicationSection_SomeItems(t *testing.T) {
+	var yaml = `
+application:
+  default: appName
+environment:
+  default: test
+  items:
+    test:
+      kind: testing
+    test2:
+      kind: testing
+`
+
+	v, err := makeConfig(yaml)
+	require.NoError(t, err)
+
+	as, err := ReadApplicationSection(v)
+	require.NoError(t, err)
+	require.Equal(t, as.Default, "appName")
+}
+
 func makeConfig(yaml string) (*viper.Viper, error) {
 	v := viper.New()
 	v.SetConfigType("YAML")

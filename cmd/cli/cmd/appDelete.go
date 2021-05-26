@@ -11,8 +11,12 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // appDeleteCmd command to delete an application
@@ -87,5 +91,44 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("Application '%s' has been deleted\n", applicationName)
 
+	updateApplicationConfig(cmd, env, applicationName, ac)
 	return err
+}
+
+func updateApplicationConfig(cmd *cobra.Command,
+	env *environments.AzureCloudEnvironment,
+	appName string,
+	ac *radclient.ApplicationClient) error {
+	v := viper.GetViper()
+	as, err := rad.ReadApplicationSection(v)
+	if err != nil {
+		return err
+	}
+
+	// If the application we are deleting is the default application,
+	// find another application to default to or make it empty
+	if as.Default == appName {
+		response, err := ac.ListByResourceGroup(cmd.Context(), env.ResourceGroup, nil)
+
+		if err != nil {
+			return err
+		}
+
+		applicationsList := *response.ApplicationList
+		appList := *applicationsList.Value
+		if len(appList) < 1 {
+			logger.LogInfo("Removing default application")
+			as.Default = ""
+		} else {
+			as.Default = *appList[0].Name
+			logger.LogInfo("Default application is now %v.", as.Default)
+		}
+	}
+
+	rad.UpdateApplicationSection(v, as)
+	if err = saveConfig(); err != nil {
+		return err
+	}
+
+	return nil
 }

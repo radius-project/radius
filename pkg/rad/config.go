@@ -21,12 +21,19 @@ import (
 )
 
 // EnvironmentKey is the key used for the environment section
-const EnvironmentKey string = "environment"
+const (
+	EnvironmentKey string = "environment"
+	ApplicationKey string = "application"
+)
 
 // EnvironmentSection is the representation of the environment section of radius config.
 type EnvironmentSection struct {
 	Default string                            `mapstructure:"default" yaml:"default"`
 	Items   map[string]map[string]interface{} `mapstructure:"items" yaml:"items"`
+}
+
+type ApplicationSection struct {
+	Default string `mapstructure:"default" yaml:"default"`
 }
 
 // ReadEnvironmentSection reads the EnvironmentSection from radius config.
@@ -68,6 +75,27 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 	}
 
 	return env.decodeEnvironmentSection(name)
+}
+
+// ReadApplictionSection reads the ApplicationSection from radius config.
+func ReadApplicationSection(v *viper.Viper) (ApplicationSection, error) {
+	s := v.Sub(ApplicationKey)
+	if s == nil {
+		return ApplicationSection{}, nil
+	}
+
+	section := ApplicationSection{}
+	err := s.UnmarshalExact(&section)
+	if err != nil {
+		return ApplicationSection{}, nil
+	}
+
+	return section, nil
+}
+
+// UpdateApplicationSection updates the ApplicationSection in radius config.
+func UpdateApplicationSection(v *viper.Viper, as ApplicationSection) {
+	v.Set(ApplicationKey, as)
 }
 
 func (env EnvironmentSection) decodeEnvironmentSection(name string) (environments.Environment, error) {
