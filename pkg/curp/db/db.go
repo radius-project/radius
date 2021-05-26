@@ -175,7 +175,7 @@ func (d curpDB) GetComponentByApplicationID(ctx context.Context, id resources.Ap
 
 	item, ok := application.Components[name]
 	if !ok {
-		log.Printf("Failed to find Component with Application id, name, and revision: %s, %s", id, name)
+		log.Printf("Failed to find Component with Application id and name: %s, %s", id, name)
 		return nil, ErrNotFound
 	}
 
