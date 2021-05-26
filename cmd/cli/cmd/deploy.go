@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -142,7 +141,7 @@ func deployApplication(ctx context.Context, content string, env *environments.Az
 }
 
 func createDeploymentClient(env *environments.AzureCloudEnvironment) (resources.DeploymentsClient, error) {
-	armauth, err := utils.GetResourceManagerEndpointAuthorizer()
+	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return resources.DeploymentsClient{}, err
 	}

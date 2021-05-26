@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad/azcli"
+	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +31,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 			return err
 		}
 
-		isServicePrincipalConfigured, err := utils.IsServicePrincipalConfigured()
+		isServicePrincipalConfigured, err := azure.IsServicePrincipalConfigured()
 		if err != nil {
 			return err
 		}

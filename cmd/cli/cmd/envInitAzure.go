@@ -24,7 +24,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/cmd/cli/utils"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
@@ -293,7 +292,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string) error {
-	armauth, err := utils.GetResourceManagerEndpointAuthorizer()
+	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -441,7 +440,7 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
 	groupsClient := resources.NewGroupsClient(subscriptionID)
-	a, err := utils.GetResourceManagerEndpointAuthorizer()
+	a, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
 	}

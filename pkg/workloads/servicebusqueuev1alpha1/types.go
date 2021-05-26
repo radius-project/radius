@@ -5,7 +5,22 @@
 
 package servicebusqueuev1alpha1
 
+import "github.com/Azure/radius/pkg/curp/resources"
+
 const Kind = "azure.com/ServiceBusQueue@v1alpha1"
+
+var QueueResourceType = resources.KnownType{
+	Types: []resources.ResourceType{
+		{
+			Type: "Microsoft.ServiceBus/namespaces",
+			Name: "*",
+		},
+		{
+			Type: "queues",
+			Name: "*",
+		},
+	},
+}
 
 // ServiceBusQueueComponent is the definition of the service bus queue component
 type ServiceBusQueueComponent struct {
@@ -20,6 +35,7 @@ type ServiceBusQueueComponent struct {
 
 // ServiceBusQueueConfig is the defintion of the config section
 type ServiceBusQueueConfig struct {
-	Managed bool   `json:"managed"`
-	Queue   string `json:"queue"`
+	Managed  bool   `json:"managed"`
+	Queue    string `json:"queue"`
+	Resource string `json:"resource"`
 }

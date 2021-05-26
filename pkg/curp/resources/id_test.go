@@ -204,15 +204,15 @@ func Test_MakeCollectionURITemplate(t *testing.T) {
 		expected string
 	}{
 		{
-			types:    KnownType{types: []ResourceType{{Name: "*", Type: baseResourceType}}},
+			types:    KnownType{Types: []ResourceType{{Name: "*", Type: baseResourceType}}},
 			expected: "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.CustomProviders/resourceProviders",
 		},
 		{
-			types:    KnownType{types: []ResourceType{{Name: "*", Type: baseResourceType}, {Name: "*", Type: "foo"}}},
+			types:    KnownType{Types: []ResourceType{{Name: "*", Type: baseResourceType}, {Name: "*", Type: "foo"}}},
 			expected: "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.CustomProviders/resourceProviders/{resourceName0}/foo",
 		},
 		{
-			types:    KnownType{types: []ResourceType{{Name: "*", Type: baseResourceType}, {Name: "*", Type: "foo"}, {Name: "*", Type: "bar"}}},
+			types:    KnownType{Types: []ResourceType{{Name: "*", Type: baseResourceType}, {Name: "*", Type: "foo"}, {Name: "*", Type: "bar"}}},
 			expected: "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.CustomProviders/resourceProviders/{resourceName0}/foo/{resourceName1}/bar",
 		},
 	}
@@ -231,15 +231,15 @@ func Test_MakeResourceURITemplate(t *testing.T) {
 		expected string
 	}{
 		{
-			types:    KnownType{types: []ResourceType{{Name: "*", Type: baseResourceType}}},
+			types:    KnownType{Types: []ResourceType{{Name: "*", Type: baseResourceType}}},
 			expected: "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.CustomProviders/resourceProviders/{resourceName0}",
 		},
 		{
-			types:    KnownType{types: []ResourceType{{Name: "*", Type: baseResourceType}, {Name: "*", Type: "foo"}}},
+			types:    KnownType{Types: []ResourceType{{Name: "*", Type: baseResourceType}, {Name: "*", Type: "foo"}}},
 			expected: "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.CustomProviders/resourceProviders/{resourceName0}/foo/{resourceName1}",
 		},
 		{
-			types:    KnownType{types: []ResourceType{{Name: "*", Type: baseResourceType}, {Name: "*", Type: "foo"}, {Name: "*", Type: "bar"}}},
+			types:    KnownType{Types: []ResourceType{{Name: "*", Type: baseResourceType}, {Name: "*", Type: "foo"}, {Name: "*", Type: "bar"}}},
 			expected: "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.CustomProviders/resourceProviders/{resourceName0}/foo/{resourceName1}/bar/{resourceName2}",
 		},
 	}
