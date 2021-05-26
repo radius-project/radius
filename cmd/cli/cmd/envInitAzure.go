@@ -82,7 +82,6 @@ rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group R
 		}
 
 		if a.Name == "" {
-			logger.LogInfo("updating name to %v", a.ResourceGroup)
 			a.Name = a.ResourceGroup
 		}
 
@@ -298,7 +297,6 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	if err != nil {
 		return err
 	}
-	logger.LogInfo("%v", name)
 
 	// Check for an existing RP in the target resource group. This way we
 	// can use a single command to bind to an existing environment
@@ -334,8 +332,6 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	if err != nil {
 		return err
 	}
-
-	logger.LogInfo("%v", group == nil)
 
 	if group == nil {
 		// Resource group specified was not found. Create it
