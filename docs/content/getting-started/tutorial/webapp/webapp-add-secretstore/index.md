@@ -11,7 +11,7 @@ In this step you will learn how to add a secret store and connect to it from the
 We'll discuss template.bicep changes and then provide the full, updated file before deployment. 
 
 ## Add kv component
-A `kv` secret store component is used to specify a few properties about the database: 
+A `kv` secret store component is used to specify a few properties about the KeyVault: 
 
 - **kind:** `azure.com/KeyVault@v1alpha1` represents an Azure Key Vault. 
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
@@ -219,4 +219,3 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 You have completed this tutorial!
 
 {{< button text="Try another tutorial" page="tutorial" >}}
-
