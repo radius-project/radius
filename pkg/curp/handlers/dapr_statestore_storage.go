@@ -38,7 +38,7 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 	name, ok := properties["storageaccountname"]
 	if !ok {
 		// names are kinda finicky here - they have to be unique across azure.
-		base := properties["name"]
+		base := properties[radresources.WorkloadResourceNameKey]
 		name = ""
 
 		for i := 0; i < 10; i++ {

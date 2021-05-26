@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/gofrs/uuid"
 )
 
@@ -106,14 +107,14 @@ func generateCosmosDBAccountName(ctx context.Context,
 	name, ok := properties[CosmosDBAccountNameKey]
 	if !ok {
 		// properties["name"] is the component (database) name passed through the template, this is used as a prefix for the account name
-		base := properties["name"] + "-"
+		base := properties[radresources.WorkloadResourceNameKey] + "-"
 		name = ""
 
 		for i := 0; i < retryAttempts; i++ {
 			// 3-24 characters - all alphanumeric and '-'
 			uid, err := uuid.NewV4()
 			if err != nil {
-				return "", fmt.Errorf("failed to generate storage account name: %w", err)
+				return "", fmt.Errorf("failed to generate CosmosDB account name: %w", err)
 			}
 			name = base + strings.ReplaceAll(uid.String(), "-", "")
 			name = name[0:24]
@@ -127,7 +128,7 @@ func generateCosmosDBAccountName(ctx context.Context,
 				return name, nil
 			}
 
-			log.Printf("cosmos account name generation failed after %d attempts", i)
+			log.Printf("cosmosDB account name generation failed after %d attempts", i)
 		}
 
 		return "", fmt.Errorf("cosmosDB account name generation failed to create a unique name after %d attempts", retryAttempts)

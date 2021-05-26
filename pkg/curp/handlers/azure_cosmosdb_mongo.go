@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
-	radresources "github.com/Azure/radius/pkg/curp/resources"
+	"github.com/Azure/radius/pkg/curp/resources"
 )
 
 func NewAzureCosmosDBMongoHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -38,10 +38,11 @@ func (cddh *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptio
 	mrc := documentdb.NewMongoDBResourcesClient(cddh.arm.SubscriptionID)
 	mrc.Authorizer = cddh.arm.Auth
 
-	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, cddh.arm.ResourceGroup, *account.Name, properties["name"], documentdb.MongoDBDatabaseCreateUpdateParameters{
+	dbName := properties[resources.WorkloadResourceNameKey]
+	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, cddh.arm.ResourceGroup, *account.Name, dbName, documentdb.MongoDBDatabaseCreateUpdateParameters{
 		MongoDBDatabaseCreateUpdateProperties: &documentdb.MongoDBDatabaseCreateUpdateProperties{
 			Resource: &documentdb.MongoDBDatabaseResource{
-				ID: to.StringPtr(properties["name"]),
+				ID: to.StringPtr(dbName),
 			},
 			Options: &documentdb.CreateUpdateOptions{
 				AutoscaleSettings: &documentdb.AutoscaleSettings{
@@ -50,8 +51,8 @@ func (cddh *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptio
 			},
 		},
 		Tags: map[string]*string{
-			radresources.TagRadiusApplication: &options.Application,
-			radresources.TagRadiusComponent:   &options.Component,
+			resources.TagRadiusApplication: &options.Application,
+			resources.TagRadiusComponent:   &options.Component,
 		},
 	})
 	if err != nil {
