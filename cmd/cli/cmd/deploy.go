@@ -111,6 +111,8 @@ func deploy(cmd *cobra.Command, args []string) error {
 		}
 
 		as.Default = applicationName
+
+		logger.LogInfo("Setting default application to %v", applicationName)
 		rad.UpdateApplicationSection(v, as)
 		err = saveConfig()
 		if err != nil {

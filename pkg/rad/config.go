@@ -77,7 +77,7 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 	return env.decodeEnvironmentSection(name)
 }
 
-// ReadApplictionSection reads the ApplicationSection from radius config.
+// ReadApplicationSection reads the ApplicationSection from radius config.
 func ReadApplicationSection(v *viper.Viper) (ApplicationSection, error) {
 	s := v.Sub(ApplicationKey)
 	if s == nil {

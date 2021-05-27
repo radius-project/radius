@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -31,9 +32,14 @@ func init() {
 	applicationCmd.AddCommand(appDeleteCmd)
 
 	appDeleteCmd.Flags().StringP("name", "n", "", "The application name")
+	appDeleteCmd.Flags().BoolP("yes", "y", false, "Confirms deletion of application")
 }
 
 func deleteApplication(cmd *cobra.Command, args []string) error {
+	yes, err := cmd.Flags().GetBool("yes")
+	if err != nil {
+		return err
+	}
 	applicationName, err := cmd.Flags().GetString("name")
 	if err != nil {
 		return err
@@ -52,6 +58,17 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	env, err := validateDefaultEnvironment()
 	if err != nil {
 		return err
+	}
+
+	// Prompt user to confirm deletion
+	if !yes {
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Are you sure you want to delete '%v' from '%v' [y/n]?", applicationName, env.Name))
+		if err != nil {
+			return err
+		}
+		if !confirmed {
+			return nil
+		}
 	}
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
