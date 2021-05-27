@@ -38,7 +38,7 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 	sqlClient := documentdb.NewSQLResourcesClient(handler.arm.SubscriptionID)
 	sqlClient.Authorizer = handler.arm.Auth
 
-	dbName := properties["name"]
+	dbName := properties[CosmosDBNameKey]
 	dbfuture, err := sqlClient.CreateUpdateSQLDatabase(ctx, handler.arm.ResourceGroup, *account.Name, dbName, documentdb.SQLDatabaseCreateUpdateParameters{
 		SQLDatabaseCreateUpdateProperties: &documentdb.SQLDatabaseCreateUpdateProperties{
 			Resource: &documentdb.SQLDatabaseResource{

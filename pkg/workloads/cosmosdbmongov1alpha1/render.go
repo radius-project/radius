@@ -101,8 +101,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: workloads.ResourceKindAzureCosmosDBMongo,
 		Resource: map[string]string{
-			handlers.ManagedKey: "true",
-			"name":              w.Workload.Name,
+			handlers.ManagedKey:              "true",
+			handlers.CosmosDBAccountBaseName: w.Workload.Name,
+			handlers.CosmosDBNameKey:         w.Workload.Name,
 		},
 	}
 

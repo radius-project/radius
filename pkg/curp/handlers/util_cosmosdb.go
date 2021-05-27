@@ -16,6 +16,9 @@ import (
 
 // CosmosDB metadata is stored in a properties map, the 'key' constants below track keys for different properties in the map
 const (
+	// CosmosDBAccountBaseName is used as the base for computing a unique account name
+	CosmosDBAccountBaseName = "cosmosaccountbasename"
+
 	// CosmosDBAccountNameKey properties map key for CosmosDB account created for the workload
 	CosmosDBAccountNameKey = "cosmosaccountname"
 
@@ -106,8 +109,8 @@ func generateCosmosDBAccountName(ctx context.Context,
 	retryAttempts := 10
 	name, ok := properties[CosmosDBAccountNameKey]
 	if !ok {
-		// properties["name"] is the component (database) name passed through the template, this is used as a prefix for the account name
-		base := properties["name"] + "-"
+		// properties[CosmosDBAccountBaseName] is the component (database) name passed through the template, this is used as a prefix for the account name
+		base := properties[CosmosDBAccountBaseName] + "-"
 		name = ""
 
 		for i := 0; i < retryAttempts; i++ {

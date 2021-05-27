@@ -41,11 +41,12 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Equal(t, "", renderedResource.LocalID)
 	require.Equal(t, workloads.ResourceKindAzureCosmosDBSQL, renderedResource.Type)
 
-	expectedProperties := map[string]string{
-		handlers.ManagedKey: "true",
-		"name":              "test-component",
+	expected := map[string]string{
+		handlers.ManagedKey:              "true",
+		handlers.CosmosDBAccountBaseName: "test-component",
+		handlers.CosmosDBNameKey:         "test-component",
 	}
-	require.Equal(t, expectedProperties, renderedResource.Resource)
+	require.Equal(t, expected, renderedResource.Resource)
 }
 
 func Test_Render_Unmanaged_NotSupported(t *testing.T) {

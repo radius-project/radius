@@ -41,8 +41,9 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Equal(t, workloads.ResourceKindAzureCosmosDBMongo, resource.Type)
 
 	expected := map[string]string{
-		handlers.ManagedKey: "true",
-		"name":              "test-component",
+		handlers.ManagedKey:              "true",
+		handlers.CosmosDBAccountBaseName: "test-component",
+		handlers.CosmosDBNameKey:         "test-component",
 	}
 	require.Equal(t, expected, resource.Resource)
 }
