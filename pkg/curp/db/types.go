@@ -91,7 +91,8 @@ type ComponentDependsOn struct {
 	Kind string `bson:"kind"`
 
 	// TODO this should support more settings
-	SetEnv map[string]string `bson:"setEnv,omitempty"`
+	SetEnv    map[string]string      `bson:"setEnv,omitempty"`
+	SetSecret map[string]interface{} `bson:"setSecret,omitempty"`
 }
 
 // ComponentTrait represents a trait for an Radius component.

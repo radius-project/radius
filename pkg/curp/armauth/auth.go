@@ -14,6 +14,13 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
+// Authentication methods
+const (
+	ServicePrincipalAuth = "ServicePrincipal"
+	ManagedIdentityAuth  = "ManagedIdentity"
+	CliAuth              = "CLI"
+)
+
 // ArmConfig is the configuration we use for managing ARM resources
 type ArmConfig struct {
 	Auth           autorest.Authorizer
@@ -47,6 +54,7 @@ func GetArmConfig() (ArmConfig, error) {
 	}
 
 	log.Printf("Using SubscriptionId = '%v' and Resource Group = '%v'", subscriptionID, resourceGroup)
+
 	return ArmConfig{
 		Auth:           *auth,
 		SubscriptionID: subscriptionID,
@@ -54,12 +62,12 @@ func GetArmConfig() (ArmConfig, error) {
 	}, nil
 }
 
-// GetArmAuthorizer returns an ARM authorizer for the current process
+// GetArmAuthorizer returns an ARM authorizer and the client ID for the current process
 func GetArmAuthorizer() (*autorest.Authorizer, error) {
-	clientID, ok := os.LookupEnv("CLIENT_ID")
-	if ok && clientID != "" {
+	authMethod := GetAuthMethod()
+	if authMethod == ServicePrincipalAuth {
 		log.Println("Service Principal detected - using SP auth to get credentials")
-		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("CLIENT_ID"), os.Getenv("CLIENT_SECRET"), os.Getenv("TENANT_ID"))
+		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("AZURE_CLIENT_ID"), os.Getenv("AZURE_CLIENT_SECRET"), os.Getenv("AZURE_TENANT_ID"))
 		auth, err := clientcfg.Authorizer()
 		if err != nil {
 			return nil, err
@@ -76,7 +84,7 @@ func GetArmAuthorizer() (*autorest.Authorizer, error) {
 		}
 		log.Println("Using Service Principal auth.")
 		return &auth, nil
-	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
+	} else if authMethod == ManagedIdentityAuth {
 		log.Println("Managed Identity detected - using Managed Identity to get credentials")
 
 		config := auth.NewMSIConfig()
@@ -99,11 +107,26 @@ func GetArmAuthorizer() (*autorest.Authorizer, error) {
 		return &auth, nil
 	} else {
 		log.Println("No Service Principal detected.")
+
 		auth, err := auth.NewAuthorizerFromCLIWithResource("https://management.azure.com")
+
 		if err != nil {
 			return nil, err
 		}
 		log.Println("Using CLI auth.")
 		return &auth, nil
+	}
+}
+
+// GetAuthMethod returns the authentication method used by the RP
+func GetAuthMethod() string {
+	clientID, ok := os.LookupEnv("AZURE_CLIENT_ID")
+
+	if ok && clientID != "" {
+		return ServicePrincipalAuth
+	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
+		return ManagedIdentityAuth
+	} else {
+		return CliAuth
 	}
 }

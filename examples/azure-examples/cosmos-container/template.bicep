@@ -15,7 +15,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           name: 'db'
           kind: 'mongodb.com/Mongo'
           setEnv: {
-            DB_CONNECTION: 'connectionString'
+            DBCONNECTION: 'connectionString'
           }
         }
       ]

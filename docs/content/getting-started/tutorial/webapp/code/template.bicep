@@ -12,10 +12,20 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
       dependsOn: [
         {
+          name: 'kv'
+          kind: 'azure.com/KeyVault'
+          setEnv: {
+            KV_URI: 'keyvaulturi'
+          }
+        }
+        {
           kind: 'mongodb.com/Mongo'
           name: 'db'
-          setEnv: {
-            DB_CONNECTION: 'connectionString'
+          setSecret: {
+            store: kv.name
+            keys: {
+              DBCONNECTION: 'connectionString'
+            }
           }
         }
       ]
@@ -36,6 +46,16 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       config: {
         managed: true
       }
+    }
+  }
+
+  resource kv 'Components' = {
+    name: 'kv'
+    kind: 'azure.com/KeyVault@v1alpha1'
+    properties: {
+        config: {
+            managed: true
+        }
     }
   }
 }

@@ -69,9 +69,10 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 
 	for _, d := range original.Properties.DependsOn {
 		dd := db.ComponentDependsOn{
-			Name:   d.Name,
-			Kind:   d.Kind,
-			SetEnv: d.SetEnv,
+			Name:      d.Name,
+			Kind:      d.Kind,
+			SetEnv:    d.SetEnv,
+			SetSecret: d.SetSecret,
 		}
 		c.Properties.DependsOn = append(c.Properties.DependsOn, dd)
 	}
