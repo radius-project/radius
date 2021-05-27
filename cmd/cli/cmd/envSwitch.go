@@ -39,6 +39,10 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	envName, err := requireEnvironmentNameArgs(cmd, args)
+	if err != nil {
+		return err
+	}
+
 	_, ok := env.Items[envName]
 	if !ok {
 		fmt.Printf("Could not find environment %v\n", envName)

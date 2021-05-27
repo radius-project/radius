@@ -38,7 +38,7 @@ func showDeployment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	applicationName, err := requireApplicationNameNoArgs(cmd, env)
+	applicationName, err := requireApplication(cmd, env)
 	if err != nil {
 		return err
 	}

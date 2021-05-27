@@ -6,7 +6,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/rad"
@@ -23,26 +22,6 @@ var envCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(envCmd)
-}
-
-// Used by commands that require the current environment to be an azure cloud environment.
-func validateDefaultEnvironment() (*environments.AzureCloudEnvironment, error) {
-	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
-	if err != nil {
-		return nil, err
-	}
-
-	if env.Default == "" {
-		return nil, errors.New("no environment set, run 'rad env switch'")
-	}
-
-	e, err := env.GetEnvironment("") // default environment
-	if err != nil {
-		return nil, err
-	}
-
-	return environments.RequireAzureCloud(e)
 }
 
 // Used by commands that require a named environment to be an azure cloud environment.

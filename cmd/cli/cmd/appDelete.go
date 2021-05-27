@@ -44,7 +44,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	applicationName, err := requireApplicationName(cmd, args, env)
+	applicationName, err := requireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
 	}

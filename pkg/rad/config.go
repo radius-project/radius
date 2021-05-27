@@ -77,37 +77,6 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 	return env.decodeEnvironmentSection(name)
 }
 
-// ReadApplicationSection reads the ApplicationSection from radius config.
-func ReadApplicationSection(v *viper.Viper) (ApplicationSection, error) {
-	s := v.Sub(ApplicationKey)
-	if s == nil {
-		return ApplicationSection{}, nil
-	}
-
-	section := ApplicationSection{}
-	err := s.UnmarshalExact(&section)
-	if err != nil {
-		return ApplicationSection{}, nil
-	}
-
-	return section, nil
-}
-
-func GetDefaultApplicationName(v *viper.Viper) (string, error) {
-	// Get the default name
-	as, err := ReadApplicationSection(v)
-	if err != nil {
-		return "", err
-	}
-
-	return as.Default, nil
-}
-
-// UpdateApplicationSection updates the ApplicationSection in radius config.
-func UpdateApplicationSection(v *viper.Viper, as ApplicationSection) {
-	v.Set(ApplicationKey, as)
-}
-
 func (env EnvironmentSection) decodeEnvironmentSection(name string) (environments.Environment, error) {
 	raw, ok := env.Items[cases.Fold().String(name)]
 	if !ok {
