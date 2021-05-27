@@ -33,7 +33,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	}
 
 	properties := resources[0].Properties
-	vaultName := properties[KeyVaultName]
+	vaultName := properties[handlers.KeyVaultNameKey]
 	kvClient := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
 	kvClient.Authorizer = r.Arm.Auth
 	vault, err := kvClient.Get(ctx, r.Arm.ResourceGroup, vaultName)
@@ -47,7 +47,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 			Binding:   "default",
 			Kind:      "azure.com/KeyVault",
 			Properties: map[string]interface{}{
-				URIProperty: *vault.Properties.VaultURI,
+				handlers.KeyVaultURIKey: *vault.Properties.VaultURI,
 			},
 		},
 	}

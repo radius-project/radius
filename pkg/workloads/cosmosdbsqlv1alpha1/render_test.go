@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/curp/components"
+	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ import (
 
 const TestComponentName = "db-cosmossql"
 
-func TestRenderManagedResourse(t *testing.T) {
+func TestRenderManagedResource(t *testing.T) {
 	renderer := &Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -40,7 +41,8 @@ func TestRenderManagedResourse(t *testing.T) {
 	require.Equal(t, workloads.ResourceKindAzureCosmosDBSQL, renderedResource.Type)
 
 	expectedProperties := map[string]string{
-		"name": TestComponentName,
+		handlers.ManagedKey: "true",
+		"name":              TestComponentName,
 	}
 	require.Equal(t, expectedProperties, renderedResource.Resource)
 }

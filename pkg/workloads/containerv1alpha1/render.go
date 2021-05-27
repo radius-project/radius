@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
+	"github.com/Azure/radius/pkg/curp/handlers"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/roleassignment"
@@ -101,7 +102,7 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, error) {
 	// Read the keyvault URI so we can get the keyvault name for permissions
-	value, ok := store.Properties[KeyVaultURIIdentifier]
+	value, ok := store.Properties[handlers.KeyVaultURIKey]
 	if !ok {
 		return nil, fmt.Errorf("failed to read keyvault uri")
 	}
@@ -216,8 +217,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		resources = append(resources, workloads.WorkloadResource{
 			Type: workloads.ResourceKindAzurePodIdentity,
 			Resource: map[string]string{
-				PodIdentityName:    podIdentity.Name,
-				PodIdentityCluster: podIdentity.ClusterName,
+				handlers.PodIdentityNameKey:    podIdentity.Name,
+				handlers.PodIdentityClusterKey: podIdentity.ClusterName,
 			},
 		})
 	}
@@ -283,14 +284,14 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		if err != nil {
 			return nil, err
 		}
-		value, ok := store.Properties[KeyVaultURIIdentifier]
+		value, ok := store.Properties[handlers.KeyVaultURIKey]
 		if !ok {
 			return nil, fmt.Errorf("cannot find a keyvault URI for secret store binding %s from component %s", store.Binding, store.Component)
 		}
 
 		uri, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("value %s for binding for binding %s from component %s is not a string", KeyVaultURIIdentifier, store.Binding, store.Component)
+			return nil, fmt.Errorf("value %s for binding for binding %s from component %s is not a string", handlers.KeyVaultURIKey, store.Binding, store.Component)
 		}
 
 		secrets := map[string]string{}

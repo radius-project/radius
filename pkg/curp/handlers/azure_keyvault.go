@@ -16,8 +16,12 @@ import (
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
-	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	"github.com/gofrs/uuid"
+)
+
+const (
+	KeyVaultURIKey  = "uri"
+	KeyVaultNameKey = "keyvaultname"
 )
 
 func NewAzureKeyVaultHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -32,7 +36,7 @@ func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (m
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// If we have already created this resource we would have stored the name.
-	vaultName, ok := properties[keyvaultv1alpha1.KeyVaultName]
+	vaultName, ok := properties[KeyVaultNameKey]
 	if !ok {
 		// No name stored, generate a new one
 		vaultName = namegenerator.GenerateName("kv")
@@ -98,14 +102,14 @@ func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (m
 	}
 
 	// store vault so we can use later
-	properties[keyvaultv1alpha1.KeyVaultName] = *kv.Name
+	properties[KeyVaultNameKey] = *kv.Name
 
 	return properties, nil
 }
 
 func (kvh *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
-	vaultName := properties[keyvaultv1alpha1.KeyVaultName]
+	vaultName := properties[KeyVaultNameKey]
 
 	kvClient := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
 	kvClient.Authorizer = kvh.arm.Auth

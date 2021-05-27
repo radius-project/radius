@@ -15,7 +15,11 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
+)
+
+const (
+	PodIdentityNameKey    = "podidentityname"
+	PodIdentityClusterKey = "podidentitycluster"
 )
 
 func NewAzurePodIdentityHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -53,8 +57,8 @@ func (pih *azurePodIdentityHandler) Put(ctx context.Context, options PutOptions)
 func (pih *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	// Delete AAD Pod Identity created
 	properties := options.Existing.Properties
-	podIdentityName := properties[containerv1alpha1.PodIdentityName]
-	podidentityCluster := properties[containerv1alpha1.PodIdentityCluster]
+	podIdentityName := properties[PodIdentityNameKey]
+	podidentityCluster := properties[PodIdentityClusterKey]
 
 	mcc := containerservice.NewManagedClustersClient(pih.arm.SubscriptionID)
 	mcc.Authorizer = pih.arm.Auth
