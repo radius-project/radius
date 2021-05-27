@@ -30,7 +30,7 @@ var appDeleteCmd = &cobra.Command{
 func init() {
 	applicationCmd.AddCommand(appDeleteCmd)
 
-	envDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
+	appDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
 }
 
 func deleteApplication(cmd *cobra.Command, args []string) error {

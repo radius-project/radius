@@ -26,7 +26,7 @@ var deploymentDeleteCmd = &cobra.Command{
 
 func init() {
 	deploymentCmd.AddCommand(deploymentDeleteCmd)
-	envDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
+	deploymentDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
 }
 
 func deleteDeployment(cmd *cobra.Command, args []string) error {

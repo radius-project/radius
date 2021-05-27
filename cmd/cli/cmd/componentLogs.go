@@ -138,7 +138,7 @@ rad component logs --application icecream-store orders --container daprd`,
 func init() {
 	componentCmd.AddCommand(logsCmd)
 
-	logsCmd.Flags().StringP("container", "c", "", "specify the container from which logs should be streamed")
+	logsCmd.Flags().String("container", "", "specify the container from which logs should be streamed")
 	logsCmd.Flags().BoolP("follow", "f", false, "specify that logs should be stream until the command is canceled")
 }
 
