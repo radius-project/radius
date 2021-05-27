@@ -26,7 +26,9 @@ type azureCosmosDBSQLDBHandler struct {
 func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	// There is no clear documentation on this mapping of GlobalDocumentDB to SQL. Used this ARM template example as a reference to verify that this is the right option https://docs.microsoft.com/en-us/azure/cosmos-db/how-to-manage-database-account
+	// There is no clear documentation on this mapping of GlobalDocumentDB to SQL.
+	// Used this ARM template example as a reference to verify that this is the right option:
+	//   https://docs.microsoft.com/en-us/azure/cosmos-db/how-to-manage-database-account
 	account, err := CreateCosmosDBAccount(ctx, handler.arm, properties, documentdb.GlobalDocumentDB)
 	if err != nil {
 		return nil, err
@@ -35,11 +37,42 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 	properties[CosmosDBAccountNameKey] = *account.Name
 	properties[CosmosDBAccountIDKey] = *account.ID
 
+	dbName := properties[CosmosDBNameKey]
+	db, err := handler.CreateDatabase(ctx, *account.Name, dbName)
+	if err != nil {
+		return nil, err
+	}
+
+	properties[CosmosDBNameKey] = *db.Name
+
+	return properties, nil
+}
+
+func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options DeleteOptions) error {
+	properties := options.Existing.Properties
+	accountName := properties[CosmosDBAccountNameKey]
+	dbName := properties[CosmosDBNameKey]
+
+	// Delete SQL database in the CosmosDB account
+	err := handler.DeleteDatabase(ctx, accountName, dbName)
+	if err != nil {
+		return err
+	}
+
+	// Delete CosmosDB account
+	err = DeleteCosmosDBAccount(ctx, handler.arm, accountName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, accountName string, dbName string) (*documentdb.SQLDatabaseGetResults, error) {
 	sqlClient := documentdb.NewSQLResourcesClient(handler.arm.SubscriptionID)
 	sqlClient.Authorizer = handler.arm.Auth
 
-	dbName := properties[CosmosDBNameKey]
-	dbfuture, err := sqlClient.CreateUpdateSQLDatabase(ctx, handler.arm.ResourceGroup, *account.Name, dbName, documentdb.SQLDatabaseCreateUpdateParameters{
+	dbfuture, err := sqlClient.CreateUpdateSQLDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName, documentdb.SQLDatabaseCreateUpdateParameters{
 		SQLDatabaseCreateUpdateProperties: &documentdb.SQLDatabaseCreateUpdateProperties{
 			Resource: &documentdb.SQLDatabaseResource{
 				ID: to.StringPtr(dbName),
@@ -66,21 +99,14 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 		return nil, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
 	}
 
-	properties[CosmosDBNameKey] = *db.Name
-
-	return properties, nil
+	return &db, nil
 }
 
-func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
-	accountname := properties[CosmosDBAccountNameKey]
-	dbname := properties[CosmosDBNameKey]
-
-	// Delete SQL database in the CosmosDB account
+func (handler *azureCosmosDBSQLDBHandler) DeleteDatabase(ctx context.Context, accountName string, dbName string) error {
 	sqlClient := documentdb.NewSQLResourcesClient(handler.arm.SubscriptionID)
 	sqlClient.Authorizer = handler.arm.Auth
 
-	dbfuture, err := sqlClient.DeleteSQLDatabase(ctx, handler.arm.ResourceGroup, accountname, dbname)
+	dbfuture, err := sqlClient.DeleteSQLDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
 	if err != nil && dbfuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
 	}
@@ -92,12 +118,6 @@ func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options De
 	response, err := dbfuture.Result(sqlClient)
 	if err != nil && response.StatusCode != 404 {
 		return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
-	}
-
-	// Delete CosmosDB account
-	err = DeleteCosmosDBAccount(ctx, handler.arm, accountname)
-	if err != nil {
-		return err
 	}
 
 	return nil
