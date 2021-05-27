@@ -40,6 +40,9 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 
 	v := viper.GetViper()
 	as, err := rad.ReadApplicationSection(v)
+	if err != nil {
+		return err
+	}
 
 	if as.Default == applicationName {
 		logger.LogInfo("Default application is already set to %v", applicationName)

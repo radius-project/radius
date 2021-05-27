@@ -93,6 +93,16 @@ func ReadApplicationSection(v *viper.Viper) (ApplicationSection, error) {
 	return section, nil
 }
 
+func GetDefaultApplicationName(v *viper.Viper) (string, error) {
+	// Get the default name
+	as, err := ReadApplicationSection(v)
+	if err != nil {
+		return "", err
+	}
+
+	return as.Default, nil
+}
+
 // UpdateApplicationSection updates the ApplicationSection in radius config.
 func UpdateApplicationSection(v *viper.Viper, as ApplicationSection) {
 	v.Set(ApplicationKey, as)

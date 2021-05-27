@@ -31,15 +31,22 @@ func init() {
 	applicationCmd.AddCommand(appDeleteCmd)
 
 	appDeleteCmd.Flags().StringP("name", "n", "", "The application name")
-	if err := appDeleteCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
-	}
 }
 
 func deleteApplication(cmd *cobra.Command, args []string) error {
 	applicationName, err := cmd.Flags().GetString("name")
 	if err != nil {
 		return err
+	}
+
+	if applicationName == "" {
+		// Get the default application name
+		v := viper.GetViper()
+
+		applicationName, err = rad.GetDefaultApplicationName(v)
+		if err != nil {
+			return err
+		}
 	}
 
 	env, err := validateDefaultEnvironment()
