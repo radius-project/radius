@@ -42,6 +42,30 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions
 		vaultName = namegenerator.GenerateName("kv")
 	}
 
+	kv, err := handler.CreateKeyVault(ctx, vaultName, options)
+	if err != nil {
+		return nil, err
+	}
+
+	// store vault so we can use later
+	properties[KeyVaultNameKey] = *kv.Name
+
+	return properties, nil
+}
+
+func (handler *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
+	properties := options.Existing.Properties
+	vaultName := properties[KeyVaultNameKey]
+
+	err := handler.DeleteKeyVault(ctx, vaultName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultName string, options PutOptions) (*keyvault.Vault, error) {
 	rgc := resources.NewGroupsClient(handler.arm.SubscriptionID)
 	rgc.Authorizer = handler.arm.Auth
 
@@ -101,16 +125,10 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions
 		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
 	}
 
-	// store vault so we can use later
-	properties[KeyVaultNameKey] = *kv.Name
-
-	return properties, nil
+	return &kv, nil
 }
 
-func (handler *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
-	vaultName := properties[KeyVaultNameKey]
-
+func (handler *azureKeyVaultHandler) DeleteKeyVault(ctx context.Context, vaultName string) error {
 	kvClient := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
 	kvClient.Authorizer = handler.arm.Auth
 
