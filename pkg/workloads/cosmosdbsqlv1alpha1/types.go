@@ -5,9 +5,24 @@
 
 package cosmosdbsqlv1alpha1
 
+import "github.com/Azure/radius/pkg/curp/resources"
+
 const (
 	Kind = "azure.com/CosmosDBSQL@v1alpha1"
 )
+
+var SQLResourceType = resources.KnownType{
+	Types: []resources.ResourceType{
+		{
+			Type: "Microsoft.DocumentDB/databaseAccount",
+			Name: "*",
+		},
+		{
+			Type: "sqlDatabases",
+			Name: "*",
+		},
+	},
+}
 
 // CosmosDBSQLComponent definition of CosmosDBSQL component
 type CosmosDBSQLComponent struct {
@@ -22,5 +37,6 @@ type CosmosDBSQLComponent struct {
 
 // CosmosDBSQLConfig defintion of the config section
 type CosmosDBSQLConfig struct {
-	Managed bool `json:"managed"`
+	Managed  bool   `json:"managed"`
+	Resource string `json:"resource"`
 }

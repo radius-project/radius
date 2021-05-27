@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/gofrs/uuid"
 )
@@ -32,7 +33,7 @@ const (
 	CosmosDBAccountNameKey = "cosmosaccountname"
 
 	// CosmosDBNameKey properties map key for database name created under CosmosDB account
-	CosmosDBNameKey = "databasename"
+	CosmosDBDatabaseNameKey = "databasename"
 
 	// CosmosDBAccountIDKey properties map key for unique resource identifier of ARM resource of the account
 	CosmosDBAccountIDKey = "cosmosaccountid"
@@ -44,14 +45,31 @@ const (
 	DefaultAutoscaleMaxThroughput = 4000
 )
 
+func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Context, accountID string) (*documentdb.DatabaseAccountGetResults, error) {
+	parsed, err := radresources.Parse(accountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CosmosDB Account resource id: %w", err)
+	}
+
+	cosmosDBClient := documentdb.NewDatabaseAccountsClient(parsed.SubscriptionID)
+	cosmosDBClient.Authorizer = handler.arm.Auth
+
+	account, err := cosmosDBClient.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CosmosDB Account: %w", err)
+	}
+
+	return &account, nil
+}
+
 // CreateCosmosDBAccount creates CosmosDB account. Account name is randomly generated with specified database name as prefix.
-func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Context, properties map[string]string, databaseKind documentdb.DatabaseAccountKind) (account documentdb.DatabaseAccountGetResults, err error) {
+func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Context, properties map[string]string, databaseKind documentdb.DatabaseAccountKind) (*documentdb.DatabaseAccountGetResults, error) {
 	cosmosDBClient := documentdb.NewDatabaseAccountsClient(handler.arm.SubscriptionID)
 	cosmosDBClient.Authorizer = handler.arm.Auth
 
 	accountName, err := generateCosmosDBAccountName(ctx, properties, cosmosDBClient)
 	if err != nil {
-		return account, err
+		return nil, err
 	}
 
 	rgc := resources.NewGroupsClient(handler.arm.SubscriptionID)
@@ -59,7 +77,7 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 
 	rg, err := rgc.Get(ctx, handler.arm.ResourceGroup)
 	if err != nil {
-		return account, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
+		return nil, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
 	}
 
 	accountFuture, err := cosmosDBClient.CreateOrUpdate(ctx, handler.arm.ResourceGroup, accountName, documentdb.DatabaseAccountCreateUpdateParameters{
@@ -75,20 +93,20 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 		},
 	})
 	if err != nil {
-		return account, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
+		return nil, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
 	}
 
 	err = accountFuture.WaitForCompletionRef(ctx, cosmosDBClient.Client)
 	if err != nil {
-		return account, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
+		return nil, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
 	}
 
-	account, err = accountFuture.Result(cosmosDBClient)
+	account, err := accountFuture.Result(cosmosDBClient)
 	if err != nil {
-		return account, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
+		return nil, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
 	}
 
-	return account, nil
+	return &account, nil
 }
 
 // DeleteCosmosDBAccount deletes CosmosDB account for the specified account name

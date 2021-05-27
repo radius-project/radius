@@ -22,6 +22,7 @@ import (
 const (
 	KeyVaultURIKey  = "uri"
 	KeyVaultNameKey = "keyvaultname"
+	KeyVaultIDKey   = "keyvaultid"
 )
 
 func NewAzureKeyVaultHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -35,26 +36,41 @@ type azureKeyVaultHandler struct {
 func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	// If we have already created this resource we would have stored the name.
-	vaultName, ok := properties[KeyVaultNameKey]
-	if !ok {
-		// No name stored, generate a new one
-		vaultName = namegenerator.GenerateName("kv")
+	// This assertion is important so we don't start creating/modifying an unmanaged resource
+	if properties[ManagedKey] != "true" && properties[KeyVaultIDKey] == "" {
+		return nil, fmt.Errorf("missing required property '%s' for an unmanaged resource", KeyVaultIDKey)
 	}
 
-	kv, err := handler.CreateKeyVault(ctx, vaultName, options)
-	if err != nil {
-		return nil, err
-	}
+	if properties[KeyVaultIDKey] == "" {
+		// If we have already created this resource we would have stored the name and ID.
+		vaultName := namegenerator.GenerateName("kv")
 
-	// store vault so we can use later
-	properties[KeyVaultNameKey] = *kv.Name
+		kv, err := handler.CreateKeyVault(ctx, vaultName, options)
+		if err != nil {
+			return nil, err
+		}
+
+		// store vault so we can use later
+		properties[KeyVaultNameKey] = *kv.Name
+		properties[KeyVaultIDKey] = *kv.ID
+	} else {
+		// This is mostly called for the side-effect of verifying that the keyvault exists.
+		_, err := handler.GetKeyVaultByID(ctx, properties[KeyVaultIDKey])
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return properties, nil
 }
 
 func (handler *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
+	if properties[ManagedKey] != "true" {
+		// For an 'unmanaged' resource we don't need to do anything, just forget it.
+		return nil
+	}
+
 	vaultName := properties[KeyVaultNameKey]
 
 	err := handler.DeleteKeyVault(ctx, vaultName)
@@ -63,6 +79,23 @@ func (handler *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteO
 	}
 
 	return nil
+}
+
+func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id string) (*keyvault.Vault, error) {
+	parsed, err := radresources.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse KeyVault resource id: %w", err)
+	}
+
+	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
+	kvc.Authorizer = handler.arm.Auth
+
+	kv, err := kvc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get KeyVault: %w", err)
+	}
+
+	return &kv, nil
 }
 
 func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultName string, options PutOptions) (*keyvault.Vault, error) {
@@ -76,9 +109,6 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 
 	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
 	kvc.Authorizer = handler.arm.Auth
-	if err != nil {
-		return nil, err
-	}
 
 	sc := subscriptions.NewClient()
 	sc.Authorizer = handler.arm.Auth

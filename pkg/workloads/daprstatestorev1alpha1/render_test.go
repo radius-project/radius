@@ -29,7 +29,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 				"kind":    "any",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	resources, err := renderer.Render(context.Background(), workload)

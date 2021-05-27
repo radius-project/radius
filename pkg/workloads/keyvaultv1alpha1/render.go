@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/handlers"
+	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -63,19 +64,48 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, err
 	}
 
-	if !component.Config.Managed {
-		return []workloads.WorkloadResource{}, errors.New("only 'managed=true' is supported right now")
-	}
+	if component.Config.Managed {
+		if component.Config.Resource != "" {
+			return nil, errors.New("the 'resource' field cannot be specified when 'managed=true'")
+		}
 
-	// generate data we can use to manage a keyvault instance
-	resource := workloads.WorkloadResource{
-		Type: "azure.keyvault",
-		Resource: map[string]string{
-			handlers.ManagedKey: "true",
-			"name":              w.Workload.Name,
-		},
-	}
+		// generate data we can use to manage a cosmosdb instance
+		resource := workloads.WorkloadResource{
+			Type: workloads.ResourceKindAzureKeyVault,
+			Resource: map[string]string{
+				handlers.ManagedKey: "true",
+			},
+		}
 
-	// It's already in the correct format
-	return []workloads.WorkloadResource{resource}, nil
+		// It's already in the correct format
+		return []workloads.WorkloadResource{resource}, nil
+	} else {
+		if component.Config.Resource == "" {
+			return nil, errors.New("the 'resource' field is required when 'managed' is not specified")
+		}
+
+		vaultID, err := resources.Parse(component.Config.Resource)
+		if err != nil {
+			return nil, errors.New("the 'resource' field must be a valid resource id.")
+		}
+
+		err = vaultID.ValidateResourceType(KeyVaultResourceType)
+		if err != nil {
+			return nil, fmt.Errorf("the 'resource' field must refer to a KeyVault")
+		}
+
+		// generate data we can use to connect to a servicebus queue
+		resource := workloads.WorkloadResource{
+			Type: workloads.ResourceKindAzureKeyVault,
+			Resource: map[string]string{
+				handlers.ManagedKey: "false",
+
+				handlers.KeyVaultIDKey:   vaultID.ID,
+				handlers.KeyVaultNameKey: vaultID.Types[0].Name,
+			},
+		}
+
+		// It's already in the correct format
+		return []workloads.WorkloadResource{resource}, nil
+	}
 }
