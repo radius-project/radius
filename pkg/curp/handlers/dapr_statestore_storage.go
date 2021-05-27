@@ -195,11 +195,6 @@ func (sssh *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, optio
 	sc := storage.NewAccountsClient(sssh.arm.SubscriptionID)
 	sc.Authorizer = sssh.arm.Auth
 
-	// TODO: gross workaround - sorry everyone :(
-	if properties[StorageAccountNameKey] == "" {
-		return nil
-	}
-
 	_, err = sc.Delete(ctx, sssh.arm.ResourceGroup, properties[StorageAccountNameKey])
 	if err != nil {
 		return err
