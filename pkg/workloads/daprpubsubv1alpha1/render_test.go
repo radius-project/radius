@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Render_Unanaged_Failure(t *testing.T) {
+func Test_Render_Unamnaged_Failure(t *testing.T) {
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
