@@ -46,6 +46,8 @@ func init() {
 	RootCmd.SetVersionTemplate(template)
 
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
+	RootCmd.PersistentFlags().StringP("application", "a", "", "The application name")
+	RootCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
 }
 
 // initConfig reads in config file and ENV variables if set.

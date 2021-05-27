@@ -26,12 +26,10 @@ var appShowCmd = &cobra.Command{
 
 func init() {
 	applicationCmd.AddCommand(appShowCmd)
-
-	appShowCmd.Flags().StringP("name", "n", "", "The application name")
 }
 
 func showApplication(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("name")
+	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return err
 	}

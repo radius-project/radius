@@ -30,7 +30,6 @@ var appDeleteCmd = &cobra.Command{
 func init() {
 	applicationCmd.AddCommand(appDeleteCmd)
 
-	appDeleteCmd.Flags().StringP("name", "n", "", "The application name")
 	appDeleteCmd.Flags().BoolP("yes", "y", false, "Confirms deletion of application")
 }
 
@@ -39,7 +38,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	applicationName, err := cmd.Flags().GetString("name")
+	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return err
 	}
@@ -54,7 +53,8 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		applicationName = env.GetDefaultApplication()
 
 		if applicationName == "" {
-			return fmt.Errorf("No application name provided and no default application set.")
+			return fmt.Errorf("No application name provided and no default application set. " +
+				"Either pass in an application name or set a default application by calling `rad appplication switch`.")
 		}
 	}
 
