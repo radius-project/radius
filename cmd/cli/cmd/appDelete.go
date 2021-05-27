@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
@@ -45,19 +44,18 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if applicationName == "" {
-		// Get the default application name
-		v := viper.GetViper()
-
-		applicationName, err = rad.GetDefaultApplicationName(v)
-		if err != nil {
-			return err
-		}
-	}
-
 	env, err := validateDefaultEnvironment()
 	if err != nil {
 		return err
+	}
+
+	if applicationName == "" {
+		// Get the default application name if not passed in
+		applicationName = env.GetDefaultApplication()
+
+		if applicationName == "" {
+			return fmt.Errorf("No application name provided and no default application set.")
+		}
 	}
 
 	// Prompt user to confirm deletion
@@ -120,38 +118,28 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 }
 
 func updateApplicationConfig(cmd *cobra.Command,
-	env *environments.AzureCloudEnvironment,
-	appName string,
+	azureEnv *environments.AzureCloudEnvironment,
+	applicationName string,
 	ac *radclient.ApplicationClient) error {
-	v := viper.GetViper()
-	as, err := rad.ReadApplicationSection(v)
-	if err != nil {
-		return err
-	}
 
-	// If the application we are deleting is the default application,
-	// find another application to default to or make it empty
-	if as.Default == appName {
-		response, err := ac.ListByResourceGroup(cmd.Context(), env.ResourceGroup, nil)
-
+	// If the application we are deleting is the default application, remove it
+	if azureEnv.DefaultApplication == applicationName {
+		v := viper.GetViper()
+		env, err := rad.ReadEnvironmentSection(v)
 		if err != nil {
 			return err
 		}
 
-		applicationsList := *response.ApplicationList
-		appList := *applicationsList.Value
-		if len(appList) < 1 {
-			logger.LogInfo("Removing default application")
-			as.Default = ""
-		} else {
-			as.Default = *appList[0].Name
-			logger.LogInfo("Default application is now %v.", as.Default)
-		}
-	}
+		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, azureEnv.Name)
 
-	rad.UpdateApplicationSection(v, as)
-	if err = saveConfig(); err != nil {
-		return err
+		env.Items[azureEnv.Name]["defaultapplication"] = ""
+
+		rad.UpdateEnvironmentSection(v, env)
+
+		err = saveConfig()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

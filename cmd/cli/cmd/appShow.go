@@ -12,10 +12,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
-	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // appShowCmd command to show properties of an application
@@ -38,19 +36,18 @@ func showApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if applicationName == "" {
-		// Get the default application name
-		v := viper.GetViper()
-
-		applicationName, err = rad.GetDefaultApplicationName(v)
-		if err != nil {
-			return err
-		}
-	}
-
 	env, err := validateDefaultEnvironment()
 	if err != nil {
 		return err
+	}
+
+	if applicationName == "" {
+		// Get the default application name if not passed in
+		applicationName = env.GetDefaultApplication()
+		if applicationName == "" {
+			return fmt.Errorf("No application name provided and no default application set. " +
+				"Either pass in an application name or set a default application by calling `rad appplication switch`.")
+		}
 	}
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)

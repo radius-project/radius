@@ -15,19 +15,14 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
-	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
-	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // deployCmd represents the deploy command
@@ -93,32 +88,6 @@ func deploy(cmd *cobra.Command, args []string) error {
 	logger.CompleteStep(step)
 
 	logger.LogInfo("Deployment Complete")
-
-	// Set default application if one isn't set prior.
-
-	v := viper.GetViper()
-	as, err := rad.ReadApplicationSection(v)
-	if err != nil {
-		return err
-	}
-
-	if as.Default == "" {
-		// no default application name set, add one.
-		applicationName, err := getApplicationName(cmd, env)
-
-		if err != nil {
-			return err
-		}
-
-		as.Default = applicationName
-
-		logger.LogInfo("Setting default application to %v", applicationName)
-		rad.UpdateApplicationSection(v, as)
-		err = saveConfig()
-		if err != nil {
-			return err
-		}
-	}
 
 	return nil
 }
@@ -189,25 +158,4 @@ func createDeploymentClient(env *environments.AzureCloudEnvironment) (resources.
 	dc.PollingDuration = 0
 
 	return dc, nil
-}
-
-func getApplicationName(cmd *cobra.Command, env *environments.AzureCloudEnvironment) (string, error) {
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		return "", fmt.Errorf("Failed to obtain Azure credentials: %w", err)
-	}
-	con := armcore.NewDefaultConnection(azcred, nil)
-	ac := radclient.NewApplicationClient(con, env.SubscriptionID)
-	response, err := ac.ListByResourceGroup(cmd.Context(), env.ResourceGroup, nil)
-	if err != nil {
-		return "", utils.UnwrapErrorFromRawResponse(err)
-	}
-
-	applicationsList := *response.ApplicationList
-	appList := *applicationsList.Value
-	if len(appList) < 1 {
-		return "", fmt.Errorf("No applications present after deployment")
-	}
-	resource := appList[0]
-	return *resource.Name, nil
 }

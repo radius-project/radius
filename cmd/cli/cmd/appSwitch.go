@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
@@ -32,26 +33,34 @@ func init() {
 }
 
 func switchApplications(cmd *cobra.Command, args []string) error {
-	env, err := validateDefaultEnvironment()
-	if err != nil {
-		return err
-	}
-
 	if len(args) < 1 {
 		return errors.New("application name is required")
 	}
 	applicationName := args[0]
 
 	v := viper.GetViper()
-	as, err := rad.ReadApplicationSection(v)
-
+	env, err := rad.ReadEnvironmentSection(v)
 	if err != nil {
 		return err
 	}
 
-	if as.Default == applicationName {
+	if env.Default == "" {
+		return errors.New("no environment set, run 'rad env switch'")
+	}
+
+	e, err := env.GetEnvironment("") // default environment
+	if err != nil {
+		return err
+	}
+
+	if e.GetDefaultApplication() == applicationName {
 		logger.LogInfo("Default application is already set to %v", applicationName)
 		return nil
+	}
+
+	azureEnv, err := environments.RequireAzureCloud(e)
+	if err != nil {
+		return err
 	}
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
@@ -59,21 +68,23 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Failed to obtain Azure credentials: %w", err)
 	}
 	con := armcore.NewDefaultConnection(azcred, nil)
-	ac := radclient.NewApplicationClient(con, env.SubscriptionID)
+	ac := radclient.NewApplicationClient(con, azureEnv.SubscriptionID)
 
 	// Need to validate that application exists prior to switching
-	_, err = ac.Get(cmd.Context(), env.ResourceGroup, applicationName, nil)
+	_, err = ac.Get(cmd.Context(), azureEnv.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return utils.UnwrapErrorFromRawResponse(err)
+		return fmt.Errorf("Could not find application '%v' in environment '%v': %w", applicationName, azureEnv.Name, utils.UnwrapErrorFromRawResponse(err))
 	}
 
-	logger.LogInfo("Switching default application from %v to %v", as.Default, applicationName)
-	as.Default = applicationName
+	if azureEnv.DefaultApplication != "" {
+		logger.LogInfo("Switching default application from %v to %v", azureEnv.DefaultApplication, applicationName)
+	} else {
+		logger.LogInfo("Switching default application to %v", applicationName)
+	}
 
-	rad.UpdateApplicationSection(v, as)
+	env.Items[azureEnv.Name]["defaultapplication"] = applicationName
+
+	rad.UpdateEnvironmentSection(v, env)
 	err = saveConfig()
-	if err != nil {
-		return err
-	}
 	return err
 }
