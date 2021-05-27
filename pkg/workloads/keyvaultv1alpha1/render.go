@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
+	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -70,7 +71,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: "azure.keyvault",
 		Resource: map[string]string{
-			"name": w.Workload.Name,
+			handlers.ManagedKey: "true",
+			"name":              w.Workload.Name,
 		},
 	}
 
