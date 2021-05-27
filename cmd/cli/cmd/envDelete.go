@@ -8,7 +8,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
@@ -89,7 +88,9 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string) error {
 	rgc := resources.NewGroupsClient(subscriptionID)
 	rgc.Authorizer = authorizer
-	rgc.PollingDuration = 30 * time.Minute
+
+	// Don't timeout, let the user cancel
+	rgc.PollingDuration = 0
 
 	logger.LogInfo("Deleting resource group %v", resourceGroup)
 	future, err := rgc.Delete(ctx, resourceGroup)
