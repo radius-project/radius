@@ -34,8 +34,11 @@ const (
 	// CosmosDBNameKey properties map key for database name created under CosmosDB account
 	CosmosDBNameKey = "databasename"
 
-	// CosmosDBAccountIDKey properties map key for unique resource identifier of ARM resource
+	// CosmosDBAccountIDKey properties map key for unique resource identifier of ARM resource of the account
 	CosmosDBAccountIDKey = "cosmosaccountid"
+
+	// CosmosDBNameKey properties map key for unique resource identifier of ARM resource of the database
+	CosmosDBDatabaseIDKey = "databaseid"
 
 	// DefaultAutoscaleMaxThroughput max throughput the database will scale to
 	DefaultAutoscaleMaxThroughput = 4000
