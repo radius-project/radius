@@ -21,6 +21,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	StorageAccountBaseNameKey = "storageaccountbasename"
+	StorageAccountNameKey     = "storageaccount"
+	StorageAccountIDKey       = "storageaccountid"
+)
+
 func NewDaprStateStoreAzureStorageHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprStateStoreAzureStorageHandler{arm: arm, k8s: k8s}
 }
@@ -35,10 +41,10 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 	sc.Authorizer = sssh.arm.Auth
 
 	properties := mergeProperties(options.Resource, options.Existing)
-	name, ok := properties["storageaccountname"]
+	name, ok := properties[StorageAccountNameKey]
 	if !ok {
 		// names are kinda finicky here - they have to be unique across azure.
-		base := properties["name"]
+		base := properties[StorageAccountBaseNameKey]
 		name = ""
 
 		for i := 0; i < 10; i++ {
@@ -59,7 +65,7 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 			}
 
 			if result.NameAvailable != nil && *result.NameAvailable {
-				properties["storageaccountname"] = name
+				properties[StorageAccountNameKey] = name
 				break
 			}
 
@@ -106,7 +112,7 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 	}
 
 	// store storage account so we can delete later
-	properties["storageaccountid"] = *account.ID
+	properties[StorageAccountIDKey] = *account.ID
 
 	keys, err := sc.ListKeys(ctx, sssh.arm.ResourceGroup, name, "")
 	if err != nil {
@@ -190,11 +196,11 @@ func (sssh *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, optio
 	sc.Authorizer = sssh.arm.Auth
 
 	// TODO: gross workaround - sorry everyone :(
-	if properties["storageaccountname"] == "" {
+	if properties[StorageAccountNameKey] == "" {
 		return nil
 	}
 
-	_, err = sc.Delete(ctx, sssh.arm.ResourceGroup, properties["storageaccountname"])
+	_, err = sc.Delete(ctx, sssh.arm.ResourceGroup, properties[StorageAccountNameKey])
 	if err != nil {
 		return err
 	}

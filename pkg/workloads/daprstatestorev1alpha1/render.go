@@ -58,11 +58,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.WorkloadResource{
 		Type: workloads.ResourceKindDaprStateStoreAzureStorage,
 		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
-			handlers.KubernetesNameKey:       w.Name,
-			handlers.KubernetesNamespaceKey:  w.Application,
-			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-			handlers.KubernetesKindKey:       "Component",
+			handlers.ManagedKey:                "true",
+			handlers.KubernetesNameKey:         w.Name,
+			handlers.KubernetesNamespaceKey:    w.Application,
+			handlers.KubernetesAPIVersionKey:   "dapr.io/v1alpha1",
+			handlers.KubernetesKindKey:         "Component",
+			handlers.StorageAccountBaseNameKey: w.Name,
 		},
 	}
 

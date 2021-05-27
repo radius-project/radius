@@ -42,11 +42,12 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Equal(t, workloads.ResourceKindDaprStateStoreAzureStorage, resource.Type)
 
 	expected := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.KubernetesNameKey:       "test-component",
-		handlers.KubernetesNamespaceKey:  "test-app",
-		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-		handlers.KubernetesKindKey:       "Component",
+		handlers.ManagedKey:                "true",
+		handlers.KubernetesNameKey:         "test-component",
+		handlers.KubernetesNamespaceKey:    "test-app",
+		handlers.KubernetesAPIVersionKey:   "dapr.io/v1alpha1",
+		handlers.KubernetesKindKey:         "Component",
+		handlers.StorageAccountBaseNameKey: "test-component",
 	}
 	require.Equal(t, expected, resource.Resource)
 }
