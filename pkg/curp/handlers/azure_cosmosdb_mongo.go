@@ -40,7 +40,42 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 	mrc.Authorizer = handler.arm.Auth
 
 	dbName := properties[CosmosDBNameKey]
-	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, handler.arm.ResourceGroup, *account.Name, dbName, documentdb.MongoDBDatabaseCreateUpdateParameters{
+	db, err := handler.CreateDatabase(ctx, *account.Name, dbName, options)
+	if err != nil {
+		return nil, err
+	}
+
+	// store db so we can delete later
+	properties[CosmosDBNameKey] = *db.Name
+
+	return properties, nil
+}
+
+func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
+	properties := options.Existing.Properties
+	accountName := properties[CosmosDBAccountNameKey]
+	dbName := properties[CosmosDBNameKey]
+
+	// Delete CosmosDB Mongo database
+	err := handler.DeleteDatabase(ctx, accountName, dbName)
+	if err != nil {
+		return err
+	}
+
+	// Delete CosmosDB account
+	err = DeleteCosmosDBAccount(ctx, handler.arm, accountName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (handler *azureCosmosDBMongoHandler) CreateDatabase(ctx context.Context, accountName string, dbName string, options PutOptions) (*documentdb.MongoDBDatabaseGetResults, error) {
+	mrc := documentdb.NewMongoDBResourcesClient(handler.arm.SubscriptionID)
+	mrc.Authorizer = handler.arm.Auth
+
+	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName, documentdb.MongoDBDatabaseCreateUpdateParameters{
 		MongoDBDatabaseCreateUpdateProperties: &documentdb.MongoDBDatabaseCreateUpdateProperties{
 			Resource: &documentdb.MongoDBDatabaseResource{
 				ID: to.StringPtr(dbName),
@@ -70,24 +105,17 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
 	}
 
-	// store db so we can delete later
-	properties[CosmosDBNameKey] = *db.Name
-
-	return properties, nil
+	return &db, nil
 }
 
-func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
-	accountname := properties[CosmosDBAccountNameKey]
-	dbname := properties[CosmosDBNameKey]
-
+func (handler *azureCosmosDBMongoHandler) DeleteDatabase(ctx context.Context, accountName string, dbName string) error {
 	mrc := documentdb.NewMongoDBResourcesClient(handler.arm.SubscriptionID)
 	mrc.Authorizer = handler.arm.Auth
 
 	// It's possible that this is a retry and we already deleted the account on a previous attempt.
 	// When that happens a delete for the database (a nested resource) can fail with a 404, but it's
 	// benign.
-	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, handler.arm.ResourceGroup, accountname, dbname)
+	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
 	if err != nil && dbfuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
 	}
@@ -100,12 +128,6 @@ func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options De
 	response, err := dbfuture.Result(mrc)
 	if err != nil && response.StatusCode != 404 { // See comment on DeleteMongoDBDatabase
 		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
-	}
-
-	// Delete CosmosDB account
-	err = DeleteCosmosDBAccount(ctx, handler.arm, accountname)
-	if err != nil {
-		return err
 	}
 
 	return nil
