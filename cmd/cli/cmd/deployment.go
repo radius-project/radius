@@ -18,3 +18,7 @@ var deploymentCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(deploymentCmd)
 }
+
+func requireDeployment(cmd *cobra.Command, args []string) (string, error) {
+	return require(cmd, args, "deployment")
+}

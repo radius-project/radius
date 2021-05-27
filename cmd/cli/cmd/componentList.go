@@ -26,20 +26,15 @@ var componentListCmd = &cobra.Command{
 
 func init() {
 	componentCmd.AddCommand(componentListCmd)
-
-	componentListCmd.Flags().StringP("name", "n", "", "Application name")
-	if err := componentListCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
-	}
 }
 
 func listComponents(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("name")
+	env, err := requireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	applicationName, err := requireApplicationName(cmd, args, env)
 	if err != nil {
 		return err
 	}

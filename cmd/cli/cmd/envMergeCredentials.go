@@ -20,16 +20,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 	Short: "Merge Kubernetes credentials",
 	Long:  "Merge Kubernetes credentials into your local user store. Currently only supports Azure environments",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, err := cmd.Flags().GetString("name")
-		if err != nil {
-			return err
-		}
-
-		// name can be empty if it wasn't provided, then we use the default environment
-		az, err := validateNamedEnvironment(name)
-		if err != nil {
-			return err
-		}
+		env, err := requireEnvironment(cmd)
 
 		isServicePrincipalConfigured, err := azure.IsServicePrincipalConfigured()
 		if err != nil {
@@ -48,7 +39,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 			}
 		}
 
-		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", az.SubscriptionID, "--resource-group", az.ResourceGroup, "--name", az.ClusterName)
+		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", env.SubscriptionID, "--resource-group", env.ResourceGroup, "--name", env.ClusterName)
 		return err
 
 	},

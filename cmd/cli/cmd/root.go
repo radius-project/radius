@@ -48,6 +48,8 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
 	RootCmd.PersistentFlags().StringP("application", "a", "", "The application name")
 	RootCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
+	RootCmd.PersistentFlags().StringP("component", "c", "", "The component name")
+	RootCmd.PersistentFlags().StringP("deployment", "d", "", "The deployment name")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -100,16 +102,24 @@ func saveConfig() error {
 	return nil
 }
 
-// NamedPositionalArgs creates a positional argument validator for our commands.
-func NamedPositionalArgs(names []string) cobra.PositionalArgs {
-	return func(cmd *cobra.Command, args []string) error {
-		if len(args) == len(names) {
-			return nil
-		} else if len(args) > len(names) {
-			return fmt.Errorf("unexpected value '%v', expected %v arguments", args[len(names)], len(names))
-		} else {
-			name := names[len(args)]
-			return fmt.Errorf("%v is required", name)
+func require(cmd *cobra.Command, args []string, name string) (string, error) {
+	value, err := cmd.Flags().GetString(name)
+	if err != nil {
+		return "", err
+	}
+
+	if len(args) > 0 {
+		if args[0] != "" {
+			if value != "" {
+				return "", fmt.Errorf("cannot specify %v name via both arguments and `-d`", name)
+			}
+			value = args[0]
 		}
 	}
+
+	if value == "" {
+		return "", fmt.Errorf("no %v name provided", name)
+	}
+
+	return value, nil
 }

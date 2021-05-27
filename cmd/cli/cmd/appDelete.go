@@ -30,7 +30,7 @@ var appDeleteCmd = &cobra.Command{
 func init() {
 	applicationCmd.AddCommand(appDeleteCmd)
 
-	appDeleteCmd.Flags().BoolP("yes", "y", false, "Confirms deletion of application")
+	envDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
 }
 
 func deleteApplication(cmd *cobra.Command, args []string) error {
@@ -38,24 +38,15 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	applicationName, err := cmd.Flags().GetString("application")
+
+	env, err := requireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	applicationName, err := requireApplicationName(cmd, args, env)
 	if err != nil {
 		return err
-	}
-
-	if applicationName == "" {
-		// Get the default application name if not passed in
-		applicationName = env.GetDefaultApplication()
-
-		if applicationName == "" {
-			return fmt.Errorf("No application name provided and no default application set. " +
-				"Either pass in an application name or set a default application by calling `rad appplication switch`.")
-		}
 	}
 
 	// Prompt user to confirm deletion
@@ -71,7 +62,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain Azure credential: %w", err)
+		return fmt.Errorf("failed to obtain Azure credential: %w", err)
 	}
 
 	con := armcore.NewDefaultConnection(azcred, nil)

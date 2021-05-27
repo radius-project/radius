@@ -20,40 +20,30 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// deploymentGetCmd command to get details of a deployment
-var deploymentGetCmd = &cobra.Command{
-	Use:   "get",
-	Short: "Get Radius deployment details",
-	Long:  "Get details of the specified Radius deployment deployed in the default environment",
-	RunE:  getDeployment,
+// deploymentShowCmd command to show details of a deployment
+var deploymentShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Show Radius deployment details",
+	Long:  "Show details of the specified Radius deployment deployed in the default environment",
+	RunE:  showDeployment,
 }
 
 func init() {
-	deploymentCmd.AddCommand(deploymentGetCmd)
-
-	deploymentGetCmd.Flags().StringP("name", "n", "", "Deployment name")
-	if err := deploymentGetCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
-	}
-
-	deploymentGetCmd.Flags().StringP("application-name", "a", "", "Application name for the deployment")
-	if err := deploymentGetCmd.MarkFlagRequired("application-name"); err != nil {
-		fmt.Printf("Failed to mark the application-name flag required: %v", err)
-	}
+	deploymentCmd.AddCommand(deploymentShowCmd)
 }
 
-func getDeployment(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("application-name")
+func showDeployment(cmd *cobra.Command, args []string) error {
+	env, err := requireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	depName, err := cmd.Flags().GetString("name")
+	applicationName, err := requireApplicationNameNoArgs(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	depName, err := requireDeployment(cmd, args)
 	if err != nil {
 		return err
 	}

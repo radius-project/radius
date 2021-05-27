@@ -29,20 +29,15 @@ var deploymentListCmd = &cobra.Command{
 
 func init() {
 	deploymentCmd.AddCommand(deploymentListCmd)
-
-	deploymentListCmd.Flags().StringP("application-name", "a", "", "Application name")
-	if err := deploymentListCmd.MarkFlagRequired("application-name"); err != nil {
-		fmt.Printf("Failed to mark the application-name flag required: %v", err)
-	}
 }
 
 func listDeployments(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("application-name")
+	env, err := requireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	applicationName, err := requireApplicationNameNoArgs(cmd, env)
 	if err != nil {
 		return err
 	}

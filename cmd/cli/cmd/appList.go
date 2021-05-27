@@ -30,7 +30,7 @@ func init() {
 }
 
 func listApplications(cmd *cobra.Command, args []string) error {
-	env, err := validateDefaultEnvironment()
+	env, err := requireEnvironment(cmd)
 	if err != nil {
 		return err
 	}

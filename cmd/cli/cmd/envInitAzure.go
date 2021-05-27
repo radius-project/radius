@@ -96,7 +96,6 @@ rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group R
 func init() {
 	envInitCmd.AddCommand(envInitAzureCmd)
 
-	envInitAzureCmd.Flags().StringP("name", "n", "", "The environment name")
 	envInitAzureCmd.Flags().StringP("subscription-id", "s", "", "The subscription ID to use for the environment")
 	envInitAzureCmd.Flags().StringP("resource-group", "g", "", "The resource group to use for the environment")
 	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
@@ -121,7 +120,7 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
-	name, err := cmd.Flags().GetString("name")
+	name, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return arguments{}, err
 	}

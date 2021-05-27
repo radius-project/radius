@@ -18,3 +18,7 @@ var componentCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(componentCmd)
 }
+
+func requireComponent(cmd *cobra.Command, args []string) (string, error) {
+	return require(cmd, args, "component")
+}

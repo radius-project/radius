@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -58,4 +59,32 @@ func validateNamedEnvironment(name string) (*environments.AzureCloudEnvironment,
 	}
 
 	return environments.RequireAzureCloud(e)
+}
+
+func requireEnvironment(cmd *cobra.Command) (*environments.AzureCloudEnvironment, error) {
+	environmentName, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return nil, err
+	}
+
+	env, err := validateNamedEnvironment(environmentName)
+	return env, err
+}
+
+func requireEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	environmentName, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return "", err
+	}
+
+	if len(args) > 0 {
+		if args[0] != "" {
+			if environmentName != "" {
+				return "", fmt.Errorf("cannot specify environment name via both arguments and `-e`")
+			}
+			environmentName = args[0]
+		}
+	}
+
+	return environmentName, err
 }

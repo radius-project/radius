@@ -47,7 +47,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	env, err := requireEnvironment(cmd)
 	if err != nil {
 		return err
 	}

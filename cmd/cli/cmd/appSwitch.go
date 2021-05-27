@@ -33,10 +33,28 @@ func init() {
 }
 
 func switchApplications(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return errors.New("application name is required")
+	applicationName, err := cmd.Flags().GetString("application")
+	if err != nil {
+		return err
 	}
-	applicationName := args[0]
+
+	environmentName, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return err
+	}
+
+	if len(args) > 0 {
+		if args[0] != "" {
+			if applicationName != "" {
+				return fmt.Errorf("cannot specify application name via both arguments and `-a`")
+			}
+			applicationName = args[0]
+		}
+	}
+
+	if applicationName == "" {
+		return fmt.Errorf("no application specified")
+	}
 
 	v := viper.GetViper()
 	env, err := rad.ReadEnvironmentSection(v)
@@ -48,7 +66,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		return errors.New("no environment set, run 'rad env switch'")
 	}
 
-	e, err := env.GetEnvironment("") // default environment
+	e, err := env.GetEnvironment(environmentName)
 	if err != nil {
 		return err
 	}
@@ -73,7 +91,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	// Need to validate that application exists prior to switching
 	_, err = ac.Get(cmd.Context(), azureEnv.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return fmt.Errorf("Could not find application '%v' in environment '%v': %w", applicationName, azureEnv.Name, utils.UnwrapErrorFromRawResponse(err))
+		return fmt.Errorf("could not find application '%v' in environment '%v': %w", applicationName, azureEnv.Name, utils.UnwrapErrorFromRawResponse(err))
 	}
 
 	if azureEnv.DefaultApplication != "" {

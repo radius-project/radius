@@ -29,23 +29,14 @@ func init() {
 }
 
 func showApplication(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("application")
+	env, err := requireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	applicationName, err := requireApplicationName(cmd, args, env)
 	if err != nil {
 		return err
-	}
-
-	if applicationName == "" {
-		// Get the default application name if not passed in
-		applicationName = env.GetDefaultApplication()
-		if applicationName == "" {
-			return fmt.Errorf("No application name provided and no default application set. " +
-				"Either pass in an application name or set a default application by calling `rad appplication switch`.")
-		}
 	}
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)

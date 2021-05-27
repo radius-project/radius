@@ -30,7 +30,7 @@ import (
 )
 
 var exposeCmd = &cobra.Command{
-	Use:   "expose application component",
+	Use:   "expose component",
 	Short: "Exposes a component for network traffic",
 	Long: `Exposes a port inside a component for network traffic using a local port.
 This command is useful for testing components that accept network traffic but are not exposed to the public internet. Exposing a port for testing allows you to send TCP traffic from your local machine to the component.
@@ -38,12 +38,23 @@ This command is useful for testing components that accept network traffic but ar
 Press CTRL+C to exit the command and terminate the tunnel.`,
 	Example: `# expose port 80 on the 'orders' component of the 'icecream-store' application
 # on local port 5000
-rad expose icecream-store orders --port 5000 --remote-port 80`,
-	Args: NamedPositionalArgs([]string{"application", "component"}),
+rad component expose --application icecream-store orders --port 5000 --remote-port 80`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		env, err := requireEnvironment(cmd)
+		if err != nil {
+			return err
+		}
 
-		application := args[0]
-		component := args[1]
+		application, err := requireApplication(cmd, env)
+		if err != nil {
+			return err
+		}
+
+		component, err := requireComponent(cmd, args)
+		if err != nil {
+			return err
+		}
+
 		localPort, err := cmd.Flags().GetInt("port")
 		if err != nil {
 			return err
@@ -56,11 +67,6 @@ rad expose icecream-store orders --port 5000 --remote-port 80`,
 
 		if remotePort == -1 {
 			remotePort = localPort
-		}
-
-		env, err := validateDefaultEnvironment()
-		if err != nil {
-			return err
 		}
 
 		config, err := getMonitoringCredentials(cmd.Context(), *env)
@@ -108,7 +114,7 @@ rad expose icecream-store orders --port 5000 --remote-port 80`,
 }
 
 func init() {
-	RootCmd.AddCommand(exposeCmd)
+	componentCmd.AddCommand(exposeCmd)
 
 	exposeCmd.Flags().IntP("port", "p", -1, "specify the local port")
 	err := exposeCmd.MarkFlagRequired("port")
