@@ -15,29 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Render_Unamnaged_Failure(t *testing.T) {
-	renderer := Renderer{}
-
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": true,
-				"name":    "cool-servicebus",
-				// Topic is required
-			},
-		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
-	}
-
-	_, err := renderer.Render(context.Background(), workload)
-	require.Error(t, err)
-	require.Equal(t, "the 'topic' field is required when 'managed=true'", err.Error())
-}
-
 func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 	renderer := Renderer{}
 
@@ -111,6 +88,29 @@ func Test_Render_Managed_Success_SpecifyName(t *testing.T) {
 		handlers.ServiceBusTopicNameKey:  "cool-topic",
 	}
 	require.Equal(t, expected, resource.Resource)
+}
+
+func Test_Render_Managed_MissingTopic(t *testing.T) {
+	renderer := Renderer{}
+
+	workload := workloads.InstantiatedWorkload{
+		Application: "test-app",
+		Name:        "test-component",
+		Workload: components.GenericComponent{
+			Kind: Kind,
+			Name: "test-component",
+			Config: map[string]interface{}{
+				"managed": true,
+				"name":    "cool-servicebus",
+				// Topic is required
+			},
+		},
+		BindingValues: map[components.BindingKey]components.BindingState{},
+	}
+
+	_, err := renderer.Render(context.Background(), workload)
+	require.Error(t, err)
+	require.Equal(t, "the 'topic' field is required when 'managed=true'", err.Error())
 }
 
 func Test_Render_Unmanaged_Success(t *testing.T) {
