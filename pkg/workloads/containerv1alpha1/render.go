@@ -7,7 +7,6 @@ package containerv1alpha1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -357,7 +356,6 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		for secretName, secretValue := range secrets {
 			err := r.createSecret(ctx, kvURI, secretName, secretValue)
 			if err != nil {
-				fmt.Printf("err: %v", err.Error())
 				return nil, fmt.Errorf("Could not create secret: %v: %w", secretName, err)
 			}
 		}
@@ -546,36 +544,30 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 	// KeyVault URI has the format: "https://<kv name>.vault.azure.net"
 	vaultName := strings.Split(strings.Split(kvURI, "https://")[1], ".vault.azure.net")[0]
 	secretFullName := vaultName + "/" + secretName
-	template := fmt.Sprintf(`{
-		"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+	template := map[string]interface{}{
+		"$schema":        "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
 		"contentVersion": "1.0.0.0",
-		"parameters": {},
-		"resources": [
-			{
-				"type":"Microsoft.KeyVault/vaults/secrets",
-				"name":"%s",
-				"apiVersion":"%s",
-				"properties":{
-					"contentType":"text/plain",
-					"value":"%s"
-				}
-			}
-		]
-	  }`, secretFullName, kvAPIVersion, secretValue)
-
-	data := map[string]interface{}{}
-	err := json.Unmarshal([]byte(template), &data)
-	if err != nil {
-		return fmt.Errorf("Unable to create secret: %w", err)
+		"parameters":     map[string]interface{}{},
+		"resources": []interface{}{
+			map[string]interface{}{
+				"type":       "Microsoft.KeyVault/vaults/secrets",
+				"name":       secretFullName,
+				"apiVersion": kvAPIVersion,
+				"properties": map[string]interface{}{
+					"contentType": "text/plain",
+					"value":       secretValue,
+				},
+			},
+		},
 	}
+
 	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
 	dc.Authorizer = r.Arm.Auth
 	parameters := map[string]interface{}{}
-
 	deploymentProperties := &resources.DeploymentProperties{
 		Parameters: parameters,
 		Mode:       resources.Incremental,
-		Template:   data,
+		Template:   template,
 	}
 	deploymentName := "create-secret-" + vaultName + "-" + secretName
 	op, err := dc.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, deploymentName, resources.Deployment{

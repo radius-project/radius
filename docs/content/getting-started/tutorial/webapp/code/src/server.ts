@@ -23,7 +23,7 @@ export async function main(): Promise<void> {
     connectionString = await (await client.getSecret(secretName)).value || '';
     console.log("Retrieved DB connection string from Key Vault")
   } else {
-    connectionString = process.env.DB_CONNECTION || ''
+    connectionString = process.env.DBCONNECTION || ''
   }
 
   if (connectionString) {

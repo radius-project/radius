@@ -84,6 +84,7 @@ Now, we no longer want the application to access the connection string to the da
 ```
 
 Here, the `setSecret` section declares the secrets to be created for the container to access the `db` component. In this case the `connectionString` value will be retrieved from the database and set as a secret in the secret store (named `kv` here) and the secret name will be `DBCONNECTION`.
+
 ## Update your template.bicep file 
 
 Update your `template.bicep` file to match the full application definition:

@@ -51,7 +51,7 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
           kind: 'mongodb.com/Mongo'
           name: 'db'
           setEnv: {
-            DB_CONNECTION: 'connectionString'
+            DBCONNECTION: 'connectionString'
           }
         }
       ]
@@ -60,7 +60,7 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
   }
 ```
 
-The `setEnv` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DB_CONNECTION` environment variable to access to the database connection string.
+The `setEnv` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DBCONNECTION` environment variable to access to the database connection string.
 
 ## Update your template.bicep file 
 
@@ -84,7 +84,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           kind: 'mongodb.com/Mongo'
           name: 'db'
           setEnv: {
-            DB_CONNECTION: 'connectionString'
+            DBCONNECTION: 'connectionString'
           }
         }
       ]
