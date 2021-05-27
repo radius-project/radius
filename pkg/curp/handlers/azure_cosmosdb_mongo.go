@@ -17,17 +17,21 @@ import (
 )
 
 func NewAzureCosmosDBMongoHandler(arm armauth.ArmConfig) ResourceHandler {
-	return &azureCosmosDBMongoHandler{arm: arm}
+	return &azureCosmosDBMongoHandler{
+		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
+			arm: arm,
+		},
+	}
 }
 
 type azureCosmosDBMongoHandler struct {
-	arm armauth.ArmConfig
+	azureCosmosDBBaseHandler
 }
 
 func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	account, err := CreateCosmosDBAccount(ctx, handler.arm, properties, documentdb.MongoDB)
+	account, err := handler.CreateCosmosDBAccount(ctx, properties, documentdb.MongoDB)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +67,7 @@ func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options De
 	}
 
 	// Delete CosmosDB account
-	err = DeleteCosmosDBAccount(ctx, handler.arm, accountName)
+	err = handler.DeleteCosmosDBAccount(ctx, accountName)
 	if err != nil {
 		return err
 	}

@@ -16,11 +16,15 @@ import (
 )
 
 func NewAzureCosmosDBSQLHandler(arm armauth.ArmConfig) ResourceHandler {
-	return &azureCosmosDBSQLDBHandler{arm: arm}
+	return &azureCosmosDBSQLDBHandler{
+		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
+			arm: arm,
+		},
+	}
 }
 
 type azureCosmosDBSQLDBHandler struct {
-	arm armauth.ArmConfig
+	azureCosmosDBBaseHandler
 }
 
 func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
@@ -29,7 +33,7 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 	// There is no clear documentation on this mapping of GlobalDocumentDB to SQL.
 	// Used this ARM template example as a reference to verify that this is the right option:
 	//   https://docs.microsoft.com/en-us/azure/cosmos-db/how-to-manage-database-account
-	account, err := CreateCosmosDBAccount(ctx, handler.arm, properties, documentdb.GlobalDocumentDB)
+	account, err := handler.CreateCosmosDBAccount(ctx, properties, documentdb.GlobalDocumentDB)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +64,7 @@ func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options De
 	}
 
 	// Delete CosmosDB account
-	err = DeleteCosmosDBAccount(ctx, handler.arm, accountName)
+	err = handler.DeleteCosmosDBAccount(ctx, accountName)
 	if err != nil {
 		return err
 	}
