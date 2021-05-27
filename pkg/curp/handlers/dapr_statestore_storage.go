@@ -36,9 +36,9 @@ type daprStateStoreAzureStorageHandler struct {
 	k8s client.Client
 }
 
-func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	sc := storage.NewAccountsClient(sssh.arm.SubscriptionID)
-	sc.Authorizer = sssh.arm.Auth
+func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
+	sc.Authorizer = handler.arm.Auth
 
 	properties := mergeProperties(options.Resource, options.Existing)
 	name, ok := properties[StorageAccountNameKey]
@@ -77,15 +77,15 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 		return nil, fmt.Errorf("failed to find a storage name")
 	}
 
-	rgc := resources.NewGroupsClient(sssh.arm.SubscriptionID)
-	rgc.Authorizer = sssh.arm.Auth
+	rgc := resources.NewGroupsClient(handler.arm.SubscriptionID)
+	rgc.Authorizer = handler.arm.Auth
 
-	g, err := rgc.Get(ctx, sssh.arm.ResourceGroup)
+	g, err := rgc.Get(ctx, handler.arm.ResourceGroup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
 	}
 
-	future, err := sc.Create(ctx, sssh.arm.ResourceGroup, name, storage.AccountCreateParameters{
+	future, err := sc.Create(ctx, handler.arm.ResourceGroup, name, storage.AccountCreateParameters{
 		Location: g.Location,
 		Kind:     storage.StorageV2,
 		Sku: &storage.Sku{
@@ -114,7 +114,7 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 	// store storage account so we can delete later
 	properties[StorageAccountIDKey] = *account.ID
 
-	keys, err := sc.ListKeys(ctx, sssh.arm.ResourceGroup, name, "")
+	keys, err := sc.ListKeys(ctx, handler.arm.ResourceGroup, name, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT storage account: %w", err)
 	}
@@ -166,7 +166,7 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 		},
 	}
 
-	err = sssh.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 	return properties, nil
 }
 
-func (sssh *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -187,15 +187,15 @@ func (sssh *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, optio
 		},
 	}
 
-	err := client.IgnoreNotFound(sssh.k8s.Delete(ctx, &item))
+	err := client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 	if err != nil {
 		return err
 	}
 
-	sc := storage.NewAccountsClient(sssh.arm.SubscriptionID)
-	sc.Authorizer = sssh.arm.Auth
+	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
+	sc.Authorizer = handler.arm.Auth
 
-	_, err = sc.Delete(ctx, sssh.arm.ResourceGroup, properties[StorageAccountNameKey])
+	_, err = sc.Delete(ctx, handler.arm.ResourceGroup, properties[StorageAccountNameKey])
 	if err != nil {
 		return err
 	}

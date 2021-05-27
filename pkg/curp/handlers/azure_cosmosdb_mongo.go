@@ -24,10 +24,10 @@ type azureCosmosDBMongoHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (cddh *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	account, err := CreateCosmosDBAccount(ctx, cddh.arm, properties, documentdb.MongoDB)
+	account, err := CreateCosmosDBAccount(ctx, handler.arm, properties, documentdb.MongoDB)
 	if err != nil {
 		return nil, err
 	}
@@ -36,11 +36,11 @@ func (cddh *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptio
 	properties[CosmosDBAccountIDKey] = *account.ID
 	properties[CosmosDBAccountNameKey] = *account.Name
 
-	mrc := documentdb.NewMongoDBResourcesClient(cddh.arm.SubscriptionID)
-	mrc.Authorizer = cddh.arm.Auth
+	mrc := documentdb.NewMongoDBResourcesClient(handler.arm.SubscriptionID)
+	mrc.Authorizer = handler.arm.Auth
 
 	dbName := properties[CosmosDBNameKey]
-	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, cddh.arm.ResourceGroup, *account.Name, dbName, documentdb.MongoDBDatabaseCreateUpdateParameters{
+	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, handler.arm.ResourceGroup, *account.Name, dbName, documentdb.MongoDBDatabaseCreateUpdateParameters{
 		MongoDBDatabaseCreateUpdateProperties: &documentdb.MongoDBDatabaseCreateUpdateProperties{
 			Resource: &documentdb.MongoDBDatabaseResource{
 				ID: to.StringPtr(dbName),
@@ -76,18 +76,18 @@ func (cddh *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptio
 	return properties, nil
 }
 
-func (cddh *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
 	accountname := properties[CosmosDBAccountNameKey]
 	dbname := properties[CosmosDBNameKey]
 
-	mrc := documentdb.NewMongoDBResourcesClient(cddh.arm.SubscriptionID)
-	mrc.Authorizer = cddh.arm.Auth
+	mrc := documentdb.NewMongoDBResourcesClient(handler.arm.SubscriptionID)
+	mrc.Authorizer = handler.arm.Auth
 
 	// It's possible that this is a retry and we already deleted the account on a previous attempt.
 	// When that happens a delete for the database (a nested resource) can fail with a 404, but it's
 	// benign.
-	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, cddh.arm.ResourceGroup, accountname, dbname)
+	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, handler.arm.ResourceGroup, accountname, dbname)
 	if err != nil && dbfuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
 	}
@@ -103,7 +103,7 @@ func (cddh *azureCosmosDBMongoHandler) Delete(ctx context.Context, options Delet
 	}
 
 	// Delete CosmosDB account
-	err = DeleteCosmosDBAccount(ctx, cddh.arm, accountname)
+	err = DeleteCosmosDBAccount(ctx, handler.arm, accountname)
 	if err != nil {
 		return err
 	}

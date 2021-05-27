@@ -32,7 +32,7 @@ type azureKeyVaultHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// If we have already created this resource we would have stored the name.
@@ -42,23 +42,23 @@ func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (m
 		vaultName = namegenerator.GenerateName("kv")
 	}
 
-	rgc := resources.NewGroupsClient(kvh.arm.SubscriptionID)
-	rgc.Authorizer = kvh.arm.Auth
+	rgc := resources.NewGroupsClient(handler.arm.SubscriptionID)
+	rgc.Authorizer = handler.arm.Auth
 
-	g, err := rgc.Get(ctx, kvh.arm.ResourceGroup)
+	g, err := rgc.Get(ctx, handler.arm.ResourceGroup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
 	}
 
-	kvc := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
-	kvc.Authorizer = kvh.arm.Auth
+	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
+	kvc.Authorizer = handler.arm.Auth
 	if err != nil {
 		return nil, err
 	}
 
 	sc := subscriptions.NewClient()
-	sc.Authorizer = kvh.arm.Auth
-	s, err := sc.Get(ctx, kvh.arm.SubscriptionID)
+	sc.Authorizer = handler.arm.Auth
+	s, err := sc.Get(ctx, handler.arm.SubscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find subscription: %w", err)
 	}
@@ -69,7 +69,7 @@ func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (m
 
 	vaultsFuture, err := kvc.CreateOrUpdate(
 		ctx,
-		kvh.arm.ResourceGroup,
+		handler.arm.ResourceGroup,
 		vaultName,
 		keyvault.VaultCreateOrUpdateParameters{
 			Location: g.Location,
@@ -107,14 +107,14 @@ func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (m
 	return properties, nil
 }
 
-func (kvh *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
 	vaultName := properties[KeyVaultNameKey]
 
-	kvClient := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
-	kvClient.Authorizer = kvh.arm.Auth
+	kvClient := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
+	kvClient.Authorizer = handler.arm.Auth
 
-	_, err := kvClient.Delete(ctx, kvh.arm.ResourceGroup, vaultName)
+	_, err := kvClient.Delete(ctx, handler.arm.ResourceGroup, vaultName)
 	if err != nil {
 		return fmt.Errorf("failed to DELETE keyvault: %w", err)
 	}
