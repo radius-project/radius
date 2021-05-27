@@ -33,6 +33,10 @@ func init() {
 
 func switchApplications(cmd *cobra.Command, args []string) error {
 	env, err := validateDefaultEnvironment()
+	if err != nil {
+		return err
+	}
+
 	if len(args) < 1 {
 		return errors.New("application name is required")
 	}
@@ -40,6 +44,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 
 	v := viper.GetViper()
 	as, err := rad.ReadApplicationSection(v)
+
 	if err != nil {
 		return err
 	}

@@ -98,6 +98,9 @@ func deploy(cmd *cobra.Command, args []string) error {
 
 	v := viper.GetViper()
 	as, err := rad.ReadApplicationSection(v)
+	if err != nil {
+		return err
+	}
 
 	if as.Default == "" {
 		// no default application name set, add one.

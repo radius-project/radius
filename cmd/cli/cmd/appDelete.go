@@ -98,7 +98,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("Application '%s' has been deleted\n", applicationName)
 
-	updateApplicationConfig(cmd, env, applicationName, ac)
+	err = updateApplicationConfig(cmd, env, applicationName, ac)
 	return err
 }
 
