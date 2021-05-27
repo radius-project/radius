@@ -16,19 +16,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const TestComponentName = "db-cosmossql"
-
-func TestRenderManagedResource(t *testing.T) {
-	renderer := &Renderer{}
+func Test_Render_Managed_Success(t *testing.T) {
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
+		Application: "test-app",
+		Name:        "test-component",
 		Workload: components.GenericComponent{
-			Name: TestComponentName,
 			Kind: Kind,
+			Name: "test-component",
 			Config: map[string]interface{}{
 				"managed": true,
 			},
 		},
+		ServiceValues: map[string]map[string]interface{}{},
 	}
 
 	resources, err := renderer.Render(context.Background(), workload)
@@ -42,17 +43,17 @@ func TestRenderManagedResource(t *testing.T) {
 
 	expectedProperties := map[string]string{
 		handlers.ManagedKey: "true",
-		"name":              TestComponentName,
+		"name":              "test-component",
 	}
 	require.Equal(t, expectedProperties, renderedResource.Resource)
 }
 
-func TestRenderUnmanagedResource_NotSupported(t *testing.T) {
+func Test_Render_Unmanaged_NotSupported(t *testing.T) {
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Workload: components.GenericComponent{
-			Name: TestComponentName,
+			Name: "test-component",
 			Kind: Kind,
 			Config: map[string]interface{}{
 				"managed": false,
@@ -65,12 +66,12 @@ func TestRenderUnmanagedResource_NotSupported(t *testing.T) {
 	require.Equal(t, "only Radius managed ('managed=true') resources are supported right now", err.Error())
 }
 
-func TestExplicitManagedFlagRequired(t *testing.T) {
+func Test_ExplicitManagedFlagRequired(t *testing.T) {
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Workload: components.GenericComponent{
-			Name: TestComponentName,
+			Name: "test-component",
 			Kind: Kind,
 		},
 	}
@@ -85,7 +86,7 @@ func TestInvalidComponentKindFailure(t *testing.T) {
 
 	workload := workloads.InstantiatedWorkload{
 		Workload: components.GenericComponent{
-			Name: TestComponentName,
+			Name: "test-component",
 			Kind: cosmosdbmongov1alpha1.Kind,
 		},
 	}
