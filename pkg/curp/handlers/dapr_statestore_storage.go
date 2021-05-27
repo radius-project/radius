@@ -37,27 +37,37 @@ type daprStateStoreAzureStorageHandler struct {
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
-	sc.Authorizer = handler.arm.Auth
-
 	properties := mergeProperties(options.Resource, options.Existing)
-	name, ok := properties[StorageAccountNameKey]
-	if !ok {
+
+	// This assertion is important so we don't start creating/modifying an unmanaged resource
+	if properties[ManagedKey] != "true" && properties[StorageAccountIDKey] == "" {
+		return nil, fmt.Errorf("missing required property '%s' for an unmanaged resource", StorageAccountIDKey)
+	}
+
+	var account *storage.Account
+	var err error
+	if properties[StorageAccountIDKey] == "" {
 		generated, err := handler.GenerateStorageAccountName(ctx, properties[StorageAccountBaseNameKey])
 		if err != nil {
 			return nil, err
 		}
 
-		name = *generated
-	}
+		name := *generated
 
-	account, err := handler.CreateStorageAccount(ctx, name, options)
-	if err != nil {
-		return nil, err
-	}
+		account, err = handler.CreateStorageAccount(ctx, name, options)
+		if err != nil {
+			return nil, err
+		}
 
-	// store storage account so we can delete later
-	properties[StorageAccountIDKey] = *account.ID
+		// store storage account so we can delete later
+		properties[StorageAccountNameKey] = *account.Name
+		properties[StorageAccountIDKey] = *account.ID
+	} else {
+		account, err = handler.GetStorageAccountByID(ctx, properties[StorageAccountIDKey])
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	key, err := handler.FindStorageKey(ctx, *account.Name)
 	if err != nil {
@@ -81,9 +91,11 @@ func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, op
 		return err
 	}
 
-	err = handler.DeleteStorageAccount(ctx, accountName)
-	if err != nil {
-		return err
+	if properties[ManagedKey] == "true" {
+		err = handler.DeleteStorageAccount(ctx, accountName)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -121,6 +133,23 @@ func (handler *daprStateStoreAzureStorageHandler) GenerateStorageAccountName(ctx
 	}
 
 	return nil, fmt.Errorf("failed to find a storage account name")
+}
+
+func (handler *daprStateStoreAzureStorageHandler) GetStorageAccountByID(ctx context.Context, accountID string) (*storage.Account, error) {
+	parsed, err := radresources.Parse(accountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
+	}
+
+	sac := storage.NewAccountsClient(parsed.SubscriptionID)
+	sac.Authorizer = handler.arm.Auth
+
+	account, err := sac.GetProperties(ctx, parsed.ResourceGroup, parsed.Types[0].Name, storage.AccountExpand(""))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Storage Account: %w", err)
+	}
+
+	return &account, nil
 }
 
 func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx context.Context, accountName string, options PutOptions) (*storage.Account, error) {
