@@ -44,12 +44,10 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) > 0 {
-		if args[0] != "" {
-			if applicationName != "" {
-				return fmt.Errorf("cannot specify application name via both arguments and `-a`")
-			}
-			applicationName = args[0]
+		if applicationName != "" {
+			return fmt.Errorf("cannot specify application name via both arguments and `-a`")
 		}
+		applicationName = args[0]
 	}
 
 	if applicationName == "" {

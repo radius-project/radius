@@ -46,10 +46,6 @@ func init() {
 	RootCmd.SetVersionTemplate(template)
 
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
-	RootCmd.PersistentFlags().StringP("application", "a", "", "The application name")
-	RootCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
-	RootCmd.PersistentFlags().StringP("component", "c", "", "The component name")
-	RootCmd.PersistentFlags().StringP("deployment", "d", "", "The deployment name")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -109,12 +105,10 @@ func require(cmd *cobra.Command, args []string, name string) (string, error) {
 	}
 
 	if len(args) > 0 {
-		if args[0] != "" {
-			if value != "" {
-				return "", fmt.Errorf("cannot specify %v name via both arguments and `-d`", name)
-			}
-			value = args[0]
+		if value != "" {
+			return "", fmt.Errorf("cannot specify %v name via both arguments and switch", name)
 		}
+		value = args[0]
 	}
 
 	if value == "" {

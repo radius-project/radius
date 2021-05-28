@@ -34,6 +34,7 @@ var deployCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(deployCmd)
+	deployCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
 }
 
 func deploy(cmd *cobra.Command, args []string) error {

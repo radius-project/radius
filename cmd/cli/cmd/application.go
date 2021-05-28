@@ -20,6 +20,8 @@ var applicationCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(applicationCmd)
+	applicationCmd.PersistentFlags().StringP("application", "a", "", "The application name")
+	applicationCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
 }
 
 func requireApplicationArgs(cmd *cobra.Command, args []string, env *environments.AzureCloudEnvironment) (string, error) {
@@ -41,7 +43,7 @@ func requireApplicationArgs(cmd *cobra.Command, args []string, env *environments
 		applicationName = env.GetDefaultApplication()
 		if applicationName == "" {
 			return "", fmt.Errorf("no application name provided and no default application set, " +
-				"either pass in an application name or set a default application by calling `rad appplication switch`")
+				"either pass in an application name or set a default application by using `rad appplication switch`")
 		}
 	}
 
