@@ -9,13 +9,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
-	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -77,19 +73,6 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	azureEnv, err := environments.RequireAzureCloud(e)
 	if err != nil {
 		return err
-	}
-
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		return fmt.Errorf("failed to obtain Azure credentials: %w", err)
-	}
-	con := armcore.NewDefaultConnection(azcred, nil)
-	ac := radclient.NewApplicationClient(con, azureEnv.SubscriptionID)
-
-	// Need to validate that application exists prior to switching
-	_, err = ac.Get(cmd.Context(), azureEnv.ResourceGroup, applicationName, nil)
-	if err != nil {
-		return fmt.Errorf("could not find application '%v' in environment '%v': %w", applicationName, azureEnv.Name, utils.UnwrapErrorFromRawResponse(err))
 	}
 
 	if azureEnv.DefaultApplication != "" {
