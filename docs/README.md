@@ -14,15 +14,19 @@ This directory contains the files to generate the https://radapp.dev site. Pleas
 ```sh
 git clone https://github.com/Azure/radius.git
 ```
-3. Change to daprdocs directory: 
+3. Generate CLI docs:
+```sh
+go run ./cmd/docgen/main.go ./docs/content/reference/cli
+```
+4. Change to daprdocs directory: 
 ```sh
 cd ./radius/docs
 ```
-4. Update submodules: 
+5. Update submodules: 
 ```sh
 git submodule update --init --recursive
 ```
-5. Install npm packages: 
+6. Install npm packages: 
 ```sh
 npm install
 ```
