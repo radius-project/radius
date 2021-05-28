@@ -43,6 +43,7 @@ These steps will walk through how to deploy, manage, and delete environments in 
 - [Azure subscription](https://signup.azure.com)
 - [az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 - [rad CLI]({{< ref install-cli.md >}})
+- (optional) [create a an Azure Container Registry](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-azure-cli) to use as a private container registry
 
 ### Deploy an environment
 
@@ -65,7 +66,16 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
    This step may take up to 10 minutes to deploy.
 
-1. Verify deployment
+   {{% alert title="💡 using a private container registry" color="success" %}}
+   To use a private container registry, you can specify the registry name as part of the `rad env init azure` command. The registry must be part of the same subscription as the environment being created.
+
+   ```bash
+   rad env init azure -i --container-registry myregistry
+   ```
+
+   {{% /alert %}}
+
+2. Verify deployment
 
    To verify the environment deployment succeeded, navigate to your subscription at https://portal.azure.com. You should see a new Resource Group with the name you entered during the previous step: 
 
@@ -74,6 +84,8 @@ While Radius environments are optimized for cost, any costs incurred by the depl
    Inside you will see the [environment resources](#azure-environments) created for the environment:
 
    <img src="./azure-resources.png" width=500 alt="New resource group that was created">
+
+#### 
 
 ## Connect to an existing environment
 
