@@ -47,7 +47,7 @@ func showComponent(cmd *cobra.Command, args []string) error {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain a Azure credentials: %w", err)
+		return fmt.Errorf("failed to obtain a Azure credentials: %w", err)
 	}
 	con := armcore.NewDefaultConnection(azcred, nil)
 	componentClient := radclient.NewComponentClient(con, env.SubscriptionID)
@@ -60,7 +60,7 @@ func showComponent(cmd *cobra.Command, args []string) error {
 	componentResource := *response.ComponentResource
 	componentDetails, err := json.MarshalIndent(componentResource, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Failed to marshal component response as JSON %w", err)
+		return fmt.Errorf("failed to marshal component response as JSON %w", err)
 	}
 	fmt.Println(string(componentDetails))
 

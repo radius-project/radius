@@ -52,19 +52,19 @@ func TestDeployment(t *testing.T) {
 
 	// Build rad application client
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
-	require.NoErrorf(t, err, "Failed to obtain Azure credentials")
+	require.NoErrorf(t, err, "failed to obtain Azure credentials")
 	con := armcore.NewDefaultConnection(azcred, nil)
 
 	// Access Azure credentials
 	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
-	require.NoErrorf(t, err, "Failed to obtain Azure credentials")
+	require.NoErrorf(t, err, "failed to obtain Azure credentials")
 
 	// Ensure rad-bicep has been downloaded before we go parallel
 	installed, err := bicep.IsBicepInstalled()
-	require.NoErrorf(t, err, "Failed to local rad-bicep")
+	require.NoErrorf(t, err, "failed to local rad-bicep")
 	if !installed {
 		err = bicep.DownloadBicep()
-		require.NoErrorf(t, err, "Failed to download rad-bicep")
+		require.NoErrorf(t, err, "failed to download rad-bicep")
 	}
 
 	options := Options{

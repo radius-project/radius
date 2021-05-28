@@ -64,7 +64,7 @@ func deleteDeployment(cmd *cobra.Command, args []string) error {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain Azure credential: %w", err)
+		return fmt.Errorf("failed to obtain Azure credential: %w", err)
 	}
 
 	con := armcore.NewDefaultConnection(azcred, nil)
@@ -80,7 +80,7 @@ func deleteDeployment(cmd *cobra.Command, args []string) error {
 		return utils.UnwrapErrorFromRawResponse(err)
 	}
 
-	fmt.Printf("Deployment '%s' deleted.\n", depName)
+	fmt.Printf("deployment '%s' deleted.\n", depName)
 
 	return err
 }

@@ -42,7 +42,7 @@ func listComponents(cmd *cobra.Command, args []string) error {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain a Azure credentials: %w", err)
+		return fmt.Errorf("failed to obtain a Azure credentials: %w", err)
 	}
 	con := armcore.NewDefaultConnection(azcred, nil)
 
@@ -56,7 +56,7 @@ func listComponents(cmd *cobra.Command, args []string) error {
 	componentsList := *response.ComponentList
 	components, err := json.MarshalIndent(componentsList, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Failed to marshal component response as JSON %w", err)
+		return fmt.Errorf("failed to marshal component response as JSON %w", err)
 	}
 	fmt.Println(string(components))
 

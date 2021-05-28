@@ -85,17 +85,17 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 	logger.LogInfo("Deleting resource group %v", resourceGroup)
 	future, err := rgc.Delete(ctx, resourceGroup)
 	if err != nil {
-		return fmt.Errorf("Failed to delete the resource group: %w", err)
+		return fmt.Errorf("failed to delete the resource group: %w", err)
 	}
 
 	logger.LogInfo("Waiting for delete to complete...")
 	if err = future.WaitForCompletionRef(ctx, rgc.Client); err != nil {
-		return fmt.Errorf("Failed to delete the resource group: %w", err)
+		return fmt.Errorf("failed to delete the resource group: %w", err)
 	}
 
 	_, err = future.Result(rgc)
 	if err != nil {
-		return fmt.Errorf("Failed to delete the resource group: %w", err)
+		return fmt.Errorf("failed to delete the resource group: %w", err)
 	}
 
 	logger.LogInfo("Environment deleted")
