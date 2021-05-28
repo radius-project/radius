@@ -25,13 +25,13 @@ type ResourceType struct {
 }
 
 type KnownType struct {
-	types []ResourceType
+	Types []ResourceType
 }
 
 // Type prints the fully-qualified resource type of a KnownType.
 func (t KnownType) Type() string {
-	types := make([]string, len(t.types))
-	for i, t := range t.types {
+	types := make([]string, len(t.Types))
+	for i, t := range t.Types {
 		types[i] = t.Type
 	}
 	return strings.Join(types, "/")
@@ -75,11 +75,11 @@ func (ri ResourceID) Format(f fmt.State, c rune) {
 // ValidateResourceType validates that the resource ID matches the expected type.
 func (ri ResourceID) ValidateResourceType(t KnownType) error {
 
-	if len(ri.Types) != len(t.types) {
+	if len(ri.Types) != len(t.Types) {
 		return invalidType(ri.ID)
 	}
 
-	for i, rt := range t.types {
+	for i, rt := range t.Types {
 		// Mismatched type
 		if !strings.EqualFold(rt.Type, ri.Types[i].Type) {
 			return invalidType(ri.ID)
@@ -217,13 +217,13 @@ func MakeCollectionURITemplate(t KnownType) string {
 		"providers",
 	}
 
-	if len(t.types) == 0 {
+	if len(t.Types) == 0 {
 		return "/" + strings.Join(segments, "/")
 	}
 
-	segments = append(segments, t.types[0].Type)
+	segments = append(segments, t.Types[0].Type)
 
-	for i, rt := range t.types[1:] {
+	for i, rt := range t.Types[1:] {
 		segments = append(segments, fmt.Sprintf("{resourceName%d}", i))
 		segments = append(segments, rt.Type)
 	}
@@ -241,14 +241,14 @@ func MakeResourceURITemplate(t KnownType) string {
 		"providers",
 	}
 
-	if len(t.types) == 0 {
+	if len(t.Types) == 0 {
 		return "/" + strings.Join(segments, "/")
 	}
 
-	segments = append(segments, t.types[0].Type)
+	segments = append(segments, t.Types[0].Type)
 	segments = append(segments, "{resourceName0}")
 
-	for i, rt := range t.types[1:] {
+	for i, rt := range t.Types[1:] {
 		segments = append(segments, rt.Type)
 		segments = append(segments, fmt.Sprintf("{resourceName%d}", i+1))
 	}

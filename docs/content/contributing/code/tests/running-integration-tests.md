@@ -51,7 +51,7 @@ The tests use our product functionality (the Radius config file) to configure th
 ## Running the tests locally
 
 1. Create an environment (`rad env init azure -i`)
-2. Merge your AKS credentials to your kubeconfig (`rad env merge-credentials --name azure`)
+2. Merge your AKS credentials to your kubeconfig (`rad env merge-credentials -e azure`)
 3. Place `rad` on your path
 4. Run:
 

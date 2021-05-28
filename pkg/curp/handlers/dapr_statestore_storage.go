@@ -71,8 +71,6 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 		return nil, fmt.Errorf("failed to find a storage name")
 	}
 
-	// TODO: for now we just use the resource-groups location. This would be a place where we'd plug
-	// in something to do with data locality.
 	rgc := resources.NewGroupsClient(sssh.arm.SubscriptionID)
 	rgc.Authorizer = sssh.arm.Auth
 
@@ -135,11 +133,11 @@ func (sssh *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options 
 
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": properties["apiVersion"],
-			"kind":       properties["kind"],
+			"apiVersion": properties[KubernetesAPIVersionKey],
+			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
-				"namespace": properties["namespace"],
-				"name":      properties["name"],
+				"namespace": properties[KubernetesNamespaceKey],
+				"name":      properties[KubernetesNameKey],
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.azure.tablestorage",
@@ -174,11 +172,11 @@ func (sssh *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, optio
 	properties := options.Existing.Properties
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": properties["apiVersion"],
-			"kind":       properties["kind"],
+			"apiVersion": properties[KubernetesAPIVersionKey],
+			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
-				"namespace": properties["namespace"],
-				"name":      properties["name"],
+				"namespace": properties[KubernetesNamespaceKey],
+				"name":      properties[KubernetesNameKey],
 			},
 		},
 	}

@@ -14,23 +14,19 @@ Radius components for Dapr Pub/Sub with Azure ServiceBus offers:
 - Setup and configuration of Managed Identities and RBAC for consuming components
 - Creation and configuration of the Dapr component spec
 
-## Create a Dapr Pub/Sub with Azure ServiceBus
+## Using a Radius-managed ServiceBus topic
 
-To add a new managed Dapr Pub/Sub with Azure ServiceBus, add the following Radius component:
+This example sets the property `managed: true` for the Dapr PubSub Component. When `managed` is set to true, Radius will manage the lifecycle of the underlying ServiceBus namespace and topic.
 
-```sh
-resource pubsub 'Components' = {
-  name: 'pubsub'
-  kind: 'dapr.io/PubSubTopic@v1alpha1'
-  properties: {
-    config: {
-      kind: 'pubsub.azure.servicebus'
-      topic: 'TOPIC_A'
-      managed: true
-    }
-  }
-}
-```
+{{< rad file="managed.bicep">}}
+
+## Using a user-managed ServiceBus topic
+
+This example sets the `resource` property to a ServiceBus topic for the Dapr PubSub Component. Setting `managed: false` or using the default value allows you to explicitly specify a link to an Azure resource that you managed. When you supply your own `resource` value, Radius will not change or delete the resource you provide. 
+
+In this example the ServiceBus resources are configured as part of the same `.bicep` template.
+
+{{< rad file="unmanaged.bicep">}}
 
 ## Access from a container
 
@@ -251,5 +247,5 @@ When you are ready to clean up and delete the resources you can delete your envi
 - The application you just deployed
 
 ```sh
-rad env delete --name azure --yes
+rad env delete -e azure --yes
 ```

@@ -24,7 +24,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/cmd/cli/utils"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
@@ -66,7 +65,7 @@ rad env init azure -i
 # Create a Radius environment using flags
 ## If an environment of the same name, resource group, and subscription
 ## already exists Radius will connect to it instead of deploying a new one.
-rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group RG-NAME --location westus2
+rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NAME --location westus2
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a, err := validate(cmd, args)
@@ -81,6 +80,10 @@ rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group R
 			}
 		}
 
+		if a.Name == "" {
+			a.Name = a.ResourceGroup
+		}
+
 		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate)
 		if err != nil {
 			return err
@@ -93,7 +96,6 @@ rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group R
 func init() {
 	envInitCmd.AddCommand(envInitAzureCmd)
 
-	envInitAzureCmd.Flags().StringP("name", "n", "azure", "The environment name")
 	envInitAzureCmd.Flags().StringP("subscription-id", "s", "", "The subscription ID to use for the environment")
 	envInitAzureCmd.Flags().StringP("resource-group", "g", "", "The resource group to use for the environment")
 	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
@@ -118,7 +120,7 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
-	name, err := cmd.Flags().GetString("name")
+	name, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return arguments{}, err
 	}
@@ -289,7 +291,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string) error {
-	armauth, err := utils.GetResourceManagerEndpointAuthorizer()
+	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -335,14 +337,12 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		if err != nil {
 			return err
 		}
-
-		logger.LogInfo("New Environment '%v' with Resource Group '%v' available at:\n%v", name, resourceGroup, envUrl)
 	} else if !isSupportedLocation(*group.Location) {
 		return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
 	}
 
 	params := deploymentParameters{DeploymentTemplate: deploymentTemplate}
-	deployment, err := deployEnvironment(ctx, armauth, subscriptionID, resourceGroup, params)
+	deployment, err := deployEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, params)
 	if err != nil {
 		return err
 	}
@@ -439,7 +439,7 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
 	groupsClient := resources.NewGroupsClient(subscriptionID)
-	a, err := utils.GetResourceManagerEndpointAuthorizer()
+	a, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -459,15 +459,15 @@ func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName,
 	return nil
 }
 
-func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
+func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
 	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, resourceGroup)
 	if err != nil {
 		return resources.DeploymentExtended{}, err
 	}
 
 	step := logger.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...\n\n"+
-		"New Environment with Resource Group '%v' will be available at:\n%v\n\n"+
-		"Deployment In Progress...", version.Channel(), resourceGroup, envUrl))
+		"New Environment '%v' with Resource Group '%v' will be available at:\n%v\n\n"+
+		"Deployment In Progress...", version.Channel(), name, resourceGroup, envUrl))
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
 
@@ -509,8 +509,8 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, subs
 
 		deploymentProperties.Template = data
 	}
-	name := fmt.Sprintf("rad-create-environment-%v", uuid.New().String())
-	op, err := dc.CreateOrUpdate(ctx, resourceGroup, name, resources.Deployment{
+	deploymentName := fmt.Sprintf("rad-create-environment-%v", uuid.New().String())
+	op, err := dc.CreateOrUpdate(ctx, resourceGroup, deploymentName, resources.Deployment{
 		Properties: deploymentProperties,
 	})
 	if err != nil {

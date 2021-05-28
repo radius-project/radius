@@ -69,9 +69,10 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 
 	for _, d := range original.Properties.DependsOn {
 		dd := db.ComponentDependsOn{
-			Name:   d.Name,
-			Kind:   d.Kind,
-			SetEnv: d.SetEnv,
+			Name:      d.Name,
+			Kind:      d.Kind,
+			SetEnv:    d.SetEnv,
+			SetSecret: d.SetSecret,
 		}
 		c.Properties.DependsOn = append(c.Properties.DependsOn, dd)
 	}
@@ -164,7 +165,8 @@ func newDBDeploymentFromREST(original *rest.Deployment) *db.Deployment {
 		cc := &db.DeploymentComponent{
 			ID:            c.ID,
 			ComponentName: c.ComponentName,
-			Revision:      c.Revision,
+
+			// We don't allow a REST deployment to specify the revision - it's readonly.
 		}
 
 		d.Properties.Components = append(d.Properties.Components, cc)

@@ -8,7 +8,6 @@ import (
 	context "context"
 	db "github.com/Azure/radius/pkg/curp/db"
 	resources "github.com/Azure/radius/pkg/curp/resources"
-	revision "github.com/Azure/radius/pkg/curp/revision"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )
@@ -122,18 +121,18 @@ func (mr *MockCurpDBMockRecorder) GetApplicationByID(arg0, arg1 interface{}) *go
 }
 
 // GetComponentByApplicationID mocks base method
-func (m *MockCurpDB) GetComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 revision.Revision) (*db.Component, error) {
+func (m *MockCurpDB) GetComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) (*db.Component, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetComponentByApplicationID", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "GetComponentByApplicationID", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*db.Component)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetComponentByApplicationID indicates an expected call of GetComponentByApplicationID
-func (mr *MockCurpDBMockRecorder) GetComponentByApplicationID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockCurpDBMockRecorder) GetComponentByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).GetComponentByApplicationID), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).GetComponentByApplicationID), arg0, arg1, arg2)
 }
 
 // GetDeploymentByApplicationID mocks base method
@@ -257,18 +256,18 @@ func (mr *MockCurpDBMockRecorder) PatchApplication(arg0, arg1 interface{}) *gomo
 }
 
 // PatchComponentByApplicationID mocks base method
-func (m *MockCurpDB) PatchComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Component, arg4 revision.Revision) (bool, error) {
+func (m *MockCurpDB) PatchComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Component) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PatchComponentByApplicationID", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "PatchComponentByApplicationID", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PatchComponentByApplicationID indicates an expected call of PatchComponentByApplicationID
-func (mr *MockCurpDBMockRecorder) PatchComponentByApplicationID(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockCurpDBMockRecorder) PatchComponentByApplicationID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchComponentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).PatchComponentByApplicationID), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchComponentByApplicationID", reflect.TypeOf((*MockCurpDB)(nil).PatchComponentByApplicationID), arg0, arg1, arg2, arg3)
 }
 
 // PatchDeploymentByApplicationID mocks base method

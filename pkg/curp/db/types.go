@@ -6,6 +6,7 @@
 package db
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Azure/radius/pkg/curp/armerrors"
@@ -44,30 +45,16 @@ type ResourceBase struct {
 // Application represents an Radius Application with its nested resources.
 type Application struct {
 	ResourceBase `bson:",inline"`
-	Properties   map[string]interface{}      `bson:"properties,omitempty"`
-	Components   map[string]ComponentHistory `bson:"components,omitempty"`
-	Scopes       map[string]Scope            `bson:"scopes,omitempty"`
-	Deployments  map[string]Deployment       `bson:"deployments,omitempty"`
+	Properties   map[string]interface{} `bson:"properties,omitempty"`
+	Components   map[string]Component   `bson:"components,omitempty"`
+	Scopes       map[string]Scope       `bson:"scopes,omitempty"`
+	Deployments  map[string]Deployment  `bson:"deployments,omitempty"`
 }
 
 // ApplicationPatch represents an Radius application without its nested resources.
 type ApplicationPatch struct {
 	ResourceBase `bson:",inline"`
 	Properties   map[string]interface{} `bson:"properties,omitempty"`
-}
-
-// ComponentHistory represents the whole history of a component.
-type ComponentHistory struct {
-	ResourceBase    `bson:",inline"`
-	Revision        revision.Revision   `bson:"revision"`
-	RevisionHistory []ComponentRevision `bson:"revisionHistory,omitempty"`
-}
-
-// ComponentRevision represents an individual revision of a component.
-type ComponentRevision struct {
-	Kind       string              `bson:"kind"`
-	Revision   revision.Revision   `bson:"revision,omitempty"`
-	Properties ComponentProperties `bson:"properties,omitempty"`
 }
 
 // Component represents an Radius Component.
@@ -104,7 +91,8 @@ type ComponentDependsOn struct {
 	Kind string `bson:"kind"`
 
 	// TODO this should support more settings
-	SetEnv map[string]string `bson:"setEnv,omitempty"`
+	SetEnv    map[string]string      `bson:"setEnv,omitempty"`
+	SetSecret map[string]interface{} `bson:"setSecret,omitempty"`
 }
 
 // ComponentTrait represents a trait for an Radius component.
@@ -202,7 +190,7 @@ func (d *Deployment) Marshal() interface{} {
 func NewApplication() *Application {
 	return &Application{
 		Properties:  map[string]interface{}{},
-		Components:  map[string]ComponentHistory{},
+		Components:  map[string]Component{},
 		Scopes:      map[string]Scope{},
 		Deployments: map[string]Deployment{},
 	}
@@ -228,22 +216,6 @@ func (app ApplicationPatch) FriendlyName() string {
 	}
 
 	return app.Name
-}
-
-// LookupComponentRevision looks up the component revision by name and revision.
-func (app Application) LookupComponentRevision(name string, revision revision.Revision) (*ComponentRevision, bool) {
-	ch, ok := app.Components[name]
-	if !ok {
-		return nil, false
-	}
-
-	for _, cr := range ch.RevisionHistory {
-		if cr.Revision == revision {
-			return &cr, true
-		}
-	}
-
-	return nil, false
 }
 
 // NewComponentProperties returns a new instance of ComponentProperties.
@@ -292,4 +264,37 @@ func (dc DeploymentComponent) FriendlyName() string {
 	}
 
 	return name
+}
+
+// AssignRevisions stamps the latest version of component into the deployment unless otherwise specified - also
+// grab the 'active' version of each component
+func (d Deployment) AssignRevisions(app *Application) (map[string]revision.Revision, error) {
+	revisions := map[string]revision.Revision{}
+
+	for _, dc := range d.Properties.Components {
+		name := dc.FriendlyName()
+		component, ok := app.Components[name]
+		if !ok {
+			return nil, fmt.Errorf("component %s does not exist", name)
+		}
+
+		// Use the latest
+		dc.Revision = component.Revision
+		revisions[name] = component.Revision
+	}
+
+	return revisions, nil
+}
+
+// GetRevisions gets the deployed revision for each component that is part of the deployment. This should
+// only be called on a deployment that's been deployed already.
+func (d Deployment) GetRevisions() map[string]revision.Revision {
+	revisions := map[string]revision.Revision{}
+
+	for _, dc := range d.Properties.Components {
+		name := dc.FriendlyName()
+		revisions[name] = dc.Revision
+	}
+
+	return revisions
 }

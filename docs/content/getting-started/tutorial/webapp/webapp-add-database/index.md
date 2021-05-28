@@ -15,13 +15,13 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add db component
 A `db` database component is used to specify a few properties about the database: 
 
-- **kind:** `azure.com/CosmosDocumentDb@v1alpha1` represents a Cosmos DB database. 
+- **kind:** `azure.com/CosmosDBMongo@v1alpha1` represents a Cosmos DB database.
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
 ```sh
   resource db 'Components' = {
     name: 'db'
-    kind: 'azure.com/CosmosDocumentDb@v1alpha1'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
       config: {
         managed: true
@@ -36,7 +36,7 @@ Radius captures both logical relationships and related operational details. Exam
 
 Once the database is defined as a component, you can connect to it by referencing the `db` component from within the `todoapp` component via a `dependsOn` section. 
 
-The `dependsOn` section is used to configure relationships between a component and services provided by other components. The `db` is of kind `azure.com/CosmosDocumentDb@v1alpha1`, which supports the MongoDB protocol. `db` is considered to provide a service of kind `mongodb.com/Mongo` implicitly. Configuring a dependency on a service is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
+The `dependsOn` section is used to configure relationships between a component and services provided by other components. The `db` is of kind `azure.com/CosmosDBMongo@v1alpha1`, which supports the MongoDB protocol. `db` is considered to provide a service of kind `mongodb.com/Mongo` implicitly. Configuring a dependency on a service is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
 
 Here's what the todoapp component will look like with the `dependsOn` section added within its properties:
 
@@ -51,7 +51,7 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
           kind: 'mongodb.com/Mongo'
           name: 'db'
           setEnv: {
-            DB_CONNECTION: 'connectionString'
+            DBCONNECTION: 'connectionString'
           }
         }
       ]
@@ -60,7 +60,7 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
   }
 ```
 
-The `setEnv` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DB_CONNECTION` environment variable to access to the database connection string.
+The `setEnv` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DBCONNECTION` environment variable to access to the database connection string.
 
 ## Update your template.bicep file 
 
@@ -84,7 +84,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           kind: 'mongodb.com/Mongo'
           name: 'db'
           setEnv: {
-            DB_CONNECTION: 'connectionString'
+            DBCONNECTION: 'connectionString'
           }
         }
       ]
@@ -100,7 +100,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
   resource db 'Components' = {
     name: 'db'
-    kind: 'azure.com/CosmosDocumentDb@v1alpha1'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
       config: {
         managed: true
@@ -123,7 +123,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. You can confirm that the new `db` component was deployed by running:
 
    ```sh
-   rad deployment list --application-name webapp
+   rad deployment list --application webapp
    ```
 
    You should see both `db` and `todoapp` components in your `webapp` application. Example output: 
@@ -154,7 +154,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. To test the database, open a local tunnel on port 3000 again:
 
    ```sh
-   rad expose webapp todoapp --port 3000
+   rad component expose todoapp --application webapp --port 3000
    ```
 
 1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. You should see a page like:
@@ -171,6 +171,4 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 - If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
 - If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
 
-You have completed this tutorial!
-
-<br>{{< button text="Try another tutorial" page="tutorial" >}}
+<br>{{< button text="Next: Add a secret store in this application to store the database connection string" page="webapp-add-secretstore.md" >}}

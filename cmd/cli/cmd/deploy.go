@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -35,6 +35,7 @@ var deployCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(deployCmd)
+	deployCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
 }
 
 func deploy(cmd *cobra.Command, args []string) error {
@@ -48,7 +49,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
@@ -88,6 +89,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 	logger.CompleteStep(step)
 
 	logger.LogInfo("Deployment Complete")
+
 	return nil
 }
 
@@ -142,7 +144,7 @@ func deployApplication(ctx context.Context, content string, env *environments.Az
 }
 
 func createDeploymentClient(env *environments.AzureCloudEnvironment) (resources.DeploymentsClient, error) {
-	armauth, err := utils.GetResourceManagerEndpointAuthorizer()
+	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return resources.DeploymentsClient{}, err
 	}

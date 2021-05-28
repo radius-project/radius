@@ -76,7 +76,7 @@ jobs:
         run: |
           go run cmd/cli/main.go \
             env init azure \
-            --name ${{ steps.generate-resource-group-name.outputs.result }} \
+            -e ${{ steps.generate-resource-group-name.outputs.result }} \
             --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
             --location "${{ steps.select-location.outputs.result }}"

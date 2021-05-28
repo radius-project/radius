@@ -7,6 +7,6 @@ package keyvaultv1alpha1
 
 // Constants
 const (
-	VaultURI     = "kvuri"
+	VaultURI     = "keyvaulturi"
 	KeyVaultName = "keyvaultname"
 )

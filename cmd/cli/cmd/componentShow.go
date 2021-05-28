@@ -12,44 +12,35 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
 
-// componentGetCmd command to get details of a component
-var componentGetCmd = &cobra.Command{
-	Use:   "get",
-	Short: "Get RAD component details",
-	Long:  "Get details of the specified Radius component",
-	RunE:  getComponent,
+// componentShowCmd command to show details of a component
+var componentShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Show RAD component details",
+	Long:  "Show details of the specified Radius component",
+	RunE:  showComponent,
 }
 
 func init() {
-	componentCmd.AddCommand(componentGetCmd)
-
-	componentGetCmd.Flags().StringP("name", "n", "", "Component name")
-	if err := componentGetCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
-	}
-
-	componentGetCmd.Flags().StringP("application-name", "a", "", "Application name for the component")
-	if err := componentGetCmd.MarkFlagRequired("application-name"); err != nil {
-		fmt.Printf("Failed to mark the application-name flag required: %v", err)
-	}
+	componentCmd.AddCommand(componentShowCmd)
 }
 
-func getComponent(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("application-name")
+func showComponent(cmd *cobra.Command, args []string) error {
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	componentName, err := cmd.Flags().GetString("name")
+	applicationName, err := rad.RequireApplication(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	componentName, err := rad.RequireComponent(cmd, args)
 	if err != nil {
 		return err
 	}

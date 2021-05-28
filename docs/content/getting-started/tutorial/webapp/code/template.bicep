@@ -12,10 +12,20 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
       dependsOn: [
         {
+          name: 'kv'
+          kind: 'azure.com/KeyVault'
+          setEnv: {
+            KV_URI: 'keyvaulturi'
+          }
+        }
+        {
           kind: 'mongodb.com/Mongo'
           name: 'db'
-          setEnv: {
-            DB_CONNECTION: 'connectionString'
+          setSecret: {
+            store: kv.name
+            keys: {
+              DBCONNECTION: 'connectionString'
+            }
           }
         }
       ]
@@ -31,11 +41,21 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
   resource db 'Components' = {
     name: 'db'
-    kind: 'azure.com/CosmosDocumentDb@v1alpha1'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
       config: {
         managed: true
       }
+    }
+  }
+
+  resource kv 'Components' = {
+    name: 'kv'
+    kind: 'azure.com/KeyVault@v1alpha1'
+    properties: {
+        config: {
+            managed: true
+        }
     }
   }
 }

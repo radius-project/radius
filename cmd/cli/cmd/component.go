@@ -17,4 +17,7 @@ var componentCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(componentCmd)
+	componentCmd.PersistentFlags().StringP("application", "a", "", "The application name")
+	componentCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
+	componentCmd.PersistentFlags().StringP("component", "c", "", "The component name")
 }

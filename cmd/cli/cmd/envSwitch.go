@@ -6,7 +6,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/rad"
@@ -28,10 +27,6 @@ func init() {
 }
 
 func switchEnv(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return errors.New("environment name is required")
-	}
-
 	v := viper.GetViper()
 	env, err := rad.ReadEnvironmentSection(v)
 	if err != nil {
@@ -43,15 +38,19 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	name := args[0]
-	_, ok := env.Items[name]
+	envName, err := rad.RequireEnvironmentNameArgs(cmd, args)
+	if err != nil {
+		return err
+	}
+
+	_, ok := env.Items[envName]
 	if !ok {
-		fmt.Printf("Could not find environment %v\n", name)
+		fmt.Printf("Could not find environment %v\n", envName)
 		return nil
 	}
 
 	// Retrieve associated resource group and subscription id
-	az, err := validateNamedEnvironment(name)
+	az, err := rad.ValidateNamedEnvironment(envName)
 	if err != nil {
 		return err
 	}
@@ -62,9 +61,9 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.LogInfo("Default environment is now: %v\n\n"+
-		"%v environment is available at:\n%v\n", name, name, envUrl)
+		"%v environment is available at:\n%v\n", envName, envName, envUrl)
 
-	env.Default = name
+	env.Default = envName
 	rad.UpdateEnvironmentSection(v, env)
 	err = saveConfig()
 	if err != nil {

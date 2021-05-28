@@ -17,4 +17,6 @@ var applicationCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(applicationCmd)
+	applicationCmd.PersistentFlags().StringP("application", "a", "", "The application name")
+	applicationCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
 }

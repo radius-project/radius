@@ -41,7 +41,7 @@ ok  	github.com/Azure/radius/pkg/rad	0.250s
 ?   	github.com/Azure/radius/pkg/radclient	[no test files]
 ?   	github.com/Azure/radius/pkg/workloads	[no test files]
 ok  	github.com/Azure/radius/pkg/workloads/containerv1alpha1	0.214s
-?   	github.com/Azure/radius/pkg/workloads/cosmosdocumentdbv1alpha1	[no test files]
+?   	github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1	[no test files]
 ?   	github.com/Azure/radius/pkg/workloads/dapr	[no test files]
 ?   	github.com/Azure/radius/pkg/workloads/daprcomponentv1alpha1	[no test files]
 ?   	github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1	[no test files]

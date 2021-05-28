@@ -25,7 +25,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           name: 'kv'
           kind: 'azure.com/KeyVault'
           setEnv: {
-            KV_URI: 'kvuri'
+            KV_URI: 'keyvaulturi'
           }
         }
       ]

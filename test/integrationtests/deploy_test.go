@@ -13,17 +13,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/go-autorest/autorest"
 	cliutils "github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -49,6 +55,10 @@ func TestDeployment(t *testing.T) {
 	require.NoErrorf(t, err, "Failed to obtain Azure credentials")
 	con := armcore.NewDefaultConnection(azcred, nil)
 
+	// Access Azure credentials
+	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
+	require.NoErrorf(t, err, "Failed to obtain Azure credentials")
+
 	// Ensure rad-bicep has been downloaded before we go parallel
 	installed, err := bicep.IsBicepInstalled()
 	require.NoErrorf(t, err, "Failed to local rad-bicep")
@@ -61,6 +71,7 @@ func TestDeployment(t *testing.T) {
 		Environment:   env,
 		ARMConnection: con,
 		K8s:           k8s,
+		Authorizer:    armauth,
 	}
 
 	table := []Row{
@@ -76,13 +87,39 @@ func TestDeployment(t *testing.T) {
 					},
 				},
 			},
-			Verify: func(t *testing.T, at ApplicationTest) {
+			PostDeployVerify: func(t *testing.T, at ApplicationTest) {
 				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
 				// get application and verify name
 				response, err := appclient.Get(ctx, env.ResourceGroup, "frontend-backend", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
 				assert.Equal(t, "frontend-backend", *response.ApplicationResource.Name)
+			},
+		},
+		{
+			Application: "inbound-route",
+			Description: "inbound-route",
+			Template:    "../../examples/inbound-route/template.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"inbound-route": {
+						validation.NewPodForComponent("inbound-route", "frontend"),
+						validation.NewPodForComponent("inbound-route", "backend"),
+					},
+				},
+			},
+			PostDeployVerify: func(t *testing.T, at ApplicationTest) {
+				// Verify that we've created an ingress resource. We don't verify reachability because allocating
+				// a public IP can take a few minutes.
+				labelset := map[string]string{
+					workloads.LabelRadiusApplication: "inbound-route",
+					workloads.LabelRadiusComponent:   "frontend",
+				}
+				matches, err := at.Options.K8s.NetworkingV1().Ingresses("inbound-route").List(context.Background(), v1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(labelset).String(),
+				})
+				require.NoError(t, err, "failed to list ingresses")
+				require.Lenf(t, matches.Items, 1, "items should contain one match, instead it had: %+v", matches.Items)
 			},
 		},
 		{
@@ -99,16 +136,64 @@ func TestDeployment(t *testing.T) {
 			},
 		},
 		{
-			Application: "dapr-pubsub",
-			Description: "dapr-pubsub (Azure)",
-			Template:    "../../examples/dapr-examples/dapr-pubsub-azure/template.bicep",
+			Application: "dapr-pubsub-managed",
+			Description: "dapr-pubsub (Azure + Radius-managed)",
+			Template:    "../../examples/dapr-examples/dapr-pubsub-azure/managed.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
-					"dapr-pubsub": {
-						validation.NewPodForComponent("dapr-pubsub", "nodesubscriber"),
-						validation.NewPodForComponent("dapr-pubsub", "pythonpublisher"),
+					"dapr-pubsub-managed": {
+						validation.NewPodForComponent("dapr-pubsub-managed", "nodesubscriber"),
+						validation.NewPodForComponent("dapr-pubsub-managed", "pythonpublisher"),
 					},
 				},
+			},
+		},
+		{
+			Application: "dapr-pubsub-unmanaged",
+			Description: "dapr-pubsub (Azure + user-managed)",
+			Template:    "../../examples/dapr-examples/dapr-pubsub-azure/unmanaged.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"dapr-pubsub-unmanaged": {
+						validation.NewPodForComponent("dapr-pubsub-unmanaged", "nodesubscriber"),
+						validation.NewPodForComponent("dapr-pubsub-unmanaged", "pythonpublisher"),
+					},
+				},
+			},
+			// This test has additional 'unmanaged' resources that are deployed in the same template but not managed
+			// by Radius.
+			//
+			// We don't need to delete these, they will be deleted as part of the resource group cleanup.
+			PostDeleteVerify: func(t *testing.T, at ApplicationTest) {
+				// Verify that the servicebus resources were not deleted
+				nsc := servicebus.NewNamespacesClient(at.Options.Environment.SubscriptionID)
+				nsc.Authorizer = at.Options.Authorizer
+
+				// We have to use a generated name due to uniqueness requirements, so lookup based on tags
+				var ns *servicebus.SBNamespace
+				list, err := nsc.ListByResourceGroup(context.Background(), at.Options.Environment.ResourceGroup)
+				require.NoErrorf(t, err, "failed to list servicebus namespaces")
+
+			outer:
+				for ; list.NotDone(); err = list.Next() {
+					require.NoErrorf(t, err, "failed to list servicebus namespaces")
+
+					for _, value := range list.Values() {
+						if value.Tags["radiustest"] != nil {
+							temp := value
+							ns = &temp
+							break outer
+						}
+					}
+				}
+
+				require.NotNilf(t, ns, "failed to find servicebus namespace with 'radiustest' tag")
+
+				tc := servicebus.NewTopicsClient(at.Options.Environment.SubscriptionID)
+				tc.Authorizer = at.Options.Authorizer
+
+				_, err = tc.Get(context.Background(), at.Options.Environment.ResourceGroup, *ns.Name, "TOPIC_A")
+				require.NoErrorf(t, err, "failed to find servicebus topic")
 			},
 		},
 		{
@@ -145,17 +230,19 @@ func TestDeployment(t *testing.T) {
 }
 
 type Row struct {
-	Application string
-	Description string
-	Template    string
-	Pods        validation.PodSet
-	Verify      func(*testing.T, ApplicationTest)
+	Application      string
+	Description      string
+	Template         string
+	Pods             validation.PodSet
+	PostDeployVerify func(*testing.T, ApplicationTest)
+	PostDeleteVerify func(*testing.T, ApplicationTest)
 }
 
 type Options struct {
 	Environment   *environment.TestEnvironment
 	K8s           *kubernetes.Clientset
 	ARMConnection *armcore.Connection
+	Authorizer    autorest.Authorizer
 }
 
 type ApplicationTest struct {
@@ -192,8 +279,8 @@ func (at ApplicationTest) Test(t *testing.T) {
 		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods)
 
 		// Custom verification is expected to use `t` to trigger its own assertions
-		if at.Row.Verify != nil {
-			at.Row.Verify(t, at)
+		if at.Row.PostDeployVerify != nil {
+			at.Row.PostDeployVerify(t, at)
 		}
 	})
 
@@ -205,5 +292,10 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	for ns := range at.Row.Pods.Namespaces {
 		validation.ValidateNoPodsInNamespace(t, at.Options.K8s, ns)
+	}
+
+	// Custom verification is expected to use `t` to trigger its own assertions
+	if at.Row.PostDeleteVerify != nil {
+		at.Row.PostDeleteVerify(t, at)
 	}
 }

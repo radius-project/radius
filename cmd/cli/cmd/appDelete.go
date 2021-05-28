@@ -11,8 +11,12 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // appDeleteCmd command to delete an application
@@ -26,26 +30,39 @@ var appDeleteCmd = &cobra.Command{
 func init() {
 	applicationCmd.AddCommand(appDeleteCmd)
 
-	appDeleteCmd.Flags().StringP("name", "n", "", "The application name")
-	if err := appDeleteCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
-	}
+	appDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
 }
 
 func deleteApplication(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("name")
+	yes, err := cmd.Flags().GetBool("yes")
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
+	}
+
+	applicationName, err := rad.RequireApplicationArgs(cmd, args, env)
+	if err != nil {
+		return err
+	}
+
+	// Prompt user to confirm deletion
+	if !yes {
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Are you sure you want to delete '%v' from '%v' [y/n]?", applicationName, env.Name))
+		if err != nil {
+			return err
+		}
+		if !confirmed {
+			return nil
+		}
 	}
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain Azure credential: %w", err)
+		return fmt.Errorf("failed to obtain Azure credential: %w", err)
 	}
 
 	con := armcore.NewDefaultConnection(azcred, nil)
@@ -87,5 +104,34 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("Application '%s' has been deleted\n", applicationName)
 
+	err = updateApplicationConfig(cmd, env, applicationName, ac)
 	return err
+}
+
+func updateApplicationConfig(cmd *cobra.Command,
+	azureEnv *environments.AzureCloudEnvironment,
+	applicationName string,
+	ac *radclient.ApplicationClient) error {
+
+	// If the application we are deleting is the default application, remove it
+	if azureEnv.DefaultApplication == applicationName {
+		v := viper.GetViper()
+		env, err := rad.ReadEnvironmentSection(v)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, azureEnv.Name)
+
+		env.Items[azureEnv.Name][azureEnv.DefaultApplication] = ""
+
+		rad.UpdateEnvironmentSection(v, env)
+
+		err = saveConfig()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

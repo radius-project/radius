@@ -8,7 +8,6 @@ package curp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -188,7 +187,7 @@ func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (rest.Re
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	dbitem, err := r.db.GetComponentByApplicationID(ctx, c.App, c.Resource.Name(), revision.Revision(""))
+	dbitem, err := r.db.GetComponentByApplicationID(ctx, c.App, c.Resource.Name())
 	if err == db.ErrNotFound {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -216,7 +215,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	// fetch the latest component so we can compare and generate a revision
-	olddbitem, err := r.db.GetComponentByApplicationID(ctx, id.App, id.Resource.Name(), revision.Revision(""))
+	olddbitem, err := r.db.GetComponentByApplicationID(ctx, id.App, id.Resource.Name())
 	if err == db.ErrNotFound {
 		// this is fine - we don't have a previous version to compare against
 	} else if err != nil {
@@ -248,7 +247,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 		return nil, err
 	}
 
-	created, err := r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.Name(), newdbitem, previous)
+	created, err := r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.Name(), newdbitem)
 	if err == db.ErrNotFound {
 		// If we get a not found here there's no application
 		return rest.NewNotFoundResponse(id.App.ResourceID), nil
@@ -770,22 +769,29 @@ func (r *rp) validate(obj interface{}) (rest.Response, error) {
 }
 
 func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment, newer *db.Deployment) (map[string]deployment.ComponentAction, error) {
-	active, err := assignRevisions(app, newer)
+	// This will stamp the deployment object with the identity of all of the 'latest' revisions
+	// of the components.
+	active, err := newer.AssignRevisions(app)
 	if err != nil {
 		return nil, err
 	}
 
-	current, err := gatherCurrentRevisions(app, older)
+	// Next we gather the currently deployed revisions so that we can determine the operation
+	// for each component
+	var current map[string]revision.Revision
+	if older == nil {
+		current = map[string]revision.Revision{}
+	} else {
+		current = older.GetRevisions()
+	}
+
+	// Next, find all of the bindings provided by active components
+	bindings, err := r.listAllBindings(app, active)
 	if err != nil {
 		return nil, err
 	}
 
-	providers, err := r.bindProviders(newer, active)
-	if err != nil {
-		return nil, err
-	}
-
-	serviceBindings, err := r.bindServices(newer, active, providers)
+	serviceBindings, err := r.bindServices(app, active, bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -799,7 +805,7 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		forceUpgradeToRetry = true
 	}
 
-	// gather all component names
+	// gather all component that have an operation (union of component names from old and new set)
 	names := map[string]bool{}
 	for name := range active {
 		names[name] = true
@@ -810,32 +816,24 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 
 	actions := map[string]deployment.ComponentAction{}
 	for name := range names {
-		n := active[name]
-		o := current[name]
-
-		var s map[string]deployment.ServiceBinding
-		ninst, ok := newer.LookupComponent(name)
-		if ok {
-			s = serviceBindings[name]
-		}
-
-		var oinst *db.DeploymentComponent
-		if older != nil {
-			oinst, _ = older.LookupComponent(name)
-		}
-
-		provides := filterProvidersByComponent(name, providers)
+		newRevision, isActive := active[name]
+		oldRevision := current[name]
 
 		wd := deployment.ComponentAction{
-			ApplicationName:       app.FriendlyName(),
-			ComponentName:         name,
-			Operation:             deployment.None, // Assume none until we find otherwise
-			Definition:            n,
-			Instantiation:         ninst,
-			Provides:              provides,
-			ServiceBindings:       s,
-			PreviousDefinition:    o,
-			PreviousInstanitation: oinst,
+			ApplicationName: app.FriendlyName(),
+			ComponentName:   name,
+			Operation:       deployment.None, // Assume none until we find otherwise
+			NewRevision:     newRevision,
+			OldRevision:     oldRevision,
+		}
+
+		if isActive {
+			// For a component in the active set (being deployed or staying deployed)
+			// Then we have access to more info
+			definition := app.Components[name]
+			wd.Definition = &definition
+			wd.ServiceBindings = serviceBindings[name]
+			wd.Provides = filterProvidersByComponent(name, bindings)
 		}
 
 		err = assignOperation(&wd, forceUpgradeToRetry)
@@ -858,10 +856,10 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 			log.Printf("component %s is added in this update", action.ComponentName)
 		} else if action.Operation == deployment.DeleteWorkload {
 			log.Printf("component %s is removed in this update", action.ComponentName)
-		} else if action.Operation == deployment.UpdateWorkload && action.PreviousDefinition.Revision != action.Definition.Revision {
-			log.Printf("component %s is upgraded %s->%s in this update", action.ComponentName, action.PreviousDefinition.Revision, action.Definition.Revision)
-		} else if action.Operation == deployment.UpdateWorkload && action.PreviousDefinition.Revision == action.Definition.Revision {
-			log.Printf("component %s has parameter changes in this update", action.ComponentName)
+		} else if action.Operation == deployment.UpdateWorkload && action.NewRevision != action.OldRevision {
+			log.Printf("component %s is upgraded %s->%s in this update", action.ComponentName, action.OldRevision, action.NewRevision)
+		} else if action.Operation == deployment.UpdateWorkload && action.NewRevision == action.Definition.Revision {
+			log.Printf("component %s is being upgraded without a definition change", action.ComponentName)
 		} else {
 			log.Printf("component %s is unchanged in this update", action.ComponentName)
 		}
@@ -880,91 +878,18 @@ func deploymentIsNoOp(actions map[string]deployment.ComponentAction) bool {
 	return true
 }
 
-// stamp the latest version of component into the deployment unless otherwise specified - also
-// grab the 'active' version of each component
-func assignRevisions(app *db.Application, d *db.Deployment) (map[string]*db.ComponentRevision, error) {
-	active := map[string]*db.ComponentRevision{}
-	for _, dc := range d.Properties.Components {
-		name := dc.FriendlyName()
-		component, ok := app.Components[name]
-		if !ok {
-			return active, fmt.Errorf("component %s does not exist", name)
-		}
-
-		if component.Revision == "" {
-			return active, fmt.Errorf("component %s has no revisions", name)
-		}
-
-		if dc.Revision == "" {
-			// Use the latest
-			dc.Revision = component.Revision
-		}
-
-		found := false
-		for _, r := range component.RevisionHistory {
-			if r.Revision == dc.Revision {
-				active[name] = &r
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return active, fmt.Errorf("component %s does not have a revision %s", name, dc.Revision)
-		}
-	}
-
-	return active, nil
-}
-
-// gather the set of revisions from the 'current' deployment object
-func gatherCurrentRevisions(app *db.Application, d *db.Deployment) (map[string]*db.ComponentRevision, error) {
-	current := map[string]*db.ComponentRevision{}
-
-	// 'current' might be null
-	if d == nil {
-		return current, nil
-	}
-
-	for _, dc := range d.Properties.Components {
-		name := dc.FriendlyName()
-		component, ok := app.Components[name]
-		if !ok {
-			return current, fmt.Errorf("component %s does not exist", name)
-		}
-
-		found := false
-		for _, r := range component.RevisionHistory {
-			if r.Revision == dc.Revision {
-				current[name] = &r
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return current, fmt.Errorf("component %s does not have a revision %s", name, dc.Revision)
-		}
-	}
-
-	return current, nil
-}
-
 func assignOperation(wd *deployment.ComponentAction, forceUpgradeToRetry bool) error {
-	if wd.Instantiation == nil && wd.PreviousInstanitation == nil {
-		return errors.New("can't figure out operation")
-	} else if wd.Instantiation != nil && wd.PreviousInstanitation == nil {
+	if wd.OldRevision == "" && wd.NewRevision != "" {
 		wd.Operation = deployment.CreateWorkload
 		return nil
-	} else if wd.Instantiation == nil && wd.PreviousInstanitation != nil {
+	} else if wd.OldRevision != "" && wd.NewRevision == "" {
 		wd.Operation = deployment.DeleteWorkload
 		return nil
 	}
 
-	// Those are all of the *easy* cases. If we get here then the workload is either being upgraded
-	// or is the same - so we can safely dereference any properties.
-	if wd.Definition.Revision != wd.PreviousDefinition.Revision {
-		// revision does not match.
+	// If we get here then the workload is either being upgraded or is the same.
+	if wd.OldRevision != wd.NewRevision {
+		// revision does not match, this is an upgrade.
 		wd.Operation = deployment.UpdateWorkload
 		return nil
 	}
@@ -979,23 +904,22 @@ func assignOperation(wd *deployment.ComponentAction, forceUpgradeToRetry bool) e
 	return nil
 }
 
-func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision) (map[string]deployment.ServiceBinding, error) {
+func (r *rp) listAllBindings(app *db.Application, active map[string]revision.Revision) (map[string]deployment.ServiceBinding, error) {
 	// find all services provided by all components
 	providers := map[string]deployment.ServiceBinding{}
-	for _, dc := range d.Properties.Components {
-		// We don't expect this to fail except in tests
-		c, ok := cs[dc.FriendlyName()]
+
+	for name := range active {
+		component, ok := app.Components[name]
 		if !ok {
-			return nil, fmt.Errorf("cannot find matching revision for component %s", dc.FriendlyName())
+			return nil, fmt.Errorf("cannot find definition for component %s", name)
 		}
 
 		// Intrinsic bindings are provided by traits and the workload types
 		// they can be overridden by declaring a service with the same name on the same component
 		intrinsic := map[string]deployment.ServiceBinding{}
 
-		s, ok := r.meta.WorkloadKindServices[c.Kind]
+		s, ok := r.meta.WorkloadKindServices[component.Kind]
 		if ok {
-			name := dc.FriendlyName()
 			_, ok := intrinsic[name]
 			if ok {
 				return nil, fmt.Errorf("service %v has multiple providers", name)
@@ -1003,10 +927,10 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 
 			// Found one - add to both list - it will get removed later if it's
 			// been rebound
-			intrinsic[dc.FriendlyName()] = deployment.ServiceBinding{
+			intrinsic[name] = deployment.ServiceBinding{
 				Name:     name,
 				Kind:     s.Kind,
-				Provider: dc.FriendlyName(),
+				Provider: name,
 			}
 
 			// TODO: we currently allow a service from one component to 'hide' a service from another
@@ -1015,15 +939,15 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 				providers[name] = deployment.ServiceBinding{
 					Name:     name,
 					Kind:     s.Kind,
-					Provider: dc.FriendlyName(),
+					Provider: name,
 				}
 			}
 		}
 
-		for _, t := range c.Properties.Traits {
+		for _, t := range component.Properties.Traits {
 			s, ok := r.meta.TraitServices[t.Kind]
 			if ok {
-				name := dc.FriendlyName()
+				name := name
 				_, ok := intrinsic[name]
 				if ok {
 					return nil, fmt.Errorf("service %v has multiple providers", name)
@@ -1034,7 +958,7 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 				intrinsic[name] = deployment.ServiceBinding{
 					Name:     name,
 					Kind:     s.Kind,
-					Provider: dc.FriendlyName(),
+					Provider: name,
 				}
 
 				_, ok = providers[name]
@@ -1042,19 +966,19 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 					providers[name] = deployment.ServiceBinding{
 						Name:     name,
 						Kind:     s.Kind,
-						Provider: dc.FriendlyName(),
+						Provider: name,
 					}
 				}
 			}
 		}
 
-		for _, s := range c.Properties.Provides {
+		for _, s := range component.Properties.Provides {
 			other, ok := providers[s.Name]
 			if ok {
 				// If this is in the intrinsic list for the same component, then
 				// this is an override and it's allowed.
 				_, ok := intrinsic[s.Name]
-				if !ok || other.Provider != dc.FriendlyName() {
+				if !ok || other.Provider != name {
 					return nil, fmt.Errorf("service %v has multiple providers", s.Name)
 				}
 			}
@@ -1062,7 +986,7 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 			providers[s.Name] = deployment.ServiceBinding{
 				Name:     s.Name,
 				Kind:     s.Kind,
-				Provider: dc.FriendlyName(),
+				Provider: name,
 			}
 		}
 	}
@@ -1070,20 +994,20 @@ func (r *rp) bindProviders(d *db.Deployment, cs map[string]*db.ComponentRevision
 	return providers, nil
 }
 
-func (r *rp) bindServices(d *db.Deployment, cs map[string]*db.ComponentRevision, providers map[string]deployment.ServiceBinding) (map[string]map[string]deployment.ServiceBinding, error) {
+func (r *rp) bindServices(app *db.Application, active map[string]revision.Revision, providers map[string]deployment.ServiceBinding) (map[string]map[string]deployment.ServiceBinding, error) {
 	// find the relationship between services declared and the components that match
 	bindings := map[string]map[string]deployment.ServiceBinding{}
 
 	// Now loop through all of the consumers and match them up
-	for _, dc := range d.Properties.Components {
+	for name := range active {
 		// We don't expect this to fail except in tests
-		c, ok := cs[dc.FriendlyName()]
+		component, ok := app.Components[name]
 		if !ok {
-			return nil, fmt.Errorf("cannot find matching revision for component %s", dc.FriendlyName())
+			return nil, fmt.Errorf("cannot find definition for component %s", name)
 		}
 
 		b := map[string]deployment.ServiceBinding{}
-		for _, s := range c.Properties.DependsOn {
+		for _, s := range component.Properties.DependsOn {
 			p, ok := providers[s.Name]
 			if !ok {
 				return nil, fmt.Errorf("service %v has no provider", s.Name)
@@ -1096,7 +1020,7 @@ func (r *rp) bindServices(d *db.Deployment, cs map[string]*db.ComponentRevision,
 			b[s.Name] = p
 		}
 
-		bindings[dc.FriendlyName()] = b
+		bindings[name] = b
 	}
 
 	return bindings, nil
@@ -1117,7 +1041,7 @@ func filterProvidersByComponent(componentName string, providers map[string]deplo
 }
 
 // Convert our datatabase representation to the "baked" version of the component
-func convertToComponent(name string, defn db.ComponentRevision, traits []db.ComponentTrait) (*components.GenericComponent, error) {
+func convertToComponent(name string, defn db.Component, traits []db.ComponentTrait) (*components.GenericComponent, error) {
 	raw := map[string]interface{}{
 		"name":      name,
 		"kind":      defn.Kind,

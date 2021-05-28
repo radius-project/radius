@@ -5,7 +5,22 @@
 
 package daprpubsubv1alpha1
 
+import "github.com/Azure/radius/pkg/curp/resources"
+
 const Kind = "dapr.io/PubSubTopic@v1alpha1"
+
+var TopicResourceType = resources.KnownType{
+	Types: []resources.ResourceType{
+		{
+			Type: "Microsoft.ServiceBus/namespaces",
+			Name: "*",
+		},
+		{
+			Type: "topics",
+			Name: "*",
+		},
+	},
+}
 
 // DaprPubSubComponent is the definition of the container component
 type DaprPubSubComponent struct {
@@ -22,6 +37,8 @@ type DaprPubSubComponent struct {
 type DaprPubSubConfig struct {
 	Kind    string `json:"kind"`
 	Managed bool   `json:"managed"`
-	Name    string `json:"name"`
-	Topic   string `json:"topic"`
+	// The name of the Dapr pubsub Component
+	Name     string `json:"name"`
+	Resource string `json:"resource"`
+	Topic    string `json:"topic"`
 }
