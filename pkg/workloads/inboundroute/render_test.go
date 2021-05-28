@@ -25,7 +25,7 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 }
 
 func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
-	return []workloads.WorkloadResource{}, nil
+	return []workloads.WorkloadResource{}, []rest.RadResource{}, nil
 }
 
 // No hostname or any other settings, should be using a default backend

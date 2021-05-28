@@ -32,7 +32,7 @@ func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(context.Background(), workload)
+	resources, _, err := renderer.Render(context.Background(), workload)
 	require.NoError(t, err)
 
 	require.Len(t, resources, 1)
@@ -130,7 +130,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(context.Background(), workload)
+	resources, _, err := renderer.Render(context.Background(), workload)
 	require.NoError(t, err)
 
 	require.Len(t, resources, 1)
@@ -169,7 +169,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, _, err := renderer.Render(context.Background(), workload)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Topic", err.Error())
 }
@@ -191,7 +191,7 @@ func Test_Render_Unmanaged_SpecifiesTopicWithResource(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, _, err := renderer.Render(context.Background(), workload)
 	require.Error(t, err)
 	require.Equal(t, "the 'topic' cannot be specified when 'managed' is not specified", err.Error())
 }
