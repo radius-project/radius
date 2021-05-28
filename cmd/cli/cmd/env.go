@@ -22,6 +22,7 @@ var envCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(envCmd)
+	envCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
 }
 
 // Used by commands that require a named environment to be an azure cloud environment.
