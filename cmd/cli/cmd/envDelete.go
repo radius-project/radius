@@ -89,6 +89,9 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 	rgc := resources.NewGroupsClient(subscriptionID)
 	rgc.Authorizer = authorizer
 
+	// Don't timeout, let the user cancel
+	rgc.PollingDuration = 0
+
 	logger.LogInfo("Deleting resource group %v", resourceGroup)
 	future, err := rgc.Delete(ctx, resourceGroup)
 	if err != nil {
