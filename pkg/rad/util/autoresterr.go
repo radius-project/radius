@@ -51,3 +51,13 @@ func ExtractDetailedError(err error) (autorest.DetailedError, bool) {
 
 	return autorest.DetailedError{}, false
 }
+
+// IsAutorest404Error returns true if the error is a 404 payload from an autorest operation.
+func IsAutorest404Error(err error) bool {
+	detailed, ok := ExtractDetailedError(err)
+	if !ok {
+		return false
+	}
+
+	return detailed.Response != nil && detailed.Response.StatusCode == 404
+}

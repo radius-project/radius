@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/rad/util"
 )
 
 func NewAzureCosmosDBSQLHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -82,16 +83,15 @@ func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options De
 	dbfuture, err := sqlClient.DeleteSQLDatabase(ctx, handler.arm.ResourceGroup, accountname, dbname)
 	if err != nil && dbfuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
-	} else if dbfuture.Response().StatusCode != 404 {
-		err = dbfuture.WaitForCompletionRef(ctx, sqlClient.Client)
-		if err != nil {
-			return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
-		}
+	}
+	err = dbfuture.WaitForCompletionRef(ctx, sqlClient.Client)
+	if err != nil && !util.IsAutorest404Error(err) {
+		return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
+	}
 
-		response, err := dbfuture.Result(sqlClient)
-		if err != nil && response.StatusCode != 404 {
-			return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
-		}
+	response, err := dbfuture.Result(sqlClient)
+	if err != nil && response.StatusCode != 404 {
+		return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
 	}
 
 	// Delete CosmosDB account
