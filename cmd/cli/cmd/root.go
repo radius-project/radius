@@ -97,23 +97,3 @@ func saveConfig() error {
 	fmt.Printf("Successfully wrote configuration to %v\n", cfgFile)
 	return nil
 }
-
-func require(cmd *cobra.Command, args []string, name string) (string, error) {
-	value, err := cmd.Flags().GetString(name)
-	if err != nil {
-		return "", err
-	}
-
-	if len(args) > 0 {
-		if value != "" {
-			return "", fmt.Errorf("cannot specify %v name via both arguments and switch", name)
-		}
-		value = args[0]
-	}
-
-	if value == "" {
-		return "", fmt.Errorf("no %v name provided", name)
-	}
-
-	return value, nil
-}

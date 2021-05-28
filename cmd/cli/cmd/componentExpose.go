@@ -15,6 +15,7 @@ import (
 	"os/signal"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/workloads"
@@ -40,17 +41,17 @@ Press CTRL+C to exit the command and terminate the tunnel.`,
 # on local port 5000
 rad component expose --application icecream-store orders --port 5000 --remote-port 80`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		env, err := requireEnvironment(cmd)
+		env, err := rad.RequireEnvironment(cmd)
 		if err != nil {
 			return err
 		}
 
-		application, err := requireApplication(cmd, env)
+		application, err := rad.RequireApplication(cmd, env)
 		if err != nil {
 			return err
 		}
 
-		component, err := requireComponent(cmd, args)
+		component, err := rad.RequireComponent(cmd, args)
 		if err != nil {
 			return err
 		}

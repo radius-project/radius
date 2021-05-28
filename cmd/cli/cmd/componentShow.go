@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
@@ -29,17 +30,17 @@ func init() {
 }
 
 func showComponent(cmd *cobra.Command, args []string) error {
-	env, err := requireEnvironment(cmd)
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := requireApplication(cmd, env)
+	applicationName, err := rad.RequireApplication(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	componentName, err := requireComponent(cmd, args)
+	componentName, err := rad.RequireComponent(cmd, args)
 	if err != nil {
 		return err
 	}

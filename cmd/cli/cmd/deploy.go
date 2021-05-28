@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -48,7 +49,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	env, err := requireEnvironment(cmd)
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}

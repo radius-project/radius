@@ -9,7 +9,10 @@ import (
 	"fmt"
 )
 
-const KindAzureCloud = "azure"
+const (
+	KindAzureCloud     = "azure"
+	DefaultApplication = "defaultapplication"
+)
 
 type Environment interface {
 	GetName() string

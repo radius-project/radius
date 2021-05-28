@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
@@ -33,17 +34,17 @@ func init() {
 }
 
 func showDeployment(cmd *cobra.Command, args []string) error {
-	env, err := requireEnvironment(cmd)
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := requireApplication(cmd, env)
+	applicationName, err := rad.RequireApplication(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	depName, err := requireDeployment(cmd, args)
+	depName, err := rad.RequireDeployment(cmd, args)
 	if err != nil {
 		return err
 	}

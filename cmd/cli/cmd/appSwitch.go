@@ -81,7 +81,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain Azure credentials: %w", err)
+		return fmt.Errorf("failed to obtain Azure credentials: %w", err)
 	}
 	con := armcore.NewDefaultConnection(azcred, nil)
 	ac := radclient.NewApplicationClient(con, azureEnv.SubscriptionID)
@@ -98,7 +98,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		logger.LogInfo("Switching default application to %v", applicationName)
 	}
 
-	env.Items[azureEnv.Name]["defaultapplication"] = applicationName
+	env.Items[azureEnv.Name][azureEnv.DefaultApplication] = applicationName
 
 	rad.UpdateEnvironmentSection(v, env)
 	err = saveConfig()

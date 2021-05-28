@@ -38,7 +38,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	envName, err := requireEnvironmentNameArgs(cmd, args)
+	envName, err := rad.RequireEnvironmentNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	// Retrieve associated resource group and subscription id
-	az, err := validateNamedEnvironment(envName)
+	az, err := rad.ValidateNamedEnvironment(envName)
 	if err != nil {
 		return err
 	}

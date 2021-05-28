@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -39,17 +40,17 @@ rad component logs --application icecream-store orders --follow
 # read logs from the 'daprd' sidecare container of the 'orders' component of the 'icecream-store' application
 rad component logs --application icecream-store orders --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		env, err := requireEnvironment(cmd)
+		env, err := rad.RequireEnvironment(cmd)
 		if err != nil {
 			return err
 		}
 
-		application, err := requireApplication(cmd, env)
+		application, err := rad.RequireApplication(cmd, env)
 		if err != nil {
 			return err
 		}
 
-		component, err := requireComponent(cmd, args)
+		component, err := rad.RequireComponent(cmd, args)
 		if err != nil {
 			return err
 		}

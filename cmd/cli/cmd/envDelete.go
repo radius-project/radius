@@ -39,7 +39,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate environment exists, retrieve associated resource group and subscription id
-	env, err := requireEnvironmentArgs(cmd, args)
+	env, err := rad.RequireEnvironmentArgs(cmd, args)
 	if err != nil {
 		return err
 	}

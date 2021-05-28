@@ -21,7 +21,3 @@ func init() {
 	componentCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
 	componentCmd.PersistentFlags().StringP("component", "c", "", "The component name")
 }
-
-func requireComponent(cmd *cobra.Command, args []string) (string, error) {
-	return require(cmd, args, "component")
-}

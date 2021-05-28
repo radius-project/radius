@@ -39,12 +39,12 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	env, err := requireEnvironment(cmd)
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := requireApplicationArgs(cmd, args, env)
+	applicationName, err := rad.RequireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func updateApplicationConfig(cmd *cobra.Command,
 
 		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, azureEnv.Name)
 
-		env.Items[azureEnv.Name]["defaultapplication"] = ""
+		env.Items[azureEnv.Name][azureEnv.DefaultApplication] = ""
 
 		rad.UpdateEnvironmentSection(v, env)
 
