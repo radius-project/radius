@@ -28,9 +28,17 @@ The Radius KeyVault component offers to the user:
 - Injection of connection information into connected containers
 - Automatic secret management for configured components
 
-### Create KeyVault component
+## Configuraiton
 
-A KeyVault can be modeled with the `azure.com/KeyVault@v1alpha1` kind:
+| Key  | Required | Description | Example | Default |
+|------|:--------:|-------------|---------|---------|
+| name | y | The name of your component. Used to provide status and visualize the component. | `myvault` | -
+| kind | y |The component kind and version. | `azure.com/KeyVault@v1alpha1` | -
+| properties.config.managed | n | Tells Radius to manage the deployment and lifecycle of the underlying resource. | 'true' | `false`
+
+### Example
+
+The following examples shows a KeyVault that is deployed and managed by Radius.
 
 ```sh
 resource kv 'Components' = {
@@ -44,9 +52,13 @@ resource kv 'Components' = {
 }
 ```
 
-### Access KeyVault from container
+## Services
 
-KeyVaults can be referenced from Radius container components through the KeyVault URL which is injected as an environment variable.
+KeyVault services are offered when other compute resources depend on them, and are therefore specified in the compute component's [`dependsOn` configuration]({{< ref "components-model.md#dependson" >}}).
+
+### Access KeyVault from a container
+
+Radius can place the KeyVault URI into a compute component's environment using the [`setEnv` component functionality]({{< ref "components-model.md#dependson" >}}).
 
 In this example the URI used to access KeyVault is injected into the environment variable `KV_URI` within the container:
 
@@ -55,6 +67,32 @@ resource kvaccessor 'Components' = {
   name: 'kvaccessor'
   kind: 'radius.dev/Container@v1alpha1'
   properties: {
+    run: {...}
+    dependsOn: [
+      {
+        name: 'kv'
+        kind: 'azure.com/KeyVault'
+        setEnv: {
+          KV_URI: 'keyvaulturi'
+        }
+      }
+    ]
+  }
+}
+```
+
+### Place secrets in a KeyVault
+
+Radius can place secrets within a KeyVault automatically using the [`setSecret` component functionality]({{< ref "components-model.md#dependson" >}}).
+
+For example, you can place connection strings for a database in a KeyVault that will be used by your container:
+
+```sh
+resource kvaccessor 'Components' = {
+  name: 'kvaccessor'
+  kind: 'radius.dev/Container@v1alpha1'
+  properties: {
+    run: {...}
     dependsOn: [
       {
         name: 'kv'
@@ -63,8 +101,24 @@ resource kvaccessor 'Components' = {
           KV_URI: 'kvuri'
         }
       }
+      {
+        name: 'db'
+        kind: 'mongodb.com/Mongo'
+        setSecret: {
+          store: kv.name
+          keys: {
+            DBCONNECTION: 'connectionString'
+          }
+        }
+      }
     ]
   }
+}
+
+resource db 'Components' = {
+  name: 'db'
+  kind: 'azure.com/CosmosDBMongo@v1alpha1'
+  properties: {...}
 }
 ```
 
@@ -80,7 +134,7 @@ To begin this tutorial you should have already completed the following steps:
 
 If you are using Visual Studio Code with the Project Radius extension you should see syntax highlighting. If you have the offical Bicep extension installed, you should disable it for this tutorial. The instructions will refer to VS Code features like syntax highlighting and the problems windows - however, you can complete this tutorial with just a basic text editor.
 
-### Understanding the application
+### Understand the application
 
 The Radius application you will be deploying is a simple python application that accesses Azure KeyVault for listing secrets. It has two components:
 

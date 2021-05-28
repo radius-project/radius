@@ -8,48 +8,52 @@ weight: 1
 
 Project Radius is a developer-centric cloud-native application platform.
 
-<iframe width="640" height="360" src="https://msit.microsoftstream.com/embed/video/d2dd0840-98dc-94b1-0221-f1eb96448a8e?autoplay=false&showinfo=true" allowfullscreen style="border:none;"></iframe>
+## Radius features
+
+{{< cardpane >}}
+
+{{< card title="**Model application behavior**" >}}
+  Describe your apps by what they consume and provide, instead of what they run on.
+  
+  The Radius application model allows you to describe the services, dependencies, and traits your app provides. Developers no longer need to describe the infrastructure and connections that make up the underlying platform.
+
+  [**Learn more about the Radius app model**]({{< ref overview-concept >}})
+{{< /card >}}
+
+{{< card title="**Automate best practices**" >}}
+  Easily initialize environments and deploy Radius applications.
+  
+  Radius codifies and automates the best practives for your hosting platform. We take care of things like connection strings, managed identities, role-based access control, and more.
+
+  [**See what Radius components can do**]({{< ref components >}})
+{{< /card >}}
+
+{{< /cardpane >}}
+{{< cardpane >}}
+
+{{< card title="**Easy application deployment & management**">}}
+  Descriptive framework for cloud-native applications.
+  
+  Radius environments and the rad CLI make it easy to test applications locally and deploy to production from developer macgines to CI/CD pipelines. Stop managing multiple test and deployment systems for your different pipelines.
+
+  [**Visit the rad CLI reference**]({{< ref cli >}})
+{{< /card >}}
+
+{{< card title="**Built-in Dapr support**" >}}
+  Easily incorporate Dapr building blocks into your applications
+  
+  Radius allows you to easily add Dapr sidecars and components into your applications and deploy them across cloud and edge. Dapr makes your apps completely portable across cloud + edge.
+  
+  [**Learn more about Dapr support**]({{< ref dapr-components >}})
+{{< /card >}}
+
+{{< /cardpane >}}
 
 ## Getting started
 
 You can begin with Radius by downloading and installing the Radius CLI
 
 {{< button text="Install Radius 🚀" page="install-cli.md" color="success" >}}
-
-## Radius features
-
-{{< cardpane >}}
-
-{{< card header="**Model application behavior**" title="Describe your apps by what they consume and provide, instead of what they run on" >}}
-  The Radius application model allows you to describe the services, dependencies, and traits your app provides.
-
-  Developers no longer need to describe the infrastructure and connections that make up the underlying platform.
-{{< /card >}}
-
-{{< card header="**Automate best practices**" title="Easily initialize environments and deploy Radius applications" >}}
-  Radius codifies and automates the best practives for your hosting platform.
-
-  We take care of things like connection strings, managed identities, role-based access control, and more.
-{{< /card >}}
-
-{{< /cardpane >}}
-{{< cardpane >}}
-
-{{< card header="**Easy application deployment & management**" title="Descriptive framework for cloud-native applications" >}}
-  Radius environments and the rad CLI make it easy to test applications locally and deploy to production from developer macgines to CI/CD pipelines.
-
-  Stop managing multiple test and deployment systems for your different pipelines.
-{{< /card >}}
-
-{{< card header="**Built-in Dapr support**" title="Easily incorporate Dapr building blocks into your applications" >}}
-  Radius allows you to easily add Dapr sidecars and components into your applications and deploy them across cloud and edge.
-
-  Radius + Dapr makes your apps completely portable across cloud + edge.
-  
-  [**Learn more about Dapr support**]({{< ref dapr-components >}})
-{{< /card >}}
-
-{{< /cardpane >}}
 
 ## Radius pieces
 

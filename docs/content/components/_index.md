@@ -3,7 +3,7 @@ type: docs
 title: "Project Radius components"
 linkTitle: "Components"
 description: "Available components in Project Radius with examples"
-weight: 30
+weight: 40
 ---
 
 Radius offers components, which are pluggable resources for Radius to deploy and orchestrate.

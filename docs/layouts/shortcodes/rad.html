@@ -2,5 +2,8 @@
 {{ $filePath := (path.Join $.Page.File.Dir $file ) }}
 {{ $fileContents := $filePath | readFile }}
 {{ $lang := "bicep" }}
+{{ $embed := .Get "embed" | default false }}
 <a href={{ print $file }} download>Download template file</a><br /><br />
+{{ if $embed }}
 {{ (print "```" $lang "\n" $fileContents "\n```") | markdownify }}
+{{ end }}
