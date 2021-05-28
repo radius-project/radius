@@ -7,14 +7,12 @@ package keyvaultv1alpha1
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/handlers"
-	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -66,7 +64,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
-			return nil, errors.New("the 'resource' field cannot be specified when 'managed=true'")
+			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a cosmosdb instance
@@ -81,17 +79,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
-			return nil, errors.New("the 'resource' field is required when 'managed' is not specified")
+			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}
 
-		vaultID, err := resources.Parse(component.Config.Resource)
+		vaultID, err := workloads.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, "KeyVault")
 		if err != nil {
-			return nil, errors.New("the 'resource' field must be a valid resource id.")
-		}
-
-		err = vaultID.ValidateResourceType(KeyVaultResourceType)
-		if err != nil {
-			return nil, fmt.Errorf("the 'resource' field must refer to a KeyVault")
+			return nil, err
 		}
 
 		// generate data we can use to connect to a servicebus queue

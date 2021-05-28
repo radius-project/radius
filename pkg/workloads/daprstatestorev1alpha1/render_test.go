@@ -130,5 +130,5 @@ func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 
 	_, err := renderer.Render(context.Background(), workload)
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field is required when 'managed' is not specified", err.Error())
+	require.Equal(t, workloads.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }

@@ -40,12 +40,12 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	if properties[ManagedKey] != "true" && properties[StorageAccountIDKey] == "" {
-		return nil, fmt.Errorf("missing required property '%s' for an unmanaged resource", StorageAccountIDKey)
+	err := ValidateResourceIDsForUnmanagedResource(properties, StorageAccountIDKey)
+	if err != nil {
+		return nil, err
 	}
 
 	var account *storage.Account
-	var err error
 	if properties[StorageAccountIDKey] == "" {
 		generated, err := handler.GenerateStorageAccountName(ctx, properties[StorageAccountBaseNameKey])
 		if err != nil {

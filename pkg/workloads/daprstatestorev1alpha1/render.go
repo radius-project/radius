@@ -12,7 +12,6 @@ import (
 
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/handlers"
-	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -53,7 +52,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
-			return nil, errors.New("the 'resource' field cannot be specified when 'managed=true'")
+			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a Storage Account
@@ -72,17 +71,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
-			return nil, errors.New("the 'resource' field is required when 'managed' is not specified")
+			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}
 
-		topicID, err := radresources.Parse(component.Config.Resource)
+		accountID, err := workloads.ValidateResourceID(component.Config.Resource, StorageAccountResourceType, "Storage Account")
 		if err != nil {
-			return nil, errors.New("the 'resource' field must be a valid resource id.")
-		}
-
-		err = topicID.ValidateResourceType(StorageAccountResourceType)
-		if err != nil {
-			return nil, fmt.Errorf("the 'resource' field must refer to a Storage Account")
+			return nil, err
 		}
 
 		// generate data we can use to connect to a Storage Account
@@ -95,8 +89,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
 
-				handlers.StorageAccountIDKey:   topicID.ID,
-				handlers.StorageAccountNameKey: topicID.Types[0].Name,
+				handlers.StorageAccountIDKey:   accountID.ID,
+				handlers.StorageAccountNameKey: accountID.Types[0].Name,
 			},
 		}
 		return []workloads.WorkloadResource{resource}, nil

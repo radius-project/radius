@@ -33,12 +33,12 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	if properties[ManagedKey] != "true" && (properties[CosmosDBAccountIDKey] == "" || properties[CosmosDBDatabaseIDKey] == "") {
-		return nil, fmt.Errorf("missing required properties '%s' and '%s' for an unmanaged resource", CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
+	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
+	if err != nil {
+		return nil, err
 	}
 
 	var account *documentdb.DatabaseAccountGetResults
-	var err error
 	if properties[CosmosDBAccountIDKey] == "" {
 		// If we don't have an ID already then we will need to create a new one.
 		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.MongoDB)

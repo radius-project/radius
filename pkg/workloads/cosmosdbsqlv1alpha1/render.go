@@ -7,7 +7,6 @@ package cosmosdbsqlv1alpha1
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 
@@ -86,7 +85,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
-			return nil, errors.New("the 'resource' field cannot be specified when 'managed=true'")
+			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a cosmosdb instance
@@ -103,17 +102,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
-			return nil, errors.New("the 'resource' field is required when 'managed' is not specified")
+			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}
 
-		databaseID, err := resources.Parse(component.Config.Resource)
+		databaseID, err := workloads.ValidateResourceID(component.Config.Resource, SQLResourceType, "CosmosDB SQL Database")
 		if err != nil {
-			return nil, errors.New("the 'resource' field must be a valid resource id.")
-		}
-
-		err = databaseID.ValidateResourceType(SQLResourceType)
-		if err != nil {
-			return nil, fmt.Errorf("the 'resource' field must refer to a CosmosDB SQL Database")
+			return nil, err
 		}
 
 		// generate data we can use to connect to a servicebus queue

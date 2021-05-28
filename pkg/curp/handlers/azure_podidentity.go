@@ -60,6 +60,8 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 	podIdentityName := properties[PodIdentityNameKey]
 	podidentityCluster := properties[PodIdentityClusterKey]
 
+	// Conceptually this resource is always 'managed'
+
 	mcc := containerservice.NewManagedClustersClient(handler.arm.SubscriptionID)
 	mcc.Authorizer = handler.arm.Auth
 

@@ -37,8 +37,9 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	if properties[ManagedKey] != "true" && properties[KeyVaultIDKey] == "" {
-		return nil, fmt.Errorf("missing required property '%s' for an unmanaged resource", KeyVaultIDKey)
+	err := ValidateResourceIDsForUnmanagedResource(properties, KeyVaultIDKey)
+	if err != nil {
+		return nil, err
 	}
 
 	if properties[KeyVaultIDKey] == "" {
