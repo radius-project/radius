@@ -17,7 +17,7 @@ Project Radius is a developer-centric cloud-native application platform.
   
   The Radius application model allows you to describe the services, dependencies, and traits your app provides. Developers no longer need to describe the infrastructure and connections that make up the underlying platform.
 
-  [**Learn more about the Radius app model**]({{< ref overview-concept >}})
+  [**Learn more about the Radius app model**]({{< ref app-model >}})
 {{< /card >}}
 
 {{< card title="**Automate best practices**" >}}
@@ -64,7 +64,7 @@ You can begin with Radius by downloading and installing the Radius CLI
   
   Radius uses the Bicep language as its file format and structure.
   
-  [**Start modeling your applications**]({{< ref overview-concept.md >}})
+  [**Learn about Radius concepts**]({{< ref overview-concept.md >}})
 {{< /card >}}
 
 {{< card header="**⌨ rad CLI**" title="Easily initialize and deploy Radius applications" >}}
@@ -93,6 +93,5 @@ You can begin with Radius by downloading and installing the Radius CLI
   
   [**Check out the Radius components**]({{< ref overview-concept.md >}})
 {{< /card >}}
-
 
 {{< /cardpane >}}

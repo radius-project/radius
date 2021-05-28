@@ -33,7 +33,60 @@ The `http` service provides an HTTP endpoint service which opens a specified por
 | name | Y | The name used to describe the component. Used when providing status and visualizing your application & component. | `webserver`
 | containerPort | Y | The HTTP port to open on the container for other components to access. | `443`
 
+```sh
+resource frontend 'Components' = {
+  name: 'frontend'
+  kind: 'radius.dev/Container@v1alpha1'
+  properties: {
+    run: {...}
+    provides: [
+      {
+        name: 'frontend'
+        kind: 'http'
+        containerPort: 80
+      }
+    ]
+  }
+}
+```
+
 ## Traits
+
+### Inbound route
+
+The `radius.dev/InboundRoute` trait adds an ingress controller to the container component to accept HTTP traffic from the internet.
+
+| Key | Required | Description | Example |
+|-----|:--------:|-------------|---------|
+| kind | y | Defines the trait type. | `'radius.dev/InboundRoute@v1alpha1'`
+| properties.service | y | The service to create an ingress controller on and expose to the internet. | `'frontend'`
+
+{{< rad file="ingress.bicep" >}}
+
+```sh
+resource frontend 'Components' = {
+  name: 'frontend'
+  kind: 'radius.dev/Container@v1alpha1'
+  properties: {
+    run: {...}
+    provides: [
+      {
+        name: 'frontend'
+        kind: 'http'
+        containerPort: 80
+      }
+    ]
+    traits: [
+      {
+        kind: 'radius.dev/InboundRoute@v1alpha1'
+        properties: {
+          service: 'frontend'
+        }
+      }
+    ]
+  }
+}
+```
 
 ### Dapr sidecar
 
@@ -43,6 +96,25 @@ The `dapr.io/App` trait adds a [Dapr](https://dapr.io) sidecar to the container,
 |-----|:--------:|-------------|---------|
 | appId | y | The unique name for  | `http`
 | appPort | y | The name used to describe the component. Used when providing status and visualizing your application & component. | `webserver`
+
+```sh
+resource frontend 'Components' = {
+  name: 'frontend'
+  kind: 'radius.dev/Container@v1alpha1'
+  properties: {
+    run: {...}
+    traits: [
+      {
+        kind: 'dapr.io/App@v1alpha1'
+        properties: {
+          appId: 'frontend'
+          appPort: 3000
+        }
+      }
+    ]
+  }
+}
+```
 
 ## Example
 
