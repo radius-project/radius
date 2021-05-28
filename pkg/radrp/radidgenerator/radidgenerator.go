@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radidgenerator
+package localidgenerator
 
 import (
 	"bytes"

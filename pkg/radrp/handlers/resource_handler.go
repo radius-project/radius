@@ -9,14 +9,13 @@ import (
 	"context"
 
 	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
 type PutOptions struct {
 	Application string
 	Component   string
-	Resource    workloads.WorkloadResource
+	Resource    workloads.OutputResource
 	Existing    *db.DeploymentResource
 }
 
@@ -27,6 +26,6 @@ type DeleteOptions struct {
 }
 
 type ResourceHandler interface {
-	Put(ctx context.Context, options PutOptions) (map[string]string, []rest.RadResource, error)
+	Put(ctx context.Context, options PutOptions) (map[string]string, error)
 	Delete(ctx context.Context, options DeleteOptions) error
 }

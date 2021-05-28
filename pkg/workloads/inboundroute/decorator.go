@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/radrp/components"
-	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -30,19 +29,19 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for the radius.dev/InboundRoute' decorator.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	// Let the inner renderer do its work
-	resources, radResources, err := r.Inner.Render(ctx, w)
+	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, err
+		return []workloads.OutputResource{}, err
 	}
 
 	trait := Trait{}
 	found, err := w.Workload.FindTrait(Kind, &trait)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, err
+		return []workloads.OutputResource{}, err
 	} else if !found {
-		return resources, radResources, err
+		return resources, err
 	}
 
 	if trait.Binding == "" {
@@ -57,7 +56,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	httpBinding := containerv1alpha1.HTTPBinding{}
 	err = provides.AsRequired(containerv1alpha1.KindHTTP, &httpBinding)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, err
+		return []workloads.OutputResource{}, err
 	}
 
 	ingress := &networkingv1.Ingress{
@@ -116,5 +115,5 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	resources = append(resources, workloads.NewKubernetesResource("Ingress", ingress))
-	return resources, radResources, nil
+	return resources, nil
 }

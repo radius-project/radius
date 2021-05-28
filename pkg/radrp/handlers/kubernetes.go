@@ -27,7 +27,7 @@ type kubernetesHandler struct {
 func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	item, err := convertToUnstructured(options.Resource)
 	if err != nil {
-		return nil, radResources, err
+		return nil, err
 	}
 
 	err = handler.PatchNamespace(ctx, item.GetNamespace())
@@ -43,12 +43,25 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 		ComponentNameKey:        item.GetName(),
 	}
 
+	if options.Resource.Created {
+		// This resource is fully initialized in the Render process
+		// This will eventually change
+		// For now, no need to process any further
+		return p, nil
+	}
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
 	if err != nil {
-		return nil, radResources, err
+		return nil, err
 	}
 
-	return p, radResources, err
+	options.Resource.OutputResourceInfo = workloads.K8sInfo{
+		Name:       item.GetName(),
+		Namespace:  item.GetNamespace(),
+		Kind:       item.GetKind(),
+		APIVersion: item.GetAPIVersion(),
+	}
+
+	return p, err
 }
 
 func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {
@@ -91,7 +104,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 	return client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 }
 
-func convertToUnstructured(resource workloads.WorkloadResource) (unstructured.Unstructured, error) {
+func convertToUnstructured(resource workloads.OutputResource) (unstructured.Unstructured, error) {
 	if resource.Type != workloads.ResourceKindKubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}

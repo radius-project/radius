@@ -53,11 +53,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for dapr pubsub workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	component := DaprPubSubComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.WorkloadResource{}, []rest.RadResource{}, err
+		return []workloads.OutputResource{}, err
 	}
 
 	// The Dapr pubsub name can default to the component name.
@@ -67,7 +67,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if component.Config.Managed {
 		if component.Config.Topic == "" {
-			return []workloads.WorkloadResource{}, []rest.RadResource{}, errors.New("the 'topic' field is required when 'managed=true'")
+			return []workloads.OutputResource{}, errors.New("the 'topic' field is required when 'managed=true'")
 		}
 
 		if component.Config.Resource != "" {
@@ -75,7 +75,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to manage a servicebus topic
-		resource := workloads.WorkloadResource{
+		resource := workloads.OutputResource{
 			Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
@@ -87,10 +87,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 
-		return []workloads.WorkloadResource{resource}, []rest.RadResource{}, nil
+		return []workloads.OutputResource{resource}, nil
 	} else {
 		if component.Config.Topic != "" {
-			return nil, []rest.RadResource{}, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
+			return nil, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
 		}
 
 		if component.Config.Resource == "" {

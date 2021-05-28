@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/radrp/components"
-	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -24,8 +23,8 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 	return nil, errors.New("should not be called in this test")
 }
 
-func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
-	return []workloads.WorkloadResource{}, []rest.RadResource{}, nil
+func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+	return []workloads.OutputResource{}, nil
 }
 
 // No hostname or any other settings, should be using a default backend
@@ -47,13 +46,12 @@ func Test_Render_Simple(t *testing.T) {
 	}
 	w := makeContainerComponent(trait, bindings)
 
-	resources, radResources, err := renderer.Render(context.Background(), w)
+	resources, err := renderer.Render(context.Background(), w)
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
 	ingress := findIngress(resources)
 	require.NotNil(t, ingress)
-	require.NotNil(t, radResources)
 
 	labels := map[string]string{
 		workloads.LabelRadiusApplication: "test-app",
@@ -161,7 +159,7 @@ func makeContainerComponent(trait components.GenericTrait, bindings map[string]c
 	}
 }
 
-func findIngress(resources []workloads.WorkloadResource) *networkingv1.Ingress {
+func findIngress(resources []workloads.OutputResource) *networkingv1.Ingress {
 	for _, r := range resources {
 		if !r.IsKubernetesResource() {
 			continue

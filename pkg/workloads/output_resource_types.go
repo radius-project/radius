@@ -7,7 +7,7 @@ package workloads
 
 // RadResource types
 const (
-	RadResourceTypeKubernetes  = "kubernetes"
-	RadResourceTypePodIdentity = "aadpodidentity"
-	RadResourceTypeArm         = "arm"
+	OutputResourceTypeKubernetes  = "kubernetes"
+	OutputResourceTypePodIdentity = "aadpodidentity"
+	OutputResourceTypeArm         = "arm"
 )

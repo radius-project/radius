@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/radrp/components"
-	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -64,20 +63,20 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for the dapr deployment decorator.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	// Let the inner renderer do its work
-	resources, radResources, err := r.Inner.Render(ctx, w)
+	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, err
+		return []workloads.OutputResource{}, err
 	}
 
 	trait := Trait{}
 	found, err := w.Workload.FindTrait(Kind, &trait)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, err
+		return []workloads.OutputResource{}, err
 	} else if !found {
 		// no trait
-		return resources, radResources, err
+		return resources, err
 	}
 
 	// dapr detected! update the deployment
@@ -89,7 +88,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		o, ok := res.Resource.(runtime.Object)
 		if !ok {
-			return []workloads.WorkloadResource{}, radResources, errors.New("Found kubernetes resource with non-Kubernetes paylod")
+			return []workloads.OutputResource{}, errors.New("Found kubernetes resource with non-Kubernetes paylod")
 		}
 
 		annotations, ok := r.getAnnotations(o)
@@ -117,7 +116,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		r.setAnnotations(o, annotations)
 	}
 
-	return resources, radResources, err
+	return resources, err
 }
 
 func (r Renderer) getAnnotations(o runtime.Object) (map[string]string, bool) {

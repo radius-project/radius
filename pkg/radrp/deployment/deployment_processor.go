@@ -183,7 +183,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				BindingValues: bindingValues,
 			}
 
-			resources, radResourcesRendered, err := dp.renderWorkload(ctx, inst)
+			outputResources, err := dp.renderWorkload(ctx, inst)
 			if err != nil {
 				errs = append(errs, err)
 				continue
@@ -197,7 +197,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 			}
 
-			for _, resource := range resources {
+			for _, resource := range outputResources {
 				var existingResource *db.DeploymentResource
 				if existingStatus != nil {
 					for _, existing := range existingStatus.Resources {
@@ -225,49 +225,14 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					continue
 				}
 
-				// A Put operation can create multiple resources.
-				// Add them to the set of output resources created by Radius
-				for _, r := range radResources {
-					dbr := db.RadResource{
-						RadID:        r.RadID,
-						Type:         r.Type,
-						ResourceInfo: r.ResourceInfo,
-					}
-					dw.RadResources = append(dw.RadResources, dbr)
+				// Save the output resource to DB
+				dr := db.OutputResource{
+					Managed:            resource.Managed,
+					LocalID:            resource.LocalID,
+					Type:               resource.Type,
+					OutputResourceInfo: resource.OutputResourceInfo,
 				}
-			}
-
-			for _, r := range radResourcesRendered {
-				// Add the resource created by render to the set of output resources created by Radius
-				// var resourceInfo interface{}
-				// drType := r.GetRadResourceType()
-				// if drType == "" {
-				// 	return fmt.Errorf("Unable to determine resource type for resource: %v", resource.Type)
-				// }
-				// if drType == workloads.RadResourceTypeArm {
-				// 	//TODO
-				// } else if drType == workloads.RadResourceTypeKubernetes {
-				// 	u := &unstructured.Unstructured{}
-				// 	dp.k8s.Get(ctx, client.ObjectKey{
-				// 		Namespace: "namespace",
-				// 		Name:      "name",
-				// 	}, u)
-
-				// 	resourceInfo = db.K8sInfo{
-				// 		Kind:       u.GetKind(),
-				// 		APIVersion: u.GetAPIVersion(),
-				// 		Name:       u.GetName(),
-				// 		Namespace:  u.GetNamespace(),
-				// 	}
-				// } else if drType == workloads.RadResourceTypePodIdentity {
-				// 	//TODO
-				// }
-				dr := db.RadResource{
-					RadID:        r.RadID,
-					Type:         r.Type,
-					ResourceInfo: r.ResourceInfo,
-				}
-				dw.RadResources = append(dw.RadResources, dr)
+				dw.OutputResources = append(dw.OutputResources, dr)
 			}
 
 			wrps := []workloads.WorkloadResourceProperties{}
@@ -421,10 +386,10 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
 	if err != nil {
-		return []workloads.OutputResource{}, radResources, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
+		return []workloads.OutputResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
 
-	return resources, radResources, nil
+	return resources, nil
 }
 
 func (dp *deploymentProcessor) processBindings(ctx context.Context, w workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties, bindingValues map[components.BindingKey]components.BindingState) error {

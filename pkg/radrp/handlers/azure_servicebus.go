@@ -15,9 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
-	"github.com/Azure/radius/pkg/radrp/radidgenerator"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
 const (
@@ -43,14 +41,13 @@ type azureServiceBusQueueHandler struct {
 	azureServiceBusBaseHandler
 }
 
-func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options PutOptions) (map[string]string, []rest.RadResource, error) {
-	var radResources []rest.RadResource
+func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// queue name must be specified by the user
 	queueName, ok := properties[ServiceBusQueueNameKey]
 	if !ok {
-		return nil, radResources, fmt.Errorf("missing required property '%s'", ServiceBusQueueNameKey)
+		return nil, fmt.Errorf("missing required property '%s'", ServiceBusQueueNameKey)
 	}
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
@@ -64,13 +61,13 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options Put
 		// If we don't have an ID already then we will need to create a new one.
 		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.Application)
 		if err != nil {
-			return nil, radResources, err
+			return nil, err
 		}
 
 		if namespace == nil {
 			namespace, err = handler.CreateNamespace(ctx, options.Application)
 			if err != nil {
-				return nil, radResources, err
+				return nil, err
 			}
 		}
 
@@ -80,48 +77,26 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options Put
 		// This is mostly called for the side-effect of verifying that the servicebus namespace exists.
 		namespace, err = handler.GetNamespaceByID(ctx, properties[ServiceBusNamespaceIDKey])
 		if err != nil {
-			return nil, radResources, err
+			return nil, err
 		}
 	}
-
-	radResources = append(radResources, rest.RadResource{
-		Type:    workloads.RadResourceTypeArm,
-		RadID:   radidgenerator.MakeID("servicebusnamespace"),
-		Managed: properties[ManagedKey],
-		ResourceInfo: rest.ArmInfo{
-			ResourceID:   *namespace.ID,
-			ResourceType: *namespace.Type,
-			APIVersion:   handler.GetAPIVersion(),
-		},
-	})
 
 	var queue *servicebus.SBQueue
 	if properties[ServiceBusQueueIDKey] == "" {
 		queue, err = handler.CreateQueue(ctx, *namespace.Name, queueName)
 		if err != nil {
-			return nil, radResources, err
+			return nil, err
 		}
 		properties[ServiceBusQueueIDKey] = *queue.ID
 	} else {
 		// This is mostly called for the side-effect of verifying that the servicebus queue exists.
 		queue, err = handler.GetQueueByID(ctx, properties[ServiceBusQueueIDKey])
 		if err != nil {
-			return nil, radResources, err
+			return nil, err
 		}
 	}
 
-	radResources = append(radResources, rest.RadResource{
-		Type:    workloads.RadResourceTypeArm,
-		RadID:   radidgenerator.MakeID("servicebusqueue"),
-		Managed: properties[ManagedKey],
-		ResourceInfo: rest.ArmInfo{
-			ResourceID:   *queue.ID,
-			ResourceType: *queue.Type,
-			APIVersion:   handler.GetAPIVersion(),
-		},
-	})
-
-	return properties, radResources, nil
+	return properties, nil
 }
 
 func (handler *azureServiceBusQueueHandler) Delete(ctx context.Context, options DeleteOptions) error {

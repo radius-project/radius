@@ -35,7 +35,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
 	if err != nil {
-		return nil, radResources, err
+		return nil, err
 	}
 
 	var account *documentdb.DatabaseAccountGetResults
@@ -139,17 +139,17 @@ func (handler *azureCosmosDBMongoHandler) CreateDatabase(ctx context.Context, ac
 		},
 	})
 	if err != nil {
-		return nil, radResources, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
+		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
 	}
 
 	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
 	if err != nil {
-		return nil, radResources, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
+		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
 	}
 
 	db, err := dbfuture.Result(mrc)
 	if err != nil {
-		return nil, radResources, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
+		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)
 	}
 
 	return &db, nil

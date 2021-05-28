@@ -29,7 +29,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
-	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/roleassignment"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -155,7 +154,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	return &msi, nil
 }
 
-func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, error) {
+func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, []workloads.OutputResource, error) {
 	var podIdentity AADPodIdentity
 
 	for _, dependency := range cw.Uses {
@@ -163,53 +162,59 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 		if err != nil {
 			return AADPodIdentity{}, err
 		}
+	}
 
+	var outputResources []workloads.OutputResource
+	for _, dep := range cw.DependsOn {
 		// If the container depends on a KeyVault, create a pod identity.
 		// The list of dependency kinds to check might grow in the future
 		if binding.Kind == "azure.com/KeyVault" {
 			// Create a user assigned managed identity and assign it the right permissions to access the KeyVault
 			msi, err := r.createManagedIdentityForKeyVault(ctx, binding, w, cw)
 			if err != nil {
-				return AADPodIdentity{}, err
+				return AADPodIdentity{}, outputResources, err
 			}
+			res := workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "managedID")
+			outputResources = append(outputResources, res)
 
 			// Create pod identity
 			podIdentity, err := r.createPodIdentity(ctx, *msi, cw.Name, w.Application)
 			if err != nil {
-				return AADPodIdentity{}, fmt.Errorf("failed to create pod identity: %w", err)
+				return AADPodIdentity{}, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
 			}
+			res = workloads.CreatePodIdentityResource(true, podIdentity.ClusterName, podIdentity.Name, podIdentity.Namespace, "podid", "true")
+			outputResources = append(outputResources, res)
 
 			log.Printf("Created pod identity %v to bind %v", podIdentity.Name, *msi.ID)
-			return podIdentity, nil
+			return podIdentity, outputResources, nil
 		}
 	}
 
-	return podIdentity, nil
+	return podIdentity, outputResources, nil
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
-	var radResources []rest.RadResource
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	cw, err := r.convert(w)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, err
+		return []workloads.OutputResource{}, err
 	}
 
 	deployment, err := r.makeDeployment(ctx, w, cw)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, err
+		return []workloads.OutputResource{}, err
 	}
 
 	service, err := r.makeService(ctx, w, cw)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, err
+		return []workloads.OutputResource{}, err
 	}
 
-	resources := []workloads.WorkloadResource{}
+	resources := []workloads.OutputResource{}
 
-	podIdentity, err := r.createPodIdentityResource(ctx, w, cw)
+	podIdentity, outputResources, err := r.createPodIdentityResource(ctx, w, cw)
 	if err != nil {
-		return []workloads.WorkloadResource{}, radResources, fmt.Errorf("unable to add pod identity: %w", err)
+		return outputResources, fmt.Errorf("unable to add pod identity: %w", err)
 	}
 	if podIdentity.Name != "" {
 		// Add the aadpodidbinding label to the k8s spec for the container
@@ -225,12 +230,17 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		})
 	}
 
-	resources = append(resources, workloads.NewKubernetesResource("Deployment", deployment))
+	// Append the output resources created for podid creation to the final set
+	resources = append(resources, outputResources...)
+
+	res := workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Deployment", "true", deployment)
+	resources = append(resources, res)
 	if service != nil {
-		resources = append(resources, workloads.NewKubernetesResource("Service", service))
+		res = workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Service", "true", service)
+		resources = append(resources, res)
 	}
 
-	return resources, radResources, nil
+	return resources, nil
 }
 
 func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent, error) {

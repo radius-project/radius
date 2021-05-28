@@ -60,10 +60,11 @@ type ApplicationPatch struct {
 
 // Component represents an Radius Component.
 type Component struct {
-	ResourceBase `bson:",inline"`
-	Kind         string              `bson:"kind"`
-	Revision     revision.Revision   `bson:"revision"`
-	Properties   ComponentProperties `bson:"properties,omitempty"`
+	ResourceBase    `bson:",inline"`
+	Kind            string              `bson:"kind"`
+	Revision        revision.Revision   `bson:"revision,omitempty"`
+	Properties      ComponentProperties `bson:"properties,omitempty"`
+	OutputResources []OutputResource    `bson:"outputresources,omitempty"`
 }
 
 // ComponentProperties represents the properties of an Radius Component.
@@ -101,61 +102,13 @@ type ComponentTrait struct {
 	AdditionalProperties map[string]interface{} `bson:",inline"`
 }
 
-// Scope represents an Radius Scope.
-type Scope struct {
-	ResourceBase `bson:",inline"`
-	Properties   map[string]interface{} `bson:"properties,omitempty"`
-}
-
-// Deployment represents an Radius Deployment.
-type Deployment struct {
-	ResourceBase `bson:",inline"`
-	Status       DeploymentStatus     `bson:"status"`
-	Error        string               `bson:"error"`
-	Properties   DeploymentProperties `bson:"properties"`
-}
-
-// DeploymentStatus represents the status of the deployment.
-type DeploymentStatus struct {
-	Workloads []DeploymentWorkload `bson:"workloads,omitempty"`
-}
-
-// DeploymentWorkload represents the status of a deployed workload.
-type DeploymentWorkload struct {
-	ComponentName string               `bson:"componentName"`
-	Kind          string               `bson:"kind"`
-	Resources     []DeploymentResource `bson:"resources,omitempty"`
-	RadResources  []RadResource        `bson:"radresources,omitempty"`
-}
-
-// DeploymentService represents the status of a deployed service.
-type DeploymentService struct {
-	Name       string                 `bson:"name"`
-	Kind       string                 `bson:"kind"`
-	Provider   string                 `bson:"provider"`
-	Properties map[string]interface{} `bson:"properties"`
-}
-
-// DeploymentResource Types
-const (
-	ArmType        = "Arm"
-	KubernetesType = "Kubernetes"
-	PodIdentity    = "PodIdentity"
-)
-
-// DeploymentResource represents a deployed resource by Radius.
-type DeploymentResource struct {
-	LocalID    string            `bson:"id"`
-	Type       string            `bson:"type"`
-	Properties map[string]string `bson:"properties"`
-}
-
-// RadResource represents an output resource comprising a Radius component.
-type RadResource struct {
-	RadID        string      `bson:"id"`
-	Type         string      `bson:"type"`
-	ResourceInfo interface{} `bson:"resourceinfo"`
-	Managed      string      `bson:"managed"`
+// OutputResource represents an output resource comprising a Radius component.
+type OutputResource struct {
+	Parent             string      `bson:"parent"`
+	LocalID            string      `bson:"id"`
+	Type               string      `bson:"type"`
+	OutputResourceInfo interface{} `bson:"outputresourceinfo"`
+	Managed            string      `bson:"managed"`
 }
 
 // ArmInfo contains the details of the ARM resource
@@ -183,6 +136,55 @@ type AADPodIdentity struct {
 	Namespace      string
 }
 
+// Scope represents an Radius Scope.
+type Scope struct {
+	ResourceBase `bson:",inline"`
+	Properties   map[string]interface{} `bson:"properties,omitempty"`
+}
+
+// Deployment represents an Radius Deployment.
+type Deployment struct {
+	ResourceBase `bson:",inline"`
+	Status       DeploymentStatus     `bson:"status"`
+	Error        string               `bson:"error"`
+	Properties   DeploymentProperties `bson:"properties"`
+}
+
+// DeploymentStatus represents the status of the deployment.
+type DeploymentStatus struct {
+	Workloads []DeploymentWorkload `bson:"workloads,omitempty"`
+}
+
+// DeploymentWorkload represents the status of a deployed workload.
+type DeploymentWorkload struct {
+	ComponentName   string               `bson:"componentName"`
+	Kind            string               `bson:"kind"`
+	Resources       []DeploymentResource `bson:"resources,omitempty"`
+	OutputResources []OutputResource     `bson:"outputresources,omitempty"`
+}
+
+// DeploymentService represents the status of a deployed service.
+type DeploymentService struct {
+	Name       string                 `bson:"name"`
+	Kind       string                 `bson:"kind"`
+	Provider   string                 `bson:"provider"`
+	Properties map[string]interface{} `bson:"properties"`
+}
+
+// DeploymentResource Types
+const (
+	ArmType        = "Arm"
+	KubernetesType = "Kubernetes"
+	PodIdentity    = "PodIdentity"
+)
+
+// DeploymentResource represents a deployed resource by Radius.
+type DeploymentResource struct {
+	LocalID    string            `bson:"id"`
+	Type       string            `bson:"type"`
+	Properties map[string]string `bson:"properties"`
+}
+
 // DeploymentProperties respresents the properties of a deployment.
 type DeploymentProperties struct {
 	ProvisioningState string                 `bson:"provisioningState"`
@@ -194,7 +196,6 @@ type DeploymentComponent struct {
 	ComponentName string            `bson:"componentName,omitempty" validate:"required"`
 	ID            string            `bson:"id,omitempty"`
 	Revision      revision.Revision `bson:"revision"`
-	RadResources  []RadResource     `bson:"radresources"`
 }
 
 // See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations

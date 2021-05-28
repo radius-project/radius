@@ -106,11 +106,11 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 	sc.Authorizer = handler.arm.Auth
 	s, err := sc.Get(ctx, handler.arm.SubscriptionID)
 	if err != nil {
-		return nil, radResources, fmt.Errorf("unable to find subscription: %w", err)
+		return nil, fmt.Errorf("unable to find subscription: %w", err)
 	}
 	tenantID, err := uuid.FromString(*s.TenantID)
 	if err != nil {
-		return nil, radResources, fmt.Errorf("failed to convert tenantID to UUID: %w", err)
+		return nil, fmt.Errorf("failed to convert tenantID to UUID: %w", err)
 	}
 
 	location, err := getResourceGroupLocation(ctx, handler.arm)
@@ -139,17 +139,17 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 	)
 
 	if err != nil {
-		return nil, radResources, fmt.Errorf("failed to PUT keyvault: %w", err)
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
 	}
 
 	err = vaultsFuture.WaitForCompletionRef(ctx, kvc.Client)
 	if err != nil {
-		return nil, radResources, fmt.Errorf("failed to PUT keyvault: %w", err)
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
 	}
 
 	kv, err := vaultsFuture.Result(kvc)
 	if err != nil {
-		return nil, radResources, fmt.Errorf("failed to PUT keyvault: %w", err)
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
 	}
 
 	return &kv, nil
