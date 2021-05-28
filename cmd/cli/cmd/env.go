@@ -51,6 +51,13 @@ func requireEnvironment(cmd *cobra.Command) (*environments.AzureCloudEnvironment
 	return env, err
 }
 
+func requireEnvironmentArgs(cmd *cobra.Command, args []string) (*environments.AzureCloudEnvironment, error) {
+	environmentName, err := requireEnvironmentNameArgs(cmd, args)
+
+	env, err := validateNamedEnvironment(environmentName)
+	return env, err
+}
+
 func requireEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	environmentName, err := cmd.Flags().GetString("environment")
 	if err != nil {
@@ -58,12 +65,10 @@ func requireEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, erro
 	}
 
 	if len(args) > 0 {
-		if args[0] != "" {
-			if environmentName != "" {
-				return "", fmt.Errorf("cannot specify environment name via both arguments and `-e`")
-			}
-			environmentName = args[0]
+		if environmentName != "" {
+			return "", fmt.Errorf("cannot specify environment name via both arguments and `-e`")
 		}
+		environmentName = args[0]
 	}
 
 	return environmentName, err

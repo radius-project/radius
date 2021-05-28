@@ -65,7 +65,7 @@ rad env init azure -i
 # Create a Radius environment using flags
 ## If an environment of the same name, resource group, and subscription
 ## already exists Radius will connect to it instead of deploying a new one.
-rad env init azure --name myenv --subscription-id SUB-ID-GUID --resource-group RG-NAME --location westus2
+rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NAME --location westus2
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a, err := validate(cmd, args)

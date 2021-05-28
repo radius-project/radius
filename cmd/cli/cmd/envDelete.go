@@ -29,11 +29,6 @@ var envDeleteCmd = &cobra.Command{
 func init() {
 	envCmd.AddCommand(envDeleteCmd)
 
-	envDeleteCmd.Flags().StringP("name", "n", "", "The environment name")
-	if err := envDeleteCmd.MarkFlagRequired("name"); err != nil {
-		panic(err)
-	}
-
 	envDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
 }
 
@@ -44,7 +39,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate environment exists, retrieve associated resource group and subscription id
-	env, err := requireEnvironment(cmd)
+	env, err := requireEnvironmentArgs(cmd, args)
 	if err != nil {
 		return err
 	}
