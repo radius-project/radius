@@ -80,7 +80,7 @@ func deleteDeployment(cmd *cobra.Command, args []string) error {
 		return utils.UnwrapErrorFromRawResponse(err)
 	}
 
-	fmt.Printf("deployment '%s' deleted.\n", depName)
+	fmt.Printf("Deployment '%s' deleted.\n", depName)
 
 	return err
 }
