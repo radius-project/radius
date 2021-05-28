@@ -53,6 +53,9 @@ func requireEnvironment(cmd *cobra.Command) (*environments.AzureCloudEnvironment
 
 func requireEnvironmentArgs(cmd *cobra.Command, args []string) (*environments.AzureCloudEnvironment, error) {
 	environmentName, err := requireEnvironmentNameArgs(cmd, args)
+	if err != nil {
+		return nil, err
+	}
 
 	env, err := validateNamedEnvironment(environmentName)
 	return env, err
