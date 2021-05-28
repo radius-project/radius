@@ -6,8 +6,11 @@
 package radrp
 
 import (
+	"fmt"
+
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/workloads"
 )
 
 func newDBResourceBaseFromREST(original rest.ResourceBase) db.ResourceBase {
@@ -235,6 +238,7 @@ func newDBOutputResourcesFromREST(original []workloads.OutputResource) []db.Outp
 func newRESTOutputResourcesFromDB(original []db.OutputResource) []workloads.OutputResource {
 	var rrs []workloads.OutputResource
 	for _, r := range original {
+		fmt.Println("@@@@@ Output Resource in DB: %v\n", r)
 		rr := workloads.OutputResource{
 			LocalID:            r.LocalID,
 			Type:               r.Type,

@@ -102,6 +102,7 @@ func CreateKubernetesResource(created bool, resourceKind, kind, apiVersion, name
 		LocalID:            localidgenerator.MakeID(localIDPrefix),
 		Managed:            managed,
 		OutputResourceInfo: k8sInfo,
+		Resource:           obj,
 	}
 
 	return r

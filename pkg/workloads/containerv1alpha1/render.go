@@ -232,12 +232,16 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// Append the output resources created for podid creation to the final set
 	resources = append(resources, outputResources...)
+	fmt.Printf("@@@@ Added outputresources from podid creation: %v\n", len(resources))
 
 	res := workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Deployment", "true", deployment)
 	resources = append(resources, res)
+	fmt.Printf("@@@@ Added outputresources: %v\n", len(resources))
+
 	if service != nil {
 		res = workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Service", "true", service)
 		resources = append(resources, res)
+		fmt.Printf("@@@@ Added outputresources: %v\n", len(resources))
 	}
 
 	return resources, nil
