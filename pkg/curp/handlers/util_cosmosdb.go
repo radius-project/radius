@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/gofrs/uuid"
 )
 
@@ -86,7 +87,7 @@ func DeleteCosmosDBAccount(ctx context.Context, armConfig armauth.ArmConfig, acc
 	}
 
 	err = accountFuture.WaitForCompletionRef(ctx, cosmosDBClient.Client)
-	if err != nil {
+	if err != nil && !util.IsAutorest404Error(err) {
 		return fmt.Errorf("failed to delete cosmosdb account: %w", err)
 	}
 

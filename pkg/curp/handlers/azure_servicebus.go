@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
+	"github.com/Azure/radius/pkg/rad/util"
 )
 
 const (
@@ -306,7 +307,7 @@ func (handler *azureServiceBusBaseHandler) DeleteNamespace(ctx context.Context, 
 	}
 
 	err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
-	if err != nil {
+	if err != nil && !util.IsAutorest404Error(err) {
 		return fmt.Errorf("failed to delete servicebus namespace: %w", err)
 	}
 

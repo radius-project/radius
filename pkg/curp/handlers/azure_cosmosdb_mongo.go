@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/resources"
+	"github.com/Azure/radius/pkg/rad/util"
 )
 
 func NewAzureCosmosDBMongoHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -89,16 +90,16 @@ func (cddh *azureCosmosDBMongoHandler) Delete(ctx context.Context, options Delet
 	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, cddh.arm.ResourceGroup, accountname, dbname)
 	if err != nil && dbfuture.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
-	} else if dbfuture.Response().StatusCode != 404 {
-		err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
-		if err != nil {
-			return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
-		}
+	}
 
-		response, err := dbfuture.Result(mrc)
-		if err != nil && response.StatusCode != 404 { // See comment on DeleteMongoDBDatabase
-			return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
-		}
+	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
+	if err != nil && !util.IsAutorest404Error(err) {
+		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+	}
+
+	response, err := dbfuture.Result(mrc)
+	if err != nil && response.StatusCode != 404 { // See comment on DeleteMongoDBDatabase
+		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
 	}
 
 	// Delete CosmosDB account
