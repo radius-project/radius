@@ -16,44 +16,35 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
 
-// deploymentGetCmd command to get details of a deployment
-var deploymentGetCmd = &cobra.Command{
-	Use:   "get",
-	Short: "Get Radius deployment details",
-	Long:  "Get details of the specified Radius deployment deployed in the default environment",
-	RunE:  getDeployment,
+// deploymentShowCmd command to show details of a deployment
+var deploymentShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Show Radius deployment details",
+	Long:  "Show details of the specified Radius deployment deployed in the default environment",
+	RunE:  showDeployment,
 }
 
 func init() {
-	deploymentCmd.AddCommand(deploymentGetCmd)
-
-	deploymentGetCmd.Flags().StringP("name", "n", "", "Deployment name")
-	if err := deploymentGetCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
-	}
-
-	deploymentGetCmd.Flags().StringP("application-name", "a", "", "Application name for the deployment")
-	if err := deploymentGetCmd.MarkFlagRequired("application-name"); err != nil {
-		fmt.Printf("Failed to mark the application-name flag required: %v", err)
-	}
+	deploymentCmd.AddCommand(deploymentShowCmd)
 }
 
-func getDeployment(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("application-name")
+func showDeployment(cmd *cobra.Command, args []string) error {
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	depName, err := cmd.Flags().GetString("name")
+	applicationName, err := rad.RequireApplication(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	depName, err := rad.RequireDeployment(cmd, args)
 	if err != nil {
 		return err
 	}

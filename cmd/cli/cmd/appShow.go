@@ -12,34 +12,30 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
 
-// appGetCmd command to get properties of an application
-var appGetCmd = &cobra.Command{
-	Use:   "get",
-	Short: "Get RAD application details",
-	Long:  "Get RAD application details",
-	RunE:  getApplication,
+// appShowCmd command to show properties of an application
+var appShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Show RAD application details",
+	Long:  "Show RAD application details",
+	RunE:  showApplication,
 }
 
 func init() {
-	applicationCmd.AddCommand(appGetCmd)
-
-	appGetCmd.Flags().StringP("name", "n", "", "The application name")
-	if err := appGetCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
-	}
+	applicationCmd.AddCommand(appShowCmd)
 }
 
-func getApplication(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("name")
+func showApplication(cmd *cobra.Command, args []string) error {
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	applicationName, err := rad.RequireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
 	}

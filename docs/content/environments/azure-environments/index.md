@@ -89,7 +89,7 @@ If you wish to attach to an existing environment instead of deploying a new one,
 1. Use the rad CLI to delete the environment:
 
    ```bash
-   rad env delete --name azure --yes
+   rad env delete -e azure --yes
    ```
 
 ## Related links

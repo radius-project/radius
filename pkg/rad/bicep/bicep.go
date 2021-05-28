@@ -39,8 +39,8 @@ func IsBicepInstalled() (bool, error) {
 	return true, nil
 }
 
-// CleanBicep cleans our local copy of bicep
-func CleanBicep() error {
+// DeleteBicep cleans our local copy of bicep
+func DeleteBicep() error {
 	filepath, err := GetLocalBicepFilepath()
 	if err != nil {
 		return err

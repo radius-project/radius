@@ -97,7 +97,7 @@ Now you are ready to deploy the application for the first time.
 1. To test your `dapr-hello` application, open a local tunnel to your application:
 
    ```sh
-   rad expose dapr-hello nodeapp --port 3000
+   rad component expose nodeapp --application dapr-hello --port 3000
    ```
 
    {{% alert title="💡 rad expose" color="primary" %}}

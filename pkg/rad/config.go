@@ -21,12 +21,19 @@ import (
 )
 
 // EnvironmentKey is the key used for the environment section
-const EnvironmentKey string = "environment"
+const (
+	EnvironmentKey string = "environment"
+	ApplicationKey string = "application"
+)
 
 // EnvironmentSection is the representation of the environment section of radius config.
 type EnvironmentSection struct {
 	Default string                            `mapstructure:"default" yaml:"default"`
 	Items   map[string]map[string]interface{} `mapstructure:"items" yaml:"items"`
+}
+
+type ApplicationSection struct {
+	Default string `mapstructure:"default" yaml:"default"`
 }
 
 // ReadEnvironmentSection reads the EnvironmentSection from radius config.

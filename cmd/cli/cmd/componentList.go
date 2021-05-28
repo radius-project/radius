@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 )
@@ -26,20 +27,15 @@ var componentListCmd = &cobra.Command{
 
 func init() {
 	componentCmd.AddCommand(componentListCmd)
-
-	componentListCmd.Flags().StringP("name", "n", "", "Application name")
-	if err := componentListCmd.MarkFlagRequired("name"); err != nil {
-		fmt.Printf("Failed to mark the name flag required: %v", err)
-	}
 }
 
 func listComponents(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("name")
+	env, err := rad.RequireEnvironment(cmd)
 	if err != nil {
 		return err
 	}
 
-	env, err := validateDefaultEnvironment()
+	applicationName, err := rad.RequireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
 	}

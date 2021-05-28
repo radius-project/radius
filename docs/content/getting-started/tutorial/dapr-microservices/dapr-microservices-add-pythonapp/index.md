@@ -146,7 +146,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. To test out the pythonapp microservice, open a local tunnel on port 3000 once more:
 
    ```sh
-   rad expose dapr-hello nodeapp --port 3000
+   rad component expose nodeapp --application dapr-hello --port 3000
    ```
 
 1. Visit [http://localhost:3000/order](http://localhost:3000/order) in your browser.

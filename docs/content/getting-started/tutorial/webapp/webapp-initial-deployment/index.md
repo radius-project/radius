@@ -99,7 +99,7 @@ Now you are ready to deploy the application for the first time.
 1. To test your `webapp` application, open a local tunnel to your application:
 
    ```sh
-   rad expose webapp todoapp --port 3000
+   rad component expose todoapp --application webapp --port 3000
    ```
 
    {{% alert title="💡 rad expose" color="primary" %}}

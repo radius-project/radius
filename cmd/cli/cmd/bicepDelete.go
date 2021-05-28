@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var bicepCleanCmd = &cobra.Command{
-	Use:   "clean",
-	Short: "Clean installed bicep compiler",
+var bicepDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "Delete installed bicep compiler",
 	Long:  `Removes the local copy of the bicep compiler`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger.LogInfo("removing local copy of bicep...")
@@ -27,11 +27,11 @@ var bicepCleanCmd = &cobra.Command{
 			return err
 		}
 
-		err = bicep.CleanBicep()
+		err = bicep.DeleteBicep()
 		return err
 	},
 }
 
 func init() {
-	bicepCmd.AddCommand(bicepCleanCmd)
+	bicepCmd.AddCommand(bicepDeleteCmd)
 }

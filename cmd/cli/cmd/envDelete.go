@@ -29,33 +29,23 @@ var envDeleteCmd = &cobra.Command{
 func init() {
 	envCmd.AddCommand(envDeleteCmd)
 
-	envDeleteCmd.Flags().StringP("name", "n", "", "The environment name")
-	if err := envDeleteCmd.MarkFlagRequired("name"); err != nil {
-		panic(err)
-	}
-
 	envDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
 }
 
 func deleteEnv(cmd *cobra.Command, args []string) error {
-	envName, err := cmd.Flags().GetString("name")
-	if err != nil {
-		return err
-	}
-
-	noPrompt, err := cmd.Flags().GetBool("yes")
+	yes, err := cmd.Flags().GetBool("yes")
 	if err != nil {
 		return err
 	}
 
 	// Validate environment exists, retrieve associated resource group and subscription id
-	az, err := validateNamedEnvironment(envName)
+	env, err := rad.RequireEnvironmentArgs(cmd, args)
 	if err != nil {
 		return err
 	}
 
-	if !noPrompt {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource group %s with all its resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup))
+	if !yes {
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource group %s with all its resources will be deleted. Continue deleting? [y/n]?", env.ResourceGroup))
 		if err != nil {
 			return err
 		}
@@ -72,12 +62,12 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = deleteResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
+	if err = deleteResourceGroup(cmd.Context(), authorizer, env.ResourceGroup, env.SubscriptionID); err != nil {
 		return err
 	}
 
 	// Delete env from the config, update default env if needed
-	if err = deleteEnvFromConfig(envName); err != nil {
+	if err = deleteEnvFromConfig(env.Name); err != nil {
 		return err
 	}
 

@@ -24,13 +24,10 @@ var envShowCmd = &cobra.Command{
 
 func init() {
 	envCmd.AddCommand(envShowCmd)
-
-	envShowCmd.Flags().StringP("env", "e", "", "The environment name")
 }
 
 func showEnvironment(cmd *cobra.Command, args []string) error {
-
-	envName, err := cmd.Flags().GetString("env")
+	envName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return err
 	}
