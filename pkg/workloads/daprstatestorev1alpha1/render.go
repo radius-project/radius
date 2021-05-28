@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -41,11 +42,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for dapr statestore workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
 	component := DaprStateStoreComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.WorkloadResource{}, []rest.RadResource{}, err
 	}
 
 	resourceKind := ""

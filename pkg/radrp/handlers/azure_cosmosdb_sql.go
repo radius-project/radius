@@ -11,6 +11,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/curp/resources"
+	radresources "github.com/Azure/radius/pkg/curp/resources"
+	"github.com/Azure/radius/pkg/curp/rest"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/resources"
@@ -29,13 +33,14 @@ type azureCosmosDBSQLDBHandler struct {
 	azureCosmosDBBaseHandler
 }
 
-func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOptions) (map[string]string, []rest.RadResource, error) {
+	var radResources []rest.RadResource
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
 	if err != nil {
-		return nil, err
+		return nil, radResources, err
 	}
 
 	var account *documentdb.DatabaseAccountGetResults
@@ -144,17 +149,17 @@ func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, ac
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
+		return nil, radResources, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
 	}
 
 	err = dbfuture.WaitForCompletionRef(ctx, sqlClient.Client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
+		return nil, radResources, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
 	}
 
 	db, err := dbfuture.Result(sqlClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
+		return nil, radResources, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
 	}
 
 	return &db, nil

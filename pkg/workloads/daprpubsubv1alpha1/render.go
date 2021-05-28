@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -52,11 +53,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for dapr pubsub workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
 	component := DaprPubSubComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.WorkloadResource{}, []rest.RadResource{}, err
 	}
 
 	// The Dapr pubsub name can default to the component name.
@@ -66,7 +67,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if component.Config.Managed {
 		if component.Config.Topic == "" {
-			return []workloads.WorkloadResource{}, errors.New("the 'topic' field is required when 'managed=true'")
+			return []workloads.WorkloadResource{}, []rest.RadResource{}, errors.New("the 'topic' field is required when 'managed=true'")
 		}
 
 		if component.Config.Resource != "" {
@@ -86,10 +87,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.WorkloadResource{resource}, []rest.RadResource{}, nil
 	} else {
 		if component.Config.Topic != "" {
-			return nil, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
+			return nil, []rest.RadResource{}, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
 		}
 
 		if component.Config.Resource == "" {
@@ -118,6 +119,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,
 			},
 		}
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.WorkloadResource{resource}, []rest.RadResource{}, nil
 	}
 }

@@ -8,6 +8,7 @@ package rest
 import (
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/radidgenerator"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/revision"
 )
@@ -114,6 +115,65 @@ type DeploymentComponent struct {
 	ComponentName string            `json:"componentName,omitempty"`
 	ID            string            `json:"id,omitempty"`
 	Revision      revision.Revision `json:"revision"`
+	RadResources  []RadResource     `json:"radresources"`
+}
+
+// RadResource represents an individual resource inside a Radius component
+type RadResource struct {
+	Parent       string
+	Type         string
+	RadID        string
+	Managed      string
+	ResourceInfo interface{}
+}
+
+// DeploymentResource Types
+const (
+	ArmType        = "Arm"
+	KubernetesType = "Kubernetes"
+	PodIdentity    = "PodIdentity"
+)
+
+// ArmInfo contains the details of the ARM resource
+// when the DeploymentResource is an ARM resource
+type ArmInfo struct {
+	ResourceID   string
+	ResourceType string
+	APIVersion   string
+}
+
+// GetArmResource returns an object of type DeploymentResource initialized with the data from the ARM resource
+func GetArmResource(id string, resourceType string, managed bool, radResourceType string) RadResource {
+	armInfo := ArmInfo{
+		ResourceID:   id,
+		ResourceType: resourceType,
+		APIVersion:   "???",
+	}
+	RadResource := RadResource{
+		Parent:       "???",
+		Type:         ArmType,
+		RadID:        radidgenerator.MakeID(radResourceType),
+		Managed:      "true",
+		ResourceInfo: armInfo,
+	}
+
+	return RadResource
+}
+
+// K8sInfo contains the details of the Kubernetes resource
+// when the DeploymentResource is a Kubernetes resource
+type K8sInfo struct {
+	TypeMeta  string
+	Name      string
+	Namespace string
+}
+
+// AADPodIdentity contains the details of the Pod Identity resource
+// when the DeploymentResource is a an AAD Pod identity
+type AADPodIdentity struct {
+	AKSClusterName string
+	Name           string
+	Namespace      string
 }
 
 // See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations

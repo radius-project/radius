@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -23,7 +24,7 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 	return nil, errors.New("should not be called in this test")
 }
 
-func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
 	return []workloads.WorkloadResource{}, nil
 }
 
@@ -46,12 +47,13 @@ func Test_Render_Simple(t *testing.T) {
 	}
 	w := makeContainerComponent(trait, bindings)
 
-	resources, err := renderer.Render(context.Background(), w)
+	resources, radResources, err := renderer.Render(context.Background(), w)
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
 	ingress := findIngress(resources)
 	require.NotNil(t, ingress)
+	require.NotNil(t, radResources)
 
 	labels := map[string]string{
 		workloads.LabelRadiusApplication: "test-app",

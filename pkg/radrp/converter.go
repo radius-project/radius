@@ -180,14 +180,28 @@ func newDBDeploymentFromREST(original *rest.Deployment) *db.Deployment {
 		cc := &db.DeploymentComponent{
 			ID:            c.ID,
 			ComponentName: c.ComponentName,
-
 			// We don't allow a REST deployment to specify the revision - it's readonly.
 		}
+		cc.RadResources = newDBRadResourcesFromREST(c.RadResources)
 
 		d.Properties.Components = append(d.Properties.Components, cc)
 	}
 
 	return d
+}
+
+func newDBRadResourcesFromREST(original []rest.RadResource) []db.RadResource {
+	var drs []db.RadResource
+	for _, r := range original {
+		dr := db.RadResource{
+			RadID:        r.RadID,
+			Type:         r.Type,
+			ResourceInfo: r.ResourceInfo,
+			Managed:      r.Managed,
+		}
+		drs = append(drs, dr)
+	}
+	return drs
 }
 
 func newRESTDeploymentFromDB(original *db.Deployment) *rest.Deployment {
@@ -208,9 +222,24 @@ func newRESTDeploymentFromDB(original *db.Deployment) *rest.Deployment {
 			ComponentName: c.ComponentName,
 			Revision:      c.Revision,
 		}
+		cc.RadResources = newRESTRadResourcesFromDB(c.RadResources)
 
 		d.Properties.Components = append(d.Properties.Components, cc)
 	}
 
 	return d
+}
+
+func newRESTRadResourcesFromDB(original []db.RadResource) []rest.RadResource {
+	var rrs []rest.RadResource
+	for _, r := range original {
+		rr := rest.RadResource{
+			RadID:        r.RadID,
+			Type:         r.Type,
+			ResourceInfo: r.ResourceInfo,
+			Managed:      r.Managed,
+		}
+		rrs = append(rrs, rr)
+	}
+	return rrs
 }

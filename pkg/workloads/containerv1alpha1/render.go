@@ -29,6 +29,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/roleassignment"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -187,27 +188,28 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, []rest.RadResource, error) {
+	var radResources []rest.RadResource
 	cw, err := r.convert(w)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.WorkloadResource{}, radResources, err
 	}
 
 	deployment, err := r.makeDeployment(ctx, w, cw)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.WorkloadResource{}, radResources, err
 	}
 
 	service, err := r.makeService(ctx, w, cw)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.WorkloadResource{}, radResources, err
 	}
 
 	resources := []workloads.WorkloadResource{}
 
 	podIdentity, err := r.createPodIdentityResource(ctx, w, cw)
 	if err != nil {
-		return []workloads.WorkloadResource{}, fmt.Errorf("unable to add pod identity: %w", err)
+		return []workloads.WorkloadResource{}, radResources, fmt.Errorf("unable to add pod identity: %w", err)
 	}
 	if podIdentity.Name != "" {
 		// Add the aadpodidbinding label to the k8s spec for the container
@@ -228,7 +230,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		resources = append(resources, workloads.NewKubernetesResource("Service", service))
 	}
 
-	return resources, nil
+	return resources, radResources, nil
 }
 
 func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent, error) {

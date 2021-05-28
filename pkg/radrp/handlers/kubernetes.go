@@ -27,7 +27,7 @@ type kubernetesHandler struct {
 func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	item, err := convertToUnstructured(options.Resource)
 	if err != nil {
-		return nil, err
+		return nil, radResources, err
 	}
 
 	err = handler.PatchNamespace(ctx, item.GetNamespace())
@@ -45,10 +45,10 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
 	if err != nil {
-		return nil, err
+		return nil, radResources, err
 	}
 
-	return p, err
+	return p, radResources, err
 }
 
 func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {

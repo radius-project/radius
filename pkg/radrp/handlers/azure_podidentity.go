@@ -51,7 +51,7 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options PutOpti
 	// TODO: right now this resource is created during the rendering process :(
 	// this should be done here instead when we have built a more mature system.
 
-	return properties, nil
+	return properties, radResources, nil
 }
 
 func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOptions) error {

@@ -125,13 +125,62 @@ type DeploymentWorkload struct {
 	ComponentName string               `bson:"componentName"`
 	Kind          string               `bson:"kind"`
 	Resources     []DeploymentResource `bson:"resources,omitempty"`
+	RadResources  []RadResource        `bson:"radresources,omitempty"`
 }
 
-// DeploymentResource represents a deployed kubernetes resource.
+// DeploymentService represents the status of a deployed service.
+type DeploymentService struct {
+	Name       string                 `bson:"name"`
+	Kind       string                 `bson:"kind"`
+	Provider   string                 `bson:"provider"`
+	Properties map[string]interface{} `bson:"properties"`
+}
+
+// DeploymentResource Types
+const (
+	ArmType        = "Arm"
+	KubernetesType = "Kubernetes"
+	PodIdentity    = "PodIdentity"
+)
+
+// DeploymentResource represents a deployed resource by Radius.
 type DeploymentResource struct {
 	LocalID    string            `bson:"id"`
 	Type       string            `bson:"type"`
 	Properties map[string]string `bson:"properties"`
+}
+
+// RadResource represents an output resource comprising a Radius component.
+type RadResource struct {
+	RadID        string      `bson:"id"`
+	Type         string      `bson:"type"`
+	ResourceInfo interface{} `bson:"resourceinfo"`
+	Managed      string      `bson:"managed"`
+}
+
+// ArmInfo contains the details of the ARM resource
+// when the DeploymentResource is an ARM resource
+type ArmInfo struct {
+	ArmID           string
+	ArmResourceType string
+	APIVersion      string
+}
+
+// K8sInfo contains the details of the Kubernetes resource
+// when the DeploymentResource is a Kubernetes resource
+type K8sInfo struct {
+	Kind       string
+	APIVersion string
+	Name       string
+	Namespace  string
+}
+
+// AADPodIdentity contains the details of the Pod Identity resource
+// when the DeploymentResource is a an AAD Pod identity
+type AADPodIdentity struct {
+	AKSClusterName string
+	Name           string
+	Namespace      string
 }
 
 // DeploymentProperties respresents the properties of a deployment.
@@ -145,6 +194,7 @@ type DeploymentComponent struct {
 	ComponentName string            `bson:"componentName,omitempty" validate:"required"`
 	ID            string            `bson:"id,omitempty"`
 	Revision      revision.Revision `bson:"revision"`
+	RadResources  []RadResource     `bson:"radresources"`
 }
 
 // See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations

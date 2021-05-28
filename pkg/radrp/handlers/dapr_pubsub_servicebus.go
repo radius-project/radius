@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -29,13 +30,14 @@ type daprPubSubServiceBusHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options PutOptions) (map[string]string, []rest.RadResource, error) {
+	var radResources []rest.RadResource
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// topic name must be specified by the user
 	topicName, ok := properties[ServiceBusTopicNameKey]
 	if !ok {
-		return nil, fmt.Errorf("missing required property '%s'", ServiceBusTopicIDKey)
+		return nil, radResources, fmt.Errorf("missing required property '%s'", ServiceBusTopicIDKey)
 	}
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
@@ -49,13 +51,13 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options Put
 		// If we don't have an ID already then we will need to create a new one.
 		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.Application)
 		if err != nil {
-			return nil, err
+			return nil, radResources, err
 		}
 
 		if namespace == nil {
 			namespace, err = handler.CreateNamespace(ctx, options.Application)
 			if err != nil {
-				return nil, err
+				return nil, radResources, err
 			}
 		}
 
@@ -65,35 +67,35 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options Put
 		// This is mostly called for the side-effect of verifying that the servicebus namespace exists.
 		namespace, err = handler.GetNamespaceByID(ctx, properties[ServiceBusNamespaceIDKey])
 		if err != nil {
-			return nil, err
+			return nil, radResources, err
 		}
 	}
 
 	if properties[ServiceBusTopicIDKey] == "" {
 		queue, err := handler.CreateTopic(ctx, *namespace.Name, topicName)
 		if err != nil {
-			return nil, err
+			return nil, radResources, err
 		}
 		properties[ServiceBusTopicIDKey] = *queue.ID
 	} else {
 		// This is mostly called for the side-effect of verifying that the servicebus queue exists.
 		_, err := handler.GetTopicByID(ctx, properties[ServiceBusTopicIDKey])
 		if err != nil {
-			return nil, err
+			return nil, radResources, err
 		}
 	}
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.Name)
 	if err != nil {
-		return nil, err
+		return nil, radResources, err
 	}
 
 	err = handler.PatchDaprPubSub(ctx, properties, *cs)
 	if err != nil {
-		return nil, err
+		return nil, radResources, err
 	}
 
-	return properties, nil
+	return properties, radResources, nil
 }
 
 func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, options DeleteOptions) error {
