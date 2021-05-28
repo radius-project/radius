@@ -123,7 +123,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. You can confirm that the new `db` component was deployed by running:
 
    ```sh
-   rad deployment list --application-name webapp
+   rad deployment list --application webapp
    ```
 
    You should see both `db` and `todoapp` components in your `webapp` application. Example output: 
@@ -154,7 +154,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. To test the database, open a local tunnel on port 3000 again:
 
    ```sh
-   rad expose webapp todoapp --port 3000
+   rad component expose todoapp --application webapp --port 3000
    ```
 
 1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. You should see a page like:

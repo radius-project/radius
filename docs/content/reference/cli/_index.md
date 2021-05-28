@@ -13,9 +13,11 @@ Usage:
   rad [command]
 
 Available Commands:
+  application Manage applications
+  component   Manage components
   deploy      Deploy a RAD application
+  deployments Manage deployments
   env         Manage environments
-  expose      Expose local port
   help        Help about any command
 
 Flags:

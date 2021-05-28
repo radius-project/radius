@@ -163,7 +163,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. You can confirm that the new `statestore` component was deployed by running:
 
    ```sh
-   rad deployment list --application-name dapr-hello
+   rad deployment list --application dapr-hello
    ```
 
    You should see both `nodeapp` and `statestore` components in your `dapr-hello` application. Example output: 
@@ -194,7 +194,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. To test out the state store, open a local tunnel on port 3000 again:
 
    ```sh
-   rad expose dapr-hello nodeapp --port 3000
+   rad component expose nodeapp --application dapr-hello --port 3000
    ```
 
 1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:
