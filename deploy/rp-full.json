@@ -159,7 +159,8 @@
         "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
         "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), subscription().subscriptionId)]",
         "registrypullroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
-        "registrypullroledefinitionname": "[concat(parameters('registryName'), '/Microsoft.Authorization/', variables('registrypullroledefinitionname'))]",
+        "registrypullroledefinitionname": "[guid(parameters('registryName'), subscription().subscriptionId)]",
+        "registrypullroledefinitionfullname": "[concat(parameters('registryName'), '/Microsoft.Authorization/', variables('registrypullroledefinitionname'))]",
         "contributorRole": "b24988ac-6180-42a0-ab88-20f7382dd24c",
         "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
         "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
@@ -295,7 +296,7 @@
             "condition": "[not(equals(parameters('registryId'), ''))]",
             "type": "Microsoft.ContainerRegistry/registries/providers/roleAssignments",
             "apiVersion": "2019-04-01-preview",
-            "name": "[variables('registrypullroledefinitionname')]",
+            "name": "[variables('registrypullroledefinitionfullname')]",
             "tags": "[parameters('resourceTags')]",
             "dependsOn": [
                 "[concat('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
