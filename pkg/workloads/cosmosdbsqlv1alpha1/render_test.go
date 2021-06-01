@@ -74,7 +74,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 			Kind: Kind,
 			Name: "test-component",
 			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccount/test-account/sqlDatabases/test-database",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/sqlDatabases/test-database",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},
@@ -91,9 +91,9 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "false",
-		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccount/test-account",
+		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
 		handlers.CosmosDBAccountNameKey:  "test-account",
-		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccount/test-account/sqlDatabases/test-database",
+		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/sqlDatabases/test-database",
 		handlers.CosmosDBDatabaseNameKey: "test-database",
 	}
 	require.Equal(t, expected, resource.Resource)
@@ -131,7 +131,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 			Kind: Kind,
 			Name: "test-component",
 			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccount/sqlDatabases/test-database",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/sqlDatabases/test-database",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},

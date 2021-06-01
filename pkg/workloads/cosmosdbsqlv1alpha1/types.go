@@ -14,7 +14,7 @@ const (
 var SQLResourceType = resources.KnownType{
 	Types: []resources.ResourceType{
 		{
-			Type: "Microsoft.DocumentDB/databaseAccount",
+			Type: "Microsoft.DocumentDB/databaseAccounts",
 			Name: "*",
 		},
 		{

@@ -66,7 +66,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	resources, err := renderer.Render(context.Background(), workload)
@@ -104,7 +104,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	_, err := renderer.Render(context.Background(), workload)
@@ -125,7 +125,7 @@ func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 				"kind": "any",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	_, err := renderer.Render(context.Background(), workload)

@@ -14,11 +14,11 @@ const (
 var MongoResourceType = resources.KnownType{
 	Types: []resources.ResourceType{
 		{
-			Type: "Microsoft.DocumentDB/databaseAccount",
+			Type: "Microsoft.DocumentDB/databaseAccounts",
 			Name: "*",
 		},
 		{
-			Type: "mongoDatabases",
+			Type: "mongodbDatabases",
 			Name: "*",
 		},
 	},

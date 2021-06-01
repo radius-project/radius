@@ -64,10 +64,10 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 		}
 
 		// store db so we can delete later
-		properties[CosmosDBAccountIDKey] = *account.ID
+		properties[CosmosDBDatabaseIDKey] = *account.ID
 	} else {
 		// This is mostly called for the side-effect of verifying that the database exists.
-		_, err := handler.GetDatabaseByID(ctx, properties[ServiceBusQueueIDKey])
+		_, err := handler.GetDatabaseByID(ctx, properties[CosmosDBDatabaseIDKey])
 		if err != nil {
 			return nil, err
 		}
