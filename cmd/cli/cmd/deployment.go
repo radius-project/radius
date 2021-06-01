@@ -17,4 +17,8 @@ var deploymentCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(deploymentCmd)
+	deploymentCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
+	deploymentCmd.PersistentFlags().StringP("application", "a", "", "The application name")
+	deploymentCmd.PersistentFlags().StringP("deployment", "d", "", "The deployment name")
+
 }
