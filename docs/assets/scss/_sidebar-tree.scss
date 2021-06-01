@@ -30,8 +30,8 @@
         }
 
         @include media-breakpoint-up(md) {
-            & > ul {
-                padding-left: .5rem;
+            & .ul-1 ul {
+                padding-left: .7em;
             }
         }
 
@@ -85,7 +85,23 @@
 
     & > .td-sidebar-nav__section {
         padding-top: .5rem;
-        padding-left: 0rem;
+        padding-left: 1.5rem;
+    }
+
+    li i { // Layout of icons
+        padding-right: 0.5em;
+        &:before{
+            display: inline-block;
+            text-align: center;
+            min-width: 1em;
+        }
+    }
+
+    .td-sidebar-link.tree-root{
+        font-weight: $font-weight-bold;
+        color: $primary;
+        border-bottom: 1px $primary solid;
+        margin-bottom: 1rem;
     }
 }
 
@@ -93,8 +109,7 @@
     @include media-breakpoint-up(md) {
         padding-top: 4rem;
         background-color: $td-sidebar-bg-color;
-        padding-right: .5rem;
-        padding-left: .5rem;
+        padding-right: 1rem;
         border-right: 1px solid $td-sidebar-border-color;
     }
 

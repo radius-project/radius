@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Project Radius"
-linkTitle: "Project Radius"
+linkTitle: "Home"
 description: "Developer-centric cloud-native application platform"
 weight: 1
 ---
