@@ -11,7 +11,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -153,21 +152,16 @@ func (handler *daprStateStoreAzureStorageHandler) GetStorageAccountByID(ctx cont
 }
 
 func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx context.Context, accountName string, options PutOptions) (*storage.Account, error) {
-	// TODO: for now we just use the resource-groups location. This would be a place where we'd plug
-	// in something to do with data locality.
-	rgc := resources.NewGroupsClient(handler.arm.SubscriptionID)
-	rgc.Authorizer = handler.arm.Auth
-
-	g, err := rgc.Get(ctx, handler.arm.ResourceGroup)
+	location, err := getResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get resource group: %w", err)
+		return nil, err
 	}
 
 	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
 	sc.Authorizer = handler.arm.Auth
 
 	future, err := sc.Create(ctx, handler.arm.ResourceGroup, accountName, storage.AccountCreateParameters{
-		Location: g.Location,
+		Location: location,
 		Kind:     storage.StorageV2,
 		Sku: &storage.Sku{
 			Name: storage.StandardLRS,

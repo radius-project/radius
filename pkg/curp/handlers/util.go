@@ -6,6 +6,14 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
+	"math/rand"
+	"strings"
+	"time"
+
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -31,4 +39,48 @@ func mergeProperties(resource workloads.WorkloadResource, existing *db.Deploymen
 	}
 
 	return properties
+}
+
+func getResourceGroupLocation(ctx context.Context, armConfig armauth.ArmConfig) (*string, error) {
+	rgc := resources.NewGroupsClient(armConfig.SubscriptionID)
+	rgc.Authorizer = armConfig.Auth
+
+	resourceGroup, err := rgc.Get(ctx, armConfig.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resource group location: %w", err)
+	}
+
+	return resourceGroup.Location, nil
+}
+
+type PasswordConditions struct {
+	Lower       int
+	Upper       int
+	Digits      int
+	SpecialChar int
+}
+
+func generatePassword(conditions *PasswordConditions) string {
+	pwd := generateString(conditions.Digits, "1234567890") +
+		generateString(conditions.Lower, "abcdefghijklmnopqrstuvwxyz") +
+		generateString(conditions.Upper, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") +
+		generateString(conditions.SpecialChar, "-")
+
+	pwdArray := strings.Split(pwd, "")
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(pwdArray), func(i, j int) {
+		pwdArray[i], pwdArray[j] = pwdArray[j], pwdArray[i]
+	})
+	pwd = strings.Join(pwdArray, "")
+
+	return pwd
+}
+
+func generateString(length int, allowedCharacters string) string {
+	str := ""
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for len(str) < length {
+		str += string(allowedCharacters[rnd.Intn(len(allowedCharacters))])
+	}
+	return str
 }

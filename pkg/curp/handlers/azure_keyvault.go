@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/subscriptions"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -100,14 +99,6 @@ func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id str
 }
 
 func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultName string, options PutOptions) (*keyvault.Vault, error) {
-	rgc := resources.NewGroupsClient(handler.arm.SubscriptionID)
-	rgc.Authorizer = handler.arm.Auth
-
-	g, err := rgc.Get(ctx, handler.arm.ResourceGroup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
-	}
-
 	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
 	kvc.Authorizer = handler.arm.Auth
 
@@ -122,12 +113,17 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 		return nil, fmt.Errorf("failed to convert tenantID to UUID: %w", err)
 	}
 
+	location, err := getResourceGroupLocation(ctx, handler.arm)
+	if err != nil {
+		return nil, err
+	}
+
 	vaultsFuture, err := kvc.CreateOrUpdate(
 		ctx,
 		handler.arm.ResourceGroup,
 		vaultName,
 		keyvault.VaultCreateOrUpdateParameters{
-			Location: g.Location,
+			Location: location,
 			Properties: &keyvault.VaultProperties{
 				TenantID: &tenantID,
 				Sku: &keyvault.Sku{
