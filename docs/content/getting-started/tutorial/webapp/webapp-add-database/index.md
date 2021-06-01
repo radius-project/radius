@@ -34,11 +34,11 @@ A `db` database component is used to specify a few properties about the database
 
 Radius captures both logical relationships and related operational details. Examples of this include: wiring up connection strings, granting permissions, or restarting components when a dependency changes.
 
-Once the database is defined as a component, you can connect to it by referencing the `db` component from within the `todoapp` component via a `dependsOn` section. 
+Once the database is defined as a component, you can connect to it by referencing the `db` component from within the `todoapp` component via a `uses` section. 
 
-The `dependsOn` section is used to configure relationships between a component and services provided by other components. The `db` is of kind `azure.com/CosmosDBMongo@v1alpha1`, which supports the MongoDB protocol. `db` is considered to provide a service of kind `mongodb.com/Mongo` implicitly. Configuring a dependency on a service is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
+The `uses` section is used to configure relationships between a component and bindings provided by other components. The `db` is of kind `azure.com/CosmosDBMongo@v1alpha1`, which supports the MongoDB protocol. `db` automatically provides a binding of kind `mongodb.com/Mongo`. Configuring a dependency on a binding is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
 
-Here's what the todoapp component will look like with the `dependsOn` section added within its properties:
+Here's what the todoapp component will look like with the `uses` section added within its properties:
 
 ```sh
   resource todoapplication 'Components' = {
@@ -46,21 +46,20 @@ Here's what the todoapp component will look like with the `dependsOn` section ad
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: { ... }
-      dependsOn: [
+      uses: [
         {
-          kind: 'mongodb.com/Mongo'
-          name: 'db'
-          setEnv: {
-            DBCONNECTION: 'connectionString'
+          binding: db.properties.bindings.mongo
+          env: {
+            DBCONNECTION: db.properties.bindings.mongo.connectionString
           }
         }
       ]
-      provides: [ ... ]
+      bindings: [ ... ]
     }
   }
 ```
 
-The `setEnv` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DBCONNECTION` environment variable to access to the database connection string.
+The `env` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DBCONNECTION` environment variable to access to the database connection string.
 
 ## Update your template.bicep file 
 
@@ -79,22 +78,20 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-todoapp'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          kind: 'mongodb.com/Mongo'
-          name: 'db'
-          setEnv: {
-            DBCONNECTION: 'connectionString'
+          binding: db.properties.bindings.mongo
+          env: {
+            DBCONNECTION: db.properties.bindings.mongo.connectionString
           }
         }
       ]
-      provides: [
-        {
+      bindings: {
+        web: {
           kind: 'http'
-          name: 'web'
-          containerPort: 3000
+          targetPort: 3000
         }
-      ]
+      }
     }
   }
 

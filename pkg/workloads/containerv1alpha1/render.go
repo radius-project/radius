@@ -7,7 +7,6 @@ package containerv1alpha1
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -26,11 +25,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/curp/components"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/roleassignment"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 )
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
@@ -39,56 +38,49 @@ type Renderer struct {
 }
 
 // Allocate is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	values := []map[string]interface{}{}
-	for _, generic := range w.Workload.Provides {
-		if generic.Name != service.Name {
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	// For containers we only *natively* expose HTTP as a binding type - other binding types
+	// might be handled by traits (decorators), so don't error out on those.
+	//
+	// The calling infrastructure will validate that any bindings specified by the user have a matching
+	// binding in the outputs.
+
+	bindings := map[string]components.BindingState{}
+
+	for name, binding := range workload.Workload.Bindings {
+		if binding.Kind != KindHTTP {
 			continue
 		}
 
-		// we've got a match
-		if service.Kind != KindHTTP || generic.Kind != KindHTTP {
-			// TODO this just does the most basic thing - in theory we could define lots of different
-			// types here. This is good enough for a prototype.
-			return nil, fmt.Errorf("port cannot fulfill service kind: %v", service.Kind)
-		}
-
-		if len(values) > 0 {
-			return nil, errors.New("more than one value source was found for this service")
-		}
-
-		http := HTTPProvidesService{}
-		err := generic.AsRequired(KindHTTP, &http)
+		http := HTTPBinding{}
+		err := binding.AsRequired(KindHTTP, &http)
 		if err != nil {
 			return nil, err
 		}
 
 		uri := url.URL{
-			Scheme: service.Kind,
-			Host:   fmt.Sprintf("%v.%v.svc.cluster.local", w.Name, w.Application),
+			Scheme: binding.Kind,
+			Host:   fmt.Sprintf("%v.%v.svc.cluster.local", workload.Name, workload.Application),
 		}
 
 		if http.GetEffectivePort() != 80 {
 			uri.Host = uri.Host + fmt.Sprintf(":%d", http.GetEffectivePort())
 		}
 
-		mapping := map[string]interface{}{}
-
-		mapping["uri"] = uri.String()
-		mapping["scheme"] = uri.Scheme
-		mapping["host"] = uri.Hostname()
-		mapping["port"] = fmt.Sprintf("%d", http.GetEffectivePort())
-
-		values = append(values, mapping)
-
-		// keep going even after first success so we can find errors
+		bindings[name] = components.BindingState{
+			Component: workload.Name,
+			Binding:   name,
+			Kind:      KindHTTP,
+			Properties: map[string]interface{}{
+				"uri":    uri.String(),
+				"scheme": uri.Scheme,
+				"host":   uri.Hostname(),
+				"port":   fmt.Sprintf("%d", http.GetEffectivePort()),
+			},
+		}
 	}
 
-	if len(values) == 1 {
-		return values[0], nil
-	}
-
-	return map[string]interface{}{}, nil
+	return bindings, nil
 }
 
 func (r Renderer) createManagedIdentity(ctx context.Context, identityName, location string) (msi.Identity, error) {
@@ -107,42 +99,16 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 	return id, nil
 }
 
-func (r Renderer) readKeyVaultURI(dep ContainerDependsOn, w workloads.InstantiatedWorkload) (string, error) {
-	if dep.SetEnv == nil {
-		return "", errors.New("unable to find keyvault uri. invalid spec")
+func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, error) {
+	// Read the keyvault URI so we can get the keyvault name for permissions
+	value, ok := store.Properties[KeyVaultURIIdentifier]
+	if !ok {
+		return nil, fmt.Errorf("failed to read keyvault uri")
 	}
 
-	for _, v := range dep.SetEnv {
-		if v != keyvaultv1alpha1.VaultURI {
-			continue
-		}
-
-		service, ok := w.ServiceValues[dep.Name]
-		if !ok {
-			return "", fmt.Errorf("cannot resolve service %v", dep.Name)
-		}
-
-		value, ok := service[v]
-		if !ok {
-			return "", fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
-		}
-
-		str, ok := value.(string)
-		if !ok {
-			return "", fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
-		}
-
-		return str, nil
-	}
-
-	return "", errors.New("unable to find keyvault uri. invalid spec")
-}
-
-func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep ContainerDependsOn, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, error) {
-	// Read KV_URI
-	kvURI, err := r.readKeyVaultURI(dep, w)
-	if err != nil || kvURI == "" {
-		return nil, fmt.Errorf("failed to read keyvault uri: %w", err)
+	kvURI, ok := value.(string)
+	if !ok || kvURI == "" {
+		return nil, fmt.Errorf("failed to read keyvault uri")
 	}
 
 	kvName := strings.Replace(strings.Split(kvURI, ".")[0], "https://", "", -1)
@@ -190,12 +156,17 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, dep Cont
 func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, error) {
 	var podIdentity AADPodIdentity
 
-	for _, dep := range cw.DependsOn {
+	for _, dependency := range cw.Uses {
+		binding, err := dependency.Binding.GetMatchingBinding(w.BindingValues)
+		if err != nil {
+			return AADPodIdentity{}, err
+		}
+
 		// If the container depends on a KeyVault, create a pod identity.
 		// The list of dependency kinds to check might grow in the future
-		if dep.Kind == "azure.com/KeyVault" {
+		if binding.Kind == "azure.com/KeyVault" {
 			// Create a user assigned managed identity and assign it the right permissions to access the KeyVault
-			msi, err := r.createManagedIdentityForKeyVault(ctx, dep, w, cw)
+			msi, err := r.createManagedIdentityForKeyVault(ctx, binding, w, cw)
 			if err != nil {
 				return AADPodIdentity{}, err
 			}
@@ -289,89 +260,69 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	keyvaults := make(map[string]string)
-	for _, dep := range cc.DependsOn {
+	for _, dep := range cc.Uses {
 		// Set environment variables in the container
-		for k, v := range dep.SetEnv {
-			service, ok := w.ServiceValues[dep.Name]
-			if !ok {
-				return nil, fmt.Errorf("cannot resolve service %v", dep.Name)
+		for k, v := range dep.Env {
+			str, err := v.EvaluateString(w.BindingValues)
+			if err != nil {
+				return nil, err
 			}
-
-			value, ok := service[v]
-			if !ok {
-				return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
-			}
-
-			str, ok := value.(string)
-			if !ok {
-				return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
-			}
-
 			container.Env = append(container.Env, corev1.EnvVar{
 				Name:  k,
 				Value: str,
 			})
-
-			if dep.Kind == "azure.com/KeyVault" && v == KeyVaultURIIdentifier {
-				// Cache the KV URIs and use it for setting secrets, if any
-				keyvaults[dep.Name] = str
-			}
 		}
 	}
 
-	// By now, all keyvault URIs have been cached
-	for _, dep := range cc.DependsOn {
-		secrets := make(map[string]string)
-		var kvURI string
-		for k, v := range dep.SetSecret {
-			service, ok := w.ServiceValues[dep.Name]
-			if !ok {
-				return nil, fmt.Errorf("cannot resolve service %v", dep.Name)
+	for _, dep := range cc.Uses {
+		if dep.Secrets == nil {
+			continue
+		}
+
+		store, err := dep.Secrets.Store.GetMatchingBinding(w.BindingValues)
+		if err != nil {
+			return nil, err
+		}
+		value, ok := store.Properties[KeyVaultURIIdentifier]
+		if !ok {
+			return nil, fmt.Errorf("cannot find a keyvault URI for secret store binding %s from component %s", store.Binding, store.Component)
+		}
+
+		uri, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("value %s for binding for binding %s from component %s is not a string", KeyVaultURIIdentifier, store.Binding, store.Component)
+		}
+
+		secrets := map[string]string{}
+		for k, v := range dep.Secrets.Keys {
+			value, err := v.EvaluateString(w.BindingValues)
+			if err != nil {
+				return nil, err
 			}
 
-			if k == SecretStoreIdentifier {
-				// Read the keyvault name and then look up the keyvault dependency to get the URI
-				kvURI = keyvaults[v.(string)]
-			} else if k == SecretKeysIdentifier {
-				// Read the secrets
-				setSecrets := v.(map[string]interface{})
-				for secretName, secretValue := range setSecrets {
-					var str string
-					value, ok := service[secretValue.(string)]
-					if !ok {
-						return nil, fmt.Errorf("cannot resolve value %v for service %v", v, dep.Name)
-					}
-
-					str, ok = value.(string)
-					if !ok {
-						return nil, fmt.Errorf("value %v for service %v is not a string", v, dep.Name)
-					}
-					secrets[secretName] = str
-				}
-			}
+			secrets[k] = value
 		}
 
 		// Create secrets in the specified keyvault
 		for secretName, secretValue := range secrets {
-			err := r.createSecret(ctx, kvURI, secretName, secretValue)
+			err := r.createSecret(ctx, uri, secretName, secretValue)
 			if err != nil {
-				return nil, fmt.Errorf("Could not create secret: %v: %w", secretName, err)
+				return nil, fmt.Errorf("could not create secret: %v: %w", secretName, err)
 			}
 		}
 	}
 
-	for _, generic := range w.Workload.Provides {
+	for name, generic := range w.Workload.Bindings {
 		if generic.Kind == KindHTTP {
-			httpProvides := HTTPProvidesService{}
-			err := generic.AsRequired(KindHTTP, &httpProvides)
+			httpBinding := HTTPBinding{}
+			err := generic.AsRequired(KindHTTP, &httpBinding)
 			if err != nil {
 				return nil, err
 			}
 
 			port := corev1.ContainerPort{
-				Name:          httpProvides.Name,
-				ContainerPort: int32(httpProvides.GetEffectiveContainerPort()),
+				Name:          name,
+				ContainerPort: int32(httpBinding.GetEffectiveContainerPort()),
 			}
 
 			port.Protocol = "TCP"
@@ -574,17 +525,17 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		Properties: deploymentProperties,
 	})
 	if err != nil {
-		return fmt.Errorf("Unable to create secret: %w", err)
+		return fmt.Errorf("unable to create secret: %w", err)
 	}
 
 	err = op.WaitForCompletionRef(context.Background(), dc.Client)
 	if err != nil {
-		return fmt.Errorf("Error: %w", err)
+		return fmt.Errorf("could not create secret: %w", err)
 	}
 
 	_, err = op.Result(dc)
 	if err != nil {
-		return fmt.Errorf("Error: %w", err)
+		return fmt.Errorf("could not create secret: %w", err)
 	}
 	log.Printf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName)
 
@@ -619,18 +570,18 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 		},
 	}
 
-	for _, generic := range w.Workload.Provides {
+	for name, generic := range w.Workload.Bindings {
 		if generic.Kind == KindHTTP {
-			httpProvides := HTTPProvidesService{}
-			err := generic.AsRequired(KindHTTP, &httpProvides)
+			httpBinding := HTTPBinding{}
+			err := generic.AsRequired(KindHTTP, &httpBinding)
 			if err != nil {
 				return nil, err
 			}
 
 			port := corev1.ServicePort{
-				Name:       httpProvides.Name,
-				Port:       int32(httpProvides.GetEffectivePort()),
-				TargetPort: intstr.FromInt(httpProvides.GetEffectiveContainerPort()),
+				Name:       name,
+				Port:       int32(httpBinding.GetEffectivePort()),
+				TargetPort: intstr.FromInt(httpBinding.GetEffectiveContainerPort()),
 				Protocol:   corev1.ProtocolTCP,
 			}
 

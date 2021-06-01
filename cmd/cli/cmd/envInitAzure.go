@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/2017-03-09/resources/mgmt/features"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerregistry/mgmt/containerregistry"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/customproviders/mgmt/customproviders"
@@ -84,7 +85,7 @@ rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NA
 			a.Name = a.ResourceGroup
 		}
 
-		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate)
+		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry)
 		if err != nil {
 			return err
 		}
@@ -100,6 +101,7 @@ func init() {
 	envInitAzureCmd.Flags().StringP("resource-group", "g", "", "The resource group to use for the environment")
 	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
 	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
+	envInitAzureCmd.Flags().String("container-registry", "", "Specify the name of an existing Azure Container Registry to grant the environment access to pull containers from the registry")
 
 	// development support
 	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
@@ -112,6 +114,7 @@ type arguments struct {
 	ResourceGroup      string
 	Location           string
 	DeploymentTemplate string
+	ContainerRegistry  string
 }
 
 func validate(cmd *cobra.Command, args []string) (arguments, error) {
@@ -160,6 +163,11 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		}
 	}
 
+	registryName, err := cmd.Flags().GetString("container-registry")
+	if err != nil {
+		return arguments{}, err
+	}
+
 	if location != "" && !isSupportedLocation(location) {
 		return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
 	}
@@ -171,6 +179,7 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		ResourceGroup:      resourceGroup,
 		Location:           location,
 		DeploymentTemplate: deploymentTemplate,
+		ContainerRegistry:  registryName,
 	}, nil
 }
 
@@ -290,7 +299,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string) error {
+func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string) error {
 	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
@@ -331,6 +340,14 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
+	registryID := ""
+	if registryName != "" {
+		registryID, err = validateRegistry(ctx, armauth, subscriptionID, registryName)
+		if err != nil {
+			return err
+		}
+	}
+
 	if group == nil {
 		// Resource group specified was not found. Create it
 		err := createResourceGroup(ctx, subscriptionID, resourceGroup, location)
@@ -341,7 +358,11 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
 	}
 
-	params := deploymentParameters{DeploymentTemplate: deploymentTemplate}
+	params := deploymentParameters{
+		DeploymentTemplate: deploymentTemplate,
+		RegistryID:         registryID,
+		RegistryName:       registryName,
+	}
 	deployment, err := deployEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, params)
 	if err != nil {
 		return err
@@ -429,12 +450,31 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	for feature, namespace := range requiredFeatures {
 		_, err := fc.Register(ctx, namespace, feature)
 		if err != nil {
-			return fmt.Errorf("Failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
+			return fmt.Errorf("failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
 		}
 		logger.LogInfo("Sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
 	}
 	logger.CompleteStep(step)
 	return nil
+}
+
+func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, registryName string) (string, error) {
+	step := logger.BeginStep("Validating Container Registry for %s...", registryName)
+	crc := containerregistry.NewRegistriesClient(subscriptionID)
+	crc.Authorizer = authorizer
+
+	for list, err := crc.ListComplete(ctx); list.NotDone(); err = list.NextWithContext(ctx) {
+		if err != nil {
+			return "", fmt.Errorf("failed while searching container registries: %w", err)
+		}
+
+		if *list.Value().Name == registryName {
+			logger.CompleteStep(step)
+			return *list.Value().ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to find registry %s in subscription %s. The container registry must be in the same subscription as the environment.", registryName, subscriptionID)
 }
 
 func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
@@ -482,6 +522,12 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 	parameters := map[string]interface{}{
 		"channel": map[string]interface{}{
 			"value": version.Channel(),
+		},
+		"registryId": map[string]interface{}{
+			"value": params.RegistryID,
+		},
+		"registryName": map[string]interface{}{
+			"value": params.RegistryName,
 		},
 	}
 
@@ -603,4 +649,6 @@ func isSupportedLocation(name string) bool {
 
 type deploymentParameters struct {
 	DeploymentTemplate string
+	RegistryID         string
+	RegistryName       string
 }

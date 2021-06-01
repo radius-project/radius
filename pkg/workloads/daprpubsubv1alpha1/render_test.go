@@ -30,7 +30,7 @@ func Test_Render_Unanaged_Failure(t *testing.T) {
 				// Topic is required
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	_, err := renderer.Render(context.Background(), workload)
@@ -52,7 +52,7 @@ func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 				"topic":   "cool-topic",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	resources, err := renderer.Render(context.Background(), workload)
@@ -90,7 +90,7 @@ func Test_Render_Managed_Success_SpecifyName(t *testing.T) {
 				"topic":   "cool-topic",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	resources, err := renderer.Render(context.Background(), workload)
@@ -127,7 +127,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	resources, err := renderer.Render(context.Background(), workload)
@@ -166,7 +166,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/topics/test-topic",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	_, err := renderer.Render(context.Background(), workload)
@@ -188,7 +188,7 @@ func Test_Render_Unmanaged_SpecifiesTopicWithResource(t *testing.T) {
 				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/topics/test-topic",
 			},
 		},
-		ServiceValues: map[string]map[string]interface{}{},
+		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
 	_, err := renderer.Render(context.Background(), workload)

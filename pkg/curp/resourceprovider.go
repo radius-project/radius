@@ -7,7 +7,6 @@ package curp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/curp/deployment"
-	"github.com/Azure/radius/pkg/curp/metadata"
 	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/curp/rest"
 	"github.com/Azure/radius/pkg/curp/revision"
@@ -54,7 +52,6 @@ func NewResourceProvider(db db.CurpDB, deploy deployment.DeploymentProcessor) Re
 		db:     db,
 		v:      validator.New(),
 		deploy: deploy,
-		meta:   metadata.NewRegistry(),
 	}
 }
 
@@ -62,7 +59,6 @@ type rp struct {
 	db     db.CurpDB
 	v      *validator.Validate
 	deploy deployment.DeploymentProcessor
-	meta   metadata.Registry
 }
 
 func (r *rp) ListApplications(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
@@ -374,14 +370,9 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 	// Will update the deployment status in place - carry over existing status
 	if olddbitem == nil {
-		newdbitem.Status = db.DeploymentStatus{
-			Services: map[string]db.DeploymentService{},
-		}
+		newdbitem.Status = db.DeploymentStatus{}
 	} else {
 		newdbitem.Status = olddbitem.Status
-		if newdbitem.Status.Services == nil {
-			newdbitem.Status.Services = map[string]db.DeploymentService{}
-		}
 	}
 
 	// Now that we've computed the set of deployment actions we're ready to start the deployment
@@ -507,10 +498,6 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		return rest.NewNoContentResponse(), nil
 	} else if err != nil {
 		return nil, err
-	}
-
-	if current.Status.Services == nil {
-		current.Status.Services = map[string]db.DeploymentService{}
 	}
 
 	// We'll do the actual deletion in the background asynchronously
@@ -785,17 +772,6 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		current = older.GetRevisions()
 	}
 
-	// Next, find all of the bindings provided by active components
-	bindings, err := r.listAllBindings(app, active)
-	if err != nil {
-		return nil, err
-	}
-
-	serviceBindings, err := r.bindServices(app, active, bindings)
-	if err != nil {
-		return nil, err
-	}
-
 	// If we previously deployed this deployment but failed, make sure we retry, treat
 	// each component as an upgrade if it's unchanged.
 	forceUpgradeToRetry := false
@@ -805,7 +781,7 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		forceUpgradeToRetry = true
 	}
 
-	// gather all component that have an operation (union of component names from old and new set)
+	// gather all components that have an operation (union of component names from old and new set)
 	names := map[string]bool{}
 	for name := range active {
 		names[name] = true
@@ -832,8 +808,6 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 			// Then we have access to more info
 			definition := app.Components[name]
 			wd.Definition = &definition
-			wd.ServiceBindings = serviceBindings[name]
-			wd.Provides = filterProvidersByComponent(name, bindings)
 		}
 
 		err = assignOperation(&wd, forceUpgradeToRetry)
@@ -904,163 +878,50 @@ func assignOperation(wd *deployment.ComponentAction, forceUpgradeToRetry bool) e
 	return nil
 }
 
-func (r *rp) listAllBindings(app *db.Application, active map[string]revision.Revision) (map[string]deployment.ServiceBinding, error) {
-	// find all services provided by all components
-	providers := map[string]deployment.ServiceBinding{}
-
-	for name := range active {
-		component, ok := app.Components[name]
-		if !ok {
-			return nil, fmt.Errorf("cannot find definition for component %s", name)
-		}
-
-		// Intrinsic bindings are provided by traits and the workload types
-		// they can be overridden by declaring a service with the same name on the same component
-		intrinsic := map[string]deployment.ServiceBinding{}
-
-		s, ok := r.meta.WorkloadKindServices[component.Kind]
-		if ok {
-			_, ok := intrinsic[name]
-			if ok {
-				return nil, fmt.Errorf("service %v has multiple providers", name)
-			}
-
-			// Found one - add to both list - it will get removed later if it's
-			// been rebound
-			intrinsic[name] = deployment.ServiceBinding{
-				Name:     name,
-				Kind:     s.Kind,
-				Provider: name,
-			}
-
-			// TODO: we currently allow a service from one component to 'hide' a service from another
-			_, ok = providers[name]
-			if !ok {
-				providers[name] = deployment.ServiceBinding{
-					Name:     name,
-					Kind:     s.Kind,
-					Provider: name,
-				}
-			}
-		}
-
-		for _, t := range component.Properties.Traits {
-			s, ok := r.meta.TraitServices[t.Kind]
-			if ok {
-				name := name
-				_, ok := intrinsic[name]
-				if ok {
-					return nil, fmt.Errorf("service %v has multiple providers", name)
-				}
-
-				// Found one - add to both list - it will get removed later if it's
-				// been rebound
-				intrinsic[name] = deployment.ServiceBinding{
-					Name:     name,
-					Kind:     s.Kind,
-					Provider: name,
-				}
-
-				_, ok = providers[name]
-				if !ok {
-					providers[name] = deployment.ServiceBinding{
-						Name:     name,
-						Kind:     s.Kind,
-						Provider: name,
-					}
-				}
-			}
-		}
-
-		for _, s := range component.Properties.Provides {
-			other, ok := providers[s.Name]
-			if ok {
-				// If this is in the intrinsic list for the same component, then
-				// this is an override and it's allowed.
-				_, ok := intrinsic[s.Name]
-				if !ok || other.Provider != name {
-					return nil, fmt.Errorf("service %v has multiple providers", s.Name)
-				}
-			}
-
-			providers[s.Name] = deployment.ServiceBinding{
-				Name:     s.Name,
-				Kind:     s.Kind,
-				Provider: name,
-			}
-		}
-	}
-
-	return providers, nil
-}
-
-func (r *rp) bindServices(app *db.Application, active map[string]revision.Revision, providers map[string]deployment.ServiceBinding) (map[string]map[string]deployment.ServiceBinding, error) {
-	// find the relationship between services declared and the components that match
-	bindings := map[string]map[string]deployment.ServiceBinding{}
-
-	// Now loop through all of the consumers and match them up
-	for name := range active {
-		// We don't expect this to fail except in tests
-		component, ok := app.Components[name]
-		if !ok {
-			return nil, fmt.Errorf("cannot find definition for component %s", name)
-		}
-
-		b := map[string]deployment.ServiceBinding{}
-		for _, s := range component.Properties.DependsOn {
-			p, ok := providers[s.Name]
-			if !ok {
-				return nil, fmt.Errorf("service %v has no provider", s.Name)
-			}
-
-			if s.Kind != p.Kind {
-				return nil, fmt.Errorf("service %v is used with kind %v but was defined with kind %v", s.Name, s.Kind, p.Kind)
-			}
-
-			b[s.Name] = p
-		}
-
-		bindings[name] = b
-	}
-
-	return bindings, nil
-}
-
-func filterProvidersByComponent(componentName string, providers map[string]deployment.ServiceBinding) map[string]deployment.ComponentService {
-	results := map[string]deployment.ComponentService{}
-	for _, sb := range providers {
-		if sb.Provider == componentName {
-			results[sb.Name] = deployment.ComponentService{
-				Name:     sb.Name,
-				Kind:     sb.Kind,
-				Provider: componentName,
-			}
-		}
-	}
-	return results
-}
-
 // Convert our datatabase representation to the "baked" version of the component
 func convertToComponent(name string, defn db.Component, traits []db.ComponentTrait) (*components.GenericComponent, error) {
-	raw := map[string]interface{}{
-		"name":      name,
-		"kind":      defn.Kind,
-		"config":    defn.Properties.Config,
-		"run":       defn.Properties.Run,
-		"dependsOn": defn.Properties.DependsOn,
-		"provides":  defn.Properties.Provides,
-		"traits":    traits,
+	component := components.GenericComponent{
+		Name:     name,
+		Kind:     defn.Kind,
+		Config:   defn.Properties.Config,
+		Run:      defn.Properties.Run,
+		Uses:     []components.GenericDependency{},
+		Bindings: map[string]components.GenericBinding{},
+		Traits:   []components.GenericTrait{},
 	}
 
-	bytes, err := json.Marshal(raw)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal component: %w", err)
+	for _, dependency := range defn.Properties.Uses {
+		converted := components.GenericDependency{
+			Binding: dependency.Binding,
+			Env:     dependency.Env,
+		}
+
+		if dependency.Secrets != nil {
+			converted.Secrets = &components.GenericDependencySecrets{
+				Store: dependency.Secrets.Store,
+				Keys:  dependency.Secrets.Keys,
+			}
+		}
+
+		component.Uses = append(component.Uses, converted)
 	}
 
-	component := components.GenericComponent{}
-	err = json.Unmarshal(bytes, &component)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal component: %w", err)
+	for n, binding := range defn.Properties.Bindings {
+		converted := components.GenericBinding{
+			Kind:                 binding.Kind,
+			AdditionalProperties: binding.AdditionalProperties,
+		}
+
+		component.Bindings[n] = converted
+	}
+
+	for _, trait := range defn.Properties.Traits {
+		converted := components.GenericTrait{
+			Kind:                 trait.Kind,
+			AdditionalProperties: trait.AdditionalProperties,
+		}
+
+		component.Traits = append(component.Traits, converted)
 	}
 
 	return &component, nil

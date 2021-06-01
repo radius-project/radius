@@ -3,10 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package keyvaultv1alpha1
+package armexpr
 
-// Constants
-const (
-	URIProperty  = "uri"
-	KeyVaultName = "keyvaultname"
-)
+type Visitor interface {
+	VisitFunctionCall(*FunctionCallNode) error
+	VisitStringLiteral(*StringLiteralNode) error
+	VisitPropertyAccess(*PropertyAccessNode) error
+}

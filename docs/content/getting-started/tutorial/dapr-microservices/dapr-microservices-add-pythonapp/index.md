@@ -16,7 +16,7 @@ Another container component is used to specify a few properties about the order 
 
 - **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
 - **container image:** `radiusteam/tutorial-pythonapp`, a Docker image the container will run.
-- **dependsOn:** `nodeapp`, which declares the intention for `pythonapp` to communicate with `nodeapp` using `dapr.io/Invoke` as the protocol.
+- **uses:** `nodeapp`, which declares the intention for `pythonapp` to communicate with `nodeapp` using `dapr.io/Invoke` as the protocol. 
 - **traits:** `appId: pythonapp`, required Dapr configuration. 
 
 ```sh
@@ -29,18 +29,15 @@ Another container component is used to specify a few properties about the order 
           image: 'radiusteam/tutorial-pythonapp'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          kind: 'dapr.io/Invoke'
-          name: 'nodeapp'
+          binding: nodeapp.properties.bindings.invoke
         }
       ]
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'pythonapp'
-          }
+          appId: 'pythonapp'
         }
       ]
     }
@@ -49,7 +46,7 @@ Another container component is used to specify a few properties about the order 
 
 A few notable differences between `pythonapp` and the previously-deployed `nodeapp`:
 
-- `pythonapp` doesn't listen for HTTP traffic, so it configures neither a Dapr app-port nor a service for HTTP.
+- `pythonapp` doesn't listen for HTTP traffic, so it configures neither a Dapr app-port nor a binding for HTTP.
 - `pythonapp` needs to communicate with `nodeapp` using the Dapr service invocation protocol.
 
 ## Update your template.bicep file 
@@ -70,26 +67,25 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-nodeapp'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          kind: 'dapr.io/StateStore'
-          name: 'statestore'
+          binding: statestore.properties.bindings.default
         }
       ]
-      provides: [
-        {
+      bindings: {
+        web: {
           kind: 'http'
-          name: 'web'
-          containerPort: 3000
+          targetPort: 3000
         }
-      ]
+        invoke: {
+          kind: 'dapr.io/Invoke'
+        }
+      }
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'nodeapp'
-            appPort: 3000
-          }
+          appId: 'nodeapp'
+          appPort: 3000
         }
       ]
     }
@@ -104,18 +100,15 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-pythonapp'
         }
       }
-      dependsOn: [
+     uses: [
         {
-          kind: 'dapr.io/Invoke'
-          name: 'nodeapp'
+          binding: nodeapp.properties.bindings.invoke
         }
       ]
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'pythonapp'
-          }
+          appId: 'pythonapp'
         }
       ]
     }

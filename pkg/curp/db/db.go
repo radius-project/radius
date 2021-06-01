@@ -85,7 +85,7 @@ func (d curpDB) ListApplicationsByResourceGroup(ctx context.Context, id resource
 
 	err = cursor.All(ctx, &items)
 	if err != nil {
-		return items, fmt.Errorf("Error reading Applications: %w", err)
+		return items, fmt.Errorf("error reading Applications: %w", err)
 	}
 
 	log.Printf("Found %d Applications with: %s", len(items), filter)

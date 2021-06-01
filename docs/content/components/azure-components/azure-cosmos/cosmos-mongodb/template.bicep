@@ -10,12 +10,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'rynowak/node-todo:latest'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'db'
-          kind: 'mongodb.com/Mongo'
-          setEnv: {
-            DBCONNECTION: 'connectionString'
+          binding: db.properties.bindings.mongo
+          env: {
+            DBCONNECTION: db.properties.bindings.mongo.connectionString
           }
         }
       ]

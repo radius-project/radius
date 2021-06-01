@@ -58,6 +58,20 @@
                 "description": "The name of the Managed Cluster resource."
             }
         },
+        "registryId": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The resource id of the ACR container registry"
+            }
+        },
+        "registryName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The name of the ACR container registry"
+            }
+        },
         "sku": {
             "type": "string",
             "allowedValues": [
@@ -144,9 +158,13 @@
     "variables": {
         "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
         "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), subscription().subscriptionId)]",
+        "registrypullroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
+        "registrypullroledefinitionname": "[guid(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), subscription().subscriptionId)]",
+        "registrypullroledefinitionfullname": "[concat(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), '/Microsoft.Authorization/', variables('registrypullroledefinitionname'))]",
         "contributorRole": "b24988ac-6180-42a0-ab88-20f7382dd24c",
         "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
         "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
+        "acrPullRole": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
         "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
         "rpRoleDefinitionName": "[guid(parameters('siteName'), subscription().subscriptionId)]",
@@ -273,6 +291,21 @@
             "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]",
             "scope": "[resourceGroup().id]"
           }
+        },
+        {
+            "condition": "[not(equals(parameters('registryId'), ''))]",
+            "type": "Microsoft.ContainerRegistry/registries/providers/roleAssignments",
+            "apiVersion": "2017-05-01",
+            "name": "[variables('registrypullroledefinitionfullname')]",
+            "tags": "[parameters('resourceTags')]",
+            "dependsOn": [
+                "[concat('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
+            ],
+            "properties": {
+                "principalId": "[reference(parameters('clusterName'), '2020-11-01').identityProfile.kubeletidentity.objectId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('registrypullroledefinitionid')]"
+            }
         },
         {
             "type": "Microsoft.Resources/deploymentScripts",

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/workloads"
@@ -23,16 +24,16 @@ type Renderer struct {
 }
 
 // Allocate is the WorkloadRenderer implementation for servicebus workload.
-func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload, wrp []workloads.WorkloadResourceProperties, service workloads.WorkloadService) (map[string]interface{}, error) {
-	if service.Kind != "azure.com/ServiceBusQueue" {
-		return nil, fmt.Errorf("cannot fulfill service kind: %v", service.Kind)
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	if len(workload.Workload.Bindings) > 0 {
+		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(wrp) != 1 || wrp[0].Type != workloads.ResourceKindAzureServiceBusQueue {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", workloads.ResourceKindAzureServiceBusQueue)
+	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindAzureServiceBusQueue {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", workloads.ResourceKindAzureServiceBusQueue)
 	}
 
-	properties := wrp[0].Properties
+	properties := resources[0].Properties
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
 	queueName := properties[handlers.ServiceBusQueueNameKey]
 
@@ -50,13 +51,20 @@ func (r Renderer) Allocate(ctx context.Context, w workloads.InstantiatedWorkload
 
 	cs := accessKeys.PrimaryConnectionString
 
-	values := map[string]interface{}{
-		"connectionString": *cs,
-		"namespace":        namespaceName,
-		"queue":            queueName,
+	bindings := map[string]components.BindingState{
+		"default": {
+			Component: workload.Name,
+			Binding:   "default",
+			Kind:      "azure.com/ServiceBusQueue",
+			Properties: map[string]interface{}{
+				"connectionString": *cs,
+				"namespace":        namespaceName,
+				"queue":            queueName,
+			},
+		},
 	}
 
-	return values, nil
+	return bindings, nil
 }
 
 // Render is the WorkloadRenderer implementation for servicebus workload.

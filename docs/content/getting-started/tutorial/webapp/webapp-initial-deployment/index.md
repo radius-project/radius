@@ -29,7 +29,7 @@ Radius captures the relationships and intentions behind an application, which si
 Your `todoapp` component will specify:  
 - **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
 - **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives. 
-- **provides:** `http`, a Radius service that adds the ability to listen for HTTP traffic (on port 3000 here).
+- **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).
 
 
 
@@ -49,13 +49,12 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-todoapp'
         }
       }
-      provides: [
-        {
-          kind: 'http'
+      bindings: {
+        web: {
           name: 'web'
-          containerPort: 3000
+          targetPort: 3000
         }
-      ]
+      }
     }
   }
 }

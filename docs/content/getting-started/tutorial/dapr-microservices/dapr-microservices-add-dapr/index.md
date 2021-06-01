@@ -21,14 +21,12 @@ A *trait* on the `nodeapp` component can be used to describe the Dapr configurat
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: { ... }
-      provides: [ ... ]
+      bindings: { ... }
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'nodeapp'
-            appPort: 3000
-          }
+          appId: 'nodeapp'
+          appPort: 3000
         }
       ]
     }
@@ -40,6 +38,29 @@ The `traits` section is used to configure cross-cutting behaviors of components.
 {{% alert title="💡 Traits" color="primary" %}}
 The `traits` section is one of several top level sections in a *component*. Traits are used to configure the component in a cross-cutting way. Other examples would include handling public traffic (ingress) or scaling.
 {{% /alert %}}
+
+## Add a Dapr Invoke binding on the nodeapp component
+Add another *binding* on the `nodeapp` component representing the Dapr service invocation protocol. Adding a binding for the kind `dapr.io/Invoke` declares that you intend to accept service invocation requests on this component. 
+
+```sh
+  resource nodeapplication 'Components' = {
+    name: 'nodeapp'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: { ... }
+      bindings: {
+        web: {
+          kind: 'http'
+          targetPort: 3000
+        }
+        invoke: {
+          kind: 'dapr.io/Invoke'
+        }
+      }
+      traits: [ ... ]
+    }
+  }
+```
 
 ## Add statestore component
 
@@ -70,22 +91,26 @@ Note that with this simple component definition, Radius handles both creation of
 
 Radius captures both logical relationships and related operational details. Examples of this include: wiring up connection strings, granting permissions, or restarting components when a dependency changes.
 
-The `dependsOn` section is used to configure relationships between a component and services provided by other components. 
+The `uses` section is used to configure relationships between a component and bindings provided by other components. 
 
-Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from within the `nodeapp` component via a `dependsOn` section. This declares the *intention* from the `nodeapp` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
+Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from within the `nodeapp` component via a `uses` section. This declares the *intention* from the `nodeapp` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
+
+{{% alert title="💡 Implicit Bindings" color="primary" %}}
+The `statestore` component implicitly declares a built-in binding named `default` of type `dapr.io/StateStore`. In general components that define infrastructure and data-stores will come with built-in bindings as part of their type declaration. It just makes sense that a Dapr state store component can be used as a state store without extra configuration.
+{{% /alert %}}
+
 
 ```sh
   resource nodeapplication 'Components' = {
     name: 'nodeapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: { ... }
-      dependsOn: [
+      uses: [
         {
-          kind: 'dapr.io/StateStore'
-          name: 'statestore'
+          binding: statestore.properties.bindings.default
         }
       ]
-      provides: [ ... ]
+      bindings: [ ... ]
       traits: [ ... ]
     }
   }
@@ -110,26 +135,25 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radiusteam/tutorial-nodeapp'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          kind: 'dapr.io/StateStore'
-          name: 'statestore'
+          binding: statestore.properties.bindings.default
         }
       ]
-      provides: [
-        {
+      bindings: {
+        web: {
           kind: 'http'
-          name: 'web'
-          containerPort: 3000
+          targetPort: 3000
         }
-      ]
+        invoke: {
+          kind: 'dapr.io/Invoke'
+        }
+      }
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          properties: {
-            appId: 'nodeapp'
-            appPort: 3000
-          }
+          appId: 'nodeapp'
+          appPort: 3000
         }
       ]
     }
