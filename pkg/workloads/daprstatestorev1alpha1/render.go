@@ -7,13 +7,14 @@ package daprstatestorev1alpha1
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 )
+
+var supportedStateStoreKindValues = [3]string{"any", "state.azure.tablestorage", "state.sqlserver"}
 
 // Renderer is the WorkloadRenderer implementation for the dapr statestore workload.
 type Renderer struct {
@@ -46,8 +47,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, err
 	}
 
-	if component.Config.Kind != "any" && component.Config.Kind != "state.azure.tablestorage" {
-		return []workloads.WorkloadResource{}, errors.New("only kind 'any' and 'state.azure.tablestorage' is supported right now")
+	resourceKind := ""
+	if component.Config.Kind == "any" || component.Config.Kind == "state.azure.tablestorage" {
+		resourceKind = workloads.ResourceKindDaprStateStoreAzureStorage
+	} else if component.Config.Kind == "state.sqlserver" {
+		resourceKind = workloads.ResourceKindDaprStateStoreSQLServer
+	} else {
+		return []workloads.WorkloadResource{}, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, supportedStateStoreKindValues)
 	}
 
 	if component.Config.Managed {
@@ -57,7 +63,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a Storage Account
 		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindDaprStateStoreAzureStorage,
+			Type: resourceKind,
 			Resource: map[string]string{
 				handlers.ManagedKey:                "true",
 				handlers.KubernetesNameKey:         w.Name,

@@ -8,6 +8,7 @@ package workloads
 const (
 	ResourceKindKubernetes                     = "kubernetes"
 	ResourceKindDaprStateStoreAzureStorage     = "dapr.statestore.azurestorage"
+	ResourceKindDaprStateStoreSQLServer        = "dapr.statestore.sqlserver"
 	ResourceKindDaprPubSubTopicAzureServiceBus = "dapr.pubsubtopic.azureservicebus"
 	ResourceKindAzureCosmosDBMongo             = "azure.cosmosdb.mongo"
 	ResourceKindAzureCosmosDBSQL               = "azure.cosmosdb.sql"

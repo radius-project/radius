@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
@@ -72,22 +71,19 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 		return nil, err
 	}
 
-	rgc := resources.NewGroupsClient(handler.arm.SubscriptionID)
-	rgc.Authorizer = handler.arm.Auth
-
-	rg, err := rgc.Get(ctx, handler.arm.ResourceGroup)
+	location, err := getResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create/update cosmosdb account: %w", err)
+		return nil, err
 	}
 
 	accountFuture, err := cosmosDBClient.CreateOrUpdate(ctx, handler.arm.ResourceGroup, accountName, documentdb.DatabaseAccountCreateUpdateParameters{
 		Kind:     databaseKind,
-		Location: rg.Location,
+		Location: location,
 		DatabaseAccountCreateUpdateProperties: &documentdb.DatabaseAccountCreateUpdateProperties{
 			DatabaseAccountOfferType: to.StringPtr("Standard"), // Standard is the only supported option
 			Locations: &[]documentdb.Location{
 				{
-					LocationName: rg.Location,
+					LocationName: location,
 				},
 			},
 		},

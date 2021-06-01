@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
@@ -165,15 +164,12 @@ func (handler *azureServiceBusBaseHandler) LookupSharedManagedNamespaceFromResou
 }
 
 func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, application string) (*servicebus.SBNamespace, error) {
-	rgc := azresources.NewGroupsClient(handler.arm.SubscriptionID)
-	rgc.Authorizer = handler.arm.Auth
-
 	sbc := servicebus.NewNamespacesClient(handler.arm.SubscriptionID)
 	sbc.Authorizer = handler.arm.Auth
 
-	g, err := rgc.Get(ctx, handler.arm.ResourceGroup)
+	location, err := getResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get resource group: %w", err)
+		return nil, err
 	}
 
 	// Generate a random namespace name
@@ -185,7 +181,7 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 			Tier:     servicebus.SkuTierStandard,
 			Capacity: to.Int32Ptr(1),
 		},
-		Location: g.Location,
+		Location: location,
 		Tags: map[string]*string{
 			radresources.TagRadiusApplication: &application,
 		},

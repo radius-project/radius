@@ -135,6 +135,7 @@ func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) Deployment
 		handlers: map[string]handlers.ResourceHandler{
 			workloads.ResourceKindKubernetes:                     handlers.NewKubernetesHandler(k8s),
 			workloads.ResourceKindDaprStateStoreAzureStorage:     handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
+			workloads.ResourceKindDaprStateStoreSQLServer:        handlers.NewDaprStateStoreSQLServerHandler(arm, k8s),
 			workloads.ResourceKindDaprPubSubTopicAzureServiceBus: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
 			workloads.ResourceKindAzureCosmosDBMongo:             handlers.NewAzureCosmosDBMongoHandler(arm),
 			workloads.ResourceKindAzureCosmosDBSQL:               handlers.NewAzureCosmosDBSQLHandler(arm),
