@@ -35,9 +35,9 @@ resource kv 'Components' = {
   name: 'kv'
   kind: 'azure.com/KeyVault@v1alpha1'
   properties: {
-      config: {
-          managed: true
-      }
+    config: {
+      managed: true
+    }
   }
 }
 ```
@@ -56,15 +56,14 @@ resource kvaccessor 'Components' = {
         image: 'radiusteam/azure-keyvault-app:latest'
       }
     }
-    dependsOn: [
-      {
-        name: 'kv'
-        kind: 'azure.com/KeyVault'
-        setEnv: {
-          KV_URI: 'keyvaulturi'
+    uses: [
+        {
+          binding: kv.properties.bindings.default
+          env: {
+            KV_URI: kv.properties.bindings.default.uri
+          }
         }
-      }
-    ]
+      ]
   }
 }
 ```
