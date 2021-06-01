@@ -38,7 +38,7 @@ func listApplications(cmd *cobra.Command, args []string) error {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain Azure credentials: %w", err)
+		return fmt.Errorf("failed to obtain Azure credentials: %w", err)
 	}
 	con := armcore.NewDefaultConnection(azcred, nil)
 	ac := radclient.NewApplicationClient(con, env.SubscriptionID)
@@ -50,7 +50,7 @@ func listApplications(cmd *cobra.Command, args []string) error {
 	applicationsList := *response.ApplicationList
 	applications, err := json.MarshalIndent(applicationsList, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Failed to marshal application response as JSON %w", err)
+		return fmt.Errorf("failed to marshal application response as JSON %w", err)
 	}
 	fmt.Println(string(applications))
 

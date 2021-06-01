@@ -59,7 +59,7 @@ func runAppList(cmd *cobra.Command, args []string) error {
 	applicationsList := *response.ApplicationList
 	applications, err := json.MarshalIndent(applicationsList, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Failed to marshal application response as JSON %w", err)
+		return fmt.Errorf("failed to marshal application response as JSON %w", err)
 	}
 	fmt.Println(string(applications))
 

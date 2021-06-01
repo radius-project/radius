@@ -51,7 +51,7 @@ func showDeployment(cmd *cobra.Command, args []string) error {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return fmt.Errorf("Failed to obtain Azure credentials: %w", err)
+		return fmt.Errorf("failed to obtain Azure credentials: %w", err)
 	}
 	con := armcore.NewDefaultConnection(azcred, nil)
 	dc := radclient.NewDeploymentClient(con, env.SubscriptionID)
@@ -60,7 +60,7 @@ func showDeployment(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		var httpresp azcore.HTTPResponse
 		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
-			errorMessage := fmt.Sprintf("Deployment '%s' for application '%s' and resource group '%s' was not found.", depName, applicationName, env.ResourceGroup)
+			errorMessage := fmt.Sprintf("deployment '%s' for application '%s' and resource group '%s' was not found", depName, applicationName, env.ResourceGroup)
 			return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 
@@ -70,7 +70,7 @@ func showDeployment(cmd *cobra.Command, args []string) error {
 	deploymentResource := *response.DeploymentResource
 	deploymentDetails, err := json.MarshalIndent(deploymentResource, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Failed to marshal deployment response as JSON %w", err)
+		return fmt.Errorf("failed to marshal deployment response as JSON %w", err)
 	}
 
 	fmt.Println(string(deploymentDetails))

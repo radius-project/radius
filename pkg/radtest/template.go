@@ -84,17 +84,17 @@ func Parse(template string) ([]Resource, error) {
 func readResource(j map[string]interface{}) (Resource, error) {
 	name, ok := j["name"].(string)
 	if !ok {
-		return Resource{}, fmt.Errorf("Resource does not contain a name.")
+		return Resource{}, fmt.Errorf("resource does not contain a name.")
 	}
 
 	t, ok := j["type"].(string)
 	if !ok {
-		return Resource{}, fmt.Errorf("Resource does not contain a type.")
+		return Resource{}, fmt.Errorf("resource does not contain a type.")
 	}
 
 	apiVersion, ok := j["apiVersion"].(string)
 	if !ok {
-		return Resource{}, fmt.Errorf("Resource does not contain an apiVersion.")
+		return Resource{}, fmt.Errorf("resource does not contain an apiVersion.")
 	}
 
 	dependsOn := []string{}

@@ -450,7 +450,7 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	for feature, namespace := range requiredFeatures {
 		_, err := fc.Register(ctx, namespace, feature)
 		if err != nil {
-			return fmt.Errorf("Failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
+			return fmt.Errorf("failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
 		}
 		logger.LogInfo("Sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
 	}

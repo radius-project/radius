@@ -152,7 +152,7 @@ func (handler *azureServiceBusBaseHandler) LookupSharedManagedNamespaceFromResou
 	// Check if a service bus namespace exists in the resource group for this application
 	list, err := sbc.ListByResourceGroupComplete(ctx, handler.arm.ResourceGroup)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to list service bus namespaces: %w", err)
+		return nil, fmt.Errorf("failed to list service bus namespaces: %w", err)
 	}
 
 	// Azure Service Bus needs StandardTier or higher SKU to support topics

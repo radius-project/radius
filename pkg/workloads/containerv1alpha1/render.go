@@ -307,7 +307,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		for secretName, secretValue := range secrets {
 			err := r.createSecret(ctx, uri, secretName, secretValue)
 			if err != nil {
-				return nil, fmt.Errorf("Could not create secret: %v: %w", secretName, err)
+				return nil, fmt.Errorf("could not create secret: %v: %w", secretName, err)
 			}
 		}
 	}
@@ -525,17 +525,17 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		Properties: deploymentProperties,
 	})
 	if err != nil {
-		return fmt.Errorf("Unable to create secret: %w", err)
+		return fmt.Errorf("unable to create secret: %w", err)
 	}
 
 	err = op.WaitForCompletionRef(context.Background(), dc.Client)
 	if err != nil {
-		return fmt.Errorf("Error: %w", err)
+		return fmt.Errorf("could not create secret: %w", err)
 	}
 
 	_, err = op.Result(dc)
 	if err != nil {
-		return fmt.Errorf("Error: %w", err)
+		return fmt.Errorf("could not create secret: %w", err)
 	}
 	log.Printf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName)
 
