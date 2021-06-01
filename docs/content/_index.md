@@ -1,14 +1,12 @@
 ---
 type: docs
-title: "Project Radius Documentation"
-linkTitle: "Project Radius docs"
-description: "Documentation on the Project Radius application model"
+title: "Project Radius"
+linkTitle: "Project Radius"
+description: "Developer-centric cloud-native application platform"
 weight: 1
 ---
 
-Project Radius is a developer-centric cloud-native application platform.
-
-## Radius features
+## Features
 
 {{< cardpane >}}
 
@@ -55,7 +53,7 @@ You can begin with Radius by downloading and installing the Radius CLI
 
 {{< button text="Install Radius 🚀" page="install-cli.md" color="success" >}}
 
-## Radius pieces
+## Components
 
 {{< cardpane >}}
 

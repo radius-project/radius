@@ -76,7 +76,7 @@ Now, we no longer want the application to access the connection string to the da
       setSecret: {
         store: kv.properties.bindings.default
         keys: {
-          DBCONNECTION: binding: db.properties.bindings.mongo.connectionString
+          DBCONNECTION: db.properties.bindings.mongo.connectionString
         }
       }
     }
@@ -114,7 +114,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           setSecret: {
             store: kv.properties.bindings.default
             keys: {
-              DBCONNECTION: binding: db.properties.bindings.mongo.connectionString
+              DBCONNECTION: db.properties.bindings.mongo.connectionString
             }
           }
         }
@@ -197,7 +197,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. To test the database, open a local tunnel on port 3000 again:
 
    ```sh
-   rad expose webapp todoapp --port 3000
+   rad component expose --application webapp todoapp --port 3000
    ```
 
 1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. You should see a page like:

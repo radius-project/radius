@@ -13,6 +13,9 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       uses: [
         {
           binding: kv.properties.bindings.default
+          env: {
+            KV_URI: kv.properties.bindings.default.uri
+          }
         }
         {
           binding: db.properties.bindings.mongo

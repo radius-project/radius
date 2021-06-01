@@ -15,33 +15,33 @@ The component is documentation for a piece of code, data, or infrastructure. It 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | name | y | The name of your component. Used for defining relationships and getting status for your components. | `frontend`
-| properties.dependsOn | | Other components which your component depends on for services and/or data. Learn more [below](#dependson). | [See below](#dependsOn)
-| properties.provides | | [Services]({{< ref services-model.md >}}) which the component offers to other components or users. | [See below](#provides).
+| properties.uses | | Other components which your component depends on for bindings and/or data. Learn more [below](#uses). | [See below](#uses)
+| properties.provides | | [Bindings]({{< ref bindings-model.md >}}) which the component offers to other components or users. | [See below](#provides).
 
 Different [component types]({{< ref components >}}) may also have additional properties and configuration which can be set as part of the component definition.
 
 ## provides
 
-The `provides` configuration defines [services]({{< ref services-model.md >}}) which the component offers. These services can range from HTTP ports being opened on a container to an API that a database resource offers.
+The `provides` configuration defines [bindings]({{< ref bindings-model.md >}}) which the component offers. These bindings can range from HTTP ports being opened on a container to an API that a database resource offers.
 
 ### Global provides configuration
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
-| kind | y | The type of service your component provides. | `http`
-| name | y | The name of the service which you provide. | `web`
+| kind | y | The type of binding your component provides. | `http`
+| name | y | The name of the binding which you provide. | `web`
 
-Different [service types]({{< ref services-model.md >}}) may also have additional properties and configuration which can be set as part of the component service definition.
+Different [binding types]({{< ref bindings-model.md >}}) may also have additional properties and configuration which can be set as part of the component binding definition.
 
 ### Example
 
-In the following example a container offers an HTTP service on port 3000:
+In the following example a container offers an HTTP binding on port 3000:
 
 ```sh
 resource store 'Components' = {
   name: 'storefront'
   kind: 'radius.dev/Container@v1alpha1'
-  properties: {...}
+  properties: {
     provides: [
       {
         kind: 'http'
@@ -53,25 +53,26 @@ resource store 'Components' = {
 }
 ```
 
-## dependsOn
+## Uses
 
-The `dependsOn` property tells Radius what relationships exist between the different components in your application. Without any supplemental information, a `dependsOn` relationship tells Radius in what order to deploy the resources. With additional configuration, Radis can set environment variables, place secrets within secret stores, and add additional intelligence to your application.
+The `uses` property tells Radius what relationships exist between the different components in your application. Without any supplemental information, a `uses` relationship tells Radius in what order to deploy the resources. With additional configuration, Radis can set environment variables, place secrets within secret stores, and add additional intelligence to your application.
 
-### Global dependsOn configuration
+Only runnable [components]({{< ref components >}}) can define relationships with `uses`.
 
-| Key  | Required | Description | Example |
-|------|:--------:|-------------|---------|
-| name | y | The name of the other component to depend on. | `kv.name`
-| kind | y | The service on which you depend. Can be the same as the component kind, or an abstract service kind. | `mongodb.com/Mongo`
-
-### Specific dependsOn configuration
-
-Different [component types]({{< ref components >}}) may also have additional `dependsOn` configuration which can be set as part of the component definition. For example, in [container components]({{< ref container >}}) the `setEnv` configuration can be used to configure the environment variables within a container from the values of a component on which it depends (*eg. injecting a database connection string into a container's environment*). Additionally, the `setSecret` configuration can be used to inject credentials into a secret store (*eg. injecting a database connection string into an Azure KeyVault*).
+### Binding configuration
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
-| setEnv | | List of key/value pairs which Radius will inject into the compute component runtime.  | `KV_URI: 'keyvaulturi'`
-| setSecret | | List of key/value pairs which Radius will inject into the secret store component. | `DBCONNECTION: 'connectionString'`
+| binding | y | The binding of the other component to depend on. | `kv.properties.bindings.default`
+
+### Action configuration
+
+[Components]({{< ref components >}}) may also have additional *actions* which can be set as part of the component definition. For example, in [container components]({{< ref container >}}) the `env` action can be used to configure the environment variables within a container from the values of a component on which it depends (*eg. injecting a database connection string into a container's environment*). Additionally, the `secrets` action can be used to inject credentials into a secret store (*eg. injecting a database connection string into an Azure KeyVault*).
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| env | | List of key/value pairs which Radius will inject into the compute component runtime.  | `KV_URI: kv.properties.bindings.default.uri`
+| secrets | | List of key/value pairs which Radius will inject into the secret store component. | `DBCONNECTION: db.properties.bindings.default.mongo.connectionString`
 
 ### Example
 
@@ -79,22 +80,21 @@ Different [component types]({{< ref components >}}) may also have additional `de
   resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
-    properties: {...}
-      dependsOn: [
+    properties: {
+      run: {...}
+      uses: [
         {
-          name: 'kv'
-          kind: 'azure.com/KeyVault'
-          setEnv: {
-            KV_URI: 'keyvaulturi'
+          binding: kv.properties.bindings.default
+          env: {
+            KV_URI: kv.properties.bindings.default.uri
           }
         }
         {
-          kind: 'mongodb.com/Mongo'
-          name: 'db'
-          setSecret: {
-            store: kv.name
+          binding: db.properties.bindings.mongo
+          secrets: {
+            store: kv.properties.bindings.default
             keys: {
-              DBCONNECTION: 'connectionString'
+              DBCONNECTION: db.properties.bindings.mongo.connectionString
             }
           }
         }
@@ -104,7 +104,7 @@ Different [component types]({{< ref components >}}) may also have additional `de
 
   resource db 'Components' = {
     name: 'db'
-    kind: 'azure.com/CosmosDocumentDb@v1alpha1'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {...}
   }
 
@@ -118,6 +118,6 @@ Different [component types]({{< ref components >}}) may also have additional `de
 
 ## Next step
 
-Now that you are familiar with Radius components, the next step is to learn about Radius services.
+Now that you are familiar with Radius components, the next step is to learn about Radius bindings.
 
-{{< button text="Learn about services" page="services-model.md" >}}
+{{< button text="Learn about bindings" page="bindings-model.md" >}}
