@@ -39,10 +39,9 @@ resource nodeapp 'Components' = {
   name: 'nodeapp'
   kind: 'radius.dev/Container@v1alpha1'
   properties: {...}
-  dependsOn: [
+  uses: [
     {
-      name: 'statestore'
-      kind: 'dapr.io/State'
+      binding: statestore.properties.bindings.default
     }
   ]
   traits: [
