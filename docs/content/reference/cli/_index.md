@@ -23,6 +23,7 @@ Available Commands:
 Flags:
       --config string   config file (default is $HOME/.rad/config.yaml)
   -h, --help            help for rad
+  -v, --version         version for radius
 
 Use "rad [command] --help" for more information about a command.
 ```
