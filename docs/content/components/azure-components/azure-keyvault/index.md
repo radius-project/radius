@@ -67,13 +67,16 @@ resource kvaccessor 'Components' = {
   name: 'kvaccessor'
   kind: 'radius.dev/Container@v1alpha1'
   properties: {
-    run: {...}
-    dependsOn: [
+    run: {
+      container: {
+        image: 'radiusteam/azure-keyvault-app:latest'
+      }
+    }
+    uses: [
       {
-        name: 'kv'
-        kind: 'azure.com/KeyVault'
-        setEnv: {
-          KV_URI: 'keyvaulturi'
+        binding: kv.properties.bindings.default
+        env: {
+          KV_URI: kv.properties.bindings.default.uri
         }
       }
     ]
@@ -92,22 +95,24 @@ resource kvaccessor 'Components' = {
   name: 'kvaccessor'
   kind: 'radius.dev/Container@v1alpha1'
   properties: {
-    run: {...}
-    dependsOn: [
+    run: {
+      container: {
+        image: 'radiusteam/azure-keyvault-app:latest'
+      }
+    }
+    uses: [
       {
-        name: 'kv'
-        kind: 'azure.com/KeyVault'
-        setEnv: {
-          KV_URI: 'kvuri'
+        binding: kv.properties.bindings.default
+        env: {
+          KV_URI: kv.properties.bindings.default.uri
         }
       }
       {
-        name: 'db'
-        kind: 'mongodb.com/Mongo'
-        setSecret: {
-          store: kv.name
+        binding: db.properties.bindings.mongo
+          secrets: {
+          store: kv.properties.bindings.default
           keys: {
-            DBCONNECTION: 'connectionString'
+            DBCONNECTION: db.properties.bindings.mongo.connectionString
           }
         }
       }
@@ -173,12 +178,11 @@ resource kvaccessor 'Components' = {
         image: 'radiusteam/azure-keyvault-app:latest'
       }
     }
-    dependsOn: [
+    uses: [
       {
-        name: 'kv'
-        kind: 'azure.com/KeyVault'
-        setEnv: {
-          KV_URI: 'kvuri'
+        binding: kv.properties.bindings.default
+        env: {
+          KV_URI: kv.properties.bindings.default.uri
         }
       }
     ]

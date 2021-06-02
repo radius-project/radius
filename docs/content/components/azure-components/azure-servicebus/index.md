@@ -40,14 +40,13 @@ resource receiver 'Components' = {
     name: 'receiver'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {...}
-    dependsOn: [
+    uses: [
       {
-        name: 'sbq'
-        kind: 'azure.com/ServiceBusQueue'
-        setEnv: {
-          SB_CONNECTION: 'connectionString'
-          SB_NAMESPACE: 'namespace'
-          SB_QUEUE: 'queue'
+        binding: sbq.properties.bindings.default
+        env: {
+          SB_CONNECTION: sbq.properties.bindings.default.connectionString
+          SB_NAMESPACE: sbq.properties.bindings.default.namespace
+          SB_QUEUE: sbq.properties.bindings.default.queue
         }
       }
     ]
@@ -84,23 +83,22 @@ You can find the source code for the sender and receiver applications at the [he
 The receiver application is a simple listener that listens to an Azure ServiceBus queue named `radius-queue1` and prints out the messages received:
 
 ```sh
-resource receiver 'Components' = {
-    name: 'receiver'
+resource sender 'Components' = {
+    name: 'sender'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
-          image: 'radiusteam/servicebus-receiver:latest'
+          image: 'radiusteam/servicebus-sender:latest'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'sbq'
-          kind: 'azure.com/ServiceBusQueue'
-          setEnv: {
-            SB_CONNECTION: 'connectionString'
-            SB_NAMESPACE: 'namespace'
-            SB_QUEUE: 'queue'
+          binding: sbq.properties.bindings.default
+          env: {
+            SB_CONNECTION: sbq.properties.bindings.default.connectionString
+            SB_NAMESPACE: sbq.properties.bindings.default.namespace
+            SB_QUEUE: sbq.properties.bindings.default.queue
           }
         }
       ]
@@ -125,23 +123,22 @@ Make sure to update the container images in the receiver resource of your deploy
 The sender application sends messages over an Azure ServiceBus queue named `radius-queue1` with a delay of 1s:
 
 ```sh
-resource sender 'Components' = {
-    name: 'sender'
+resource receiver 'Components' = {
+    name: 'receiver'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
-          image: 'radiusteam/servicebus-sender:latest'
+          image: 'radiusteam/servicebus-receiver:latest'
         }
       }
-      dependsOn: [
+      uses: [
         {
-          name: 'sbq'
-          kind: 'azure.com/ServiceBusQueue'
-          setEnv: {
-            SB_CONNECTION: 'connectionString'
-            SB_NAMESPACE: 'namespace'
-            SB_QUEUE: 'queue'
+          binding: sbq.properties.bindings.default
+          env: {
+            SB_CONNECTION: sbq.properties.bindings.default.connectionString
+            SB_NAMESPACE: sbq.properties.bindings.default.namespace
+            SB_QUEUE: sbq.properties.bindings.default.queue
           }
         }
       ]
@@ -170,10 +167,10 @@ resource sbq 'Components' = {
   name: 'sbq'
   kind: 'azure.com/ServiceBusQueue@v1alpha1'
   properties: {
-      config: {
-          managed: true
-          queue: 'radius-queue1'
-      }
+    config: {
+      managed: true
+      queue: 'radius-queue1'
+    }
   }
 }
 ```
