@@ -51,7 +51,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
       bindings: {
         web: {
-          name: 'web'
+          kind: 'http'
           targetPort: 3000
         }
       }
