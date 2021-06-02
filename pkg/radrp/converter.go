@@ -6,8 +6,6 @@
 package radrp
 
 import (
-	"fmt"
-
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
@@ -68,6 +66,7 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 			Config: original.Properties.Config,
 			Run:    original.Properties.Run,
 		},
+		OutputResources: []db.OutputResource{},
 	}
 
 	for _, d := range original.Properties.Uses {
@@ -110,6 +109,27 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 	return c
 }
 
+func newDBComponentFromDBDeployment(name string, original *db.Deployment, app *db.Application) *db.Component {
+	var dbcomponent *db.Component
+	obj, ok := app.Components[name]
+	if ok {
+		dbcomponent = &obj
+	} else {
+		dbcomponent = &db.Component{}
+	}
+	dbcomponent.OutputResources = getOutputResourcesFromDeploymentWorkload(name, original)
+	return dbcomponent
+}
+
+func getOutputResourcesFromDeploymentWorkload(name string, deployment *db.Deployment) []db.OutputResource {
+	for _, w := range deployment.Status.Workloads {
+		if w.ComponentName == name {
+			return w.OutputResources
+		}
+	}
+	return []db.OutputResource{}
+}
+
 func newRESTComponentFromDB(original *db.Component) *rest.Component {
 	c := &rest.Component{
 		ResourceBase: newRESTResourceBaseFromDB(original.ResourceBase),
@@ -120,6 +140,7 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 			Config:   original.Properties.Config,
 			Run:      original.Properties.Run,
 		},
+		OutputResources: []workloads.OutputResource{},
 	}
 
 	for _, d := range original.Properties.Uses {
@@ -157,7 +178,6 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 	}
 
 	c.OutputResources = newRESTOutputResourcesFromDB(original.OutputResources)
-
 	return c
 }
 
@@ -226,9 +246,11 @@ func newDBOutputResourcesFromREST(original []workloads.OutputResource) []db.Outp
 	for _, r := range original {
 		dr := db.OutputResource{
 			LocalID:            r.LocalID,
-			Type:               r.Type,
+			ResourceKind:       r.ResourceKind,
 			OutputResourceInfo: r.OutputResourceInfo,
 			Managed:            r.Managed,
+			OutputResourceType: r.OutputResourceType,
+			Resource:           r.Resource,
 		}
 		drs = append(drs, dr)
 	}
@@ -238,12 +260,13 @@ func newDBOutputResourcesFromREST(original []workloads.OutputResource) []db.Outp
 func newRESTOutputResourcesFromDB(original []db.OutputResource) []workloads.OutputResource {
 	var rrs []workloads.OutputResource
 	for _, r := range original {
-		fmt.Println("@@@@@ Output Resource in DB: %v\n", r)
 		rr := workloads.OutputResource{
 			LocalID:            r.LocalID,
-			Type:               r.Type,
+			ResourceKind:       r.ResourceKind,
 			OutputResourceInfo: r.OutputResourceInfo,
+			OutputResourceType: r.OutputResourceType,
 			Managed:            r.Managed,
+			Resource:           r.Resource,
 		}
 		rrs = append(rrs, rr)
 	}

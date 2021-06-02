@@ -77,7 +77,7 @@ func Test_Render_Managed_Success_SpecifyName(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, "", resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.Type)
+	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",

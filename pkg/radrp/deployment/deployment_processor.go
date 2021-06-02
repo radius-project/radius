@@ -229,12 +229,13 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				dr := db.OutputResource{
 					Managed:            resource.Managed,
 					LocalID:            resource.LocalID,
-					Type:               resource.Type,
+					ResourceKind:       resource.ResourceKind,
 					OutputResourceInfo: resource.OutputResourceInfo,
+					OutputResourceType: resource.OutputResourceType,
+					Resource:           resource.Resource,
 				}
-				fmt.Printf("@@@@ Created DB resource: %v\n", dr)
+				log.Printf("Created output resource: %s", dr.LocalID)
 				dw.OutputResources = append(dw.OutputResources, dr)
-				fmt.Printf("@@@@ output resources: %v\n", len(dw.OutputResources))
 			}
 
 			wrps := []workloads.WorkloadResourceProperties{}

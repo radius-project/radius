@@ -40,15 +40,11 @@ type WorkloadRenderer interface {
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	// Type string
-	// // LocalID is just an identifier for the the workload processing logic to identify the resource
-	// LocalID  string
 	Resource           interface{}
-	Parent             string
-	Created            bool // TODO: Temporary workaround till some resources are created in Render phase
-	Type               string
-	LocalID            string
+	Created            bool   // TODO: Temporary workaround till some resources are created in Render phase
+	LocalID            string // Resources need to be tracked even before actually creating them. Local ID provides a way to track them.
 	Managed            string
+	ResourceKind       string
 	OutputResourceType string
 	OutputResourceInfo interface{}
 }
@@ -68,8 +64,7 @@ func CreateArmResource(created bool, resourceKind, id string, resourceType strin
 		APIVersion:   "???",
 	}
 	r := OutputResource{
-		Parent:             "???",
-		Type:               resourceKind,
+		ResourceKind:       resourceKind,
 		OutputResourceType: OutputResourceTypeArm,
 		LocalID:            localidgenerator.MakeID(localIDPrefix),
 		Managed:            "true",
@@ -96,8 +91,7 @@ func CreateKubernetesResource(created bool, resourceKind, kind, apiVersion, name
 		Namespace:  namespace,
 	}
 	r := OutputResource{
-		Type:               resourceKind,
-		Parent:             "???",
+		ResourceKind:       resourceKind,
 		OutputResourceType: OutputResourceTypeKubernetes,
 		LocalID:            localidgenerator.MakeID(localIDPrefix),
 		Managed:            managed,
@@ -130,8 +124,7 @@ func CreatePodIdentityResource(created bool, clusterName, name, namespace, local
 
 	r := OutputResource{
 		Created:            created,
-		Parent:             "???",
-		Type:               ResourceKindAzurePodIdentity,
+		ResourceKind:       ResourceKindAzurePodIdentity,
 		OutputResourceType: OutputResourceTypePodIdentity,
 		LocalID:            localidgenerator.MakeID(localIDPrefix),
 		Managed:            managed,
@@ -153,20 +146,20 @@ type WorkloadResourceProperties struct {
 
 // NewKubernetesResource creates a Kubernetes WorkloadResource
 func NewKubernetesResource(localID string, obj runtime.Object) OutputResource {
-	return OutputResource{Type: ResourceKindKubernetes, LocalID: localID, Resource: obj}
+	return OutputResource{ResourceKind: ResourceKindKubernetes, LocalID: localID, Resource: obj}
 }
 
 func (wr OutputResource) IsKubernetesResource() bool {
-	return wr.Type == ResourceKindKubernetes
+	return wr.ResourceKind == ResourceKindKubernetes
 }
 
 // GetOutputResourceType determines the deployment resource type
 func (wr OutputResource) GetOutputResourceType() string {
-	if wr.Type == ResourceKindAzurePodIdentity {
+	if wr.ResourceKind == ResourceKindAzurePodIdentity {
 		return OutputResourceTypePodIdentity
-	} else if strings.Contains(wr.Type, "azure") {
+	} else if strings.Contains(wr.ResourceKind, "azure") {
 		return OutputResourceTypeArm
-	} else if wr.Type == ResourceKindKubernetes {
+	} else if wr.ResourceKind == ResourceKindKubernetes {
 		return OutputResourceTypeKubernetes
 	} else {
 		return ""

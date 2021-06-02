@@ -134,6 +134,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 
-		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
+	// generate data we can use to manage a cosmosdb instance
+	resource := workloads.OutputResource{
+		ResourceKind: workloads.ResourceKindAzureCosmosDBMongo,
+		Resource: map[string]string{
+			"name": w.Workload.Name,
+		},
 	}

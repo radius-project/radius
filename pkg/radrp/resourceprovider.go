@@ -472,12 +472,22 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		log.Printf("updating deployment '%s'", d.ID)
 		d.Properties.ProvisioningState = string(status)
 		d.Status = newdbitem.Status
+
 		_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.Name(), d)
 		if err != nil {
 			log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
 			return
 		}
 
+		// Update components to track output resources created during deployment
+		for _, c := range app.Components {
+			dbComponent := newDBComponentFromDBDeployment(c.Name, d, app)
+			_, err = r.db.PatchComponentByApplicationID(ctx, id.App, c.Name, dbComponent)
+			if err != nil {
+				log.Printf("failed to update output resources for component '%s': %v", c.ID, err)
+				return
+			}
+		}
 		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)
 	}()
 
@@ -816,7 +826,7 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		}
 
 		if wd.Operation != deployment.DeleteWorkload {
-			wd.Component, err = convertToComponent(wd.ComponentName, *wd.Definition, wd.Definition.Properties.Traits)
+			wd.Component, err = convertToComponent(wd.ComponentName, *wd.Definition, wd.Definition.Properties.Traits, wd.Definition.OutputResources)
 			if err != nil {
 				return nil, err
 			}

@@ -76,7 +76,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a servicebus topic
 		resource := workloads.OutputResource{
-			Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
+			ResourceKind: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.ComponentNameKey:        component.Config.Name,

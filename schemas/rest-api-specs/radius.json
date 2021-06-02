@@ -709,7 +709,8 @@
       "required": [
         "name",
         "kind",
-        "properties"
+        "properties",
+        "outputresources"
       ],
       "properties": {
         "name": {
@@ -724,11 +725,29 @@
           "type": "object",
           "$ref": "#/definitions/ComponentProperties",
           "description": "Properties of the component."
+        },
+        "outputresources": {
+          "type": "object",
+          "$ref": "#/definitions/ComponentOutputResources",
+          "description": "Output resources tracked for the component."
         }
       }
     },
     "ComponentProperties": {
       "description": "Properties of a component.",
+      "type": "object",
+      "properties": {
+      }
+    },
+    "ComponentOutputResources": {
+      "description": "Output resources tracked for the component.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ComponentOutputResource"
+      }
+    },
+    "ComponentOutputResource": {
+      "description": "Output resource comprising a component.",
       "type": "object",
       "properties": {
       }
