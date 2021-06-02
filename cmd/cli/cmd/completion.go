@@ -56,32 +56,32 @@ var completionCommand = &cobra.Command{
 	Use:     "completion",
 	Short:   "Generates shell completion scripts",
 	Example: completionExample,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
 	},
 }
 
 var completionZshCommand = &cobra.Command{
 	Use:   "zsh",
 	Short: "Generates zsh completion scripts",
-	Run: func(cmd *cobra.Command, args []string) {
-		RootCmd.GenZshCompletion(os.Stdout)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return RootCmd.GenZshCompletion(os.Stdout)
 	},
 }
 
 var completionBashCommand = &cobra.Command{
 	Use:   "bash",
 	Short: "Generates bash completion scripts",
-	Run: func(cmd *cobra.Command, args []string) {
-		RootCmd.GenBashCompletion(os.Stdout)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return RootCmd.GenBashCompletion(os.Stdout)
 	},
 }
 
 var completionPowershellCommand = &cobra.Command{
 	Use:   "powershell",
 	Short: "Generates powershell completion scripts",
-	Run: func(cmd *cobra.Command, args []string) {
-		RootCmd.GenPowerShellCompletion(os.Stdout)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return RootCmd.GenPowerShellCompletion(os.Stdout)
 	},
 }
 
