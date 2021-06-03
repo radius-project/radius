@@ -45,12 +45,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	if trait.Binding == "" {
-		return []workloads.WorkloadResource{}, fmt.Errorf("the binding field is required for trait '%s'", Kind)
+		return []workloads.OutputResource{}, fmt.Errorf("the binding field is required for trait '%s'", Kind)
 	}
 
 	provides, ok := w.Workload.Bindings[trait.Binding]
 	if !ok {
-		return []workloads.WorkloadResource{}, fmt.Errorf("cannot find the binding '%s' referenced by '%s' trait", trait.Binding, Kind)
+		return []workloads.OutputResource{}, fmt.Errorf("cannot find the binding '%s' referenced by '%s' trait", trait.Binding, Kind)
 	}
 
 	httpBinding := containerv1alpha1.HTTPBinding{}

@@ -157,15 +157,13 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, []workloads.OutputResource, error) {
 	var podIdentity AADPodIdentity
 
+	var outputResources []workloads.OutputResource
 	for _, dependency := range cw.Uses {
 		binding, err := dependency.Binding.GetMatchingBinding(w.BindingValues)
 		if err != nil {
-			return AADPodIdentity{}, err
+			return AADPodIdentity{}, []workloads.OutputResource{}, err
 		}
-	}
 
-	var outputResources []workloads.OutputResource
-	for _, dep := range cw.DependsOn {
 		// If the container depends on a KeyVault, create a pod identity.
 		// The list of dependency kinds to check might grow in the future
 		if binding.Kind == "azure.com/KeyVault" {

@@ -826,7 +826,7 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 		}
 
 		if wd.Operation != deployment.DeleteWorkload {
-			wd.Component, err = convertToComponent(wd.ComponentName, *wd.Definition, wd.Definition.Properties.Traits, wd.Definition.OutputResources)
+			wd.Component, err = convertToComponent(wd.ComponentName, *wd.Definition, wd.Definition.Properties.Traits)
 			if err != nil {
 				return nil, err
 			}

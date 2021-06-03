@@ -35,7 +35,7 @@ type WorkloadRenderer interface {
 	// AllocateBindings is called for the component to provide its supported bindings and their values.
 	AllocateBindings(ctx context.Context, workload InstantiatedWorkload, resources []WorkloadResourceProperties) (map[string]components.BindingState, error)
 	// Render is called for the component to provide its output resources.
-	Render(ctx context.Context, workload InstantiatedWorkload) ([]WorkloadResource, []rest.RadResource, error)
+	Render(ctx context.Context, workload InstantiatedWorkload) ([]OutputResource, error)
 }
 
 // OutputResource represents the output of rendering a resource
