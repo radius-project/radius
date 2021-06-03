@@ -6,6 +6,12 @@ description: "Developer-centric cloud-native application platform"
 weight: 1
 ---
 
+## Getting started
+
+Write and deploy your first appliction in minutes with Radius:
+
+{{< button text="Install Radius 🚀" page="install-cli.md" color="success" >}}
+
 ## Features
 
 {{< cardpane >}}
@@ -46,12 +52,6 @@ weight: 1
 {{< /card >}}
 
 {{< /cardpane >}}
-
-## Getting started
-
-You can begin with Radius by downloading and installing the Radius CLI
-
-{{< button text="Install Radius 🚀" page="install-cli.md" color="success" >}}
 
 ## Components
 

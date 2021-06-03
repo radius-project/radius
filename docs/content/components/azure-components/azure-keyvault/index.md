@@ -52,13 +52,13 @@ resource kv 'Components' = {
 }
 ```
 
-## Services
+## Bindings
 
-KeyVault services are offered when other compute resources depend on them, and are therefore specified in the compute component's [`dependsOn` configuration]({{< ref "components-model.md#dependson" >}}).
+KeyVault bindings are offered when other compute resources use them and are specified in the compute component's [`uses` configuration]({{< ref "components-model.md#dependson" >}}).
 
 ### Access KeyVault from a container
 
-Radius can place the KeyVault URI into a compute component's environment using the [`setEnv` component functionality]({{< ref "components-model.md#dependson" >}}).
+Radius can place the KeyVault URI into a compute component's environment using the [`env` component functionality]({{< ref "components-model.md#uses" >}}).
 
 In this example the URI used to access KeyVault is injected into the environment variable `KV_URI` within the container:
 
@@ -86,7 +86,7 @@ resource kvaccessor 'Components' = {
 
 ### Place secrets in a KeyVault
 
-Radius can place secrets within a KeyVault automatically using the [`setSecret` component functionality]({{< ref "components-model.md#dependson" >}}).
+Radius can place secrets within a KeyVault automatically using the [`secrets` component functionality]({{< ref "components-model.md#uses" >}}).
 
 For example, you can place connection strings for a database in a KeyVault that will be used by your container:
 
@@ -196,7 +196,7 @@ Here, Radius creates the Azure KeyVault and injects the KV_URI environment varia
 
 #### Pre-requisites
 
-- Make sure you have an active [Radius environment]({{< ref create-environment.md >}}).
+- Make sure you have an active [Radius environment]({{< ref create-environment.md >}})
 - Ensure you are logged into Azure using `az login`
 
 #### Download Bicep file
