@@ -13,7 +13,7 @@ weight: 1
 {{< card title="**Model application behavior**" >}}
   Describe your apps by what they consume and provide, instead of what they run on.
   
-  The Radius application model allows you to describe the services, dependencies, and traits your app provides. Developers no longer need to describe the infrastructure and connections that make up the underlying platform.
+  The Radius application model allows you to describe the bindings, dependencies, and traits your app provides. Developers no longer need to describe the infrastructure and connections that make up the underlying platform.
 
   [**Learn more about the Radius app model**]({{< ref app-model >}})
 {{< /card >}}
