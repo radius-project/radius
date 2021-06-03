@@ -49,8 +49,8 @@ type OutputResource struct {
 	OutputResourceInfo interface{}
 }
 
-// ArmInfo contains the details of an output ARM resource
-type ArmInfo struct {
+// ARMInfo contains the details of an output ARM resource
+type ARMInfo struct {
 	ResourceID   string
 	ResourceType string
 	APIVersion   string
@@ -58,7 +58,7 @@ type ArmInfo struct {
 
 // CreateArmResource returns an object of type OutputResource initialized with the data from the ARM resource
 func CreateArmResource(created bool, resourceKind, id string, resourceType string, managed bool, localIDPrefix string) OutputResource {
-	armInfo := ArmInfo{
+	armInfo := ARMInfo{
 		ResourceID:   id,
 		ResourceType: resourceType,
 		APIVersion:   "???",
