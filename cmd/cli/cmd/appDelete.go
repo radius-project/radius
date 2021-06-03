@@ -123,7 +123,7 @@ func updateApplicationConfig(cmd *cobra.Command,
 
 		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, azureEnv.Name)
 
-		env.Items[azureEnv.Name][environments.DefaultApplication] = ""
+		env.Items[azureEnv.Name][environments.EnvironmentKeyDefaultApplication] = ""
 
 		rad.UpdateEnvironmentSection(v, env)
 

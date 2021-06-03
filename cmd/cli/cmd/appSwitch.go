@@ -81,7 +81,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		logger.LogInfo("Switching default application to %v", applicationName)
 	}
 
-	env.Items[azureEnv.Name][environments.DefaultApplication] = applicationName
+	env.Items[azureEnv.Name][environments.EnvironmentKeyDefaultApplication] = applicationName
 
 	rad.UpdateEnvironmentSection(v, env)
 	err = saveConfig()
