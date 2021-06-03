@@ -43,7 +43,7 @@ You can learn about what defined bindings are provided inside the respective [co
 
 ## Consuming bindings
 
-Components can consume bindings from other components via the [`dependsOn`]({{< ref "components-model.md#dependson" >}}) configuration. Depending on the binding being offered, it might require additional configuration through parameters like `setEnv` or `setSecret`.
+Components can consume bindings from other components via the [`dependsOn`]({{< ref "components-model.md#dependson" >}}) configuration. Depending on the binding being offered, it might require additional configuration through parameters like `setEnv` or `secrets`.
 
 For more information on how to consume bindings from components, visit the [components docs]({{< ref components >}}).
 

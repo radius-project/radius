@@ -73,7 +73,7 @@ Now, we no longer want the application to access the connection string to the da
     }
     {
       binding: db.properties.bindings.mongo
-      setSecret: {
+      secrets: {
         store: kv.properties.bindings.default
         keys: {
           DBCONNECTION: db.properties.bindings.mongo.connectionString
@@ -111,7 +111,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
         }
         {
           binding: db.properties.bindings.mongo
-          setSecret: {
+          secrets: {
             store: kv.properties.bindings.default
             keys: {
               DBCONNECTION: db.properties.bindings.mongo.connectionString
@@ -130,7 +130,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
   resource db 'Components' = {
     name: 'db'
-    kind: 'azure.com/CosmosDocumentDb@v1alpha1'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
       config: {
         managed: true
