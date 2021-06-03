@@ -61,7 +61,7 @@ The `radius.dev/InboundRoute` trait adds an ingress controller to the container 
 | kind | y | Defines the trait type. | `'radius.dev/InboundRoute@v1alpha1'`
 | properties.service | y | The service to create an ingress controller on and expose to the internet. | `'frontend'`
 
-{{< rad file="ingress.bicep" >}}
+{{< rad file="inboundroute.bicep" >}}
 
 ```sh
 resource frontend 'Components' = {
@@ -94,7 +94,7 @@ The `dapr.io/App` trait adds a [Dapr](https://dapr.io) sidecar to the container,
 
 | Key | Required | Description | Example |
 |-----|:--------:|-------------|---------|
-| appId | y | The unique name for  | `http`
+| appId | y | The unique name for your Dapr application. | `frontend`
 | appPort | y | The name used to describe the component. Used when providing status and visualizing your application & component. | `webserver`
 
 ```sh
