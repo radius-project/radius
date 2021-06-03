@@ -32,7 +32,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 	properties := resources[0].Properties
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
-	pubsubName := properties[handlers.KubernetesNameKey]
+	pubsubName := properties[handlers.ComponentNameKey]
 	topicName := properties[handlers.ServiceBusTopicNameKey]
 
 	bindings := map[string]components.BindingState{
@@ -78,7 +78,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
-				handlers.KubernetesNameKey:       component.Config.Name,
+				handlers.ComponentNameKey:        component.Config.Name,
 				handlers.KubernetesNamespaceKey:  w.Application,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
@@ -106,7 +106,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
-				handlers.KubernetesNameKey:       component.Config.Name,
+				handlers.ComponentNameKey:        component.Config.Name,
 				handlers.KubernetesNamespaceKey:  w.Application,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
