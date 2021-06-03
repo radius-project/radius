@@ -32,7 +32,7 @@ weight: 1
 {{< card title="**Easy application deployment & management**">}}
   Descriptive framework for cloud-native applications.
   
-  Radius environments and the rad CLI make it easy to test applications locally and deploy to production from developer macgines to CI/CD pipelines. Stop managing multiple test and deployment systems for your different pipelines.
+  Radius environments and the rad CLI make it easy to test applications locally and deploy to production from developer machines to CI/CD pipelines.
 
   [**Visit the rad CLI reference**]({{< ref cli >}})
 {{< /card >}}
