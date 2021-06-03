@@ -6,7 +6,7 @@ description: "Learn how to model your application pieces with Radius components.
 weight: 200
 ---
 
-Components describe the code, data, and infrastructure pieces of an application. Components only have meaning within the context of an application.
+Components describe the code, data, and infrastructure pieces of a Radius application. Components only have meaning within the context of an application.
 
 The component is documentation for a piece of code, data, or infrastructure. It can capture all of the important behaviors and requirements needed for a runtime to host that software. An application can have both runnable components (*e.g. containers, web applications*) and non-runnable components (*e.g. databases, message queues*).
 
