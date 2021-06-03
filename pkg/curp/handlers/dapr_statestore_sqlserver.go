@@ -16,6 +16,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,8 +24,7 @@ import (
 
 const (
 	// Properties keys
-	serverNameKey   = "servername"
-	databaseNameKey = "name"
+	serverNameKey = "servername"
 
 	// Server properties
 	dbLogin = "radiusUser"
@@ -48,8 +48,7 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 		return nil, err
 	}
 
-	// properties["name"] is the component (sqlserver db) name passed through the template, this is used as a prefix for the server name
-	dbName := properties[databaseNameKey]
+	dbName := properties[ComponentNameKey]
 
 	// Generate password
 	passwordConditions := &PasswordConditions{16, 2, 1, 1}
@@ -125,21 +124,31 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 	}
 
 	serverName := properties[serverNameKey]
-	databaseName := properties[databaseNameKey]
+	databaseName := properties[ComponentNameKey]
 
 	// Delete database
 	sqlDBClient := sql.NewDatabasesClient(handler.arm.SubscriptionID)
 	sqlDBClient.Authorizer = handler.arm.Auth
-	_, err = sqlDBClient.Delete(ctx, handler.arm.ResourceGroup, serverName, databaseName)
-	if err != nil {
+	response, err := sqlDBClient.Delete(ctx, handler.arm.ResourceGroup, serverName, databaseName)
+	if err != nil && response.StatusCode != 404 {
 		return fmt.Errorf("failed to delete sql database `%s`: %w", databaseName, err)
 	}
 
 	// Delete the server
 	sqlServerClient := sql.NewServersClient(handler.arm.SubscriptionID)
 	sqlServerClient.Authorizer = handler.arm.Auth
-	_, err = sqlServerClient.Delete(ctx, handler.arm.ResourceGroup, serverName)
-	if err != nil {
+	future, err := sqlServerClient.Delete(ctx, handler.arm.ResourceGroup, serverName)
+	if err != nil && future.Response().StatusCode != 404 {
+		return fmt.Errorf("failed to delete sql server `%s`: %w", serverName, err)
+	}
+
+	err = future.WaitForCompletionRef(ctx, sqlServerClient.Client)
+	if err != nil && !util.IsAutorest404Error(err) {
+		return fmt.Errorf("failed to delete sql server `%s`: %w", serverName, err)
+	}
+
+	serverDeleteResponse, err := future.Result(sqlServerClient)
+	if err != nil && serverDeleteResponse.StatusCode != 404 {
 		return fmt.Errorf("failed to delete sql server `%s`: %w", serverName, err)
 	}
 

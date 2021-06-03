@@ -7,6 +7,7 @@ package daprstatestorev1alpha1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/curp/components"
@@ -61,21 +62,24 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
-		// generate data we can use to manage a Storage Account
 		resource := workloads.WorkloadResource{
 			Type: resourceKind,
 			Resource: map[string]string{
-				handlers.ManagedKey:                "true",
-				handlers.KubernetesNameKey:         w.Name,
-				handlers.KubernetesNamespaceKey:    w.Application,
-				handlers.KubernetesAPIVersionKey:   "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:         "Component",
-				handlers.StorageAccountBaseNameKey: w.Name,
+				handlers.ManagedKey:              "true",
+				handlers.KubernetesNameKey:       w.Name,
+				handlers.KubernetesNamespaceKey:  w.Application,
+				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+				handlers.KubernetesKindKey:       "Component",
+				handlers.ComponentNameKey:        w.Name,
 			},
 		}
 
 		return []workloads.WorkloadResource{resource}, nil
 	} else {
+		if component.Config.Kind == "state.sqlserver" {
+			return nil, errors.New("only Radius managed resources are supported for Dapr SQL Server")
+		}
+
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}

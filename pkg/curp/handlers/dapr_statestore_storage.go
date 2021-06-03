@@ -21,9 +21,8 @@ import (
 )
 
 const (
-	StorageAccountBaseNameKey = "storageaccountbasename"
-	StorageAccountNameKey     = "storageaccount"
-	StorageAccountIDKey       = "storageaccountid"
+	StorageAccountNameKey = "storageaccount"
+	StorageAccountIDKey   = "storageaccountid"
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
@@ -46,7 +45,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 
 	var account *storage.Account
 	if properties[StorageAccountIDKey] == "" {
-		generated, err := handler.GenerateStorageAccountName(ctx, properties[StorageAccountBaseNameKey])
+		generated, err := handler.GenerateStorageAccountName(ctx, properties[ComponentNameKey])
 		if err != nil {
 			return nil, err
 		}
@@ -196,7 +195,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[KubernetesNameKey],
+				"name":      properties[ComponentNameKey],
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.azure.tablestorage",
@@ -271,7 +270,7 @@ func (handler *daprStateStoreAzureStorageHandler) DeleteDaprStateStore(ctx conte
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[KubernetesNameKey],
+				"name":      properties[ComponentNameKey],
 			},
 		},
 	}

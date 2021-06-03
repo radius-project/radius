@@ -128,7 +128,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[KubernetesNameKey],
+				"name":      properties[ComponentNameKey],
 			},
 			"spec": map[string]interface{}{
 				"type":    "pubsub.azure.servicebus",
@@ -158,7 +158,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[KubernetesNameKey],
+				"name":      properties[ComponentNameKey],
 			},
 		},
 	}

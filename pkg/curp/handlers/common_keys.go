@@ -12,4 +12,5 @@ const (
 	KubernetesKindKey       = "kuberneteskind"
 	KubernetesNamespaceKey  = "kubernetesnamespace"
 	KubernetesNameKey       = "kubernetesname"
+	ComponentNameKey        = "componentName"
 )

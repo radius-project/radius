@@ -35,7 +35,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 		KubernetesKindKey:       item.GetKind(),
 		KubernetesAPIVersionKey: item.GetAPIVersion(),
 		KubernetesNamespaceKey:  item.GetNamespace(),
-		KubernetesNameKey:       item.GetName(),
+		ComponentNameKey:        item.GetName(),
 	}
 
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
@@ -54,7 +54,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[KubernetesNameKey],
+				"name":      properties[ComponentNameKey],
 			},
 		},
 	}
