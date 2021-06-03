@@ -8,7 +8,7 @@ weight: 400
 
 ## Providing bindings
 
-Radius components offer **bindings**, which are defined sets of functionality.
+Radius components offer **bindings**, which are defined sets of capabilities, information, and behavior. For example, an Azure CosmosDB offers a binding for its MongoDB API, and using the mongo binding tells Radius you will be using that API from your application.
 
 A component may have one or more bindings which it provides. These bindings can be *default* or *defined*.
 
