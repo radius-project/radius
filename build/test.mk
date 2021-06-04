@@ -11,4 +11,4 @@ test: ## Runs unit tests.
 
 .PHONY: test-integration
 test-integration: ## Runs integration tests
-	go test ./test/integrationtests/... -timeout 1800s
+	go test ./test/integrationtests/... -timeout 3600s

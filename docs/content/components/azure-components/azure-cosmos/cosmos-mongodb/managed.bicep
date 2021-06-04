@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'cosmos-container'
+  name: 'cosmos-container-managed'
   
   resource webapp 'Components' = {
     name: 'todoapp'

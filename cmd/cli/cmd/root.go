@@ -45,6 +45,7 @@ func init() {
 	template := fmt.Sprintf("Release: %s \nVersion: %s\nCommit: %s\n", version.Release(), version.Version(), version.Commit())
 	RootCmd.SetVersionTemplate(template)
 
+	RootCmd.Flags().BoolP("version", "v", false, "version for radius")
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
 }
 

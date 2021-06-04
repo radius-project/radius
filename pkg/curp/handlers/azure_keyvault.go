@@ -16,8 +16,13 @@ import (
 	"github.com/Azure/radius/pkg/curp/armauth"
 	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
-	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	"github.com/gofrs/uuid"
+)
+
+const (
+	KeyVaultURIKey  = "uri"
+	KeyVaultNameKey = "keyvaultname"
+	KeyVaultIDKey   = "keyvaultid"
 )
 
 func NewAzureKeyVaultHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -28,33 +33,87 @@ type azureKeyVaultHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	// If we have already created this resource we would have stored the name.
-	vaultName, ok := properties[keyvaultv1alpha1.KeyVaultName]
-	if !ok {
-		// No name stored, generate a new one
-		vaultName = namegenerator.GenerateName("kv")
-	}
-
-	rgc := resources.NewGroupsClient(kvh.arm.SubscriptionID)
-	rgc.Authorizer = kvh.arm.Auth
-
-	g, err := rgc.Get(ctx, kvh.arm.ResourceGroup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
-	}
-
-	kvc := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
-	kvc.Authorizer = kvh.arm.Auth
+	// This assertion is important so we don't start creating/modifying an unmanaged resource
+	err := ValidateResourceIDsForUnmanagedResource(properties, KeyVaultIDKey)
 	if err != nil {
 		return nil, err
 	}
 
+	if properties[KeyVaultIDKey] == "" {
+		// If we have already created this resource we would have stored the name and ID.
+		vaultName := namegenerator.GenerateName("kv")
+
+		kv, err := handler.CreateKeyVault(ctx, vaultName, options)
+		if err != nil {
+			return nil, err
+		}
+
+		// store vault so we can use later
+		properties[KeyVaultNameKey] = *kv.Name
+		properties[KeyVaultIDKey] = *kv.ID
+	} else {
+		// This is mostly called for the side-effect of verifying that the keyvault exists.
+		_, err := handler.GetKeyVaultByID(ctx, properties[KeyVaultIDKey])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return properties, nil
+}
+
+func (handler *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
+	properties := options.Existing.Properties
+	if properties[ManagedKey] != "true" {
+		// For an 'unmanaged' resource we don't need to do anything, just forget it.
+		return nil
+	}
+
+	vaultName := properties[KeyVaultNameKey]
+
+	err := handler.DeleteKeyVault(ctx, vaultName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id string) (*keyvault.Vault, error) {
+	parsed, err := radresources.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse KeyVault resource id: %w", err)
+	}
+
+	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
+	kvc.Authorizer = handler.arm.Auth
+
+	kv, err := kvc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get KeyVault: %w", err)
+	}
+
+	return &kv, nil
+}
+
+func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultName string, options PutOptions) (*keyvault.Vault, error) {
+	rgc := resources.NewGroupsClient(handler.arm.SubscriptionID)
+	rgc.Authorizer = handler.arm.Auth
+
+	g, err := rgc.Get(ctx, handler.arm.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
+	}
+
+	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
+	kvc.Authorizer = handler.arm.Auth
+
 	sc := subscriptions.NewClient()
-	sc.Authorizer = kvh.arm.Auth
-	s, err := sc.Get(ctx, kvh.arm.SubscriptionID)
+	sc.Authorizer = handler.arm.Auth
+	s, err := sc.Get(ctx, handler.arm.SubscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find subscription: %w", err)
 	}
@@ -65,7 +124,7 @@ func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (m
 
 	vaultsFuture, err := kvc.CreateOrUpdate(
 		ctx,
-		kvh.arm.ResourceGroup,
+		handler.arm.ResourceGroup,
 		vaultName,
 		keyvault.VaultCreateOrUpdateParameters{
 			Location: g.Location,
@@ -97,20 +156,14 @@ func (kvh *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (m
 		return nil, fmt.Errorf("failed to PUT keyvault: %w", err)
 	}
 
-	// store vault so we can use later
-	properties[keyvaultv1alpha1.KeyVaultName] = *kv.Name
-
-	return properties, nil
+	return &kv, nil
 }
 
-func (kvh *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
-	vaultName := properties[keyvaultv1alpha1.KeyVaultName]
+func (handler *azureKeyVaultHandler) DeleteKeyVault(ctx context.Context, vaultName string) error {
+	kvClient := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
+	kvClient.Authorizer = handler.arm.Auth
 
-	kvClient := keyvault.NewVaultsClient(kvh.arm.SubscriptionID)
-	kvClient.Authorizer = kvh.arm.Auth
-
-	_, err := kvClient.Delete(ctx, kvh.arm.ResourceGroup, vaultName)
+	_, err := kvClient.Delete(ctx, handler.arm.ResourceGroup, vaultName)
 	if err != nil {
 		return fmt.Errorf("failed to DELETE keyvault: %w", err)
 	}
