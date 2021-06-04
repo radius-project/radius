@@ -33,6 +33,8 @@ The `http` service provides an HTTP endpoint service which opens a specified por
 | name | Y | The name used to describe the component. Used when providing status and visualizing your application & component. | `webserver`
 | containerPort | Y | The HTTP port to open on the container for other components to access. | `443`
 
+{{< rad file="frontend-backend.bicep" >}}
+
 ```sh
 resource frontend 'Components' = {
   name: 'frontend'
