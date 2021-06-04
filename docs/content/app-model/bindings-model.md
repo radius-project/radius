@@ -12,15 +12,19 @@ Radius components offer **bindings**, which are defined sets of capabilities, in
 
 A component may have one or more bindings which it provides. These bindings can be *default* or *defined*.
 
-### Default bindings
+### Pre-built bindings
 
-Default bindings are offered without defining any bindings which your binding provides. For example, the [`azure.com/CosmosDocumentDb` component]({{< ref azure-cosmos >}}) offers both the `azure.com/CosmosDocumentDb` and `mongo.com/MongoDb` bindings without needing to provide any configuration.
+Some Radius components provide pre-built bindings by default without needing additional definition by users.
+
+For example, the [`azure.com/CosmosDocumentDb`]({{< ref azure-cosmos >}}) component offers both the `azure.com/CosmosDocumentDb` and `mongo.com/MongoDb` bindings without needing to provide any configuration.
 
 You can learn about what default bindings are provided inside the respective [component docs]({{< ref components >}}).
 
-### Defined bindings
+### User-defined bindings
 
-Defined bindings are offered after a user defines them within a component. For example, the [`radius.dev/container`]({{< ref container >}}) component can have an 'http' binding added to it by definining the 'http' binding within the 'bindings' section. In this case the binding has the name `frontend`.
+In addition to the pre-built bindings, users can define their own bindings within a component. 
+
+For example, the [`radius.dev/container`]({{< ref container >}}) component can have an "http" binding added to it by definining the "http" binding within the `bindings` section. In the example below, the binding is named `frontend`.
 
 ```sh
 resource frontend 'Components' = {

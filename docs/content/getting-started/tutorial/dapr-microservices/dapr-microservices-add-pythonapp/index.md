@@ -102,7 +102,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
      uses: [
         {
-          binding: nodeapp.properties.bindings.invoke
+          binding: nodeapplication.properties.bindings.invoke
         }
       ]
       traits: [

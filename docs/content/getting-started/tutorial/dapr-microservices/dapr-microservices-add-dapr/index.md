@@ -15,7 +15,7 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add a Dapr trait to the nodeapp component
 A *trait* on the `nodeapp` component can be used to describe the Dapr configuration:
 
-```sh
+```
   resource nodeapplication 'Components' = {
     name: 'nodeapp'
     kind: 'radius.dev/Container@v1alpha1'
@@ -42,7 +42,9 @@ The `traits` section is one of several top level sections in a *component*. Trai
 ## Add a Dapr Invoke binding on the nodeapp component
 Add another *binding* on the `nodeapp` component representing the Dapr service invocation protocol. Adding a binding for the kind `dapr.io/Invoke` declares that you intend to accept service invocation requests on this component. 
 
-```sh
+Note that the binding uses the **variable name** for the referenced component (*not* the value of the `name` property).
+
+```
   resource nodeapplication 'Components' = {
     name: 'nodeapp'
     kind: 'radius.dev/Container@v1alpha1'
@@ -72,7 +74,7 @@ A `statestore` component is used to specify a few properties about the state sto
   - **config > kind:** `state.azure.tablestorage` corresponds to the kind of Dapr state store used for [Azure Table Storage](https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/setup-azure-tablestorage/)
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```sh
+```
   resource statestore 'Components' = {
     name: 'statestore'
     kind: 'dapr.io/StateStore@v1alpha1'
@@ -96,11 +98,11 @@ The `uses` section is used to configure relationships between a component and bi
 Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from within the `nodeapp` component via a `uses` section. This declares the *intention* from the `nodeapp` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
 
 {{% alert title="💡 Implicit Bindings" color="primary" %}}
-The `statestore` component implicitly declares a built-in binding named `default` of type `dapr.io/StateStore`. In general components that define infrastructure and data-stores will come with built-in bindings as part of their type declaration. It just makes sense that a Dapr state store component can be used as a state store without extra configuration.
+The `statestore` component implicitly declares a built-in binding named `default` of type `dapr.io/StateStore`. In general, components that define infrastructure and data-stores will come with built-in bindings as part of their type declaration. In this example, a Dapr state store component can be used as a state store without extra configuration.
 {{% /alert %}}
 
 
-```sh
+```
   resource nodeapplication 'Components' = {
     name: 'nodeapp'
     kind: 'radius.dev/Container@v1alpha1'
