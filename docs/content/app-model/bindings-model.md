@@ -20,7 +20,7 @@ You can learn about what default bindings are provided inside the respective [co
 
 ### Defined bindings
 
-Defined bindings are offered after a user defines them within a component. For example, the [`radius.dev/container`]({{< ref container >}}) component can have an 'http' binding added to it by definining the 'http' binding within the 'provides' section.
+Defined bindings are offered after a user defines them within a component. For example, the [`radius.dev/container`]({{< ref container >}}) component can have an 'http' binding added to it by definining the 'http' binding within the 'bindings' section. In this case the binding has the name `frontend`.
 
 ```sh
 resource frontend 'Components' = {
@@ -28,11 +28,10 @@ resource frontend 'Components' = {
   kind: 'radius.dev/Container@v1alpha1'
   properties: {
     run: {...}
-    provides: [
-      {
-        name: 'frontend'
+    bindings: 
+      frontend: {
         kind: 'http'
-        containerPort: 80
+        targetPort: 3000
       }
     ]
   }
@@ -43,7 +42,7 @@ You can learn about what defined bindings are provided inside the respective [co
 
 ## Consuming bindings
 
-Components can consume bindings from other components via the [`dependsOn`]({{< ref "components-model.md#dependson" >}}) configuration. Depending on the binding being offered, it might require additional configuration through parameters like `setEnv` or `secrets`.
+Components can consume bindings from other components via the [`uses`]({{< ref "components-model.md#uses" >}}) configuration. Depending on the binding being offered, it might require additional configuration through parameters like `env` or `secrets`.
 
 For more information on how to consume bindings from components, visit the [components docs]({{< ref components >}}).
 

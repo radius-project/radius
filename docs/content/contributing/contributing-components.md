@@ -16,6 +16,6 @@ All components need to have a page under [Components]({{< ref components >}}). E
 
 - An overview that begins the page, describing what the components does and why people would use it
 - Configuration section that describes every value which you could provide when defining a component, along with example values for each field.
-- Services section which describes every service the component can provide
+- Bindings section which describes every bindings the component can provide
 - Traits section which describes every trait that component can have
 - An example in code, with description of the component is and does

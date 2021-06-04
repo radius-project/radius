@@ -15,23 +15,22 @@ The `radius.dev/Container` component provides an abstraction for a container wor
 | name | y | The name of your component. Used to provide status and visualize the component. | `frontend`
 | kind | y |The component kind and version. | `radius.dev/Container@v1alpha1`
 | properties.run.container.image | y | The registry and image to download and run in your container. | `radiusteam/frontend`
-| properties.provides |  | Services that your container provides to other components. See [services](#services) for more  information | -
+| properties.bindings |  | Bindings that your container provides to other components. See [bindings](#bindings) for more  information | -
 
 ### Environment variables
 
-Environment variables can be configured automatically via the component [`dependsOn`configuration]({{< ref "components-model.md#dependson" >}}).
+Environment variables can be configured automatically via the component [`uses`configuration]({{< ref "components-model.md#uses" >}}).
 
-## Services
+## Bindings
 
 ### HTTP endpoint
 
-The `http` service provides an HTTP endpoint service which opens a specified port on a container so that other services can connect to endpoints listening on the container.
+The `http` binding provides an HTTP endpoint which opens a specified port on a container so that other components can send HTTP traffic to the container.
 
 | Key | Required | Description | Example |
 |-----|:--------:|-------------|---------|
-| kind | y | Defines the service type. | `http`
-| name | Y | The name used to describe the component. Used when providing status and visualizing your application & component. | `webserver`
-| containerPort | Y | The HTTP port to open on the container for other components to access. | `443`
+| kind | y | Defines the binding type. | `http`
+| targetPort | Y | The HTTP port that is listening inside the container. | `3000`
 
 {{< rad file="frontend-backend.bicep" >}}
 
@@ -41,13 +40,12 @@ resource frontend 'Components' = {
   kind: 'radius.dev/Container@v1alpha1'
   properties: {
     run: {...}
-    provides: [
-      {
-        name: 'frontend'
+    bindings:
+      web: {
         kind: 'http'
-        containerPort: 80
+        targetPort: 3000
       }
-    ]
+    }
   }
 }
 ```
@@ -61,7 +59,7 @@ The `radius.dev/InboundRoute` trait adds an ingress controller to the container 
 | Key | Required | Description | Example |
 |-----|:--------:|-------------|---------|
 | kind | y | Defines the trait type. | `'radius.dev/InboundRoute@v1alpha1'`
-| properties.service | y | The service to create an ingress controller on and expose to the internet. | `'frontend'`
+| properties.binding | y | The binding to create an ingress controller on and expose to the internet. | `'frontend'`
 
 {{< rad file="inboundroute.bicep" >}}
 
@@ -71,18 +69,17 @@ resource frontend 'Components' = {
   kind: 'radius.dev/Container@v1alpha1'
   properties: {
     run: {...}
-    provides: [
-      {
-        name: 'frontend'
+    bindings: {
+      web: {
         kind: 'http'
-        containerPort: 80
+        targetPort: 3000
       }
-    ]
+    }
     traits: [
       {
         kind: 'radius.dev/InboundRoute@v1alpha1'
         properties: {
-          service: 'frontend'
+          binding: 'web'
         }
       }
     ]
@@ -108,10 +105,8 @@ resource frontend 'Components' = {
     traits: [
       {
         kind: 'dapr.io/App@v1alpha1'
-        properties: {
-          appId: 'frontend'
-          appPort: 3000
-        }
+        appId: 'frontend'
+        appPort: 3000
       }
     ]
   }
@@ -120,7 +115,7 @@ resource frontend 'Components' = {
 
 ## Example
 
-The following example shows a container component that provides an HTTP service on port 3000 and has a Dapr app trait.
+The following example shows a container component that provides an HTTP binding on container port 3000 and has a Dapr app trait.
 
 ```sh
 resource todoapplication 'Components' = {
@@ -132,21 +127,19 @@ resource todoapplication 'Components' = {
         image: 'radiusteam/tutorial-todoapp'
       }
     }
-    provides: [
-      {
+    bindings: {
+      web: {
         kind: 'http'
-        name: 'web'
-        containerPort: 3000
+        targetPort: 3000
       }
-    ]
+    }
     traits: [
       {
         kind: 'dapr.io/App@v1alpha1'
-        properties: {
-          appId: 'todoapp'
-          appPort: 3000
-        }
+        appId: 'todoapp'
+        appPort: 3000
       }
+    ]
   }
 }
 ```

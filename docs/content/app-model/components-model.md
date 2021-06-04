@@ -16,15 +16,15 @@ The component is documentation for a piece of code, data, or infrastructure. It 
 |------|:--------:|-------------|---------|
 | name | y | The name of your component. Used for defining relationships and getting status for your components. | `frontend`
 | properties.uses | | Other components which your component depends on for bindings and/or data. Learn more [below](#uses). | [See below](#uses)
-| properties.provides | | [Bindings]({{< ref bindings-model.md >}}) which the component offers to other components or users. | [See below](#provides).
+| properties.bindings | | [Bindings]({{< ref bindings-model.md >}}) which the component offers to other components or users. | [See below](#bindings).
 
 Different [component types]({{< ref components >}}) may also have additional properties and configuration which can be set as part of the component definition.
 
-## provides
+## Bindings
 
-The `provides` configuration defines [bindings]({{< ref bindings-model.md >}}) which the component offers. These bindings can range from HTTP ports being opened on a container to an API that a database resource offers.
+The `bindings` configuration defines [bindings]({{< ref bindings-model.md >}}) which the component offers. These bindings can range from HTTP ports being opened on a container to an API that a database resource offers.
 
-### Global provides configuration
+### Global bindings configuration
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
@@ -42,11 +42,10 @@ resource store 'Components' = {
   name: 'storefront'
   kind: 'radius.dev/Container@v1alpha1'
   properties: {
-    provides: [
-      {
+    bindings: 
+      web: {
         kind: 'http'
-        name: 'web'
-        containerPort: 3000
+        targetPort: 3000
       }
     ]
   }

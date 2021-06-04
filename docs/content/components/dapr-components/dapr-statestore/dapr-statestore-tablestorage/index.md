@@ -47,10 +47,8 @@ resource nodeapp 'Components' = {
   traits: [
     {
       kind: 'dapr.io/App@v1alpha1'
-      properties: {
-        appId: 'nodeapp'
-        appPort: 50051
-      }
+      appId: 'nodeapp'
+      appPort: 50051
     }
   ]
 }

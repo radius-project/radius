@@ -54,7 +54,7 @@ resource kv 'Components' = {
 
 ## Bindings
 
-KeyVault bindings are offered when other compute resources use them and are specified in the compute component's [`uses` configuration]({{< ref "components-model.md#dependson" >}}).
+KeyVault bindings are offered when other compute resources use them and are specified in the compute component's [`uses` configuration]({{< ref "components-model.md#uses" >}}).
 
 ### Access KeyVault from a container
 

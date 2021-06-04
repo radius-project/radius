@@ -148,7 +148,7 @@ When a component defines a non-runnable unit of code: like a database or message
 - **Name**: the logical name of the Component, must be unique per-Application
 - **Essentials**: how do I configure this? *eg. name of the database*
 - **Dependencies**:  what bindings do I need to access? (bindings will be described later)
-- **Services**: what capabilities do I provide for others?
+- **Bindings**: what capabilities do I provide for others?
 - **Traits**: what operational behaviors do I interact with? (traits will be described later)
 
 The difference between a runnable and non-runnable Component is that typically more will be done *for you* in a non-runnable component. It's easier to describe a PostgreSQL database than it is to describe a container, because the database has many standard behaviors.
