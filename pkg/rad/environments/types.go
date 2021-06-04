@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	KindAzureCloud     = "azure"
-	DefaultApplication = "defaultapplication"
+	KindAzureCloud                   = "azure"
+	EnvironmentKeyDefaultApplication = "defaultapplication"
 )
 
 type Environment interface {
@@ -27,7 +27,7 @@ type AzureCloudEnvironment struct {
 	SubscriptionID     string `mapstructure:"subscriptionid" validate:"required"`
 	ResourceGroup      string `mapstructure:"resourcegroup" validate:"required"`
 	ClusterName        string `mapstructure:"clustername" validate:"required"`
-	DefaultApplication string `mapstructure:"defaultapplication"`
+	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
@@ -49,7 +49,7 @@ func (e *AzureCloudEnvironment) GetDefaultApplication() string {
 type GenericEnvironment struct {
 	Name               string `mapstructure:"name" validate:"required"`
 	Kind               string `mapstructure:"kind" validate:"required"`
-	DefaultApplication string `mapstructure:"defaultapplication"`
+	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
 
 	// Capture arbitrary other properties
 	Properties map[string]interface{} `mapstructure:",remain"`
