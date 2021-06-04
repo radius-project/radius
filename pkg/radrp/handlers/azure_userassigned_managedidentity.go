@@ -39,8 +39,8 @@ func (pih *azureUserAssignedManagedIdentityHandler) GetProperties(resource workl
 func (pih *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	if options.Resource.Created {
-		// TODO: right now this resource is created during the rendering process :(
+	if options.Resource.Deployed {
+		// TODO: right now this resource is already deployed during the rendering process :(
 		// this should be done here instead when we have built a more mature system.
 	}
 	return properties, nil

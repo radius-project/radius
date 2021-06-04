@@ -173,6 +173,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				return AADPodIdentity{}, outputResources, err
 			}
 			res := workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "managedID")
+			log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 			outputResources = append(outputResources, res)
 
 			// Create pod identity
@@ -181,6 +182,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				return AADPodIdentity{}, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
 			}
 			res = workloads.CreatePodIdentityResource(true, podIdentity.ClusterName, podIdentity.Name, podIdentity.Namespace, "podid", "true")
+			log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 			outputResources = append(outputResources, res)
 
 			log.Printf("Created pod identity %v to bind %v", podIdentity.Name, *msi.ID)
@@ -217,29 +219,19 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	if podIdentity.Name != "" {
 		// Add the aadpodidbinding label to the k8s spec for the container
 		deployment.Spec.Template.ObjectMeta.Labels["aadpodidbinding"] = podIdentity.Name
-
-		// Append the Pod identity created to the list of resources
-		resources = append(resources, workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzurePodIdentity,
-			Resource: map[string]string{
-				handlers.PodIdentityNameKey:    podIdentity.Name,
-				handlers.PodIdentityClusterKey: podIdentity.ClusterName,
-			},
-		})
 	}
 
 	// Append the output resources created for podid creation to the final set
 	resources = append(resources, outputResources...)
-	fmt.Printf("@@@@ Added outputresources from podid creation: %v\n", len(resources))
 
 	res := workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Deployment", "true", deployment)
+	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	resources = append(resources, res)
-	fmt.Printf("@@@@ Added outputresources: %v\n", len(resources))
 
 	if service != nil {
 		res = workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Service", "true", service)
+		log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 		resources = append(resources, res)
-		fmt.Printf("@@@@ Added outputresources: %v\n", len(resources))
 	}
 
 	return resources, nil

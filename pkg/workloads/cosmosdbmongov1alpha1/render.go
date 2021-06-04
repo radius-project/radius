@@ -93,23 +93,22 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.OutputResource{}, err
 	}
 
+	var resource workloads.OutputResource
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a cosmosdb instance
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureCosmosDBMongo,
+		resource = workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureCosmosDBMongo,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
 				handlers.CosmosDBDatabaseNameKey: w.Workload.Name,
 			},
+			Managed: "true",
 		}
-
-		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
@@ -121,8 +120,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to connect to a servicebus queue
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureCosmosDBMongo,
+		resource = workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureCosmosDBMongo,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 
@@ -133,11 +132,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,
 			},
 		}
-
-	// generate data we can use to manage a cosmosdb instance
-	resource := workloads.OutputResource{
-		ResourceKind: workloads.ResourceKindAzureCosmosDBMongo,
-		Resource: map[string]string{
-			"name": w.Workload.Name,
-		},
 	}
+	return []workloads.OutputResource{resource}, nil
+}

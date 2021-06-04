@@ -104,8 +104,6 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 		c.Properties.Traits = append(c.Properties.Traits, tt)
 	}
 
-	c.OutputResources = newDBOutputResourcesFromREST(original.OutputResources)
-
 	return c
 }
 
@@ -119,7 +117,7 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 			Config:   original.Properties.Config,
 			Run:      original.Properties.Run,
 		},
-		OutputResources: []workloads.OutputResource{},
+		OutputResources: []rest.OutputResource{},
 	}
 
 	for _, d := range original.Properties.Uses {
@@ -236,16 +234,15 @@ func newDBOutputResourcesFromREST(original []workloads.OutputResource) []db.Outp
 	return drs
 }
 
-func newRESTOutputResourcesFromDB(original []db.OutputResource) []workloads.OutputResource {
-	var rrs []workloads.OutputResource
+func newRESTOutputResourcesFromDB(original []db.OutputResource) []rest.OutputResource {
+	var rrs []rest.OutputResource
 	for _, r := range original {
-		rr := workloads.OutputResource{
+		rr := rest.OutputResource{
 			LocalID:            r.LocalID,
 			ResourceKind:       r.ResourceKind,
 			OutputResourceInfo: r.OutputResourceInfo,
 			OutputResourceType: r.OutputResourceType,
 			Managed:            r.Managed,
-			Resource:           r.Resource,
 		}
 		rrs = append(rrs, rr)
 	}

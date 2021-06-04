@@ -235,7 +235,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					OutputResourceType: resource.OutputResourceType,
 					Resource:           resource.Resource,
 				}
-				log.Printf("Created output resource: %s of output resource type: %s", dr.LocalID, dr.OutputResourceType)
+				log.Printf("Saving output resource: %s of output resource type: %s to DB", dr.LocalID, dr.OutputResourceType)
 				dbOutputResources = append(dbOutputResources, dr)
 			}
 

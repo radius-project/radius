@@ -41,7 +41,7 @@ type WorkloadRenderer interface {
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
 	Resource           interface{}
-	Created            bool   // TODO: Temporary workaround till some resources are created in Render phase
+	Deployed           bool   // TODO: Temporary workaround till some resources are deployed in Render phase
 	LocalID            string // Resources need to be tracked even before actually creating them. Local ID provides a way to track them.
 	Managed            string
 	ResourceKind       string
@@ -57,13 +57,14 @@ type ARMInfo struct {
 }
 
 // CreateArmResource returns an object of type OutputResource initialized with the data from the ARM resource
-func CreateArmResource(created bool, resourceKind, id string, resourceType string, managed bool, localIDPrefix string) OutputResource {
+func CreateArmResource(deployed bool, resourceKind, id string, resourceType string, managed bool, localIDPrefix string) OutputResource {
 	armInfo := ARMInfo{
 		ResourceID:   id,
 		ResourceType: resourceType,
 		APIVersion:   "???",
 	}
 	r := OutputResource{
+		Deployed:           deployed,
 		ResourceKind:       resourceKind,
 		OutputResourceType: OutputResourceTypeArm,
 		LocalID:            localidgenerator.MakeID(localIDPrefix),
@@ -83,7 +84,7 @@ type K8sInfo struct {
 }
 
 // CreateKubernetesResource returns an object of type OutputResource initialized with the data from the Kubernetes resource
-func CreateKubernetesResource(created bool, resourceKind, kind, apiVersion, name, namespace, localIDPrefix, managed string, obj runtime.Object) OutputResource {
+func CreateKubernetesResource(deployed bool, resourceKind, kind, apiVersion, name, namespace, localIDPrefix, managed string, obj runtime.Object) OutputResource {
 	k8sInfo := K8sInfo{
 		Kind:       kind,
 		APIVersion: apiVersion,
@@ -91,6 +92,7 @@ func CreateKubernetesResource(created bool, resourceKind, kind, apiVersion, name
 		Namespace:  namespace,
 	}
 	r := OutputResource{
+		Deployed:           deployed,
 		ResourceKind:       resourceKind,
 		OutputResourceType: OutputResourceTypeKubernetes,
 		LocalID:            localidgenerator.MakeID(localIDPrefix),
@@ -115,7 +117,7 @@ const (
 )
 
 // CreatePodIdentityResource returns an object of type OutputResource initialized with the data from the AADPodIdentity resource
-func CreatePodIdentityResource(created bool, clusterName, name, namespace, localIDPrefix, managed string) OutputResource {
+func CreatePodIdentityResource(deployed bool, clusterName, name, namespace, localIDPrefix, managed string) OutputResource {
 	podidInfo := AADPodIdentity{
 		AKSClusterName: clusterName,
 		Name:           name,
@@ -123,7 +125,7 @@ func CreatePodIdentityResource(created bool, clusterName, name, namespace, local
 	}
 
 	r := OutputResource{
-		Created:            created,
+		Deployed:           deployed,
 		ResourceKind:       ResourceKindAzurePodIdentity,
 		OutputResourceType: OutputResourceTypePodIdentity,
 		LocalID:            localidgenerator.MakeID(localIDPrefix),

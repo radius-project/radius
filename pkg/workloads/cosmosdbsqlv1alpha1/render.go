@@ -89,8 +89,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to manage a cosmosdb instance
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureCosmosDBSQL,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureCosmosDBSQL,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
@@ -99,36 +99,30 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
-	} else {
-		if component.Config.Resource == "" {
-			return nil, workloads.ErrResourceMissingForUnmanagedResource
-		}
+		return []workloads.OutputResource{resource}, nil
+	}
 
-		databaseID, err := workloads.ValidateResourceID(component.Config.Resource, SQLResourceType, "CosmosDB SQL Database")
-		if err != nil {
-			return nil, err
-		}
+	if component.Config.Resource == "" {
+		return nil, workloads.ErrResourceMissingForUnmanagedResource
+	}
 
-		// generate data we can use to connect to a servicebus queue
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureCosmosDBSQL,
-			Resource: map[string]string{
-				handlers.ManagedKey: "false",
+	databaseID, err := workloads.ValidateResourceID(component.Config.Resource, SQLResourceType, "CosmosDB SQL Database")
+	if err != nil {
+		return nil, err
+	}
 
-				// Truncate the database part of the ID to make an ID for the account
-				handlers.CosmosDBAccountIDKey:    resources.MakeID(databaseID.SubscriptionID, databaseID.ResourceGroup, databaseID.Types[0]),
-				handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
-				handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,
-				handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,
-			},
-		}
-
-	// generate data we can use to manage a cosmosdb instance
+	// generate data we can use to connect to a servicebus queue
 	resource := workloads.OutputResource{
 		ResourceKind: workloads.ResourceKindAzureCosmosDBSQL,
 		Resource: map[string]string{
-			"name": w.Workload.Name,
+			handlers.ManagedKey: "false",
+
+			// Truncate the database part of the ID to make an ID for the account
+			handlers.CosmosDBAccountIDKey:    resources.MakeID(databaseID.SubscriptionID, databaseID.ResourceGroup, databaseID.Types[0]),
+			handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
+			handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,
+			handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,
 		},
 	}
+	return []workloads.OutputResource{resource}, nil
 }

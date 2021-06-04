@@ -68,15 +68,15 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to manage a cosmosdb instance
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureKeyVault,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureKeyVault,
 			Resource: map[string]string{
 				handlers.ManagedKey: "true",
 			},
 		}
 
 		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
@@ -88,8 +88,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to connect to a servicebus queue
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureKeyVault,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureKeyVault,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 
@@ -99,6 +99,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	}
 }

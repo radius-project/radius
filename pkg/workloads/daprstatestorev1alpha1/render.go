@@ -74,7 +74,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	} else {
 		if component.Config.Kind == "state.sqlserver" {
 			return nil, errors.New("only Radius managed resources are supported for Dapr SQL Server")
@@ -90,8 +90,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to connect to a Storage Account
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindDaprStateStoreAzureStorage,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindDaprStateStoreAzureStorage,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.KubernetesNameKey:       w.Name,
@@ -103,6 +103,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.StorageAccountNameKey: accountID.Types[0].Name,
 			},
 		}
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	}
 }

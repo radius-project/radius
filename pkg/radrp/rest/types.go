@@ -49,9 +49,18 @@ type Application struct {
 // Component represents an Radius Component.
 type Component struct {
 	ResourceBase    `json:",inline"`
-	Kind            string                     `json:"kind"`
-	Properties      ComponentProperties        `json:"properties"`
-	OutputResources []workloads.OutputResource `json:"outputresources"`
+	Kind            string              `json:"kind"`
+	Properties      ComponentProperties `json:"properties"`
+	OutputResources []OutputResource    `json:"outputresources"`
+}
+
+// OutputResource represents the output of rendering a resource
+type OutputResource struct {
+	LocalID            string      `json:"localid"`
+	Managed            string      `json:"managed"`
+	ResourceKind       string      `json:"resourcekind"`
+	OutputResourceType string      `json:"outputresourcetype"`
+	OutputResourceInfo interface{} `json:"outputresourceinfo"`
 }
 
 // ComponentProperties represents the properties element of an Radius component.

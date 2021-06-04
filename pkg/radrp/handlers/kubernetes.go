@@ -43,9 +43,9 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 		ComponentNameKey:        item.GetName(),
 	}
 
-	if options.Resource.Created {
-		// This resource is fully initialized in the Render process
-		// This will eventually change
+	if options.Resource.Deployed {
+		// This resource is deployed in the Render process
+		// TODO: This will eventually change
 		// For now, no need to process any further
 		return p, nil
 	}
