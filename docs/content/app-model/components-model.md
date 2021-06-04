@@ -54,15 +54,22 @@ resource store 'Components' = {
 
 ## Uses
 
-The `uses` property tells Radius what relationships exist between the different components in your application. Without any supplemental information, a `uses` relationship tells Radius in what order to deploy the resources. With additional configuration, Radis can set environment variables, place secrets within secret stores, and add additional intelligence to your application.
+The `uses` property tells Radius what relationships exist between the different components in your application. Without any supplemental information, a `uses` relationship tells Radius in what order to deploy the resources. With additional configuration, Radius can set environment variables, place secrets within secret stores, and add additional intelligence to your application.
 
-Only runnable [components]({{< ref components >}}) can define relationships with `uses`.
+Note: only runnable [components]({{< ref components >}}) (e.g. containers) can define relationships with `uses`.
 
 ### Binding configuration
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | binding | y | The binding of the other component to depend on. | `kv.properties.bindings.default`
+
+
+In general, bindings can be referenced with the following structure: `<componentname>.properties.bindings.<bindingname>`.
+- In some cases, users may reference the binding itself.   
+  - For example: `store: kv.properties.bindings.default` 
+- In some cases, users may reference one of the computed values the binding provides.   
+  - For example: `KV_URI: kv.properties.bindings.default.uri` 
 
 ### Action configuration
 
