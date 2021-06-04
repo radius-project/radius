@@ -100,7 +100,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "inbound-route",
 			Description: "inbound-route",
-			Template:    "../../docs/content/components/radius-components/container/inbound-route.bicep",
+			Template:    "../../docs/content/components/radius-components/container/inboundroute.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"inbound-route": {
