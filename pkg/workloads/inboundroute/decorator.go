@@ -21,7 +21,7 @@ type Renderer struct {
 	Inner workloads.WorkloadRenderer
 }
 
-// Allocate is the WorkloadRenderer implementation for the radius.dev/InboundRoute' decorator.
+// AllocateBindings is the WorkloadRenderer implementation for the radius.dev/InboundRoute' decorator.
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 
 	// InboundRoute doesn't affect bindings
@@ -33,30 +33,32 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	// Let the inner renderer do its work
 	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		// Even if the operation fails, return the output resources created so far
+		return resources, err
 	}
 
 	trait := Trait{}
 	found, err := w.Workload.FindTrait(Kind, &trait)
-	if err != nil {
-		return []workloads.OutputResource{}, err
-	} else if !found {
+	if !found || err != nil {
+		// Even if the operation fails, return the output resources created so far
 		return resources, err
 	}
 
 	if trait.Binding == "" {
-		return []workloads.OutputResource{}, fmt.Errorf("the binding field is required for trait '%s'", Kind)
+		// Even if the operation fails, return the output resources created so far
+		return resources, fmt.Errorf("the binding field is required for trait '%s'", Kind)
 	}
 
 	provides, ok := w.Workload.Bindings[trait.Binding]
 	if !ok {
-		return []workloads.OutputResource{}, fmt.Errorf("cannot find the binding '%s' referenced by '%s' trait", trait.Binding, Kind)
+		// Even if the operation fails, return the output resources created so far
+		return resources, fmt.Errorf("cannot find the binding '%s' referenced by '%s' trait", trait.Binding, Kind)
 	}
 
 	httpBinding := containerv1alpha1.HTTPBinding{}
 	err = provides.AsRequired(containerv1alpha1.KindHTTP, &httpBinding)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		return resources, err
 	}
 
 	ingress := &networkingv1.Ingress{

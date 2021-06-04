@@ -227,7 +227,7 @@ func Test_Render_Success_NonDefaultPort(t *testing.T) {
 		},
 	}
 
-	resources, radResources, err := renderer.Render(context.Background(), w)
+	resources, err := renderer.Render(context.Background(), w)
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
 
@@ -236,7 +236,6 @@ func Test_Render_Success_NonDefaultPort(t *testing.T) {
 
 	service := findService(resources)
 	require.NotNil(t, service)
-	require.NotNil(t, radResources)
 
 	labels := map[string]string{
 		workloads.LabelRadiusApplication: "test-app",

@@ -185,7 +185,14 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 			outputResources, err := dp.renderWorkload(ctx, inst)
 			if err != nil {
+				fmt.Printf("@@@@@ err not nil. output resources: %v", outputResources)
 				errs = append(errs, err)
+				var dbOutputResources []db.OutputResource
+				for _, resource := range outputResources {
+					// Save the output resource to DB
+					addDBOutputResource(resource, &dbOutputResources)
+				}
+				action.Definition.OutputResources = dbOutputResources
 				continue
 			}
 
@@ -223,22 +230,24 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				})
 				if err != nil {
 					errs = append(errs, fmt.Errorf("error applying workload resource %v %v: %w", properties, action.ComponentName, err))
+					// Save the output resource to DB
+					addDBOutputResource(resource, &dbOutputResources)
 					continue
 				}
 
 				// Save the output resource to DB
-				dr := db.OutputResource{
-					Managed:            resource.Managed,
-					LocalID:            resource.LocalID,
-					ResourceKind:       resource.ResourceKind,
-					OutputResourceInfo: resource.OutputResourceInfo,
-					OutputResourceType: resource.OutputResourceType,
-					Resource:           resource.Resource,
+				addDBOutputResource(resource, &dbOutputResources)
+
+				dr := db.DeploymentResource{
+					LocalID:    resource.LocalID,
+					Type:       resource.ResourceKind,
+					Properties: properties,
 				}
-				log.Printf("Saving output resource: %s of output resource type: %s to DB", dr.LocalID, dr.OutputResourceType)
-				dbOutputResources = append(dbOutputResources, dr)
+				dw.Resources = append(dw.Resources, dr)
 			}
 
+			// Add the output resources to the DB component definition
+			log.Printf("Saving %d output resources to DB", len(dbOutputResources))
 			action.Definition.OutputResources = dbOutputResources
 
 			wrps := []workloads.WorkloadResourceProperties{}
@@ -326,6 +335,20 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 	return nil
 }
 
+func addDBOutputResource(resource workloads.OutputResource, dbOutputResources *[]db.OutputResource) {
+	// Save the output resource to DB
+	dbr := db.OutputResource{
+		Managed:            resource.Managed,
+		LocalID:            resource.LocalID,
+		ResourceKind:       resource.ResourceKind,
+		OutputResourceInfo: resource.OutputResourceInfo,
+		OutputResourceType: resource.OutputResourceType,
+		Resource:           resource.Resource,
+	}
+	log.Printf("Saving output resource: %s of output resource type: %s to DB", dbr.LocalID, dbr.OutputResourceType)
+	*dbOutputResources = append(*dbOutputResources, dbr)
+}
+
 func (dp *deploymentProcessor) orderActions(actions map[string]ComponentAction) ([]ComponentAction, error) {
 	unordered := []graph.DependencyItem{}
 	for _, action := range actions {
@@ -392,7 +415,7 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
 	if err != nil {
-		return []workloads.OutputResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
+		return resources, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
 
 	return resources, nil

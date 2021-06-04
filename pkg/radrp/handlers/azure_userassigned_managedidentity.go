@@ -22,18 +22,7 @@ type azureUserAssignedManagedIdentityHandler struct {
 }
 
 func (pih *azureUserAssignedManagedIdentityHandler) GetProperties(resource workloads.OutputResource) (map[string]string, error) {
-	item, err := convertToUnstructured(resource)
-	if err != nil {
-		return nil, err
-	}
-
-	p := map[string]string{
-		"kind":       item.GetKind(),
-		"apiVersion": item.GetAPIVersion(),
-		"namespace":  item.GetNamespace(),
-		"name":       item.GetName(),
-	}
-	return p, nil
+	return map[string]string{}, nil
 }
 
 func (pih *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {

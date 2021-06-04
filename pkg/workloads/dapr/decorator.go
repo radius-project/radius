@@ -67,15 +67,14 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	// Let the inner renderer do its work
 	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		// Even if the operation fails, return the output resources created so far
+		return resources, err
 	}
 
 	trait := Trait{}
 	found, err := w.Workload.FindTrait(Kind, &trait)
-	if err != nil {
-		return []workloads.OutputResource{}, err
-	} else if !found {
-		// no trait
+	if !found || err != nil {
+		// Even if the operation fails, return the output resources created so far
 		return resources, err
 	}
 
@@ -88,7 +87,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		o, ok := res.Resource.(runtime.Object)
 		if !ok {
-			return []workloads.OutputResource{}, errors.New("Found kubernetes resource with non-Kubernetes paylod")
+			// Even if the operation fails, return the output resources created so far
+			return resources, errors.New("Found kubernetes resource with non-Kubernetes paylod")
 		}
 
 		annotations, ok := r.getAnnotations(o)

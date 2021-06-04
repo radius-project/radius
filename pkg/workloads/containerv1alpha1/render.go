@@ -100,16 +100,17 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 	return id, nil
 }
 
-func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, error) {
+func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, []workloads.OutputResource, error) {
 	// Read the keyvault URI so we can get the keyvault name for permissions
+	var outputResources []workloads.OutputResource
 	value, ok := store.Properties[handlers.KeyVaultURIKey]
 	if !ok {
-		return nil, fmt.Errorf("failed to read keyvault uri")
+		return nil, outputResources, fmt.Errorf("failed to read keyvault uri")
 	}
 
 	kvURI, ok := value.(string)
 	if !ok || kvURI == "" {
-		return nil, fmt.Errorf("failed to read keyvault uri")
+		return nil, outputResources, fmt.Errorf("failed to read keyvault uri")
 	}
 
 	kvName := strings.Replace(strings.Split(kvURI, ".")[0], "https://", "", -1)
@@ -120,38 +121,49 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	g.Authorizer = r.Arm.Auth
 	rg, err := g.Get(ctx, r.Arm.ResourceGroup)
 	if err != nil {
-		return nil, fmt.Errorf("could not find resource group: %w", err)
+		return nil, outputResources, fmt.Errorf("could not find resource group: %w", err)
 	}
 	msi, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+		return nil, outputResources, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
+
+	res := workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "managedID")
+	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
+	outputResources = append(outputResources, res)
 
 	kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
 	kvc.Authorizer = r.Arm.Auth
 	if err != nil {
-		return nil, err
+		return nil, outputResources, err
 	}
 	kv, err := kvc.Get(ctx, r.Arm.ResourceGroup, kvName)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find keyvault: %w", err)
+		return nil, outputResources, fmt.Errorf("unable to find keyvault: %w", err)
 	}
 
 	// Create Role Assignment to grant the managed identity appropriate access permissions to the Key Vault
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for secrets and certificates
 	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", msi.Name, err)
+		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", msi.Name, err)
 	}
+	res = workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "RoleAssignment")
+	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
+	outputResources = append(outputResources, res)
+
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for encryption keys
 	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", msi.Name, err)
+		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", msi.Name, err)
 	}
+	res = workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "RoleAssignment")
+	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
+	outputResources = append(outputResources, res)
 
 	log.Printf("Created role assignment for %v to access %v", *msi.ID, *kv.ID)
 
-	return &msi, nil
+	return &msi, outputResources, nil
 }
 
 func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, []workloads.OutputResource, error) {
@@ -168,20 +180,18 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 		// The list of dependency kinds to check might grow in the future
 		if binding.Kind == "azure.com/KeyVault" {
 			// Create a user assigned managed identity and assign it the right permissions to access the KeyVault
-			msi, err := r.createManagedIdentityForKeyVault(ctx, binding, w, cw)
+			msi, or, err := r.createManagedIdentityForKeyVault(ctx, binding, w, cw)
 			if err != nil {
 				return AADPodIdentity{}, outputResources, err
 			}
-			res := workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "managedID")
-			log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
-			outputResources = append(outputResources, res)
+			outputResources = append(outputResources, or...)
 
 			// Create pod identity
 			podIdentity, err := r.createPodIdentity(ctx, *msi, cw.Name, w.Application)
 			if err != nil {
 				return AADPodIdentity{}, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
 			}
-			res = workloads.CreatePodIdentityResource(true, podIdentity.ClusterName, podIdentity.Name, podIdentity.Namespace, "podid", "true")
+			res := workloads.CreatePodIdentityResource(true, podIdentity.ClusterName, podIdentity.Name, podIdentity.Namespace, "podid", "true")
 			log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 			outputResources = append(outputResources, res)
 
@@ -210,11 +220,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.OutputResource{}, err
 	}
 
-	resources := []workloads.OutputResource{}
+	outputResources := []workloads.OutputResource{}
 
-	podIdentity, outputResources, err := r.createPodIdentityResource(ctx, w, cw)
+	podIdentity, or, err := r.createPodIdentityResource(ctx, w, cw)
 	if err != nil {
-		return outputResources, fmt.Errorf("unable to add pod identity: %w", err)
+		// Even if the operation fails, return the output resources created so far
+		return or, fmt.Errorf("unable to add pod identity: %w", err)
 	}
 	if podIdentity.Name != "" {
 		// Add the aadpodidbinding label to the k8s spec for the container
@@ -222,19 +233,19 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	// Append the output resources created for podid creation to the final set
-	resources = append(resources, outputResources...)
+	outputResources = append(outputResources, or...)
 
 	res := workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Deployment", "true", deployment)
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
-	resources = append(resources, res)
+	outputResources = append(outputResources, res)
 
 	if service != nil {
 		res = workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Service", "true", service)
 		log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
-		resources = append(resources, res)
+		outputResources = append(outputResources, res)
 	}
 
-	return resources, nil
+	return outputResources, nil
 }
 
 func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent, error) {
@@ -439,7 +450,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	}
 	identities = append(identities, podID)
 
-	MaxRetries := 100
+	MaxRetries := 2
 	var mcFuture containerservice.ManagedClustersCreateOrUpdateFuture
 	for i := 0; i <= MaxRetries; i++ {
 		// Retry to wait for the managed identity to propagate

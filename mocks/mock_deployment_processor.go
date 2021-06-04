@@ -9,33 +9,32 @@ import (
 	db "github.com/Azure/radius/pkg/radrp/db"
 	deployment "github.com/Azure/radius/pkg/radrp/deployment"
 	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
 )
 
-// MockDeploymentProcessor is a mock of DeploymentProcessor interface
+// MockDeploymentProcessor is a mock of DeploymentProcessor interface.
 type MockDeploymentProcessor struct {
 	ctrl     *gomock.Controller
 	recorder *MockDeploymentProcessorMockRecorder
 }
 
-// MockDeploymentProcessorMockRecorder is the mock recorder for MockDeploymentProcessor
+// MockDeploymentProcessorMockRecorder is the mock recorder for MockDeploymentProcessor.
 type MockDeploymentProcessorMockRecorder struct {
 	mock *MockDeploymentProcessor
 }
 
-// NewMockDeploymentProcessor creates a new mock instance
+// NewMockDeploymentProcessor creates a new mock instance.
 func NewMockDeploymentProcessor(ctrl *gomock.Controller) *MockDeploymentProcessor {
 	mock := &MockDeploymentProcessor{ctrl: ctrl}
 	mock.recorder = &MockDeploymentProcessorMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDeploymentProcessor) EXPECT() *MockDeploymentProcessorMockRecorder {
 	return m.recorder
 }
 
-// DeleteDeployment mocks base method
+// DeleteDeployment mocks base method.
 func (m *MockDeploymentProcessor) DeleteDeployment(arg0 context.Context, arg1, arg2 string, arg3 *db.DeploymentStatus) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteDeployment", arg0, arg1, arg2, arg3)
@@ -43,13 +42,13 @@ func (m *MockDeploymentProcessor) DeleteDeployment(arg0 context.Context, arg1, a
 	return ret0
 }
 
-// DeleteDeployment indicates an expected call of DeleteDeployment
+// DeleteDeployment indicates an expected call of DeleteDeployment.
 func (mr *MockDeploymentProcessorMockRecorder) DeleteDeployment(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeployment", reflect.TypeOf((*MockDeploymentProcessor)(nil).DeleteDeployment), arg0, arg1, arg2, arg3)
 }
 
-// UpdateDeployment mocks base method
+// UpdateDeployment mocks base method.
 func (m *MockDeploymentProcessor) UpdateDeployment(arg0 context.Context, arg1, arg2 string, arg3 *db.DeploymentStatus, arg4 map[string]deployment.ComponentAction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateDeployment", arg0, arg1, arg2, arg3, arg4)
@@ -57,7 +56,7 @@ func (m *MockDeploymentProcessor) UpdateDeployment(arg0 context.Context, arg1, a
 	return ret0
 }
 
-// UpdateDeployment indicates an expected call of UpdateDeployment
+// UpdateDeployment indicates an expected call of UpdateDeployment.
 func (mr *MockDeploymentProcessorMockRecorder) UpdateDeployment(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeployment", reflect.TypeOf((*MockDeploymentProcessor)(nil).UpdateDeployment), arg0, arg1, arg2, arg3, arg4)
