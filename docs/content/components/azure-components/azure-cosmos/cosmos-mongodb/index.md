@@ -126,3 +126,13 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
 ```
 
 {{< rad file="unmanaged.bicep">}}
+
+**Note:** all user-managed resources should be defined as their own resource in the Bicep template file. For example, in the case of multiple user-managed resources referenced by the application, the template file would look like: 
+
+```
+resource app {...}
+
+resource user-managed-resource-1 {...}
+
+resource user-managed-resource-2 {...}
+```

@@ -230,20 +230,11 @@ Vault url: https://kv-blqmk.vault.azure.net/
 .. List Secrets
 ```
 
+### Next steps
+
+- To use the Bicep template from this tutorial: {{< rad file="template.bicep">}}
+- If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
+
+
+
 You have completed this tutorial!
-
-### Cleanup (optional)
-
-When you are ready to clean up and delete the resources you can delete your environment. This will delete:
-
-- The resource group
-- Your Radius environment
-- The application you just deployed
-
-```sh
-rad env delete --name azure --yes
-```
-
-### Bicep file
-
-{{< rad file="template.bicep">}}
