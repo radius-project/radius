@@ -139,7 +139,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "dapr-pubsub-managed",
 			Description: "dapr-pubsub (Azure + Radius-managed)",
-			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-azure/managed.bicep",
+			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/managed.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"dapr-pubsub-managed": {
@@ -152,7 +152,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "dapr-pubsub-unmanaged",
 			Description: "dapr-pubsub (Azure + user-managed)",
-			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-azure/unmanaged.bicep",
+			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/unmanaged.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"dapr-pubsub-unmanaged": {
