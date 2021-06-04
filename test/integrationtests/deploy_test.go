@@ -79,7 +79,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "frontend-backend",
 			Description: "frontend-backend",
-			Template:    "../../examples/frontend-backend/template.bicep",
+			Template:    "../../docs/content/components/radius-components/container/frontend-backend.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"frontend-backend": {
@@ -100,7 +100,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "inbound-route",
 			Description: "inbound-route",
-			Template:    "../../examples/inbound-route/template.bicep",
+			Template:    "../../docs/content/components/radius-components/container/inbound-route.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"inbound-route": {
@@ -126,7 +126,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "radius-servicebus",
 			Description: "azure-servicebus",
-			Template:    "../../examples/azure-examples/azure-servicebus/template.bicep",
+			Template:    "../../docs/content/components/azure-components/azure-servicebus/template.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"radius-servicebus": {
@@ -139,7 +139,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "dapr-pubsub-managed",
 			Description: "dapr-pubsub (Azure + Radius-managed)",
-			Template:    "../../examples/dapr-examples/dapr-pubsub-azure/managed.bicep",
+			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-azure/managed.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"dapr-pubsub-managed": {
@@ -152,7 +152,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "dapr-pubsub-unmanaged",
 			Description: "dapr-pubsub (Azure + user-managed)",
-			Template:    "../../examples/dapr-examples/dapr-pubsub-azure/unmanaged.bicep",
+			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-azure/unmanaged.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"dapr-pubsub-unmanaged": {
@@ -200,7 +200,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "radius-keyvault",
 			Description: "azure-keyvault",
-			Template:    "../../examples/azure-examples/azure-keyvault/template.bicep",
+			Template:    "../../docs/content/components/azure-components/azure-keyvault/template.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"radius-keyvault": {
@@ -225,7 +225,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "cosmos-container-managed",
 			Description: "cosmos-container (radius managed)",
-			Template:    "../../examples/azure-examples/cosmos-container/MongoDB/managed.bicep",
+			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/managed.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"cosmos-container-managed": {
@@ -237,7 +237,7 @@ func TestDeployment(t *testing.T) {
 		{
 			Application: "cosmos-container-unmanaged",
 			Description: "cosmos-container (user managed)",
-			Template:    "../../examples/azure-examples/cosmos-container/MongoDB/unmanaged.bicep",
+			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/unmanaged.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
 					"cosmos-container-unmanaged": {
