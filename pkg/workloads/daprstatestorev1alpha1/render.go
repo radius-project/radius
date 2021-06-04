@@ -50,21 +50,49 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{}, errors.New("only kind 'any' and 'state.azure.tablestorage' is supported right now")
 	}
 
-	if !component.Config.Managed {
-		return []workloads.WorkloadResource{}, errors.New("only 'managed=true' is supported right now")
-	}
+	if component.Config.Managed {
+		if component.Config.Resource != "" {
+			return nil, workloads.ErrResourceSpecifiedForManagedResource
+		}
 
-	// generate data we can use to manage a state-store
-	resource := workloads.WorkloadResource{
-		Type: workloads.ResourceKindDaprStateStoreAzureStorage,
-		Resource: map[string]string{
-			handlers.KubernetesNameKey:       w.Name,
-			handlers.KubernetesNamespaceKey:  w.Application,
-			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-			handlers.KubernetesKindKey:       "Component",
-		},
-	}
+		// generate data we can use to manage a Storage Account
+		resource := workloads.WorkloadResource{
+			Type: workloads.ResourceKindDaprStateStoreAzureStorage,
+			Resource: map[string]string{
+				handlers.ManagedKey:                "true",
+				handlers.KubernetesNameKey:         w.Name,
+				handlers.KubernetesNamespaceKey:    w.Application,
+				handlers.KubernetesAPIVersionKey:   "dapr.io/v1alpha1",
+				handlers.KubernetesKindKey:         "Component",
+				handlers.StorageAccountBaseNameKey: w.Name,
+			},
+		}
 
-	// It's already in the correct format
-	return []workloads.WorkloadResource{resource}, nil
+		return []workloads.WorkloadResource{resource}, nil
+	} else {
+		if component.Config.Resource == "" {
+			return nil, workloads.ErrResourceMissingForUnmanagedResource
+		}
+
+		accountID, err := workloads.ValidateResourceID(component.Config.Resource, StorageAccountResourceType, "Storage Account")
+		if err != nil {
+			return nil, err
+		}
+
+		// generate data we can use to connect to a Storage Account
+		resource := workloads.WorkloadResource{
+			Type: workloads.ResourceKindDaprStateStoreAzureStorage,
+			Resource: map[string]string{
+				handlers.ManagedKey:              "false",
+				handlers.KubernetesNameKey:       w.Name,
+				handlers.KubernetesNamespaceKey:  w.Application,
+				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+				handlers.KubernetesKindKey:       "Component",
+
+				handlers.StorageAccountIDKey:   accountID.ID,
+				handlers.StorageAccountNameKey: accountID.Types[0].Name,
+			},
+		}
+		return []workloads.WorkloadResource{resource}, nil
+	}
 }

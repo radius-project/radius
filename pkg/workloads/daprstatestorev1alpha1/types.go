@@ -5,7 +5,18 @@
 
 package daprstatestorev1alpha1
 
+import "github.com/Azure/radius/pkg/curp/resources"
+
 const Kind = "dapr.io/StateStore@v1alpha1"
+
+var StorageAccountResourceType = resources.KnownType{
+	Types: []resources.ResourceType{
+		{
+			Type: "Microsoft.Storage/storageAccounts",
+			Name: "*",
+		},
+	},
+}
 
 // DaprStateStoreComponent is the definition of the container component
 type DaprStateStoreComponent struct {
@@ -20,6 +31,7 @@ type DaprStateStoreComponent struct {
 
 // DaprStateStoreConfig is the defintion of the config section
 type DaprStateStoreConfig struct {
-	Kind    string `json:"kind"`
-	Managed bool   `json:"managed"`
+	Kind     string `json:"kind"`
+	Managed  bool   `json:"managed"`
+	Resource string `json:"resource"`
 }

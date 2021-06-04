@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -219,6 +220,60 @@ func TestDeployment(t *testing.T) {
 						validation.NewPodForComponent("dapr-hello", "pythonapp"),
 					},
 				},
+			},
+		},
+		{
+			Application: "cosmos-container-managed",
+			Description: "cosmos-container (radius managed)",
+			Template:    "../../examples/azure-examples/cosmos-container/MongoDB/managed.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"cosmos-container-managed": {
+						validation.NewPodForComponent("cosmos-container-managed", "todoapp"),
+					},
+				},
+			},
+		},
+		{
+			Application: "cosmos-container-unmanaged",
+			Description: "cosmos-container (user managed)",
+			Template:    "../../examples/azure-examples/cosmos-container/MongoDB/unmanaged.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"cosmos-container-unmanaged": {
+						validation.NewPodForComponent("cosmos-container-unmanaged", "todoapp"),
+					},
+				},
+			},
+			// This test has additional 'unmanaged' resources that are deployed in the same template but not managed
+			// by Radius.
+			//
+			// We don't need to delete these, they will be deleted as part of the resource group cleanup.
+			PostDeleteVerify: func(t *testing.T, at ApplicationTest) {
+				// Verify that the cosmosdb resources were not deleted
+				ac := documentdb.NewDatabaseAccountsClient(at.Options.Environment.SubscriptionID)
+				ac.Authorizer = at.Options.Authorizer
+
+				// We have to use a generated name due to uniqueness requirements, so lookup based on tags
+				var account *documentdb.DatabaseAccountGetResults
+				list, err := ac.ListByResourceGroup(context.Background(), at.Options.Environment.ResourceGroup)
+				require.NoErrorf(t, err, "failed to list database accounts")
+
+				for _, value := range *list.Value {
+					if value.Tags["radiustest"] != nil {
+						temp := value
+						account = &temp
+						break
+					}
+				}
+
+				require.NotNilf(t, account, "failed to find database account with 'radiustest' tag")
+
+				dbc := documentdb.NewMongoDBResourcesClient(at.Options.Environment.SubscriptionID)
+				dbc.Authorizer = at.Options.Authorizer
+
+				_, err = dbc.GetMongoDBDatabase(context.Background(), at.Options.Environment.ResourceGroup, *account.Name, "mydb")
+				require.NoErrorf(t, err, "failed to find mongo database")
 			},
 		},
 	}

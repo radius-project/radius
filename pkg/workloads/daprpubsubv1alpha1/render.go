@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/curp/resources"
-	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -71,7 +70,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		if component.Config.Resource != "" {
-			return nil, errors.New("the 'resource' field cannot be specified when 'managed=true'")
+			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a servicebus topic
@@ -94,17 +93,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		if component.Config.Resource == "" {
-			return nil, errors.New("the 'resource' field is required when 'managed' is not specified")
+			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}
 
-		topicID, err := radresources.Parse(component.Config.Resource)
+		topicID, err := workloads.ValidateResourceID(component.Config.Resource, TopicResourceType, "ServiceBus Topic")
 		if err != nil {
-			return nil, errors.New("the 'resource' field must be a valid resource id.")
-		}
-
-		err = topicID.ValidateResourceType(TopicResourceType)
-		if err != nil {
-			return nil, fmt.Errorf("the 'resource' field must refer to a ServiceBus Topic")
+			return nil, err
 		}
 
 		// generate data we can use to connect to a servicebus topic

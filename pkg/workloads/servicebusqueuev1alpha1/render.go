@@ -81,7 +81,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		if component.Config.Resource != "" {
-			return nil, errors.New("the 'resource' field cannot be specified when 'managed=true'")
+			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a servicebus queue
@@ -98,17 +98,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.WorkloadResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
-			return nil, errors.New("the 'resource' field is required when 'managed' is not specified")
+			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}
 
-		queueID, err := resources.Parse(component.Config.Resource)
+		queueID, err := workloads.ValidateResourceID(component.Config.Resource, QueueResourceType, "ServiceBus Queue")
 		if err != nil {
-			return nil, errors.New("the 'resource' field must be a valid resource id.")
-		}
-
-		err = queueID.ValidateResourceType(QueueResourceType)
-		if err != nil {
-			return nil, fmt.Errorf("the 'resource' field must refer to a ServiceBus Queue")
+			return nil, err
 		}
 
 		// generate data we can use to connect to a servicebus queue

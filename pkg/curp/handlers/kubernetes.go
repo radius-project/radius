@@ -24,7 +24,7 @@ type kubernetesHandler struct {
 	k8s client.Client
 }
 
-func (kh *kubernetesHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	item, err := convertToUnstructured(options.Resource)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func (kh *kubernetesHandler) Put(ctx context.Context, options PutOptions) (map[s
 		KubernetesNameKey:       item.GetName(),
 	}
 
-	err = kh.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (kh *kubernetesHandler) Put(ctx context.Context, options PutOptions) (map[s
 	return p, err
 }
 
-func (kh *kubernetesHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -59,7 +59,7 @@ func (kh *kubernetesHandler) Delete(ctx context.Context, options DeleteOptions) 
 		},
 	}
 
-	return client.IgnoreNotFound(kh.k8s.Delete(ctx, &item))
+	return client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 }
 
 func convertToUnstructured(resource workloads.WorkloadResource) (unstructured.Unstructured, error) {

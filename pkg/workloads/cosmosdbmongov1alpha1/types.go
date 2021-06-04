@@ -5,9 +5,24 @@
 
 package cosmosdbmongov1alpha1
 
+import "github.com/Azure/radius/pkg/curp/resources"
+
 const (
 	Kind = "azure.com/CosmosDBMongo@v1alpha1"
 )
+
+var MongoResourceType = resources.KnownType{
+	Types: []resources.ResourceType{
+		{
+			Type: "Microsoft.DocumentDB/databaseAccounts",
+			Name: "*",
+		},
+		{
+			Type: "mongodbDatabases",
+			Name: "*",
+		},
+	},
+}
 
 // CosmosDBMongoComponent definition of CosmosDBMongo component
 type CosmosDBMongoComponent struct {
@@ -22,5 +37,6 @@ type CosmosDBMongoComponent struct {
 
 // CosmosDBMongoConfig defintion of the config section
 type CosmosDBMongoConfig struct {
-	Managed bool `json:"managed"`
+	Managed  bool   `json:"managed"`
+	Resource string `json:"resource"`
 }

@@ -5,7 +5,18 @@
 
 package keyvaultv1alpha1
 
+import "github.com/Azure/radius/pkg/curp/resources"
+
 const Kind = "azure.com/KeyVault@v1alpha1"
+
+var KeyVaultResourceType = resources.KnownType{
+	Types: []resources.ResourceType{
+		{
+			Type: "Microsoft.KeyVault/vaults",
+			Name: "*",
+		},
+	},
+}
 
 // KeyVaultComponent is the definition of the keyvault component
 type KeyVaultComponent struct {
@@ -20,5 +31,6 @@ type KeyVaultComponent struct {
 
 // KeyVaultConfig is the defintion of the config section
 type KeyVaultConfig struct {
-	Managed bool `json:"managed"`
+	Managed  bool   `json:"managed"`
+	Resource string `json:"resource"`
 }

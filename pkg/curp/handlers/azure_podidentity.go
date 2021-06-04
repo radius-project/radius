@@ -15,7 +15,11 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
+)
+
+const (
+	PodIdentityNameKey    = "podidentityname"
+	PodIdentityClusterKey = "podidentitycluster"
 )
 
 func NewAzurePodIdentityHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -26,7 +30,7 @@ type azurePodIdentityHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (pih *azurePodIdentityHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
+func (handler *azurePodIdentityHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
 	item, err := convertToUnstructured(resource)
 	if err != nil {
 		return nil, err
@@ -41,7 +45,7 @@ func (pih *azurePodIdentityHandler) GetProperties(resource workloads.WorkloadRes
 	return p, nil
 }
 
-func (pih *azurePodIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *azurePodIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
 	// TODO: right now this resource is created during the rendering process :(
@@ -50,17 +54,19 @@ func (pih *azurePodIdentityHandler) Put(ctx context.Context, options PutOptions)
 	return properties, nil
 }
 
-func (pih *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	// Delete AAD Pod Identity created
 	properties := options.Existing.Properties
-	podIdentityName := properties[containerv1alpha1.PodIdentityName]
-	podidentityCluster := properties[containerv1alpha1.PodIdentityCluster]
+	podIdentityName := properties[PodIdentityNameKey]
+	podidentityCluster := properties[PodIdentityClusterKey]
 
-	mcc := containerservice.NewManagedClustersClient(pih.arm.SubscriptionID)
-	mcc.Authorizer = pih.arm.Auth
+	// Conceptually this resource is always 'managed'
+
+	mcc := containerservice.NewManagedClustersClient(handler.arm.SubscriptionID)
+	mcc.Authorizer = handler.arm.Auth
 
 	// Get the cluster and modify it to remove pod identity
-	managedCluster, err := mcc.Get(ctx, pih.arm.ResourceGroup, podidentityCluster)
+	managedCluster, err := mcc.Get(ctx, handler.arm.ResourceGroup, podidentityCluster)
 	if err != nil {
 		return fmt.Errorf("failed to get managed cluster: %w", err)
 	}
@@ -84,7 +90,7 @@ func (pih *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOp
 	// Remove the pod identity at the matching index
 	identities = append(identities[:i], identities[i+1:]...)
 
-	mcFuture, err := mcc.CreateOrUpdate(ctx, pih.arm.ResourceGroup, podidentityCluster, containerservice.ManagedCluster{
+	mcFuture, err := mcc.CreateOrUpdate(ctx, handler.arm.ResourceGroup, podidentityCluster, containerservice.ManagedCluster{
 		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
 				Enabled:                   to.BoolPtr(true),
@@ -105,7 +111,7 @@ func (pih *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOp
 	}
 
 	// Delete the managed identity
-	err = pih.deleteManagedIdentity(ctx, *identity.Identity.ResourceID)
+	err = handler.deleteManagedIdentity(ctx, *identity.Identity.ResourceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}
@@ -113,14 +119,14 @@ func (pih *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOp
 	return nil
 }
 
-func (pih *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
-	msiClient := msi.NewUserAssignedIdentitiesClient(pih.arm.SubscriptionID)
-	msiClient.Authorizer = pih.arm.Auth
+func (handler *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
+	msiClient := msi.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID)
+	msiClient.Authorizer = handler.arm.Auth
 	msiResource, err := azure.ParseResourceID(msiResourceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}
-	resp, err := msiClient.Delete(ctx, pih.arm.ResourceGroup, msiResource.ResourceName)
+	resp, err := msiClient.Delete(ctx, handler.arm.ResourceGroup, msiResource.ResourceName)
 	if err != nil || (resp.StatusCode != 200 && resp.StatusCode != 204) {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}

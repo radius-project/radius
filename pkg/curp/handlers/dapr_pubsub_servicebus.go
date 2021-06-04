@@ -37,12 +37,12 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options Put
 	}
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	if properties[ManagedKey] != "true" && (properties[ServiceBusNamespaceIDKey] == "" || properties[ServiceBusTopicIDKey] == "") {
-		return nil, fmt.Errorf("missing required properties '%s' and '%s' for an unmanaged resource", ServiceBusNamespaceIDKey, ServiceBusTopicIDKey)
+	err := ValidateResourceIDsForUnmanagedResource(properties, ServiceBusNamespaceIDKey, ServiceBusTopicIDKey)
+	if err != nil {
+		return nil, err
 	}
 
 	var namespace *servicebus.SBNamespace
-	var err error
 	if properties[ServiceBusNamespaceIDKey] == "" {
 		// If we don't have an ID already then we will need to create a new one.
 		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.Application)
