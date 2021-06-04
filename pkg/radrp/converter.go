@@ -6,8 +6,6 @@
 package radrp
 
 import (
-	"log"
-
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/workloads"
@@ -109,30 +107,6 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 	c.OutputResources = newDBOutputResourcesFromREST(original.OutputResources)
 
 	return c
-}
-
-func newDBComponentFromDBDeployment(name string, original *db.Deployment, app *db.Application) *db.Component {
-	var dbcomponent *db.Component
-	obj, ok := app.Components[name]
-	if ok {
-		dbcomponent = &obj
-	} else {
-		dbcomponent = &db.Component{}
-	}
-	dbcomponent.OutputResources = getOutputResourcesFromDeploymentWorkload(name, original)
-	if len(dbcomponent.OutputResources) > 0 {
-		log.Printf("Updated component: %s with %d output resources", dbcomponent.ID, len(dbcomponent.OutputResources))
-	}
-	return dbcomponent
-}
-
-func getOutputResourcesFromDeploymentWorkload(name string, deployment *db.Deployment) []db.OutputResource {
-	for _, w := range deployment.Status.Workloads {
-		if w.ComponentName == name {
-			return w.OutputResources
-		}
-	}
-	return []db.OutputResource{}
 }
 
 func newRESTComponentFromDB(original *db.Component) *rest.Component {

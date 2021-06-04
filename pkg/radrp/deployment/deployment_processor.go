@@ -197,6 +197,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 			}
 
+			var dbOutputResources []db.OutputResource
 			for _, resource := range outputResources {
 				var existingResource *db.DeploymentResource
 				if existingStatus != nil {
@@ -235,8 +236,10 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					Resource:           resource.Resource,
 				}
 				log.Printf("Created output resource: %s of output resource type: %s", dr.LocalID, dr.OutputResourceType)
-				dw.OutputResources = append(dw.OutputResources, dr)
+				dbOutputResources = append(dbOutputResources, dr)
 			}
+
+			action.Definition.OutputResources = dbOutputResources
 
 			wrps := []workloads.WorkloadResourceProperties{}
 			for _, resource := range dw.Resources {

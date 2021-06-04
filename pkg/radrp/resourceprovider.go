@@ -480,13 +480,8 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		}
 
 		// Update components to track output resources created during deployment
-		for _, c := range app.Components {
-			dbComponent := newDBComponentFromDBDeployment(c.Name, d, app)
-			_, err = r.db.PatchComponentByApplicationID(ctx, id.App, c.Name, dbComponent)
-			if err != nil {
-				log.Printf("failed to update output resources for component '%s': %v", c.ID, err)
-				return
-			}
+		for c, action := range actions {
+			_, err = r.db.PatchComponentByApplicationID(ctx, id.App, c, action.Definition)
 		}
 		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)
 	}()

@@ -133,10 +133,9 @@ type DeploymentStatus struct {
 
 // DeploymentWorkload represents the status of a deployed workload.
 type DeploymentWorkload struct {
-	ComponentName   string               `bson:"componentName"`
-	Kind            string               `bson:"kind"`
-	Resources       []DeploymentResource `bson:"resources,omitempty"`
-	OutputResources []OutputResource     `bson:"outputresources,omitempty"`
+	ComponentName string               `bson:"componentName"`
+	Kind          string               `bson:"kind"`
+	Resources     []DeploymentResource `bson:"resources,omitempty"`
 }
 
 // DeploymentService represents the status of a deployed service.
