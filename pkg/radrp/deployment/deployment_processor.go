@@ -185,7 +185,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 			outputResources, err := dp.renderWorkload(ctx, inst)
 			if err != nil {
-				fmt.Printf("@@@@@ err not nil. output resources: %v", outputResources)
 				errs = append(errs, err)
 				var dbOutputResources []db.OutputResource
 				for _, resource := range outputResources {

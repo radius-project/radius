@@ -19,6 +19,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/Azure/azure-sdk-for-go/arm/authorization"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
@@ -91,6 +92,7 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 	id, err := msiClient.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, identityName, msi.Identity{
 		Location: to.StringPtr(location),
 	})
+	fmt.Printf("@@@@@ managedid useragent: %s", msi.UserAgent())
 	if err != nil {
 		return msi.Identity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
@@ -98,6 +100,11 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 	log.Printf("Created managed identity for KeyVault access: %v", *id.ID)
 
 	return id, nil
+}
+
+func getAPIVersion(msiClient msi.UserAssignedIdentitiesClient) string {
+	// "Azure-SDK-For-Go/" + Version() + " servicebus/2017-04-01"
+	return strings.Split(msi.UserAgent(), "msi/")[1]
 }
 
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, []workloads.OutputResource, error) {
@@ -123,12 +130,13 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	if err != nil {
 		return nil, outputResources, fmt.Errorf("could not find resource group: %w", err)
 	}
-	msi, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
+	mid, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
 	if err != nil {
 		return nil, outputResources, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
-	res := workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "managedID")
+	apiversionMsi := strings.Split(strings.Split(msi.UserAgent(), "msi/")[1], " profiles")[0]
+	res := workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionMsi, true, "managedID")
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
@@ -144,26 +152,27 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 
 	// Create Role Assignment to grant the managed identity appropriate access permissions to the Key Vault
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for secrets and certificates
-	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
+	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, mid.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
 	if err != nil {
-		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", msi.Name, err)
+		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", mid.Name, err)
 	}
-	res = workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "RoleAssignment")
+	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
+	res = workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionRA, true, "RoleAssignment")
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for encryption keys
-	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, msi.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
+	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, mid.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
 	if err != nil {
-		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", msi.Name, err)
+		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", mid.Name, err)
 	}
-	res = workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *msi.ID, *msi.Type, true, "RoleAssignment")
+	res = workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionRA, true, "RoleAssignment")
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
-	log.Printf("Created role assignment for %v to access %v", *msi.ID, *kv.ID)
+	log.Printf("Created role assignment for %v to access %v", *mid.ID, *kv.ID)
 
-	return &msi, outputResources, nil
+	return &mid, outputResources, nil
 }
 
 func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, []workloads.OutputResource, error) {

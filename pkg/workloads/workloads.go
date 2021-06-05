@@ -57,11 +57,11 @@ type ARMInfo struct {
 }
 
 // CreateArmResource returns an object of type OutputResource initialized with the data from the ARM resource
-func CreateArmResource(deployed bool, resourceKind, id string, resourceType string, managed bool, localIDPrefix string) OutputResource {
+func CreateArmResource(deployed bool, resourceKind, id string, resourceType string, apiversion string, managed bool, localIDPrefix string) OutputResource {
 	armInfo := ARMInfo{
 		ResourceID:   id,
 		ResourceType: resourceType,
-		APIVersion:   "???",
+		APIVersion:   apiversion,
 	}
 	r := OutputResource{
 		Deployed:           deployed,
