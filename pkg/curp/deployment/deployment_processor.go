@@ -12,21 +12,12 @@ import (
 	"strings"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
-	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/curp/components"
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/curp/handlers"
 	"github.com/Azure/radius/pkg/curp/revision"
+	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
-	"github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"
-	"github.com/Azure/radius/pkg/workloads/cosmosdbsqlv1alpha1"
-	"github.com/Azure/radius/pkg/workloads/dapr"
-	"github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1"
-	"github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1"
-	"github.com/Azure/radius/pkg/workloads/inboundroute"
-	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
-	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -108,44 +99,13 @@ func (ce *CompositeError) Error() string {
 }
 
 type deploymentProcessor struct {
-	dispatcher workloads.WorkloadDispatcher
-	rm         resourceManager
-	k8s        client.Client
-}
-
-type resourceManager struct {
-	handlers map[string]handlers.ResourceHandler
+	appmodel model.ApplicationModel
+	k8s      client.Client
 }
 
 // NewDeploymentProcessor initializes a deployment processor.
-func NewDeploymentProcessor(arm armauth.ArmConfig, k8s client.Client) DeploymentProcessor {
-	d := workloads.Dispatcher{
-		Renderers: map[string]workloads.WorkloadRenderer{
-			daprstatestorev1alpha1.Kind:  &daprstatestorev1alpha1.Renderer{},
-			daprpubsubv1alpha1.Kind:      &daprpubsubv1alpha1.Renderer{},
-			cosmosdbmongov1alpha1.Kind:   &cosmosdbmongov1alpha1.Renderer{Arm: arm},
-			cosmosdbsqlv1alpha1.Kind:     &cosmosdbsqlv1alpha1.Renderer{Arm: arm},
-			containerv1alpha1.Kind:       &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
-			servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
-			keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
-		},
-	}
-
-	rm := resourceManager{
-		handlers: map[string]handlers.ResourceHandler{
-			workloads.ResourceKindKubernetes:                     handlers.NewKubernetesHandler(k8s),
-			workloads.ResourceKindDaprStateStoreAzureStorage:     handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-			workloads.ResourceKindDaprStateStoreSQLServer:        handlers.NewDaprStateStoreSQLServerHandler(arm, k8s),
-			workloads.ResourceKindDaprPubSubTopicAzureServiceBus: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
-			workloads.ResourceKindAzureCosmosDBMongo:             handlers.NewAzureCosmosDBMongoHandler(arm),
-			workloads.ResourceKindAzureCosmosDBSQL:               handlers.NewAzureCosmosDBSQLHandler(arm),
-			workloads.ResourceKindAzureServiceBusQueue:           handlers.NewAzureServiceBusQueueHandler(arm),
-			workloads.ResourceKindAzureKeyVault:                  handlers.NewAzureKeyVaultHandler(arm),
-			workloads.ResourceKindAzurePodIdentity:               handlers.NewAzurePodIdentityHandler(arm),
-		},
-	}
-
-	return &deploymentProcessor{d, rm, k8s}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, k8s client.Client) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, k8s: k8s}
 }
 
 func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus, actions map[string]ComponentAction) error {
@@ -273,13 +233,13 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					}
 				}
 
-				h, ok := dp.rm.handlers[resource.Type]
-				if !ok {
-					errs = append(errs, fmt.Errorf("cannot find handler for resource type %s", resource.Type))
+				resourceType, err := dp.appmodel.LookupResource(resource.Type)
+				if err != nil {
+					errs = append(errs, err)
 					continue
 				}
 
-				properties, err := h.Put(ctx, handlers.PutOptions{
+				properties, err := resourceType.Handler().Put(ctx, handlers.PutOptions{
 					Application: appName,
 					Component:   action.ComponentName,
 					Resource:    resource,
@@ -346,13 +306,13 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			}
 
 			for _, resource := range match.Resources {
-				h, ok := dp.rm.handlers[resource.Type]
-				if !ok {
-					errs = append(errs, fmt.Errorf("cannot find handler for resource type %s", resource.Type))
+				resourceType, err := dp.appmodel.LookupResource(resource.Type)
+				if err != nil {
+					errs = append(errs, err)
 					continue
 				}
 
-				err = h.Delete(ctx, handlers.DeleteOptions{
+				err = resourceType.Handler().Delete(ctx, handlers.DeleteOptions{
 					Application: appName,
 					Component:   action.ComponentName,
 					Existing:    resource,
@@ -415,13 +375,13 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 		for _, resource := range wl.Resources {
 			log.Printf("Deleting resource %v %v", resource.Type, resource.Properties)
 
-			h, ok := dp.rm.handlers[resource.Type]
-			if !ok {
-				errs = append(errs, fmt.Errorf("cannot find handler for resource type %s", resource.Type))
+			resourceType, err := dp.appmodel.LookupResource(resource.Type)
+			if err != nil {
+				errs = append(errs, err)
 				continue
 			}
 
-			err := h.Delete(ctx, handlers.DeleteOptions{
+			err = resourceType.Handler().Delete(ctx, handlers.DeleteOptions{
 				Application: appName,
 				Component:   wl.ComponentName,
 				Existing:    resource,
@@ -442,12 +402,12 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 }
 
 func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
-	r, err := dp.dispatcher.Lookup(w.Workload.Kind)
+	componentKind, err := dp.appmodel.LookupComponent(w.Workload.Kind)
 	if err != nil {
-		return []workloads.WorkloadResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
+		return []workloads.WorkloadResource{}, err
 	}
 
-	resources, err := r.Render(ctx, w)
+	resources, err := componentKind.Renderer().Render(ctx, w)
 	if err != nil {
 		return []workloads.WorkloadResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
@@ -456,13 +416,12 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 }
 
 func (dp *deploymentProcessor) processBindings(ctx context.Context, w workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties, bindingValues map[components.BindingKey]components.BindingState) error {
-
-	renderer, err := dp.dispatcher.Lookup(w.Workload.Kind)
+	componentKind, err := dp.appmodel.LookupComponent(w.Workload.Kind)
 	if err != nil {
-		return fmt.Errorf("could not find renderer for workload of kind %v: %w", w.Workload.Kind, err)
+		return err
 	}
 
-	bindings, err := renderer.AllocateBindings(ctx, w, resources)
+	bindings, err := componentKind.Renderer().AllocateBindings(ctx, w, resources)
 	if err != nil {
 		return fmt.Errorf("could not allocate bindings for component %s of kind %v: %w", w.Name, w.Workload.Kind, err)
 	}

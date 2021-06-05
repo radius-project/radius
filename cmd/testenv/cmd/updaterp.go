@@ -63,7 +63,7 @@ var updateRPCmd = &cobra.Command{
 
 		fmt.Printf("updating environment '%v' to use '%v'\n", az.ResourceGroup, image)
 
-		err = updateRP(cmd.Context(), *auth, *az, image)
+		err = updateRP(cmd.Context(), auth, *az, image)
 		if err != nil {
 			return err
 		}

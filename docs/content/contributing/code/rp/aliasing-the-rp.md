@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Use an existing Radius RP deployment"
+title: "Use an existing Radius resoure provider deployment"
 linkTitle: "Use existing RP"
-description: "How to alias the RP to map an existing Radius RP deployment"
+description: "How to alias the resource provider to map an existing Radius resoure provider deployment"
 weight: 50
 ---
 

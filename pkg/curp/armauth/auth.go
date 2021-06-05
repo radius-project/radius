@@ -56,14 +56,14 @@ func GetArmConfig() (ArmConfig, error) {
 	log.Printf("Using SubscriptionId = '%v' and Resource Group = '%v'", subscriptionID, resourceGroup)
 
 	return ArmConfig{
-		Auth:           *auth,
+		Auth:           auth,
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,
 	}, nil
 }
 
 // GetArmAuthorizer returns an ARM authorizer and the client ID for the current process
-func GetArmAuthorizer() (*autorest.Authorizer, error) {
+func GetArmAuthorizer() (autorest.Authorizer, error) {
 	authMethod := GetAuthMethod()
 	if authMethod == ServicePrincipalAuth {
 		log.Println("Service Principal detected - using SP auth to get credentials")
@@ -83,7 +83,7 @@ func GetArmAuthorizer() (*autorest.Authorizer, error) {
 			return nil, err
 		}
 		log.Println("Using Service Principal auth.")
-		return &auth, nil
+		return auth, nil
 	} else if authMethod == ManagedIdentityAuth {
 		log.Println("Managed Identity detected - using Managed Identity to get credentials")
 
@@ -104,7 +104,7 @@ func GetArmAuthorizer() (*autorest.Authorizer, error) {
 		}
 
 		log.Println("Using Managed Identity auth.")
-		return &auth, nil
+		return auth, nil
 	} else {
 		log.Println("No Service Principal detected.")
 
@@ -114,7 +114,7 @@ func GetArmAuthorizer() (*autorest.Authorizer, error) {
 			return nil, err
 		}
 		log.Println("Using CLI auth.")
-		return &auth, nil
+		return auth, nil
 	}
 }
 

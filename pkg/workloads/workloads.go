@@ -50,17 +50,6 @@ type WorkloadResourceProperties struct {
 	Properties map[string]string
 }
 
-// WorkloadDispatcher defines the interface for locating a WorkloadRenderer based on the
-// Kubernetes object type.
-type WorkloadDispatcher interface {
-	Lookup(kind string) (WorkloadRenderer, error)
-}
-
-// Dispatcher is an implementation of WorkloadDispatcher.
-type Dispatcher struct {
-	Renderers map[string]WorkloadRenderer
-}
-
 // NewKubernetesResource creates a Kubernetes WorkloadResource
 func NewKubernetesResource(localID string, obj runtime.Object) WorkloadResource {
 	return WorkloadResource{Type: ResourceKindKubernetes, LocalID: localID, Resource: obj}
@@ -68,14 +57,4 @@ func NewKubernetesResource(localID string, obj runtime.Object) WorkloadResource 
 
 func (wr WorkloadResource) IsKubernetesResource() bool {
 	return wr.Type == ResourceKindKubernetes
-}
-
-// Lookup implements the WorkloadDispatcher contract.
-func (d Dispatcher) Lookup(kind string) (WorkloadRenderer, error) {
-	r, ok := d.Renderers[kind]
-	if !ok {
-		return nil, ErrUnknownType
-	}
-
-	return r, nil
 }

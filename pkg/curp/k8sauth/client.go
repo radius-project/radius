@@ -24,7 +24,7 @@ import (
 )
 
 // CreateClient creates a Kubernetes client.
-func CreateClient() (client.Client, error) {
+func CreateClient() (*client.Client, error) {
 	log.Println("Creating Kubernetes Client")
 	var config *rest.Config
 	var err error
@@ -63,7 +63,7 @@ func CreateClient() (client.Client, error) {
 	}
 	log.Println("Connection verified")
 
-	return c, nil
+	return &c, nil
 }
 
 func createLocal() (*rest.Config, error) {
@@ -126,7 +126,7 @@ func createRemote() (*rest.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot authorize with ARM: %w", err)
 	}
-	aks.Authorizer = *auth
+	aks.Authorizer = auth
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
