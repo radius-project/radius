@@ -103,8 +103,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to connect to a servicebus topic
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -119,6 +119,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,
 			},
 		}
-		return []workloads.WorkloadResource{resource}, []rest.RadResource{}, nil
+		return []workloads.OutputResource{resource}, nil
 	}
 }

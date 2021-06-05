@@ -54,7 +54,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	} else if component.Config.Kind == "state.sqlserver" {
 		resourceKind = workloads.ResourceKindDaprStateStoreSQLServer
 	} else {
-		return []workloads.WorkloadResource{}, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, supportedStateStoreKindValues)
+		return []workloads.OutputResource{}, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, supportedStateStoreKindValues)
 	}
 
 	if component.Config.Managed {
@@ -62,8 +62,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
-		resource := workloads.WorkloadResource{
-			Type: resourceKind,
+		resource := workloads.OutputResource{
+			ResourceKind: resourceKind,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.KubernetesNameKey:       w.Name,
