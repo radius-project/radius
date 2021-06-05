@@ -138,14 +138,6 @@ type DeploymentWorkload struct {
 	Resources     []DeploymentResource `bson:"resources,omitempty"`
 }
 
-// DeploymentService represents the status of a deployed service.
-type DeploymentService struct {
-	Name       string                 `bson:"name"`
-	Kind       string                 `bson:"kind"`
-	Provider   string                 `bson:"provider"`
-	Properties map[string]interface{} `bson:"properties"`
-}
-
 // DeploymentResource represents a deployed resource by Radius.
 type DeploymentResource struct {
 	LocalID    string            `bson:"id"`

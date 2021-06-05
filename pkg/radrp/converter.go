@@ -8,7 +8,6 @@ package radrp
 import (
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
 func newDBResourceBaseFromREST(original rest.ResourceBase) db.ResourceBase {
@@ -218,22 +217,6 @@ func newRESTDeploymentFromDB(original *db.Deployment) *rest.Deployment {
 	return d
 }
 
-func newDBOutputResourcesFromREST(original []workloads.OutputResource) []db.OutputResource {
-	var drs []db.OutputResource
-	for _, r := range original {
-		dr := db.OutputResource{
-			LocalID:            r.LocalID,
-			ResourceKind:       r.ResourceKind,
-			OutputResourceInfo: r.OutputResourceInfo,
-			Managed:            r.Managed,
-			OutputResourceType: r.OutputResourceType,
-			Resource:           r.Resource,
-		}
-		drs = append(drs, dr)
-	}
-	return drs
-}
-
 func newRESTOutputResourcesFromDB(original []db.OutputResource) []rest.OutputResource {
 	var rrs []rest.OutputResource
 	for _, r := range original {
@@ -243,6 +226,8 @@ func newRESTOutputResourcesFromDB(original []db.OutputResource) []rest.OutputRes
 			OutputResourceInfo: r.OutputResourceInfo,
 			OutputResourceType: r.OutputResourceType,
 			Managed:            r.Managed,
+			// Resource includes the body of the resource which would make the REST
+			// response too verbose. Hence excluded
 		}
 		rrs = append(rrs, rr)
 	}
