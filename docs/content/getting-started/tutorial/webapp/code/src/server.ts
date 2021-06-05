@@ -8,7 +8,7 @@ export async function main(): Promise<void> {
   const app = express();
   const port = process.env.PORT || 3000;
 
-  // Using the KV_URI env-var to get the KeyVault URI
+  // If we have a URI for keyvault then look there .
   const kvURI = process.env.KV_URI || '';
   var connectionString:string = '';
 
@@ -22,8 +22,9 @@ export async function main(): Promise<void> {
     const client = new SecretClient(kvURI, credential);
     connectionString = await (await client.getSecret(secretName)).value || '';
     console.log("Retrieved DB connection string from Key Vault")
-  } else {
-    connectionString = process.env.DBCONNECTION || ''
+  } else if (process.env.DBCONNECTION) {
+    connectionString = process.env.DBCONNECTION
+    console.log("Retrieved DB connection string from environment variable")
   }
 
   if (connectionString) {

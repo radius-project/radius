@@ -16,7 +16,7 @@ Another container component is used to specify a few properties about the order 
 
 - **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
 - **container image:** `radiusteam/tutorial-pythonapp`, a Docker image the container will run.
-- **uses:** `nodeapp`, which declares the intention for `pythonapp` to communicate with `nodeapp` using `dapr.io/Invoke` as the protocol. 
+- **uses:** `nodeapplication`, which declares the intention for `pythonapp` to communicate with `nodeapplication` using `dapr.io/Invoke` as the protocol. 
 - **traits:** `appId: pythonapp`, required Dapr configuration. 
 
 ```sh
@@ -31,7 +31,7 @@ Another container component is used to specify a few properties about the order 
       }
       uses: [
         {
-          binding: nodeapp.properties.bindings.invoke
+          binding: nodeapplication.properties.bindings.invoke
         }
       ]
       traits: [
@@ -102,7 +102,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
      uses: [
         {
-          binding: nodeapp.properties.bindings.invoke
+          binding: nodeapplication.properties.bindings.invoke
         }
       ]
       traits: [

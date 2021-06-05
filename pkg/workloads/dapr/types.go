@@ -9,11 +9,7 @@ const Kind = "dapr.io/App@v1alpha1"
 const BindingKind = "dapr.io/Invoke"
 
 type Trait struct {
-	Kind       string          `json:"kind"`
-	Properties TraitProperties `json:"properties"`
-}
-
-type TraitProperties struct {
+	Kind     string `json:"kind"`
 	AppID    string `json:"appId"`
 	AppPort  int    `json:"appPort"`
 	Config   string `json:"config"`

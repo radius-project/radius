@@ -1,15 +1,35 @@
+# Top level folders in our repo to be ignored
+.devcontainer/
 .git/
 .github/
 .vscode/
+build/
 deploy/
+docs/
 diagrams/
 dist/
+install/
 mocks/
+schemas/
 test/
+
+# Specific files in our repo to ignore
+.gitattributes
+.gitignore
+.gitmodules
+boilerplate.go.txt
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+LICENSE
+Makefile
+README.md
+SECURITY.md
+SUPPORT.md
+
+# Generated files to ignore
 radius-rp
 radius-rp.exe
 rad
-rd.exe
+rad.exe
 .DS_Store
-README.md
-SECURITY.md
+

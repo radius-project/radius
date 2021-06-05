@@ -43,7 +43,7 @@ Here's what the todoapp component will look like with the `uses` section added w
       run: { ... }
       uses: [
         {
-          bindings: kv.properties.bindings.default
+          binding: kv.properties.bindings.default
           env: {
             KV_URI: kv.properties.bindings.default.uri
           }
