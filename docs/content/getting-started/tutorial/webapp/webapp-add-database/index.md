@@ -164,8 +164,4 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 ## Next steps
 
-- To view the website application code used in this tutorial, download the [zipped application code](/tutorial/webapp.zip).
-- If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
-- If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
-
 <br>{{< button text="Next: Add a secret store in this application to store the database connection string" page="webapp-add-secretstore.md" >}}

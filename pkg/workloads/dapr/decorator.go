@@ -15,7 +15,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // Renderer is the WorkloadRenderer implementation for the dapr trait decorator.
@@ -46,8 +45,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 			return nil, fmt.Errorf("the trait %s is required to use binding %s", Kind, BindingKind)
 		}
 
-		if trait.Properties.AppID == "" {
-			trait.Properties.AppID = workload.Workload.Name
+		if trait.AppID == "" {
+			trait.AppID = workload.Workload.Name
 		}
 
 		bindings[name] = components.BindingState{
@@ -55,7 +54,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 			Binding:   name,
 			Kind:      binding.Kind,
 			Properties: map[string]interface{}{
-				"appId": trait.Properties.AppID,
+				"appId": trait.AppID,
 			},
 		}
 	}
@@ -98,49 +97,23 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// use the workload name
-		if trait.Properties.AppID == "" {
-			trait.Properties.AppID = w.Workload.Name
+		if trait.AppID == "" {
+			trait.AppID = w.Workload.Name
 		}
 
 		annotations["dapr.io/enabled"] = "true"
-		annotations["dapr.io/app-id"] = trait.Properties.AppID
-		if trait.Properties.AppPort != 0 {
-			annotations["dapr.io/app-port"] = fmt.Sprintf("%d", trait.Properties.AppPort)
+		annotations["dapr.io/app-id"] = trait.AppID
+		if trait.AppPort != 0 {
+			annotations["dapr.io/app-port"] = fmt.Sprintf("%d", trait.AppPort)
 		}
-		if trait.Properties.Config != "" {
-			annotations["dapr.io/config"] = trait.Properties.Config
+		if trait.Config != "" {
+			annotations["dapr.io/config"] = trait.Config
 		}
-		if trait.Properties.Protocol != "" {
-			annotations["dapr.io/protocol"] = trait.Properties.Protocol
+		if trait.Protocol != "" {
+			annotations["dapr.io/protocol"] = trait.Protocol
 		}
 
 		r.setAnnotations(o, annotations)
-
-		// HACK: for Apps types, set the minimum replicas to 1.
-		// The autoscaler implementation is not aware of Dapr traffic or bindings/pubsub.
-
-		gvk := o.GetObjectKind().GroupVersionKind()
-		appkind := schema.GroupVersionKind{Group: "k8se.microsoft.com", Version: "v1alpha1", Kind: "App"}
-		if gvk == appkind {
-			if un, ok := o.(*unstructured.Unstructured); ok {
-				if obj, ok := un.Object["spec"]; ok {
-					if spec, ok := obj.(map[string]interface{}); ok {
-
-						var scaleOptions map[string]interface{}
-						if obj, ok := spec["scaleOptions"]; ok {
-							scaleOptions = obj.(map[string]interface{})
-						}
-
-						if scaleOptions == nil {
-							scaleOptions = map[string]interface{}{}
-							spec["scaleOptions"] = scaleOptions
-						}
-
-						scaleOptions["minReplicaCount"] = 1
-					}
-				}
-			}
-		}
 	}
 
 	return resources, err
