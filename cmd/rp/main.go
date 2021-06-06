@@ -103,7 +103,7 @@ func main() {
 	options := curp.ServerOptions{
 		Address:      ":" + port,
 		Authenticate: authenticate,
-		Deploy:       deployment.NewDeploymentProcessor(appmodel, *k8s),
+		Deploy:       deployment.NewDeploymentProcessor(appmodel),
 		DB:           db.NewCurpDB(client.Database(dbName)),
 	}
 

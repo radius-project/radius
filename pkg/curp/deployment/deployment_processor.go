@@ -18,8 +18,6 @@ import (
 	"github.com/Azure/radius/pkg/curp/revision"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/workloads"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // DeploymentOperation represents an operation performed on a workload.
@@ -100,37 +98,14 @@ func (ce *CompositeError) Error() string {
 
 type deploymentProcessor struct {
 	appmodel model.ApplicationModel
-	k8s      client.Client
 }
 
 // NewDeploymentProcessor initializes a deployment processor.
-func NewDeploymentProcessor(appmodel model.ApplicationModel, k8s client.Client) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, k8s: k8s}
+func NewDeploymentProcessor(appmodel model.ApplicationModel) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel}
 }
 
 func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus, actions map[string]ComponentAction) error {
-	// First create a namespace for our stuff to live
-	//
-	// TODO: right now we have the assumption that all of the k8s resources will be generated
-	// in the same namespace as the application.
-	ns := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "v1",
-			"kind":       "Namespace",
-			"metadata": map[string]interface{}{
-				"name": appName,
-				"labels": map[string]interface{}{
-					"app.kubernetes.io/managed-by": "radius-rp",
-				},
-			},
-		},
-	}
-	err := dp.k8s.Patch(ctx, ns, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
-	if err != nil {
-		// we consider this fatal - without a namespace we won't be able to apply anything else
-		return fmt.Errorf("error applying namespace: %w", err)
-	}
-
 	// TODO - any sort of rollback - we'll leave things in a partially-created state
 	// for now if we encounter a failure at any point.
 	//
