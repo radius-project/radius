@@ -6,22 +6,16 @@
 package cmd
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path"
-	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/version"
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -74,15 +68,26 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 	logger.CompleteStep(step)
 
-	envUrl, err := azure.GenerateAzureEnvUrl(env.SubscriptionID, env.ResourceGroup)
+	client, err := environments.CreateDeploymentClient(env)
 	if err != nil {
 		return err
 	}
 
-	step = logger.BeginStep("Deploying Application into environment '%v'...\n\n"+
-		"Meanwhile, you can view the environment '%v' at:\n%v\n\n"+
-		"Deployment In Progress...", env.Name, env.Name, envUrl)
-	err = deployApplication(cmd.Context(), template, env)
+	var progressText string
+	status := env.GetStatusLink()
+	if status == "" {
+		progressText = fmt.Sprintf(
+			"Deploying Application into environment '%v'...\n\n"+
+				"Deployment In Progress...", env.GetName())
+	} else {
+		progressText = fmt.Sprintf(
+			"Deploying Application into environment '%v'...\n\n"+
+				"Meanwhile, you can view the environment '%v' at:\n%v\n\n"+
+				"Deployment In Progress...", env.GetName(), env.GetName(), status)
+	}
+
+	step = logger.BeginStep(progressText)
+	err = client.Deploy(cmd.Context(), template)
 	if err != nil {
 		return err
 	}
@@ -104,59 +109,4 @@ func validateBicepFile(filePath string) error {
 	}
 
 	return nil
-}
-
-func deployApplication(ctx context.Context, content string, env *environments.AzureCloudEnvironment) error {
-	dc, err := createDeploymentClient(env)
-	if err != nil {
-		return err
-	}
-
-	template := map[string]interface{}{}
-	err = json.Unmarshal([]byte(content), &template)
-	if err != nil {
-		return err
-	}
-
-	name := fmt.Sprintf("rad-deploy-%v", uuid.New().String())
-	op, err := dc.CreateOrUpdate(ctx, env.ResourceGroup, name, resources.Deployment{
-		Properties: &resources.DeploymentProperties{
-			Template:   template,
-			Parameters: map[string]interface{}{},
-			Mode:       resources.Incremental,
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	err = op.WaitForCompletionRef(ctx, dc.Client)
-	if err != nil {
-		return err
-	}
-
-	_, err = op.Result(dc)
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-
-func createDeploymentClient(env *environments.AzureCloudEnvironment) (resources.DeploymentsClient, error) {
-	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
-	if err != nil {
-		return resources.DeploymentsClient{}, err
-	}
-
-	dc := resources.NewDeploymentsClient(env.SubscriptionID)
-	dc.Authorizer = armauth
-
-	// Poll faster than the default, many deployments are quick
-	dc.PollingDelay = 5 * time.Second
-
-	// Don't timeout, let the user cancel
-	dc.PollingDuration = 0
-
-	return dc, nil
 }

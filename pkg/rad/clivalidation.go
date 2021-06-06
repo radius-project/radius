@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package rad
 
 import (
@@ -9,7 +14,7 @@ import (
 )
 
 // Used by commands that require a named environment to be an azure cloud environment.
-func ValidateNamedEnvironment(name string) (*environments.AzureCloudEnvironment, error) {
+func ValidateNamedEnvironment(name string) (environments.Environment, error) {
 	v := viper.GetViper()
 	env, err := ReadEnvironmentSection(v)
 	if err != nil {
@@ -21,10 +26,10 @@ func ValidateNamedEnvironment(name string) (*environments.AzureCloudEnvironment,
 		return nil, err
 	}
 
-	return environments.RequireAzureCloud(e)
+	return e, nil
 }
 
-func RequireEnvironment(cmd *cobra.Command) (*environments.AzureCloudEnvironment, error) {
+func RequireEnvironment(cmd *cobra.Command) (environments.Environment, error) {
 	environmentName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return nil, err
@@ -34,7 +39,7 @@ func RequireEnvironment(cmd *cobra.Command) (*environments.AzureCloudEnvironment
 	return env, err
 }
 
-func RequireEnvironmentArgs(cmd *cobra.Command, args []string) (*environments.AzureCloudEnvironment, error) {
+func RequireEnvironmentArgs(cmd *cobra.Command, args []string) (environments.Environment, error) {
 	environmentName, err := RequireEnvironmentNameArgs(cmd, args)
 	if err != nil {
 		return nil, err
@@ -60,7 +65,7 @@ func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, erro
 	return environmentName, err
 }
 
-func RequireApplicationArgs(cmd *cobra.Command, args []string, env *environments.AzureCloudEnvironment) (string, error) {
+func RequireApplicationArgs(cmd *cobra.Command, args []string, env environments.Environment) (string, error) {
 	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return "", err
@@ -86,7 +91,7 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, env *environments
 	return applicationName, nil
 }
 
-func RequireApplication(cmd *cobra.Command, env *environments.AzureCloudEnvironment) (string, error) {
+func RequireApplication(cmd *cobra.Command, env environments.Environment) (string, error) {
 	return RequireApplicationArgs(cmd, []string{}, env)
 }
 
