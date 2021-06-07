@@ -458,7 +458,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	}
 	identities = append(identities, podID)
 
-	MaxRetries := 2
+	MaxRetries := 100
 	var mcFuture containerservice.ManagedClustersCreateOrUpdateFuture
 	for i := 0; i <= MaxRetries; i++ {
 		// Retry to wait for the managed identity to propagate
