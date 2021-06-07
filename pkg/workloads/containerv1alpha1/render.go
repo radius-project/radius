@@ -92,7 +92,6 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 	id, err := msiClient.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, identityName, msi.Identity{
 		Location: to.StringPtr(location),
 	})
-	fmt.Printf("@@@@@ managedid useragent: %s", msi.UserAgent())
 	if err != nil {
 		return msi.Identity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}

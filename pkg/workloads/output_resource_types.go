@@ -5,7 +5,7 @@
 
 package workloads
 
-// RadResource types
+// OutputResource types
 const (
 	OutputResourceTypeKubernetes  = "kubernetes"
 	OutputResourceTypePodIdentity = "aadpodidentity"
