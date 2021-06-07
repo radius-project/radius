@@ -198,13 +198,16 @@ func (h *handler) updateDeployment(w http.ResponseWriter, req *http.Request) {
 	}
 
 	response, err := h.rp.UpdateDeployment(req.Context(), input)
+	log.Printf("@@@@ Updated deployment with response: %v", response)
 	if err != nil {
+		log.Printf("@@@@ Updated deployment with err: %v", err)
 		internalServerError(w, err)
 		return
 	}
 
 	err = response.Apply(w, req)
 	if err != nil {
+		log.Printf("@@@@ Updated deployment and applied response with err: %v", err)
 		internalServerError(w, err)
 		return
 	}

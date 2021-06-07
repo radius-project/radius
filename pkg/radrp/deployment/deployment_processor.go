@@ -170,6 +170,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			}
 
 		case CreateWorkload, UpdateWorkload:
+			log.Printf("@@@@ Create/Update workload: %s", action.ComponentName)
 			// For an update, just blow away the existing workload record
 			dw := db.DeploymentWorkload{
 				ComponentName: action.ComponentName,

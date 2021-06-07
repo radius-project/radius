@@ -477,16 +477,21 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		if err != nil {
 			log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
 			return
+		} else {
+			log.Printf("@@@@ Successfully patched app deployment: %s", oid.Resource.ID)
 		}
 
 		// Update components to track output resources created during deployment
 		for c, action := range actions {
+			log.Printf("@@@@ Patching component: %s with op resources: %v", c, action.Definition.OutputResources)
 			_, err = r.db.PatchComponentByApplicationID(ctx, id.App, c, action.Definition)
 			if err != nil {
 				log.Printf("failed to patch component '%s': %v", action.ComponentName, err)
 				if status == rest.SuccededStatus {
 					status = rest.FailedStatus
 				}
+			} else {
+				log.Printf("@@@@@ Successfully patched component: %s", c)
 			}
 		}
 		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)
