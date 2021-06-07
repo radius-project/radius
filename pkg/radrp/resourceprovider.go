@@ -244,18 +244,22 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	created, err := r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.Name(), newdbitem)
+	log.Printf("@@@ PatchComponentByApplicationID returned err: %v", err)
 	if err == db.ErrNotFound {
 		// If we get a not found here there's no application
 		return rest.NewNotFoundResponse(id.App.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
-
+	log.Println("@@@ After patching component")
 	body := newRESTComponentFromDB(newdbitem)
+	log.Printf("@@@@@ rest body: %v", body)
 	if created {
+		log.Println("@@@ Created resp")
 		return rest.NewCreatedResponse(body), nil
 	}
 
+	log.Println("@@@ OK resp")
 	return rest.NewOKResponse(body), nil
 }
 
