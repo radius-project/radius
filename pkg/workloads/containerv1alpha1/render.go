@@ -131,7 +131,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 
 	apiversionMsi := strings.Split(strings.Split(msi.UserAgent(), "msi/")[1], " profiles")[0]
-	res := workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionMsi, true, "managedID")
+	res := workloads.InitializeOutputArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionMsi, true, "managedID")
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
@@ -152,7 +152,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", mid.Name, err)
 	}
 	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
-	res = workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionRA, true, "RoleAssignment")
+	res = workloads.InitializeOutputArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionRA, true, "RoleAssignment")
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
@@ -161,7 +161,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	if err != nil {
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", mid.Name, err)
 	}
-	res = workloads.CreateArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionRA, true, "RoleAssignment")
+	res = workloads.InitializeOutputArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionRA, true, "RoleAssignment")
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
@@ -195,7 +195,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 			if err != nil {
 				return AADPodIdentity{}, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
 			}
-			res := workloads.CreatePodIdentityResource(true, podIdentity.ClusterName, podIdentity.Name, podIdentity.Namespace, "podid", "true")
+			res := workloads.InitializeOutputPodIdentityResource(true, podIdentity.ClusterName, podIdentity.Name, podIdentity.Namespace, "podid", "true")
 			log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 			outputResources = append(outputResources, res)
 
@@ -241,12 +241,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	// Append the output resources created for podid creation to the final set
 	outputResources = append(outputResources, or...)
 
-	res := workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Deployment", "true", deployment)
+	res := workloads.InitializeOutputKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Deployment", "true", deployment)
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
 	if service != nil {
-		res = workloads.CreateKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Service", "true", service)
+		res = workloads.InitializeOutputKubernetesResource(false, workloads.ResourceKindKubernetes, deployment.TypeMeta.Kind, deployment.TypeMeta.APIVersion, deployment.ObjectMeta.Name, deployment.ObjectMeta.Namespace, "Service", "true", service)
 		log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 		outputResources = append(outputResources, res)
 	}
@@ -573,7 +573,7 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		ResourceType:   resourceType,
 		ResourceName:   secretFullName,
 	}
-	or := workloads.CreateArmResource(true, workloads.ResourceKindAzureKeyVaultSecret, secretResource.String(), resourceType, kvAPIVersion, true, "KeyVaultSecret")
+	or := workloads.InitializeOutputArmResource(true, workloads.ResourceKindAzureKeyVaultSecret, secretResource.String(), resourceType, kvAPIVersion, true, "KeyVaultSecret")
 
 	return or, nil
 }

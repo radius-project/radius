@@ -28,8 +28,8 @@ type ARMInfo struct {
 	APIVersion   string
 }
 
-// CreateArmResource returns an object of type OutputResource initialized with the data from the ARM resource
-func CreateArmResource(deployed bool, resourceKind, id string, resourceType string, apiversion string, managed bool, localIDPrefix string) OutputResource {
+// InitializeOutputArmResource returns an object of type OutputResource initialized with the data from the ARM resource
+func InitializeOutputArmResource(deployed bool, resourceKind, id string, resourceType string, apiversion string, managed bool, localIDPrefix string) OutputResource {
 	armInfo := ARMInfo{
 		ResourceID:   id,
 		ResourceType: resourceType,
@@ -55,8 +55,8 @@ type K8sInfo struct {
 	Namespace  string
 }
 
-// CreateKubernetesResource returns an object of type OutputResource initialized with the data from the Kubernetes resource
-func CreateKubernetesResource(deployed bool, resourceKind, kind, apiVersion, name, namespace, localIDPrefix, managed string, obj runtime.Object) OutputResource {
+// InitializeOutputKubernetesResource returns an object of type OutputResource initialized with the data from the Kubernetes resource
+func InitializeOutputKubernetesResource(deployed bool, resourceKind, kind, apiVersion, name, namespace, localIDPrefix, managed string, obj runtime.Object) OutputResource {
 	k8sInfo := K8sInfo{
 		Kind:       kind,
 		APIVersion: apiVersion,
@@ -88,8 +88,8 @@ const (
 	PodIdentityCluster = "podidentitycluster"
 )
 
-// CreatePodIdentityResource returns an object of type OutputResource initialized with the data from the AADPodIdentity resource
-func CreatePodIdentityResource(deployed bool, clusterName, name, namespace, localIDPrefix, managed string) OutputResource {
+// InitializeOutputPodIdentityResource returns an object of type OutputResource initialized with the data from the AADPodIdentity resource
+func InitializeOutputPodIdentityResource(deployed bool, clusterName, name, namespace, localIDPrefix, managed string) OutputResource {
 	podidInfo := AADPodIdentity{
 		AKSClusterName: clusterName,
 		Name:           name,
