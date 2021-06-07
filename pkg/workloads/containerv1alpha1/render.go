@@ -102,11 +102,6 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 	return id, nil
 }
 
-func getAPIVersion(msiClient msi.UserAssignedIdentitiesClient) string {
-	// "Azure-SDK-For-Go/" + Version() + " servicebus/2017-04-01"
-	return strings.Split(msi.UserAgent(), "msi/")[1]
-}
-
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, []workloads.OutputResource, error) {
 	// Read the keyvault URI so we can get the keyvault name for permissions
 	var outputResources []workloads.OutputResource
