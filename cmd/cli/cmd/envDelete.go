@@ -127,7 +127,7 @@ func deleteEnvFromConfig(envName string) error {
 		}
 	}
 	rad.UpdateEnvironmentSection(v, env)
-	if err = saveConfig(); err != nil {
+	if err = rad.SaveConfig(); err != nil {
 		return err
 	}
 

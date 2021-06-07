@@ -6,12 +6,20 @@
 package environments
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/clients"
+	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
@@ -80,10 +88,69 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient() (clients.DeploymentClie
 	}, nil
 }
 
-func (e *AzureCloudEnvironment) CreateDiagnosticsClient() (clients.DiagnosticsClient, error) {
-	return &azure.ARMDiagnosticsClient{}, nil
+func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
+	config, err := e.getMonitoringCredentials(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	k8sClient, err := k8s.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &azure.ARMDiagnosticsClient{
+		Client:     k8sClient,
+		RestConfig: config,
+	}, nil
 }
 
 func (e *AzureCloudEnvironment) CreateManagementClient() (clients.ManagementClient, error) {
-	return &azure.ARMManagementClient{}, nil
+	azcred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
+	}
+
+	con := armcore.NewDefaultConnection(azcred, nil)
+
+	return &azure.ARMManagementClient{
+		AzCred:         azcred,
+		Connection:     con,
+		ResourceGroup:  e.ResourceGroup,
+		SubscriptionID: e.SubscriptionID}, nil
+}
+
+func (e *AzureCloudEnvironment) getMonitoringCredentials(ctx context.Context) (*rest.Config, error) {
+	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
+	if err != nil {
+		return nil, err
+	}
+
+	// Currently we go to AKS every time to ask for credentials, we don't
+	// cache them locally. This could be done in the future, but skipping it for now
+	// since it's non-obvious that we'd store credentials in your ~/.rad directory
+	mcc := containerservice.NewManagedClustersClient(e.SubscriptionID)
+	mcc.Authorizer = armauth
+
+	results, err := mcc.ListClusterMonitoringUserCredentials(ctx, e.ResourceGroup, e.ClusterName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list AKS cluster credentials: %w", err)
+	}
+
+	if results.Kubeconfigs == nil || len(*results.Kubeconfigs) == 0 {
+		return nil, errors.New("failed to list AKS cluster credentials: response did not contain credentials")
+	}
+
+	kc := (*results.Kubeconfigs)[0]
+	c, err := clientcmd.NewClientConfigFromBytes(*kc.Value)
+	if err != nil {
+		return nil, fmt.Errorf("kubeconfig was invalid: %w", err)
+	}
+
+	restconfig, err := c.ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("kubeconfig did not contain client credentials: %w", err)
+	}
+
+	return restconfig, nil
 }

@@ -627,7 +627,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	}
 	rad.UpdateEnvironmentSection(v, env)
 
-	err = saveConfig()
+	err = rad.SaveConfig()
 	if err != nil {
 		return err
 	}

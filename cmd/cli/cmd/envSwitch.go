@@ -67,7 +67,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 
 	section.Default = envName
 	rad.UpdateEnvironmentSection(v, section)
-	err = saveConfig()
+	err = rad.SaveConfig()
 	if err != nil {
 		return err
 	}

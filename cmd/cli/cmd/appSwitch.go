@@ -84,6 +84,6 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	env.Items[azureEnv.Name][environments.EnvironmentKeyDefaultApplication] = applicationName
 
 	rad.UpdateEnvironmentSection(v, env)
-	err = saveConfig()
+	err = rad.SaveConfig()
 	return err
 }
