@@ -21,7 +21,7 @@ import (
 type Renderer struct {
 }
 
-// Allocate is the WorkloadRenderer implementation for dapr pubsub workload.
+// AllocateBindings is the WorkloadRenderer implementation for dapr pubsub workload.
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	if len(workload.Workload.Bindings) > 0 {
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)

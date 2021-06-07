@@ -32,14 +32,14 @@ func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, _, err := renderer.Render(context.Background(), workload)
+	resources, err := renderer.Render(context.Background(), workload)
 	require.NoError(t, err)
 
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
 	require.Equal(t, "", resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.Type)
+	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
@@ -130,14 +130,14 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, _, err := renderer.Render(context.Background(), workload)
+	resources, err := renderer.Render(context.Background(), workload)
 	require.NoError(t, err)
 
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
 	require.Equal(t, "", resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.Type)
+	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:                 "false",
@@ -169,7 +169,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, _, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(context.Background(), workload)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Topic", err.Error())
 }
@@ -191,7 +191,7 @@ func Test_Render_Unmanaged_SpecifiesTopicWithResource(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, _, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(context.Background(), workload)
 	require.Error(t, err)
 	require.Equal(t, "the 'topic' cannot be specified when 'managed' is not specified", err.Error())
 }
