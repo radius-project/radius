@@ -101,10 +101,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, applicatio
 		return utils.UnwrapErrorFromRawResponse(err)
 	}
 	fmt.Printf("Application '%s' has been deleted\n", applicationName)
-
-	// TODO
-	// return dm.updateApplicationConfig(applicationName, ac)
-	return nil
+	return err
 }
 
 func (dm *ARMManagementClient) ListComponents(ctx context.Context, applicationName string) error {

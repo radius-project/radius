@@ -60,5 +60,10 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return client.DeleteApplication(cmd.Context(), applicationName)
+	err = client.DeleteApplication(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
+
+	return rad.UpdateApplicationConfig(env, applicationName)
 }

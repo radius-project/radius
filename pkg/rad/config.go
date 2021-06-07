@@ -132,32 +132,29 @@ func SaveConfig() error {
 	return nil
 }
 
-// func UpdateApplicationConfig(applicationName string,
-// 	ac *radclient.ApplicationClient) error {
+func UpdateApplicationConfig(env environments.Environment, applicationName string) error {
+	// If the application we are deleting is the default application, remove it
+	if env.GetDefaultApplication() == applicationName {
+		v := viper.GetViper()
+		envSection, err := ReadEnvironmentSection(v)
+		if err != nil {
+			return err
+		}
 
-// 	// If the application we are deleting is the default application, remove it
-// 	if dm.Environment.DefaultApplication == applicationName {
-// 		v := viper.GetViper()
-// 		env, err := rad.ReadEnvironmentSection(v)
-// 		if err != nil {
-// 			return err
-// 		}
+		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, env.GetName())
 
-// 		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, dm.Environment.Name)
+		envSection.Items[env.GetName()][environments.EnvironmentKeyDefaultApplication] = ""
 
-// 		env.Items[dm.Environment.Name][environments.EnvironmentKeyDefaultApplication] = ""
+		UpdateEnvironmentSection(v, envSection)
 
-// 		rad.UpdateEnvironmentSection(v, env)
+		err = SaveConfig()
+		if err != nil {
+			return err
+		}
+	}
 
-// 		err = rad.SaveConfig()
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
-
+	return nil
+}
 func (env EnvironmentSection) decodeEnvironmentSection(name string) (environments.Environment, error) {
 	raw, ok := env.Items[cases.Fold().String(name)]
 	if !ok {
