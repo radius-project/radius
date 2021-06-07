@@ -26,10 +26,15 @@ const (
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
-	return &daprStateStoreAzureStorageHandler{arm: arm, k8s: k8s}
+	return &daprStateStoreAzureStorageHandler{
+		kubernetesHandler: kubernetesHandler{k8s: k8s},
+		arm:               arm,
+		k8s:               k8s,
+	}
 }
 
 type daprStateStoreAzureStorageHandler struct {
+	kubernetesHandler
 	arm armauth.ArmConfig
 	k8s client.Client
 }
@@ -189,6 +194,11 @@ func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx conte
 }
 
 func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx context.Context, accountName string, accountKey string, properties map[string]string) error {
+	err := handler.PatchNamespace(ctx, properties[KubernetesNamespaceKey])
+	if err != nil {
+		return err
+	}
+
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],
@@ -218,7 +228,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 		},
 	}
 
-	err := handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
 	if err != nil {
 		return fmt.Errorf("failed to create/update Dapr Component: %w", err)
 	}

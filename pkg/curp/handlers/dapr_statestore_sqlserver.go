@@ -32,10 +32,15 @@ const (
 )
 
 func NewDaprStateStoreSQLServerHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
-	return &daprStateStoreSQLServerHandler{arm: arm, k8s: k8s}
+	return &daprStateStoreSQLServerHandler{
+		kubernetesHandler: kubernetesHandler{k8s: k8s},
+		arm:               arm,
+		k8s:               k8s,
+	}
 }
 
 type daprStateStoreSQLServerHandler struct {
+	kubernetesHandler
 	arm armauth.ArmConfig
 	k8s client.Client
 }
@@ -70,6 +75,11 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 	// Generate connection string
 	connectionString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
 		serverName, dbLogin, password, port, dbName)
+
+	err = handler.PatchNamespace(ctx, properties[KubernetesNamespaceKey])
+	if err != nil {
+		return nil, err
+	}
 
 	// Translate into Dapr SQL Server component schema
 	item := unstructured.Unstructured{

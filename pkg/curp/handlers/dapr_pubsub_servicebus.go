@@ -18,12 +18,14 @@ import (
 func NewDaprPubSubServiceBusHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprPubSubServiceBusHandler{
 		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
+		kubernetesHandler:          kubernetesHandler{k8s: k8s},
 		k8s:                        k8s,
 	}
 }
 
 type daprPubSubServiceBusHandler struct {
 	azureServiceBusBaseHandler
+	kubernetesHandler
 	k8s client.Client
 }
 
@@ -122,6 +124,11 @@ func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, options 
 }
 
 func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context, properties map[string]string, cs string) error {
+	err := handler.PatchNamespace(ctx, properties[KubernetesNamespaceKey])
+	if err != nil {
+		return err
+	}
+
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],
@@ -143,7 +150,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 		},
 	}
 
-	err := handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
 	if err != nil {
 		return fmt.Errorf("failed to patch Dapr PubSub: %w", err)
 	}
