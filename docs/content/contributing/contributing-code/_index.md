@@ -12,6 +12,6 @@ For now, we're looking for help with issues labeled as *Help Wanted*. You can fi
 
 ## Getting started
 
-For your first commit and PR to Project Radius you should start with the step-by-step [first-commit guide]({{< ref first-commit >}}).
+For your first commit and PR to Project Radius you should start with the step-by-step [first-commit guide]({{< ref contributing-code-first-commit >}}).
 
 ## Sections
