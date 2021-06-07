@@ -15,6 +15,7 @@ const (
 	ResourceKindAzureCosmosDBSQL                 = "azure.cosmosdb.sql"
 	ResourceKindAzureServiceBusQueue             = "azure.servicebus.queue"
 	ResourceKindAzureKeyVault                    = "azure.keyvault"
+	ResourceKindAzureKeyVaultSecret              = "azure.keyvault.secret"
 	ResourceKindAzurePodIdentity                 = "azure.aadpodidentity"
 	ResourceKindAzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
 )

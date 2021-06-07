@@ -24,6 +24,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -208,22 +209,24 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+	outputResources := []workloads.OutputResource{}
 	cw, err := r.convert(w)
 	if err != nil {
 		return []workloads.OutputResource{}, err
 	}
 
-	deployment, err := r.makeDeployment(ctx, w, cw)
+	deployment, or, err := r.makeDeployment(ctx, w, cw)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		// Even if the operation fails, return the output resources created so far
+		return or, err
 	}
+	// Append the output resources created during the makeDeployment phase to the final set
+	outputResources = append(outputResources, or...)
 
 	service, err := r.makeService(ctx, w, cw)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		return outputResources, err
 	}
-
-	outputResources := []workloads.OutputResource{}
 
 	podIdentity, or, err := r.createPodIdentityResource(ctx, w, cw)
 	if err != nil {
@@ -261,7 +264,8 @@ func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent
 	return container, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, error) {
+func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, []workloads.OutputResource, error) {
+	var outputResources []workloads.OutputResource
 	container := corev1.Container{
 		Name:  cc.Name,
 		Image: cc.Run.Container.Image,
@@ -286,7 +290,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		for k, v := range dep.Env {
 			str, err := v.EvaluateString(w.BindingValues)
 			if err != nil {
-				return nil, err
+				return nil, outputResources, err
 			}
 			container.Env = append(container.Env, corev1.EnvVar{
 				Name:  k,
@@ -302,23 +306,23 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 
 		store, err := dep.Secrets.Store.GetMatchingBinding(w.BindingValues)
 		if err != nil {
-			return nil, err
+			return nil, outputResources, err
 		}
 		value, ok := store.Properties[handlers.KeyVaultURIKey]
 		if !ok {
-			return nil, fmt.Errorf("cannot find a keyvault URI for secret store binding %s from component %s", store.Binding, store.Component)
+			return nil, outputResources, fmt.Errorf("cannot find a keyvault URI for secret store binding %s from component %s", store.Binding, store.Component)
 		}
 
 		uri, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("value %s for binding for binding %s from component %s is not a string", handlers.KeyVaultURIKey, store.Binding, store.Component)
+			return nil, outputResources, fmt.Errorf("value %s for binding for binding %s from component %s is not a string", handlers.KeyVaultURIKey, store.Binding, store.Component)
 		}
 
 		secrets := map[string]string{}
 		for k, v := range dep.Secrets.Keys {
 			value, err := v.EvaluateString(w.BindingValues)
 			if err != nil {
-				return nil, err
+				return nil, outputResources, err
 			}
 
 			secrets[k] = value
@@ -326,10 +330,11 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 
 		// Create secrets in the specified keyvault
 		for secretName, secretValue := range secrets {
-			err := r.createSecret(ctx, uri, secretName, secretValue)
+			or, err := r.createSecret(ctx, uri, secretName, secretValue)
 			if err != nil {
-				return nil, fmt.Errorf("could not create secret: %v: %w", secretName, err)
+				return nil, outputResources, fmt.Errorf("could not create secret: %v: %w", secretName, err)
 			}
+			outputResources = append(outputResources, or)
 		}
 	}
 
@@ -338,7 +343,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			httpBinding := HTTPBinding{}
 			err := generic.AsRequired(KindHTTP, &httpBinding)
 			if err != nil {
-				return nil, err
+				return nil, outputResources, err
 			}
 
 			port := corev1.ContainerPort{
@@ -393,7 +398,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		},
 	}
 
-	return &deployment, nil
+	return &deployment, outputResources, nil
 }
 
 // AADPodIdentity represents the AAD pod identity added to a Kubernetes cluster
@@ -506,7 +511,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	return podIdentity, nil
 }
 
-func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue string) error {
+func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue string) (workloads.OutputResource, error) {
 	// Create secret in the Key Vault using ARM since ARM has write permissions to create secrets
 	// and no special role assignment is needed.
 
@@ -516,13 +521,14 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 	// KeyVault URI has the format: "https://<kv name>.vault.azure.net"
 	vaultName := strings.Split(strings.Split(kvURI, "https://")[1], ".vault.azure.net")[0]
 	secretFullName := vaultName + "/" + secretName
+	resourceType := "Microsoft.KeyVault/vaults/secrets"
 	template := map[string]interface{}{
 		"$schema":        "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
 		"contentVersion": "1.0.0.0",
 		"parameters":     map[string]interface{}{},
 		"resources": []interface{}{
 			map[string]interface{}{
-				"type":       "Microsoft.KeyVault/vaults/secrets",
+				"type":       resourceType,
 				"name":       secretFullName,
 				"apiVersion": kvAPIVersion,
 				"properties": map[string]interface{}{
@@ -546,21 +552,30 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		Properties: deploymentProperties,
 	})
 	if err != nil {
-		return fmt.Errorf("unable to create secret: %w", err)
+		return workloads.OutputResource{}, fmt.Errorf("unable to create secret: %w", err)
 	}
 
 	err = op.WaitForCompletionRef(context.Background(), dc.Client)
 	if err != nil {
-		return fmt.Errorf("could not create secret: %w", err)
+		return workloads.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
 	}
 
 	_, err = op.Result(dc)
 	if err != nil {
-		return fmt.Errorf("could not create secret: %w", err)
+		return workloads.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
 	}
 	log.Printf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName)
 
-	return nil
+	secretResource := azure.Resource{
+		SubscriptionID: r.Arm.SubscriptionID,
+		ResourceGroup:  r.Arm.ResourceGroup,
+		Provider:       "Microsoft.KeyVault",
+		ResourceType:   resourceType,
+		ResourceName:   secretFullName,
+	}
+	or := workloads.CreateArmResource(true, workloads.ResourceKindAzureKeyVaultSecret, secretResource.String(), resourceType, kvAPIVersion, true, "KeyVaultSecret")
+
+	return or, nil
 }
 
 func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*corev1.Service, error) {
