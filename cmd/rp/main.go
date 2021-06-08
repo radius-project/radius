@@ -7,8 +7,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Azure/radius/pkg/curp"
@@ -16,8 +18,10 @@ import (
 	"github.com/Azure/radius/pkg/curp/db"
 	"github.com/Azure/radius/pkg/curp/deployment"
 	"github.com/Azure/radius/pkg/curp/k8sauth"
+	"github.com/Azure/radius/pkg/model"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func main() {
@@ -39,21 +43,43 @@ func main() {
 
 	authenticate := true
 	skipAuth, ok := os.LookupEnv("SKIP_AUTH")
-	if ok && skipAuth == "true" {
+	if ok && strings.EqualFold(skipAuth, "true") {
 		log.Println("Authentication will be skipped! This is a development-time only setting")
 		authenticate = false
 	}
 
-	k8s, err := k8sauth.CreateClient()
-	if err != nil {
-		log.Printf("error connecting to kubernetes: %s", err)
-		panic(err)
+	var k8s *client.Client
+	var err error
+	skipKubernetes, ok := os.LookupEnv("SKIP_K8S")
+	if ok && strings.EqualFold(skipKubernetes, "true") {
+		log.Println("skipping Kubernetes connection...")
+	} else {
+		k8s, err = k8sauth.CreateClient()
+		if err != nil {
+			log.Printf("error connecting to kubernetes: %s", err)
+			panic(err)
+		}
 	}
 
-	arm, err := armauth.GetArmConfig()
-	if err != nil {
-		log.Printf("error connecting to ARM: %s", err)
-		panic(err)
+	var arm armauth.ArmConfig
+	skipARM, ok := os.LookupEnv("SKIP_ARM")
+	if ok && strings.EqualFold(skipARM, "true") {
+		arm = armauth.ArmConfig{}
+	} else {
+		arm, err = armauth.GetArmConfig()
+		if err != nil {
+			log.Printf("error connecting to ARM: %s", err)
+			panic(err)
+		}
+	}
+
+	var appmodel model.ApplicationModel
+	if os.Getenv("RADIUS_MODEL") == "" || strings.EqualFold(os.Getenv("RADIUS_MODEL"), "azure") {
+		appmodel = model.NewAzureModel(arm, k8s)
+	} else if strings.EqualFold(os.Getenv("RADIUS_MODEL"), "k8s") {
+		appmodel = model.NewKubernetesModel(k8s)
+	} else {
+		log.Fatal(fmt.Errorf("unknown value for RADIUS_MODEL '%s'", os.Getenv("RADIUS_MODEL")))
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -74,14 +100,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db := db.NewCurpDB(client.Database(dbName))
-
 	options := curp.ServerOptions{
 		Address:      ":" + port,
 		Authenticate: authenticate,
-		Deploy:       deployment.NewDeploymentProcessor(arm, k8s),
-		DB:           db,
-		K8s:          k8s,
+		Deploy:       deployment.NewDeploymentProcessor(appmodel),
+		DB:           db.NewCurpDB(client.Database(dbName)),
 	}
 
 	log.Printf("listening on: '%s'...", options.Address)

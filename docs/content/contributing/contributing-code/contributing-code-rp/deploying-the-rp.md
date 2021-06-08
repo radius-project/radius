@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Deploy a custom Radius RP"
+title: "Deploy a custom Radius resource provider"
 linkTitle: "Deploy custom RP"
-description: "How to deploy a custom Radius RP to Azure"
+description: "How to deploy a custom build of the Radius resource provider to an Azure environment"
 weight: 40
 ---
 

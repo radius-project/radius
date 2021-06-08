@@ -30,6 +30,11 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 		return nil, err
 	}
 
+	err = handler.PatchNamespace(ctx, item.GetNamespace())
+	if err != nil {
+		return nil, err
+	}
+
 	// For a Kubernetes resource we only need to store the ObjectMeta and TypeMeta data
 	p := map[string]string{
 		KubernetesKindKey:       item.GetKind(),
@@ -44,6 +49,30 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 	}
 
 	return p, err
+}
+
+func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {
+	// Ensure that the namespace exists that we're able to operate upon.
+	ns := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "Namespace",
+			"metadata": map[string]interface{}{
+				"name": namespace,
+				"labels": map[string]interface{}{
+					"app.kubernetes.io/managed-by": "radius-rp",
+				},
+			},
+		},
+	}
+
+	err := handler.k8s.Patch(ctx, ns, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	if err != nil {
+		// we consider this fatal - without a namespace we won't be able to apply anything else
+		return fmt.Errorf("error applying namespace: %w", err)
+	}
+
+	return nil
 }
 
 func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOptions) error {

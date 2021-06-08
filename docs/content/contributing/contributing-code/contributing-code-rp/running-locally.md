@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Running Radius locally"
-linkTitle: "Run locally"
-description: "How to get a local deployment of Radius up and running"
+title: "Running Radius resource provider locally"
+linkTitle: "Run RP locally"
+description: "How to get a local deployment of the Radius resource provider up and running"
 weight: 20
 ---
 
