@@ -42,7 +42,7 @@ type LogsOptions struct {
 type ManagementClient interface {
 	ListApplications(ctx context.Context) (*radclient.ApplicationList, error)
 	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
-	DeleteApplication(ctx context.Context, applicationName string) (*radclient.DeploymentListResponse, error)
+	DeleteApplication(ctx context.Context, applicationName string) error
 
 	ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error)
 	ShowComponent(ctx context.Context, applicationName string, componentName string) (*radclient.ComponentResource, error)

@@ -48,26 +48,16 @@ func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationN
 	return response.ApplicationResource, err
 }
 
-func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, applicationName string) (*radclient.DeploymentListResponse, error) {
-
-	// Delete deployments: An application can have multiple deployments in it that should be deleted before the application can be deleted.
-	dc := radclient.NewDeploymentClient(dm.Connection, dm.SubscriptionID)
-
-	// Retrieve all the deployments in the application
-	response, err := dc.ListByApplication(ctx, dm.ResourceGroup, applicationName, nil)
-	if err != nil {
-		return nil, utils.UnwrapErrorFromRawResponse(err)
-	}
-
+func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, applicationName string) error {
 	// Delete application
 	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 
-	_, err = ac.Delete(ctx, dm.ResourceGroup, applicationName, nil)
+	_, err := ac.Delete(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return nil, utils.UnwrapErrorFromRawResponse(err)
+		return utils.UnwrapErrorFromRawResponse(err)
 	}
 
-	return &response, err
+	return err
 }
 
 func (dm *ARMManagementClient) ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error) {
