@@ -577,6 +577,7 @@ func Test_GetComponent_Found(t *testing.T) {
 		Properties: rest.ComponentProperties{
 			Revision: rev,
 		},
+		OutputResources: []rest.OutputResource{},
 	}
 	requireJSON(t, expected, w)
 }
@@ -648,6 +649,7 @@ func Test_ListComponents_Found(t *testing.T) {
 			Properties: rest.ComponentProperties{
 				Revision: rev,
 			},
+			OutputResources: []rest.OutputResource{},
 		},
 	}}
 	requireJSON(t, expected, w)
@@ -719,6 +721,7 @@ func Test_UpdateComponent_Create(t *testing.T) {
 		Properties: rest.ComponentProperties{
 			Revision: rev,
 		},
+		OutputResources: []rest.OutputResource{},
 	}
 	requireJSON(t, expected, w)
 }
@@ -756,6 +759,7 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 		Properties: rest.ComponentProperties{
 			Revision: rev,
 		},
+		OutputResources: []rest.OutputResource{},
 	}
 	requireJSON(t, expected, w)
 }
@@ -808,6 +812,7 @@ func Test_UpdateComponent_Update(t *testing.T) {
 				"cool": true,
 			},
 		},
+		OutputResources: []rest.OutputResource{},
 	}
 	requireJSON(t, expected, w)
 }
