@@ -218,7 +218,7 @@ func newRESTDeploymentFromDB(original *db.Deployment) *rest.Deployment {
 }
 
 func newRESTOutputResourcesFromDB(original []db.OutputResource) []rest.OutputResource {
-	var rrs []rest.OutputResource
+	rrs := []rest.OutputResource{}
 	for _, r := range original {
 		rr := rest.OutputResource{
 			LocalID:            r.LocalID,

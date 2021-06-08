@@ -104,7 +104,7 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, []workloads.OutputResource, error) {
 	// Read the keyvault URI so we can get the keyvault name for permissions
-	var outputResources []workloads.OutputResource
+	outputResources := []workloads.OutputResource{}
 	value, ok := store.Properties[handlers.KeyVaultURIKey]
 	if !ok {
 		return nil, outputResources, fmt.Errorf("failed to read keyvault uri")
@@ -173,7 +173,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, []workloads.OutputResource, error) {
 	var podIdentity AADPodIdentity
 
-	var outputResources []workloads.OutputResource
+	outputResources := []workloads.OutputResource{}
 	for _, dependency := range cw.Uses {
 		binding, err := dependency.Binding.GetMatchingBinding(w.BindingValues)
 		if err != nil {
@@ -265,7 +265,7 @@ func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent
 }
 
 func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, []workloads.OutputResource, error) {
-	var outputResources []workloads.OutputResource
+	outputResources := []workloads.OutputResource{}
 	container := corev1.Container{
 		Name:  cc.Name,
 		Image: cc.Run.Container.Image,

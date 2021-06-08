@@ -187,7 +187,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			outputResources, err := dp.renderWorkload(ctx, inst)
 			if err != nil {
 				errs = append(errs, err)
-				var dbOutputResources []db.OutputResource
+				dbOutputResources := []db.OutputResource{}
 				for _, resource := range outputResources {
 					// Save the output resource to DB
 					addDBOutputResource(resource, &dbOutputResources)
@@ -204,7 +204,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 			}
 
-			var dbOutputResources []db.OutputResource
+			dbOutputResources := []db.OutputResource{}
 			for _, resource := range outputResources {
 				var existingResource *db.DeploymentResource
 				if existingStatus != nil {
