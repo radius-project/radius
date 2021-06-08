@@ -54,7 +54,7 @@ generate-kustomize-installed:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..
 define go-get-tool
 @[ -f $(1) ] || { \
 set -e ;\
@@ -78,3 +78,7 @@ generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes
 
 generate-controller: generate-controller-gen-installed ## Generate controller code
 	$(CONTROLLER_GEN) object:headerFile="boilerplate.go.txt" paths="./..."
+
+generate-baked-manifests-: generate-k8s-manifest generate-kustomize-installed
+	cd deploy/k8s/config/manager && $(KUSTOMIZE) edit set image controller=${K8S_IMAGE}
+	$(KUSTOMIZE) build deploy/k8s/config/default > cmd/cli/cmd/radius-k8s.yaml

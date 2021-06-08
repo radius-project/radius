@@ -74,14 +74,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
 	}
-	if err = (&controllers.ApplicationReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Application")
-		os.Exit(1)
-	}
 	if err = (&controllers.ComponentReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
@@ -114,25 +106,28 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Template")
 		os.Exit(1)
 	}
-	if err = (&radiusv1alpha1.Application{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Application")
-		os.Exit(1)
-	}
-	if err = (&radiusv1alpha1.Component{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Component")
-		os.Exit(1)
-	}
-	if err = (&radiusv1alpha1.Scope{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Scope")
-		os.Exit(1)
-	}
-	if err = (&radiusv1alpha1.Deployment{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
-		os.Exit(1)
-	}
-	if err = (&radiusv1alpha1.Template{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Template")
-		os.Exit(1)
+
+	if os.Getenv("SKIP_WEBHOOKS") != "true" {
+		if err = (&radiusv1alpha1.Application{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Application")
+			os.Exit(1)
+		}
+		if err = (&radiusv1alpha1.Component{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Component")
+			os.Exit(1)
+		}
+		if err = (&radiusv1alpha1.Scope{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Scope")
+			os.Exit(1)
+		}
+		if err = (&radiusv1alpha1.Deployment{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
+			os.Exit(1)
+		}
+		if err = (&radiusv1alpha1.Template{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Template")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

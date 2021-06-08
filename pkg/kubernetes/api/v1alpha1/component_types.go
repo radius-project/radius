@@ -7,6 +7,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -14,17 +15,18 @@ import (
 
 // ComponentSpec defines the desired state of Component
 type ComponentSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of Component. Edit component_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Application string                  `json:"application"`
+	Name        string                  `json:"name"`
+	Kind        string                  `json:"kind"`
+	Config      *runtime.RawExtension   `json:"config,omitempty"`
+	Run         *runtime.RawExtension   `json:"run,omitempty"`
+	DependsOn   *[]runtime.RawExtension `json:"dependsOn,omitempty"`
+	Provides    *[]runtime.RawExtension `json:"provides,omitempty"`
+	Traits      *[]runtime.RawExtension `json:"traits,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component
 type ComponentStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 //+kubebuilder:object:root=true

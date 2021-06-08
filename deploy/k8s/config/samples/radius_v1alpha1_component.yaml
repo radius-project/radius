@@ -3,5 +3,9 @@ kind: Component
 metadata:
   name: component-sample
 spec:
-  # Add fields here
-  foo: bar
+  application: frontend-backend
+  name: frontend
+  kind: radius.dev/Container@v1alpha1
+  run:
+    container:
+      image: rynowak/frontend:0.5.0-dev
