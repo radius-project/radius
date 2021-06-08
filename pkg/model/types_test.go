@@ -93,7 +93,7 @@ func (*NoOpRenderer) AllocateBindings(ctx context.Context, workload workloads.In
 	return nil, nil
 }
 
-func (*NoOpRenderer) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (*NoOpRenderer) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	return nil, nil
 }
 
