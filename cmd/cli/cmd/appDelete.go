@@ -62,6 +62,9 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	}
 
 	deploymentList, err := client.ListDeployments(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
 
 	// Delete the deployments
 	for _, deploymentResource := range *deploymentList.Value {
