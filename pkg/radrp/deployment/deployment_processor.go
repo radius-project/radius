@@ -216,7 +216,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					}
 				}
 
-				resourceType, err := dp.appmodel.LookupResource(resource.Type)
+				resourceType, err := dp.appmodel.LookupResource(resource.ResourceKind)
 				if err != nil {
 					errs = append(errs, err)
 					continue
@@ -407,7 +407,7 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 	return nil
 }
 
-func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	componentKind, err := dp.appmodel.LookupComponent(w.Workload.Kind)
 	if err != nil {
 		return []workloads.OutputResource{}, err
