@@ -36,10 +36,32 @@ spec:
           spec:
             description: ComponentSpec defines the desired state of Component
             properties:
-              foo:
-                description: Foo is an example field of Component. Edit component_types.go
-                  to remove/update
+              application:
                 type: string
+              config:
+                type: object
+              dependsOn:
+                items:
+                  type: object
+                type: array
+              kind:
+                type: string
+              name:
+                type: string
+              provides:
+                items:
+                  type: object
+                type: array
+              run:
+                type: object
+              traits:
+                items:
+                  type: object
+                type: array
+            required:
+            - application
+            - kind
+            - name
             type: object
           status:
             description: ComponentStatus defines the observed state of Component

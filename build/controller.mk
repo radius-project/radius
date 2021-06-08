@@ -14,6 +14,8 @@ controller-install: generate-k8s-manifests generate-kustomize-installed ## Insta
 controller-uninstall: generate-k8s-manifests generate-kustomize-installed ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build deploy/k8s/config/crd | kubectl delete -f -
 
+K8S_IMAGE ?= 1.0.0
+
 controller-deploy: generate-k8s-manifests generate-kustomize-installed ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd deploy/k8s/config/manager && $(KUSTOMIZE) edit set image controller=${K8S_IMAGE}
 	$(KUSTOMIZE) build deploy/k8s/config/default | kubectl apply -f -
