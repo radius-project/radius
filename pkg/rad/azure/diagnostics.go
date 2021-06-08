@@ -6,7 +6,6 @@
 package azure
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -33,47 +32,33 @@ type ARMDiagnosticsClient struct {
 
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
-func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) error {
+func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {
 	replica, err := getRunningReplica(ctx, dc.Client, options.Application, options.Component)
 	if err != nil {
-		return err
+		return
 	}
 
-	signals := make(chan os.Signal, 1)
+	signals = make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
-	defer signal.Stop(signals)
 
-	failed := make(chan error)
+	failed = make(chan error)
 	ready := make(chan struct{})
-	stop := make(chan struct{}, 1)
+	stop = make(chan struct{}, 1)
 	go func() {
 		err := runPortforward(dc.RestConfig, dc.Client, replica, ready, stop, options.Port, options.RemotePort)
 		failed <- err
 	}()
 
-	for {
-		select {
-		case <-signals:
-			// shutting down... wait for socket to close
-			close(stop)
-			continue
-		case err := <-failed:
-			if err != nil {
-				return fmt.Errorf("failed to port-forward: %w", err)
-			}
-
-			return nil
-		}
-	}
+	return
 }
 
-func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) error {
+func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) (io.ReadCloser, error) {
 	component := options.Component
 
 	replica, err := getRunningReplica(ctx, dc.Client, options.Application, component)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	follow := options.Follow
@@ -82,55 +67,16 @@ func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOp
 		// We don't really expect this to fail, but let's do something reasonable if it does...
 		container = getAppContainerName(replica)
 		if container == "" {
-			return fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", component)
+			return nil, fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", component)
 		}
 	}
 
 	stream, err := streamLogs(ctx, dc.RestConfig, dc.Client, replica, container, follow)
 	if err != nil {
-		return fmt.Errorf("failed to open log stream to %s: %w", component, err)
-	}
-	defer stream.Close()
-
-	// We can keep reading this until cancellation occurs.
-	if follow {
-		// Sending to stderr so it doesn't interfere with parsing
-		fmt.Fprintf(os.Stderr, "Streaming logs from component %s. Press CTRL+C to exit...\n", component)
+		return nil, fmt.Errorf("failed to open log stream to %s: %w", component, err)
 	}
 
-	hasLogs := false
-	reader := bufio.NewReader(stream)
-	for {
-		line, prefix, err := reader.ReadLine()
-		if err == context.Canceled {
-			// CTRL+C => done
-			return nil
-		} else if err == io.EOF {
-			// End of stream
-			//
-			// Output a status message to stderr if there were no logs for non-streaming
-			// so an interactive user gets *some* feedback.
-			if !follow && !hasLogs {
-				fmt.Fprintln(os.Stderr, "Component's log is currently empty.")
-			}
-
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("failed to read log stream %T: %w", err, err)
-		}
-
-		hasLogs = true
-
-		// Handle the case where a partial line is returned
-		if prefix {
-			fmt.Print(string(line))
-			continue
-		}
-
-		fmt.Println(string(line))
-	}
-
-	// Unreachable
+	return stream, err
 }
 
 func getRunningReplica(ctx context.Context, client *k8s.Clientset, application string, component string) (*corev1.Pod, error) {

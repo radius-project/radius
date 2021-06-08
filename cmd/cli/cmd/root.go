@@ -33,7 +33,7 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(rad.InitConfig)
 
 	// Initialize support for --version
 	RootCmd.Version = version.Release()
@@ -42,8 +42,4 @@ func init() {
 
 	RootCmd.Flags().BoolP("version", "v", false, "version for radius")
 	RootCmd.PersistentFlags().StringVar(&rad.CfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
-}
-
-func initConfig() {
-	rad.InitConfig()
 }

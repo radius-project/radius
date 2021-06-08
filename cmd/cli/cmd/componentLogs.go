@@ -6,6 +6,12 @@
 package cmd
 
 import (
+	"bufio"
+	"context"
+	"fmt"
+	"io"
+	"os"
+
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/clients"
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -62,11 +68,55 @@ rad component logs --application icecream-store orders --container daprd`,
 			return err
 		}
 
-		return client.Logs(cmd.Context(), clients.LogsOptions{
+		stream, err := client.Logs(cmd.Context(), clients.LogsOptions{
 			Application: application,
 			Component:   component,
 			Follow:      follow,
 			Container:   container})
+		if err != nil {
+			return err
+		}
+
+		defer stream.Close()
+
+		// We can keep reading this until cancellation occurs.
+		if follow {
+			// Sending to stderr so it doesn't interfere with parsing
+			fmt.Fprintf(os.Stderr, "Streaming logs from component %s. Press CTRL+C to exit...\n", component)
+		}
+
+		hasLogs := false
+		reader := bufio.NewReader(stream)
+		for {
+			line, prefix, err := reader.ReadLine()
+			if err == context.Canceled {
+				// CTRL+C => done
+				return nil
+			} else if err == io.EOF {
+				// End of stream
+				//
+				// Output a status message to stderr if there were no logs for non-streaming
+				// so an interactive user gets *some* feedback.
+				if !follow && !hasLogs {
+					fmt.Fprintln(os.Stderr, "Component's log is currently empty.")
+				}
+
+				return nil
+			} else if err != nil {
+				return fmt.Errorf("failed to read log stream %T: %w", err, err)
+			}
+
+			hasLogs = true
+
+			// Handle the case where a partial line is returned
+			if prefix {
+				fmt.Print(string(line))
+				continue
+			}
+
+			fmt.Println(string(line))
+		}
+
 	},
 }
 

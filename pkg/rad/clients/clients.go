@@ -7,6 +7,10 @@ package clients
 
 import (
 	"context"
+	"io"
+	"os"
+
+	"github.com/Azure/radius/pkg/radclient"
 )
 
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
@@ -16,8 +20,8 @@ type DeploymentClient interface {
 
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
 type DiagnosticsClient interface {
-	Expose(ctx context.Context, options ExposeOptions) error
-	Logs(ctx context.Context, options LogsOptions) error
+	Expose(ctx context.Context, options ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error)
+	Logs(ctx context.Context, options LogsOptions) (io.ReadCloser, error)
 }
 
 type ExposeOptions struct {
@@ -36,14 +40,14 @@ type LogsOptions struct {
 
 // ManagementClient is used to interface with management features like listing applications and components.
 type ManagementClient interface {
-	ListApplications(ctx context.Context) error
-	ShowApplication(ctx context.Context, applicationName string) error
-	DeleteApplication(ctx context.Context, applicationName string) error
+	ListApplications(ctx context.Context) (*radclient.ApplicationList, error)
+	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
+	DeleteApplication(ctx context.Context, applicationName string) (*radclient.DeploymentListResponse, error)
 
-	ListComponents(ctx context.Context, applicationName string) error
-	ShowComponent(ctx context.Context, applicationName string, componentName string) error
+	ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error)
+	ShowComponent(ctx context.Context, applicationName string, componentName string) (*radclient.ComponentResource, error)
 
-	ListDeployments(ctx context.Context, applicationName string) error
-	ShowDeployment(ctx context.Context, deploymentName string, applicationName string) error
+	ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error)
+	ShowDeployment(ctx context.Context, deploymentName string, applicationName string) (*radclient.DeploymentResource, error)
 	DeleteDeployment(ctx context.Context, deploymentName string, applicationName string) error
 }

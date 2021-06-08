@@ -6,6 +6,9 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/spf13/cobra"
@@ -44,5 +47,16 @@ func showDeployment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return client.ShowDeployment(cmd.Context(), deploymentName, applicationName)
+	deploymentResource, err := client.ShowDeployment(cmd.Context(), deploymentName, applicationName)
+	if err != nil {
+		return err
+	}
+
+	deploymentDetails, err := json.MarshalIndent(deploymentResource, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal deployment response as JSON %w", err)
+	}
+
+	fmt.Println(string(deploymentDetails))
+	return nil
 }

@@ -6,6 +6,9 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/spf13/cobra"
@@ -38,5 +41,16 @@ func showApplication(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return client.ShowApplication(cmd.Context(), applicationName)
+
+	applicationResource, err := client.ShowApplication(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
+	applicationDetails, err := json.MarshalIndent(applicationResource, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal application response as JSON %w", err)
+	}
+	fmt.Println(string(applicationDetails))
+
+	return err
 }

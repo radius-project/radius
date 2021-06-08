@@ -6,6 +6,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os/signal"
+
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/clients"
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -58,11 +61,32 @@ rad component expose --application icecream-store orders --port 5000 --remote-po
 			return err
 		}
 
-		return client.Expose(cmd.Context(), clients.ExposeOptions{
+		failed, stop, signals, err := client.Expose(cmd.Context(), clients.ExposeOptions{
 			Application: application,
 			Component:   component,
 			Port:        localPort,
 			RemotePort:  remotePort})
+
+		if err != nil {
+			return err
+		}
+		// We own stopping the signal created by Expose
+		defer signal.Stop(signals)
+
+		for {
+			select {
+			case <-signals:
+				// shutting down... wait for socket to close
+				close(stop)
+				continue
+			case err := <-failed:
+				if err != nil {
+					return fmt.Errorf("failed to port-forward: %w", err)
+				}
+
+				return nil
+			}
+		}
 	},
 }
 

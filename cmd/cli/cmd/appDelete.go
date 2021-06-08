@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // appDeleteCmd command to delete an application
@@ -60,10 +61,52 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = client.DeleteApplication(cmd.Context(), applicationName)
+	response, err := client.DeleteApplication(cmd.Context(), applicationName)
 	if err != nil {
 		return err
 	}
 
-	return rad.UpdateApplicationConfig(env, applicationName)
+	// Delete the deployments
+	deploymentResources := *response.DeploymentList
+	for _, deploymentResource := range *deploymentResources.Value {
+		// This is needed until server side implementation is fixed https://github.com/Azure/radius/issues/159
+		deploymentName := *deploymentResource.Name
+		err = client.DeleteDeployment(cmd.Context(), deploymentName, applicationName)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Deployment '%s' deleted.\n", deploymentName)
+	}
+
+	err = updateApplicationConfig(env, applicationName)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Application '%s' has been deleted\n", applicationName)
+	return nil
+}
+
+func updateApplicationConfig(env environments.Environment, applicationName string) error {
+	// If the application we are deleting is the default application, remove it
+	if env.GetDefaultApplication() == applicationName {
+		v := viper.GetViper()
+		envSection, err := rad.ReadEnvironmentSection(v)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, env.GetName())
+
+		envSection.Items[env.GetName()][environments.EnvironmentKeyDefaultApplication] = ""
+
+		rad.UpdateEnvironmentSection(v, envSection)
+
+		err = rad.SaveConfig()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -6,6 +6,9 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/spf13/cobra"
@@ -39,5 +42,15 @@ func listComponents(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return client.ListComponents(cmd.Context(), applicationName)
+	componentList, err := client.ListComponents(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
+	components, err := json.MarshalIndent(componentList, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal component response as JSON %w", err)
+	}
+
+	fmt.Println(string(components))
+	return nil
 }

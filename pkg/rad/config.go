@@ -132,29 +132,6 @@ func SaveConfig() error {
 	return nil
 }
 
-func UpdateApplicationConfig(env environments.Environment, applicationName string) error {
-	// If the application we are deleting is the default application, remove it
-	if env.GetDefaultApplication() == applicationName {
-		v := viper.GetViper()
-		envSection, err := ReadEnvironmentSection(v)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, env.GetName())
-
-		envSection.Items[env.GetName()][environments.EnvironmentKeyDefaultApplication] = ""
-
-		UpdateEnvironmentSection(v, envSection)
-
-		err = SaveConfig()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
 func (env EnvironmentSection) decodeEnvironmentSection(name string) (environments.Environment, error) {
 	raw, ok := env.Items[cases.Fold().String(name)]
 	if !ok {
