@@ -195,6 +195,7 @@ func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (rest.Re
 }
 
 func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Response, error) {
+	log.Println("@@@@ UpdateComponent called")
 	id, err := c.GetComponentID()
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -219,6 +220,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	newdbitem := newDBComponentFromREST(c)
+	fmt.Println("@@@@ After newDBComponentFromREST, op: %w", newdbitem.OutputResources)
 
 	equal := false
 	if olddbitem != nil {
@@ -229,6 +231,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	if equal {
+		fmt.Println("@@@ No change to component. OK Resp")
 		// No changes to the component - nothing to do.
 		return rest.NewOKResponse(newRESTComponentFromDB(olddbitem)), nil
 	}
@@ -259,7 +262,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 		return rest.NewCreatedResponse(body), nil
 	}
 
-	log.Println("@@@ OK resp")
+	log.Println("@@@ OK resp - opres: %w", body.OutputResources)
 	return rest.NewOKResponse(body), nil
 }
 

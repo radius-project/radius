@@ -136,12 +136,15 @@ func (h *handler) updateComponent(w http.ResponseWriter, req *http.Request) {
 
 	response, err := h.rp.UpdateComponent(req.Context(), input)
 	if err != nil {
+		fmt.Println("@@@@ ISE: %w", err)
 		internalServerError(w, err)
 		return
 	}
 
+	fmt.Println("@@@@ HTTP response: %w", response)
 	err = response.Apply(w, req)
 	if err != nil {
+		fmt.Println("@@@@ ISE apply: %w", err)
 		internalServerError(w, err)
 		return
 	}
