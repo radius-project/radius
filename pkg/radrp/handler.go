@@ -148,6 +148,7 @@ func (h *handler) updateComponent(w http.ResponseWriter, req *http.Request) {
 		internalServerError(w, err)
 		return
 	}
+	fmt.Println("@@@@ Done updatecomponent")
 }
 
 func (h *handler) deleteComponent(w http.ResponseWriter, req *http.Request) {
