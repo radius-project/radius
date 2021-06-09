@@ -1,7 +1,0 @@
-apiVersion: applications.radius.dev/v1alpha1
-kind: Template
-metadata:
-  name: template-sample
-spec:
-  # Add fields here
-  foo: bar

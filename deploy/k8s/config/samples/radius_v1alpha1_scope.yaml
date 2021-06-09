@@ -1,7 +1,0 @@
-apiVersion: applications.radius.dev/v1alpha1
-kind: Scope
-metadata:
-  name: scope-sample
-spec:
-  # Add fields here
-  foo: bar

@@ -1,7 +1,0 @@
-apiVersion: applications.radius.dev/v1alpha1
-kind: Application
-metadata:
-  name: application-sample
-spec:
-  # Add fields here
-  foo: bar
