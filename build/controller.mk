@@ -6,7 +6,7 @@
 ##@ Controller
 
 controller-run: generate-k8s-manifests generate-controller ## Run the controller locally
-	go run ./cmd/k8s/main.go
+	SKIP_WEBHOOKS=true go run ./cmd/k8s/main.go
 
 controller-install: generate-k8s-manifests generate-kustomize-installed ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build deploy/k8s/config/crd | kubectl apply -f -
