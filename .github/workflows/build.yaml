@@ -240,27 +240,27 @@ jobs:
 
     # Now we'll delete the test environment we used. This prevents PRs from
     # dirtying state in a preserved environment
-    # - name: Delete test environment (async)
-    #   if: ${{ success() || steps.reserve.outcome == 'success' }}
-    #   uses: actions/github-script@v4
-    #   with:
-    #     github-token: ${{secrets.RADIUS_BOT_TOKEN}}
-    #     script: |
-    #       const pull = await github.pulls.get({
-    #         owner: context.issue.owner,
-    #         repo: context.issue.repo,
-    #         pull_number: context.issue.number
-    #       });
+    - name: Delete test environment (async)
+      if: ${{ success() || steps.reserve.outcome == 'success' }}
+      uses: actions/github-script@v4
+      with:
+        github-token: ${{secrets.RADIUS_BOT_TOKEN}}
+        script: |
+          const pull = await github.pulls.get({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            pull_number: context.issue.number
+          });
 
-    #       // Fire repository_dispatch event delete environment
-    #       await github.repos.createDispatchEvent({
-    #         owner: context.issue.owner,
-    #         repo: context.issue.repo,
-    #         event_type: "delete-environment",
-    #         client_payload: { 
-    #           environment: "${{ steps.reserve.outputs.environment }}"
-    #         }
-    #       });
+          // Fire repository_dispatch event delete environment
+          await github.repos.createDispatchEvent({
+            owner: context.issue.owner,
+            repo: context.issue.repo,
+            event_type: "delete-environment",
+            client_payload: { 
+              environment: "${{ steps.reserve.outputs.environment }}"
+            }
+          });
 
   publish:
     name: Publish rad CLI binaries
