@@ -32,11 +32,6 @@ type OKResponse struct {
 }
 
 func NewOKResponse(body interface{}) Response {
-	a, err := json.MarshalIndent(body, "", "  ")
-	if err != nil {
-		log.Printf("error marshaling %T: %v", body, err)
-	}
-	log.Printf("@@@ json okresp: %v", string(a))
 	return &OKResponse{Body: body}
 }
 
@@ -46,14 +41,12 @@ func (r *OKResponse) Apply(w http.ResponseWriter, req *http.Request) error {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	log.Printf("@@@@ response bytes to string: %v", string(bytes))
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(200)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
 	}
-	fmt.Println("@@@@ response applied")
 	return nil
 }
 

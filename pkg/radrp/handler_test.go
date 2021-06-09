@@ -152,6 +152,10 @@ func (test *test) DBCreateComponent(applicationName string, componentName string
 		properties.Bindings = map[string]db.ComponentBinding{}
 	}
 
+	if properties.OutputResources == nil {
+		properties.OutputResources = []db.OutputResource{}
+	}
+
 	component := &db.Component{
 		ResourceBase: db.ResourceBase{
 			ID:             componentID.ID,
@@ -575,9 +579,9 @@ func Test_GetComponent_Found(t *testing.T) {
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
-			Revision: rev,
+			Revision:        rev,
+			OutputResources: []rest.OutputResource{},
 		},
-		OutputResources: []rest.OutputResource{},
 	}
 	requireJSON(t, expected, w)
 }
@@ -647,9 +651,9 @@ func Test_ListComponents_Found(t *testing.T) {
 			},
 			Kind: "radius.dev/Test@v1alpha1",
 			Properties: rest.ComponentProperties{
-				Revision: rev,
+				Revision:        rev,
+				OutputResources: []rest.OutputResource{},
 			},
-			OutputResources: []rest.OutputResource{},
 		},
 	}}
 	requireJSON(t, expected, w)
@@ -719,9 +723,9 @@ func Test_UpdateComponent_Create(t *testing.T) {
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
-			Revision: rev,
+			Revision:        rev,
+			OutputResources: []rest.OutputResource{},
 		},
-		OutputResources: []rest.OutputResource{},
 	}
 	requireJSON(t, expected, w)
 }
@@ -757,9 +761,9 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
-			Revision: rev,
+			Revision:        rev,
+			OutputResources: []rest.OutputResource{},
 		},
-		OutputResources: []rest.OutputResource{},
 	}
 	requireJSON(t, expected, w)
 }
@@ -811,8 +815,8 @@ func Test_UpdateComponent_Update(t *testing.T) {
 			Run: map[string]interface{}{
 				"cool": true,
 			},
+			OutputResources: []rest.OutputResource{},
 		},
-		OutputResources: []rest.OutputResource{},
 	}
 	requireJSON(t, expected, w)
 }

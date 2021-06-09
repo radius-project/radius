@@ -220,7 +220,6 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	newdbitem := newDBComponentFromREST(c)
-	fmt.Println("@@@@ After newDBComponentFromREST, op: %w", newdbitem.Properties.OutputResources)
 
 	equal := false
 	if olddbitem != nil {
@@ -256,15 +255,11 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 	log.Println("@@@ After patching component")
 	body := newRESTComponentFromDB(newdbitem)
-	log.Printf("@@@@@ rest body: %v", body)
 	if created {
-		log.Println("@@@ Created resp")
 		return rest.NewCreatedResponse(body), nil
 	}
 
-	log.Println("@@@ OK resp - opres: %w", body.Properties.OutputResources)
 	okresp := rest.NewOKResponse(body)
-	log.Println("@@@ NewOKResponse done")
 	return okresp, nil
 }
 

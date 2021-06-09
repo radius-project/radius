@@ -136,15 +136,12 @@ func (h *handler) updateComponent(w http.ResponseWriter, req *http.Request) {
 
 	response, err := h.rp.UpdateComponent(req.Context(), input)
 	if err != nil {
-		fmt.Printf("@@@@ ISE: %v", err)
 		internalServerError(w, err)
 		return
 	}
 
-	fmt.Println("@@@@ HTTP response: %w", response)
 	err = response.Apply(w, req)
 	if err != nil {
-		fmt.Printf("@@@@ ISE apply: %v", err)
 		internalServerError(w, err)
 		return
 	}
@@ -202,16 +199,13 @@ func (h *handler) updateDeployment(w http.ResponseWriter, req *http.Request) {
 	}
 
 	response, err := h.rp.UpdateDeployment(req.Context(), input)
-	log.Printf("@@@@ Updated deployment with response: %v", response)
 	if err != nil {
-		log.Printf("@@@@ Updated deployment with err: %v", err)
 		internalServerError(w, err)
 		return
 	}
 
 	err = response.Apply(w, req)
 	if err != nil {
-		log.Printf("@@@@ Updated deployment and applied response with err: %v", err)
 		internalServerError(w, err)
 		return
 	}
