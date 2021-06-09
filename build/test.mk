@@ -15,6 +15,8 @@ test-integration: ## Runs integration tests
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.19.2
+ENV_SETUP=$(GOBIN)/setup-envtest
 
-test-controller: generate-k8s-manifests generate-controller ## Runs controller tests
-	source deploy/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
+test-controller: generate-k8s-manifests generate-controller ## Runs controller tests, note arm64 version not available.
+	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go test ./pkg/... 
