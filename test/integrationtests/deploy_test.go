@@ -93,6 +93,15 @@ func TestDeployment(t *testing.T) {
 				response, err := appclient.Get(ctx, env.ResourceGroup, "frontend-backend", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
 				assert.Equal(t, "frontend-backend", *response.ApplicationResource.Name)
+
+				componentsClient := radclient.NewComponentClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
+				frontendComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "frontend-backend", "frontend", nil)
+				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+				assert.Equal(t, 2, len(*frontendComponent.ComponentResource.Outputresources.Value))
+
+				backendComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "frontend-backend", "backend", nil)
+				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+				assert.Equal(t, 2, len(*backendComponent.ComponentResource.Outputresources.Value))
 			},
 		},
 		{
