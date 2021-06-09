@@ -32,15 +32,16 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
 	}
 	handlers := map[string]handlers.ResourceHandler{
-		workloads.ResourceKindKubernetes:                     handlers.NewKubernetesHandler(*k8s),
-		workloads.ResourceKindDaprStateStoreAzureStorage:     handlers.NewDaprStateStoreAzureStorageHandler(arm, *k8s),
-		workloads.ResourceKindDaprStateStoreSQLServer:        handlers.NewDaprStateStoreSQLServerHandler(arm, *k8s),
-		workloads.ResourceKindDaprPubSubTopicAzureServiceBus: handlers.NewDaprPubSubServiceBusHandler(arm, *k8s),
-		workloads.ResourceKindAzureCosmosDBMongo:             handlers.NewAzureCosmosDBMongoHandler(arm),
-		workloads.ResourceKindAzureCosmosDBSQL:               handlers.NewAzureCosmosDBSQLHandler(arm),
-		workloads.ResourceKindAzureServiceBusQueue:           handlers.NewAzureServiceBusQueueHandler(arm),
-		workloads.ResourceKindAzureKeyVault:                  handlers.NewAzureKeyVaultHandler(arm),
-		workloads.ResourceKindAzurePodIdentity:               handlers.NewAzurePodIdentityHandler(arm),
+		workloads.ResourceKindKubernetes:                       handlers.NewKubernetesHandler(*k8s),
+		workloads.ResourceKindDaprStateStoreAzureStorage:       handlers.NewDaprStateStoreAzureStorageHandler(arm, *k8s),
+		workloads.ResourceKindDaprStateStoreSQLServer:          handlers.NewDaprStateStoreSQLServerHandler(arm, *k8s),
+		workloads.ResourceKindDaprPubSubTopicAzureServiceBus:   handlers.NewDaprPubSubServiceBusHandler(arm, *k8s),
+		workloads.ResourceKindAzureCosmosDBMongo:               handlers.NewAzureCosmosDBMongoHandler(arm),
+		workloads.ResourceKindAzureCosmosDBSQL:                 handlers.NewAzureCosmosDBSQLHandler(arm),
+		workloads.ResourceKindAzureServiceBusQueue:             handlers.NewAzureServiceBusQueueHandler(arm),
+		workloads.ResourceKindAzureKeyVault:                    handlers.NewAzureKeyVaultHandler(arm),
+		workloads.ResourceKindAzurePodIdentity:                 handlers.NewAzurePodIdentityHandler(arm),
+		workloads.ResourceKindAzureUserAssignedManagedIdentity: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 	}
 	return NewModel(renderers, handlers)
 }
