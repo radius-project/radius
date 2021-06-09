@@ -263,7 +263,9 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	log.Println("@@@ OK resp - opres: %w", body.OutputResources)
-	return rest.NewOKResponse(body), nil
+	okresp := rest.NewOKResponse(body)
+	fmt.Println("@@@@ ok resp: %w", okresp)
+	return okresp, nil
 }
 
 func (r *rp) DeleteComponent(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
