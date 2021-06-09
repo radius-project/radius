@@ -32,6 +32,11 @@ type OKResponse struct {
 }
 
 func NewOKResponse(body interface{}) Response {
+	a, err := json.MarshalIndent(body, "", "  ")
+	if err != nil {
+		log.Printf("error marshaling %T: %v", body, err)
+	}
+	log.Printf("@@@ json okresp: %v", string(a))
 	return &OKResponse{Body: body}
 }
 
