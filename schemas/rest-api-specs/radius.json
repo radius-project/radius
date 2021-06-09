@@ -727,9 +727,17 @@
           "description": "Properties of the component."
         },
         "outputresources": {
+          "description": "Output resources tracked for the component.",
           "type": "object",
-          "$ref": "#/definitions/ComponentOutputResources",
-          "description": "Output resources tracked for the component."
+          "properties": {
+            "value": {
+              "type": "array",
+              "description": "List of output resources.",
+              "items": {
+                "$ref": "#/definitions/ComponentOutputResource"
+              }
+            }
+          }
         }
       }
     },
@@ -737,13 +745,6 @@
       "description": "Properties of a component.",
       "type": "object",
       "properties": {
-      }
-    },
-    "ComponentOutputResources": {
-      "description": "Output resources tracked for the component.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ComponentOutputResource"
       }
     },
     "ComponentOutputResource": {

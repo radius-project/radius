@@ -192,7 +192,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					// Save the output resource to DB
 					addDBOutputResource(resource, &dbOutputResources)
 				}
-				action.Definition.OutputResources = dbOutputResources
+				action.Definition.Properties.OutputResources = dbOutputResources
 				continue
 			}
 
@@ -248,7 +248,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 			// Add the output resources to the DB component definition
 			log.Printf("Saving %d output resources to DB", len(dbOutputResources))
-			action.Definition.OutputResources = dbOutputResources
+			action.Definition.Properties.OutputResources = dbOutputResources
 
 			wrps := []workloads.WorkloadResourceProperties{}
 			for _, resource := range dw.Resources {

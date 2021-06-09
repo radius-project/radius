@@ -220,7 +220,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	newdbitem := newDBComponentFromREST(c)
-	fmt.Println("@@@@ After newDBComponentFromREST, op: %w", newdbitem.OutputResources)
+	fmt.Println("@@@@ After newDBComponentFromREST, op: %w", newdbitem.Properties.OutputResources)
 
 	equal := false
 	if olddbitem != nil {
@@ -262,7 +262,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 		return rest.NewCreatedResponse(body), nil
 	}
 
-	log.Println("@@@ OK resp - opres: %w", body.OutputResources)
+	log.Println("@@@ OK resp - opres: %w", body.Properties.OutputResources)
 	okresp := rest.NewOKResponse(body)
 	log.Println("@@@ NewOKResponse done")
 	return okresp, nil
@@ -492,7 +492,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 		// Update components to track output resources created during deployment
 		for c, action := range actions {
-			log.Printf("@@@@ Patching component: %s with op resources: %v", c, len(action.Definition.OutputResources))
+			log.Printf("@@@@ Patching component: %s with op resources: %v", c, len(action.Definition.Properties.OutputResources))
 			_, err = r.db.PatchComponentByApplicationID(ctx, id.App, c, action.Definition)
 			if err != nil {
 				log.Printf("failed to patch component '%s': %v", action.ComponentName, err)

@@ -63,11 +63,11 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 		Kind:         original.Kind,
 		Revision:     original.Properties.Revision,
 		Properties: db.ComponentProperties{
-			Build:  original.Properties.Build,
-			Config: original.Properties.Config,
-			Run:    original.Properties.Run,
+			Build:           original.Properties.Build,
+			Config:          original.Properties.Config,
+			Run:             original.Properties.Run,
+			OutputResources: []db.OutputResource{},
 		},
-		OutputResources: []db.OutputResource{},
 	}
 
 	for _, d := range original.Properties.Uses {
@@ -113,12 +113,12 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 		ResourceBase: newRESTResourceBaseFromDB(original.ResourceBase),
 		Kind:         original.Kind,
 		Properties: rest.ComponentProperties{
-			Revision: original.Revision,
-			Build:    original.Properties.Build,
-			Config:   original.Properties.Config,
-			Run:      original.Properties.Run,
+			Revision:        original.Revision,
+			Build:           original.Properties.Build,
+			Config:          original.Properties.Config,
+			Run:             original.Properties.Run,
+			OutputResources: []rest.OutputResource{},
 		},
-		OutputResources: []rest.OutputResource{},
 	}
 
 	for _, d := range original.Properties.Uses {
@@ -155,8 +155,8 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 		c.Properties.Traits = append(c.Properties.Traits, tt)
 	}
 
-	c.OutputResources = newRESTOutputResourcesFromDB(original.OutputResources)
-	fmt.Println("@@@@ After newRESTOutputResourcesFromDB, op: %w", c.OutputResources)
+	c.Properties.OutputResources = newRESTOutputResourcesFromDB(original.Properties.OutputResources)
+	fmt.Println("@@@@ After newRESTOutputResourcesFromDB, op: %w", c.Properties.OutputResources)
 	return c
 }
 

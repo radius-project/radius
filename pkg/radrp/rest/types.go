@@ -48,10 +48,9 @@ type Application struct {
 
 // Component represents an Radius Component.
 type Component struct {
-	ResourceBase    `json:",inline"`
-	Kind            string              `json:"kind"`
-	Properties      ComponentProperties `json:"properties"`
-	OutputResources []OutputResource    `json:"outputresources"`
+	ResourceBase `json:",inline"`
+	Kind         string              `json:"kind"`
+	Properties   ComponentProperties `json:"properties"`
 }
 
 // OutputResource represents the output of rendering a resource
@@ -65,13 +64,14 @@ type OutputResource struct {
 
 // ComponentProperties represents the properties element of an Radius component.
 type ComponentProperties struct {
-	Revision revision.Revision           `json:"revision"`
-	Build    map[string]interface{}      `json:"build,omitempty"`
-	Config   map[string]interface{}      `json:"config,omitempty"`
-	Run      map[string]interface{}      `json:"run,omitempty"`
-	Bindings map[string]ComponentBinding `json:"bindings,omitempty"`
-	Uses     []ComponentDependency       `json:"uses,omitempty"`
-	Traits   []ComponentTrait            `json:"traits,omitempty"`
+	Revision        revision.Revision           `json:"revision"`
+	Build           map[string]interface{}      `json:"build,omitempty"`
+	Config          map[string]interface{}      `json:"config,omitempty"`
+	Run             map[string]interface{}      `json:"run,omitempty"`
+	Bindings        map[string]ComponentBinding `json:"bindings,omitempty"`
+	Uses            []ComponentDependency       `json:"uses,omitempty"`
+	Traits          []ComponentTrait            `json:"traits,omitempty"`
+	OutputResources []OutputResource            `json:"outputresources"`
 }
 
 // ComponentBinding represents a binding provided by an Radius Component.

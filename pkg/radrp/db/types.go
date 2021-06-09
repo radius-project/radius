@@ -60,21 +60,21 @@ type ApplicationPatch struct {
 
 // Component represents an Radius Component.
 type Component struct {
-	ResourceBase    `bson:",inline"`
-	Kind            string              `bson:"kind"`
-	Revision        revision.Revision   `bson:"revision,omitempty"`
-	Properties      ComponentProperties `bson:"properties,omitempty"`
-	OutputResources []OutputResource    `bson:"outputresources,omitempty"`
+	ResourceBase `bson:",inline"`
+	Kind         string              `bson:"kind"`
+	Revision     revision.Revision   `bson:"revision,omitempty"`
+	Properties   ComponentProperties `bson:"properties,omitempty"`
 }
 
 // ComponentProperties represents the properties of an Radius Component.
 type ComponentProperties struct {
-	Build    map[string]interface{}      `bson:"build,omitempty"`
-	Config   map[string]interface{}      `bson:"config,omitempty"`
-	Run      map[string]interface{}      `bson:"run,omitempty"`
-	Bindings map[string]ComponentBinding `bson:"provides,omitempty"`
-	Uses     []ComponentDependency       `bson:"dependsOn,omitempty"`
-	Traits   []ComponentTrait            `bson:"traits,omitempty"`
+	Build           map[string]interface{}      `bson:"build,omitempty"`
+	Config          map[string]interface{}      `bson:"config,omitempty"`
+	Run             map[string]interface{}      `bson:"run,omitempty"`
+	Bindings        map[string]ComponentBinding `bson:"provides,omitempty"`
+	Uses            []ComponentDependency       `bson:"dependsOn,omitempty"`
+	Traits          []ComponentTrait            `bson:"traits,omitempty"`
+	OutputResources []OutputResource            `bson:"outputresources,omitempty"`
 }
 
 // ComponentBinding represents a binding provided by an Radius Component.
