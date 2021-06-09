@@ -7,7 +7,8 @@
 
 .PHONY: test
 test: ## Runs unit tests.
-	go test ./pkg/...
+	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go test ./pkg/... 
 
 .PHONY: test-integration
 test-integration: ## Runs integration tests
@@ -19,4 +20,4 @@ ENV_SETUP=$(GOBIN)/setup-envtest
 
 test-controller: generate-k8s-manifests generate-controller ## Runs controller tests, note arm64 version not available.
 	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go test ./pkg/... 
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go test ./pkg/kubernetes/... 
