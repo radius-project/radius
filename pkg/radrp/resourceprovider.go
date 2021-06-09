@@ -264,7 +264,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 
 	log.Println("@@@ OK resp - opres: %w", body.OutputResources)
 	okresp := rest.NewOKResponse(body)
-	fmt.Println("@@@@ ok resp: %w", okresp)
+	log.Println("@@@ NewOKResponse done")
 	return okresp, nil
 }
 
