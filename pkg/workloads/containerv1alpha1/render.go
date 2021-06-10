@@ -147,21 +147,21 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 
 	// Create Role Assignment to grant the managed identity appropriate access permissions to the Key Vault
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for secrets and certificates
-	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, mid.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
+	ra, err := roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, mid.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
 	if err != nil {
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", mid.Name, err)
 	}
 	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
-	res = workloads.InitializeOutputArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionRA, true, "RoleAssignment")
+	res = workloads.InitializeOutputArmResource(true, workloads.ResourceKindAzureRoleAssignment, *ra.ID, *ra.Type, apiversionRA, true, "RoleAssignment")
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for encryption keys
-	_, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, mid.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
+	ra, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, mid.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
 	if err != nil {
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", mid.Name, err)
 	}
-	res = workloads.InitializeOutputArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *mid.ID, *mid.Type, apiversionRA, true, "RoleAssignment")
+	res = workloads.InitializeOutputArmResource(true, workloads.ResourceKindAzureUserAssignedManagedIdentity, *ra.ID, *ra.Type, apiversionRA, true, "RoleAssignment")
 	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 

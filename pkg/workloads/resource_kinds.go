@@ -18,4 +18,5 @@ const (
 	ResourceKindAzureKeyVaultSecret              = "azure.keyvault.secret"
 	ResourceKindAzurePodIdentity                 = "azure.aadpodidentity"
 	ResourceKindAzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
+	ResourceKindAzureRoleAssignment              = "azure.roleassignment"
 )

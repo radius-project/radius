@@ -40,13 +40,13 @@ func RunRadApplicationDeleteCommand(ctx context.Context, applicationName, config
 	// Create the command with our context
 	var cmd *exec.Cmd
 	if configFilePath == "" {
-		cmd = exec.CommandContext(ctx, "rad", "application", "delete", "yes", "--name", applicationName)
+		cmd = exec.CommandContext(ctx, "rad", "application", "delete", "--yes", "-a", applicationName)
 	} else {
 		if _, err := os.Stat(configFilePath); err != nil {
 			return fmt.Errorf("error deploying template using configfile: %s - %w", configFilePath, err)
 		}
 
-		cmd = exec.CommandContext(ctx, "rad", "application", "delete", "yes", "--name", applicationName, "--config", configFilePath)
+		cmd = exec.CommandContext(ctx, "rad", "application", "delete", "--yes", "-a", applicationName, "--config", configFilePath)
 	}
 
 	err := RunCommand(ctx, cmd)
