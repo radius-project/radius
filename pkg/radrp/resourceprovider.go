@@ -195,7 +195,6 @@ func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (rest.Re
 }
 
 func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Response, error) {
-	log.Println("@@@@ UpdateComponent called")
 	id, err := c.GetComponentID()
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -230,7 +229,6 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	if equal {
-		fmt.Println("@@@ No change to component. OK Resp")
 		// No changes to the component - nothing to do.
 		return rest.NewOKResponse(newRESTComponentFromDB(olddbitem)), nil
 	}
@@ -246,14 +244,12 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	}
 
 	created, err := r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.Name(), newdbitem)
-	log.Printf("@@@ PatchComponentByApplicationID returned err: %v", err)
 	if err == db.ErrNotFound {
 		// If we get a not found here there's no application
 		return rest.NewNotFoundResponse(id.App.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
-	log.Println("@@@ After patching component")
 	body := newRESTComponentFromDB(newdbitem)
 	if created {
 		return rest.NewCreatedResponse(body), nil
@@ -481,21 +477,17 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		if err != nil {
 			log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
 			return
-		} else {
-			log.Printf("@@@@ Successfully patched app deployment: %s", id.App.ID)
 		}
 
 		// Update components to track output resources created during deployment
 		for c, action := range actions {
-			log.Printf("@@@@ Patching component: %s with op resources: %v", c, len(action.Definition.Properties.OutputResources))
+			log.Printf("Patching component: %s with %v output resources", c, len(action.Definition.Properties.OutputResources))
 			_, err = r.db.PatchComponentByApplicationID(ctx, id.App, c, action.Definition)
 			if err != nil {
 				log.Printf("failed to patch component '%s': %v", action.ComponentName, err)
 				if status == rest.SuccededStatus {
 					status = rest.FailedStatus
 				}
-			} else {
-				log.Printf("@@@@@ Successfully patched component: %s", c)
 			}
 		}
 		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)

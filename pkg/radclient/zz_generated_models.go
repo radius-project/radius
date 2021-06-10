@@ -121,17 +121,8 @@ type ComponentResource struct {
 	// Resource type of the component
 	Kind *string `json:"kind,omitempty"`
 
-	// Output resources tracked for the component.
-	Outputresources *ComponentResourceOutputresources `json:"outputresources,omitempty"`
-
 	// Properties of the component.
 	Properties interface{} `json:"properties,omitempty"`
-}
-
-// Output resources tracked for the component.
-type ComponentResourceOutputresources struct {
-	// List of output resources.
-	Value *[]interface{} `json:"value,omitempty"`
 }
 
 // ComponentResourceResponse is the response envelope for operations that return a ComponentResource type.
