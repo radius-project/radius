@@ -76,7 +76,7 @@ The application you will be deploying is a simple sender-receiver application us
 - A receiver written in Node.js
 - An Azure ServiceBus queue 
 
-You can find the source code for the sender and receiver applications at the [here](https://github.com/Azure/radius/tree/main/examples/azure-examples/azure-servicebus/apps).
+You can find the source code for the sender and receiver applications on GitHub [here](https://github.com/Azure/radius/tree/main/docs/content/components/azure-components/azure-servicebus/code).
 
 #### Receiver application
 

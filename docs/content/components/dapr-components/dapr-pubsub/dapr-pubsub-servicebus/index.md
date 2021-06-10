@@ -78,7 +78,7 @@ The application you will be deploying is a simple publisher-subscriber applicati
 - A subscriber written in Node.js
 - A Dapr PubSub component that uses Azure Service Bus
 
-You can find the source code for the sender and receiver applications [here](https://github.com/Azure/radius/tree/main/examples/dapr-examples/dapr-pubsub-azure/apps).
+You can find the source code for the sender and receiver applications on GitHub [here](https://github.com/Azure/radius/tree/main/docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/code).
 
 #### Subscriber application
 
