@@ -6,8 +6,6 @@
 package radrp
 
 import (
-	"fmt"
-
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/rest"
 )
@@ -156,7 +154,6 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 	}
 
 	c.Properties.OutputResources = newRESTOutputResourcesFromDB(original.Properties.OutputResources)
-	fmt.Println("@@@@ After newRESTOutputResourcesFromDB, op: %w", c.Properties.OutputResources)
 	return c
 }
 
