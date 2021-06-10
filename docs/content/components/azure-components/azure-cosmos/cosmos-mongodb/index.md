@@ -19,11 +19,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'rynowak/node-todo:latest'
-        }
-      }
+      run: {...}
       uses: [
         {
           binding: db.properties.bindings.mongo
@@ -57,17 +53,13 @@ In this example the CosmosDB resources are configured as part of the same `.bice
 
 ```sh
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'cosmos-container-unmanaged'
+  name: 'cosmos-container-usermanaged'
   
   resource webapp 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'rynowak/node-todo:latest'
-        }
-      }
+      run: {...}
       uses: [
         {
           binding: db.properties.bindings.mongo
@@ -94,22 +86,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'account-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   kind: 'MongoDB'
-  tags: {
-    radiustest: 'true'
-  }
-  properties: {
-    consistencyPolicy: {
-      defaultConsistencyLevel: 'Session'
-    }
-    locations: [
-      {
-        locationName: resourceGroup().location
-        failoverPriority: 0
-        isZoneRedundant: false
-      }
-    ]
-    databaseAccountOfferType: 'Standard'
-  }
+  properties: {...}
 
   resource db 'mongodbDatabases' = {
     name: 'mydb'
@@ -125,7 +102,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
 }
 ```
 
-{{< rad file="unmanaged.bicep">}}
+{{< rad file="usermanaged.bicep">}}
 
 **Note:** all user-managed resources should be defined as their own resource in the Bicep template file. For example, in the case of multiple user-managed resources referenced by the application, the template file would look like: 
 

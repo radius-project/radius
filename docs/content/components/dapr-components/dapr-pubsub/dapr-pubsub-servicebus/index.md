@@ -26,7 +26,7 @@ This example sets the `resource` property to a ServiceBus topic for the Dapr Pub
 
 In this example the ServiceBus resources are configured as part of the same `.bicep` template.
 
-{{< rad file="unmanaged.bicep">}}
+{{< rad file="usermanaged.bicep">}}
 
 ## Access from a container
 

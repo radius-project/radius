@@ -16,7 +16,7 @@ A `kv` secret store component is used to specify a few properties about the KeyV
 - **kind:** `azure.com/KeyVault@v1alpha1` represents an Azure Key Vault. 
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```
+```sh
   resource kv 'Components' = {
     name: 'kv'
     kind: 'azure.com/KeyVault@v1alpha1'
@@ -32,20 +32,28 @@ A `kv` secret store component is used to specify a few properties about the KeyV
 
 Once the secret store is defined as a component, you can connect to it by referencing the `kv` component from within the `todoapp` component via a `uses` section. 
 
-The `uses` section is used to configure relationships between a component and bindings provided by other components. The `kv` is of kind `azure.com/KeyVault@v1alpha1`.
-Here's what the todoapp component will look like with the `uses` section added within its properties:
+Here's what the `todoapp` component will look like with the key vault binding info added to the `uses` section. 
 
-```
+```sh
   resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: { ... }
-      uses: [
+      uses: uses: [
         {
           binding: kv.properties.bindings.default
           env: {
             KV_URI: kv.properties.bindings.default.uri
+          }
+        }
+        {
+          binding: db.properties.bindings.mongo
+          secrets: {
+            store: kv.properties.bindings.default
+            keys: {
+              DBCONNECTION: db.properties.bindings.mongo.connectionString
+            }
           }
         }
       ]
@@ -60,7 +68,7 @@ The `env` section declares operations to perform *based on* the relationship. In
 
 Now, we no longer want the application to access the connection string to the database in clear text as an environment variable. Instead, we want to create a secret in the secret store which will store the connection string. 
 
-```
+```sh
   uses: [
     {
       binding: kv.properties.bindings.default

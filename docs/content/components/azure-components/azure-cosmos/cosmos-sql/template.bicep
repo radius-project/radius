@@ -5,11 +5,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: '<container registry>/todoapp:latest'
-        }
-      }
+      run: {...}
       uses: [
         {
           binding: db.properties.bindings.sql

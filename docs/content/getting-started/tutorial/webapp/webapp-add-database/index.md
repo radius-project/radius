@@ -18,7 +18,7 @@ A `db` database component is used to specify a few properties about the database
 - **kind:** `azure.com/CosmosDBMongo@v1alpha1` represents a Cosmos DB database.
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```
+```sh
   resource db 'Components' = {
     name: 'db'
     kind: 'azure.com/CosmosDBMongo@v1alpha1'
@@ -38,9 +38,9 @@ Once the database is defined as a component, you can connect to it by referencin
 
 The `uses` section is used to configure relationships between a component and bindings provided by other components. The `db` is of kind `azure.com/CosmosDBMongo@v1alpha1`, which supports the MongoDB protocol. `db` automatically provides a binding of kind `mongodb.com/Mongo`. Configuring a dependency on a binding is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
 
-Here's what the todoapp component will look like with the `uses` section added within its properties:
+Here's what the `todoapp` component will look like with the `uses` section added within its properties:
 
-```
+```sh
   resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'

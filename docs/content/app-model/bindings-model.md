@@ -99,7 +99,7 @@ resource store 'Components' = {
 ```
 
 These defined bindings can be referenced by other components similarly to the default bindings: 
-```
+```sh
 ...
 uses: [
     {
