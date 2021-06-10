@@ -21,7 +21,7 @@ Radius automates all these steps and the user application can simply use the Azu
 
 ## KeyVault component
 
-The Radius KeyVault component offers to the user:
+The Radius KeyVault component `azure.com/KeyVault` offers to the user:
 
 - Managed resource deployment and lifecycle of the KeyVault
 - Automatic configuration of Azure Managed Identities and RBAC between consuming components and the KeyVault

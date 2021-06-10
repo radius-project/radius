@@ -32,7 +32,7 @@ A `kv` secret store component is used to specify a few properties about the KeyV
 
 Once the secret store is defined as a component, you can connect to it by referencing the `kv` component from within the `todoapp` component via a `uses` section. 
 
-The `uses` section is used to configure relationships between a component and bindings provided by other components. The `kv` is of kind `azure.com/AzureKeyVault@v1alpha1`.
+The `uses` section is used to configure relationships between a component and bindings provided by other components. The `kv` is of kind `azure.com/KeyVault@v1alpha1`.
 Here's what the todoapp component will look like with the `uses` section added within its properties:
 
 ```
