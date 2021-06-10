@@ -5,7 +5,7 @@
 
 package containerv1alpha1
 
-import "github.com/Azure/radius/pkg/curp/components"
+import "github.com/Azure/radius/pkg/radrp/components"
 
 const (
 	Kind = "radius.dev/Container@v1alpha1"

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	radresources "github.com/Azure/radius/pkg/curp/resources"
+	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"

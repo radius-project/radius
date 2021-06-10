@@ -9,14 +9,14 @@ import (
 	"context"
 	"sync"
 
-	db "github.com/Azure/radius/pkg/curp/db"
-	resources "github.com/Azure/radius/pkg/curp/resources"
+	db "github.com/Azure/radius/pkg/radrp/db"
+	resources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/golang/mock/gomock"
 )
 
-// NewInMemoryCurpDB returns an in-memory implementation of CurpDB
-func NewInMemoryCurpDB(ctrl *gomock.Controller) *MockCurpDB {
-	base := NewMockCurpDB(ctrl)
+// NewInMemoryRadrpDB returns an in-memory implementation of RadrpDB
+func NewInMemoryRadrpDB(ctrl *gomock.Controller) *MockRadrpDB {
+	base := NewMockRadrpDB(ctrl)
 
 	store := &store{
 		applications: map[applicationKey]*map[string]*db.Application{},
@@ -121,7 +121,7 @@ func applicationKeyFromID(id resources.ResourceID) applicationKey {
 	}
 }
 
-var _ db.CurpDB = &store{}
+var _ db.RadrpDB = &store{}
 
 func (s *store) findApplication(id resources.ApplicationID) *db.Application {
 	k := applicationKeyFromID(id.ResourceID)

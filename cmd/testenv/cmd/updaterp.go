@@ -11,10 +11,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/curp/armauth"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azcli"
 	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

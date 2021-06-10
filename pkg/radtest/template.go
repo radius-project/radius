@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	radresources "github.com/Azure/radius/pkg/curp/resources"
+	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )
 
 // DeploymentTemplate represents an ARM template.

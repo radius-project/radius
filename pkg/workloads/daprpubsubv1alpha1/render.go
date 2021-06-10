@@ -10,9 +10,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/curp/components"
-	"github.com/Azure/radius/pkg/curp/handlers"
-	"github.com/Azure/radius/pkg/curp/resources"
+	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
