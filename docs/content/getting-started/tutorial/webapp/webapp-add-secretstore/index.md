@@ -16,7 +16,7 @@ A `kv` secret store component is used to specify a few properties about the KeyV
 - **kind:** `azure.com/KeyVault@v1alpha1` represents an Azure Key Vault. 
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```sh
+```
   resource kv 'Components' = {
     name: 'kv'
     kind: 'azure.com/KeyVault@v1alpha1'
@@ -34,7 +34,7 @@ Once the secret store is defined as a component, you can connect to it by refere
 
 Here's what the `todoapp` component will look like with the key vault binding info added to the `uses` section. 
 
-```sh
+```
   resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
@@ -47,6 +47,7 @@ Here's what the `todoapp` component will look like with the key vault binding in
             KV_URI: kv.properties.bindings.default.uri
           }
         }
+<<<<<<< HEAD
         {
           binding: db.properties.bindings.mongo
           secrets: {
@@ -56,6 +57,8 @@ Here's what the `todoapp` component will look like with the key vault binding in
             }
           }
         }
+=======
+>>>>>>> 25020ad226eb61f83bffa2f2ec88eb650093f50f
       ]
       bindings: [ ... ]
     }
@@ -68,7 +71,7 @@ The `env` section declares operations to perform *based on* the relationship. In
 
 Now, we no longer want the application to access the connection string to the database in clear text as an environment variable. Instead, we want to create a secret in the secret store which will store the connection string. 
 
-```sh
+```
   uses: [
     {
       binding: kv.properties.bindings.default

@@ -222,7 +222,15 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
+<<<<<<< HEAD
       run: {...}
+=======
+      run: {
+        container: {
+          image: 'rynowak/node-todo:latest'
+        }
+      }
+>>>>>>> 25020ad226eb61f83bffa2f2ec88eb650093f50f
       bindings: {
           web: {
               kind: 'http'

@@ -74,7 +74,7 @@ A `statestore` component is used to specify a few properties about the state sto
   - **config > kind:** `state.azure.tablestorage` corresponds to the kind of Dapr state store used for [Azure Table Storage](https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/setup-azure-tablestorage/)
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```sh
+```
   resource statestore 'Components' = {
     name: 'statestore'
     kind: 'dapr.io/StateStore@v1alpha1'
