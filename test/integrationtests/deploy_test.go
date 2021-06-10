@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
@@ -19,12 +21,15 @@ import (
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/labels"
+	v1 "k8s.io/client-go/1.5/pkg/api/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -69,136 +74,136 @@ func TestDeployment(t *testing.T) {
 	}
 
 	table := []Row{
-		// {
-		// 	Application: "frontend-backend",
-		// 	Description: "frontend-backend",
-		// 	Template:    "../../docs/content/components/radius-components/container/frontend-backend.bicep",
-		// 	Pods: validation.PodSet{
-		// 		Namespaces: map[string][]validation.Pod{
-		// 			"frontend-backend": {
-		// 				validation.NewPodForComponent("frontend-backend", "frontend"),
-		// 				validation.NewPodForComponent("frontend-backend", "backend"),
-		// 			},
-		// 		},
-		// 	},
-		// 	PostDeployVerify: func(t *testing.T, at ApplicationTest) {
-		// 		appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
+		{
+			Application: "frontend-backend",
+			Description: "frontend-backend",
+			Template:    "../../docs/content/components/radius-components/container/frontend-backend.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"frontend-backend": {
+						validation.NewPodForComponent("frontend-backend", "frontend"),
+						validation.NewPodForComponent("frontend-backend", "backend"),
+					},
+				},
+			},
+			PostDeployVerify: func(t *testing.T, at ApplicationTest) {
+				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
-		// 		// get application and verify name
-		// 		response, err := appclient.Get(ctx, env.ResourceGroup, "frontend-backend", nil)
-		// 		require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-		// 		assert.Equal(t, "frontend-backend", *response.ApplicationResource.Name)
+				// get application and verify name
+				response, err := appclient.Get(ctx, env.ResourceGroup, "frontend-backend", nil)
+				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+				assert.Equal(t, "frontend-backend", *response.ApplicationResource.Name)
 
-		// 		componentsClient := radclient.NewComponentClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
-		// 		frontendComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "frontend-backend", "frontend", nil)
-		// 		require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-		// 		assert.Equal(t, 2, len(frontendComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
+				componentsClient := radclient.NewComponentClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
+				frontendComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "frontend-backend", "frontend", nil)
+				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+				assert.Equal(t, 2, len(frontendComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
 
-		// 		backendComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "frontend-backend", "backend", nil)
-		// 		require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-		// 		assert.Equal(t, 2, len(backendComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
-		// 	},
-		// },
-		// {
-		// 	Application: "inbound-route",
-		// 	Description: "inbound-route",
-		// 	Template:    "../../docs/content/components/radius-components/container/inboundroute.bicep",
-		// 	Pods: validation.PodSet{
-		// 		Namespaces: map[string][]validation.Pod{
-		// 			"inbound-route": {
-		// 				validation.NewPodForComponent("inbound-route", "frontend"),
-		// 				validation.NewPodForComponent("inbound-route", "backend"),
-		// 			},
-		// 		},
-		// 	},
-		// 	PostDeployVerify: func(t *testing.T, at ApplicationTest) {
-		// 		// Verify that we've created an ingress resource. We don't verify reachability because allocating
-		// 		// a public IP can take a few minutes.
-		// 		labelset := map[string]string{
-		// 			workloads.LabelRadiusApplication: "inbound-route",
-		// 			workloads.LabelRadiusComponent:   "frontend",
-		// 		}
-		// 		matches, err := at.Options.K8s.NetworkingV1().Ingresses("inbound-route").List(context.Background(), v1.ListOptions{
-		// 			LabelSelector: labels.SelectorFromSet(labelset).String(),
-		// 		})
-		// 		require.NoError(t, err, "failed to list ingresses")
-		// 		require.Lenf(t, matches.Items, 1, "items should contain one match, instead it had: %+v", matches.Items)
-		// 	},
-		// },
-		// {
-		// 	Application: "radius-servicebus",
-		// 	Description: "azure-servicebus",
-		// 	Template:    "../../docs/content/components/azure-components/azure-servicebus/template.bicep",
-		// 	Pods: validation.PodSet{
-		// 		Namespaces: map[string][]validation.Pod{
-		// 			"radius-servicebus": {
-		// 				validation.NewPodForComponent("radius-servicebus", "sender"),
-		// 				validation.NewPodForComponent("radius-servicebus", "receiver"),
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	Application: "dapr-pubsub-managed",
-		// 	Description: "dapr-pubsub (Azure + Radius-managed)",
-		// 	Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/managed.bicep",
-		// 	Pods: validation.PodSet{
-		// 		Namespaces: map[string][]validation.Pod{
-		// 			"dapr-pubsub-managed": {
-		// 				validation.NewPodForComponent("dapr-pubsub-managed", "nodesubscriber"),
-		// 				validation.NewPodForComponent("dapr-pubsub-managed", "pythonpublisher"),
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	Application: "dapr-pubsub-unmanaged",
-		// 	Description: "dapr-pubsub (Azure + user-managed)",
-		// 	Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/unmanaged.bicep",
-		// 	Pods: validation.PodSet{
-		// 		Namespaces: map[string][]validation.Pod{
-		// 			"dapr-pubsub-unmanaged": {
-		// 				validation.NewPodForComponent("dapr-pubsub-unmanaged", "nodesubscriber"),
-		// 				validation.NewPodForComponent("dapr-pubsub-unmanaged", "pythonpublisher"),
-		// 			},
-		// 		},
-		// 	},
-		// 	// This test has additional 'unmanaged' resources that are deployed in the same template but not managed
-		// 	// by Radius.
-		// 	//
-		// 	// We don't need to delete these, they will be deleted as part of the resource group cleanup.
-		// 	PostDeleteVerify: func(t *testing.T, at ApplicationTest) {
-		// 		// Verify that the servicebus resources were not deleted
-		// 		nsc := servicebus.NewNamespacesClient(at.Options.Environment.SubscriptionID)
-		// 		nsc.Authorizer = at.Options.Authorizer
+				backendComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "frontend-backend", "backend", nil)
+				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+				assert.Equal(t, 2, len(backendComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
+			},
+		},
+		{
+			Application: "inbound-route",
+			Description: "inbound-route",
+			Template:    "../../docs/content/components/radius-components/container/inboundroute.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"inbound-route": {
+						validation.NewPodForComponent("inbound-route", "frontend"),
+						validation.NewPodForComponent("inbound-route", "backend"),
+					},
+				},
+			},
+			PostDeployVerify: func(t *testing.T, at ApplicationTest) {
+				// Verify that we've created an ingress resource. We don't verify reachability because allocating
+				// a public IP can take a few minutes.
+				labelset := map[string]string{
+					workloads.LabelRadiusApplication: "inbound-route",
+					workloads.LabelRadiusComponent:   "frontend",
+				}
+				matches, err := at.Options.K8s.NetworkingV1().Ingresses("inbound-route").List(context.Background(), v1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(labelset).String(),
+				})
+				require.NoError(t, err, "failed to list ingresses")
+				require.Lenf(t, matches.Items, 1, "items should contain one match, instead it had: %+v", matches.Items)
+			},
+		},
+		{
+			Application: "radius-servicebus",
+			Description: "azure-servicebus",
+			Template:    "../../docs/content/components/azure-components/azure-servicebus/template.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"radius-servicebus": {
+						validation.NewPodForComponent("radius-servicebus", "sender"),
+						validation.NewPodForComponent("radius-servicebus", "receiver"),
+					},
+				},
+			},
+		},
+		{
+			Application: "dapr-pubsub-managed",
+			Description: "dapr-pubsub (Azure + Radius-managed)",
+			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/managed.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"dapr-pubsub-managed": {
+						validation.NewPodForComponent("dapr-pubsub-managed", "nodesubscriber"),
+						validation.NewPodForComponent("dapr-pubsub-managed", "pythonpublisher"),
+					},
+				},
+			},
+		},
+		{
+			Application: "dapr-pubsub-unmanaged",
+			Description: "dapr-pubsub (Azure + user-managed)",
+			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/unmanaged.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"dapr-pubsub-unmanaged": {
+						validation.NewPodForComponent("dapr-pubsub-unmanaged", "nodesubscriber"),
+						validation.NewPodForComponent("dapr-pubsub-unmanaged", "pythonpublisher"),
+					},
+				},
+			},
+			// This test has additional 'unmanaged' resources that are deployed in the same template but not managed
+			// by Radius.
+			//
+			// We don't need to delete these, they will be deleted as part of the resource group cleanup.
+			PostDeleteVerify: func(t *testing.T, at ApplicationTest) {
+				// Verify that the servicebus resources were not deleted
+				nsc := servicebus.NewNamespacesClient(at.Options.Environment.SubscriptionID)
+				nsc.Authorizer = at.Options.Authorizer
 
-		// 		// We have to use a generated name due to uniqueness requirements, so lookup based on tags
-		// 		var ns *servicebus.SBNamespace
-		// 		list, err := nsc.ListByResourceGroup(context.Background(), at.Options.Environment.ResourceGroup)
-		// 		require.NoErrorf(t, err, "failed to list servicebus namespaces")
+				// We have to use a generated name due to uniqueness requirements, so lookup based on tags
+				var ns *servicebus.SBNamespace
+				list, err := nsc.ListByResourceGroup(context.Background(), at.Options.Environment.ResourceGroup)
+				require.NoErrorf(t, err, "failed to list servicebus namespaces")
 
-		// 	outer:
-		// 		for ; list.NotDone(); err = list.Next() {
-		// 			require.NoErrorf(t, err, "failed to list servicebus namespaces")
+			outer:
+				for ; list.NotDone(); err = list.Next() {
+					require.NoErrorf(t, err, "failed to list servicebus namespaces")
 
-		// 			for _, value := range list.Values() {
-		// 				if value.Tags["radiustest"] != nil {
-		// 					temp := value
-		// 					ns = &temp
-		// 					break outer
-		// 				}
-		// 			}
-		// 		}
+					for _, value := range list.Values() {
+						if value.Tags["radiustest"] != nil {
+							temp := value
+							ns = &temp
+							break outer
+						}
+					}
+				}
 
-		// 		require.NotNilf(t, ns, "failed to find servicebus namespace with 'radiustest' tag")
+				require.NotNilf(t, ns, "failed to find servicebus namespace with 'radiustest' tag")
 
-		// 		tc := servicebus.NewTopicsClient(at.Options.Environment.SubscriptionID)
-		// 		tc.Authorizer = at.Options.Authorizer
+				tc := servicebus.NewTopicsClient(at.Options.Environment.SubscriptionID)
+				tc.Authorizer = at.Options.Authorizer
 
-		// 		_, err = tc.Get(context.Background(), at.Options.Environment.ResourceGroup, *ns.Name, "TOPIC_A")
-		// 		require.NoErrorf(t, err, "failed to find servicebus topic")
-		// 	},
-		// },
+				_, err = tc.Get(context.Background(), at.Options.Environment.ResourceGroup, *ns.Name, "TOPIC_A")
+				require.NoErrorf(t, err, "failed to find servicebus topic")
+			},
+		},
 		{
 			Application: "radius-keyvault",
 			Description: "azure-keyvault",
@@ -228,73 +233,73 @@ func TestDeployment(t *testing.T) {
 				assert.Equal(t, 1, len(kvComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
 			},
 		},
-		// {
-		// 	Application: "dapr-hello",
-		// 	Description: "dapr-hello (Tutorial)",
-		// 	Template:    "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep",
-		// 	Pods: validation.PodSet{
-		// 		Namespaces: map[string][]validation.Pod{
-		// 			"dapr-hello": {
-		// 				validation.NewPodForComponent("dapr-hello", "nodeapp"),
-		// 				validation.NewPodForComponent("dapr-hello", "pythonapp"),
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	Application: "cosmos-container-managed",
-		// 	Description: "cosmos-container (radius managed)",
-		// 	Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/managed.bicep",
-		// 	Pods: validation.PodSet{
-		// 		Namespaces: map[string][]validation.Pod{
-		// 			"cosmos-container-managed": {
-		// 				validation.NewPodForComponent("cosmos-container-managed", "todoapp"),
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	Application: "cosmos-container-unmanaged",
-		// 	Description: "cosmos-container (user managed)",
-		// 	Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/unmanaged.bicep",
-		// 	Pods: validation.PodSet{
-		// 		Namespaces: map[string][]validation.Pod{
-		// 			"cosmos-container-unmanaged": {
-		// 				validation.NewPodForComponent("cosmos-container-unmanaged", "todoapp"),
-		// 			},
-		// 		},
-		// 	},
-		// 	// This test has additional 'unmanaged' resources that are deployed in the same template but not managed
-		// 	// by Radius.
-		// 	//
-		// 	// We don't need to delete these, they will be deleted as part of the resource group cleanup.
-		// 	PostDeleteVerify: func(t *testing.T, at ApplicationTest) {
-		// 		// Verify that the cosmosdb resources were not deleted
-		// 		ac := documentdb.NewDatabaseAccountsClient(at.Options.Environment.SubscriptionID)
-		// 		ac.Authorizer = at.Options.Authorizer
+		{
+			Application: "dapr-hello",
+			Description: "dapr-hello (Tutorial)",
+			Template:    "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"dapr-hello": {
+						validation.NewPodForComponent("dapr-hello", "nodeapp"),
+						validation.NewPodForComponent("dapr-hello", "pythonapp"),
+					},
+				},
+			},
+		},
+		{
+			Application: "cosmos-container-managed",
+			Description: "cosmos-container (radius managed)",
+			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/managed.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"cosmos-container-managed": {
+						validation.NewPodForComponent("cosmos-container-managed", "todoapp"),
+					},
+				},
+			},
+		},
+		{
+			Application: "cosmos-container-unmanaged",
+			Description: "cosmos-container (user managed)",
+			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/unmanaged.bicep",
+			Pods: validation.PodSet{
+				Namespaces: map[string][]validation.Pod{
+					"cosmos-container-unmanaged": {
+						validation.NewPodForComponent("cosmos-container-unmanaged", "todoapp"),
+					},
+				},
+			},
+			// This test has additional 'unmanaged' resources that are deployed in the same template but not managed
+			// by Radius.
+			//
+			// We don't need to delete these, they will be deleted as part of the resource group cleanup.
+			PostDeleteVerify: func(t *testing.T, at ApplicationTest) {
+				// Verify that the cosmosdb resources were not deleted
+				ac := documentdb.NewDatabaseAccountsClient(at.Options.Environment.SubscriptionID)
+				ac.Authorizer = at.Options.Authorizer
 
-		// 		// We have to use a generated name due to uniqueness requirements, so lookup based on tags
-		// 		var account *documentdb.DatabaseAccountGetResults
-		// 		list, err := ac.ListByResourceGroup(context.Background(), at.Options.Environment.ResourceGroup)
-		// 		require.NoErrorf(t, err, "failed to list database accounts")
+				// We have to use a generated name due to uniqueness requirements, so lookup based on tags
+				var account *documentdb.DatabaseAccountGetResults
+				list, err := ac.ListByResourceGroup(context.Background(), at.Options.Environment.ResourceGroup)
+				require.NoErrorf(t, err, "failed to list database accounts")
 
-		// 		for _, value := range *list.Value {
-		// 			if value.Tags["radiustest"] != nil {
-		// 				temp := value
-		// 				account = &temp
-		// 				break
-		// 			}
-		// 		}
+				for _, value := range *list.Value {
+					if value.Tags["radiustest"] != nil {
+						temp := value
+						account = &temp
+						break
+					}
+				}
 
-		// 		require.NotNilf(t, account, "failed to find database account with 'radiustest' tag")
+				require.NotNilf(t, account, "failed to find database account with 'radiustest' tag")
 
-		// 		dbc := documentdb.NewMongoDBResourcesClient(at.Options.Environment.SubscriptionID)
-		// 		dbc.Authorizer = at.Options.Authorizer
+				dbc := documentdb.NewMongoDBResourcesClient(at.Options.Environment.SubscriptionID)
+				dbc.Authorizer = at.Options.Authorizer
 
-		// 		_, err = dbc.GetMongoDBDatabase(context.Background(), at.Options.Environment.ResourceGroup, *account.Name, "mydb")
-		// 		require.NoErrorf(t, err, "failed to find mongo database")
-		// 	},
-		// },
+				_, err = dbc.GetMongoDBDatabase(context.Background(), at.Options.Environment.ResourceGroup, *account.Name, "mydb")
+				require.NoErrorf(t, err, "failed to find mongo database")
+			},
+		},
 	}
 
 	// Nest parallel subtests into outer Run to have function wait for all tests
