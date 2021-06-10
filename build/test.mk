@@ -7,7 +7,7 @@
 
 .PHONY: test
 test: ## Runs unit tests, excluding kubernetes controller tests
-	go test ./pkg/algorithm/... ./pkg/curp/... ./pkg/model/... ./pkg/rad/... ./pkg/radclient/... ./pkg/radtest/... ./pkg/roleassignment/... ./pkg/version/... ./pkg/workloads/...
+	go test ./pkg/algorithm/... ./pkg/radrp/... ./pkg/model/... ./pkg/rad/... ./pkg/radclient/... ./pkg/radtest/... ./pkg/roleassignment/... ./pkg/version/... ./pkg/workloads/...
 
 .PHONY: test-integration
 test-integration: ## Runs integration tests
