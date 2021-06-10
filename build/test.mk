@@ -6,9 +6,8 @@
 ##@ Test
 
 .PHONY: test
-test: ## Runs unit tests.
-	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go test ./pkg/... 
+test: ## Runs unit tests, excluding kubernetes controller tests
+	go test (go list ./pkg/... | grep -v kubernetes)
 
 .PHONY: test-integration
 test-integration: ## Runs integration tests
