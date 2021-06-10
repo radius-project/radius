@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/curp/resources"
+	"github.com/Azure/radius/pkg/radrp/resources"
 )
 
 var ErrResourceSpecifiedForManagedResource = errors.New("the 'resource' field cannot be specified when 'managed=true'")

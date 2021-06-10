@@ -18,17 +18,17 @@ After tests run, you should see a big list of all of the project's packages:
 
 ```txt
 go test ./pkg/...
-ok  	github.com/Azure/radius/pkg/curp	0.328s
-?   	github.com/Azure/radius/pkg/curp/armauth	[no test files]
-?   	github.com/Azure/radius/pkg/curp/armerrors	[no test files]
-?   	github.com/Azure/radius/pkg/curp/certs	[no test files]
-?   	github.com/Azure/radius/pkg/curp/components	[no test files]
-?   	github.com/Azure/radius/pkg/curp/db	[no test files]
-?   	github.com/Azure/radius/pkg/curp/k8sauth	[no test files]
-?   	github.com/Azure/radius/pkg/curp/metadata	[no test files]
-ok  	github.com/Azure/radius/pkg/curp/resources	0.283s
-?   	github.com/Azure/radius/pkg/curp/rest	[no test files]
-?   	github.com/Azure/radius/pkg/curp/revision	[no test files]
+ok  	github.com/Azure/radius/pkg/radrp	0.328s
+?   	github.com/Azure/radius/pkg/radrp/armauth	[no test files]
+?   	github.com/Azure/radius/pkg/radrp/armerrors	[no test files]
+?   	github.com/Azure/radius/pkg/radrp/certs	[no test files]
+?   	github.com/Azure/radius/pkg/radrp/components	[no test files]
+?   	github.com/Azure/radius/pkg/radrp/db	[no test files]
+?   	github.com/Azure/radius/pkg/radrp/k8sauth	[no test files]
+?   	github.com/Azure/radius/pkg/radrp/metadata	[no test files]
+ok  	github.com/Azure/radius/pkg/radrp/resources	0.283s
+?   	github.com/Azure/radius/pkg/radrp/rest	[no test files]
+?   	github.com/Azure/radius/pkg/radrp/revision	[no test files]
 ok  	github.com/Azure/radius/pkg/rad	0.250s
 ?   	github.com/Azure/radius/pkg/rad/azcli	[no test files]
 ?   	github.com/Azure/radius/pkg/rad/azure	[no test files]

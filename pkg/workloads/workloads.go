@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Azure/radius/pkg/curp/components"
+	"github.com/Azure/radius/pkg/radrp/components"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

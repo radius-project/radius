@@ -14,9 +14,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/radclient"
+	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radtest"
 	"github.com/spf13/cobra"
 )
