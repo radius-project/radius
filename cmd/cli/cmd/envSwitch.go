@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,12 +27,12 @@ func init() {
 
 func switchEnv(cmd *cobra.Command, args []string) error {
 	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
+	section, err := rad.ReadEnvironmentSection(v)
 	if err != nil {
 		return err
 	}
 
-	if len(env.Items) == 0 {
+	if len(section.Items) == 0 {
 		fmt.Println("No environments found. Use 'rad env init' to initialize.")
 		return nil
 	}
@@ -43,29 +42,32 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, ok := env.Items[envName]
+	_, ok := section.Items[envName]
 	if !ok {
 		fmt.Printf("Could not find environment %v\n", envName)
 		return nil
 	}
 
 	// Retrieve associated resource group and subscription id
-	az, err := rad.ValidateNamedEnvironment(envName)
+	env, err := rad.ValidateNamedEnvironment(envName)
 	if err != nil {
 		return err
 	}
 
-	envUrl, err := azure.GenerateAzureEnvUrl(az.SubscriptionID, az.ResourceGroup)
-	if err != nil {
-		return err
+	status := env.GetStatusLink()
+	var text string
+	if status == "" {
+		text = fmt.Sprintf("Default environment is now: %v\n", envName)
+	} else {
+		text = fmt.Sprintf("Default environment is now: %v\n\n"+
+			"%v environment is available at:\n%v\n", envName, envName, status)
 	}
 
-	logger.LogInfo("Default environment is now: %v\n\n"+
-		"%v environment is available at:\n%v\n", envName, envName, envUrl)
+	logger.LogInfo(text)
 
-	env.Default = envName
-	rad.UpdateEnvironmentSection(v, env)
-	err = saveConfig()
+	section.Default = envName
+	rad.UpdateEnvironmentSection(v, section)
+	err = rad.SaveConfig()
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,8 @@ package rad
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -15,10 +17,13 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
+	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 )
+
+var CfgFile string
 
 // EnvironmentKey is the key used for the environment section
 const (
@@ -75,6 +80,56 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 	}
 
 	return env.decodeEnvironmentSection(name)
+}
+
+// initConfig reads in config file and ENV variables if set.
+func InitConfig() {
+	if CfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(CfgFile)
+	} else {
+		// Find home directory.
+		home, err := homedir.Dir()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		rad := path.Join(home, ".rad")
+		viper.AddConfigPath(rad)
+		viper.SetConfigName("config")
+	}
+
+	// If a config file is found, read it in.
+	err := viper.ReadInConfig()
+	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		home, err := homedir.Dir()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		// Set the default config file so we can write to it if desired
+		CfgFile = path.Join(home, ".rad", "config.yaml")
+	} else if err == nil {
+		CfgFile = viper.ConfigFileUsed()
+	}
+}
+
+func SaveConfig() error {
+	dir := path.Dir(CfgFile)
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		_ = os.MkdirAll(dir, os.ModeDir|0755)
+	}
+
+	err = viper.WriteConfigAs(CfgFile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully wrote configuration to %v\n", CfgFile)
+	return nil
 }
 
 func (env EnvironmentSection) decodeEnvironmentSection(name string) (environments.Environment, error) {

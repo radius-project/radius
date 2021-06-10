@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azcli"
 	"github.com/Azure/radius/pkg/rad/azure"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +44,12 @@ var envMergeCredentialsCmd = &cobra.Command{
 			}
 		}
 
-		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", env.SubscriptionID, "--resource-group", env.ResourceGroup, "--name", env.ClusterName)
+		az, err := environments.RequireAzureCloud(env)
+		if err != nil {
+			return err
+		}
+
+		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", az.SubscriptionID, "--resource-group", az.ResourceGroup, "--name", az.ClusterName)
 		return err
 
 	},

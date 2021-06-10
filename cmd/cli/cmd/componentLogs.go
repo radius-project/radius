@@ -13,11 +13,9 @@ import (
 	"os"
 
 	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/rad/clients"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
-	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 var logsCmd = &cobra.Command{
@@ -65,33 +63,20 @@ rad component logs --application icecream-store orders --container daprd`,
 			return err
 		}
 
-		config, err := getMonitoringCredentials(cmd.Context(), *env)
+		client, err := environments.CreateDiagnosticsClient(env)
 		if err != nil {
 			return err
 		}
 
-		client, err := k8s.NewForConfig(config)
+		stream, err := client.Logs(cmd.Context(), clients.LogsOptions{
+			Application: application,
+			Component:   component,
+			Follow:      follow,
+			Container:   container})
 		if err != nil {
 			return err
 		}
 
-		replica, err := getRunningReplica(cmd.Context(), client, application, component)
-		if err != nil {
-			return err
-		}
-
-		if container == "" {
-			// We don't really expect this to fail, but let's do something reasonable if it does...
-			container = getAppContainerName(replica)
-			if container == "" {
-				return fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", component)
-			}
-		}
-
-		stream, err := streamLogs(cmd.Context(), config, client, replica, container, follow)
-		if err != nil {
-			return fmt.Errorf("failed to open log stream to %s: %w", component, err)
-		}
 		defer stream.Close()
 
 		// We can keep reading this until cancellation occurs.
@@ -132,7 +117,6 @@ rad component logs --application icecream-store orders --container daprd`,
 			fmt.Println(string(line))
 		}
 
-		// Unreachable
 	},
 }
 
@@ -141,20 +125,4 @@ func init() {
 
 	logsCmd.Flags().String("container", "", "specify the container from which logs should be streamed")
 	logsCmd.Flags().BoolP("follow", "f", false, "specify that logs should be stream until the command is canceled")
-}
-
-func getAppContainerName(replica *corev1.Pod) string {
-	// The container name will be the component name
-	component := replica.Labels[workloads.LabelRadiusComponent]
-	return component
-}
-
-func streamLogs(ctx context.Context, config *rest.Config, client *k8s.Clientset, replica *corev1.Pod, container string, follow bool) (io.ReadCloser, error) {
-	options := &corev1.PodLogOptions{
-		Container: container,
-		Follow:    follow,
-	}
-
-	request := client.CoreV1().Pods(replica.Namespace).GetLogs(replica.Name, options)
-	return request.Stream(ctx)
 }

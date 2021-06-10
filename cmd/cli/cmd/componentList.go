@@ -9,11 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/spf13/cobra"
 )
 
@@ -40,25 +37,20 @@ func listComponents(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
+	client, err := environments.CreateManagementClient(env)
 	if err != nil {
-		return fmt.Errorf("failed to obtain a Azure credentials: %w", err)
-	}
-	con := armcore.NewDefaultConnection(azcred, nil)
-
-	componentClient := radclient.NewComponentClient(con, env.SubscriptionID)
-
-	response, err := componentClient.ListByApplication(cmd.Context(), env.ResourceGroup, applicationName, nil)
-	if err != nil {
-		return utils.UnwrapErrorFromRawResponse(err)
+		return err
 	}
 
-	componentsList := *response.ComponentList
-	components, err := json.MarshalIndent(componentsList, "", "  ")
+	componentList, err := client.ListComponents(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
+	components, err := json.MarshalIndent(componentList, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal component response as JSON %w", err)
 	}
-	fmt.Println(string(components))
 
-	return err
+	fmt.Println(string(components))
+	return nil
 }

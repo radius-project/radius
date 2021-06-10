@@ -8,13 +8,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/prompt"
-	"github.com/Azure/radius/pkg/radclient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -51,7 +47,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 
 	// Prompt user to confirm deletion
 	if !yes {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Are you sure you want to delete '%v' from '%v' [y/n]?", applicationName, env.Name))
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Are you sure you want to delete '%v' from '%v' [y/n]?", applicationName, env.GetName()))
 		if err != nil {
 			return err
 		}
@@ -60,74 +56,57 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
+	client, err := environments.CreateManagementClient(env)
 	if err != nil {
-		return fmt.Errorf("failed to obtain Azure credential: %w", err)
+		return err
 	}
 
-	con := armcore.NewDefaultConnection(azcred, nil)
-
-	// Delete deployments: An application can have multiple deployments in it that should be deleted before the application can be deleted.
-	dc := radclient.NewDeploymentClient(con, env.SubscriptionID)
-
-	// Retrieve all the deployments in the application
-	response, err := dc.ListByApplication(cmd.Context(), env.ResourceGroup, applicationName, nil)
+	deploymentList, err := client.ListDeployments(cmd.Context(), applicationName)
 	if err != nil {
-		return utils.UnwrapErrorFromRawResponse(err)
+		return err
 	}
 
 	// Delete the deployments
-	deploymentResources := *response.DeploymentList
-	for _, deploymentResource := range *deploymentResources.Value {
+	for _, deploymentResource := range *deploymentList.Value {
 		// This is needed until server side implementation is fixed https://github.com/Azure/radius/issues/159
 		deploymentName := *deploymentResource.Name
-
-		poller, err := dc.BeginDelete(cmd.Context(), env.ResourceGroup, applicationName, deploymentName, nil)
+		err = client.DeleteDeployment(cmd.Context(), deploymentName, applicationName)
 		if err != nil {
-			return utils.UnwrapErrorFromRawResponse(err)
+			return err
 		}
-
-		_, err = poller.PollUntilDone(cmd.Context(), radclient.PollInterval)
-		if err != nil {
-			return utils.UnwrapErrorFromRawResponse(err)
-		}
-
-		fmt.Printf("Deleted deployment '%s'\n", deploymentName)
+		fmt.Printf("Deployment '%s' deleted.\n", deploymentName)
 	}
 
-	// Delete application
-	ac := radclient.NewApplicationClient(con, env.SubscriptionID)
-
-	_, err = ac.Delete(cmd.Context(), env.ResourceGroup, applicationName, nil)
+	err = client.DeleteApplication(cmd.Context(), applicationName)
 	if err != nil {
-		return utils.UnwrapErrorFromRawResponse(err)
+		return err
 	}
-	fmt.Printf("Application '%s' has been deleted\n", applicationName)
 
-	err = updateApplicationConfig(cmd, env, applicationName, ac)
-	return err
+	err = updateApplicationConfig(env, applicationName)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Application '%s' has been deleted\n", applicationName)
+	return nil
 }
 
-func updateApplicationConfig(cmd *cobra.Command,
-	azureEnv *environments.AzureCloudEnvironment,
-	applicationName string,
-	ac *radclient.ApplicationClient) error {
-
+func updateApplicationConfig(env environments.Environment, applicationName string) error {
 	// If the application we are deleting is the default application, remove it
-	if azureEnv.DefaultApplication == applicationName {
+	if env.GetDefaultApplication() == applicationName {
 		v := viper.GetViper()
-		env, err := rad.ReadEnvironmentSection(v)
+		envSection, err := rad.ReadEnvironmentSection(v)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, azureEnv.Name)
+		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, env.GetName())
 
-		env.Items[azureEnv.Name][environments.EnvironmentKeyDefaultApplication] = ""
+		envSection.Items[env.GetName()][environments.EnvironmentKeyDefaultApplication] = ""
 
-		rad.UpdateEnvironmentSection(v, env)
+		rad.UpdateEnvironmentSection(v, envSection)
 
-		err = saveConfig()
+		err = rad.SaveConfig()
 		if err != nil {
 			return err
 		}
