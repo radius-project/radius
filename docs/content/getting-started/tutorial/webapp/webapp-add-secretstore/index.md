@@ -40,14 +40,13 @@ Here's what the `todoapp` component will look like with the key vault binding in
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: { ... }
-      uses: uses: [
+      uses: [
         {
           binding: kv.properties.bindings.default
           env: {
             KV_URI: kv.properties.bindings.default.uri
           }
         }
-<<<<<<< HEAD
         {
           binding: db.properties.bindings.mongo
           secrets: {
@@ -57,8 +56,6 @@ Here's what the `todoapp` component will look like with the key vault binding in
             }
           }
         }
-=======
->>>>>>> 25020ad226eb61f83bffa2f2ec88eb650093f50f
       ]
       bindings: [ ... ]
     }
