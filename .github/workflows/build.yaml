@@ -55,6 +55,9 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm'
         run: make test
+      - name: Run make test-controller (controller tests)
+        if: matrix.target_arch != 'arm'
+        run: make test-controller
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:
