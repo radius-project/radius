@@ -16,7 +16,7 @@ A `kv` secret store component is used to specify a few properties about the KeyV
 - **kind:** `azure.com/KeyVault@v1alpha1` represents an Azure Key Vault. 
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```
+```sh
   resource kv 'Components' = {
     name: 'kv'
     kind: 'azure.com/KeyVault@v1alpha1'

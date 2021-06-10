@@ -15,7 +15,7 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add a Dapr trait to the nodeapp component
 A *trait* on the `nodeapp` component can be used to describe the Dapr configuration:
 
-```
+```sh
   resource nodeapplication 'Components' = {
     name: 'nodeapp'
     kind: 'radius.dev/Container@v1alpha1'
@@ -44,7 +44,7 @@ Add another *binding* on the `nodeapp` component representing the Dapr service i
 
 Note that the binding uses the **variable name** for the referenced component (*not* the value of the `name` property).
 
-```
+```sh
   resource nodeapplication 'Components' = {
     name: 'nodeapp'
     kind: 'radius.dev/Container@v1alpha1'
@@ -74,7 +74,7 @@ A `statestore` component is used to specify a few properties about the state sto
   - **config > kind:** `state.azure.tablestorage` corresponds to the kind of Dapr state store used for [Azure Table Storage](https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/setup-azure-tablestorage/)
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```
+```sh
   resource statestore 'Components' = {
     name: 'statestore'
     kind: 'dapr.io/StateStore@v1alpha1'

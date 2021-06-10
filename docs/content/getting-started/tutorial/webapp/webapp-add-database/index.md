@@ -18,7 +18,7 @@ A `db` database component is used to specify a few properties about the database
 - **kind:** `azure.com/CosmosDBMongo@v1alpha1` represents a Cosmos DB database.
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```
+```sh
   resource db 'Components' = {
     name: 'db'
     kind: 'azure.com/CosmosDBMongo@v1alpha1'
