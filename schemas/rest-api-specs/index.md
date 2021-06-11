@@ -5,4 +5,4 @@ weight: 200
 description: Reference for the Azure Radius RP API
 ---
 
-{{< swaggerui src="./radius.json" >}}
+{{< swaggerui src="/reference/api/radius.json" >}}
