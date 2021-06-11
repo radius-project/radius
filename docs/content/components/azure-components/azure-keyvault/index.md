@@ -200,8 +200,10 @@ Here, Radius creates the Azure KeyVault and injects the KV_URI environment varia
 - Ensure you are logged into Azure using `az login`
 
 #### Download Bicep file
+{{< rad file="template.bicep">}}
 
-Begin by creating a file named `template.bicep` and pasting the above components into an `app` resource. Alternately you can download it [below](#bicep-file).
+Alternately, you can create a new file named `template.bicep` and paste the above components into an `app` resource.   
+
 
 #### Deploy template file
 
@@ -215,10 +217,10 @@ This will deploy the application, create the Azure KeyVault, and launch the cont
 
 ### Access the application
 
-To see the keyvault application working, you can check logs:
+To see the "radius-keyvault" application working, you can check logs for the "kvaccessor" component: 
 
 ```sh
-rad logs radius-keyvault kvaccessor
+rad component logs kvaccessor --application radius-keyvault 
 ```
 
 You should see the application accessing the keyvault for secrets as below:

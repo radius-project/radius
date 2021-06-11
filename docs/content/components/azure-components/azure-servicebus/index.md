@@ -181,8 +181,9 @@ resource sbq 'Components' = {
 - Ensure you are logged into Azure using `az login`
 
 #### Download Bicep file
+{{< rad file="template.bicep">}}
 
-Begin by creating a file named `template.bicep` and pasting the above components. Alternately you can download it [below](#bicep-file).
+Alternately, you can create a new file named `template.bicep` and paste the above components into an `app` resource.  
 
 #### Deploy template file
 
@@ -196,11 +197,13 @@ This will deploy the application, create the ServiceBus queue, and launch the co
 
 ### Access the application
 
-To see the sender and receiver applications working, you can check logs:
+To see the sender and receiver working, you can check the logs for those two components of the "radius-servicebus" application:
 
 ```sh
-rad logs radius-servicebus sender
-rad logs radius-servicebus receiver
+rad component logs sender --application radius-servicebus 
+```
+```sh
+rad component logs receiver --application radius-servicebus 
 ```
 
 You should see the sender sending messages and the receiver receiving them as below:

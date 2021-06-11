@@ -203,16 +203,18 @@ rad deploy template.bicep
 
 This will deploy the application, create the ServiceBus queue and launch the containers.
 
-To see the publisher and subscriber applications working, you can check logs:
+To see the publisher and subscriber components working, you can check their logs. For example: 
 
 ```sh
-rad logs dapr-pubsub pythonpublisher
-rad logs dapr-pubsub nodesubscriber
+rad component logs pythonpublisher --application dapr-pubsub 
+```
+```sh
+rad component logs nodesubscriber --application dapr-pubsub 
 ```
 
-You should see the publisher sending messages and the subscriber receiving them as below:-
+You should see the publisher sending messages and the subscriber receiving them as below:
 
-```txt
+```
 TOPIC_A :  hello world
 TOPIC_A :  hello world
 TOPIC_A :  hello world

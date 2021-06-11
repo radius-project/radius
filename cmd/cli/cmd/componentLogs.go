@@ -21,24 +21,27 @@ import (
 )
 
 var logsCmd = &cobra.Command{
-	Use:   "logs [application] [component]",
+	Use:   "logs [component]",
 	Short: "Read logs from a running container component",
-	Long: `Reads logs from a running component. Currently only supports the kind 'radius.dev/Container'.
+	Long: `Reads logs from a running component. Currently only supports the component kind 'radius.dev/Container'.
 This command allows you to access logs of a deployed application and output those logs to the local console.
-
-'rad component logs' will output logs from the component's primary container. In scenarios like Dapr where multiple containers are in use, the '--continer <name>' option can specify the desired container.
 
 'rad component logs' will output all currently available logs for the component and then exit.
 
+'rad component logs' will output logs from the component's primary container. In scenarios like Dapr where multiple containers are in use, the '--container \<name\>' option can specify the desired container.
+
 Specify the '--follow' option to stream additional logs as they are emitted by the component. When following, press CTRL+C to exit the command and terminate the stream.`,
-	Example: `# read logs from the 'orders' component of the 'icecream-store' application
-rad component logs --application icecream-store orders
+	Example: `# read logs from the 'webapp' component of the current default app
+rad component logs webapp
+
+# read logs from the 'orders' component of the 'icecream-store' application
+rad component logs orders --application icecream-store
 
 # stream logs from the 'orders' component of the 'icecream-store' application
-rad component logs --application icecream-store orders --follow
+rad component logs orders --application icecream-store --follow
 
-# read logs from the 'daprd' sidecare container of the 'orders' component of the 'icecream-store' application
-rad component logs --application icecream-store orders --container daprd`,
+# read logs from the 'daprd' sidecar container of the 'orders' component of the 'icecream-store' application
+rad component logs orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		env, err := rad.RequireEnvironment(cmd)
 		if err != nil {
