@@ -18,7 +18,7 @@ import (
 
 var componentGetCmd = &cobra.Command{
 	Use:   "component get <app name> <component name>",
-	Short: "Gets the component specified from the application in the provided environment",
+	Short: "Gets the component specified",
 	Long:  "Gets the component specified from the application in the provided environment",
 	RunE:  runComponentGet,
 }
@@ -26,8 +26,8 @@ var componentGetCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(componentGetCmd)
 
-	componentGetCmd.Flags().String("host", "localhost:5000", "specify the hostname (defaults to localhost:5000)")
-	componentGetCmd.Flags().BoolP("verbose", "v", false, "output verbose logging output")
+	componentGetCmd.Flags().String("host", "localhost:5000", "specifies the hostname and port (defaults to localhost:5000)")
+	componentGetCmd.Flags().BoolP("verbose", "v", false, "output verbose logging")
 }
 
 func runComponentGet(cmd *cobra.Command, args []string) error {
@@ -64,7 +64,7 @@ func runComponentGet(cmd *cobra.Command, args []string) error {
 	componentResource := *response.ComponentResource
 	component, err := json.MarshalIndent(componentResource, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Failed to marshal application response as JSON %w", err)
+		return fmt.Errorf("failed to marshal application response as JSON %w", err)
 	}
 	fmt.Println(string(component))
 
@@ -74,10 +74,10 @@ func runComponentGet(cmd *cobra.Command, args []string) error {
 // Validate args and return the app and component names.
 func validateArgs(args []string) (string, string, error) {
 	if len(args) != 3 {
-		return "", "", fmt.Errorf("Invalid arguments: %s. Specify the application and component name", args)
+		return "", "", fmt.Errorf("invalid arguments: %s. Specify the application and component name", args)
 	}
 	if args[0] != "get" {
-		return "", "", fmt.Errorf("Command: %s should be of the format: 'get <app name> <component name>", args)
+		return "", "", fmt.Errorf("command: %s should be of the format: 'get <app name> <component name>", args)
 	}
 	return args[1], args[2], nil
 }

@@ -62,7 +62,7 @@ type ApplicationPatch struct {
 type Component struct {
 	ResourceBase `bson:",inline"`
 	Kind         string              `bson:"kind"`
-	Revision     revision.Revision   `bson:"revision,omitempty"`
+	Revision     revision.Revision   `bson:"revision"`
 	Properties   ComponentProperties `bson:"properties,omitempty"`
 }
 
@@ -74,7 +74,7 @@ type ComponentProperties struct {
 	Bindings        map[string]ComponentBinding `bson:"provides,omitempty"`
 	Uses            []ComponentDependency       `bson:"dependsOn,omitempty"`
 	Traits          []ComponentTrait            `bson:"traits,omitempty"`
-	OutputResources []OutputResource            `bson:"outputresources,omitempty"`
+	OutputResources []OutputResource            `bson:"outputResources,omitempty"`
 }
 
 // ComponentBinding represents a binding provided by an Radius Component.
@@ -105,10 +105,10 @@ type ComponentTrait struct {
 // OutputResource represents an output resource comprising a Radius component.
 type OutputResource struct {
 	LocalID            string      `bson:"id"`
-	ResourceKind       string      `bson:"resourcekind"`
-	OutputResourceInfo interface{} `bson:"outputresourceinfo"`
+	ResourceKind       string      `bson:"resourceKind"`
+	OutputResourceInfo interface{} `bson:"outputResourceInfo"`
 	Managed            string      `bson:"managed"`
-	OutputResourceType string      `bson:"outputresourcetype"`
+	OutputResourceType string      `bson:"outputResourceType"`
 	Resource           interface{} `bson:"resource"`
 }
 

@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/radius/pkg/radrp/armauth"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
 const (
@@ -28,21 +27,6 @@ func NewAzurePodIdentityHandler(arm armauth.ArmConfig) ResourceHandler {
 
 type azurePodIdentityHandler struct {
 	arm armauth.ArmConfig
-}
-
-func (handler *azurePodIdentityHandler) GetProperties(resource workloads.OutputResource) (map[string]string, error) {
-	item, err := convertToUnstructured(resource)
-	if err != nil {
-		return nil, err
-	}
-
-	p := map[string]string{
-		"kind":       item.GetKind(),
-		"apiVersion": item.GetAPIVersion(),
-		"namespace":  item.GetNamespace(),
-		"name":       item.GetName(),
-	}
-	return p, nil
 }
 
 func (handler *azurePodIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {

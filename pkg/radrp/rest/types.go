@@ -55,11 +55,11 @@ type Component struct {
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	LocalID            string      `json:"localid"`
+	LocalID            string      `json:"localId"`
 	Managed            string      `json:"managed"`
-	ResourceKind       string      `json:"resourcekind"`
-	OutputResourceType string      `json:"outputresourcetype"`
-	OutputResourceInfo interface{} `json:"outputresourceinfo"`
+	ResourceKind       string      `json:"resourceKind"`
+	OutputResourceType string      `json:"outputResourceType"`
+	OutputResourceInfo interface{} `json:"outputResourceInfo"`
 }
 
 // ComponentProperties represents the properties element of an Radius component.
@@ -71,7 +71,7 @@ type ComponentProperties struct {
 	Bindings        map[string]ComponentBinding `json:"bindings,omitempty"`
 	Uses            []ComponentDependency       `json:"uses,omitempty"`
 	Traits          []ComponentTrait            `json:"traits,omitempty"`
-	OutputResources []OutputResource            `json:"outputresources"`
+	OutputResources []OutputResource            `json:"outputResources"`
 }
 
 // ComponentBinding represents a binding provided by an Radius Component.

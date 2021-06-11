@@ -8,7 +8,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
@@ -81,9 +80,8 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options Put
 		}
 	}
 
-	var queue *servicebus.SBQueue
 	if properties[ServiceBusQueueIDKey] == "" {
-		queue, err = handler.CreateQueue(ctx, *namespace.Name, queueName)
+		queue, err := handler.CreateQueue(ctx, *namespace.Name, queueName)
 		if err != nil {
 			return nil, err
 		}
@@ -203,11 +201,6 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 	}
 
 	return &namespace, err
-}
-
-func (handler *azureServiceBusBaseHandler) GetAPIVersion() string {
-	// "Azure-SDK-For-Go/" + Version() + " servicebus/2017-04-01"
-	return strings.Split(servicebus.UserAgent(), "servicebus/")[1]
 }
 
 func (handler *azureServiceBusBaseHandler) CreateTopic(ctx context.Context, namespaceName string, topicName string) (*servicebus.SBTopic, error) {

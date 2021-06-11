@@ -111,7 +111,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return nil, err
 	}
 
-	// generate data we can use to connect to a servicebus queue
 	resource := workloads.OutputResource{
 		ResourceKind: workloads.ResourceKindAzureCosmosDBSQL,
 		Resource: map[string]string{

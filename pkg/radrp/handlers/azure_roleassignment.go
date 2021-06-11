@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
 // NewAzureRoleAssignmentHandler initializes a new handler for resources of kind RoleAssignment
@@ -19,10 +18,6 @@ func NewAzureRoleAssignmentHandler(arm armauth.ArmConfig) ResourceHandler {
 
 type azureRoleAssignmentHandler struct {
 	arm armauth.ArmConfig
-}
-
-func (handler *azureRoleAssignmentHandler) GetProperties(resource workloads.OutputResource) (map[string]string, error) {
-	return map[string]string{}, nil
 }
 
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {

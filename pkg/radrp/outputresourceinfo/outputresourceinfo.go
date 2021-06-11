@@ -8,9 +8,11 @@ package outputresourceinfo
 // OutputResource Types
 // This is not a fixed set
 const (
-	TypeARM         = "ARM"
-	TypeKubernetes  = "Kubernetes"
-	TypePodIdentity = "PodIdentity"
+	TypeARM            = "ARM"
+	TypeKubernetes     = "Kubernetes"
+	TypePodIdentity    = "PodIdentity"
+	PodIdentityName    = "podidentityname"
+	PodIdentityCluster = "podidentitycluster"
 )
 
 // ARMInfo contains the details of the ARM resource

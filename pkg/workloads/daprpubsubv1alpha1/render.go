@@ -102,7 +102,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		// generate data we can use to connect to a servicebus topic
 		resource := workloads.OutputResource{
 			ResourceKind: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			Resource: map[string]string{

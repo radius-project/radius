@@ -8,10 +8,8 @@ package workloads
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/Azure/radius/pkg/radrp/components"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // ErrUnknownType is the error reported when the workload type is unknown or unsupported.
@@ -41,26 +39,4 @@ type WorkloadRenderer interface {
 type WorkloadResourceProperties struct {
 	Type       string
 	Properties map[string]string
-}
-
-// NewKubernetesResource creates a Kubernetes WorkloadResource
-func NewKubernetesResource(localID string, obj runtime.Object) OutputResource {
-	return OutputResource{ResourceKind: ResourceKindKubernetes, LocalID: localID, Resource: obj}
-}
-
-func (wr OutputResource) IsKubernetesResource() bool {
-	return wr.ResourceKind == ResourceKindKubernetes
-}
-
-// GetOutputResourceType determines the deployment resource type
-func (wr OutputResource) GetOutputResourceType() string {
-	if wr.ResourceKind == ResourceKindAzurePodIdentity {
-		return OutputResourceTypePodIdentity
-	} else if strings.Contains(wr.ResourceKind, "azure") {
-		return OutputResourceTypeArm
-	} else if wr.ResourceKind == ResourceKindKubernetes {
-		return OutputResourceTypeKubernetes
-	} else {
-		return ""
-	}
 }

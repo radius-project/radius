@@ -61,9 +61,10 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 		Kind:         original.Kind,
 		Revision:     original.Properties.Revision,
 		Properties: db.ComponentProperties{
-			Build:           original.Properties.Build,
-			Config:          original.Properties.Config,
-			Run:             original.Properties.Run,
+			Build:  original.Properties.Build,
+			Config: original.Properties.Config,
+			Run:    original.Properties.Run,
+			// OutputResources are intentionally not copied over since they are read-only
 			OutputResources: []db.OutputResource{},
 		},
 	}
@@ -111,11 +112,10 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 		ResourceBase: newRESTResourceBaseFromDB(original.ResourceBase),
 		Kind:         original.Kind,
 		Properties: rest.ComponentProperties{
-			Revision:        original.Revision,
-			Build:           original.Properties.Build,
-			Config:          original.Properties.Config,
-			Run:             original.Properties.Run,
-			OutputResources: []rest.OutputResource{},
+			Revision: original.Revision,
+			Build:    original.Properties.Build,
+			Config:   original.Properties.Config,
+			Run:      original.Properties.Run,
 		},
 	}
 

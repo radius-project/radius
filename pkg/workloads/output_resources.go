@@ -6,7 +6,6 @@
 package workloads
 
 import (
-	"github.com/Azure/radius/pkg/curp/localidgenerator"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -28,52 +27,12 @@ type ARMInfo struct {
 	APIVersion   string
 }
 
-// InitializeOutputArmResource returns an object of type OutputResource initialized with the data from the ARM resource
-func InitializeOutputArmResource(deployed bool, resourceKind, id string, resourceType string, apiversion string, managed bool, localIDPrefix string) OutputResource {
-	armInfo := ARMInfo{
-		ResourceID:   id,
-		ResourceType: resourceType,
-		APIVersion:   apiversion,
-	}
-	r := OutputResource{
-		Deployed:           deployed,
-		ResourceKind:       resourceKind,
-		OutputResourceType: OutputResourceTypeArm,
-		LocalID:            localidgenerator.MakeID(localIDPrefix),
-		Managed:            "true",
-		OutputResourceInfo: armInfo,
-	}
-
-	return r
-}
-
 // K8sInfo contains the details of an output Kubernetes resource
 type K8sInfo struct {
 	Kind       string
 	APIVersion string
 	Name       string
 	Namespace  string
-}
-
-// InitializeOutputKubernetesResource returns an object of type OutputResource initialized with the data from the Kubernetes resource
-func InitializeOutputKubernetesResource(deployed bool, resourceKind, kind, apiVersion, name, namespace, localIDPrefix, managed string, obj runtime.Object) OutputResource {
-	k8sInfo := K8sInfo{
-		Kind:       kind,
-		APIVersion: apiVersion,
-		Name:       name,
-		Namespace:  namespace,
-	}
-	r := OutputResource{
-		Deployed:           deployed,
-		ResourceKind:       resourceKind,
-		OutputResourceType: OutputResourceTypeKubernetes,
-		LocalID:            localidgenerator.MakeID(localIDPrefix),
-		Managed:            managed,
-		OutputResourceInfo: k8sInfo,
-		Resource:           obj,
-	}
-
-	return r
 }
 
 // AADPodIdentity contains the details of an output AAD Pod Identity resource
@@ -83,31 +42,11 @@ type AADPodIdentity struct {
 	Namespace      string
 }
 
-const (
-	PodIdentityName    = "podidentityname"
-	PodIdentityCluster = "podidentitycluster"
-)
+// NewKubernetesResource creates a Kubernetes WorkloadResource
+func NewKubernetesResource(localID string, obj runtime.Object) OutputResource {
+	return OutputResource{ResourceKind: ResourceKindKubernetes, LocalID: localID, Resource: obj}
+}
 
-// InitializeOutputPodIdentityResource returns an object of type OutputResource initialized with the data from the AADPodIdentity resource
-func InitializeOutputPodIdentityResource(deployed bool, clusterName, name, namespace, localIDPrefix, managed string) OutputResource {
-	podidInfo := AADPodIdentity{
-		AKSClusterName: clusterName,
-		Name:           name,
-		Namespace:      namespace,
-	}
-
-	r := OutputResource{
-		Deployed:           deployed,
-		ResourceKind:       ResourceKindAzurePodIdentity,
-		OutputResourceType: OutputResourceTypePodIdentity,
-		LocalID:            localidgenerator.MakeID(localIDPrefix),
-		Managed:            managed,
-		OutputResourceInfo: podidInfo,
-		Resource: map[string]string{
-			PodIdentityName:    name,
-			PodIdentityCluster: clusterName,
-		},
-	}
-
-	return r
+func (wr OutputResource) IsKubernetesResource() bool {
+	return wr.ResourceKind == ResourceKindKubernetes
 }

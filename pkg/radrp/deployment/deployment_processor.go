@@ -188,7 +188,8 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				errs = append(errs, err)
 				dbOutputResources := []db.OutputResource{}
 				for _, resource := range outputResources {
-					// Save the output resource to DB
+					// Record the output resources created so far
+					// TODO: Once there are no more resources created in the render phase, this can go away
 					addDBOutputResource(resource, &dbOutputResources)
 				}
 				action.Definition.Properties.OutputResources = dbOutputResources
@@ -227,15 +228,12 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					Resource:    resource,
 					Existing:    existingResource,
 				})
+				// Record the output resources created so far
+				addDBOutputResource(resource, &dbOutputResources)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("error applying workload resource %v %v: %w", properties, action.ComponentName, err))
-					// Save the output resource to DB
-					addDBOutputResource(resource, &dbOutputResources)
 					continue
 				}
-
-				// Save the output resource to DB
-				addDBOutputResource(resource, &dbOutputResources)
 
 				dr := db.DeploymentResource{
 					LocalID:    resource.LocalID,
@@ -246,7 +244,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			}
 
 			// Add the output resources to the DB component definition
-			log.Printf("Saving %d output resources to DB", len(dbOutputResources))
 			action.Definition.Properties.OutputResources = dbOutputResources
 
 			wrps := []workloads.WorkloadResourceProperties{}
@@ -344,7 +341,6 @@ func addDBOutputResource(resource workloads.OutputResource, dbOutputResources *[
 		OutputResourceType: resource.OutputResourceType,
 		Resource:           resource.Resource,
 	}
-	log.Printf("Saving output resource: %s of output resource type: %s to DB", dbr.LocalID, dbr.OutputResourceType)
 	*dbOutputResources = append(*dbOutputResources, dbr)
 }
 

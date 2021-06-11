@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
 // NewAzureUserAssignedManagedIdentityHandler initializes a new handler for resources of kind UserAssignedManagedIdentity
@@ -19,10 +18,6 @@ func NewAzureUserAssignedManagedIdentityHandler(arm armauth.ArmConfig) ResourceH
 
 type azureUserAssignedManagedIdentityHandler struct {
 	arm armauth.ArmConfig
-}
-
-func (pih *azureUserAssignedManagedIdentityHandler) GetProperties(resource workloads.OutputResource) (map[string]string, error) {
-	return map[string]string{}, nil
 }
 
 func (pih *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
