@@ -20,7 +20,7 @@ To add a new managed Dapr state store with Azure Table Storage, add the followin
 ```sh
 resource pubsub 'Components' = {
   name: 'pubsub'
-  kind: 'dapr.io/State@v1alpha1'
+  kind: 'dapr.io/StateStore@v1alpha1'
   properties: {
     config: {
       kind: 'state.azure.tablestorage'

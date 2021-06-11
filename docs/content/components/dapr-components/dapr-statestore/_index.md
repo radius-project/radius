@@ -13,7 +13,7 @@ To add a new managed Dapr statestore component, add the following Radius compone
 ```sh
 resource orderstore 'Components' = {
   name: 'orderstore'
-  kind: 'dapr.io/Component@v1alpha1'
+  kind: 'dapr.io/StateStore@v1alpha1'
   properties: {
     config: {
       kind: '<STATESTORE_KIND>'
