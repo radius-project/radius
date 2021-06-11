@@ -14,12 +14,12 @@ weight: 50
 ## Mission
 
 {{% alert title="Project Radius mission" color="primary" %}}
-Radius is an intelligent application model that empowers developers to easily deploy and manage applications with a serverless experience. Radius significantly improves developer productivity, application reliability and time to market delivery.
+Improve developer productivity, application reliability and time to market delivery, through intelligent application model that empowers developers to easily deploy and manage applications and dependencies with a serverless experience.
 {{% /alert %}}
 
 This mission has the following pillars:
 
-- **Application Model**: Radius applications describe the whole application from the developer's point of view. This includes compute resources (things that run your code) as well as supporting infrastructure like databases and API gateways.
+- **Application Model**: Radius applications describe the whole application from the developer's point of view. This includes your code as well as supporting infrastructure like databases and API gateways.
 - **Portability**: Radius applications describe the requirements and intentions of the code, not the exact configuration of the infrastructure. The Radius toolset (rad, Bicep, and VS Code tools) work the same way across different hosting platforms.
 - **Intelligence**: Radius codifies and automates best-practices based on developer intentions. The Radius control plane has the intelligence to perform common operations like managing permissions and secrets.
 
