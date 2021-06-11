@@ -18,7 +18,9 @@ import (
 )
 
 func TestAzureEnvironmentSetup(t *testing.T) {
-	ctx := utils.GetContext(t)
+	ctx, cancel := utils.GetContext(t)
+	defer cancel()
+
 	config, err := config.NewAzureConfig()
 	require.NoError(t, err, "failed to initialize azure config")
 
