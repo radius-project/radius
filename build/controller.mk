@@ -18,5 +18,5 @@ controller-deploy: generate-k8s-manifests generate-kustomize-installed ## Deploy
 	cd deploy/k8s/config/manager && $(KUSTOMIZE) edit set image controller=${DOCKER_TAG_VERSION}
 	$(KUSTOMIZE) build deploy/k8s/config/default | kubectl apply -f -
 
-controller-undeploy: generate- ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
+controller-undeploy: generate-kustomize-installed ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build deploy/k8s/config/default | kubectl delete -f -
