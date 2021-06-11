@@ -8,7 +8,7 @@ package handlers
 import (
 	"context"
 
-	"github.com/Azure/radius/pkg/curp/armauth"
+	"github.com/Azure/radius/pkg/radrp/armauth"
 )
 
 // NewAzureUserAssignedManagedIdentityHandler initializes a new handler for resources of kind UserAssignedManagedIdentity

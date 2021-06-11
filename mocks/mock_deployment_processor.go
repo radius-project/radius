@@ -6,6 +6,8 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	db "github.com/Azure/radius/pkg/radrp/db"
 	deployment "github.com/Azure/radius/pkg/radrp/deployment"
 	gomock "github.com/golang/mock/gomock"

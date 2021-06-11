@@ -6,3 +6,312 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
+	db "github.com/Azure/radius/pkg/radrp/db"
+	resources "github.com/Azure/radius/pkg/radrp/resources"
+	gomock "github.com/golang/mock/gomock"
+)
+
+// MockRadrpDB is a mock of RadrpDB interface.
+type MockRadrpDB struct {
+	ctrl     *gomock.Controller
+	recorder *MockRadrpDBMockRecorder
+}
+
+// MockRadrpDBMockRecorder is the mock recorder for MockRadrpDB.
+type MockRadrpDBMockRecorder struct {
+	mock *MockRadrpDB
+}
+
+// NewMockRadrpDB creates a new mock instance.
+func NewMockRadrpDB(ctrl *gomock.Controller) *MockRadrpDB {
+	mock := &MockRadrpDB{ctrl: ctrl}
+	mock.recorder = &MockRadrpDBMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRadrpDB) EXPECT() *MockRadrpDBMockRecorder {
+	return m.recorder
+}
+
+// DeleteApplicationByID mocks base method.
+func (m *MockRadrpDB) DeleteApplicationByID(arg0 context.Context, arg1 resources.ApplicationID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteApplicationByID", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteApplicationByID indicates an expected call of DeleteApplicationByID.
+func (mr *MockRadrpDBMockRecorder) DeleteApplicationByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteApplicationByID", reflect.TypeOf((*MockRadrpDB)(nil).DeleteApplicationByID), arg0, arg1)
+}
+
+// DeleteComponentByApplicationID mocks base method.
+func (m *MockRadrpDB) DeleteComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteComponentByApplicationID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteComponentByApplicationID indicates an expected call of DeleteComponentByApplicationID.
+func (mr *MockRadrpDBMockRecorder) DeleteComponentByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteComponentByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).DeleteComponentByApplicationID), arg0, arg1, arg2)
+}
+
+// DeleteDeploymentByApplicationID mocks base method.
+func (m *MockRadrpDB) DeleteDeploymentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteDeploymentByApplicationID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteDeploymentByApplicationID indicates an expected call of DeleteDeploymentByApplicationID.
+func (mr *MockRadrpDBMockRecorder) DeleteDeploymentByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeploymentByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).DeleteDeploymentByApplicationID), arg0, arg1, arg2)
+}
+
+// DeleteOperationByID mocks base method.
+func (m *MockRadrpDB) DeleteOperationByID(arg0 context.Context, arg1 resources.ResourceID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteOperationByID", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteOperationByID indicates an expected call of DeleteOperationByID.
+func (mr *MockRadrpDBMockRecorder) DeleteOperationByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOperationByID", reflect.TypeOf((*MockRadrpDB)(nil).DeleteOperationByID), arg0, arg1)
+}
+
+// DeleteScopeByApplicationID mocks base method.
+func (m *MockRadrpDB) DeleteScopeByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteScopeByApplicationID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteScopeByApplicationID indicates an expected call of DeleteScopeByApplicationID.
+func (mr *MockRadrpDBMockRecorder) DeleteScopeByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScopeByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).DeleteScopeByApplicationID), arg0, arg1, arg2)
+}
+
+// GetApplicationByID mocks base method.
+func (m *MockRadrpDB) GetApplicationByID(arg0 context.Context, arg1 resources.ApplicationID) (*db.Application, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetApplicationByID", arg0, arg1)
+	ret0, _ := ret[0].(*db.Application)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetApplicationByID indicates an expected call of GetApplicationByID.
+func (mr *MockRadrpDBMockRecorder) GetApplicationByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplicationByID", reflect.TypeOf((*MockRadrpDB)(nil).GetApplicationByID), arg0, arg1)
+}
+
+// GetComponentByApplicationID mocks base method.
+func (m *MockRadrpDB) GetComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) (*db.Component, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetComponentByApplicationID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*db.Component)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetComponentByApplicationID indicates an expected call of GetComponentByApplicationID.
+func (mr *MockRadrpDBMockRecorder) GetComponentByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).GetComponentByApplicationID), arg0, arg1, arg2)
+}
+
+// GetDeploymentByApplicationID mocks base method.
+func (m *MockRadrpDB) GetDeploymentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) (*db.Deployment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDeploymentByApplicationID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*db.Deployment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDeploymentByApplicationID indicates an expected call of GetDeploymentByApplicationID.
+func (mr *MockRadrpDBMockRecorder) GetDeploymentByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeploymentByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).GetDeploymentByApplicationID), arg0, arg1, arg2)
+}
+
+// GetOperationByID mocks base method.
+func (m *MockRadrpDB) GetOperationByID(arg0 context.Context, arg1 resources.ResourceID) (*db.Operation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOperationByID", arg0, arg1)
+	ret0, _ := ret[0].(*db.Operation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOperationByID indicates an expected call of GetOperationByID.
+func (mr *MockRadrpDBMockRecorder) GetOperationByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOperationByID", reflect.TypeOf((*MockRadrpDB)(nil).GetOperationByID), arg0, arg1)
+}
+
+// GetScopeByApplicationID mocks base method.
+func (m *MockRadrpDB) GetScopeByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string) (*db.Scope, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetScopeByApplicationID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*db.Scope)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetScopeByApplicationID indicates an expected call of GetScopeByApplicationID.
+func (mr *MockRadrpDBMockRecorder) GetScopeByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScopeByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).GetScopeByApplicationID), arg0, arg1, arg2)
+}
+
+// ListApplicationsByResourceGroup mocks base method.
+func (m *MockRadrpDB) ListApplicationsByResourceGroup(arg0 context.Context, arg1 resources.ResourceID) ([]db.Application, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListApplicationsByResourceGroup", arg0, arg1)
+	ret0, _ := ret[0].([]db.Application)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListApplicationsByResourceGroup indicates an expected call of ListApplicationsByResourceGroup.
+func (mr *MockRadrpDBMockRecorder) ListApplicationsByResourceGroup(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListApplicationsByResourceGroup", reflect.TypeOf((*MockRadrpDB)(nil).ListApplicationsByResourceGroup), arg0, arg1)
+}
+
+// ListComponentsByApplicationID mocks base method.
+func (m *MockRadrpDB) ListComponentsByApplicationID(arg0 context.Context, arg1 resources.ApplicationID) ([]db.Component, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListComponentsByApplicationID", arg0, arg1)
+	ret0, _ := ret[0].([]db.Component)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListComponentsByApplicationID indicates an expected call of ListComponentsByApplicationID.
+func (mr *MockRadrpDBMockRecorder) ListComponentsByApplicationID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListComponentsByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).ListComponentsByApplicationID), arg0, arg1)
+}
+
+// ListDeploymentsByApplicationID mocks base method.
+func (m *MockRadrpDB) ListDeploymentsByApplicationID(arg0 context.Context, arg1 resources.ApplicationID) ([]db.Deployment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDeploymentsByApplicationID", arg0, arg1)
+	ret0, _ := ret[0].([]db.Deployment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDeploymentsByApplicationID indicates an expected call of ListDeploymentsByApplicationID.
+func (mr *MockRadrpDBMockRecorder) ListDeploymentsByApplicationID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDeploymentsByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).ListDeploymentsByApplicationID), arg0, arg1)
+}
+
+// ListScopesByApplicationID mocks base method.
+func (m *MockRadrpDB) ListScopesByApplicationID(arg0 context.Context, arg1 resources.ApplicationID) ([]db.Scope, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListScopesByApplicationID", arg0, arg1)
+	ret0, _ := ret[0].([]db.Scope)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListScopesByApplicationID indicates an expected call of ListScopesByApplicationID.
+func (mr *MockRadrpDBMockRecorder) ListScopesByApplicationID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListScopesByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).ListScopesByApplicationID), arg0, arg1)
+}
+
+// PatchApplication mocks base method.
+func (m *MockRadrpDB) PatchApplication(arg0 context.Context, arg1 *db.ApplicationPatch) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PatchApplication", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchApplication indicates an expected call of PatchApplication.
+func (mr *MockRadrpDBMockRecorder) PatchApplication(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchApplication", reflect.TypeOf((*MockRadrpDB)(nil).PatchApplication), arg0, arg1)
+}
+
+// PatchComponentByApplicationID mocks base method.
+func (m *MockRadrpDB) PatchComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Component) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PatchComponentByApplicationID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchComponentByApplicationID indicates an expected call of PatchComponentByApplicationID.
+func (mr *MockRadrpDBMockRecorder) PatchComponentByApplicationID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchComponentByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).PatchComponentByApplicationID), arg0, arg1, arg2, arg3)
+}
+
+// PatchDeploymentByApplicationID mocks base method.
+func (m *MockRadrpDB) PatchDeploymentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Deployment) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PatchDeploymentByApplicationID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchDeploymentByApplicationID indicates an expected call of PatchDeploymentByApplicationID.
+func (mr *MockRadrpDBMockRecorder) PatchDeploymentByApplicationID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchDeploymentByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).PatchDeploymentByApplicationID), arg0, arg1, arg2, arg3)
+}
+
+// PatchOperationByID mocks base method.
+func (m *MockRadrpDB) PatchOperationByID(arg0 context.Context, arg1 resources.ResourceID, arg2 *db.Operation) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PatchOperationByID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchOperationByID indicates an expected call of PatchOperationByID.
+func (mr *MockRadrpDBMockRecorder) PatchOperationByID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchOperationByID", reflect.TypeOf((*MockRadrpDB)(nil).PatchOperationByID), arg0, arg1, arg2)
+}
+
+// PatchScopeByApplicationID mocks base method.
+func (m *MockRadrpDB) PatchScopeByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Scope) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PatchScopeByApplicationID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchScopeByApplicationID indicates an expected call of PatchScopeByApplicationID.
+func (mr *MockRadrpDBMockRecorder) PatchScopeByApplicationID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchScopeByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).PatchScopeByApplicationID), arg0, arg1, arg2, arg3)
+}
