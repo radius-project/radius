@@ -35,16 +35,7 @@ import (
 
 // Tests application deployment using radius
 func TestDeployment(t *testing.T) {
-	var ctx context.Context
-	deadline, ok := t.Deadline()
-	if ok {
-		// no timeout specified,
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithDeadline(context.Background(), deadline)
-		defer cancel()
-	} else {
-		ctx = context.Background()
-	}
+	ctx := utils.GetContext(t)
 
 	config, err := config.NewAzureConfig()
 	require.NoError(t, err, "failed to initialize azure config")

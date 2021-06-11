@@ -6,7 +6,6 @@
 package integrationtests
 
 import (
-	"context"
 	"testing"
 
 	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
@@ -19,8 +18,7 @@ import (
 )
 
 func TestAzureEnvironmentSetup(t *testing.T) {
-	ctx := context.Background()
-
+	ctx := utils.GetContext(t)
 	config, err := config.NewAzureConfig()
 	require.NoError(t, err, "failed to initialize azure config")
 
@@ -99,5 +97,5 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 		},
 	}
 
-	validation.ValidatePodsRunning(t, k8s, expectedPods)
+	validation.ValidatePodsRunning(t, k8s, expectedPods, ctx)
 }

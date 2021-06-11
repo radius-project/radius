@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"testing"
 )
 
 // RunRadDeployCommand runs rad deploy command and times out after specified duration
@@ -68,4 +69,18 @@ func RunCommand(ctx context.Context, cmd *exec.Cmd) error {
 	}
 
 	return err
+}
+
+func GetContext(t *testing.T) context.Context {
+	var ctx context.Context
+	deadline, ok := t.Deadline()
+	if ok {
+		// no timeout specified,
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(context.Background(), deadline)
+		defer cancel()
+	} else {
+		ctx = context.Background()
+	}
+	return ctx
 }
