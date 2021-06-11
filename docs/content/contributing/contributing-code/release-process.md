@@ -73,7 +73,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
    1. Within `.github/workflows/website.yml` update the branch to be the new `release\vX.Y` branch you created above.
    1. Within `.github/workflows/website.yml` update `${{ secrets.EDGE_DOCS_SITE_PUBLISHPROFILE }}` to `${{ secrets.DOCS_SITE_PUBLISHPROFILE }}` within the "Deploy to WebApp" step.
    1. In `docs/content/getting-started/install-cli.md` update the binary download links with the new version number.
-   1. Commit and push updates
+   1. Commit and push updates to be the new `release\vX.Y` branch you created above.
    1. Verify https://radapp.dev now shows the new version.
 
 ## How releases work
