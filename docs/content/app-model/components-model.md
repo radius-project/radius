@@ -67,9 +67,9 @@ Note: only runnable [components]({{< ref components >}}) (e.g. containers) can d
 
 In general, bindings can be referenced with the following structure: `<componentname>.properties.bindings.<bindingname>`.
 - In some cases, users may reference the binding itself.   
-  - For example: `store: kv.properties.bindings.default` 
+  - For example: `kv.properties.bindings.default` 
 - In some cases, users may reference one of the computed values the binding provides.   
-  - For example: `KV_URI: kv.properties.bindings.default.uri` 
+  - For example: `kv.properties.bindings.default.uri` 
 
 ### Action configuration
 

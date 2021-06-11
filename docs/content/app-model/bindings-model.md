@@ -23,7 +23,7 @@ Some Radius components provide bindings by default. These bindings can be consid
 
 **Example default binding**  
 
-The [`azure.com/CosmosDocumentDb`]({{< ref azure-cosmos >}}) component offers both the `azure.com/CosmosDocumentDb` and `mongo.com/MongoDb` bindings without needing to provide any configuration. The following component has no user-defined bindings, but users are able to take advantage of its default bindings effortlessly.   
+The [`azure.com/CosmosDBMongo`]({{< ref cosmos-mongodb.md >}}) component offers both the `azure.com/CosmosDBMongo` and `mongo.com/MongoDb` bindings without needing to provide any configuration. The following component has no user-defined bindings, but users are able to take advantage of its default bindings effortlessly.   
 
 ```sh
 resource db 'Components' = {
@@ -37,7 +37,7 @@ resource db 'Components' = {
   }
 ```
 
-So, other components in the application are able consume the default bindings from that CosmosDocumentDb component with minimal configuration work:
+So, other components in the application are able consume the default bindings from that CosmosDBMongo component with minimal configuration work:
 
 ```
   ... 
