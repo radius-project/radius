@@ -189,15 +189,14 @@ resource pubsub 'Components' = {
 
 ### Deploy the application
 
-Now you are ready to deploy this application.
+#### Pre-requisites
 
-First, double-check that you are logged-in to Azure. Switch to your commandline and run the following command:
+- Make sure you have an active [Radius environment]({{< ref create-environment.md >}})
+- Ensure you are logged into Azure using `az login`
 
-```sh
-az login
-```
+#### Deploy template file
 
-Then after that completes, run:
+Submit the Radius template to Azure using:
 
 ```sh
 rad deploy template.bicep
@@ -227,14 +226,4 @@ TOPIC_A :  hello world
 
 You have completed this tutorial!
 
-### (optional) Cleanup
-
-When you are ready to clean up and delete the resources you can delete your environment. This will delete:
-
-- The resource group
-- Your Radius environment
-- The application you just deployed
-
-```sh
-rad env delete -e azure --yes
-```
+Note: If you're done with testing, you can use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 

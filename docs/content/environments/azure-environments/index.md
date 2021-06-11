@@ -41,7 +41,7 @@ These steps will walk through how to deploy, manage, and delete environments in 
 ### Pre-requisites
 
 - [Azure subscription](https://signup.azure.com)
-- [az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+- [az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli). Ensure you are logged into Azure using `az login`.
 - [rad CLI]({{< ref install-cli.md >}})
 - (optional) [create a an Azure Container Registry](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-azure-cli) to use as a private container registry
 
@@ -51,11 +51,6 @@ These steps will walk through how to deploy, manage, and delete environments in 
 While Radius environments are optimized for cost, any costs incurred by the deployment and use of a Radius environment in an Azure subscription are the responsibility of the user. Azure environments currently include a single node AKS cluster, an Azure CosmosDB account, and an App Service which all incur cost if deployed for extended periods.
 {{% /alert %}}
 
-1. Sign into Azure using the az CLI:
-   
-   ```bash
-   az login
-   ```
 1. Deploy a Radius environment interactively:
    
    ```bash
@@ -75,7 +70,7 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
    {{% /alert %}}
 
-2. Verify deployment
+1. Verify deployment
 
    To verify the environment deployment succeeded, navigate to your subscription at https://portal.azure.com. You should see a new Resource Group with the name you entered during the previous step: 
 
@@ -85,24 +80,17 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
    <img src="./azure-resources.png" width=500 alt="New resource group that was created">
 
-#### 
-
-## Connect to an existing environment
+### Connect to an existing environment
 
 If you wish to attach to an existing environment instead of deploying a new one, simply specify the name, subscription, and resource group of an existing Radius environment when using the above steps for `rad env init azure`. The rad CLI will append the config for the existing environment to your local config file.
 
 ### Delete an environment
 
-1. Ensure you are still signed into Azure using the az CLI:
-   
-   ```bash
-   az login
-   ```
-1. Use the rad CLI to delete the environment:
+Use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}):
 
-   ```bash
-   rad env delete -e azure --yes
-   ```
+```bash
+rad env delete -e azure --yes
+```
 
 ## Related links
 
