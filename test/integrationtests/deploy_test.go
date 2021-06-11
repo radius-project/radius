@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
@@ -33,9 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
-
-const DeployTimeout = 30 * time.Minute
-const DeleteTimeout = 30 * time.Minute
 
 // Tests application deployment using radius
 func TestDeployment(t *testing.T) {
@@ -322,12 +318,14 @@ func (at ApplicationTest) Test(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
+	// Global deadline from -timeout flag passed into go test
+	deadline, _ := t.Deadline()
+
 	// Deploy the application
 	t.Run(fmt.Sprintf("deploy %s", at.Row.Description), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, at.Row.Template)
 		t.Logf("deploying %s from file %s", at.Row.Description, at.Row.Template)
-
-		err := utils.RunRadDeployCommand(templateFilePath, at.Options.Environment.ConfigPath, DeployTimeout)
+		err := utils.RunRadDeployCommand(templateFilePath, at.Options.Environment.ConfigPath, deadline)
 		require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
@@ -342,7 +340,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// In the future we can add more subtests here for multi-phase tests that change what's deployed.
 
 	// Cleanup code here will run regardless of pass/fail of subtests
-	err = utils.RunRadApplicationDeleteCommand(at.Row.Application, at.Options.Environment.ConfigPath, DeleteTimeout)
+	err = utils.RunRadApplicationDeleteCommand(at.Row.Application, at.Options.Environment.ConfigPath, deadline)
 	require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 	for ns := range at.Row.Pods.Namespaces {

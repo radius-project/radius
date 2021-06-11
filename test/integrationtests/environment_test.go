@@ -43,14 +43,21 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 		for _, r := range page.Values() {
 			if radresources.HasRadiusEnvironmentTag(r.Tags) {
 				resourceMap[*r.Type] = *r.ID
+				t.Logf("environment resource: %s", *r.ID)
+			} else {
+				t.Logf("skipping non-environment resource: %s", *r.ID)
 			}
-
-			t.Logf("skipping non-environment resource: %s", *r.ID)
 		}
 	}
 
-	// Check whether all the resources in the group are created
-	require.Equal(t, 7, len(resourceMap), "Number of resources created by init step is unexpected")
+	// Currently, we have a retention policy on the deploymentScript for 1 day.
+	// "retentionInterval": "P1D"
+	// This means the script may or may not be present when checking the number of resources
+	// if the environment was created over a day ago.
+	// Verify that either 6 or 7 resources are present, and only check the deploymentScripts
+	// if there are 7 resources
+	require.GreaterOrEqual(t, 6, len(resourceMap), "Number of resources created by init step is less than expected")
+	require.LessOrEqual(t, 7, len(resourceMap), "Number of resources created by init step is greater than expected")
 
 	_, found := resourceMap["Microsoft.ContainerService/managedClusters"]
 	require.True(t, found, "Microsoft.ContainerService/managedClusters resource not created")
@@ -70,8 +77,10 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	_, found = resourceMap["Microsoft.Web/sites"]
 	require.True(t, found, "Microsoft.Web/sites resource not created")
 
-	_, found = resourceMap["Microsoft.Resources/deploymentScripts"]
-	require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
+	if len(resourceMap) == 7 {
+		_, found = resourceMap["Microsoft.Resources/deploymentScripts"]
+		require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
+	}
 
 	expectedPods := validation.PodSet{
 		Namespaces: map[string][]validation.Pod{
