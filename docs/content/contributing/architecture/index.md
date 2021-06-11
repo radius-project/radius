@@ -62,7 +62,7 @@ We have the goal to target and support multiple *hosting platforms* in the futur
 - The **rad** CLI can be used to manage applications using ARM as the protocol by communicating with the Radius API
 - The **rad** CLI can be used to perform diagnostic operations on applications by communicating with the AKS cluster 
 
-TODO: Aaron do we have a good diagram for this?
+![Radius Architecture](architecture.png)
 
 ## rad CLI
 
