@@ -56,8 +56,8 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	// if the environment was created over a day ago.
 	// Verify that either 6 or 7 resources are present, and only check the deploymentScripts
 	// if there are 7 resources
-	require.GreaterOrEqual(t, 6, len(resourceMap), "Number of resources created by init step is less than expected")
-	require.LessOrEqual(t, 7, len(resourceMap), "Number of resources created by init step is greater than expected")
+	require.GreaterOrEqual(t, len(resourceMap), 6, "Number of resources created by init step is less than expected")
+	require.LessOrEqual(t, len(resourceMap), 7, "Number of resources created by init step is greater than expected")
 
 	_, found := resourceMap["Microsoft.ContainerService/managedClusters"]
 	require.True(t, found, "Microsoft.ContainerService/managedClusters resource not created")

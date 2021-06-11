@@ -10,18 +10,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"time"
 )
 
-// RunRadDeployCommand runs rad deploy command and times out after specified timeout
-func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.Time) error {
+// RunRadDeployCommand runs rad deploy command and times out after specified duration
+func RunRadDeployCommand(templateFilePath, configFilePath string, ctx context.Context) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
 		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
 	}
-
-	ctx, cancel := context.WithDeadline(context.Background(), timeout)
-	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	// Create the command with our context
 	var cmd *exec.Cmd
@@ -39,10 +35,7 @@ func RunRadDeployCommand(templateFilePath, configFilePath string, timeout time.T
 }
 
 // RunRadApplicationDeleteCommand deletes all applications deployed by Radius in the specified resource group
-func RunRadApplicationDeleteCommand(applicationName, configFilePath string, timeout time.Time) error {
-	ctx, cancel := context.WithDeadline(context.Background(), timeout)
-	defer cancel() // The cancel should be deferred so resources are cleaned up
-
+func RunRadApplicationDeleteCommand(applicationName, configFilePath string, ctx context.Context) error {
 	// Create the command with our context
 	var cmd *exec.Cmd
 	if configFilePath == "" {

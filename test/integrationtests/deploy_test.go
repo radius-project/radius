@@ -35,7 +35,16 @@ import (
 
 // Tests application deployment using radius
 func TestDeployment(t *testing.T) {
-	ctx := context.Background()
+	var ctx context.Context
+	deadline, ok := t.Deadline()
+	if ok {
+		// no timeout specified,
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(context.Background(), deadline)
+		defer cancel()
+	} else {
+		ctx = context.Background()
+	}
 
 	config, err := config.NewAzureConfig()
 	require.NoError(t, err, "failed to initialize azure config")
@@ -69,6 +78,7 @@ func TestDeployment(t *testing.T) {
 		ARMConnection: con,
 		K8s:           k8s,
 		Authorizer:    armauth,
+		Context:       ctx,
 	}
 
 	table := []Row{
@@ -294,6 +304,7 @@ type Options struct {
 	K8s           *kubernetes.Clientset
 	ARMConnection *armcore.Connection
 	Authorizer    autorest.Authorizer
+	Context       context.Context
 }
 
 type ApplicationTest struct {
@@ -319,13 +330,12 @@ func (at ApplicationTest) Test(t *testing.T) {
 	require.NoError(t, err)
 
 	// Global deadline from -timeout flag passed into go test
-	deadline, _ := t.Deadline()
 
 	// Deploy the application
 	t.Run(fmt.Sprintf("deploy %s", at.Row.Description), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, at.Row.Template)
 		t.Logf("deploying %s from file %s", at.Row.Description, at.Row.Template)
-		err := utils.RunRadDeployCommand(templateFilePath, at.Options.Environment.ConfigPath, deadline)
+		err := utils.RunRadDeployCommand(templateFilePath, at.Options.Environment.ConfigPath, at.Options.Context)
 		require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
@@ -340,7 +350,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// In the future we can add more subtests here for multi-phase tests that change what's deployed.
 
 	// Cleanup code here will run regardless of pass/fail of subtests
-	err = utils.RunRadApplicationDeleteCommand(at.Row.Application, at.Options.Environment.ConfigPath, deadline)
+	err = utils.RunRadApplicationDeleteCommand(at.Row.Application, at.Options.Environment.ConfigPath, at.Options.Context)
 	require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 	for ns := range at.Row.Pods.Namespaces {
