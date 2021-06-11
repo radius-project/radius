@@ -12,7 +12,7 @@ github_branch = "main"
 
 # Google Analytics
 [services.googleAnalytics]
-id = "G-9JR8B6TPF9"
+id = "G-0EZZYE4MPR"
 
 # Mounts
 [module]
