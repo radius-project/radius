@@ -168,7 +168,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            "RoleAssignment-KVSecrets",
+		LocalID:            "RoleAssignment-KVSecretsCerts",
 		Managed:            "true",
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *ra.ID,

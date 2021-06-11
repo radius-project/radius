@@ -255,8 +255,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 		return rest.NewCreatedResponse(body), nil
 	}
 
-	okresp := rest.NewOKResponse(body)
-	return okresp, nil
+	return rest.NewOKResponse(body), nil
 }
 
 func (r *rp) DeleteComponent(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
