@@ -13,7 +13,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const TimeoutForPodShutdown = 60 * time.Second
 const IntervalForPodShutdown = 10 * time.Second
 
 type PodSet struct {
@@ -34,8 +33,7 @@ func NewPodForComponent(application string, name string) Pod {
 }
 
 // ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
-func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSet) {
-	ctx := context.Background()
+func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSet, ctx context.Context) {
 
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating pods in namespace %v", namespace)
@@ -103,7 +101,7 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 					t.Logf("watching pod %v for status.. current: %v", pod.Name, pod.Status)
 
 				// allow max of 60 seconds to pass without updates
-				case <-time.After(60 * time.Second):
+				case <-ctx.Done():
 					assert.Failf(t, "timed out after waiting for pod %v to enter running status", actualPod.Name)
 					break loop
 				}
@@ -112,7 +110,7 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 	}
 }
 
-func ValidateNoPodsInNamespace(t *testing.T, k8s *kubernetes.Clientset, namespace string) {
+func ValidateNoPodsInNamespace(t *testing.T, k8s *kubernetes.Clientset, namespace string, ctx context.Context) {
 	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 	assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
 
@@ -123,15 +121,12 @@ func ValidateNoPodsInNamespace(t *testing.T, k8s *kubernetes.Clientset, namespac
 	if len(actualPods.Items) == 0 {
 		return
 	}
-
-	timeout := time.After(TimeoutForPodShutdown)
 	for {
 		select {
 
-		case <-timeout:
+		case <-ctx.Done():
 			assert.Fail(t, "timed out waiting for pods to be deleted")
 
-		// allow max of N seconds to pass between checking
 		case <-time.After(IntervalForPodShutdown):
 			actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 			assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
@@ -143,6 +138,7 @@ func ValidateNoPodsInNamespace(t *testing.T, k8s *kubernetes.Clientset, namespac
 			}
 		}
 	}
+
 }
 
 func logPods(t *testing.T, pods []corev1.Pod) {

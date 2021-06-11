@@ -339,7 +339,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 		require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
-		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods)
+		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods, at.Options.Context)
 
 		// Custom verification is expected to use `t` to trigger its own assertions
 		if at.Row.PostDeployVerify != nil {
@@ -354,7 +354,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 	for ns := range at.Row.Pods.Namespaces {
-		validation.ValidateNoPodsInNamespace(t, at.Options.K8s, ns)
+		validation.ValidateNoPodsInNamespace(t, at.Options.K8s, ns, at.Options.Context)
 	}
 
 	// Custom verification is expected to use `t` to trigger its own assertions
