@@ -731,6 +731,34 @@
       "description": "Properties of a component.",
       "type": "object",
       "properties": {
+        "revision": {
+          "type": "object",
+          "description": "Revision of the component"
+        },
+        "config": {
+          "type": "object",
+          "description": "Config of the component"
+        },
+        "run": {
+          "type": "object",
+          "description": "Run spec of the component"
+        },
+        "bindings": {
+          "type": "object",
+          "description": "Bindings spec of the component"
+        },
+        "uses": {
+          "type": "object",
+          "description": "Uses spec of the component"
+        },
+        "traits": {
+          "type": "object",
+          "description": "Traits spec of the component"
+        },
+        "outputResources": {
+          "type": "object",
+          "description": "Output Resources created while rendering the component"
+        }
       }
     },
     "ComponentCreateParameters": {
