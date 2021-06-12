@@ -97,11 +97,11 @@ func TestDeployment(t *testing.T) {
 				componentsClient := radclient.NewComponentClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 				frontendComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "frontend-backend", "frontend", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-				assert.Equal(t, 2, len(frontendComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
+				assert.Equal(t, 2, len(frontendComponent.ComponentResource.Properties.(map[string]interface{})["outputResources"].([]interface{})))
 
 				backendComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "frontend-backend", "backend", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-				assert.Equal(t, 2, len(backendComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
+				assert.Equal(t, 2, len(backendComponent.ComponentResource.Properties.(map[string]interface{})["outputResources"].([]interface{})))
 			},
 		},
 		{
@@ -226,11 +226,11 @@ func TestDeployment(t *testing.T) {
 				componentsClient := radclient.NewComponentClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 				kvaccessorComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "radius-keyvault", "kvaccessor", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-				assert.Equal(t, 5, len(kvaccessorComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
+				assert.Equal(t, 5, len(kvaccessorComponent.ComponentResource.Properties.(map[string]interface{})["outputResources"].([]interface{})))
 
 				kvComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "radius-keyvault", "kv", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-				assert.Equal(t, 1, len(kvComponent.ComponentResource.Properties.(map[string]interface{})["outputresources"].([]interface{})))
+				assert.Equal(t, 1, len(kvComponent.ComponentResource.Properties.(map[string]interface{})["outputResources"].([]interface{})))
 			},
 		},
 		{
