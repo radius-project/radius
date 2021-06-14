@@ -38,27 +38,27 @@ spec:
             properties:
               application:
                 type: string
-              config:
+              bindings:
+                additionalProperties:
+                  type: object
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
-              dependsOn:
-                items:
-                  type: object
-                type: array
+              config:
+                type: object
                 x-kubernetes-preserve-unknown-fields: true
               kind:
                 type: string
               name:
                 type: string
-              provides:
-                additionalProperties:
-                  type: object
-                type: object
-                x-kubernetes-preserve-unknown-fields: true
               run:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               traits:
+                items:
+                  type: object
+                type: array
+                x-kubernetes-preserve-unknown-fields: true
+              uses:
                 items:
                   type: object
                 type: array

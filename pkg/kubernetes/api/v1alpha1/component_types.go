@@ -29,11 +29,11 @@ type ComponentSpec struct {
 
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
-	Uses *[]runtime.RawExtension `json:"dependsOn,omitempty"`
+	Uses *[]runtime.RawExtension `json:"uses,omitempty"`
 
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
-	Bindings map[string]runtime.RawExtension `json:"provides,omitempty"`
+	Bindings map[string]runtime.RawExtension `json:"bindings,omitempty"`
 
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields

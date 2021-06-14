@@ -45,6 +45,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	err := r.Get(ctx, req.NamespacedName, component)
 	if client.IgnoreNotFound(err) == nil {
 		// Component was deleted - we don't need to handle this because it will cascade
+		// TODO should this return?
 	} else if err != nil {
 		log.Error(err, "failed to retrieve component")
 		return ctrl.Result{}, err

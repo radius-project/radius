@@ -19,9 +19,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/Azure/radius/pkg/curp/components"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
+	"github.com/Azure/radius/pkg/radrp/components"
 	//+kubebuilder:scaffold:imports
 )
 

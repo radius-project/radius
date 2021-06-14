@@ -8,8 +8,8 @@ package controllers
 import (
 	"encoding/json"
 
-	"github.com/Azure/radius/pkg/curp/components"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
+	"github.com/Azure/radius/pkg/radrp/components"
 	"k8s.io/apimachinery/pkg/conversion"
 )
 
