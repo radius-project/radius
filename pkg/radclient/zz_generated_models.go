@@ -122,9 +122,7 @@ type ComponentProperties struct {
 
 	// Config of the component
 	Config interface{} `json:"config,omitempty"`
-
-	// Output Resources created while rendering the component
-	OutputResources interface{} `json:"outputResources,omitempty"`
+	OutputResources *[]interface{} `json:"outputResources,omitempty"`
 
 	// Revision of the component
 	Revision interface{} `json:"revision,omitempty"`

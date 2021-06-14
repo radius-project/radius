@@ -756,9 +756,17 @@
           "description": "Traits spec of the component"
         },
         "outputResources": {
-          "type": "object",
-          "description": "Output Resources created while rendering the component"
+          "type": "array",
+          "items": {
+          "$ref": "#/definitions/ComponentOutputResource"
+          }
         }
+      }
+    },
+    "ComponentOutputResource": {
+      "description": "Properties of a component.",
+      "type": "object",
+      "properties": {
       }
     },
     "ComponentCreateParameters": {
