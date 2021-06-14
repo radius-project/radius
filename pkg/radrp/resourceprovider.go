@@ -467,8 +467,6 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			log.Printf("failed to retrieve deployment '%s': %v", oid.Resource.ID, err)
 			return
 		}
-
-		log.Printf("updating deployment '%s'", d.ID)
 		d.Properties.ProvisioningState = string(status)
 		d.Status = newdbitem.Status
 
@@ -479,16 +477,14 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		}
 
 		// Update components to track output resources created during deployment
+		a, err := r.db.GetApplicationByID(ctx, id.App)
 		for c, action := range actions {
-			log.Printf("Patching component: %s with %v output resources", c, len(action.Definition.Properties.OutputResources))
-			_, err = r.db.PatchComponentByApplicationID(ctx, id.App, c, action.Definition)
-			if err != nil {
-				log.Printf("failed to patch component '%s': %v", action.ComponentName, err)
-				if status == rest.SuccededStatus {
-					status = rest.FailedStatus
-				}
-			}
+			log.Printf("Updating component: %s with %v output resources", c, len(action.Definition.Properties.OutputResources))
+			a.Components[c] = *action.Definition
 		}
+
+		log.Printf("Updating application: %s", id.App)
+		r.db.UpdateApplication(ctx, a)
 		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)
 	}()
 

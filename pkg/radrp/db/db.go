@@ -45,6 +45,7 @@ type RadrpDB interface {
 	ListApplicationsByResourceGroup(ctx context.Context, id resources.ResourceID) ([]Application, error)
 	GetApplicationByID(ctx context.Context, id resources.ApplicationID) (*Application, error)
 	PatchApplication(ctx context.Context, patch *ApplicationPatch) (bool, error)
+	UpdateApplication(ctx context.Context, app *Application) (bool, error)
 	DeleteApplicationByID(ctx context.Context, id resources.ApplicationID) error
 
 	ListComponentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Component, error)
@@ -130,6 +131,22 @@ func (d radrpDB) PatchApplication(ctx context.Context, patch *ApplicationPatch) 
 	}
 
 	log.Printf("Updated Application with _id: %s - %+v", patch.ResourceBase.ID, result)
+	return result.UpsertedCount > 1, nil
+}
+
+func (d radrpDB) UpdateApplication(ctx context.Context, app *Application) (bool, error) {
+	options := options.Update().SetUpsert(true)
+	filter := bson.D{{Key: "_id", Value: app.ResourceBase.ID}}
+	update := bson.D{{Key: "$set", Value: app}}
+
+	log.Printf("Updating Application with _id: %s", app.ResourceBase.ID)
+	col := d.db.Collection(applicationsCollection)
+	result, err := col.UpdateOne(ctx, filter, update, options)
+	if err != nil {
+		return false, fmt.Errorf("error updating Application: %s", err)
+	}
+
+	log.Printf("Updated Application with _id: %s - %+v", app.ResourceBase.ID, result)
 	return result.UpsertedCount > 1, nil
 }
 

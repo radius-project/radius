@@ -256,6 +256,21 @@ func (mr *MockRadrpDBMockRecorder) PatchApplication(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchApplication", reflect.TypeOf((*MockRadrpDB)(nil).PatchApplication), arg0, arg1)
 }
 
+// UpdateApplication mocks base method.
+func (m *MockRadrpDB) UpdateApplication(arg0 context.Context, arg1 *db.Application) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateApplication", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateApplication indicates an expected call of PatchApplication.
+func (mr *MockRadrpDBMockRecorder) UpdateApplication(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateApplication", reflect.TypeOf((*MockRadrpDB)(nil).UpdateApplication), arg0, arg1)
+}
+
 // PatchComponentByApplicationID mocks base method.
 func (m *MockRadrpDB) PatchComponentByApplicationID(arg0 context.Context, arg1 resources.ApplicationID, arg2 string, arg3 *db.Component) (bool, error) {
 	m.ctrl.T.Helper()
