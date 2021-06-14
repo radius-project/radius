@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
@@ -19,12 +21,15 @@ import (
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -221,11 +226,11 @@ func TestDeployment(t *testing.T) {
 				componentsClient := radclient.NewComponentClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 				kvaccessorComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "radius-keyvault", "kvaccessor", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-				assert.Equal(t, 2, len(kvaccessorComponent.ComponentResource.Properties.OutputResources.([]workloads.OutputResource)))
+				assert.Equal(t, 2, len(*kvaccessorComponent.ComponentResource.Properties.OutputResources))
 
 				kvComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "radius-keyvault", "kv", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-				assert.Equal(t, 1, len(kvComponent.ComponentResource.Properties.OutputResources.([]workloads.OutputResource)))
+				assert.Equal(t, 1, len(*kvComponent.ComponentResource.Properties.OutputResources))
 			},
 		},
 		{
