@@ -340,7 +340,6 @@ func (eva *evaluator) EvaluateResourceID(resourceType string, names []string) (s
 // TODO: cycle breaking - we rely on the bicep compiler's validation here and don't
 // detect cycles.
 func orderResources(resources map[string]Resource) ([]Resource, error) {
-
 	// Iterating a map is a random ordering, we want to iterate in a stable order for testing
 	sortedIds := []string{}
 	for _, v := range resources {
@@ -355,13 +354,13 @@ func orderResources(resources map[string]Resource) ([]Resource, error) {
 
 	for _, id := range sortedIds {
 		resource := resources[id]
-		ordered = ensurepresent(resources, ordered, members, resource)
+		ordered = ensurePresent(resources, ordered, members, resource)
 	}
 
 	return ordered, nil
 }
 
-func ensurepresent(resources map[string]Resource, ordered []Resource, members map[string]bool, res Resource) []Resource {
+func ensurePresent(resources map[string]Resource, ordered []Resource, members map[string]bool, res Resource) []Resource {
 	_, ok := members[res.ID]
 	if ok {
 		// already in the set
@@ -372,7 +371,7 @@ func ensurepresent(resources map[string]Resource, ordered []Resource, members ma
 		d := resources[id]
 
 		// Add dependencies
-		ordered = ensurepresent(resources, ordered, members, d)
+		ordered = ensurePresent(resources, ordered, members, d)
 	}
 
 	// requirements satisfied, add this one
