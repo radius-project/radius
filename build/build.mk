@@ -75,7 +75,7 @@ build-$(1):
 endef
 
 # defines a target for each binary
-BINARIES := docgen radtest rp testenv
+BINARIES := docgen rp testenv
 $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
 
 # 'rad' deviates from our convention

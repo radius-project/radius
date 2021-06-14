@@ -68,7 +68,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 	logger.CompleteStep(step)
 
-	client, err := environments.CreateDeploymentClient(env)
+	client, err := environments.CreateDeploymentClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}

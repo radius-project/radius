@@ -63,7 +63,7 @@ rad component logs --application icecream-store orders --container daprd`,
 			return err
 		}
 
-		client, err := environments.CreateDiagnosticsClient(env)
+		client, err := environments.CreateDiagnosticsClient(cmd.Context(), env)
 		if err != nil {
 			return err
 		}

@@ -55,7 +55,7 @@ rad component expose --application icecream-store orders --port 5000 --remote-po
 			remotePort = localPort
 		}
 
-		client, err := environments.CreateDiagnosticsClient(env)
+		client, err := environments.CreateDiagnosticsClient(cmd.Context(), env)
 
 		if err != nil {
 			return err
