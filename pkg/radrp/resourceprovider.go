@@ -469,17 +469,15 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		}
 		d.Properties.ProvisioningState = string(status)
 		d.Status = newdbitem.Status
+		a, err := r.db.GetApplicationByID(ctx, id.App)
 
-		_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.Name(), d)
-		if err != nil {
-			log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
-			return
-		}
+		// Update the deployment in the application
+		log.Printf("Updating deployment: %s in application", d.Name)
+		a.Deployments[id.Resource.Name()] = *d
 
 		// Update components to track output resources created during deployment
-		a, err := r.db.GetApplicationByID(ctx, id.App)
 		for c, action := range actions {
-			log.Printf("Updating component: %s with %v output resources", c, len(action.Definition.Properties.OutputResources))
+			log.Printf("Updating component: %s in application with %v output resources", c, len(action.Definition.Properties.OutputResources))
 			a.Components[c] = *action.Definition
 		}
 
