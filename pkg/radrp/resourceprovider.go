@@ -470,7 +470,10 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		d.Properties.ProvisioningState = string(status)
 		d.Status = newdbitem.Status
 		a, err := r.db.GetApplicationByID(ctx, id.App)
-
+		if err != nil {
+			log.Printf("failed to retrieve application '%s': %v", id.App.ID, err)
+			return
+		}
 		// Update the deployment in the application
 		log.Printf("Updating deployment: %s in application", d.Name)
 		a.Deployments[id.Resource.Name()] = *d
@@ -482,7 +485,11 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		}
 
 		log.Printf("Updating application: %s", id.App)
-		r.db.UpdateApplication(ctx, a)
+		ok, err := r.db.UpdateApplication(ctx, a)
+		if err != nil || !ok {
+			log.Printf("failed to update application '%s': %v", id.App.ID, err)
+			return
+		}
 		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)
 	}()
 
