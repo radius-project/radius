@@ -42,7 +42,7 @@ func showDeployment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, err := environments.CreateManagementClient(env)
+	client, err := environments.CreateManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}

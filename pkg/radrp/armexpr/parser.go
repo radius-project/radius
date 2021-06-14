@@ -12,6 +12,18 @@ import (
 	"unicode/utf8"
 )
 
+func IsStandardARMExpression(text string) (bool, error) {
+	if !utf8.ValidString(text) {
+		return false, errors.New("input is not valid utf8")
+	}
+
+	if strings.HasPrefix(text, "[") && strings.HasSuffix(text, "]") {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func IsARMExpression(text string) (bool, error) {
 	if !utf8.ValidString(text) {
 		return false, errors.New("input is not valid utf8")

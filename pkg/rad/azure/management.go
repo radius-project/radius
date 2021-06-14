@@ -13,14 +13,12 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad/clients"
 	"github.com/Azure/radius/pkg/radclient"
 )
 
 type ARMManagementClient struct {
-	AzCred         *azidentity.ChainedTokenCredential
 	Connection     *armcore.Connection
 	ResourceGroup  string
 	SubscriptionID string
