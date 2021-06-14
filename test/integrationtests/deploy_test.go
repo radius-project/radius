@@ -226,7 +226,7 @@ func TestDeployment(t *testing.T) {
 				componentsClient := radclient.NewComponentClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 				kvaccessorComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "radius-keyvault", "kvaccessor", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-				assert.Equal(t, 2, len(*kvaccessorComponent.ComponentResource.Properties.OutputResources))
+				assert.Equal(t, 5, len(*kvaccessorComponent.ComponentResource.Properties.OutputResources))
 
 				kvComponent, err := componentsClient.Get(ctx, env.ResourceGroup, "radius-keyvault", "kv", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))

@@ -67,7 +67,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
-		// generate data we can use to manage a cosmosdb instance
 		resource := workloads.OutputResource{
 			ResourceKind: workloads.ResourceKindAzureKeyVault,
 			Resource: map[string]string{
