@@ -100,7 +100,6 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 
 					t.Logf("watching pod %v for status.. current: %v", pod.Name, pod.Status)
 
-				// allow max of 60 seconds to pass without updates
 				case <-ctx.Done():
 					assert.Failf(t, "timed out after waiting for pod %v to enter running status", actualPod.Name)
 					break loop
@@ -110,7 +109,7 @@ func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSe
 	}
 }
 
-func ValidateNoPodsInNamespace(t *testing.T, k8s *kubernetes.Clientset, namespace string, ctx context.Context) {
+func ValidateNoPodsInNamespace(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string) {
 	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 	assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
 
