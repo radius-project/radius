@@ -13,9 +13,9 @@ import (
 
 // ComponentSpec defines the desired state of Component
 type ComponentSpec struct {
-	Application string `json:"application"`
-	Name        string `json:"name"`
-	Kind        string `json:"kind"`
+	Kind string `json:"kind"`
+
+	Hierarchy []string `json:"hierarchy,omitempty"`
 
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
