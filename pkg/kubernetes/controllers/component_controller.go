@@ -298,10 +298,6 @@ func (r *ComponentReconciler) ApplyState(
 	//
 	// We also trample over the 'resources' part of the status so that it's clean.
 
-	oldstatus := component.Status.Resources
-	if oldstatus == nil {
-		oldstatus = map[string]corev1.ObjectReference{}
-	}
 	component.Status.Resources = map[string]corev1.ObjectReference{}
 
 	for _, cr := range desired {

@@ -51,6 +51,7 @@ func TestAPIs(t *testing.T) {
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
+	require.NoError(t, err, "failed to initialize manager")
 
 	err = (&controllers.ApplicationReconciler{
 		Client: mgr.GetClient(),
