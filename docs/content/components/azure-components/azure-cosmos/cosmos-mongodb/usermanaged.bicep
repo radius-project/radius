@@ -26,7 +26,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
       config: {
-        resource: account::db.id
+        resource: account::mongodb.id
       }
     }
   }
@@ -53,7 +53,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     databaseAccountOfferType: 'Standard'
   }
 
-  resource db 'mongodbDatabases' = {
+  resource mongodb 'mongodbDatabases' = {
     name: 'mydb'
     properties: {
       resource: {

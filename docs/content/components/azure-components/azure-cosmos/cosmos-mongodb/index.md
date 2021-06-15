@@ -5,31 +5,19 @@ linkTitle: "Azure CosmosDB Mongo"
 description: "Sample application running MongoDB through Azure CosmosDB API"
 ---
 
-This application showcases how Radius can use an Azure CosmosDB API for MongoDB in two different scenarios.
+The `azure.com/CosmosDBMongo` component defined an [Azure CosmosDB](https://azure.microsoft.com/en-us/services/cosmos-db/) configured with a MongoDB API.
+
+## Resource lifecycle
+
+An `azure.com/CosmosDBMongo` Component can be deployed and managed by either by a user (unmanaged) or by Radius (managed).
 
 ## Using a Radius-managed CosmosDB
 
-This example sets the property `managed: true` for the CosmosDB component. When `managed` is set to true, Radius will manage the lifecycle of the underlying database account and database.
+When `properties.config.managed` is set to `true`, Radius will manage the lifecycle of the underlying database account and database:
 
 ```sh
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'cosmos-container-managed'
-  
-  resource webapp 'Components' = {
-    name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: {...}
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
-          }
-        }
-      ]
-    }
-  }
 
   resource db 'Components' = {
     name: 'db'
@@ -40,21 +28,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
     }
   }
-}
-```
 
-{{< rad file="managed.bicep">}}
-
-## Using a user-managed CosmosDB
-
-This example sets the `resource` property to a CosmosDB Mongo database. Setting `managed: false` or using the default value allows you to explicitly specify a link to an Azure resource that you manage. When you supply your own `resource` value, Radius will not change or delete the resource you provide. 
-
-In this example the CosmosDB resources are configured as part of the same `.bicep` template.
-
-```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'cosmos-container-usermanaged'
-  
   resource webapp 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
@@ -70,25 +44,25 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       ]
     }
   }
-
-  resource db 'Components' = {
-    name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
-    properties: {
-      config: {
-        resource: account::db.id
-      }
-    }
-  }
 }
+```
 
+{{< rad file="managed.bicep">}}
+
+## Using a user-managed CosmosDB
+
+When `properties.config.managed` is set to `false` or ommitted, you can explicitly specify an existing Azure `resource` which you manage. This allows you to connect your Radius Components to existing databases. When you delete your application Radius will not change or delete your existing database.
+
+In this example `Microsoft.DocumentDB/databaseAccounts` and `mongodbDatabases` resources are defined in Bicep, and then referenced in a Radius application. Note you can also use Bicep's [existing functionality](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?tabs=azure-powershell#reference-existing-resources) to reference a resource that has previously been deployed.
+
+```sh
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'account-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   kind: 'MongoDB'
   properties: {...}
 
-  resource db 'mongodbDatabases' = {
+  resource mongodb 'mongodbDatabases' = {
     name: 'mydb'
     properties: {
       resource: {
@@ -100,16 +74,38 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     }
   }
 }
+
+resource app 'radius.dev/Applications@v1alpha1' = {
+  name: 'cosmos-container-usermanaged'
+
+  resource db 'Components' = {
+    name: 'db'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
+    properties: {
+      config: {
+        resource: account::mongodb.id
+      }
+    }
+  }
+
+  resource webapp 'Components' = {
+    name: 'todoapp'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: {...}
+      uses: [
+        {
+          binding: db.properties.bindings.mongo
+          env: {
+            DBCONNECTION: db.properties.bindings.mongo.connectionString
+          }
+        }
+      ]
+    }
+  }
+
+}
+
 ```
 
 {{< rad file="usermanaged.bicep">}}
-
-**Note:** all user-managed resources should be defined as their own resource in the Bicep template file. For example, in the case of multiple user-managed resources referenced by the application, the template file would look like: 
-
-```
-resource app {...}
-
-resource user-managed-resource-1 {...}
-
-resource user-managed-resource-2 {...}
-```
