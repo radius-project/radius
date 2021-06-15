@@ -39,10 +39,19 @@ spec:
           spec:
             description: DeploymentSpec defines the desired state of Deployment
             properties:
-              foo:
-                description: Foo is an example field of Deployment. Edit deployment_types.go
-                  to remove/update
-                type: string
+              components:
+                items:
+                  properties:
+                    componentName:
+                      type: string
+                  required:
+                  - componentName
+                  type: object
+                type: array
+              hierarchy:
+                items:
+                  type: string
+                type: array
             type: object
           status:
             description: DeploymentStatus defines the observed state of Deployment

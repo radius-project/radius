@@ -16,7 +16,7 @@ import (
 func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.Scope) error {
 	original := a.(*radiusv1alpha1.Component)
 	result := b.(*components.GenericComponent)
-	result.Name = original.Spec.Name
+	result.Name = original.Annotations["radius.dev/components"]
 	result.Kind = original.Spec.Kind
 
 	if original.Spec.Config != nil {
@@ -46,21 +46,14 @@ func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.S
 	}
 
 	result.Bindings = map[string]components.GenericBinding{}
-	if original.Spec.Bindings != nil {
-		for name, raw := range *&original.Spec.Bindings {
-			b, err := raw.MarshalJSON()
-			if err != nil {
-				return err
-			}
 
-			binding := components.GenericBinding{}
-			err = json.Unmarshal(b, &binding)
-			if err != nil {
-				return err
-			}
-
-			result.Bindings[name] = binding
-		}
+	j, err := original.Spec.Bindings.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(j, &result.Bindings)
+	if err != nil {
+		return err
 	}
 
 	if original.Spec.Uses != nil {

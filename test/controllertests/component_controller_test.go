@@ -8,6 +8,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
@@ -38,9 +39,27 @@ var _ = Describe("Component controller", func() {
 			By("By creating a new Component")
 			ctx := context.Background()
 
+			// apiVersion: applications.radius.dev/v1alpha1
+			// kind: Application
+			// metadata:
+			//   name: radius-frontend-backend
+			// spec: {}
+			application := &v1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "applications.radius.dev/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("radius-%s", ApplicationName),
+					Namespace: ComponentNamespace,
+				},
+			}
+
 			img := map[string]interface{}{
 				"image": "rynowak/frontend:0.5.0-dev",
 			}
+
+			Expect(k8sClient.Create(ctx, application)).Should(Succeed())
 
 			run := map[string]interface{}{}
 			run["container"] = img
@@ -49,18 +68,21 @@ var _ = Describe("Component controller", func() {
 
 			component := &v1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "batch.tutorial.kubebuilder.io/v1",
+					APIVersion: "applications.radius.dev/v1alpha1",
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      ComponentName,
 					Namespace: ComponentNamespace,
+					Annotations: map[string]string{
+						"radius.dev/applications": ApplicationName,
+						"radius.dev/components":   ComponentName,
+					},
 				},
 				Spec: v1alpha1.ComponentSpec{
-					Application: ApplicationName,
-					Name:        Name,
-					Kind:        KindName,
-					Run:         &runtime.RawExtension{Raw: json},
+					Kind:     KindName,
+					Run:      &runtime.RawExtension{Raw: json},
+					Bindings: runtime.RawExtension{},
 				},
 			}
 			Expect(k8sClient.Create(ctx, component)).Should(Succeed())
@@ -76,9 +98,9 @@ var _ = Describe("Component controller", func() {
 				return true
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(createdComponent.Spec.Application).Should(Equal(ApplicationName))
+			Expect(createdComponent.Annotations["radius.dev/applications"]).Should(Equal(ApplicationName))
+			Expect(createdComponent.Annotations["radius.dev/components"]).Should(Equal(ComponentName))
 			Expect(createdComponent.Spec.Kind).Should(Equal(KindName))
-			Expect(createdComponent.Spec.Name).Should(Equal(Name))
 			Expect(createdComponent.Spec.Run.MarshalJSON()).Should((Equal(json)))
 		})
 	})

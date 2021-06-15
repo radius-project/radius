@@ -39,10 +39,10 @@ spec:
           spec:
             description: ApplicationSpec defines the desired state of Application
             properties:
-              foo:
-                description: Foo is an example field of Application. Edit application_types.go
-                  to remove/update
-                type: string
+              hierarchy:
+                items:
+                  type: string
+                type: array
             type: object
           status:
             description: ApplicationStatus defines the observed state of Application

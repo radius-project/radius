@@ -31,7 +31,7 @@ type ComponentSpec struct {
 
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
-	Bindings map[string]runtime.RawExtension `json:"bindings,omitempty"`
+	Bindings runtime.RawExtension `json:"bindings,omitempty"`
 
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
@@ -99,8 +99,8 @@ type ComponentStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:categories={"all","radius"}
 //+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.application"
-//+kubebuilder:printcolumn:name="Component",type="string",JSONPath=".spec.name"
+//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.hierarchy[1]"
+//+kubebuilder:printcolumn:name="Component",type="string",JSONPath=".spec.hierarchy[2]"
 //+kubebuilder:printcolumn:name="Kind",type="string",JSONPath=".spec.kind"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
 

@@ -33,10 +33,9 @@ import (
 )
 
 const (
-	CacheKeySpecApplication = "spec.application"
+	CacheKeySpecApplication = "metadata.application"
 	CacheKeyController      = "metadata.controller"
 	AnnotationLocalID       = "radius.dev/local-id"
-	CacheKeyProvidesBinding = "spec.provides"
 )
 
 // ComponentReconciler reconciles a Component object
@@ -49,6 +48,9 @@ type ComponentReconciler struct {
 	Model model.ApplicationModel
 }
 
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="dapr.io",resources=components,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups=applications.radius.dev,resources=components,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=applications.radius.dev,resources=components/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=applications.radius.dev,resources=components/finalizers,verbs=update
@@ -67,16 +69,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	log = log.WithValues(
-		"application", component.Spec.Application,
-		"component", component.Spec.Name,
+		"application", component.Annotations["radius.dev/applications"],
+		"component", component.Annotations["radius.dev/components"],
 		"componentkind", component.Spec.Kind)
 
 	application := &radiusv1alpha1.Application{}
-	key := client.ObjectKey{Namespace: component.Namespace, Name: component.Spec.Application}
+	key := client.ObjectKey{Namespace: component.Namespace, Name: "radius-" + component.Annotations["radius.dev/applications"]}
 	err = r.Get(ctx, key, application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Application is not found
-		r.recorder.Eventf(component, "Normal", "Waiting", "Application %s does not exist", component.Spec.Application)
+		r.recorder.Eventf(component, "Normal", "Waiting", "Application %s does not exist", component.Annotations["radius.dev/applications"])
 		log.Info("application does not exist... waiting")
 
 		// Keep going, we'll turn this into an "empty" render
@@ -151,7 +153,7 @@ func (r *ComponentReconciler) FetchActualResources(ctx context.Context, log logr
 func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, component *radiusv1alpha1.Component) ([]workloads.WorkloadResource, []radiusv1alpha1.ComponentStatusBinding, bool, error) {
 	// If the application hasn't been defined yet, then just produce no output.
 	if application == nil {
-		r.recorder.Eventf(component, "Normal", "Waiting", "Component is waiting for application: %s", component.Spec.Application)
+		r.recorder.Eventf(component, "Normal", "Waiting", "Component is waiting for application: %s", component.Annotations["radius.dev/applications"])
 		return nil, nil, false, nil
 	}
 
@@ -171,8 +173,9 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 	}
 
 	w := workloads.InstantiatedWorkload{
-		Application:   component.Spec.Application,
-		Name:          component.Spec.Name,
+		Application:   component.Annotations["radius.dev/applications"],
+		Name:          component.Annotations["radius.dev/components"],
+		Namespace:     component.Namespace,
 		Workload:      *generic,
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
@@ -194,11 +197,11 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 
 		found := false
 		for _, pp := range providers.Items {
-			if pp.Spec.Application != component.Spec.Application {
+			if pp.Annotations["radius.dev/applications"] != component.Annotations["radius.dev/applications"] {
 				continue
 			}
 
-			if pp.Spec.Name != key.Component {
+			if pp.Annotations["radius.dev/components"] != key.Component {
 				continue
 			}
 
@@ -250,18 +253,18 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 		}
 	}
 
+	bindingStates, err := componentKind.Renderer().AllocateBindings(ctx, w, []workloads.WorkloadResourceProperties{})
+	if err != nil {
+		r.recorder.Eventf(component, "Warning", "Invalid", "Component had errors during rendering: %v'", err)
+		log.Error(err, "failed to render bindings for component")
+		return nil, nil, false, err
+	}
+
 	bindings := []radiusv1alpha1.ComponentStatusBinding{}
-	for name, binding := range generic.Bindings {
+	for name, binding := range bindingStates {
 		kind := binding.Kind
 
-		values, err := componentKind.Renderer().AllocateBindings(ctx, w, []workloads.WorkloadResourceProperties{})
-		if err != nil {
-			r.recorder.Eventf(component, "Warning", "Invalid", "Component had errors during rendering: %v'", err)
-			log.Error(err, "failed to render bindings for component")
-			return nil, nil, false, err
-		}
-
-		b, err := json.Marshal(values)
+		b, err := json.Marshal(binding.Properties)
 		if err != nil {
 			r.recorder.Eventf(component, "Warning", "Invalid", "Component had errors during rendering: %v'", err)
 			log.Error(err, "failed to render bindings for component")
@@ -393,7 +396,7 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.recorder = mgr.GetEventRecorderFor("radius")
 
 	// Index components by application
-	err := mgr.GetFieldIndexer().IndexField(context.Background(), &radiusv1alpha1.Component{}, CacheKeySpecApplication, extractOwnerKey)
+	err := mgr.GetFieldIndexer().IndexField(context.Background(), &radiusv1alpha1.Component{}, CacheKeySpecApplication, extractApplicationKey)
 	if err != nil {
 		return err
 	}
@@ -438,7 +441,7 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func extractApplicationKey(obj client.Object) []string {
 	component := obj.(*radiusv1alpha1.Component)
-	return []string{component.Spec.Application}
+	return []string{component.Annotations["radius.dev/applications"]}
 }
 
 func extractOwnerKey(obj client.Object) []string {

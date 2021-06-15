@@ -2,34 +2,32 @@ apiVersion: applications.radius.dev/v1alpha1
 kind: Component
 metadata:
   name: frontend
+  annotations:
+    radius.dev/applications: frontend-backend
+    radius.dev/components: frontend
 spec:
-  application: frontend-backend
-  name: frontend
   kind: radius.dev/Container@v1alpha1
   run:
     container:
       image: rynowak/frontend:0.5.0-dev
-  dependsOn:
+  bindings:
   - name: backend
     kind: http
-    setEnv: 
-      SERVICE__BACKEND__HOST: host
-      SERVICE__BACKEND__PORT: port
-  provides:
-  - name: frontend
-    kind: http
----
-apiVersion: applications.radius.dev/v1alpha1
-kind: Component
-metadata:
-  name: backend
-spec:
-  application: frontend-backend
-  name: backend
-  kind: radius.dev/Container@v1alpha1
-  run:
-    container:
-      image: rynowak/backend:0.5.0-dev
-  provides:
-  - name: backend
-    kind: http
+    targetPort: 80
+    
+#---
+# apiVersion: applications.radius.dev/v1alpha1
+# kind: Component
+# metadata:
+#   name: backend
+#   annotations:
+#     radius.dev/applications: frontend-backend
+#     radius.dev/components: frontend
+# spec:
+#   kind: radius.dev/Container@v1alpha1
+#   run:
+#     container:
+#       image: rynowak/backend:0.5.0-dev
+#   uses:
+#   - name: backend
+#     kind: http

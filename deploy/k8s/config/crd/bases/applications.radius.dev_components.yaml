@@ -20,10 +20,10 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.application
+    - jsonPath: .spec.hierarchy[1]
       name: Application
       type: string
-    - jsonPath: .spec.name
+    - jsonPath: .spec.hierarchy[2]
       name: Component
       type: string
     - jsonPath: .spec.kind
@@ -52,19 +52,17 @@ spec:
           spec:
             description: ComponentSpec defines the desired state of Component
             properties:
-              application:
-                type: string
               bindings:
-                additionalProperties:
-                  type: object
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               config:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              hierarchy:
+                items:
+                  type: string
+                type: array
               kind:
-                type: string
-              name:
                 type: string
               run:
                 type: object
@@ -80,9 +78,7 @@ spec:
                 type: array
                 x-kubernetes-preserve-unknown-fields: true
             required:
-            - application
             - kind
-            - name
             type: object
           status:
             description: ComponentStatus defines the observed state of Component
