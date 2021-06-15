@@ -79,7 +79,6 @@ func TestAPIs(t *testing.T) {
 		require.NoError(t, err, "failed to start manager")
 	}()
 
-	// TODO EXECUTE TESTS HERE
 	t.Run("component", func(t *testing.T) {
 		const (
 			ApplicationName    = "frontend-backend"
