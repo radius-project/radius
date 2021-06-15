@@ -1,0 +1,72 @@
+domain: radius.dev
+layout:
+- go.kubebuilder.io/v3
+projectName: radius
+repo: github.com/Azure/radius
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: radius.dev
+  group: applications
+  kind: Application
+  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: radius.dev
+  group: applications
+  kind: Component
+  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: radius.dev
+  group: applications
+  kind: Deployment
+  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: radius.dev
+  group: applications
+  kind: Scope
+  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: radius.dev
+  group: applications
+  kind: Template
+  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+version: "3"

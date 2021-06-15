@@ -1,0 +1,24 @@
+# permissions for end users to edit scopes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scope-editor-role
+rules:
+- apiGroups:
+  - applications.radius.dev
+  resources:
+  - scopes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - applications.radius.dev
+  resources:
+  - scopes/status
+  verbs:
+  - get
