@@ -217,7 +217,9 @@ Messages: Cool Message 3
 
 You have completed this tutorial!
 
-Note: If you're done with testing, you can use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
+{{% alert title="Cleanup" color="warning" %}}
+If you're done with testing, you can use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**.
+{{% /alert %}}
 
 ### Bicep file
 
