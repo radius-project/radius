@@ -11,23 +11,7 @@ spec:
     container:
       image: rynowak/frontend:0.5.0-dev
   bindings:
-  - name: backend
+    name: backend
     kind: http
-    targetPort: 80
-    
-#---
-# apiVersion: applications.radius.dev/v1alpha1
-# kind: Component
-# metadata:
-#   name: backend
-#   annotations:
-#     radius.dev/applications: frontend-backend
-#     radius.dev/components: frontend
-# spec:
-#   kind: radius.dev/Container@v1alpha1
-#   run:
-#     container:
-#       image: rynowak/backend:0.5.0-dev
-#   uses:
-#   - name: backend
-#     kind: http
+    values:
+      targetPort: 80

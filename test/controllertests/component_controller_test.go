@@ -12,8 +12,6 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,11 +37,6 @@ var _ = Describe("Component controller", func() {
 			By("By creating a new Component")
 			ctx := context.Background()
 
-			// apiVersion: applications.radius.dev/v1alpha1
-			// kind: Application
-			// metadata:
-			//   name: radius-frontend-backend
-			// spec: {}
 			application := &v1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "applications.radius.dev/v1alpha1",
@@ -54,6 +47,13 @@ var _ = Describe("Component controller", func() {
 					Namespace: ComponentNamespace,
 				},
 			}
+
+			bindings := map[string]interface{}{
+				"kind": "http",
+				"name": "backend",
+			}
+
+			bindingJson, _ := json.Marshal(bindings)
 
 			img := map[string]interface{}{
 				"image": "rynowak/frontend:0.5.0-dev",
@@ -82,7 +82,7 @@ var _ = Describe("Component controller", func() {
 				Spec: v1alpha1.ComponentSpec{
 					Kind:     KindName,
 					Run:      &runtime.RawExtension{Raw: json},
-					Bindings: runtime.RawExtension{},
+					Bindings: runtime.RawExtension{Raw: bindingJson},
 				},
 			}
 			Expect(k8sClient.Create(ctx, component)).Should(Succeed())
@@ -102,6 +102,7 @@ var _ = Describe("Component controller", func() {
 			Expect(createdComponent.Annotations["radius.dev/components"]).Should(Equal(ComponentName))
 			Expect(createdComponent.Spec.Kind).Should(Equal(KindName))
 			Expect(createdComponent.Spec.Run.MarshalJSON()).Should((Equal(json)))
+
 		})
 	})
 })
