@@ -74,20 +74,6 @@ func TestAPIs(t *testing.T) {
 	}).SetupWithManager(mgr)
 	require.NoError(t, err, "failed to initialize deployment reconciler")
 
-	err = (&controllers.ScopeReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Scope"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr)
-	require.NoError(t, err, "failed to initialize scope reconciler")
-
-	err = (&controllers.TemplateReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Template"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr)
-	require.NoError(t, err, "failed to initialize template reconciler")
-
 	go func() {
 		err = mgr.Start(ctrl.SetupSignalHandler())
 		require.NoError(t, err, "failed to start manager")

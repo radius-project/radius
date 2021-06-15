@@ -34,7 +34,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
-
+	//+kubebuilder:scaffold:scheme
 }
 
 func main() {
@@ -54,7 +54,6 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	//+kubebuilder:scaffold:scheme
 	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, controllers.ConvertComponentToInternal)
 	if err != nil {
 		setupLog.Error(err, "could not add conversion func")
@@ -97,22 +96,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Deployment")
 		os.Exit(1)
 	}
-	if err = (&controllers.ScopeReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Scope"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Scope")
-		os.Exit(1)
-	}
-	if err = (&controllers.TemplateReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Template"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Template")
-		os.Exit(1)
-	}
 
 	if os.Getenv("SKIP_WEBHOOKS") != "true" {
 		if err = (&radiusv1alpha1.Application{}).SetupWebhookWithManager(mgr); err != nil {
@@ -123,16 +106,8 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Component")
 			os.Exit(1)
 		}
-		if err = (&radiusv1alpha1.Scope{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Scope")
-			os.Exit(1)
-		}
 		if err = (&radiusv1alpha1.Deployment{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
-			os.Exit(1)
-		}
-		if err = (&radiusv1alpha1.Template{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Template")
 			os.Exit(1)
 		}
 	}
