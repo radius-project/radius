@@ -28,8 +28,8 @@ import (
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	v1 "k8s.io/client-go/1.5/pkg/api/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
