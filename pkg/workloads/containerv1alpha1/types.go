@@ -49,8 +49,6 @@ type HTTPBinding struct {
 func (h HTTPBinding) GetEffectivePort() int {
 	if h.Port != nil {
 		return *h.Port
-	} else if h.TargetPort != nil {
-		return *h.TargetPort
 	} else {
 		return 80
 	}
