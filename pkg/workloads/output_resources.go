@@ -14,7 +14,7 @@ type OutputResource struct {
 	Resource           interface{}
 	Deployed           bool   // TODO: Temporary workaround till some resources are deployed in Render phase
 	LocalID            string // Resources need to be tracked even before actually creating them. Local ID provides a way to track them.
-	Managed            string
+	Managed            bool
 	ResourceKind       string
 	OutputResourceType string
 	OutputResourceInfo interface{}

@@ -68,6 +68,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := workloads.OutputResource{
+			LocalID:      "KeyVault",
 			ResourceKind: workloads.ResourceKindAzureKeyVault,
 			Resource: map[string]string{
 				handlers.ManagedKey: "true",
@@ -87,6 +88,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := workloads.OutputResource{
+			LocalID:      "KeyVault",
 			ResourceKind: workloads.ResourceKindAzureKeyVault,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",

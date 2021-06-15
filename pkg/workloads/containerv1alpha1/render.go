@@ -108,11 +108,17 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	outputResources := []workloads.OutputResource{}
 	value, ok := store.Properties[handlers.KeyVaultURIKey]
 	if !ok {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("failed to read keyvault uri")
 	}
 
 	kvURI, ok := value.(string)
 	if !ok || kvURI == "" {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("failed to read keyvault uri")
 	}
 
@@ -124,10 +130,16 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	g.Authorizer = r.Arm.Auth
 	rg, err := g.Get(ctx, r.Arm.ResourceGroup)
 	if err != nil {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("could not find resource group: %w", err)
 	}
 	mid, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
 	if err != nil {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
@@ -137,23 +149,28 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		ResourceKind:       workloads.ResourceKindAzureUserAssignedManagedIdentity,
 		OutputResourceType: workloads.OutputResourceTypeArm,
 		LocalID:            "UserAssignedManagedIdentity-KV",
-		Managed:            "true",
+		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *mid.ID,
 			ARMResourceType: *mid.Type,
 			APIVersion:      apiversionMsi,
 		},
 	}
-	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
 	kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
 	kvc.Authorizer = r.Arm.Auth
 	if err != nil {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return nil, outputResources, err
 	}
 	kv, err := kvc.Get(ctx, r.Arm.ResourceGroup, kvName)
 	if err != nil {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("unable to find keyvault: %w", err)
 	}
 
@@ -161,6 +178,9 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for secrets and certificates
 	ra, err := roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, mid.PrincipalID.String(), *kv.ID, "Key Vault Secrets User")
 	if err != nil {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", mid.Name, err)
 	}
 	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
@@ -169,19 +189,21 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
 		OutputResourceType: workloads.OutputResourceTypeArm,
 		LocalID:            "RoleAssignment-KVSecretsCerts",
-		Managed:            "true",
+		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *ra.ID,
 			ARMResourceType: *ra.Type,
 			APIVersion:      apiversionRA,
 		},
 	}
-	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
 	// By default grant Key Vault Secrets User role with scope which provides read-only access to the Keyvault for encryption keys
 	ra, err = roleassignment.Create(ctx, r.Arm.Auth, r.Arm.SubscriptionID, r.Arm.ResourceGroup, mid.PrincipalID.String(), *kv.ID, "Key Vault Crypto User")
 	if err != nil {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", mid.Name, err)
 	}
 	res = workloads.OutputResource{
@@ -189,14 +211,13 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
 		OutputResourceType: workloads.OutputResourceTypeArm,
 		LocalID:            "RoleAssignment-KVKeys",
-		Managed:            "true",
+		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *ra.ID,
 			ARMResourceType: *ra.Type,
 			APIVersion:      apiversionRA,
 		},
 	}
-	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
 	log.Printf("Created role assignment for %v to access %v", *mid.ID, *kv.ID)
@@ -220,6 +241,9 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 			// Create a user assigned managed identity and assign it the right permissions to access the KeyVault
 			msi, or, err := r.createManagedIdentityForKeyVault(ctx, binding, w, cw)
 			if err != nil {
+				// Even if the operation fails, return the output resources created so far
+				// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+				// we no longer need to track the output resources on error
 				return AADPodIdentity{}, outputResources, err
 			}
 			outputResources = append(outputResources, or...)
@@ -227,6 +251,9 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 			// Create pod identity
 			podIdentity, err := r.createPodIdentity(ctx, *msi, cw.Name, w.Application)
 			if err != nil {
+				// Even if the operation fails, return the output resources created so far
+				// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+				// we no longer need to track the output resources on error
 				return AADPodIdentity{}, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
 			}
 			res := workloads.OutputResource{
@@ -234,7 +261,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				ResourceKind:       workloads.ResourceKindAzurePodIdentity,
 				OutputResourceType: workloads.OutputResourceTypePodIdentity,
 				LocalID:            "AADPodIdentity",
-				Managed:            "true",
+				Managed:            true,
 				OutputResourceInfo: outputresourceinfo.AADPodIdentity{
 					AKSClusterName: podIdentity.ClusterName,
 					Name:           podIdentity.Name,
@@ -245,7 +272,6 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 					outputresourceinfo.PodIdentityCluster: podIdentity.ClusterName,
 				},
 			}
-			log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 			outputResources = append(outputResources, res)
 
 			log.Printf("Created pod identity %v to bind %v", podIdentity.Name, *msi.ID)
@@ -267,6 +293,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	deployment, or, err := r.makeDeployment(ctx, w, cw)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return or, err
 	}
 	// Append the output resources created during the makeDeployment phase to the final set
@@ -280,6 +308,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	podIdentity, or, err := r.createPodIdentityResource(ctx, w, cw)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return or, fmt.Errorf("unable to add pod identity: %w", err)
 	}
 	if podIdentity.Name != "" {
@@ -295,7 +325,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		ResourceKind:       workloads.ResourceKindKubernetes,
 		OutputResourceType: workloads.OutputResourceTypeKubernetes,
 		LocalID:            "Deployment",
-		Managed:            "true",
+		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.K8sInfo{
 			Kind:       deployment.TypeMeta.Kind,
 			APIVersion: deployment.TypeMeta.APIVersion,
@@ -304,7 +334,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		},
 		Resource: deployment,
 	}
-	log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 	outputResources = append(outputResources, res)
 
 	if service != nil {
@@ -313,7 +342,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			ResourceKind:       workloads.ResourceKindKubernetes,
 			OutputResourceType: workloads.OutputResourceTypeKubernetes,
 			LocalID:            "Service",
-			Managed:            "true",
+			Managed:            true,
 			OutputResourceInfo: outputresourceinfo.K8sInfo{
 				Kind:       deployment.TypeMeta.Kind,
 				APIVersion: deployment.TypeMeta.APIVersion,
@@ -322,10 +351,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 			Resource: service,
 		}
-		log.Printf("Created output resource: %s of output resource type: %s", res.LocalID, res.OutputResourceType)
 		outputResources = append(outputResources, res)
 	}
 
+	log.Printf("Created output resources for workload: %s\n", w.Name)
+	for _, o := range outputResources {
+		log.Printf("LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType)
+	}
 	return outputResources, nil
 }
 
@@ -654,7 +686,7 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		ResourceKind:       workloads.ResourceKindAzureKeyVaultSecret,
 		OutputResourceType: workloads.OutputResourceTypeArm,
 		LocalID:            "KeyVaultSecret",
-		Managed:            "true",
+		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           secretResource.String(),
 			ARMResourceType: SecretsResourceType,

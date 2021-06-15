@@ -88,7 +88,7 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options Put
 		properties[ServiceBusQueueIDKey] = *queue.ID
 	} else {
 		// This is mostly called for the side-effect of verifying that the servicebus queue exists.
-		_, err = handler.GetQueueByID(ctx, properties[ServiceBusQueueIDKey])
+		_, err := handler.GetQueueByID(ctx, properties[ServiceBusQueueIDKey])
 		if err != nil {
 			return nil, err
 		}

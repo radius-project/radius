@@ -152,10 +152,6 @@ func (test *test) DBCreateComponent(applicationName string, componentName string
 		properties.Bindings = map[string]db.ComponentBinding{}
 	}
 
-	if properties.OutputResources == nil {
-		properties.OutputResources = []db.OutputResource{}
-	}
-
 	component := &db.Component{
 		ResourceBase: db.ResourceBase{
 			ID:             componentID.ID,
@@ -723,8 +719,8 @@ func Test_UpdateComponent_Create(t *testing.T) {
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
-			Revision:        rev,
-			OutputResources: []rest.OutputResource{},
+			Revision: rev,
+			// OutputResources: []rest.OutputResource{},
 		},
 	}
 	requireJSON(t, expected, w)

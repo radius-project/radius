@@ -34,6 +34,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return resources, err
 	}
 
@@ -41,17 +43,23 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	found, err := w.Workload.FindTrait(Kind, &trait)
 	if !found || err != nil {
 		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return resources, err
 	}
 
 	if trait.Binding == "" {
 		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return resources, fmt.Errorf("the binding field is required for trait '%s'", Kind)
 	}
 
 	provides, ok := w.Workload.Bindings[trait.Binding]
 	if !ok {
 		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return resources, fmt.Errorf("cannot find the binding '%s' referenced by '%s' trait", trait.Binding, Kind)
 	}
 

@@ -188,8 +188,9 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				errs = append(errs, err)
 				dbOutputResources := []db.OutputResource{}
 				for _, resource := range outputResources {
-					// Record the output resources created so far
-					// TODO: Once there are no more resources created in the render phase, this can go away
+					// Even if the operation fails, return the output resources created so far
+					// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+					// we no longer need to track the output resources on error
 					addDBOutputResource(resource, &dbOutputResources)
 				}
 				action.Definition.Properties.OutputResources = dbOutputResources
@@ -230,6 +231,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				})
 				// Record the output resources created so far
 				addDBOutputResource(resource, &dbOutputResources)
+
 				if err != nil {
 					errs = append(errs, fmt.Errorf("error applying workload resource %v %v: %w", properties, action.ComponentName, err))
 					continue
@@ -410,6 +412,9 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
 	if err != nil {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return resources, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
 

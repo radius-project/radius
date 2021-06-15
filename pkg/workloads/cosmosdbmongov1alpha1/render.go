@@ -107,7 +107,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
 				handlers.CosmosDBDatabaseNameKey: w.Workload.Name,
 			},
-			Managed: "true",
+			Managed: true,
 		}
 	} else {
 		if component.Config.Resource == "" {

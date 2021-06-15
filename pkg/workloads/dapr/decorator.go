@@ -68,6 +68,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return resources, err
 	}
 
@@ -75,6 +77,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	found, err := w.Workload.FindTrait(Kind, &trait)
 	if !found || err != nil {
 		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return resources, err
 	}
 
@@ -88,6 +92,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		o, ok := res.Resource.(runtime.Object)
 		if !ok {
 			// Even if the operation fails, return the output resources created so far
+			// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+			// we no longer need to track the output resources on error
 			return resources, errors.New("Found kubernetes resource with non-Kubernetes paylod")
 		}
 
