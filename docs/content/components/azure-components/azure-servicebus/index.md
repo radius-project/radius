@@ -217,17 +217,9 @@ Messages: Cool Message 3
 
 You have completed this tutorial!
 
-### Cleanup (optional)
-
-When you are ready to clean up and delete the resources you can delete your environment. This will delete:
-
-- The resource group
-- Your Radius environment
-- The application you just deployed
-
-```sh
-rad env delete -e azure --yes
-```
+{{% alert title="Cleanup" color="warning" %}}
+If you're done with testing, you can use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**.
+{{% /alert %}}
 
 ### Bicep file
 

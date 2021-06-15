@@ -11,6 +11,7 @@ In this step you will learn how to add a secret store and connect to it from the
 We'll discuss template.bicep changes and then provide the full, updated file before deployment. 
 
 ## Add kv component
+
 A `kv` secret store component is used to specify a few properties about the KeyVault: 
 
 - **kind:** `azure.com/KeyVault@v1alpha1` represents an Azure Key Vault. 
@@ -208,12 +209,15 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 
+You have completed this tutorial!
+
+{{% alert title="Cleanup" color="warning" %}}
+If you're done with testing, you can use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**.
+{{% /alert %}}
+
 ## Next steps
 
 - To view the website application code used in this tutorial, download the [zipped application code](/tutorial/webapp.zip).
-- If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
-- If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
-
-You have completed this tutorial!
+- If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page.
 
 {{< button text="Try another tutorial" page="tutorial" >}}
