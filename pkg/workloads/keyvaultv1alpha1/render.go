@@ -8,6 +8,7 @@ package keyvaultv1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -68,8 +69,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := workloads.OutputResource{
-			LocalID:      "KeyVault",
-			ResourceKind: workloads.ResourceKindAzureKeyVault,
+			LocalID:            "KeyVault",
+			ResourceKind:       workloads.ResourceKindAzureKeyVault,
+			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            true,
+			Deployed:           false,
 			Resource: map[string]string{
 				handlers.ManagedKey: "true",
 			},
@@ -88,8 +92,16 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := workloads.OutputResource{
-			LocalID:      "KeyVault",
-			ResourceKind: workloads.ResourceKindAzureKeyVault,
+			LocalID:            "KeyVault",
+			ResourceKind:       workloads.ResourceKindAzureKeyVault,
+			OutputResourceType: workloads.OutputResourceTypeArm,
+			Deployed:           true,
+			Managed:            false,
+			OutputResourceInfo: workloads.ARMInfo{
+				ResourceID:   vaultID.ID,
+				ResourceType: KeyVaultResourceType.Type(),
+				APIVersion:   strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " profiles")[0],
+			},
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 

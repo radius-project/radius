@@ -147,7 +147,7 @@ func (d radrpDB) UpdateApplication(ctx context.Context, app *Application) (bool,
 	}
 
 	log.Printf("Updated Application with _id: %s - %+v", app.ResourceBase.ID, result)
-	return result.UpsertedCount > 1, nil
+	return result.UpsertedCount > 1 || result.ModifiedCount > 1, nil
 }
 
 func (d radrpDB) DeleteApplicationByID(ctx context.Context, id resources.ApplicationID) error {
