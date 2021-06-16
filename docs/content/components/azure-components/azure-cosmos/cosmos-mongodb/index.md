@@ -51,7 +51,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 ## Using a user-managed CosmosDB
 
-When `properties.config.managed` is set to `false` or ommitted, you can explicitly specify an existing Azure `resource` which you manage. This allows you to connect your Radius Components to existing databases. When you delete your application Radius will not change or delete your existing database.
+When `properties.config.managed` is set to `false` or omitted, you can explicitly specify an existing Azure `resource` which you manage. This allows you to connect your Radius Components to existing databases. When you delete your application Radius will not change or delete your existing database.
 
 In this example `Microsoft.DocumentDB/databaseAccounts` and `mongodbDatabases` resources are defined in Bicep, and then referenced in a Radius application. Note you can also use Bicep's [existing functionality](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?tabs=azure-powershell#reference-existing-resources) to reference a resource that has previously been deployed.
 

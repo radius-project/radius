@@ -210,7 +210,7 @@ A Binding may be **depended-upon** by multiple Components (via `uses`), which ma
 
 #### Using computed values in a binding 
 
-In addition to expressing a *logical* relationship, a Binding may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a binding can specify how wire up a *computed value* to an application concern. These items are computed when the related resource is deployed. 
+In addition to expressing a *logical* relationship, a Binding may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a binding can specify how wire up a *computed value* to an application concern. 
 
 For example, in the Radius application below, the `webapp` Component `uses` a Binding from the Component named `db`. For that Binding, the environment variable `DBCONNECTION` is being set to the `db` Component's MongoDB connection string. 
 

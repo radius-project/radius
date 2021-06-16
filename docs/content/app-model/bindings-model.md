@@ -22,7 +22,7 @@ Only runnable [components]({{< ref components >}}) (e.g. containers) can consume
 
 ## Providing bindings
 
-A component may have one or more bindings which it provides to other runnable (*compute*) components. They can be defined:
+A component may provide one or more bindings to other runnable (*compute*) components. They can be defined:
 
 - Within the component definition implementation, where the Component offers the binding without any configuration that is "always on"
 - Within the app model declaration, where the Component offers the binding once a user adds it to the configuration and "defines" it
@@ -69,9 +69,9 @@ resource frontend 'Components' = {
 
 You can learn about what default bindings are provided inside the respective [component docs]({{< ref components >}}).
 
-### Defined bindings
+### User-defined bindings
 
-The `properties.bindings` configuration defines additional bindings which your [Component]({{< ref components-model.md >}}) offers. These bindings can range from HTTP ports being opened on a container to an API that a database resource offers.
+The `properties.bindings` section can define additional bindings which your [Component]({{< ref components-model.md >}}) offers. These bindings can range from HTTP ports being opened on a container to an API that a database resource offers.
 
 Different [binding types]({{< ref bindings-model.md >}}) may also have additional properties and configuration which can be set as part of the component binding definition.
 
