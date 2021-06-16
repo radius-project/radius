@@ -224,10 +224,10 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {...}
       bindings: {
-          web: {
-              kind: 'http'
-              targetPort: 80
-          }
+        web: {
+          kind: 'http'
+          targetPort: 80
+        }
       }
 
       uses: [
