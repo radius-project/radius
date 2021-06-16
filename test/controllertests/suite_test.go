@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -95,6 +97,7 @@ func TestAPIs(t *testing.T) {
 			Namespace       = "default"
 			JobName         = "test-job"
 			KindName        = "radius.dev/Container@v1alpha1"
+			attempts        = 40
 		)
 		ctx := context.Background()
 
@@ -130,14 +133,10 @@ func TestAPIs(t *testing.T) {
 		require.Equal(t, ApplicationName, createdApplication.Name)
 		require.Equal(t, hierarchy, createdApplication.Spec.Hierarchy)
 
-		// Test components
-		// values := map[string]interface{}{
-		// "targetPort": "80",
-		// }
-
 		bindings := map[string]components.GenericBinding{
-			"kind": "http",
-			"name": "backend",
+			"a": {
+				Kind: "http",
+			},
 		}
 
 		bindingJson, _ := json.Marshal(bindings)
@@ -217,14 +216,40 @@ func TestAPIs(t *testing.T) {
 		// 	results = append(results, &obj)
 		// }
 
-		time.Sleep(time.Second * 180)
-		// deployments := &appsv1.DeploymentList{}
-		// err = k8sClient.List(ctx, deployments, client.InNamespace(component.Namespace))
+		// Test Deployments
+		deployments := &appsv1.DeploymentList{}
+		for i := 0; ; i++ {
+			err = k8sClient.List(ctx, deployments, client.InNamespace(component.Namespace))
 
-		// // Test Deployments
-		// require.Len(t, deployments.Items, 1, "More than one deployment present")
+			if len(deployments.Items) > 0 {
+				break
+			}
 
-		// Test Pods
+			if i >= attempts {
+				require.NoError(t, err, "could not get deployments from k8s")
+			}
+			time.Sleep(1000)
+		}
+
+		deployment := deployments.Items[0]
+		require.Equal(t, ComponentName, deployment.Name)
+
+		services := &corev1.ServiceList{}
+		for i := 0; ; i++ {
+			err = k8sClient.List(ctx, services, client.InNamespace(component.Namespace))
+
+			if len(services.Items) == 1 {
+				break
+			}
+
+			if i >= attempts {
+				require.NoError(t, err, "could not get services from k8s")
+			}
+			time.Sleep(1000)
+		}
+
+		service := services.Items[0]
+		require.Equal(t, ComponentName, service.Name)
 	})
 
 	err = testEnv.Stop()
