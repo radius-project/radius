@@ -37,20 +37,12 @@ func GetArmConfig() (ArmConfig, error) {
 
 	subscriptionID := os.Getenv("ARM_SUBSCRIPTION_ID")
 	if subscriptionID == "" {
-		subscriptionID = os.Getenv("K8S_SUBSCRIPTION_ID")
-	}
-
-	if subscriptionID == "" {
-		return ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID or K8S_SUBSCRIPTION_ID is missing")
+		return ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID is missing")
 	}
 
 	resourceGroup := os.Getenv("ARM_RESOURCE_GROUP")
 	if resourceGroup == "" {
-		resourceGroup = os.Getenv("K8S_RESOURCE_GROUP")
-	}
-
-	if resourceGroup == "" {
-		return ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP or K8S_RESOURCE_GROUP is missing")
+		return ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
 	}
 
 	log.Printf("Using SubscriptionId = '%v' and Resource Group = '%v'", subscriptionID, resourceGroup)

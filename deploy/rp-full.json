@@ -1,10 +1,9 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-    "contentVersion": "1.0.0.1",
+    "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
     "parameters": {
         "location": {
             "type": "string",
-            "defaultValue": "[resourceGroup().location]",
             "metadata": {
                 "description": "Location for all resources."
             }
@@ -14,6 +13,18 @@
             "defaultValue": "edge",
             "metadata": {
                 "description": "channel to use for RP image and deployment script"
+            }
+        },
+        "resourceGroup": {
+            "type": "string",
+            "metadata": {
+                "description": "resource group where applications will be deployed"
+            }
+        },
+        "controlPlaneResourceGroup": {
+            "type": "string",
+            "metadata": {
+                "description": "resource group where Radius control-plane will be deployed"
             }
         },
         "_scriptUri": {
@@ -32,14 +43,14 @@
         },
         "siteName": {
             "type": "string",
-            "defaultValue": "[concat('radius-rp-', uniqueString(resourceGroup().id))]",
+            "defaultValue": "[concat('radius-rp-', uniqueString(parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of your Web Site."
             }
         },
         "accountName": {
             "type": "string",
-            "defaultValue": "[concat('radius-rp-', uniquestring(resourceGroup().id))]",
+            "defaultValue": "[concat('radius-rp-', uniquestring(parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The unique name of the cosmos db account."
             }
@@ -53,7 +64,7 @@
         },
         "clusterName": {
             "type": "string",
-            "defaultValue": "[concat('radius-aks-', uniqueString(resourceGroup().id))]",
+            "defaultValue": "[concat('radius-aks-', uniqueString(parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of the Managed Cluster resource."
             }
@@ -72,75 +83,9 @@
                 "description": "The name of the ACR container registry"
             }
         },
-        "sku": {
-            "type": "string",
-            "allowedValues": [
-                "B1",
-                "B2",
-                "B3",
-                "S1",
-                "S2",
-                "S3",
-                "P1",
-                "P2",
-                "P3",
-                "P4"
-            ],
-            "defaultValue": "B1",
-            "metadata": {
-                "description": "The pricing tier for the hosting plan."
-            }
-        },
-        "workerSize": {
-            "type": "string",
-            "allowedValues": [
-                "0",
-                "1",
-                "2"
-            ],
-            "defaultValue": "0",
-            "metadata": {
-                "description": "The instance size of the hosting plan (small, medium, or large)."
-            }
-        },
-        "osDiskSizeGB": {
-            "type": "int",
-            "defaultValue": 0,
-            "metadata": {
-                "description": "Disk size (in GB) to provision for each of the agent pool nodes. This value ranges from 0 to 1023. Specifying 0 will apply the default disk size for that agentVMSize."
-            },
-            "minValue": 0,
-            "maxValue": 1023
-        },
-        "agentCount": {
-            "type": "int",
-            "defaultValue": 1,
-            "metadata": {
-                "description": "The number of nodes for the cluster."
-            },
-            "minValue": 1,
-            "maxValue": 50
-        },
-        "agentVMSize": {
-            "type": "string",
-            "defaultValue": "Standard_B2ms",
-            "metadata": {
-                "description": "The size of the Virtual Machine."
-            }
-        },
-        "osType": {
-            "type": "string",
-            "defaultValue": "Linux",
-            "allowedValues": [
-                "Linux"
-            ],
-            "metadata": {
-                "description": "The type of operating system."
-            }
-        },
         "deploymentScriptIdentityName": {
             "type": "string",
-            "defaultValue": "[concat('radius-deployment-id-', uniqueString(resourceGroup().id))]",
+            "defaultValue": "[concat('radius-deployment-id-', uniqueString(parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The identity name to use for the deployment script."
             }
@@ -156,296 +101,498 @@
         }
     },
     "variables": {
-        "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
-        "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), subscription().subscriptionId)]",
-        "registrypullroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
-        "registrypullroledefinitionname": "[guid(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), subscription().subscriptionId)]",
-        "registrypullroledefinitionfullname": "[concat(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), '/Microsoft.Authorization/', variables('registrypullroledefinitionname'))]",
-        "contributorRole": "b24988ac-6180-42a0-ab88-20f7382dd24c",
-        "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
-        "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
-        "acrPullRole": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
-        "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
-        "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
-        "rpRoleDefinitionName": "[guid(parameters('siteName'), subscription().subscriptionId)]",
-        "deploymentRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
-        "deploymentRoleDefinitionName": "[guid(parameters('deploymentScriptIdentityName'), subscription().subscriptionId)]"
+        "controlPlaneDeploymentName": "[concat('rad-control-plane-', guid(parameters('resourceGroup')))]",
+        "rpDeploymentName": "[concat('rad-rp-', guid(parameters('resourceGroup')))]"
     },
+
+    // On overall structure:
+    //
+    // We deploy two resource groups for each radius environment.
+    // - a "control plane" group
+    // - a "RP" group
+    //
+    // The "control plane" group contains all the supporting infrastructure for Radius. The "RP" group contains the Custom Resource Provider, and this
+    // is where Radius types like Applications are defined - this is also where application resources like databases are created.
+    //
+    // We do this in a series of 6 steps
+    //
+    // - Create "control plane" group
+    // - Create "RP" group
+    // - Deploy Radius control plane to control plane group with a nested deployment
+    // - Deploy Custom RP to RP group with a nested deployment
+    // 
+    // We're following this pattern: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-to-subscription?tabs=azure-cli#create-resource-group-and-resources
+    //
+
     "resources": [
         {
-            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-            "name": "[parameters('deploymentScriptIdentityName')]",
-            "apiVersion": "2018-11-30",
-            "location": "[resourceGroup().location]",
-            "tags": "[parameters('resourceTags')]"
-        },
-        {
-            "type": "Microsoft.Authorization/roleAssignments",
-            "apiVersion": "2019-04-01-preview",
-            "name": "[variables('deploymentRoleDefinitionName')]",
-            "tags": "[parameters('resourceTags')]",
-            "dependsOn": [
-                "[parameters('deploymentScriptIdentityName')]"
-            ],
-            "properties": {
-                "roleDefinitionId": "[variables('deploymentRoleDefinitionId')]",
-                "principalId": "[reference(parameters('deploymentScriptIdentityName')).principalId]",
-                "scope": "[resourceGroup().id]",
-                "principalType": "ServicePrincipal"
-            }
-        },
-        {
-            "type": "Microsoft.DocumentDB/databaseAccounts",
-            "name": "[parameters('accountName')]",
-            "apiVersion": "2020-03-01",
-            "location": "[parameters('location')]",
-            "tags": "[parameters('resourceTags')]",
-            "kind": "MongoDB",
-            "properties": {
-                "locations": [
-                    {
-                        "locationName": "[parameters('location')]",
-                        "failoverPriority": 0,
-                        "isZoneRedundant": false
-                    }
-                ],
-                "databaseAccountOfferType": "Standard",
-                "apiProperties": {
-                    "serverVersion": "3.6"
-                }
-            }
-        },
-        {
-            "type": "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
-            "name": "[concat(parameters('accountName'), '/', parameters('databaseName'))]",
-            "apiVersion": "2020-03-01",
-            "tags": "[parameters('resourceTags')]",
-            "dependsOn": [ "[resourceId('Microsoft.DocumentDB/databaseAccounts/', parameters('accountName'))]" ],
-            "properties": {
-                "resource": {
-                    "id": "[parameters('databaseName')]"
-                },
-                "options": { "throughput": "400" }
-            }
-        },
-        {
-            "type": "Microsoft.DocumentDb/databaseAccounts/mongodbDatabases/collections",
-            "name": "[concat(parameters('accountName'), '/', parameters('databaseName'), '/', 'applications')]",
-            "apiVersion": "2020-03-01",
-            "tags": "[parameters('resourceTags')]",
-            "dependsOn": [ "[resourceId('Microsoft.DocumentDB/databaseAccounts/mongodbDatabases', parameters('accountName'), parameters('databaseName'))]" ],
-            "properties": {
-                "resource": {
-                    "id": "applications",
-                    "shardKey": { "subscriptionId": "Hash" },
-                    "indexes": [],
-                    "options": {
-                        "If-Match": "<ETag>"
-                    }
-                },
-                "options": {}
-            }
-        },
-        {
-            "apiVersion": "2020-11-01",
-            "type": "Microsoft.ContainerService/managedClusters",
-            "location": "[parameters('location')]",
-            "name": "[parameters('clusterName')]",
-            "tags": "[parameters('resourceTags')]",
-            "identity": {
-                "type": "SystemAssigned"
-            },
-            "properties": {
-                "dnsPrefix": "[parameters('clusterName')]",
-                "agentPoolProfiles": [
-                    {
-                        "name": "agentpool",
-                        "osDiskSizeGB": "[parameters('osDiskSizeGB')]",
-                        "count": "[parameters('agentCount')]",
-                        "vmSize": "[parameters('agentVMSize')]",
-                        "osType": "[parameters('osType')]",
-                        "storageProfile": "ManagedDisks",
-                        "mode": "System"
-                    }
-                ],
-                "enableRBAC": true,
-                "podIdentityProfile": {
-                    "enabled": true
-                },
-                "networkProfile": {
-                    "networkPlugin": "azure"
-                }
-            }
-        },
-        {
-          "type": "Microsoft.Authorization/roleAssignments",
-          "apiVersion": "2019-04-01-preview",
-          "name": "[variables('clusterIdentityRoleDefinitionName')]",
-          "tags": "[parameters('resourceTags')]",
-          "dependsOn": [
-            "[concat('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
-          ],
-          "properties": {
-            "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-11-01', 'full').identity.principalId]",
-            "principalType": "ServicePrincipal",
-            "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]",
-            "scope": "[resourceGroup().id]"
-          }
-        },
-        {
-            "condition": "[not(equals(parameters('registryId'), ''))]",
-            "type": "Microsoft.ContainerRegistry/registries/providers/roleAssignments",
-            "apiVersion": "2017-05-01",
-            "name": "[variables('registrypullroledefinitionfullname')]",
-            "tags": "[parameters('resourceTags')]",
-            "dependsOn": [
-                "[concat('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
-            ],
-            "properties": {
-                "principalId": "[reference(parameters('clusterName'), '2020-11-01').identityProfile.kubeletidentity.objectId]",
-                "principalType": "ServicePrincipal",
-                "roleDefinitionId": "[variables('registrypullroledefinitionid')]"
-            }
-        },
-        {
-            "type": "Microsoft.Resources/deploymentScripts",
+            "type": "Microsoft.Resources/resourceGroups",
             "apiVersion": "2020-10-01",
-            "name": "deploy-radius-runtime",
-            "location": "[resourceGroup().location]",
-            "tags": "[parameters('resourceTags')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
-                "[resourceId('Microsoft.Authorization/roleAssignments', variables('deploymentRoleDefinitionName'))]"
-            ],
-            "kind": "AzureCLI",
-            "identity": {
-                "type": "userAssigned",
-                "userAssignedIdentities": {
-                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName'))]": {}
-                }
-            },
-            "properties": {
-                "forceUpdateTag": 1,
-                "azCliVersion": "2.0.80",
-                "arguments": "[concat('\"', resourceGroup().name, '\" \"', parameters('clusterName'), '\"')]",
-                "primaryScriptUri": "[parameters('_scriptUri')]",
-                "supportingScriptUris": [],
-                "timeout": "PT30M",
-                "cleanupPreference": "OnSuccess",
-                "retentionInterval": "P1D"
-            }
+            "name": "[parameters('resourceGroup')]",
+            "location": "[parameters('location')]"
         },
         {
-            "type": "Microsoft.Web/serverfarms",
-            "apiVersion": "2018-02-01",
-            "name": "[variables('hostingPlanName')]",
-            "location": "[parameters('location')]",
-            "tags": "[parameters('resourceTags')]",
-            "sku": {
-                "name": "[parameters('sku')]",
-                "capacity": "[parameters('workerSize')]"
-            },
-            "kind": "linux",
-            "properties": {
-                "name": "[variables('hostingPlanName')]",
-                "reserved": true
-            }
+            "type": "Microsoft.Resources/resourceGroups",
+            "apiVersion": "2020-10-01",
+            "name": "[parameters('controlPlaneResourceGroup')]",
+            "location": "[parameters('location')]"
         },
         {
-            "type": "Microsoft.Web/sites",
-            "apiVersion": "2020-06-01",
-            "name": "[parameters('siteName')]",
-            "location": "[parameters('location')]",
-            "tags": "[parameters('resourceTags')]",
-            "identity": {
-                "type": "SystemAssigned"
-            },
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "name": "[variables('controlPlaneDeploymentName')]",
+            "resourceGroup": "[parameters('controlPlaneResourceGroup')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-                "[resourceId('Microsoft.DocumentDB/databaseAccounts/mongodbDatabases', parameters('accountName'), parameters('databaseName'))]",
-                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
-                "[resourceId('Microsoft.Resources/deploymentScripts', 'deploy-radius-runtime')]"
+                "[resourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroup'))]",
+                "[resourceId('Microsoft.Resources/resourceGroups', parameters('controlPlaneResourceGroup'))]"
             ],
-            "kind": "app,linux,container",
             "properties": {
-                "serverFarmId": "[variables('hostingPlanName')]",
-                "clientCertEnabled": true,
-                "clientCertMode": "Optional",
-                "siteConfig": {
-                    "linuxFxVersion": "[concat('DOCKER|', parameters('image'))]",
-                    "appSettings": [
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "Inner"
+                },
+                "parameters": {
+                    "_scriptUri": {
+                        "value": "[parameters('_scriptUri')]"
+                    },
+                    "accountName": {
+                        "value": "[parameters('accountName')]"
+                    },
+                    "clusterName": {
+                        "value": "[parameters('clusterName')]"
+                    },
+                    "controlPlaneResourceGroup": {
+                        "value": "[parameters('controlPlaneResourceGroup')]"
+                    },
+                    "databaseName": {
+                        "value": "[parameters('databaseName')]"
+                    },
+                    "deploymentScriptIdentityName": {
+                        "value": "[parameters('deploymentScriptIdentityName')]"
+                    },
+                    "image": {
+                        "value": "[parameters('image')]"
+                    },
+                    "registryId": {
+                        "value": "[parameters('registryId')]"
+                    },
+                    "registryName": {
+                        "value": "[parameters('registryName')]"
+                    },
+                    "resourceGroup": {
+                        "value": "[parameters('resourceGroup')]"
+                    },
+                    "resourceTags": {
+                        "value": "[parameters('resourceTags')]"
+                    },
+                    "siteName": {
+                        "value": "[parameters('siteName')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "_scriptUri": {
+                            "type": "string"
+                        },
+                        "accountName": {
+                            "type": "string"
+                        },
+                        "clusterName": {
+                            "type": "string"
+                        },
+                        "controlPlaneResourceGroup": {
+                            "type": "string"
+                        },
+                        "databaseName": {
+                            "type": "string"
+                        },
+                        "deploymentScriptIdentityName": {
+                            "type": "string"
+                        },
+                        "image": {
+                            "type": "string"
+                        },
+                        "registryId": {
+                            "type": "string"
+                        },
+                        "registryName": {
+                            "type": "string"
+                        },
+                        "resourceGroup": {
+                            "type": "string"
+                        },
+                        "resourceTags": {
+                            "type": "object"
+                        },
+                        "siteName": {
+                            "type": "string"
+                        }
+                    },
+                    "variables": {
+                        "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
+                        "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), subscription().subscriptionId)]",
+                        "registrypullroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
+                        "registrypullroledefinitionname": "[guid(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), subscription().subscriptionId)]",
+                        "registrypullroledefinitionfullname": "[concat(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), '/Microsoft.Authorization/', variables('registrypullroledefinitionname'))]",
+                        "contributorRole": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+                        "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
+                        "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
+                        "acrPullRole": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
+                        "deploymentRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
+                        "deploymentRoleDefinitionName": "[guid(parameters('deploymentScriptIdentityName'), subscription().subscriptionId)]",
+
+                        // The RP is designated as the Owner of both the Control Plane and RP groups.
+                        "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+                        "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
+                        "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), parameters('controlPlaneResourceGroup'), subscription().subscriptionId)]"
+                    },
+                    "resources": [
                         {
-                            "name": "MONGODB_CONNECTION_STRING",
-                            "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDb/databaseAccounts', parameters('accountName')), '2020-04-01').connectionStrings[0].connectionString]"
+                            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+                            "name": "[parameters('deploymentScriptIdentityName')]",
+                            "apiVersion": "2018-11-30",
+                            "location": "[resourceGroup().location]",
+                            "tags": "[parameters('resourceTags')]"
                         },
                         {
-                            "name": "MONGODB_DATABASE",
-                            "value": "[parameters('databaseName')]"
+                            "type": "Microsoft.Authorization/roleAssignments",
+                            "apiVersion": "2017-09-01",
+                            "name": "[variables('deploymentRoleDefinitionName')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "dependsOn": [
+                                "[parameters('deploymentScriptIdentityName')]"
+                            ],
+                            "properties": {
+                                "roleDefinitionId": "[variables('deploymentRoleDefinitionId')]",
+                                "principalId": "[reference(parameters('deploymentScriptIdentityName')).principalId]",
+                                "scope": "[resourceGroup().id]",
+                                "principalType": "ServicePrincipal"
+                            }
                         },
                         {
-                            "name": "K8S_CLUSTER_NAME",
-                            "value": "[parameters('clusterName')]"
+                            "type": "Microsoft.DocumentDB/databaseAccounts",
+                            "name": "[parameters('accountName')]",
+                            "apiVersion": "2020-03-01",
+                            "location": "[resourceGroup().location]",
+                            "tags": "[parameters('resourceTags')]",
+                            "kind": "MongoDB",
+                            "properties": {
+                                "locations": [
+                                    {
+                                        "locationName": "[resourceGroup().location]",
+                                        "failoverPriority": 0,
+                                        "isZoneRedundant": false
+                                    }
+                                ],
+                                "databaseAccountOfferType": "Standard",
+                                "apiProperties": {
+                                    "serverVersion": "3.6"
+                                }
+                            }
                         },
                         {
-                            "name": "K8S_RESOURCE_GROUP",
-                            "value": "[resourceGroup().name]"
+                            "type": "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+                            "name": "[concat(parameters('accountName'), '/', parameters('databaseName'))]",
+                            "apiVersion": "2020-03-01",
+                            "tags": "[parameters('resourceTags')]",
+                            "dependsOn": [ "[resourceId('Microsoft.DocumentDB/databaseAccounts/', parameters('accountName'))]" ],
+                            "properties": {
+                                "resource": {
+                                    "id": "[parameters('databaseName')]"
+                                },
+                                "options": { "throughput": "400" }
+                            }
                         },
                         {
-                            "name": "K8S_SUBSCRIPTION_ID",
-                            "value": "[subscription().subscriptionId]"
+                            "type": "Microsoft.DocumentDb/databaseAccounts/mongodbDatabases/collections",
+                            "name": "[concat(parameters('accountName'), '/', parameters('databaseName'), '/', 'applications')]",
+                            "apiVersion": "2020-03-01",
+                            "tags": "[parameters('resourceTags')]",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.DocumentDB/databaseAccounts/mongodbDatabases', parameters('accountName'), parameters('databaseName'))]"
+                            ],
+                            "properties": {
+                                "resource": {
+                                    "id": "applications",
+                                    "shardKey": { "subscriptionId": "Hash" },
+                                    "indexes": [],
+                                    "options": {
+                                        "If-Match": "<ETag>"
+                                    }
+                                },
+                                "options": {}
+                            }
+                        },
+                        {
+                            "apiVersion": "2020-11-01",
+                            "type": "Microsoft.ContainerService/managedClusters",
+                            "location": "[resourceGroup().location]",
+                            "name": "[parameters('clusterName')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "identity": {
+                                "type": "SystemAssigned"
+                            },
+                            "properties": {
+                                "dnsPrefix": "[parameters('clusterName')]",
+                                "agentPoolProfiles": [
+                                    {
+                                        "name": "agentpool",
+                                        "count": 1,
+                                        "osDiskSizeGB": 0,
+                                        "vmSize": "Standard_B2ms",
+                                        "storageProfile": "ManagedDisks",
+                                        "mode": "System"
+                                    }
+                                ],
+                                "enableRBAC": true,
+                                "podIdentityProfile": {
+                                    "enabled": true
+                                },
+                                "networkProfile": {
+                                    "networkPlugin": "azure"
+                                }
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Authorization/roleAssignments",
+                            "apiVersion": "2017-09-01",
+                            "name": "[variables('clusterIdentityRoleDefinitionName')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
+                            ],
+                            "properties": {
+                                "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-11-01', 'full').identity.principalId]",
+                                "principalType": "ServicePrincipal",
+                                "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]",
+                                "scope": "[resourceGroup().id]"
+                            }
+                        },
+                        {
+                            "condition": "[not(equals(parameters('registryId'), ''))]",
+                            "type": "Microsoft.ContainerRegistry/registries/providers/roleAssignments",
+                            "apiVersion": "2017-05-01",
+                            "name": "[variables('registrypullroledefinitionfullname')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
+                            ],
+                            "properties": {
+                                "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-11-01').identityProfile.kubeletidentity.objectId]",
+                                "principalType": "ServicePrincipal",
+                                "roleDefinitionId": "[variables('registrypullroledefinitionid')]"
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Resources/deploymentScripts",
+                            "apiVersion": "2020-10-01",
+                            "name": "deploy-radius-runtime",
+                            "location": "[resourceGroup().location]",
+                            "tags": "[parameters('resourceTags')]",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
+                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('deploymentRoleDefinitionName'))]"
+                            ],
+                            "kind": "AzureCLI",
+                            "identity": {
+                                "type": "userAssigned",
+                                "userAssignedIdentities": {
+                                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName'))]": {}
+                                }
+                            },
+                            "properties": {
+                                "forceUpdateTag": 1,
+                                "azCliVersion": "2.0.80",
+                                "arguments": "[concat('\"', resourceGroup().name, '\" \"', parameters('clusterName'), '\"')]",
+                                "primaryScriptUri": "[parameters('_scriptUri')]",
+                                "supportingScriptUris": [],
+                                "timeout": "PT30M",
+                                "cleanupPreference": "OnSuccess",
+                                "retentionInterval": "P1D"
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Web/serverfarms",
+                            "apiVersion": "2018-02-01",
+                            "name": "[variables('hostingPlanName')]",
+                            "location": "[resourceGroup().location]",
+                            "tags": "[parameters('resourceTags')]",
+                            "sku": {
+                                "name": "B1",
+                                "capacity": 0
+                            },
+                            "kind": "linux",
+                            "properties": {
+                                "name": "[variables('hostingPlanName')]",
+                                "reserved": true
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Web/sites",
+                            "apiVersion": "2020-06-01",
+                            "name": "[parameters('siteName')]",
+                            "location": "[resourceGroup().location]",
+                            "tags": "[parameters('resourceTags')]",
+                            "identity": {
+                                "type": "SystemAssigned"
+                            },
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                                "[resourceId('Microsoft.DocumentDB/databaseAccounts/mongodbDatabases', parameters('accountName'), parameters('databaseName'))]",
+                                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
+                                "[resourceId('Microsoft.Resources/deploymentScripts', 'deploy-radius-runtime')]"
+                            ],
+                            "kind": "app,linux,container",
+                            "properties": {
+                                "serverFarmId": "[variables('hostingPlanName')]",
+                                "clientCertEnabled": true,
+                                "clientCertMode": "Optional",
+                                "siteConfig": {
+                                    "linuxFxVersion": "[concat('DOCKER|', parameters('image'))]",
+                                    "appSettings": [
+                                        {
+                                            "name": "MONGODB_CONNECTION_STRING",
+                                            "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDb/databaseAccounts', parameters('accountName')), '2020-04-01').connectionStrings[0].connectionString]"
+                                        },
+                                        {
+                                            "name": "MONGODB_DATABASE",
+                                            "value": "[parameters('databaseName')]"
+                                        },
+                                        {
+                                            "name": "ARM_RESOURCE_GROUP",
+                                            "value": "[parameters('resourceGroup')]"
+                                        },
+                                        {
+                                            "name": "ARM_SUBSCRIPTION_ID",
+                                            "value": "[subscription().subscriptionId]"
+                                        },
+                                        {
+                                            "name": "K8S_CLUSTER_NAME",
+                                            "value": "[parameters('clusterName')]"
+                                        },
+                                        {
+                                            "name": "K8S_RESOURCE_GROUP",
+                                            "value": "[resourceGroup().name]"
+                                        },
+                                        {
+                                            "name": "K8S_SUBSCRIPTION_ID",
+                                            "value": "[subscription().subscriptionId]"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Authorization/roleAssignments",
+                            "apiVersion": "2017-09-01",
+                            "name": "[variables('rpControlPlaneRoleDefinitionName')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
+                            ],
+                            "properties": {
+                                "roleDefinitionId": "[variables('rpRoleDefinitionId')]",
+                                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('siteName')), '2019-08-01', 'full').identity.principalId]",
+                                "principalType": "ServicePrincipal"
+                            }
                         }
                     ]
                 }
             }
         },
         {
-            "type": "Microsoft.Authorization/roleAssignments",
-            "apiVersion": "2019-04-01-preview",
-            "name": "[variables('rpRoleDefinitionName')]",
-            "tags": "[parameters('resourceTags')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "name": "[variables('rpDeploymentName')]",
+            "resourceGroup": "[parameters('resourceGroup')]",
             "dependsOn": [
-                "[concat('Microsoft.Web/sites/', parameters('siteName'))]"
+                "[resourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroup'))]",
+                "[resourceId('Microsoft.Resources/resourceGroups', parameters('controlPlaneResourceGroup'))]",
+                "[variables('controlPlaneDeploymentName')]"
             ],
             "properties": {
-                "roleDefinitionId": "[variables('rpRoleDefinitionId')]",
-                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('siteName')), '2019-08-01', 'full').identity.principalId]",
-                "scope": "[resourceGroup().id]",
-                "principalType": "ServicePrincipal"
-            }
-        },
-        {
-            "apiVersion": "2018-09-01-preview",
-            "type": "Microsoft.CustomProviders/resourceProviders",
-            "name": "radius",
-            "location": "[parameters('location')]",
-            "tags": "[parameters('resourceTags')]",
-            "dependsOn": [
-                "[concat('Microsoft.Web/sites/', parameters('siteName'))]",
-                "[resourceId('Microsoft.Authorization/roleAssignments', variables('rpRoleDefinitionName'))]"
-            ],
-            "properties": {
-                "resourceTypes": [
-                    {
-                        "name": "Applications",
-                        "routingType": "Proxy",
-                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "Inner"
+                },
+                "parameters": {
+                    "siteName": {
+                        "value": "[parameters('siteName')]"
                     },
-                    {
-                        "name": "Applications/Components",
-                        "routingType": "Proxy",
-                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+                    "siteResourceGroup": {
+                        "value": "[parameters('controlPlaneResourceGroup')]"
                     },
-                    {
-                        "name": "Applications/Scopes",
-                        "routingType": "Proxy",
-                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-                    },
-                    {
-                        "name": "Applications/Deployments",
-                        "routingType": "Proxy",
-                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+                    "resourceTags": {
+                        "value": "[parameters('resourceTags')]"
                     }
-                ]
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "variables": {
+                        // The RP is designated as the Owner of both the Control Plane and RP groups.
+                        "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+                        "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
+                        "rpGroupRoleDefinitionName": "[guid(parameters('siteName'), resourceGroup().name, subscription().subscriptionId)]"
+                    },
+                    "parameters": {
+                        "resourceTags": {
+                            "type": "object"
+                        },
+                        "siteName": {
+                            "type": "string"
+                        },
+                        "siteResourceGroup": {
+                            "type": "string"
+                        }
+                    },
+                    "resources": [
+                        {
+                            "apiVersion": "2018-09-01-preview",
+                            "type": "Microsoft.CustomProviders/resourceProviders",
+                            "name": "radius",
+                            "location": "[resourceGroup().location]",
+                            "tags": "[parameters('resourceTags')]",
+                            "properties": {
+                                "resourceTypes": [
+                                    {
+                                        "name": "Applications",
+                                        "routingType": "Proxy",
+                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+                                    },
+                                    {
+                                        "name": "Applications/Components",
+                                        "routingType": "Proxy",
+                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+                                    },
+                                    {
+                                        "name": "Applications/Scopes",
+                                        "routingType": "Proxy",
+                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+                                    },
+                                    {
+                                        "name": "Applications/Deployments",
+                                        "routingType": "Proxy",
+                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Authorization/roleAssignments",
+                            "apiVersion": "2017-09-01",
+                            "name": "[variables('rpGroupRoleDefinitionName')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "properties": {
+                                "roleDefinitionId": "[variables('rpRoleDefinitionId')]",
+                                "principalId": "[reference(concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('siteResourceGroup'), '/providers/Microsoft.Web/sites/', parameters('siteName')), '2019-08-01', 'full').identity.principalId]",
+                                "principalType": "ServicePrincipal"
+                            }
+                        }
+                    ]
+                }
             }
         }
     ],

@@ -348,22 +348,19 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
-	if group == nil {
-		// Resource group specified was not found. Create it
-		err := createResourceGroup(ctx, subscriptionID, resourceGroup, location)
-		if err != nil {
-			return err
-		}
-	} else if !isSupportedLocation(*group.Location) {
+	if group != nil && !isSupportedLocation(*group.Location) {
 		return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
 	}
 
 	params := deploymentParameters{
-		DeploymentTemplate: deploymentTemplate,
-		RegistryID:         registryID,
-		RegistryName:       registryName,
+		ResourceGroup:             resourceGroup,
+		ControlPlaneResourceGroup: azure.GetControlPlaneResourceGroup(resourceGroup),
+		Location:                  location,
+		DeploymentTemplate:        deploymentTemplate,
+		RegistryID:                registryID,
+		RegistryName:              registryName,
 	}
-	deployment, err := deployEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, params)
+	deployment, err := deployEnvironment(ctx, armauth, name, subscriptionID, params)
 	if err != nil {
 		return err
 	}
@@ -398,7 +395,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	mcc.Authorizer = authorizer
 
 	var cluster *containerservice.ManagedCluster
-	for list, err := mcc.ListByResourceGroupComplete(ctx, resourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
+	for list, err := mcc.ListByResourceGroupComplete(ctx, azure.GetControlPlaneResourceGroup(resourceGroup)); list.NotDone(); err = list.NextWithContext(ctx) {
 		if err != nil {
 			return false, "", fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
@@ -411,7 +408,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	}
 
 	if cluster == nil {
-		return false, "", fmt.Errorf("could not find an AKS instance in resource group '%v'", resourceGroup)
+		return false, "", fmt.Errorf("could not find an AKS instance in resource group '%v'", azure.GetControlPlaneResourceGroup(resourceGroup))
 	}
 
 	return true, *cluster.Name, nil
@@ -477,37 +474,15 @@ func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subsc
 	return "", fmt.Errorf("failed to find registry %s in subscription %s. The container registry must be in the same subscription as the environment.", registryName, subscriptionID)
 }
 
-func createResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
-	groupsClient := resources.NewGroupsClient(subscriptionID)
-	a, err := azure.GetResourceManagerEndpointAuthorizer()
-	if err != nil {
-		return err
-	}
-	groupsClient.Authorizer = a
-
-	_, err = groupsClient.CreateOrUpdate(
-		ctx,
-		resourceGroupName,
-		resources.Group{
-			Location: to.StringPtr(location),
-		})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, params deploymentParameters) (resources.DeploymentExtended, error) {
-	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, resourceGroup)
+func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, params deploymentParameters) (resources.DeploymentExtended, error) {
+	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, params.ResourceGroup)
 	if err != nil {
 		return resources.DeploymentExtended{}, err
 	}
 
 	step := logger.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...\n\n"+
 		"New Environment '%v' with Resource Group '%v' will be available at:\n%v\n\n"+
-		"Deployment In Progress...", version.Channel(), name, resourceGroup, envUrl))
+		"Deployment In Progress...", version.Channel(), name, params.ResourceGroup, envUrl))
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
 
@@ -522,6 +497,15 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 	parameters := map[string]interface{}{
 		"channel": map[string]interface{}{
 			"value": version.Channel(),
+		},
+		"resourceGroup": map[string]interface{}{
+			"value": params.ResourceGroup,
+		},
+		"controlPlaneResourceGroup": map[string]interface{}{
+			"value": params.ControlPlaneResourceGroup,
+		},
+		"location": map[string]interface{}{
+			"value": params.Location,
 		},
 		"registryId": map[string]interface{}{
 			"value": params.RegistryID,
@@ -556,7 +540,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 		deploymentProperties.Template = data
 	}
 	deploymentName := fmt.Sprintf("rad-create-environment-%v", uuid.New().String())
-	op, err := dc.CreateOrUpdate(ctx, resourceGroup, deploymentName, resources.Deployment{
+	op, err := dc.CreateOrUpdateAtSubscriptionScope(ctx, deploymentName, resources.Deployment{
 		Properties: deploymentProperties,
 	})
 	if err != nil {
@@ -648,7 +632,10 @@ func isSupportedLocation(name string) bool {
 }
 
 type deploymentParameters struct {
-	DeploymentTemplate string
-	RegistryID         string
-	RegistryName       string
+	ResourceGroup             string
+	ControlPlaneResourceGroup string
+	Location                  string
+	DeploymentTemplate        string
+	RegistryID                string
+	RegistryName              string
 }
