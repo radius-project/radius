@@ -20,5 +20,6 @@ ENV_SETUP=$(GOBIN)/setup-envtest
 test-get-envtools:
 	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 	
+## KUBEBUILDER_ATTACH_CONTROL_PLANE_OUTPUT="true" to enable logs from env setup pieces
 test-controller: generate-k8s-manifests generate-controller test-get-envtools ## Runs controller tests, note arm64 version not available.
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go test ./test/controllertests/... 
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go test ./test/controllertests/...  

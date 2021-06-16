@@ -8,7 +8,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -16,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -24,32 +22,43 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
+	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/stretchr/testify/require"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	//+kubebuilder:scaffold:imports
 )
 
 func TestAPIs(t *testing.T) {
-
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "deploy", "k8s", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 	}
 
+	scheme := runtime.NewScheme()
+
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+
+	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
+
+	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, controllers.ConvertComponentToInternal)
+	require.NoError(t, err, "failed to add conversion func")
+
 	cfg, err := testEnv.Start()
 	require.NoError(t, err, "failed to initialize environment")
 	require.NotNil(t, cfg, "failed to initialize environment")
 
-	err = radiusv1alpha1.AddToScheme(scheme.Scheme)
+	err = radiusv1alpha1.AddToScheme(scheme)
 	require.NoError(t, err, "could not add scheme")
 
 	//+kubebuilder:scaffold:scheme
 
-	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
 	require.NoError(t, err, "failed to initialize k8s client")
 	require.NotNil(t, k8sClient, "failed to initialize k8s client")
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme.Scheme,
+		Scheme: scheme,
 	})
 	require.NoError(t, err, "failed to initialize manager")
 
@@ -81,29 +90,52 @@ func TestAPIs(t *testing.T) {
 
 	t.Run("component", func(t *testing.T) {
 		const (
-			ApplicationName    = "frontend-backend"
-			ComponentName      = "test-component"
-			ComponentNamespace = "default"
-			JobName            = "test-job"
-			KindName           = "radius.dev/Container@v1alpha1"
-			Name               = "frontend"
-			attempts           = 40
-			interval           = time.Millisecond * 250
+			ApplicationName = "radius-frontend-backend"
+			ComponentName   = "test-component"
+			Namespace       = "default"
+			JobName         = "test-job"
+			KindName        = "radius.dev/Container@v1alpha1"
 		)
 		ctx := context.Background()
 
+		hierarchy := []string{ApplicationName, ComponentName}
+
+		// Testing applications
 		application := &v1alpha1.Application{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "applications.radius.dev/v1alpha1",
 				Kind:       "Application",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("radius-%s", ApplicationName),
-				Namespace: ComponentNamespace,
+				Name:      ApplicationName,
+				Namespace: Namespace,
+				Annotations: map[string]string{
+					"radius.dev/applications": "frontend-backend",
+				},
+			},
+			Spec: radiusv1alpha1.ApplicationSpec{
+				Hierarchy: hierarchy,
 			},
 		}
 
-		bindings := map[string]interface{}{
+		err = k8sClient.Create(ctx, application)
+		require.NoError(t, err, "failed to create application")
+
+		applicationLookupKey := types.NamespacedName{Name: ApplicationName, Namespace: Namespace}
+		createdApplication := &v1alpha1.Application{}
+
+		GetK8sObject(t, ctx, k8sClient, applicationLookupKey, createdApplication)
+
+		require.Equal(t, "frontend-backend", createdApplication.Annotations["radius.dev/applications"])
+		require.Equal(t, ApplicationName, createdApplication.Name)
+		require.Equal(t, hierarchy, createdApplication.Spec.Hierarchy)
+
+		// Test components
+		// values := map[string]interface{}{
+		// "targetPort": "80",
+		// }
+
+		bindings := map[string]components.GenericBinding{
 			"kind": "http",
 			"name": "backend",
 		}
@@ -114,11 +146,9 @@ func TestAPIs(t *testing.T) {
 			"image": "rynowak/frontend:0.5.0-dev",
 		}
 
-		err = k8sClient.Create(ctx, application)
-		require.NoError(t, err, "failed to create application")
-
-		run := map[string]interface{}{}
-		run["container"] = img
+		run := map[string]interface{}{
+			"container": img,
+		}
 
 		runJson, _ := json.Marshal(run)
 
@@ -129,43 +159,91 @@ func TestAPIs(t *testing.T) {
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      ComponentName,
-				Namespace: ComponentNamespace,
+				Namespace: Namespace,
 				Annotations: map[string]string{
-					"radius.dev/applications": ApplicationName,
+					"radius.dev/applications": "frontend-backend",
 					"radius.dev/components":   ComponentName,
 				},
 			},
 			Spec: v1alpha1.ComponentSpec{
-				Kind:     KindName,
-				Run:      &runtime.RawExtension{Raw: runJson},
-				Bindings: runtime.RawExtension{Raw: bindingJson},
+				Kind:      KindName,
+				Run:       &runtime.RawExtension{Raw: runJson},
+				Bindings:  runtime.RawExtension{Raw: bindingJson},
+				Hierarchy: hierarchy,
+				// config
+				// uses
+				// traits
 			},
 		}
 
 		err = k8sClient.Create(ctx, component)
 		require.NoError(t, err, "failed to create component")
 
-		componentLookupKey := types.NamespacedName{Name: ComponentName, Namespace: ComponentNamespace}
+		componentLookupKey := types.NamespacedName{Name: ComponentName, Namespace: Namespace}
 		createdComponent := &v1alpha1.Component{}
 
-		for i := 0; ; i++ {
-			err := k8sClient.Get(ctx, componentLookupKey, createdComponent)
-			if err == nil {
-				break
-			}
-			if i >= attempts {
-				require.NoError(t, err, "could not get component from k8s")
-			}
-			time.Sleep(interval)
-		}
+		GetK8sObject(t, ctx, k8sClient, componentLookupKey, createdComponent)
 
 		runActual, _ := createdComponent.Spec.Run.MarshalJSON()
-		require.Equal(t, ApplicationName, createdComponent.Annotations["radius.dev/applications"])
+		require.Equal(t, "frontend-backend", createdComponent.Annotations["radius.dev/applications"])
 		require.Equal(t, ComponentName, createdComponent.Annotations["radius.dev/components"])
 		require.Equal(t, KindName, createdComponent.Spec.Kind)
-		require.Equal(t, runActual, runJson)
+		require.Equal(t, runJson, runActual)
+		require.Equal(t, hierarchy, createdComponent.Spec.Hierarchy)
+
+		// Test Services
+
+		// deployments := &appsv1.DeploymentList{}
+		// err := r.Client.List(ctx, deployments, client.InNamespace(component.Namespace), client.MatchingFields{CacheKeyController: component.Name})
+		// if err != nil {
+		// 	log.Error(err, "failed to retrieve deployments")
+		// 	return nil, err
+		// }
+
+		// for _, d := range (*deployments).Items {
+		// 	obj := d
+		// 	results = append(results, &obj)
+		// }
+
+		// services := &corev1.ServiceList{}
+		// err = r.Client.List(ctx, services, client.InNamespace(component.Namespace), client.MatchingFields{CacheKeyController: component.Name})
+		// if err != nil {
+		// 	log.Error(err, "failed to retrieve services")
+		// 	return nil, err
+		// }
+
+		// for _, s := range (*services).Items {
+		// 	obj := s
+		// 	results = append(results, &obj)
+		// }
+
+		time.Sleep(time.Second * 180)
+		// deployments := &appsv1.DeploymentList{}
+		// err = k8sClient.List(ctx, deployments, client.InNamespace(component.Namespace))
+
+		// // Test Deployments
+		// require.Len(t, deployments.Items, 1, "More than one deployment present")
+
+		// Test Pods
 	})
 
 	err = testEnv.Stop()
 	require.NoError(t, err, "failed to stop test env")
+}
+
+func GetK8sObject(t *testing.T, ctx context.Context, k8sClient client.Client, lookupKey types.NamespacedName, createdApplication client.Object) {
+	const (
+		attempts = 40
+		interval = time.Millisecond * 250
+	)
+	for i := 0; ; i++ {
+		err := k8sClient.Get(ctx, lookupKey, createdApplication)
+		if err == nil {
+			break
+		}
+		if i >= attempts {
+			require.NoError(t, err, "could not get component from k8s")
+		}
+		time.Sleep(interval)
+	}
 }

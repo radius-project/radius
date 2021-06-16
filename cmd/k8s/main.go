@@ -35,6 +35,7 @@ func init() {
 
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+	_ = scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, controllers.ConvertComponentToInternal)
 }
 
 func main() {
@@ -54,11 +55,6 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, controllers.ConvertComponentToInternal)
-	if err != nil {
-		setupLog.Error(err, "could not add conversion func")
-		os.Exit(1)
-	}
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
