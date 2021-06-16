@@ -233,13 +233,13 @@ func TestDeployment(t *testing.T) {
 			},
 		},
 		{
-			Application: "cosmos-container-unmanaged",
+			Application: "cosmos-container-usermanaged",
 			Description: "cosmos-container (user managed)",
-			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/unmanaged.bicep",
+			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/usermanaged.bicep",
 			Pods: validation.PodSet{
 				Namespaces: map[string][]validation.Pod{
-					"cosmos-container-unmanaged": {
-						validation.NewPodForComponent("cosmos-container-unmanaged", "todoapp"),
+					"cosmos-container-usermanaged": {
+						validation.NewPodForComponent("cosmos-container-usermanaged", "todoapp"),
 					},
 				},
 			},
