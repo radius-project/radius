@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "test-location"
+        },
+        "resourceGroup": {
+            "value": "test-rp-group"
+        },
+        "controlPlaneResourceGroup": {
+            "value": "test-control-plane-group"
+        }
+    }
+}

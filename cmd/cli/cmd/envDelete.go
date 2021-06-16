@@ -51,7 +51,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	if !yes {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource group %s with all its resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup))
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and %s with all their resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup, az.ControlPlaneResourceGroup))
 		if err != nil {
 			return err
 		}
@@ -69,6 +69,10 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	if err = deleteResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
+		return err
+	}
+
+	if err = deleteResourceGroup(cmd.Context(), authorizer, az.ControlPlaneResourceGroup, az.SubscriptionID); err != nil {
 		return err
 	}
 
