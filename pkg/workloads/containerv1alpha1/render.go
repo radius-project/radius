@@ -7,6 +7,7 @@ package containerv1alpha1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -31,7 +32,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresourceinfo"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/roleassignment"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -512,33 +512,19 @@ type AADPodIdentity struct {
 }
 
 func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, containerName, podNamespace string) (AADPodIdentity, error) {
+	if r.Arm.K8sSubscriptionID == "" || r.Arm.K8sResourceGroup == "" || r.Arm.K8sClusterName == "" {
+		return AADPodIdentity{}, errors.New("pod identity is not supported because the RP is not configured for AKS")
+	}
 
 	// Get AKS cluster name in current resource group
-	mcc := containerservice.NewManagedClustersClient(r.Arm.SubscriptionID)
+	mcc := containerservice.NewManagedClustersClient(r.Arm.K8sSubscriptionID)
 	mcc.Authorizer = r.Arm.Auth
-
-	var cluster *containerservice.ManagedCluster
-	for list, err := mcc.ListByResourceGroupComplete(ctx, r.Arm.ResourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
-		if err != nil {
-			return AADPodIdentity{}, fmt.Errorf("cannot read AKS clusters: %w", err)
-		}
-
-		if radresources.HasRadiusEnvironmentTag(list.Value().Tags) {
-			temp := list.Value()
-			cluster = &temp
-			break
-		}
-	}
-
-	if cluster == nil {
-		return AADPodIdentity{}, fmt.Errorf("could not find an AKS instance in resource group '%v'", r.Arm.ResourceGroup)
-	}
 
 	// Note: Pod Identity name cannot have camel case
 	podIdentityName := "podid-" + strings.ToLower(containerName)
 
 	// Get the cluster and modify it to add pod identity
-	managedCluster, err := mcc.Get(ctx, r.Arm.ResourceGroup, *cluster.Name)
+	managedCluster, err := mcc.Get(ctx, r.Arm.K8sResourceGroup, r.Arm.K8sClusterName)
 	if err != nil {
 		return AADPodIdentity{}, fmt.Errorf("failed to get managed cluster: %w", err)
 	}
@@ -569,7 +555,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster after retries: %w", err)
 		}
 
-		mcFuture, err = mcc.CreateOrUpdate(ctx, r.Arm.ResourceGroup, *cluster.Name, containerservice.ManagedCluster{
+		mcFuture, err = mcc.CreateOrUpdate(ctx, r.Arm.K8sResourceGroup, r.Arm.K8sClusterName, containerservice.ManagedCluster{
 			ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 				PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
 					Enabled:                   to.BoolPtr(true),
@@ -609,7 +595,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	podIdentity := AADPodIdentity{
 		Name:        podIdentityName,
 		Namespace:   podNamespace,
-		ClusterName: *cluster.Name,
+		ClusterName: r.Arm.K8sClusterName,
 	}
 	return podIdentity, nil
 }

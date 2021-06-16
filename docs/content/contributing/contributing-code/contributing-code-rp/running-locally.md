@@ -107,10 +107,6 @@ We optionally require configuration for managing Azure resources:
   - `ARM_RESOURCE_GROUP`
   - `ARM_SUBSCRIPTION_ID`
 
-- And fall back to:
-  - `K8S_RESOURCE_GROUP`
-  - `K8S_SUBSCRIPTION_ID`
-
 The simplest is to use your local configuration for Kubernetes (assuming it's already set up) and some defaults for Azure
 
 ## Step 3: Running the RP

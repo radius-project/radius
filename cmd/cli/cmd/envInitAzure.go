@@ -321,7 +321,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		// We already have a provider in this resource group
 		logger.LogInfo("Found existing environment...\n\n"+
 			"Environment '%v' available at:\n%v\n", name, envUrl)
-		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
+		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, azure.GetControlPlaneResourceGroup(resourceGroup), clusterName)
 		if err != nil {
 			return err
 		}
@@ -348,8 +348,12 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
-	if group != nil && !isSupportedLocation(*group.Location) {
-		return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
+	if group != nil {
+		if !isSupportedLocation(*group.Location) {
+			return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
+		}
+
+		location = *group.Location
 	}
 
 	params := deploymentParameters{
@@ -370,7 +374,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
+	err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, params.ControlPlaneResourceGroup, clusterName)
 	if err != nil {
 		return err
 	}
@@ -541,6 +545,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 	}
 	deploymentName := fmt.Sprintf("rad-create-environment-%v", uuid.New().String())
 	op, err := dc.CreateOrUpdateAtSubscriptionScope(ctx, deploymentName, resources.Deployment{
+		Location:   &params.Location,
 		Properties: deploymentProperties,
 	})
 	if err != nil {
@@ -591,7 +596,7 @@ func findClusterInDeployment(ctx context.Context, deployment resources.Deploymen
 	return clusterName, nil
 }
 
-func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, clusterName string) error {
+func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, controlPlaneResourceGroup string, clusterName string) error {
 	step := logger.BeginStep("Updating Config...")
 
 	v := viper.GetViper()
@@ -601,10 +606,11 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	}
 
 	env.Items[name] = map[string]interface{}{
-		"kind":           "azure",
-		"subscriptionId": subscriptionID,
-		"resourceGroup":  resourceGroup,
-		"clusterName":    clusterName,
+		"kind":                      "azure",
+		"subscriptionId":            subscriptionID,
+		"resourceGroup":             resourceGroup,
+		"controlPlaneResourceGroup": controlPlaneResourceGroup,
+		"clusterName":               clusterName,
 	}
 	if len(env.Items) == 1 {
 		env.Default = name

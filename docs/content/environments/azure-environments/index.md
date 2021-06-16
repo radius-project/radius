@@ -20,14 +20,15 @@ While this page describes the current implementation of Azure Radius environment
 - For now you will see all of the environment's control plane resources in your subscription and resource group
 {{% /alert %}}
 
-When a new Azure Radius environment is created, the following resources are created:
+When a new Azure Radius environment is created, the following resources are created across two resource groups. If you supply the resource group name `my-environment` then Radius' implementation details will be placed in a resource group called `RE-my-environment`. As a user of Radius, you do not need to interact with the `RE-my-environment` group. 
 
 | Resource | Description |
 |----------|-------------|
-|**Runtime**
+|**Applications (Resource Group: my-environment)**
+| [Your Application Resources] | When applications are deployed, any additional resources are deployed into the resource group.
+|**Runtime (Resource Group: RE-my-environment)**
 | Azure Kubernetes Service | Runtime into which containers and workloads are deployed. Note that an additional managed Resource Group, prefixed with "MC-", is also deployed to host the AKS cluster resources.
-| [Other Resources] | When applications are deployed, any additional resources are deployed into the resource group.
-|**Control plane**
+|**Control plane (Resource Group: RE-my-environment)**
 | Azure CosmosDB account | All of the server-side tracking of what your application definition is and what resources Radius is managing.
 | Deployment script | Script used during the deployment of the Radius control plane.
 | Managed Identity | Identity used by the deployment script when the rad CLI deploys the environment for the first time
@@ -72,13 +73,17 @@ While Radius environments are optimized for cost, any costs incurred by the depl
 
 1. Verify deployment
 
-   To verify the environment deployment succeeded, navigate to your subscription at https://portal.azure.com. You should see a new Resource Group with the name you entered during the previous step: 
+   To verify the environment deployment succeeded, navigate to your subscription at https://portal.azure.com. You should see a new Resource Group with the name you entered during the previous step.
 
-   <img src="./azure-rg.png" width=200 alt="New resource group that was created">
+   <img src="./azure-rgs.png" width=200 alt="New resource groups that were created">
 
-   Inside you will see the [environment resources](#azure-environments) created for the environment:
+   The Resource Group with the name you entered will be empty when first created.
 
-   <img src="./azure-resources.png" width=500 alt="New resource group that was created">
+   <img src="./azure-app-resources.png" width=500 alt="New resource group that was created">
+
+   You will also be able to find the Radius Control Plane Resource Group (your group name prefixed with `RE-`) containing the [environment resources](#azure-environments):
+
+   <img src="./azure-control-plane-resources.png" width=500 alt="New control plane resource group that was created">
 
 ### Connect to an existing environment
 

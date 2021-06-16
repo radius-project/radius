@@ -11,7 +11,7 @@ This page is still an early work in progress, and is subject to change based upo
 
 - For now we only support Azure as the environment
 - For now we use AKS as the runtime/data-plane
-- For now you will see all of the environment's resources in your subscription and resource group
+- For now you will see Radius implementation details as resources in your subscription
 {{% /alert %}}
 
 
