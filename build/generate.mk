@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-radclient generate-go ## Generates all targets.
+generate: generate-radclient generate-go generate-k8s-manifests generate-controller ## Generates all targets.
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -44,3 +44,41 @@ generate-mockgen-installed:
 generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mocks).
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./... 
+
+CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+generate-controller-gen-installed:
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+
+KUSTOMIZE = $(shell pwd)/bin/kustomize
+generate-kustomize-installed:
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
+
+# go-get-tool will 'go get' any package $2 and install it to $1.
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+go mod init tmp ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+rm -rf $$TMP_DIR ;\
+}
+endef
+
+CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
+generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes deployment manifests
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) \
+		rbac:roleName=manager-role webhook \
+		paths="./..." \
+		output:crd:artifacts:config=deploy/k8s/config/crd/bases \
+		output:rbac:artifacts:config=deploy/k8s/config/rbac \
+		output:webhook:artifacts:config=deploy/k8s/config/webhook
+
+generate-controller: generate-controller-gen-installed ## Generate controller code
+	$(CONTROLLER_GEN) object:headerFile="boilerplate.go.txt" paths="./..."
+
+generate-baked-manifests-: generate-k8s-manifest generate-kustomize-installed
+	cd deploy/k8s/config/manager && $(KUSTOMIZE) edit set image controller=${K8S_IMAGE}
+	$(KUSTOMIZE) build deploy/k8s/config/default > cmd/cli/cmd/radius-k8s.yaml

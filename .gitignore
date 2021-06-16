@@ -18,6 +18,7 @@ docs/content/reference/cli/rad*
 # vendor/
 
 # Build Output 
+bin/
 dist/
 radius-rp
 !radius-rp/

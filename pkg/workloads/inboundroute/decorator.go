@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/curp/components"
+	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"

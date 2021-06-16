@@ -5,7 +5,7 @@
 
 package cosmosdbsqlv1alpha1
 
-import "github.com/Azure/radius/pkg/curp/resources"
+import "github.com/Azure/radius/pkg/radrp/resources"
 
 const (
 	Kind = "azure.com/CosmosDBSQL@v1alpha1"

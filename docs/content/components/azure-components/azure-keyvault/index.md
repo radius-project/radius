@@ -232,11 +232,13 @@ Vault url: https://kv-blqmk.vault.azure.net/
 .. List Secrets
 ```
 
+You have completed this tutorial!
+
 ### Next steps
 
 - To use the Bicep template from this tutorial: {{< rad file="template.bicep">}}
-- If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
 
+{{% alert title="Cleanup" color="warning" %}}
+If you're done with testing, you can use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**.
+{{% /alert %}}
 
-
-You have completed this tutorial!

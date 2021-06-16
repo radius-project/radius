@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/curp/components"
+	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

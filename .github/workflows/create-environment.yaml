@@ -108,5 +108,6 @@ jobs:
           az group delete \
             --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
-            --yes
+            --yes \
+            --verbose
           

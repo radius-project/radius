@@ -1,0 +1,24 @@
+# permissions for end users to edit deployments.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: deployment-editor-role
+rules:
+- apiGroups:
+  - applications.radius.dev
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - applications.radius.dev
+  resources:
+  - deployments/status
+  verbs:
+  - get

@@ -152,14 +152,17 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 
+You have completed this tutorial!
+
+{{% alert title="Cleanup" color="warning" %}}
+If you're done with testing, you can use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**.
+{{% /alert %}}
+
 ## Next steps
 
 - If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page. 
-- If you're done with testing, use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to **prevent additional charges in your subscription**. 
 - Related links for Dapr:
   - [Dapr documentation](https://docs.dapr.io/)
   - [Dapr quickstarts](https://github.com/dapr/quickstarts/tree/v1.0.0/hello-world)
-
-You have completed this tutorial!
 
 <br>{{< button text="Try another tutorial" page="tutorial" >}}

@@ -11,10 +11,10 @@ import (
 	"log"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/curp/components"
-	"github.com/Azure/radius/pkg/curp/handlers"
-	"github.com/Azure/radius/pkg/curp/resources"
+	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
