@@ -411,6 +411,10 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 	}
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
+	log.Printf("Created output resources for workload: %s\n", w.Name)
+	for _, o := range resources {
+		log.Printf("LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType)
+	}
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,

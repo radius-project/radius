@@ -354,10 +354,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		outputResources = append(outputResources, res)
 	}
 
-	log.Printf("Created output resources for workload: %s\n", w.Name)
-	for _, o := range outputResources {
-		log.Printf("LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType)
-	}
 	return outputResources, nil
 }
 

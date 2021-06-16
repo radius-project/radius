@@ -78,7 +78,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.ManagedKey: "true",
 			},
 		}
-
 		// It's already in the correct format
 		return []workloads.OutputResource{resource}, nil
 	} else {
@@ -95,8 +94,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			LocalID:            "KeyVault",
 			ResourceKind:       workloads.ResourceKindAzureKeyVault,
 			OutputResourceType: workloads.OutputResourceTypeArm,
-			Deployed:           true,
 			Managed:            false,
+			Deployed:           true,
 			OutputResourceInfo: workloads.ARMInfo{
 				ResourceID:   vaultID.ID,
 				ResourceType: KeyVaultResourceType.Type(),
