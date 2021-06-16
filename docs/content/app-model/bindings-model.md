@@ -14,7 +14,7 @@ Radius components offer **bindings**, which are logical units of communication b
 
 ## Consumiung bindings
 
-The `properties.uses` configuration contains references to [bindings]({{< ref bindings-model.md >}}) which your Component consumes.
+The `properties.uses` section contains references to [bindings]({{< ref bindings-model.md >}}) which your Component consumes.
 
 Without any supplemental information, a `uses` relationship tells Radius in what order to deploy the resources. With additional configuration, Radius can use [actions](#actions) to do things like set environment variables, place secrets within secret stores, and add additional intelligence to your application.
 
