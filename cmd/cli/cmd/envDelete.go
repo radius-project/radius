@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
@@ -44,8 +45,13 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	az, err := environments.RequireAzureCloud(env)
+	if err != nil {
+		return err
+	}
+
 	if !yes {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource group %s with all its resources will be deleted. Continue deleting? [y/n]?", env.ResourceGroup))
+		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource group %s with all its resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup))
 		if err != nil {
 			return err
 		}
@@ -62,12 +68,12 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = deleteResourceGroup(cmd.Context(), authorizer, env.ResourceGroup, env.SubscriptionID); err != nil {
+	if err = deleteResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 		return err
 	}
 
 	// Delete env from the config, update default env if needed
-	if err = deleteEnvFromConfig(env.Name); err != nil {
+	if err = deleteEnvFromConfig(az.Name); err != nil {
 		return err
 	}
 
@@ -121,7 +127,7 @@ func deleteEnvFromConfig(envName string) error {
 		}
 	}
 	rad.UpdateEnvironmentSection(v, env)
-	if err = saveConfig(); err != nil {
+	if err = rad.SaveConfig(); err != nil {
 		return err
 	}
 

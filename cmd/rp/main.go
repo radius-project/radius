@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/radius/pkg/curp"
-	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/curp/db"
-	"github.com/Azure/radius/pkg/curp/deployment"
-	"github.com/Azure/radius/pkg/curp/k8sauth"
 	"github.com/Azure/radius/pkg/model"
+	"github.com/Azure/radius/pkg/radrp"
+	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/radrp/db"
+	"github.com/Azure/radius/pkg/radrp/deployment"
+	"github.com/Azure/radius/pkg/radrp/k8sauth"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -100,15 +100,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	options := curp.ServerOptions{
+	options := radrp.ServerOptions{
 		Address:      ":" + port,
 		Authenticate: authenticate,
 		Deploy:       deployment.NewDeploymentProcessor(appmodel),
-		DB:           db.NewCurpDB(client.Database(dbName)),
+		DB:           db.NewRadrpDB(client.Database(dbName)),
 	}
 
 	log.Printf("listening on: '%s'...", options.Address)
-	server := curp.NewServer(options)
+	server := radrp.NewServer(options)
 	err = server.ListenAndServe()
 	if err != nil {
 		panic(err)

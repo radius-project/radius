@@ -10,7 +10,7 @@ weight: 30
 
 Testing the RP locally can be challenging because the Radius RP is just one part of a distributed system. The actual processing of ARM templates (the output of a `.bicep file`) is handled by the ARM deployment engine, not us.
 
-For this reason we've built the `radtest` tool. This emulates some of the **basic** features of ARM templates in a CLI tool so that you can test without the central ARM infrastructure.
+For this reason `rad` understands a special kind of environment called `localrp`. This emulates some of the **basic** features of ARM templates in `rad` so that you can test without the central ARM infrastructure.
 
 ## Pattern for integration testing
 
@@ -21,26 +21,56 @@ If you are building new features, or want to test deployment interactions the be
 - Make a series of deploy and delete operations with one of these example applications
 - Write a new example application
 
-## Ad-hoc testing with radtest
+## Local testing with rad
 
-`radtest` is a Go CLI that you can run with `go run cmd/radtest/main.go`.
+You can use your build of `rad` (or build from source) to test against a local copy of the RP by creating a special environment.
 
-Examples:
+To do this, open your environment file (`$HOME/.rad/config.yaml`) and edit it manually. 
 
-```sh
-# deploy the frontend-backend application
-go run cmd/radtest/main.go deploy examples/frontend-backend/template.bicep
+You'll need to:
 
-# delete the frontend-backend application
-go run cmd/radtest/main.go delete examples/frontend-backend/template.bicep
+- Duplicate the contents of an Azure Cloud environment
+- Give the new environment a memorable name like `test` or `local`
+- Change the environment kind from `azure` to `localrp`
+- Add a `url` property with the URL of your local RP
 
-# deploy the frontend-backend application and print all requests/response
-go run cmd/radtest/main.go deploy examples/frontend-backend/template.bicep --verbose
+**Before**
+
+```yaml
+environment:
+  default: my-cool-env
+  items:
+    my-cool-env:
+      clustername: radius-aks-j5oqzddqmf36s
+      kind: azure
+      resourcegroup: my-cool-env
+      subscriptionid: 66d1209e-1382-45d3-99bb-650e6bf63fc0
 ```
 
-You might want to make a wrapper script for this to make it more convenient:
+**After**
 
-```sh
-#!/bin/sh
-go run ~/github.com/Azure/radius/cmd/radtest/main.go $@
+```yaml
+environment:
+  default: my-cool-env
+  items:
+    local:
+      clustername: radius-aks-j5oqzddqmf36s
+      kind: localrp # remember to set the kind
+      url: http://localhost:5000 # use whatever port you prefer when running the RP locally
+      resourcegroup: my-cool-env
+      subscriptionid: 66d1209e-1382-45d3-99bb-650e6bf63fc0
+    my-cool-env:
+      clustername: radius-aks-j5oqzddqmf36s
+      kind: azure
+      resourcegroup: my-cool-env
+      subscriptionid: 66d1209e-1382-45d3-99bb-650e6bf63fc0
 ```
+
+Now you can run `rad env switch local` and use this environment just like you'd use any other.
+
+## Known Limitations
+
+Since we're simulating the role of centralized ARM features like deployment templates there are some inherent limitations.
+
+- Deploying Azure resources with `.bicep` is not supported
+- Using `.bicep` constructs like parameters and variables is not supported

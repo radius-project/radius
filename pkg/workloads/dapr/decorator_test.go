@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/pkg/curp/components"
+	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"

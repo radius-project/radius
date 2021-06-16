@@ -5,7 +5,7 @@
 
 package containerv1alpha1
 
-import "github.com/Azure/radius/pkg/curp/components"
+import "github.com/Azure/radius/pkg/radrp/components"
 
 const (
 	Kind = "radius.dev/Container@v1alpha1"
@@ -49,8 +49,6 @@ type HTTPBinding struct {
 func (h HTTPBinding) GetEffectivePort() int {
 	if h.Port != nil {
 		return *h.Port
-	} else if h.TargetPort != nil {
-		return *h.TargetPort
 	} else {
 		return 80
 	}

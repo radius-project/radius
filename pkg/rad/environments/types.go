@@ -6,11 +6,15 @@
 package environments
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/Azure/radius/pkg/rad/clients"
 )
 
 const (
 	KindAzureCloud                   = "azure"
+	KindLocalRP                      = "localrp"
 	EnvironmentKeyDefaultApplication = "defaultapplication"
 )
 
@@ -18,60 +22,46 @@ type Environment interface {
 	GetName() string
 	GetKind() string
 	GetDefaultApplication() string
+
+	// GetStatusLink provides an optional URL for display of the environment.
+	GetStatusLink() string
 }
 
-// AzureCloudEnvironment represents an Azure Cloud Radius environment.
-type AzureCloudEnvironment struct {
-	Name               string `mapstructure:"name" validate:"required"`
-	Kind               string `mapstructure:"kind" validate:"required"`
-	SubscriptionID     string `mapstructure:"subscriptionid" validate:"required"`
-	ResourceGroup      string `mapstructure:"resourcegroup" validate:"required"`
-	ClusterName        string `mapstructure:"clustername" validate:"required"`
-	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
-
-	// We tolerate and allow extra fields - this helps with forwards compat.
-	Properties map[string]interface{} `mapstructure:",remain"`
+type DeploymentEnvironment interface {
+	CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error)
 }
 
-func (e *AzureCloudEnvironment) GetName() string {
-	return e.Name
-}
-
-func (e *AzureCloudEnvironment) GetKind() string {
-	return e.Kind
-}
-
-func (e *AzureCloudEnvironment) GetDefaultApplication() string {
-	return e.DefaultApplication
-}
-
-// GenericEnvironment represents an *unknown* kind of environment.
-type GenericEnvironment struct {
-	Name               string `mapstructure:"name" validate:"required"`
-	Kind               string `mapstructure:"kind" validate:"required"`
-	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
-
-	// Capture arbitrary other properties
-	Properties map[string]interface{} `mapstructure:",remain"`
-}
-
-func (e *GenericEnvironment) GetName() string {
-	return e.Name
-}
-
-func (e *GenericEnvironment) GetKind() string {
-	return e.Kind
-}
-
-func (e *GenericEnvironment) GetDefaultApplication() string {
-	return e.DefaultApplication
-}
-
-func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
-	az, ok := e.(*AzureCloudEnvironment)
+func CreateDeploymentClient(ctx context.Context, env Environment) (clients.DeploymentClient, error) {
+	de, ok := env.(DeploymentEnvironment)
 	if !ok {
-		return nil, fmt.Errorf("an '%v' environment is required but the kind was '%v'", KindAzureCloud, e.GetKind())
+		return nil, fmt.Errorf("an environment of kind '%s' does not support deployment", env.GetKind())
 	}
 
-	return az, nil
+	return de.CreateDeploymentClient(ctx)
+}
+
+type DiagnosticsEnvironment interface {
+	CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error)
+}
+
+func CreateDiagnosticsClient(ctx context.Context, env Environment) (clients.DiagnosticsClient, error) {
+	de, ok := env.(DiagnosticsEnvironment)
+	if !ok {
+		return nil, fmt.Errorf("an environment of kind '%s' does not support diagnostics operations", env.GetKind())
+	}
+
+	return de.CreateDiagnosticsClient(ctx)
+}
+
+type ManagementEnvironment interface {
+	CreateManagementClient(ctx context.Context) (clients.ManagementClient, error)
+}
+
+func CreateManagementClient(ctx context.Context, env Environment) (clients.ManagementClient, error) {
+	me, ok := env.(ManagementEnvironment)
+	if !ok {
+		return nil, fmt.Errorf("an environment of kind '%s' does not support management operations", env.GetKind())
+	}
+
+	return me.CreateManagementClient(ctx)
 }

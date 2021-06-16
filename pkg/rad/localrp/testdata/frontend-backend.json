@@ -1,0 +1,92 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "functions": [],
+  "resources": [
+    {
+      "type": "Microsoft.CustomProviders/resourceProviders/Applications/Components",
+      "apiVersion": "2018-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', 'radius', 'frontend-backend', 'frontend')]",
+      "kind": "radius.dev/Container@v1alpha1",
+      "properties": {
+        "run": {
+          "container": {
+            "image": "rynowak/frontend:0.5.0-dev"
+          }
+        },
+        "uses": [
+          {
+            "binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web]",
+            "env": {
+              "SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.host]",
+              "SERVICE__BACKEND__PORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.port]"
+            }
+          }
+        ],
+        "bindings": {
+          "web": {
+            "kind": "http",
+            "targetPort": 80
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CustomProviders/resourceProviders/Applications', 'radius', 'frontend-backend')]"
+      ]
+    },
+    {
+      "type": "Microsoft.CustomProviders/resourceProviders/Applications/Components",
+      "apiVersion": "2018-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', 'radius', 'frontend-backend', 'backend')]",
+      "kind": "radius.dev/Container@v1alpha1",
+      "properties": {
+        "run": {
+          "container": {
+            "image": "rynowak/backend:0.5.0-dev"
+          }
+        },
+        "bindings": {
+          "web": {
+            "kind": "http",
+            "targetPort": 80
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CustomProviders/resourceProviders/Applications', 'radius', 'frontend-backend')]"
+      ]
+    },
+    {
+      "type": "Microsoft.CustomProviders/resourceProviders/Applications",
+      "apiVersion": "2018-09-01-preview",
+      "name": "[format('{0}/{1}', 'radius', 'frontend-backend')]"
+    },
+    {
+      "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
+      "apiVersion": "2018-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', 'radius', 'frontend-backend', 'default')]",
+      "properties": {
+        "components": [
+          {
+            "componentName": "backend"
+          },
+          {
+            "componentName": "frontend"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CustomProviders/resourceProviders/Applications', 'radius', 'frontend-backend')]",
+        "[resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')]",
+        "[resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')]"
+      ]
+    }
+  ],
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.1.10.31352",
+      "templateHash": "18319618486492097932"
+    }
+  }
+}

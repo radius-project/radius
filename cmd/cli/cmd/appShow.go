@@ -9,11 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/spf13/cobra"
 )
 
@@ -40,18 +37,15 @@ func showApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
+	client, err := environments.CreateManagementClient(cmd.Context(), env)
 	if err != nil {
-		return fmt.Errorf("failed to obtain Azure credentials: %w", err)
-	}
-	con := armcore.NewDefaultConnection(azcred, nil)
-	ac := radclient.NewApplicationClient(con, env.SubscriptionID)
-	response, err := ac.Get(cmd.Context(), env.ResourceGroup, applicationName, nil)
-	if err != nil {
-		return utils.UnwrapErrorFromRawResponse(err)
+		return err
 	}
 
-	applicationResource := *response.ApplicationResource
+	applicationResource, err := client.ShowApplication(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
 	applicationDetails, err := json.MarshalIndent(applicationResource, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal application response as JSON %w", err)

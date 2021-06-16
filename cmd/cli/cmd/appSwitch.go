@@ -70,20 +70,15 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	azureEnv, err := environments.RequireAzureCloud(e)
-	if err != nil {
-		return err
-	}
-
-	if azureEnv.DefaultApplication != "" {
-		logger.LogInfo("Switching default application from %v to %v", azureEnv.DefaultApplication, applicationName)
+	if e.GetDefaultApplication() != "" {
+		logger.LogInfo("Switching default application from %v to %v", e.GetDefaultApplication(), applicationName)
 	} else {
 		logger.LogInfo("Switching default application to %v", applicationName)
 	}
 
-	env.Items[azureEnv.Name][environments.EnvironmentKeyDefaultApplication] = applicationName
+	env.Items[e.GetName()][environments.EnvironmentKeyDefaultApplication] = applicationName
 
 	rad.UpdateEnvironmentSection(v, env)
-	err = saveConfig()
+	err = rad.SaveConfig()
 	return err
 }

@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
@@ -34,12 +33,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const DeployTimeout = 30 * time.Minute
-const DeleteTimeout = 30 * time.Minute
-
 // Tests application deployment using radius
 func TestDeployment(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := utils.GetContext(t)
+	defer cancel()
 
 	config, err := config.NewAzureConfig()
 	require.NoError(t, err, "failed to initialize azure config")
@@ -73,6 +70,7 @@ func TestDeployment(t *testing.T) {
 		ARMConnection: con,
 		K8s:           k8s,
 		Authorizer:    armauth,
+		Context:       ctx,
 	}
 
 	table := []Row{
@@ -278,10 +276,15 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	for _, row := range table {
-		test := NewApplicationTest(options, row)
-		t.Run(row.Description, test.Test)
-	}
+	// Nest parallel subtests into outer Run to have function wait for all tests
+	// to finish before returning.
+	// See: https://golang.org/pkg/testing/#hdr-Subtests_and_Sub_benchmarks
+	t.Run("deploytests", func(t *testing.T) {
+		for _, row := range table {
+			test := NewApplicationTest(options, row)
+			t.Run(row.Description, test.Test)
+		}
+	})
 }
 
 type Row struct {
@@ -298,6 +301,7 @@ type Options struct {
 	K8s           *kubernetes.Clientset
 	ARMConnection *armcore.Connection
 	Authorizer    autorest.Authorizer
+	Context       context.Context
 }
 
 type ApplicationTest struct {
@@ -322,16 +326,18 @@ func (at ApplicationTest) Test(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
+	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
+	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
+
 	// Deploy the application
 	t.Run(fmt.Sprintf("deploy %s", at.Row.Description), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, at.Row.Template)
 		t.Logf("deploying %s from file %s", at.Row.Description, at.Row.Template)
-
-		err := utils.RunRadDeployCommand(templateFilePath, at.Options.Environment.ConfigPath, DeployTimeout)
+		err := utils.RunRadDeployCommand(at.Options.Context, templateFilePath, at.Options.Environment.ConfigPath)
 		require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
-		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods)
+		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods, at.Options.Context)
 
 		// Custom verification is expected to use `t` to trigger its own assertions
 		if at.Row.PostDeployVerify != nil {
@@ -342,11 +348,11 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// In the future we can add more subtests here for multi-phase tests that change what's deployed.
 
 	// Cleanup code here will run regardless of pass/fail of subtests
-	err = utils.RunRadApplicationDeleteCommand(at.Row.Application, at.Options.Environment.ConfigPath, DeleteTimeout)
+	err = utils.RunRadApplicationDeleteCommand(at.Options.Context, at.Row.Application, at.Options.Environment.ConfigPath)
 	require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 	for ns := range at.Row.Pods.Namespaces {
-		validation.ValidateNoPodsInNamespace(t, at.Options.K8s, ns)
+		validation.ValidateNoPodsInNamespace(at.Options.Context, t, at.Options.K8s, ns)
 	}
 
 	// Custom verification is expected to use `t` to trigger its own assertions

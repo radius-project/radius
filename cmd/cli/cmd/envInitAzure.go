@@ -25,12 +25,12 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	radresources "github.com/Azure/radius/pkg/curp/resources"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/rad/util"
+	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -627,7 +627,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	}
 	rad.UpdateEnvironmentSection(v, env)
 
-	err = saveConfig()
+	err = rad.SaveConfig()
 	if err != nil {
 		return err
 	}

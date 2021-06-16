@@ -6,8 +6,8 @@
 package model
 
 import (
-	"github.com/Azure/radius/pkg/curp/armauth"
-	"github.com/Azure/radius/pkg/curp/handlers"
+	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"

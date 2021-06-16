@@ -30,7 +30,7 @@ var envInitLocalCmd = &cobra.Command{
 		}
 		rad.UpdateEnvironmentSection(v, env)
 
-		err = saveConfig()
+		err = rad.SaveConfig()
 		if err != nil {
 			return err
 		}

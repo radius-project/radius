@@ -5,7 +5,7 @@
 
 package cosmosdbmongov1alpha1
 
-import "github.com/Azure/radius/pkg/curp/resources"
+import "github.com/Azure/radius/pkg/radrp/resources"
 
 const (
 	Kind = "azure.com/CosmosDBMongo@v1alpha1"
