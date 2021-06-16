@@ -8,16 +8,17 @@ package deployment
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
 	"github.com/Azure/radius/pkg/model"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/revision"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/go-logr/logr"
 )
 
 // DeploymentOperation represents an operation performed on a workload.
@@ -98,11 +99,15 @@ func (ce *CompositeError) Error() string {
 
 type deploymentProcessor struct {
 	appmodel model.ApplicationModel
+	logger   logr.Logger
 }
 
 // NewDeploymentProcessor initializes a deployment processor.
-func NewDeploymentProcessor(appmodel model.ApplicationModel) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, logger logr.Logger) DeploymentProcessor {
+	return &deploymentProcessor{
+		appmodel: appmodel,
+		logger:   logger,
+	}
 }
 
 func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus, actions map[string]ComponentAction) error {
@@ -112,22 +117,32 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 	// TODO - we don't handle the case where resources disappear without the component being
 	// deleted. All of the resources we support so far are 1-1 with the components.
 	errs := []error{}
+	logger := dp.logger.WithValues(
+		radlogger.LogFieldAppName, appName,
+	)
 
 	ordered, err := dp.orderActions(actions)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("actions in order:")
+	logger.Info("actions in order:")
 	for i, action := range ordered {
-		log.Printf("%v - %s", i, action.ComponentName)
+		logger.Info(
+			fmt.Sprintf("%v", i),
+			radlogger.LogFieldComponentName, action.ComponentName,
+		)
 	}
 
 	bindingValues := map[components.BindingKey]components.BindingState{}
 
 	// Process each action and update the deployment status as we go ...
 	for _, action := range ordered {
-		log.Printf("executing action %s for component %s", action.Operation, action.ComponentName)
+		logger = logger.WithValues(
+			radlogger.LogFieldAction, action.Operation,
+			radlogger.LogFieldComponentName, action.ComponentName,
+		)
+		logger.Info("executing")
 
 		// while we do bookkeeping, also update the deployment record
 		switch action.Operation {
@@ -277,7 +292,10 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				d.Workloads = append(d.Workloads, dw)
 			}
 
-			log.Printf("successfully applied workload %v %v", action.Component.Kind, action.ComponentName)
+			logger.Info(
+				"successfully applied workload",
+				radlogger.LogFieldComponentKind, action.Component.Kind,
+			)
 
 		case DeleteWorkload:
 			// Remove the deployment record
@@ -313,7 +331,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 			}
 
-			log.Printf("successfully deleted workload %v", action.ComponentName)
+			logger.Info("successfully deleted workload")
 		}
 	}
 
@@ -371,12 +389,25 @@ func (dp *deploymentProcessor) orderActions(actions map[string]ComponentAction) 
 }
 
 func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus) error {
-	log.Printf("Deleting deployment %v", name)
+	logger := dp.logger.WithValues(
+		radlogger.LogFieldDeploymentName, name,
+	)
+
+	logger.Info(
+		"Deleting deployment",
+	)
 	errs := []error{}
 	for _, wl := range d.Workloads {
-		log.Printf("Deleting workload %v", wl.ComponentName)
+		logger := logger.WithValues(
+			radlogger.LogFieldComponentName, wl.ComponentName,
+		)
+		logger.Info("Deleting workload")
 		for _, resource := range wl.Resources {
-			log.Printf("Deleting resource %v %v", resource.Type, resource.Properties)
+			logger.Info(
+				"Deleting resource",
+				radlogger.LogFieldResourceType, resource.Type,
+				radlogger.LogFieldResourceProperties, resource.Properties,
+			)
 
 			resourceType, err := dp.appmodel.LookupResource(resource.Type)
 			if err != nil {
@@ -396,7 +427,10 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 		}
 	}
 
-	log.Printf("Deletion of deployment %v completed with %d errors", name, len(errs))
+	dp.logger.Info(
+		fmt.Sprintf("Deletion of deployment completed with %d errors", len(errs)),
+		radlogger.LogFieldDeploymentName, name,
+	)
 	if len(errs) > 0 {
 		return &CompositeError{errs}
 	}

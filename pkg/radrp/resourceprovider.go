@@ -11,6 +11,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/db"
@@ -18,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/revision"
+	"github.com/go-logr/logr"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -48,10 +50,12 @@ type ResourceProvider interface {
 
 // NewResourceProvider creates a new ResourceProvider.
 func NewResourceProvider(db db.RadrpDB, deploy deployment.DeploymentProcessor) ResourceProvider {
+	logger := radlogger.NewLogger("RadRP")
 	return &rp{
 		db:     db,
 		v:      validator.New(),
 		deploy: deploy,
+		logger: logger,
 	}
 }
 
@@ -59,6 +63,7 @@ type rp struct {
 	db     db.RadrpDB
 	v      *validator.Validate
 	deploy deployment.DeploymentProcessor
+	logger logr.Logger
 }
 
 func (r *rp) ListApplications(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
@@ -78,6 +83,7 @@ func (r *rp) ListApplications(ctx context.Context, id resources.ResourceID) (res
 	}
 
 	list := &rest.ResourceList{Value: items}
+
 	return rest.NewOKResponse(list), nil
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/version"
+	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -27,6 +28,7 @@ type ServerOptions struct {
 	Deploy       deployment.DeploymentProcessor
 	K8s          client.Client
 	DB           db.RadrpDB
+	Logger       logr.Logger
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.

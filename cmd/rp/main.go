@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/model"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/db"
@@ -100,11 +101,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	logger := radlogger.NewLogger("server")
+
 	options := radrp.ServerOptions{
 		Address:      ":" + port,
 		Authenticate: authenticate,
-		Deploy:       deployment.NewDeploymentProcessor(appmodel),
+		Deploy:       deployment.NewDeploymentProcessor(appmodel, logger),
 		DB:           db.NewRadrpDB(client.Database(dbName)),
+		Logger:       logger,
 	}
 
 	log.Printf("listening on: '%s'...", options.Address)
