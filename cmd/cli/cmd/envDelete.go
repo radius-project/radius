@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
+	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -76,6 +77,8 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	logger.LogInfo("Environment deleted")
+
 	// Delete env from the config, update default env if needed
 	if err = deleteEnvFromConfig(az.Name); err != nil {
 		return err
@@ -93,6 +96,14 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 	rgc.PollingDuration = 0
 
 	logger.LogInfo("Deleting resource group %v", resourceGroup)
+
+	_, err := rgc.Get(ctx, resourceGroup)
+	if err != nil && util.IsAutorest404Error(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
 	future, err := rgc.Delete(ctx, resourceGroup)
 	if err != nil {
 		return fmt.Errorf("failed to delete the resource group: %w", err)
@@ -107,8 +118,6 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 	if err != nil {
 		return fmt.Errorf("failed to delete the resource group: %w", err)
 	}
-
-	logger.LogInfo("Environment deleted")
 
 	return nil
 }

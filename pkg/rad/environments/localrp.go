@@ -67,7 +67,7 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 }
 
 func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	config, err := azure.GetAKSMonitoringCredentials(ctx, e.SubscriptionID, e.ResourceGroup, e.ClusterName)
+	config, err := azure.GetAKSMonitoringCredentials(ctx, e.SubscriptionID, e.ControlPlaneResourceGroup, e.ClusterName)
 	if err != nil {
 		return nil, err
 	}

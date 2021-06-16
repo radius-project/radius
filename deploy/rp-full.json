@@ -104,26 +104,6 @@
         "controlPlaneDeploymentName": "[concat('rad-control-plane-', guid(parameters('resourceGroup')))]",
         "rpDeploymentName": "[concat('rad-rp-', guid(parameters('resourceGroup')))]"
     },
-
-    // On overall structure:
-    //
-    // We deploy two resource groups for each radius environment.
-    // - a "control plane" group
-    // - a "RP" group
-    //
-    // The "control plane" group contains all the supporting infrastructure for Radius. The "RP" group contains the Custom Resource Provider, and this
-    // is where Radius types like Applications are defined - this is also where application resources like databases are created.
-    //
-    // We do this in a series of 6 steps
-    //
-    // - Create "control plane" group
-    // - Create "RP" group
-    // - Deploy Radius control plane to control plane group with a nested deployment
-    // - Deploy Custom RP to RP group with a nested deployment
-    // 
-    // We're following this pattern: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-to-subscription?tabs=azure-cli#create-resource-group-and-resources
-    //
-
     "resources": [
         {
             "type": "Microsoft.Resources/resourceGroups",
@@ -232,7 +212,7 @@
                     },
                     "variables": {
                         "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
-                        "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), subscription().subscriptionId)]",
+                        "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), resourceGroup().name, subscription().subscriptionId)]",
                         "registrypullroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
                         "registrypullroledefinitionname": "[guid(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), subscription().subscriptionId)]",
                         "registrypullroledefinitionfullname": "[concat(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), '/Microsoft.Authorization/', variables('registrypullroledefinitionname'))]",
@@ -242,8 +222,6 @@
                         "acrPullRole": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
                         "deploymentRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
                         "deploymentRoleDefinitionName": "[guid(parameters('deploymentScriptIdentityName'), subscription().subscriptionId)]",
-
-                        // The RP is designated as the Owner of both the Control Plane and RP groups.
                         "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
                         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
                         "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), parameters('controlPlaneResourceGroup'), subscription().subscriptionId)]"
@@ -267,7 +245,6 @@
                             "properties": {
                                 "roleDefinitionId": "[variables('deploymentRoleDefinitionId')]",
                                 "principalId": "[reference(parameters('deploymentScriptIdentityName')).principalId]",
-                                "scope": "[resourceGroup().id]",
                                 "principalType": "ServicePrincipal"
                             }
                         },
@@ -361,13 +338,12 @@
                             "name": "[variables('clusterIdentityRoleDefinitionName')]",
                             "tags": "[parameters('resourceTags')]",
                             "dependsOn": [
-                                "[resourceId('Microsoft.ContainerService/managedClusters/', parameters('clusterName'))]"
+                                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]"
                             ],
                             "properties": {
                                 "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-11-01', 'full').identity.principalId]",
                                 "principalType": "ServicePrincipal",
-                                "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]",
-                                "scope": "[resourceGroup().id]"
+                                "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]"
                             }
                         },
                         {
@@ -518,10 +494,13 @@
                     "scope": "Inner"
                 },
                 "parameters": {
+                    "clusterName": {
+                        "value": "[parameters('clusterName')]"
+                    },
                     "siteName": {
                         "value": "[parameters('siteName')]"
                     },
-                    "siteResourceGroup": {
+                    "controlPlaneResourceGroup": {
                         "value": "[parameters('controlPlaneResourceGroup')]"
                     },
                     "resourceTags": {
@@ -532,19 +511,24 @@
                     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
                     "contentVersion": "1.0.0.0",
                     "variables": {
-                        // The RP is designated as the Owner of both the Control Plane and RP groups.
+                        "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
+                        "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
+                        "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), resourceGroup().name, subscription().subscriptionId)]",
                         "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
                         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
                         "rpGroupRoleDefinitionName": "[guid(parameters('siteName'), resourceGroup().name, subscription().subscriptionId)]"
                     },
                     "parameters": {
+                        "clusterName": {
+                            "type": "string"
+                        },
                         "resourceTags": {
                             "type": "object"
                         },
                         "siteName": {
                             "type": "string"
                         },
-                        "siteResourceGroup": {
+                        "controlPlaneResourceGroup": {
                             "type": "string"
                         }
                     },
@@ -587,8 +571,19 @@
                             "tags": "[parameters('resourceTags')]",
                             "properties": {
                                 "roleDefinitionId": "[variables('rpRoleDefinitionId')]",
-                                "principalId": "[reference(concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('siteResourceGroup'), '/providers/Microsoft.Web/sites/', parameters('siteName')), '2019-08-01', 'full').identity.principalId]",
+                                "principalId": "[reference(concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('controlPlaneResourceGroup'), '/providers/Microsoft.Web/sites/', parameters('siteName')), '2019-08-01', 'full').identity.principalId]",
                                 "principalType": "ServicePrincipal"
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Authorization/roleAssignments",
+                            "apiVersion": "2017-09-01",
+                            "name": "[variables('clusterIdentityRoleDefinitionName')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "properties": {
+                                "principalId": "[reference(concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('controlPlaneResourceGroup'), '/providers/Microsoft.ContainerService/managedClusters/', parameters('clusterName')), '2020-11-01', 'full').identity.principalId]",
+                                "principalType": "ServicePrincipal",
+                                "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]"
                             }
                         }
                     ]
