@@ -7,7 +7,6 @@ package db
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/Azure/radius/pkg/radrp/armerrors"
@@ -68,8 +67,6 @@ type Component struct {
 	Properties   ComponentProperties `bson:"properties,omitempty"`
 }
 
-const IgnoreBsonTag = "ignore"
-
 // ComponentProperties represents the properties of an Radius Component.
 type ComponentProperties struct {
 	Build           map[string]interface{}      `bson:"build,omitempty"`
@@ -78,7 +75,7 @@ type ComponentProperties struct {
 	Bindings        map[string]ComponentBinding `bson:"provides,omitempty"`
 	Uses            []ComponentDependency       `bson:"dependsOn,omitempty"`
 	Traits          []ComponentTrait            `bson:"traits,omitempty"`
-	OutputResources []OutputResource            `bson:"ignore,omitempty"` // Ignore tag since this is a stateful property
+	OutputResources []OutputResource            `bson:"outputResources,omitempty" structs:"-"` // Ignore stateful property during serialization
 }
 
 // ComponentBinding represents a binding provided by an Radius Component.
@@ -177,27 +174,9 @@ type Operation struct {
 	Error           *armerrors.ErrorDetails `bson:"error"`
 }
 
-func (p *ComponentProperties) getStatefulComponentProperties() []string {
-	var statefulProperties []string
-	sv := reflect.ValueOf(p).Elem()
-	st := sv.Type()
-	for i := 0; i < st.NumField(); i++ {
-		if strings.Contains(st.Field(i).Tag.Get("bson"), IgnoreBsonTag) {
-			statefulProperties = append(statefulProperties, st.Field(i).Name)
-		}
-	}
-	return statefulProperties
-}
-
 // Marshal implements revision.Marshal for Component.
 func (c *Component) Marshal() interface{} {
 	props := structs.Map(c.Properties)
-
-	// Revision computations should only be based on user specified properties.
-	// Exclude the stateful properties
-	for _, p := range c.Properties.getStatefulComponentProperties() {
-		delete(props, p)
-	}
 
 	return map[string]interface{}{
 		"kind":       c.Kind,

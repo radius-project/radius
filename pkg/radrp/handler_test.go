@@ -575,8 +575,7 @@ func Test_GetComponent_Found(t *testing.T) {
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
-			Revision:        rev,
-			OutputResources: []rest.OutputResource{},
+			Revision: rev,
 		},
 	}
 	requireJSON(t, expected, w)
@@ -647,8 +646,7 @@ func Test_ListComponents_Found(t *testing.T) {
 			},
 			Kind: "radius.dev/Test@v1alpha1",
 			Properties: rest.ComponentProperties{
-				Revision:        rev,
-				OutputResources: []rest.OutputResource{},
+				Revision: rev,
 			},
 		},
 	}}
@@ -720,7 +718,6 @@ func Test_UpdateComponent_Create(t *testing.T) {
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
 			Revision: rev,
-			// OutputResources: []rest.OutputResource{},
 		},
 	}
 	requireJSON(t, expected, w)
@@ -757,8 +754,7 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
-			Revision:        rev,
-			OutputResources: []rest.OutputResource{},
+			Revision: rev,
 		},
 	}
 	requireJSON(t, expected, w)
@@ -811,7 +807,6 @@ func Test_UpdateComponent_Update(t *testing.T) {
 			Run: map[string]interface{}{
 				"cool": true,
 			},
-			OutputResources: []rest.OutputResource{},
 		},
 	}
 	requireJSON(t, expected, w)

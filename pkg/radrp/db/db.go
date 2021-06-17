@@ -131,7 +131,7 @@ func (d radrpDB) PatchApplication(ctx context.Context, patch *ApplicationPatch) 
 	}
 
 	log.Printf("Updated Application with _id: %s - %+v", patch.ResourceBase.ID, result)
-	return result.UpsertedCount > 1, nil
+	return result.UpsertedCount > 0, nil
 }
 
 func (d radrpDB) UpdateApplication(ctx context.Context, app *Application) (bool, error) {
