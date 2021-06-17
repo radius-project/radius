@@ -23,8 +23,8 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 	return nil, errors.New("should not be called in this test")
 }
 
-func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
-	return []workloads.WorkloadResource{}, nil
+func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+	return []workloads.OutputResource{}, nil
 }
 
 // No hostname or any other settings, should be using a default backend
@@ -159,7 +159,7 @@ func makeContainerComponent(trait components.GenericTrait, bindings map[string]c
 	}
 }
 
-func findIngress(resources []workloads.WorkloadResource) *networkingv1.Ingress {
+func findIngress(resources []workloads.OutputResource) *networkingv1.Ingress {
 	for _, r := range resources {
 		if !r.IsKubernetesResource() {
 			continue

@@ -250,7 +250,6 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	} else if err != nil {
 		return nil, err
 	}
-
 	body := newRESTComponentFromDB(newdbitem)
 	if created {
 		return rest.NewCreatedResponse(body), nil
@@ -468,16 +467,29 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			log.Printf("failed to retrieve deployment '%s': %v", oid.Resource.ID, err)
 			return
 		}
-
-		log.Printf("updating deployment '%s'", d.ID)
 		d.Properties.ProvisioningState = string(status)
 		d.Status = newdbitem.Status
-		_, err = r.db.PatchDeploymentByApplicationID(ctx, id.App, id.Resource.Name(), d)
+		a, err := r.db.GetApplicationByID(ctx, id.App)
 		if err != nil {
-			log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
+			log.Printf("failed to retrieve application '%s': %v", id.App.ID, err)
 			return
 		}
+		// Update the deployment in the application
+		log.Printf("Updating deployment: %s in application", d.Name)
+		a.Deployments[id.Resource.Name()] = *d
 
+		// Update components to track output resources created during deployment
+		for c, action := range actions {
+			log.Printf("Updating component: %s in application with %v output resources", c, len(action.Definition.Properties.OutputResources))
+			a.Components[c] = *action.Definition
+		}
+
+		log.Printf("Updating application: %s", id.App)
+		ok, err := r.db.UpdateApplication(ctx, a)
+		if err != nil || !ok {
+			log.Printf("failed to update application '%s': %v", id.App.ID, err)
+			return
+		}
 		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)
 	}()
 

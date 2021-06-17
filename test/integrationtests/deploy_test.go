@@ -86,6 +86,26 @@ func TestDeployment(t *testing.T) {
 					},
 				},
 			},
+			Components: validation.ComponentSet{
+				Components: []validation.Component{
+					{
+						ApplicationName: "frontend-backend",
+						ComponentName:   "frontend",
+						OutputResources: map[string]validation.OutputResourceSet{
+							"Deployment": validation.NewOutputResource("Deployment", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							"Service":    validation.NewOutputResource("Service", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+						},
+					},
+					{
+						ApplicationName: "frontend-backend",
+						ComponentName:   "backend",
+						OutputResources: map[string]validation.OutputResourceSet{
+							"Deployment": validation.NewOutputResource("Deployment", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							"Service":    validation.NewOutputResource("Service", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+						},
+					},
+				},
+			},
 			PostDeployVerify: func(t *testing.T, at ApplicationTest) {
 				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
@@ -206,6 +226,36 @@ func TestDeployment(t *testing.T) {
 					},
 				},
 			},
+			Components: validation.ComponentSet{
+				Components: []validation.Component{
+					{
+						ApplicationName: "radius-keyvault",
+						ComponentName:   "kv",
+						OutputResources: map[string]validation.OutputResourceSet{
+							"KeyVault": validation.NewOutputResource("KeyVault", workloads.OutputResourceTypeArm, workloads.ResourceKindAzureKeyVault, true),
+						},
+					},
+					{
+						ApplicationName: "radius-keyvault",
+						ComponentName:   "kvaccessor",
+						OutputResources: map[string]validation.OutputResourceSet{
+							"Deployment":                     validation.NewOutputResource("Deployment", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							"UserAssignedManagedIdentity-KV": validation.NewOutputResource("UserAssignedManagedIdentity-KV", workloads.OutputResourceTypeArm, workloads.ResourceKindAzureUserAssignedManagedIdentity, true),
+							"RoleAssignment-KVKeys":          validation.NewOutputResource("RoleAssignment-KVKeys", workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
+							"RoleAssignment-KVSecretsCerts":  validation.NewOutputResource("RoleAssignment-KVSecretsCerts", workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
+							"AADPodIdentity":                 validation.NewOutputResource("AADPodIdentity", workloads.OutputResourceTypePodIdentity, workloads.ResourceKindAzurePodIdentity, true),
+						},
+					},
+				},
+			},
+			PostDeployVerify: func(t *testing.T, at ApplicationTest) {
+				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
+
+				// get application and verify name
+				response, err := appclient.Get(ctx, env.ResourceGroup, "radius-keyvault", nil)
+				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+				assert.Equal(t, "radius-keyvault", *response.ApplicationResource.Name)
+			},
 		},
 		{
 			Application: "dapr-hello",
@@ -292,6 +342,7 @@ type Row struct {
 	Description      string
 	Template         string
 	Pods             validation.PodSet
+	Components       validation.ComponentSet
 	PostDeployVerify func(*testing.T, ApplicationTest)
 	PostDeleteVerify func(*testing.T, ApplicationTest)
 }
@@ -338,6 +389,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
 		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods, at.Options.Context)
+
+		// Validate that all expected output resources are created
+		validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Row.Components)
 
 		// Custom verification is expected to use `t` to trigger its own assertions
 		if at.Row.PostDeployVerify != nil {

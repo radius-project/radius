@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/radius/pkg/radrp/armauth"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
 const (
@@ -30,26 +29,13 @@ type azurePodIdentityHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (handler *azurePodIdentityHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
-	item, err := convertToUnstructured(resource)
-	if err != nil {
-		return nil, err
-	}
-
-	p := map[string]string{
-		"kind":       item.GetKind(),
-		"apiVersion": item.GetAPIVersion(),
-		"namespace":  item.GetNamespace(),
-		"name":       item.GetName(),
-	}
-	return p, nil
-}
-
 func (handler *azurePodIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	// TODO: right now this resource is created during the rendering process :(
+	// if !options.Resource.Deployed {
+	// TODO: right now this resource is already deployed during the rendering process :(
 	// this should be done here instead when we have built a more mature system.
+	// }
 
 	return properties, nil
 }

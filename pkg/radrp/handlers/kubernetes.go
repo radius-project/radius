@@ -43,9 +43,22 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 		ComponentNameKey:        item.GetName(),
 	}
 
+	if options.Resource.Deployed {
+		// This resource is deployed in the Render process
+		// TODO: This will eventually change
+		// For now, no need to process any further
+		return p, nil
+	}
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
 	if err != nil {
 		return nil, err
+	}
+
+	options.Resource.OutputResourceInfo = workloads.K8sInfo{
+		Name:       item.GetName(),
+		Namespace:  item.GetNamespace(),
+		Kind:       item.GetKind(),
+		APIVersion: item.GetAPIVersion(),
 	}
 
 	return p, err
@@ -91,8 +104,8 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 	return client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 }
 
-func convertToUnstructured(resource workloads.WorkloadResource) (unstructured.Unstructured, error) {
-	if resource.Type != workloads.ResourceKindKubernetes {
+func convertToUnstructured(resource workloads.OutputResource) (unstructured.Unstructured, error) {
+	if resource.ResourceKind != workloads.ResourceKindKubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}
 

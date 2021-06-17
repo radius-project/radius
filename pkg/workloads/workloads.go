@@ -10,7 +10,6 @@ import (
 	"errors"
 
 	"github.com/Azure/radius/pkg/radrp/components"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // ErrUnknownType is the error reported when the workload type is unknown or unsupported.
@@ -33,28 +32,11 @@ type WorkloadRenderer interface {
 	// AllocateBindings is called for the component to provide its supported bindings and their values.
 	AllocateBindings(ctx context.Context, workload InstantiatedWorkload, resources []WorkloadResourceProperties) (map[string]components.BindingState, error)
 	// Render is called for the component to provide its output resources.
-	Render(ctx context.Context, workload InstantiatedWorkload) ([]WorkloadResource, error)
-}
-
-// WorkloadResource represents the output of rendering a resource
-type WorkloadResource struct {
-	Type string
-	// LocalID is just an identifier for the the workload processing logic to identify the resource
-	LocalID  string
-	Resource interface{}
+	Render(ctx context.Context, workload InstantiatedWorkload) ([]OutputResource, error)
 }
 
 // WorkloadResourceProperties represents the properties output by deploying a resource.
 type WorkloadResourceProperties struct {
 	Type       string
 	Properties map[string]string
-}
-
-// NewKubernetesResource creates a Kubernetes WorkloadResource
-func NewKubernetesResource(localID string, obj runtime.Object) WorkloadResource {
-	return WorkloadResource{Type: ResourceKindKubernetes, LocalID: localID, Resource: obj}
-}
-
-func (wr WorkloadResource) IsKubernetesResource() bool {
-	return wr.Type == ResourceKindKubernetes
 }

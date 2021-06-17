@@ -8,6 +8,7 @@ package keyvaultv1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -55,11 +56,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for keyvault workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	component := KeyVaultComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.OutputResource{}, err
 	}
 
 	if component.Config.Managed {
@@ -67,16 +68,18 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
-		// generate data we can use to manage a cosmosdb instance
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureKeyVault,
+		resource := workloads.OutputResource{
+			LocalID:            "KeyVault",
+			ResourceKind:       workloads.ResourceKindAzureKeyVault,
+			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            true,
+			Deployed:           false,
 			Resource: map[string]string{
 				handlers.ManagedKey: "true",
 			},
 		}
-
 		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
@@ -87,9 +90,17 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		// generate data we can use to connect to a servicebus queue
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureKeyVault,
+		resource := workloads.OutputResource{
+			LocalID:            "KeyVault",
+			ResourceKind:       workloads.ResourceKindAzureKeyVault,
+			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            false,
+			Deployed:           true,
+			OutputResourceInfo: workloads.ARMInfo{
+				ResourceID:   vaultID.ID,
+				ResourceType: KeyVaultResourceType.Type(),
+				APIVersion:   strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " profiles")[0],
+			},
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 
@@ -99,6 +110,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	}
 }
