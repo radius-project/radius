@@ -92,16 +92,17 @@ func TestAPIs(t *testing.T) {
 
 	t.Run("component", func(t *testing.T) {
 		const (
-			ApplicationName = "radius-frontend-backend"
-			ComponentName   = "test-component"
-			Namespace       = "default"
-			JobName         = "test-job"
-			KindName        = "radius.dev/Container@v1alpha1"
-			attempts        = 40
+			ApplicationName       = "radius-frontend-backend"
+			FrontendComponentName = "frontend"
+			BackendComponentName  = "backend"
+			Namespace             = "default"
+			JobName               = "test-job"
+			KindName              = "radius.dev/Container@v1alpha1"
+			attempts              = 40
 		)
 		ctx := context.Background()
 
-		hierarchy := []string{ApplicationName, ComponentName}
+		hierarchy := []string{ApplicationName, FrontendComponentName}
 
 		// Testing applications
 		application := &v1alpha1.Application{
@@ -141,32 +142,32 @@ func TestAPIs(t *testing.T) {
 
 		bindingJson, _ := json.Marshal(bindings)
 
-		img := map[string]interface{}{
+		frontendImg := map[string]interface{}{
 			"image": "rynowak/frontend:0.5.0-dev",
 		}
 
-		run := map[string]interface{}{
-			"container": img,
+		frontendRun := map[string]interface{}{
+			"container": frontendImg,
 		}
 
-		runJson, _ := json.Marshal(run)
+		frontendRunJson, _ := json.Marshal(frontendRun)
 
-		component := &v1alpha1.Component{
+		frontendComponent := &v1alpha1.Component{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "applications.radius.dev/v1alpha1",
 				Kind:       "Component",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      ComponentName,
+				Name:      FrontendComponentName,
 				Namespace: Namespace,
 				Annotations: map[string]string{
 					"radius.dev/applications": "frontend-backend",
-					"radius.dev/components":   ComponentName,
+					"radius.dev/components":   FrontendComponentName,
 				},
 			},
 			Spec: v1alpha1.ComponentSpec{
 				Kind:      KindName,
-				Run:       &runtime.RawExtension{Raw: runJson},
+				Run:       &runtime.RawExtension{Raw: frontendRunJson},
 				Bindings:  runtime.RawExtension{Raw: bindingJson},
 				Hierarchy: hierarchy,
 				// config
@@ -175,51 +176,74 @@ func TestAPIs(t *testing.T) {
 			},
 		}
 
-		err = k8sClient.Create(ctx, component)
+		err = k8sClient.Create(ctx, frontendComponent)
 		require.NoError(t, err, "failed to create component")
 
-		componentLookupKey := types.NamespacedName{Name: ComponentName, Namespace: Namespace}
-		createdComponent := &v1alpha1.Component{}
+		frontendComponentLookupKey := types.NamespacedName{Name: FrontendComponentName, Namespace: Namespace}
+		createdFrontendComponent := &v1alpha1.Component{}
 
-		GetK8sObject(t, ctx, k8sClient, componentLookupKey, createdComponent)
+		GetK8sObject(t, ctx, k8sClient, frontendComponentLookupKey, createdFrontendComponent)
 
-		runActual, _ := createdComponent.Spec.Run.MarshalJSON()
-		require.Equal(t, "frontend-backend", createdComponent.Annotations["radius.dev/applications"])
-		require.Equal(t, ComponentName, createdComponent.Annotations["radius.dev/components"])
-		require.Equal(t, KindName, createdComponent.Spec.Kind)
-		require.Equal(t, runJson, runActual)
-		require.Equal(t, hierarchy, createdComponent.Spec.Hierarchy)
+		runActual, _ := createdFrontendComponent.Spec.Run.MarshalJSON()
+		require.Equal(t, "frontend-backend", createdFrontendComponent.Annotations["radius.dev/applications"])
+		require.Equal(t, FrontendComponentName, createdFrontendComponent.Annotations["radius.dev/components"])
+		require.Equal(t, KindName, createdFrontendComponent.Spec.Kind)
+		require.Equal(t, frontendRunJson, runActual)
+		require.Equal(t, hierarchy, createdFrontendComponent.Spec.Hierarchy)
 
-		// Test Services
+		backendImg := map[string]interface{}{
+			"image": "rynowak/backend:0.5.0-dev",
+		}
 
-		// deployments := &appsv1.DeploymentList{}
-		// err := r.Client.List(ctx, deployments, client.InNamespace(component.Namespace), client.MatchingFields{CacheKeyController: component.Name})
-		// if err != nil {
-		// 	log.Error(err, "failed to retrieve deployments")
-		// 	return nil, err
-		// }
+		backendRun := map[string]interface{}{
+			"container": backendImg,
+		}
 
-		// for _, d := range (*deployments).Items {
-		// 	obj := d
-		// 	results = append(results, &obj)
-		// }
+		backendRunJson, _ := json.Marshal(backendRun)
 
-		// services := &corev1.ServiceList{}
-		// err = r.Client.List(ctx, services, client.InNamespace(component.Namespace), client.MatchingFields{CacheKeyController: component.Name})
-		// if err != nil {
-		// 	log.Error(err, "failed to retrieve services")
-		// 	return nil, err
-		// }
+		backendComponent := &v1alpha1.Component{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "applications.radius.dev/v1alpha1",
+				Kind:       "Component",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      BackendComponentName,
+				Namespace: Namespace,
+				Annotations: map[string]string{
+					"radius.dev/applications": "frontend-backend",
+					"radius.dev/components":   BackendComponentName,
+				},
+			},
+			Spec: v1alpha1.ComponentSpec{
+				Kind:      KindName,
+				Run:       &runtime.RawExtension{Raw: backendRunJson},
+				Bindings:  runtime.RawExtension{Raw: bindingJson},
+				Hierarchy: hierarchy,
+				// config
+				// uses
+				// traits
+			},
+		}
 
-		// for _, s := range (*services).Items {
-		// 	obj := s
-		// 	results = append(results, &obj)
-		// }
+		err = k8sClient.Create(ctx, backendComponent)
+		require.NoError(t, err, "failed to create component")
+
+		backendComponentLookupKey := types.NamespacedName{Name: BackendComponentName, Namespace: Namespace}
+		createdBackendComponent := &v1alpha1.Component{}
+
+		GetK8sObject(t, ctx, k8sClient, backendComponentLookupKey, createdBackendComponent)
+
+		backendRunActual, _ := createdBackendComponent.Spec.Run.MarshalJSON()
+		require.Equal(t, "frontend-backend", createdBackendComponent.Annotations["radius.dev/applications"])
+		require.Equal(t, BackendComponentName, createdBackendComponent.Annotations["radius.dev/components"])
+		require.Equal(t, KindName, createdBackendComponent.Spec.Kind)
+		require.Equal(t, backendRunJson, backendRunActual)
+		require.Equal(t, hierarchy, createdBackendComponent.Spec.Hierarchy)
 
 		// Test Deployments
 		deployments := &appsv1.DeploymentList{}
 		for i := 0; ; i++ {
-			err = k8sClient.List(ctx, deployments, client.InNamespace(component.Namespace))
+			err = k8sClient.List(ctx, deployments, client.InNamespace(frontendComponent.Namespace))
 
 			if len(deployments.Items) > 0 {
 				break
@@ -232,11 +256,11 @@ func TestAPIs(t *testing.T) {
 		}
 
 		deployment := deployments.Items[0]
-		require.Equal(t, ComponentName, deployment.Name)
+		require.Equal(t, FrontendComponentName, deployment.Name)
 
 		services := &corev1.ServiceList{}
 		for i := 0; ; i++ {
-			err = k8sClient.List(ctx, services, client.InNamespace(component.Namespace))
+			err = k8sClient.List(ctx, services, client.InNamespace(frontendComponent.Namespace))
 
 			if len(services.Items) == 1 {
 				break
@@ -249,7 +273,7 @@ func TestAPIs(t *testing.T) {
 		}
 
 		service := services.Items[0]
-		require.Equal(t, ComponentName, service.Name)
+		require.Equal(t, FrontendComponentName, service.Name)
 	})
 
 	err = testEnv.Stop()

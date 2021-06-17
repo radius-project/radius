@@ -692,7 +692,7 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cc.Name,
-			Namespace: w.Application,
+			Namespace: w.Application, // TODO why is this a different namespace
 			Labels: map[string]string{
 				workloads.LabelRadiusApplication: w.Application,
 				workloads.LabelRadiusComponent:   cc.Name,
