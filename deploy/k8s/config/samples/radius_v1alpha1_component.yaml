@@ -16,7 +16,7 @@ spec:
       SERVICE__BACKEND__HOST: "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.default.host]"
       SERVICE__BACKEND__PORT: "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.default.port]"
   bindings:
-    frontend: 
+    default: 
       kind: http
       targetPort: 80
   traits:
