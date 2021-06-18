@@ -182,9 +182,8 @@ func TestAPIs(t *testing.T) {
 				},
 			},
 		}
-		// s:"cannot resolve value  for binding default from component frontend"
 
-		usesFrontendJson, err := json.Marshal(usesFrontend)
+		usesFrontendJson, _ := json.Marshal(usesFrontend)
 
 		usesArray := []runtime.RawExtension{
 			{
