@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Rrequest a feature in Project Radius
+about: Request a feature in Project Radius
 title: "<PROPOSAL TITLE>"
 labels: kind/feature
 assignees: ''
