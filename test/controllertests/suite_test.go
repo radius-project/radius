@@ -93,6 +93,7 @@ func TestAPIs(t *testing.T) {
 	t.Run("component", func(t *testing.T) {
 		const (
 			RadiusApplicationName = "radius-frontend-backend"
+			ApplicationName       = "frontend-backend"
 			FrontendComponentName = "frontend"
 			BackendComponentName  = "backend"
 			Namespace             = "default"
@@ -114,7 +115,7 @@ func TestAPIs(t *testing.T) {
 				Name:      RadiusApplicationName,
 				Namespace: Namespace,
 				Annotations: map[string]string{
-					"radius.dev/applications": "frontend-backend",
+					"radius.dev/applications": ApplicationName,
 				},
 			},
 			Spec: radiusv1alpha1.ApplicationSpec{
@@ -130,7 +131,7 @@ func TestAPIs(t *testing.T) {
 
 		GetK8sObject(t, ctx, k8sClient, applicationLookupKey, createdApplication)
 
-		require.Equal(t, "frontend-backend", createdApplication.Annotations["radius.dev/applications"])
+		require.Equal(t, ApplicationName, createdApplication.Annotations["radius.dev/applications"])
 		require.Equal(t, RadiusApplicationName, createdApplication.Name)
 		require.Equal(t, hierarchy, createdApplication.Spec.Hierarchy)
 
@@ -156,7 +157,7 @@ func TestAPIs(t *testing.T) {
 			Binding: components.BindingExpression{
 				Kind: "component",
 				Value: &components.ComponentBindingValue{
-					Application: "frontend-backend",
+					Application: ApplicationName,
 					Component:   "frontend",
 					Binding:     "default",
 				},
@@ -165,7 +166,7 @@ func TestAPIs(t *testing.T) {
 				"SERVICE__BACKEND__HOST": {
 					Kind: "component",
 					Value: &components.ComponentBindingValue{
-						Application: "frontend-backend",
+						Application: ApplicationName,
 						Component:   "frontend",
 						Binding:     "default",
 						Property:    "host",
@@ -174,7 +175,7 @@ func TestAPIs(t *testing.T) {
 				"SERVICE__BACKEND__PORT": {
 					Kind: "component",
 					Value: &components.ComponentBindingValue{
-						Application: "frontend-backend",
+						Application: ApplicationName,
 						Component:   "frontend",
 						Binding:     "default",
 						Property:    "port",
@@ -200,7 +201,7 @@ func TestAPIs(t *testing.T) {
 				Name:      FrontendComponentName,
 				Namespace: Namespace,
 				Annotations: map[string]string{
-					"radius.dev/applications": "frontend-backend",
+					"radius.dev/applications": ApplicationName,
 					"radius.dev/components":   FrontendComponentName,
 				},
 			},
@@ -222,7 +223,7 @@ func TestAPIs(t *testing.T) {
 		GetK8sObject(t, ctx, k8sClient, frontendComponentLookupKey, createdFrontendComponent)
 
 		runActual, _ := createdFrontendComponent.Spec.Run.MarshalJSON()
-		require.Equal(t, "frontend-backend", createdFrontendComponent.Annotations["radius.dev/applications"])
+		require.Equal(t, ApplicationName, createdFrontendComponent.Annotations["radius.dev/applications"])
 		require.Equal(t, FrontendComponentName, createdFrontendComponent.Annotations["radius.dev/components"])
 		require.Equal(t, KindName, createdFrontendComponent.Spec.Kind)
 		require.Equal(t, frontendRunJson, runActual)
@@ -247,7 +248,7 @@ func TestAPIs(t *testing.T) {
 				Name:      BackendComponentName,
 				Namespace: Namespace,
 				Annotations: map[string]string{
-					"radius.dev/applications": "frontend-backend",
+					"radius.dev/applications": ApplicationName,
 					"radius.dev/components":   BackendComponentName,
 				},
 			},
@@ -268,7 +269,7 @@ func TestAPIs(t *testing.T) {
 		GetK8sObject(t, ctx, k8sClient, backendComponentLookupKey, createdBackendComponent)
 
 		backendRunActual, _ := createdBackendComponent.Spec.Run.MarshalJSON()
-		require.Equal(t, "frontend-backend", createdBackendComponent.Annotations["radius.dev/applications"])
+		require.Equal(t, ApplicationName, createdBackendComponent.Annotations["radius.dev/applications"])
 		require.Equal(t, BackendComponentName, createdBackendComponent.Annotations["radius.dev/components"])
 		require.Equal(t, KindName, createdBackendComponent.Spec.Kind)
 		require.Equal(t, backendRunJson, backendRunActual)
@@ -280,34 +281,38 @@ func TestAPIs(t *testing.T) {
 			err = k8sClient.List(ctx, deployments, client.InNamespace(frontendComponent.Namespace))
 
 			if len(deployments.Items) == 2 {
+				for _, dep := range deployments.Items {
+					if dep.Name != "frontend" && dep.Name != "backend" {
+						require.Fail(t, "found unrecongnized deployment")
+					}
+				}
 				break
 			}
 
 			if i >= attempts {
-				require.NoError(t, err, "could not get deployments from k8s")
+				require.Fail(t, "could not get deployment from k8s")
 			}
-			time.Sleep(1000)
+			time.Sleep(time.Second)
 		}
-
-		// deployment := deployments.Items[0]
-		// require.Equal(t, FrontendComponentName, deployment.Name)
 
 		services := &corev1.ServiceList{}
 		for i := 0; ; i++ {
 			err = k8sClient.List(ctx, services, client.InNamespace(frontendComponent.Namespace))
 
 			if len(services.Items) == 3 {
+				for _, serv := range services.Items {
+					if serv.Name != "frontend" && serv.Name != "backend" && serv.Name != "kubernetes" {
+						require.Fail(t, "found unrecongnized deployment")
+					}
+				}
 				break
 			}
 
 			if i >= attempts {
-				require.NoError(t, err, "could not get services from k8s")
+				require.Fail(t, "could not get services from k8s")
 			}
-			time.Sleep(1000)
+			time.Sleep(time.Second)
 		}
-
-		// service := services.Items[0]
-		// require.Equal(t, FrontendComponentName, service.Name)
 	})
 
 	err = testEnv.Stop()
