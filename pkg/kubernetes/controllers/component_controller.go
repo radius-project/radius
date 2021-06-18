@@ -150,7 +150,7 @@ func (r *ComponentReconciler) FetchActualResources(ctx context.Context, log logr
 	return results, nil
 }
 
-func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, component *radiusv1alpha1.Component) ([]workloads.WorkloadResource, []radiusv1alpha1.ComponentStatusBinding, bool, error) {
+func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, component *radiusv1alpha1.Component) ([]workloads.OutputResource, []radiusv1alpha1.ComponentStatusBinding, bool, error) {
 	// If the application hasn't been defined yet, then just produce no output.
 	if application == nil {
 		r.recorder.Eventf(component, "Normal", "Waiting", "Component is waiting for application: %s", component.Annotations["radius.dev/applications"])
@@ -236,7 +236,7 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 		}
 	}
 
-	resources := []workloads.WorkloadResource{}
+	resources := []workloads.OutputResource{}
 	if len(missing) > 0 {
 		missingNames := []string{}
 		for _, key := range missing {
@@ -288,7 +288,7 @@ func (r *ComponentReconciler) ApplyState(
 	application *radiusv1alpha1.Application,
 	component *radiusv1alpha1.Component,
 	actual []client.Object,
-	desired []workloads.WorkloadResource,
+	desired []workloads.OutputResource,
 	bindings []radiusv1alpha1.ComponentStatusBinding) error {
 
 	// First we go through the desired state and apply all of those resources.
@@ -298,6 +298,10 @@ func (r *ComponentReconciler) ApplyState(
 	//
 	// We also trample over the 'resources' part of the status so that it's clean.
 
+	oldstatus := component.Status.Resources
+	if oldstatus == nil {
+		oldstatus = map[string]corev1.ObjectReference{}
+	}
 	component.Status.Resources = map[string]corev1.ObjectReference{}
 
 	for _, cr := range desired {
