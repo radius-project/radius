@@ -158,7 +158,7 @@ func TestAPIs(t *testing.T) {
 				Kind: "component",
 				Value: &components.ComponentBindingValue{
 					Application: ApplicationName,
-					Component:   "frontend",
+					Component:   FrontendComponentName,
 					Binding:     "default",
 				},
 			},
@@ -167,7 +167,7 @@ func TestAPIs(t *testing.T) {
 					Kind: "component",
 					Value: &components.ComponentBindingValue{
 						Application: ApplicationName,
-						Component:   "frontend",
+						Component:   FrontendComponentName,
 						Binding:     "default",
 						Property:    "host",
 					},
@@ -176,7 +176,7 @@ func TestAPIs(t *testing.T) {
 					Kind: "component",
 					Value: &components.ComponentBindingValue{
 						Application: ApplicationName,
-						Component:   "frontend",
+						Component:   FrontendComponentName,
 						Binding:     "default",
 						Property:    "port",
 					},
@@ -282,7 +282,7 @@ func TestAPIs(t *testing.T) {
 
 			if len(deployments.Items) == 2 {
 				for _, dep := range deployments.Items {
-					if dep.Name != "frontend" && dep.Name != "backend" {
+					if dep.Name != FrontendComponentName && dep.Name != BackendComponentName {
 						require.Fail(t, "found unrecongnized deployment")
 					}
 				}
@@ -301,8 +301,8 @@ func TestAPIs(t *testing.T) {
 
 			if len(services.Items) == 3 {
 				for _, serv := range services.Items {
-					if serv.Name != "frontend" && serv.Name != "backend" && serv.Name != "kubernetes" {
-						require.Fail(t, "found unrecongnized deployment")
+					if serv.Name != FrontendComponentName && serv.Name != BackendComponentName && serv.Name != "kubernetes" {
+						require.Fail(t, "found unrecongnized service")
 					}
 				}
 				break
