@@ -6,8 +6,10 @@
 package radrp
 
 import (
+	"context"
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 
@@ -77,6 +79,10 @@ func NewServer(options ServerOptions) *http.Server {
 	return &http.Server{
 		Addr:    options.Address,
 		Handler: app,
+		BaseContext: func(ln net.Listener) context.Context {
+			// return context.WithValue(context.Background(), radlogger.ContextLoggerField, options.Logger)
+			return logr.NewContext(context.Background(), options.Logger)
+		},
 	}
 }
 

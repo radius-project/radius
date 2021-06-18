@@ -8,6 +8,7 @@ package radlogger
 const (
 	LogFieldTimeStamp          = "timestamp"
 	LogFieldAppName            = "application"
+	LogFieldAppID              = "applicationID"
 	LogFieldComponentName      = "component"
 	LogFieldSubscriptionID     = "subscriptionId"
 	LogFieldResourceGroup      = "resourceGroup"
@@ -18,3 +19,5 @@ const (
 	LogFieldResourceType       = "resourceType"
 	LogFieldResourceProperties = "resourceProperties"
 )
+
+const ContextLoggerField = "logger"

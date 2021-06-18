@@ -101,7 +101,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger := radlogger.NewLogger("server")
+	logger, err := radlogger.NewLogger("radRP")
+	if err != nil {
+		panic(err)
+	}
 
 	options := radrp.ServerOptions{
 		Address:      ":" + port,

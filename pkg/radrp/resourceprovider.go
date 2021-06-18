@@ -50,12 +50,10 @@ type ResourceProvider interface {
 
 // NewResourceProvider creates a new ResourceProvider.
 func NewResourceProvider(db db.RadrpDB, deploy deployment.DeploymentProcessor) ResourceProvider {
-	logger := radlogger.NewLogger("RadRP")
 	return &rp{
 		db:     db,
 		v:      validator.New(),
 		deploy: deploy,
-		logger: logger,
 	}
 }
 
@@ -105,6 +103,10 @@ func (r *rp) GetApplication(ctx context.Context, id resources.ResourceID) (rest.
 }
 
 func (r *rp) UpdateApplication(ctx context.Context, a *rest.Application) (rest.Response, error) {
+	ctx = radlogger.WrapLogContext(ctx,
+		radlogger.LogFieldAppName, a.Name,
+		radlogger.LogFieldAppID, a.ID,
+	)
 	_, err := a.GetApplicationID()
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -326,6 +328,12 @@ func (r *rp) GetDeployment(ctx context.Context, id resources.ResourceID) (rest.R
 
 func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Response, error) {
 	id, err := d.GetDeploymentID()
+	ctx = radlogger.WrapLogContext(ctx,
+		radlogger.LogFieldDeploymentName, d.Name,
+		radlogger.LogFieldAppName, id.App.Name(),
+		radlogger.LogFieldAppID, id.App.ID)
+	logger := radlogger.GetLogger(ctx)
+
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
@@ -369,7 +377,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	eq := deploymentIsNoOp(actions)
 	if eq && olddbitem != nil {
 		// No changes to the deployment - nothing to do.
-		log.Printf("%T is unchanged.", olddbitem)
+		logger.Info("Deployment is unchanged.")
 		return rest.NewOKResponse(newRESTDeploymentFromDB(olddbitem)), nil
 	}
 

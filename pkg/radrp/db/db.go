@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -119,18 +120,19 @@ func (d radrpDB) GetApplicationByID(ctx context.Context, id resources.Applicatio
 }
 
 func (d radrpDB) PatchApplication(ctx context.Context, patch *ApplicationPatch) (bool, error) {
+	logger := radlogger.GetLogger(ctx)
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: patch.ResourceBase.ID}}
 	update := bson.D{{Key: "$set", Value: patch}}
 
-	log.Printf("Updating Application with _id: %s", patch.ResourceBase.ID)
+	logger.Info("Updating Application")
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return false, fmt.Errorf("error updating Application: %s", err)
 	}
 
-	log.Printf("Updated Application with _id: %s - %+v", patch.ResourceBase.ID, result)
+	logger.Info(fmt.Sprintf("Successfully updated Application with result - %+v", result))
 	return result.UpsertedCount > 0, nil
 }
 

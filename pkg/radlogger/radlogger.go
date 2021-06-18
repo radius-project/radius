@@ -6,7 +6,10 @@
 package radlogger
 
 import (
-	"log"
+	"context"
+	"fmt"
+	"os"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -17,40 +20,88 @@ import (
 // Radius uses the Zapr: https://github.com/go-logr/zapr which implements a logr interface
 // for a zap log sink
 
-const DefaultLoggerName = "global"
+const (
+	DefaultLoggerName = "radiusRP"
+	RadLogLevel       = "RADIUS_LOG_LEVEL" // Env variable that determines the log level
+	RadProfile        = "RADIUS_PROFILE"   // Env variable that determines the logger config presets
+)
 
-func InitRadLoggerConfig() *zap.Logger {
-	cfg := zap.Config{
-		Encoding:         "json",
-		Level:            zap.NewAtomicLevelAt(zapcore.DebugLevel),
-		OutputPaths:      []string{"stderr"},
-		ErrorOutputPaths: []string{"stderr"},
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey: "message",
+// Log levels
+const (
+	Debug           = 1
+	Info            = 0
+	DefaultLogLevel = Info
+)
 
-			LevelKey:    "level",
-			EncodeLevel: zapcore.CapitalLevelEncoder,
+// Logger Profiles which determines the logger configuration
+const (
+	LoggerProfileProd    = "production"
+	LoggerProfileDev     = "development"
+	DefaultLoggerProfile = LoggerProfileProd
+)
 
-			TimeKey:    "timestamp",
-			EncodeTime: zapcore.ISO8601TimeEncoder,
+func InitRadLoggerConfig() (*zap.Logger, error) {
+	var cfg zap.Config
 
-			CallerKey:    "caller",
-			EncodeCaller: zapcore.ShortCallerEncoder,
-		},
+	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
+	profile := os.Getenv(RadProfile)
+	if profile == "" {
+		profile = DefaultLoggerProfile
 	}
+	if strings.EqualFold(profile, LoggerProfileDev) {
+		cfg = zap.NewDevelopmentConfig()
+	} else if strings.EqualFold(profile, LoggerProfileProd) {
+		cfg = zap.NewProductionConfig()
+	} else {
+		return nil, fmt.Errorf("Invalid Radius Logger Profile set. Valid options are: %s, %s", LoggerProfileDev, LoggerProfileProd)
+	}
+
+	// Modify the default log level intialized by the profile preset if a custom value
+	// is specified by "RADIUS_LOG_LEVEL" env variable
+	radLogLevel := os.Getenv(RadLogLevel)
+	var logLevel int
+	if radLogLevel != "" {
+		if strings.EqualFold("debug", radLogLevel) {
+			logLevel = Debug
+		} else if strings.EqualFold("info", radLogLevel) {
+			logLevel = Info
+		}
+		cfg.Level = zap.NewAtomicLevelAt(zapcore.Level(logLevel))
+	}
+
+	// Build the logger config based on profile and custom presets
 	logger, err := cfg.Build()
 	if err != nil {
-		log.Fatal("Unable to initialize zap logger")
+		return nil, fmt.Errorf("Unable to initialize zap logger: %v", err)
 	}
 
-	return logger
+	return logger, nil
 }
 
-func NewLogger(name string) logr.Logger {
+func NewLogger(name string) (logr.Logger, error) {
 	if name == "" {
 		name = DefaultLoggerName
 	}
-	log := zapr.NewLogger(InitRadLoggerConfig())
+
+	logConfig, err := InitRadLoggerConfig()
+	if err != nil {
+		return nil, err
+	}
+	log := zapr.NewLogger(logConfig)
 	log = log.WithName(name)
-	return log
+	return log, nil
+}
+
+func WrapLogContext(ctx context.Context, keyValues ...interface{}) context.Context {
+	logger := logr.FromContext(ctx).WithValues(keyValues...)
+	ctx = logr.NewContext(ctx, logger)
+	return ctx
+}
+
+func GetLogger(ctx context.Context) logr.Logger {
+	return logr.FromContext(ctx)
+}
+
+func SetLogLevel(level zapcore.Level) {
+	zap.NewAtomicLevelAt(level)
 }
