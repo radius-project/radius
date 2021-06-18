@@ -7,14 +7,15 @@ package radlogger
 // Field names for structured logging
 const (
 	LogFieldTimeStamp          = "timestamp"
-	LogFieldAppName            = "application"
+	LogFieldAppName            = "applicationName"
 	LogFieldAppID              = "applicationID"
-	LogFieldComponentName      = "component"
+	LogFieldComponentName      = "componentName"
 	LogFieldSubscriptionID     = "subscriptionId"
 	LogFieldResourceGroup      = "resourceGroup"
 	LogFieldAction             = "action"
 	LogFieldComponentKind      = "componentKind"
-	LogFieldDeploymentName     = "deployment"
+	LogFieldDeploymentName     = "deploymentName"
+	LogFieldDeploymentID       = "deploymentID"
 	LogFieldErrors             = "errors"
 	LogFieldResourceType       = "resourceType"
 	LogFieldResourceProperties = "resourceProperties"

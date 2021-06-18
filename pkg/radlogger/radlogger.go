@@ -28,9 +28,11 @@ const (
 
 // Log levels
 const (
-	Debug           = 1
-	Info            = 0
-	DefaultLogLevel = Info
+	Verbose                 = 1
+	Normal                  = 0
+	DefaultLogLevel       = Normal
+	VerbosityLevelNormal  = "normal"
+	VerbosityLevelVerbose = "verbose"
 )
 
 // Logger Profiles which determines the logger configuration
@@ -61,10 +63,10 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	radLogLevel := os.Getenv(RadLogLevel)
 	var logLevel int
 	if radLogLevel != "" {
-		if strings.EqualFold("debug", radLogLevel) {
-			logLevel = Debug
-		} else if strings.EqualFold("info", radLogLevel) {
-			logLevel = Info
+		if strings.EqualFold(VerbosityLevelVerbose, radLogLevel) {
+			logLevel = Verbose
+		} else if strings.EqualFold(VerbosityLevelNormal, radLogLevel) {
+			logLevel = Normal
 		}
 		cfg.Level = zap.NewAtomicLevelAt(zapcore.Level(logLevel))
 	}

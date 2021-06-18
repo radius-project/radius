@@ -331,7 +331,8 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	ctx = radlogger.WrapLogContext(ctx,
 		radlogger.LogFieldDeploymentName, d.Name,
 		radlogger.LogFieldAppName, id.App.Name(),
-		radlogger.LogFieldAppID, id.App.ID)
+		radlogger.LogFieldAppID, id.App.ID,
+		radlogger.LogFieldDeploymentName, d.ID)
 	logger := radlogger.GetLogger(ctx)
 
 	if err != nil {
@@ -423,8 +424,8 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	// OK we've updated the database to denote that the deployment is in process - now we're ready
 	// to start deploying in the background.
 	go func() {
-		ctx := context.Background()
-		log.Printf("processing deployment '%s' in the background", d.ID)
+		ctx := logr.NewContext(context.Background(), logger)
+		logger.Info("processing deployment in the background")
 		var failure *armerrors.ErrorDetails = nil
 		status := rest.SuccededStatus
 

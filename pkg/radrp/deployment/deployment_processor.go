@@ -8,6 +8,7 @@ package deployment
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
@@ -117,9 +118,8 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 	// TODO - we don't handle the case where resources disappear without the component being
 	// deleted. All of the resources we support so far are 1-1 with the components.
 	errs := []error{}
-	logger := dp.logger.WithValues(
-		radlogger.LogFieldAppName, appName,
-	)
+	ctx = radlogger.WrapLogContext(ctx, radlogger.LogFieldAppName, appName)
+	logger := radlogger.GetLogger(ctx)
 
 	ordered, err := dp.orderActions(actions)
 	if err != nil {
@@ -198,6 +198,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				BindingValues: bindingValues,
 			}
 
+			logger.V(radlogger.Verbose).Info("Rendering workload")
 			outputResources, err := dp.renderWorkload(ctx, inst)
 			if err != nil {
 				errs = append(errs, err)
