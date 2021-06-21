@@ -89,12 +89,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// Now we need to rationalize the set of logical resources (desired state against the actual state)
-	actual, err := r.FetchActualResources(ctx, log, component)
+	actual, err := r.FetchKubernetesResources(ctx, log, component)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	desired, bindings, rendered, err := r.RenderComponent(ctx, log, application, component)
+	desired, bindings, rendered, err := r.RenderComponent(ctx, log, application, component, component.Annotations["radius.dev/applications"], component.Annotations["radius.dev/components"])
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -118,7 +118,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
-func (r *ComponentReconciler) FetchActualResources(ctx context.Context, log logr.Logger, component *radiusv1alpha1.Component) ([]client.Object, error) {
+func (r *ComponentReconciler) FetchKubernetesResources(ctx context.Context, log logr.Logger, component *radiusv1alpha1.Component) ([]client.Object, error) {
 	log.Info("fetching existing resources for component")
 	results := []client.Object{}
 
@@ -150,10 +150,11 @@ func (r *ComponentReconciler) FetchActualResources(ctx context.Context, log logr
 	return results, nil
 }
 
-func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, component *radiusv1alpha1.Component) ([]workloads.OutputResource, []radiusv1alpha1.ComponentStatusBinding, bool, error) {
+// Make this work for generic
+func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, component *radiusv1alpha1.Component, applicationName string, componentName string) ([]workloads.OutputResource, []radiusv1alpha1.ComponentStatusBinding, bool, error) {
 	// If the application hasn't been defined yet, then just produce no output.
 	if application == nil {
-		r.recorder.Eventf(component, "Normal", "Waiting", "Component is waiting for application: %s", component.Annotations["radius.dev/applications"])
+		r.recorder.Eventf(component, "Normal", "Waiting", "Component is waiting for application: %s", applicationName)
 		return nil, nil, false, nil
 	}
 
@@ -173,8 +174,8 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 	}
 
 	w := workloads.InstantiatedWorkload{
-		Application:   component.Annotations["radius.dev/applications"],
-		Name:          component.Annotations["radius.dev/components"],
+		Application:   applicationName,
+		Name:          componentName,
 		Namespace:     component.Namespace,
 		Workload:      *generic,
 		BindingValues: map[components.BindingKey]components.BindingState{},
@@ -197,7 +198,7 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 
 		found := false
 		for _, pp := range providers.Items {
-			if pp.Annotations["radius.dev/applications"] != component.Annotations["radius.dev/applications"] {
+			if pp.Annotations["radius.dev/applications"] != applicationName {
 				continue
 			}
 
