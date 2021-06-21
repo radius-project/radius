@@ -153,37 +153,15 @@ func TestAPIs(t *testing.T) {
 
 		frontendRunJson, _ := json.Marshal(frontendRun)
 
-		usesFrontend := components.GenericDependency{
-			Binding: components.BindingExpression{
-				Kind: "component",
-				Value: &components.ComponentBindingValue{
-					Application: ApplicationName,
-					Component:   FrontendComponentName,
-					Binding:     "default",
-				},
+		usesFrontend := map[string]interface{}{
+			"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
+			"env": map[string]interface{}{
+				"SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.host]",
 			},
-			Env: map[string]components.BindingExpression{
-				"SERVICE__BACKEND__HOST": {
-					Kind: "component",
-					Value: &components.ComponentBindingValue{
-						Application: ApplicationName,
-						Component:   FrontendComponentName,
-						Binding:     "default",
-						Property:    "host",
-					},
-				},
-				"SERVICE__BACKEND__PORT": {
-					Kind: "component",
-					Value: &components.ComponentBindingValue{
-						Application: ApplicationName,
-						Component:   FrontendComponentName,
-						Binding:     "default",
-						Property:    "port",
-					},
-				},
+			"secrets": map[string]interface{}{
+				"secret": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
 			},
 		}
-
 		usesFrontendJson, _ := json.Marshal(usesFrontend)
 
 		usesArray := []runtime.RawExtension{

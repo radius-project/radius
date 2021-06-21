@@ -7,6 +7,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/radrp/components"
@@ -62,6 +63,8 @@ func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.S
 			if err != nil {
 				return err
 			}
+
+			fmt.Println(string(b))
 
 			dependency := components.GenericDependency{}
 			err = json.Unmarshal(b, &dependency)

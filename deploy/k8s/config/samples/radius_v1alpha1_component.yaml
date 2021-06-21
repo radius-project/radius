@@ -19,9 +19,6 @@ spec:
     default: 
       kind: http
       targetPort: 80
-  traits:
-  - kind: radius.dev/InboundRoute@v1alpha1
-    binding: frontend
 ---
 apiVersion: applications.radius.dev/v1alpha1
 kind: Component

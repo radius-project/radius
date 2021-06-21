@@ -24,7 +24,7 @@ type GenericComponent struct {
 // GenericBinding represents a binding provided by an Radius Component in a generic form.
 type GenericBinding struct {
 	Kind                 string
-	AdditionalProperties map[string]interface{}
+	AdditionalProperties map[string]interface{} `json:",omitempty"`
 
 	// GenericBinding has custom marshaling code
 }
@@ -45,7 +45,7 @@ type GenericDependencySecrets struct {
 // GenericTrait represents a trait for an Radius component.
 type GenericTrait struct {
 	Kind                 string
-	AdditionalProperties map[string]interface{}
+	AdditionalProperties map[string]interface{} `json:",omitempty"`
 
 	// GenericTrait has custom marshaling code
 }
