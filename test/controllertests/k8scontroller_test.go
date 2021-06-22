@@ -155,19 +155,8 @@ func TestK8sController(t *testing.T) {
 								"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
 								"env": map[string]interface{}{
 									"SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.host]",
+									"SERVICE__BACKEND__PORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.port]",
 								},
-								"secrets": map[string]interface{}{
-									"store": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
-									"keys": map[string]interface{}{
-										"secret": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
-									},
-								},
-							},
-						},
-						Traits: []map[string]interface{}{
-							{
-								"kind":    "radius.dev/InboundRoute@v1alpha1",
-								"binding": "web",
 							},
 						},
 					},
@@ -361,7 +350,6 @@ func (ct ControllerTest) Test(t *testing.T) {
 		err := ct.Options.Client.Create(ct.Options.Context, &component)
 		require.NoError(t, err, "failed to create component")
 	}
-
 	// ValidatePodsRunning triggers its own assertions, no need to handle errors
 	validation.ValidatePodsRunning(t, ct.Options.K8s, ct.Row.Pods, ct.Options.Context)
 }

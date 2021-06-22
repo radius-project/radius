@@ -38,43 +38,52 @@ func NewPodForComponent(application string, name string) Pod {
 
 // ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
 func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSet, ctx context.Context) {
-
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating pods in namespace %v", namespace)
+		var actualPods *corev1.PodList
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				var err error
+				actualPods, err = k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+				require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
 
-		actualPods, err := k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-		require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
+				// log all the data so its there if we need to analyze a failure
+				logPods(t, actualPods.Items)
 
-		// log all the data so its there if we need to analyze a failure
-		logPods(t, actualPods.Items)
+				// copy the list of expected pods so we can remove from it
+				//
+				// this way we "check off" each pod as it is matched
+				remaining := make([]Pod, len(expectedPods))
+				copy(remaining, expectedPods)
 
-		// switch to using assert so we can validate all the details without failing fast
-		assert.Equalf(t, len(expectedPods), len(actualPods.Items), "different number of pods than expected in namespace %v", namespace)
+				for _, actualPod := range actualPods.Items {
+					// validate that this matches one of our expected pods
+					index := matchesExpectedPod(remaining, actualPod)
+					if index == nil {
+						// this is not a match
+						assert.Failf(t, "unrecognized pod", "count not find a match for Pod with namespace: %v name: %v labels: %v", actualPod.Namespace, actualPod.Name, actualPod.Labels)
+						continue
+					}
 
-		// copy the list of expected pods so we can remove from it
-		//
-		// this way we "check off" each pod as it is matched
-		remaining := make([]Pod, len(expectedPods))
-		copy(remaining, expectedPods)
+					// trim the list of 'remaining' pods
+					remaining = append(remaining[:*index], remaining[*index+1:]...)
+				}
 
-		for _, actualPod := range actualPods.Items {
-			// validate that this matches one of our expected pods
-			index := matchesExpectedPod(remaining, actualPod)
-			if index == nil {
-				// this is not a match
-				assert.Failf(t, "count not find a match for Pod with namespace: %v name: %v labels: %v", actualPod.Namespace, actualPod.Name, actualPod.Labels)
-				continue
+				if len(remaining) == 0 {
+					goto podcheck
+				}
+				for _, remainingPod := range remaining {
+					t.Logf("failed to match pod in namespace %v with labels %v, retrying", namespace, remainingPod.Labels)
+				}
+
+			case <-ctx.Done():
+				assert.Fail(t, "timed out after waiting for pods to be created")
 			}
-
-			// trim the list of 'remaining' pods
-			remaining = append(remaining[:*index], remaining[*index+1:]...)
-		}
-
-		for _, remainingPod := range remaining {
-			assert.Failf(t, "failed to match pod in namespace %v with labels %v", namespace, remainingPod.Labels)
 		}
 
 		// Now check the status of the pods
+	podcheck:
 		for _, actualPod := range actualPods.Items {
 			if actualPod.Status.Phase == corev1.PodRunning {
 				continue
