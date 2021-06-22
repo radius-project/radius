@@ -28,8 +28,8 @@ const (
 
 // Log levels
 const (
-	Verbose                 = 1
-	Normal                  = 0
+	Verbose               = 1
+	Normal                = 0
 	DefaultLogLevel       = Normal
 	VerbosityLevelNormal  = "normal"
 	VerbosityLevelVerbose = "verbose"
@@ -102,8 +102,4 @@ func WrapLogContext(ctx context.Context, keyValues ...interface{}) context.Conte
 
 func GetLogger(ctx context.Context) logr.Logger {
 	return logr.FromContext(ctx)
-}
-
-func SetLogLevel(level zapcore.Level) {
-	zap.NewAtomicLevelAt(level)
 }

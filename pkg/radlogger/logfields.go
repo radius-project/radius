@@ -8,6 +8,7 @@ package radlogger
 const (
 	LogFieldTimeStamp          = "timestamp"
 	LogFieldAppName            = "applicationName"
+	LogFieldScopeName          = "scopeName"
 	LogFieldAppID              = "applicationID"
 	LogFieldComponentName      = "componentName"
 	LogFieldSubscriptionID     = "subscriptionId"
@@ -19,6 +20,14 @@ const (
 	LogFieldErrors             = "errors"
 	LogFieldResourceType       = "resourceType"
 	LogFieldResourceProperties = "resourceProperties"
+	LogFieldWorkLoadKind       = "workloadKind"
+	LogFieldWorkLoadName       = "workloadName"
+	LogFieldResourceID         = "resourceID"
+	LogFieldResourceName       = "resourceName"
+	LogFieldOperationID        = "operationID"
+	LogFieldOperationStatus    = "operationStatus"
+	LogFieldOperationFilter    = "operationfilter"
+	LogFieldLocalID            = "localID"
 )
 
 const ContextLoggerField = "logger"

@@ -8,7 +8,6 @@ package deployment
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
@@ -100,14 +99,12 @@ func (ce *CompositeError) Error() string {
 
 type deploymentProcessor struct {
 	appmodel model.ApplicationModel
-	logger   logr.Logger
 }
 
 // NewDeploymentProcessor initializes a deployment processor.
 func NewDeploymentProcessor(appmodel model.ApplicationModel, logger logr.Logger) DeploymentProcessor {
 	return &deploymentProcessor{
 		appmodel: appmodel,
-		logger:   logger,
 	}
 }
 
@@ -390,9 +387,10 @@ func (dp *deploymentProcessor) orderActions(actions map[string]ComponentAction) 
 }
 
 func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus) error {
-	logger := dp.logger.WithValues(
-		radlogger.LogFieldDeploymentName, name,
-	)
+	ctx = radlogger.WrapLogContext(ctx,
+		radlogger.LogFieldAppName, appName,
+		radlogger.LogFieldDeploymentName, name)
+	logger := radlogger.GetLogger(ctx)
 
 	logger.Info(
 		"Deleting deployment",
@@ -404,11 +402,10 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 		)
 		logger.Info("Deleting workload")
 		for _, resource := range wl.Resources {
-			logger.Info(
-				"Deleting resource",
+			logger.WithValues(
 				radlogger.LogFieldResourceType, resource.Type,
 				radlogger.LogFieldResourceProperties, resource.Properties,
-			)
+			).Info("Deleting resource")
 
 			resourceType, err := dp.appmodel.LookupResource(resource.Type)
 			if err != nil {
@@ -428,10 +425,7 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 		}
 	}
 
-	dp.logger.Info(
-		fmt.Sprintf("Deletion of deployment completed with %d errors", len(errs)),
-		radlogger.LogFieldDeploymentName, name,
-	)
+	logger.Info(fmt.Sprintf("Deletion of deployment completed with %d errors", len(errs)))
 	if len(errs) > 0 {
 		return &CompositeError{errs}
 	}
@@ -440,15 +434,19 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 }
 
 func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+	ctx = radlogger.WrapLogContext(ctx,
+		radlogger.LogFieldWorkLoadKind, w.Workload.Kind,
+		radlogger.LogFieldWorkLoadName, w.Name)
+	logger := radlogger.GetLogger(ctx)
 	componentKind, err := dp.appmodel.LookupComponent(w.Workload.Kind)
 	if err != nil {
 		return []workloads.OutputResource{}, err
 	}
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
-	log.Printf("Created output resources for workload: %s\n", w.Name)
+	logger.Info("Created output resources for workload")
 	for _, o := range resources {
-		log.Printf("LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType)
+		logger.Info(fmt.Sprintf("LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType))
 	}
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far

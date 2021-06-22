@@ -114,11 +114,11 @@ func main() {
 		Logger:       logger,
 	}
 
-	log.Printf("listening on: '%s'...", options.Address)
+	logger.Info(fmt.Sprintf("listening on: '%s'...", options.Address))
 	server := radrp.NewServer(options)
 	err = server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
-	log.Println("shutting down...")
+	logger.Info("shutting down...")
 }

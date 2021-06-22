@@ -8,11 +8,12 @@ package radrp
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/certs"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
@@ -70,18 +71,18 @@ func NewServer(options ServerOptions) *http.Server {
 
 	r.Path("/version").Methods("GET").HandlerFunc(reportVersion)
 
-	app := rewrite(r)
+	ctx := logr.NewContext(context.Background(), options.Logger)
+	app := rewrite(ctx, r)
 
 	if options.Authenticate {
-		app = authenticateCert(app)
+		app = authenticateCert(ctx, app)
 	}
 
 	return &http.Server{
 		Addr:    options.Address,
 		Handler: app,
 		BaseContext: func(ln net.Listener) context.Context {
-			// return context.WithValue(context.Background(), radlogger.ContextLoggerField, options.Logger)
-			return logr.NewContext(context.Background(), options.Logger)
+			return ctx
 		},
 	}
 }
@@ -106,45 +107,45 @@ func reportVersion(w http.ResponseWriter, req *http.Request) {
 //
 // This middleware allows us to use the traditional resource provider URL space and use a router
 // to parse URLs.
-func rewrite(h http.Handler) http.Handler {
+func rewrite(ctx context.Context, h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-
+		logger := radlogger.GetLogger(ctx)
 		header := r.Header.Get("X-MS-CustomProviders-RequestPath")
 		if header != "" {
-			log.Printf("Rewriting URL Path to: '%s'", header)
+			logger.Info(fmt.Sprintf("Rewriting URL Path to: '%s'", header))
 			r.URL.Path = header
 			r.URL.RawPath = header
 		}
-
 		h.ServeHTTP(w, r)
 	}
 
 	return http.HandlerFunc(fn)
 }
 
-func authenticateCert(h http.Handler) http.Handler {
+func authenticateCert(ctx context.Context, h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		logger := radlogger.GetLogger(ctx)
 		if !strings.HasPrefix(r.URL.Path, "/subscriptions/") {
-			log.Printf("request is not for a sensitive URL - allowing")
+			logger.Info("request is not for a sensitive URL - allowing")
 			h.ServeHTTP(w, r)
 			return
 		}
 
 		header := r.Header.Get("X-ARR-ClientCert")
 		if header == "" {
-			log.Printf("X-ARR-ClientCert as not present")
+			logger.Info("X-ARR-ClientCert as not present")
 			w.WriteHeader(401)
 			return
 		}
 
 		err := certs.Validate(header)
 		if err != nil {
-			log.Printf("Failed to validate client-cert: %s", err)
+			logger.WithValues(radlogger.LogFieldErrors, err).Info("Failed to validate client-cert")
 			w.WriteHeader(401)
 			return
 		}
 
-		log.Printf("Client-cert is valid")
+		logger.Info("Client-cert is valid")
 		h.ServeHTTP(w, r)
 	}
 

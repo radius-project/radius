@@ -8,10 +8,10 @@ package cosmosdbmongov1alpha1
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
@@ -24,8 +24,9 @@ type Renderer struct {
 	Arm armauth.ArmConfig
 }
 
-// Allocate is the WorkloadRenderer implementation for CosmosDB for MongoDB workload.
+// AllocateBindings is the WorkloadRenderer implementation for CosmosDB for MongoDB workload.
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	logger := radlogger.GetLogger(ctx)
 	if len(workload.Workload.Bindings) > 0 {
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
@@ -38,7 +39,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	accountname := properties[handlers.CosmosDBAccountNameKey]
 	dbname := properties[handlers.CosmosDBDatabaseNameKey]
 
-	log.Printf("fulfilling service for account: %v db: %v", accountname, dbname)
+	logger.Info(fmt.Sprintf("fulfilling service for account: %v db: %v", accountname, dbname))
 
 	// cosmos uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
 	dac := documentdb.NewDatabaseAccountsClient(r.Arm.SubscriptionID)

@@ -7,7 +7,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 
 	"fmt"
 	"strings"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -167,6 +167,7 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 
 // createServer creates SQL server instance with a generated unique server name prefixed with specified database name
 func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context, location *string, databaseName string, password string) (string, error) {
+	logger := radlogger.GetLogger(ctx)
 	sqlServerClient := sql.NewServersClient(handler.arm.SubscriptionID)
 	sqlServerClient.Authorizer = handler.arm.Auth
 
@@ -198,7 +199,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 			break
 		}
 
-		log.Printf("sql server name generation failed after %d attempts: %v %v", i, result.Reason, result.Message)
+		logger.Info(fmt.Sprintf("sql server name generation failed after %d attempts: %v %v", i, result.Reason, result.Message))
 	}
 
 	// Create server
