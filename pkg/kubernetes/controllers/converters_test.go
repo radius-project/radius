@@ -7,7 +7,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
@@ -20,7 +19,7 @@ import (
 )
 
 func Test_ConvertComponentToInternal(t *testing.T) {
-	usesFrontend := map[string]interface{}{
+	uses := map[string]interface{}{
 		"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
 		"env": map[string]interface{}{
 			"SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.host]",
@@ -32,7 +31,8 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 			},
 		},
 	}
-	usesFrontendJson, _ := json.Marshal(usesFrontend)
+	usesJson, err := json.Marshal(uses)
+	require.NoError(t, err, "failed to marshal uses json")
 
 	trait := map[string]interface{}{
 		"kind":    "radius.dev/InboundRoute@v1alpha1",
@@ -55,13 +55,13 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 
 	bindingJson, _ := json.Marshal(bindings)
 
-	frontendRun := map[string]interface{}{
+	run := map[string]interface{}{
 		"container": map[string]interface{}{
 			"image": "rynowak/frontend:0.5.0-dev",
 		},
 	}
 
-	frontendRunJson, _ := json.Marshal(frontendRun)
+	runJson, _ := json.Marshal(run)
 
 	original := radiusv1alpha1.Component{
 		TypeMeta: metav1.TypeMeta{
@@ -78,12 +78,12 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 		},
 		Spec: v1alpha1.ComponentSpec{
 			Kind:      "Component",
-			Run:       &runtime.RawExtension{Raw: frontendRunJson},
+			Run:       &runtime.RawExtension{Raw: runJson},
 			Bindings:  runtime.RawExtension{Raw: bindingJson},
 			Hierarchy: []string{"frontend-backend", "frontend"},
 			Uses: &[]runtime.RawExtension{
 				{
-					Raw: usesFrontendJson,
+					Raw: usesJson,
 				},
 			},
 			Traits: &[]runtime.RawExtension{
@@ -165,9 +165,8 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 		},
 	}
 
-	ConvertComponentToInternal(&original, &actual, nil)
+	err = ConvertComponentToInternal(&original, &actual, nil)
+	require.NoError(t, err, "failed to convert component")
 
-	json, _ := json.MarshalIndent(expected, "", "  ")
-	fmt.Printf(string(json))
 	require.Equal(t, expected, actual)
 }

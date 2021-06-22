@@ -53,7 +53,10 @@ func TestK8sController(t *testing.T) {
 	require.NoError(t, err, "failed to initialize environment")
 	require.NotNil(t, cfg, "failed to initialize environment")
 
-	defer testEnv.Stop()
+	defer func() {
+		err := testEnv.Stop()
+		require.NoError(t, err, "failed to clean up resources")
+	}()
 
 	err = radiusv1alpha1.AddToScheme(scheme)
 	require.NoError(t, err, "could not add scheme")
