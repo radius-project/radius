@@ -67,7 +67,7 @@ func TestK8sController(t *testing.T) {
 	require.NoError(t, err, "failed to initialize k8s client")
 	require.NotNil(t, k8sClient, "failed to initialize k8s client")
 
-	k8s, err := utils.GetKubernetesClient()
+	k8s, err := kubernetes.NewForConfig(cfg)
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
