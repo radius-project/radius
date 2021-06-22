@@ -56,7 +56,7 @@ type ComponentReconciler struct {
 //+kubebuilder:rbac:groups=applications.radius.dev,resources=components/finalizers,verbs=update
 
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("component", req.NamespacedName)
+	log := r.Log.WithValues("resource", req.NamespacedName)
 
 	component := &radiusv1alpha1.Component{}
 	err := r.Get(ctx, req.NamespacedName, component)
@@ -67,18 +67,20 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Error(err, "failed to retrieve component")
 		return ctrl.Result{}, err
 	}
+	applicationName := component.Annotations["radius.dev/applications"]
+	componentName := component.Annotations["radius.dev/components"]
 
 	log = log.WithValues(
-		"application", component.Annotations["radius.dev/applications"],
-		"component", component.Annotations["radius.dev/components"],
+		"application", applicationName,
+		"component", componentName,
 		"componentkind", component.Spec.Kind)
 
 	application := &radiusv1alpha1.Application{}
-	key := client.ObjectKey{Namespace: component.Namespace, Name: "radius-" + component.Annotations["radius.dev/applications"]}
+	key := client.ObjectKey{Namespace: component.Namespace, Name: "radius-" + applicationName}
 	err = r.Get(ctx, key, application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Application is not found
-		r.recorder.Eventf(component, "Normal", "Waiting", "Application %s does not exist", component.Annotations["radius.dev/applications"])
+		r.recorder.Eventf(component, "Normal", "Waiting", "Application %s does not exist", applicationName)
 		log.Info("application does not exist... waiting")
 
 		// Keep going, we'll turn this into an "empty" render
@@ -88,13 +90,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	// Now we need to rationalize the set of logical resources (desired state against the actual state)
-	actual, err := r.FetchKubernetesResources(ctx, log, component)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	desired, bindings, rendered, err := r.RenderComponent(ctx, log, application, component, component.Annotations["radius.dev/applications"], component.Annotations["radius.dev/components"])
+	desired, bindings, rendered, err := r.RenderComponent(ctx, log, application, component, applicationName, componentName)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -103,6 +99,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		component.Status.Phrase = "Ready"
 	} else {
 		component.Status.Phrase = "Waiting"
+	}
+
+	// Now we need to rationalize the set of logical resources (desired state against the actual state)
+	actual, err := r.FetchKubernetesResources(ctx, log, component)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	err = r.ApplyState(ctx, log, application, component, actual, desired, bindings)
@@ -181,60 +183,11 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	missing := []components.BindingKey{}
-	for _, dependency := range generic.Uses {
-		key := dependency.Binding.TryGetBindingKey()
-		if key == nil {
-			continue
-		}
+	// Check uses for missing bindings from other components
 
-		// TODO use an index
-		providers := radiusv1alpha1.ComponentList{}
-		err := r.Client.List(ctx, &providers, client.InNamespace(component.Namespace))
-		if err != nil {
-			log.Error(err, "failed to list components")
-			return nil, nil, false, err
-		}
-
-		found := false
-		for _, pp := range providers.Items {
-			if pp.Annotations["radius.dev/applications"] != applicationName {
-				continue
-			}
-
-			if pp.Annotations["radius.dev/components"] != key.Component {
-				continue
-			}
-
-			// TODO detect duplicates and kind mismatches
-			for _, binding := range pp.Status.Bindings {
-				if binding.Name == key.Binding {
-					values := map[string]interface{}{}
-					err := json.Unmarshal(binding.Values.Raw, &values)
-					if err != nil {
-						log.Error(err, "failed to list components")
-						return nil, nil, false, err
-					}
-
-					w.BindingValues[*key] = components.BindingState{
-						Component:  key.Component,
-						Binding:    key.Binding,
-						Kind:       binding.Kind,
-						Properties: values,
-					}
-					found = true
-					break
-				}
-			}
-
-			if found {
-				break
-			}
-		}
-
-		if !found {
-			missing = append(missing, *key)
-		}
+	missing, err := GetMissingBindings(generic, r, ctx, component, log, applicationName, w)
+	if err != nil {
+		return nil, nil, false, err
 	}
 
 	resources := []workloads.OutputResource{}
@@ -281,6 +234,73 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 
 	log.Info("rendered output resources", "count", len(resources))
 	return resources, bindings, len(missing) == 0, nil
+}
+
+func GetMissingBindings(generic *components.GenericComponent, r *ComponentReconciler, ctx context.Context, component *radiusv1alpha1.Component, log logr.Logger, applicationName string, w workloads.InstantiatedWorkload) ([]components.BindingKey, error) {
+	missing := []components.BindingKey{}
+	for _, dependency := range generic.Uses {
+		key := dependency.Binding.TryGetBindingKey()
+		if key == nil {
+			continue
+		}
+
+		providers := radiusv1alpha1.ComponentList{}
+		err := r.Client.List(ctx, &providers, client.InNamespace(component.Namespace))
+		if err != nil {
+			log.Error(err, "failed to list components")
+			return nil, err
+		}
+
+		found := false
+		for _, pp := range providers.Items {
+			if pp.Annotations["radius.dev/applications"] != applicationName {
+				continue
+			}
+
+			if pp.Annotations["radius.dev/components"] != key.Component {
+				continue
+			}
+
+			found, err = FindBinding(pp, key, log, w)
+			if err != nil {
+				return nil, err
+			}
+
+			if found {
+				break
+			}
+		}
+
+		if !found {
+			missing = append(missing, *key)
+		}
+	}
+	return missing, nil
+}
+
+func FindBinding(component radiusv1alpha1.Component, key *components.BindingKey, log logr.Logger, w workloads.InstantiatedWorkload) (bool, error) {
+	found := false
+	for _, binding := range component.Status.Bindings {
+		if binding.Name == key.Binding {
+			values := map[string]interface{}{}
+			err := json.Unmarshal(binding.Values.Raw, &values)
+			if err != nil {
+				log.Error(err, "failed to get properties for component")
+				return false, err
+			}
+
+			w.BindingValues[*key] = components.BindingState{
+				Component:  key.Component,
+				Binding:    key.Binding,
+				Kind:       binding.Kind,
+				Properties: values,
+			}
+			found = true
+			break
+		}
+	}
+
+	return found, nil
 }
 
 func (r *ComponentReconciler) ApplyState(
@@ -413,6 +433,7 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	cache := mgr.GetClient()
 	applicationSource := &source.Kind{Type: &radiusv1alpha1.Application{}}
 	applicationHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []ctrl.Request {
+		// Queue notification on each component when the application changes.
 		application := obj.(*radiusv1alpha1.Application)
 		components := &radiusv1alpha1.ComponentList{}
 		err := cache.List(context.Background(), components, client.InNamespace(application.Namespace), client.MatchingFields{CacheKeySpecApplication: application.Name})

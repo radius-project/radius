@@ -35,8 +35,9 @@ func TestK8sController(t *testing.T) {
 	defer cancel()
 
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "deploy", "k8s", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: true,
+		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "deploy", "k8s", "config", "crd", "bases")},
+		ErrorIfCRDPathMissing:    true,
+		AttachControlPlaneOutput: true,
 	}
 
 	scheme := runtime.NewScheme()
@@ -320,23 +321,6 @@ func (ct ControllerTest) Test(t *testing.T) {
 
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
-
-	// Create namespace for the app (for parallelism)
-	// ns := &unstructured.Unstructured{
-	// 	Object: map[string]interface{}{
-	// 		"apiVersion": "v1",
-	// 		"kind":       "Namespace",
-	// 		"metadata": map[string]interface{}{
-	// 			"name": ct.Row.Description,
-	// 			"labels": map[string]interface{}{
-	// 				"app.kubernetes.io/managed-by": "radius-rp",
-	// 			},
-	// 		},
-	// 	},
-	// }
-
-	// err := ct.Options.Client.Patch(ct.Options.Context, ns, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
-	// require.NoError(t, err, "failed to create namespace")
 
 	// Create Application
 	err := ct.Options.Client.Create(ct.Options.Context, ct.Row.Application)
