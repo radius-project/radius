@@ -7,6 +7,18 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - applications.radius.dev
   resources:
   - applications
@@ -85,9 +97,9 @@ rules:
   - patch
   - update
 - apiGroups:
-  - applications.radius.dev
+  - apps
   resources:
-  - scopes
+  - deployments
   verbs:
   - create
   - delete
@@ -97,23 +109,9 @@ rules:
   - update
   - watch
 - apiGroups:
-  - applications.radius.dev
+  - dapr.io
   resources:
-  - scopes/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - applications.radius.dev
-  resources:
-  - scopes/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - applications.radius.dev
-  resources:
-  - templates
+  - components
   verbs:
   - create
   - delete
@@ -122,17 +120,3 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - applications.radius.dev
-  resources:
-  - templates/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - applications.radius.dev
-  resources:
-  - templates/status
-  verbs:
-  - get
-  - patch
-  - update

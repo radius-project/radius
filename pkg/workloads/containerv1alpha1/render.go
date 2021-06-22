@@ -62,9 +62,14 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 			return nil, err
 		}
 
+		namespace := workload.Namespace
+		if namespace == "" {
+			namespace = workload.Application
+		}
+
 		uri := url.URL{
 			Scheme: binding.Kind,
-			Host:   fmt.Sprintf("%v.%v.svc.cluster.local", workload.Name, workload.Application),
+			Host:   fmt.Sprintf("%v.%v.svc.cluster.local", workload.Name, namespace),
 		}
 
 		if http.GetEffectivePort() != 80 {
@@ -687,7 +692,7 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cc.Name,
-			Namespace: w.Application,
+			Namespace: w.Application, // TODO why is this a different namespace
 			Labels: map[string]string{
 				workloads.LabelRadiusApplication: w.Application,
 				workloads.LabelRadiusComponent:   cc.Name,

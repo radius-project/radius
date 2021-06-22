@@ -170,3 +170,49 @@ type jsonInput struct {
 	Expr     BindingExpression
 	Expected string
 }
+
+func Test_TryGetBindingKey(t *testing.T) {
+	inputs := []bindingInput{
+		{
+			Expr: BindingExpression{
+				Kind:  "invalid",
+				Value: 30.0,
+			},
+			Expected: nil,
+		},
+		{
+			Expr: BindingExpression{
+				Kind:  KindStatic,
+				Value: 30.0,
+			},
+			Expected: nil,
+		},
+		{
+			Expr: BindingExpression{
+				Kind: KindComponentBinding,
+				Value: &ComponentBindingValue{
+					Application: "testapp",
+					Component:   "testcomponent",
+					Binding:     "testbinding",
+				},
+			},
+			Expected: &BindingKey{
+				Component: "testcomponent",
+				Binding:   "testbinding",
+			},
+		},
+	}
+
+	for i, input := range inputs {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			key := input.Expr.TryGetBindingKey()
+
+			require.Equal(t, input.Expected, key)
+		})
+	}
+}
+
+type bindingInput struct {
+	Expr     BindingExpression
+	Expected *BindingKey
+}

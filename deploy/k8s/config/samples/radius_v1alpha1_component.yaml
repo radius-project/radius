@@ -1,0 +1,39 @@
+apiVersion: applications.radius.dev/v1alpha1
+kind: Component
+metadata:
+  name: frontend
+  annotations:
+    radius.dev/applications: frontend-backend
+    radius.dev/components: frontend
+spec:
+  kind: radius.dev/Container@v1alpha1
+  run:
+    container:
+      image: rynowak/frontend:0.5.0-dev
+  uses:
+  - binding: "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.default]"
+    env:
+      SERVICE__BACKEND__HOST: "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.default.host]"
+      SERVICE__BACKEND__PORT: "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.default.port]"
+  bindings:
+    default: 
+      kind: http
+      targetPort: 80
+---
+apiVersion: applications.radius.dev/v1alpha1
+kind: Component
+metadata:
+  name: backend
+  annotations:
+    radius.dev/applications: frontend-backend
+    radius.dev/components: backend
+spec:
+  kind: radius.dev/Container@v1alpha1
+  run:
+    container:
+      image: rynowak/backend:0.5.0-dev
+  bindings:
+    default:
+      kind: http
+      targetPort: 80
+    
