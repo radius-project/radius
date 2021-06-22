@@ -194,11 +194,11 @@ func TestK8sController(t *testing.T) {
 					},
 				},
 			},
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewPodForComponent("frontend-backend", "frontend"),
-						validation.NewPodForComponent("frontend-backend", "backend"),
+						validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
+						validation.NewK8sObjectForComponent("frontend-backend", "backend"),
 					},
 				},
 			},
@@ -220,7 +220,7 @@ type Row struct {
 	Application *radiusv1alpha1.Application
 	Components  *[]TestComponent
 	Description string
-	Pods        validation.PodSet
+	Pods        validation.K8sObjectSet
 }
 
 func (r Row) GetComponents() (*[]radiusv1alpha1.Component, error) {
@@ -338,5 +338,5 @@ func (ct ControllerTest) Test(t *testing.T) {
 		require.NoError(t, err, "failed to create component")
 	}
 	// ValidatePodsRunning triggers its own assertions, no need to handle errors
-	validation.ValidatePodsRunning(t, ct.Options.K8s, ct.Row.Pods, ct.Options.Context)
+	validation.ValidateDeploymentsRunning(t, ct.Options.K8s, ct.Row.Pods, ct.Options.Context)
 }
