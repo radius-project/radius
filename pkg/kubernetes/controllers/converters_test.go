@@ -39,13 +39,15 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 		"binding": "web",
 	}
 
-	traitJson, _ := json.Marshal(trait)
+	traitJson, err := json.Marshal(trait)
+	require.NoError(t, err, "failed to marshal traits json")
 
 	config := map[string]interface{}{
 		"managed": "true",
 	}
 
-	configJson, _ := json.Marshal(config)
+	configJson, err := json.Marshal(config)
+	require.NoError(t, err, "failed to marshal config json")
 
 	bindings := map[string]interface{}{
 		"default": map[string]interface{}{
@@ -53,7 +55,8 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 		},
 	}
 
-	bindingJson, _ := json.Marshal(bindings)
+	bindingJson, err := json.Marshal(bindings)
+	require.NoError(t, err, "failed to marshal bindings json")
 
 	run := map[string]interface{}{
 		"container": map[string]interface{}{
@@ -61,7 +64,8 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 		},
 	}
 
-	runJson, _ := json.Marshal(run)
+	runJson, err := json.Marshal(run)
+	require.NoError(t, err, "failed to marshal run json")
 
 	original := radiusv1alpha1.Component{
 		TypeMeta: metav1.TypeMeta{
@@ -109,7 +113,8 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 		},
 		Bindings: map[string]components.GenericBinding{
 			"default": {
-				Kind: "http",
+				Kind:                 "http",
+				AdditionalProperties: map[string]interface{}{},
 			},
 		},
 		Uses: []components.GenericDependency{

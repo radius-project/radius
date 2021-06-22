@@ -124,7 +124,7 @@ func TestK8sController(t *testing.T) {
 					},
 				},
 				Spec: radiusv1alpha1.ApplicationSpec{
-					Hierarchy: []string{"frontend-backend"},
+					Hierarchy: []string{"radius", "frontend-backend"},
 				},
 			},
 			Components: &[]TestComponent{
@@ -153,7 +153,7 @@ func TestK8sController(t *testing.T) {
 								"kind": "http",
 							},
 						},
-						Hierarchy: []string{"frontend-backend", "frontend"},
+						Hierarchy: []string{"radius", "frontend-backend", "frontend"},
 						Uses: []map[string]interface{}{
 							{
 								"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
@@ -190,7 +190,7 @@ func TestK8sController(t *testing.T) {
 								"kind": "http",
 							},
 						},
-						Hierarchy: []string{"frontend-backend", "backend"},
+						Hierarchy: []string{"radius", "frontend-backend", "backend"},
 					},
 				},
 			},
@@ -217,12 +217,10 @@ func TestK8sController(t *testing.T) {
 }
 
 type Row struct {
-	Application      *radiusv1alpha1.Application
-	Components       *[]TestComponent
-	Description      string
-	Pods             validation.PodSet
-	PostDeployVerify func(*testing.T, ControllerTest)
-	PostDeleteVerify func(*testing.T, ControllerTest)
+	Application *radiusv1alpha1.Application
+	Components  *[]TestComponent
+	Description string
+	Pods        validation.PodSet
 }
 
 func (r Row) GetComponents() (*[]radiusv1alpha1.Component, error) {
@@ -239,6 +237,8 @@ func (r Row) GetComponents() (*[]radiusv1alpha1.Component, error) {
 	return &components, nil
 }
 
+// A test only representation of a component, making it easier
+// to write input for (don't need to muck with RawExtension for json)
 type TestComponent struct {
 	TypeMeta   metav1.TypeMeta
 	ObjectMeta metav1.ObjectMeta

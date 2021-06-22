@@ -42,9 +42,7 @@ func (gb *GenericBinding) UnmarshalJSON(b []byte) error {
 	delete(properties, kindProperty)
 
 	gb.Kind = kind
-	if len(properties) > 0 {
-		gb.AdditionalProperties = properties
-	}
+	gb.AdditionalProperties = properties
 	return nil
 }
 
