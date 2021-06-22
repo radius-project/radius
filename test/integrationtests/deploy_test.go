@@ -78,11 +78,11 @@ func TestDeployment(t *testing.T) {
 			Application: "frontend-backend",
 			Description: "frontend-backend",
 			Template:    "../../docs/content/components/radius-components/container/frontend-backend.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"frontend-backend": {
-						validation.NewPodForComponent("frontend-backend", "frontend"),
-						validation.NewPodForComponent("frontend-backend", "backend"),
+						validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
+						validation.NewK8sObjectForComponent("frontend-backend", "backend"),
 					},
 				},
 			},
@@ -119,11 +119,11 @@ func TestDeployment(t *testing.T) {
 			Application: "inbound-route",
 			Description: "inbound-route",
 			Template:    "../../docs/content/components/radius-components/container/inboundroute.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"inbound-route": {
-						validation.NewPodForComponent("inbound-route", "frontend"),
-						validation.NewPodForComponent("inbound-route", "backend"),
+						validation.NewK8sObjectForComponent("inbound-route", "frontend"),
+						validation.NewK8sObjectForComponent("inbound-route", "backend"),
 					},
 				},
 			},
@@ -145,11 +145,11 @@ func TestDeployment(t *testing.T) {
 			Application: "radius-servicebus",
 			Description: "azure-servicebus",
 			Template:    "../../docs/content/components/azure-components/azure-servicebus/template.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"radius-servicebus": {
-						validation.NewPodForComponent("radius-servicebus", "sender"),
-						validation.NewPodForComponent("radius-servicebus", "receiver"),
+						validation.NewK8sObjectForComponent("radius-servicebus", "sender"),
+						validation.NewK8sObjectForComponent("radius-servicebus", "receiver"),
 					},
 				},
 			},
@@ -158,11 +158,11 @@ func TestDeployment(t *testing.T) {
 			Application: "dapr-pubsub-managed",
 			Description: "dapr-pubsub (Azure + Radius-managed)",
 			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/managed.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"dapr-pubsub-managed": {
-						validation.NewPodForComponent("dapr-pubsub-managed", "nodesubscriber"),
-						validation.NewPodForComponent("dapr-pubsub-managed", "pythonpublisher"),
+						validation.NewK8sObjectForComponent("dapr-pubsub-managed", "nodesubscriber"),
+						validation.NewK8sObjectForComponent("dapr-pubsub-managed", "pythonpublisher"),
 					},
 				},
 			},
@@ -171,11 +171,11 @@ func TestDeployment(t *testing.T) {
 			Application: "dapr-pubsub-unmanaged",
 			Description: "dapr-pubsub (Azure + user-managed)",
 			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/unmanaged.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"dapr-pubsub-unmanaged": {
-						validation.NewPodForComponent("dapr-pubsub-unmanaged", "nodesubscriber"),
-						validation.NewPodForComponent("dapr-pubsub-unmanaged", "pythonpublisher"),
+						validation.NewK8sObjectForComponent("dapr-pubsub-unmanaged", "nodesubscriber"),
+						validation.NewK8sObjectForComponent("dapr-pubsub-unmanaged", "pythonpublisher"),
 					},
 				},
 			},
@@ -219,10 +219,10 @@ func TestDeployment(t *testing.T) {
 			Application: "radius-keyvault",
 			Description: "azure-keyvault",
 			Template:    "../../docs/content/components/azure-components/azure-keyvault/template.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"radius-keyvault": {
-						validation.NewPodForComponent("radius-keyvault", "kvaccessor"),
+						validation.NewK8sObjectForComponent("radius-keyvault", "kvaccessor"),
 					},
 				},
 			},
@@ -261,11 +261,11 @@ func TestDeployment(t *testing.T) {
 			Application: "dapr-hello",
 			Description: "dapr-hello (Tutorial)",
 			Template:    "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"dapr-hello": {
-						validation.NewPodForComponent("dapr-hello", "nodeapp"),
-						validation.NewPodForComponent("dapr-hello", "pythonapp"),
+						validation.NewK8sObjectForComponent("dapr-hello", "nodeapp"),
+						validation.NewK8sObjectForComponent("dapr-hello", "pythonapp"),
 					},
 				},
 			},
@@ -274,10 +274,10 @@ func TestDeployment(t *testing.T) {
 			Application: "cosmos-container-managed",
 			Description: "cosmos-container (radius managed)",
 			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/managed.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"cosmos-container-managed": {
-						validation.NewPodForComponent("cosmos-container-managed", "todoapp"),
+						validation.NewK8sObjectForComponent("cosmos-container-managed", "todoapp"),
 					},
 				},
 			},
@@ -286,10 +286,10 @@ func TestDeployment(t *testing.T) {
 			Application: "cosmos-container-unmanaged",
 			Description: "cosmos-container (user managed)",
 			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/unmanaged.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"cosmos-container-unmanaged": {
-						validation.NewPodForComponent("cosmos-container-unmanaged", "todoapp"),
+						validation.NewK8sObjectForComponent("cosmos-container-unmanaged", "todoapp"),
 					},
 				},
 			},
@@ -341,7 +341,7 @@ type Row struct {
 	Application      string
 	Description      string
 	Template         string
-	Pods             validation.PodSet
+	Pods             validation.K8sObjectSet
 	Components       validation.ComponentSet
 	PostDeployVerify func(*testing.T, ApplicationTest)
 	PostDeleteVerify func(*testing.T, ApplicationTest)

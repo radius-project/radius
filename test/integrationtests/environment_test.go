@@ -106,19 +106,19 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	})
 
 	t.Run("Validate Kubernetes Runtime", func(t *testing.T) {
-		expectedPods := validation.PodSet{
-			Namespaces: map[string][]validation.Pod{
+		expectedPods := validation.K8sObjectSet{
+			Namespaces: map[string][]validation.K8sObject{
 				// verify dapr
 				"dapr-system": {
-					validation.Pod{Labels: map[string]string{"app": "dapr-dashboard"}},
-					validation.Pod{Labels: map[string]string{"app": "dapr-operator"}},
-					validation.Pod{Labels: map[string]string{"app": "dapr-placement-server"}},
-					validation.Pod{Labels: map[string]string{"app": "dapr-sentry"}},
-					validation.Pod{Labels: map[string]string{"app": "dapr-sidecar-injector"}},
+					validation.K8sObject{Labels: map[string]string{"app": "dapr-dashboard"}},
+					validation.K8sObject{Labels: map[string]string{"app": "dapr-operator"}},
+					validation.K8sObject{Labels: map[string]string{"app": "dapr-placement-server"}},
+					validation.K8sObject{Labels: map[string]string{"app": "dapr-sentry"}},
+					validation.K8sObject{Labels: map[string]string{"app": "dapr-sidecar-injector"}},
 				},
 				// verify ingress-nginx
 				"radius-system": {
-					validation.Pod{Labels: map[string]string{"app.kubernetes.io/name": "ingress-nginx"}},
+					validation.K8sObject{Labels: map[string]string{"app.kubernetes.io/name": "ingress-nginx"}},
 				},
 			},
 		}
