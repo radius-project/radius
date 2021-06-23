@@ -6,11 +6,10 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/rad/objectformats"
+	"github.com/Azure/radius/pkg/rad/output"
 	"github.com/spf13/cobra"
 )
 
@@ -47,12 +46,15 @@ func listDeployments(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployments, err := json.MarshalIndent(deploymentList, "", "  ")
+	format, err := rad.RequireOutput(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to marshal deployment response as JSON %w", err)
+		return err
 	}
 
-	fmt.Println(string(deployments))
+	err = output.Write(format, deploymentList.Value, cmd.OutOrStdout(), objectformats.GetDeploymentTableFormat())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
