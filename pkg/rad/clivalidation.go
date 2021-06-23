@@ -103,6 +103,10 @@ func RequireComponent(cmd *cobra.Command, args []string) (string, error) {
 	return required(cmd, args, "component")
 }
 
+func RequireOutput(cmd *cobra.Command) (string, error) {
+	return cmd.Flags().GetString("output")
+}
+
 func required(cmd *cobra.Command, args []string, name string) (string, error) {
 	value, err := cmd.Flags().GetString(name)
 	if err != nil {

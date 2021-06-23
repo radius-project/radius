@@ -6,11 +6,10 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/rad/objectformats"
+	"github.com/Azure/radius/pkg/rad/output"
 	"github.com/spf13/cobra"
 )
 
@@ -52,11 +51,15 @@ func showComponent(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	componentDetails, err := json.MarshalIndent(componentResource, "", "  ")
+	format, err := rad.RequireOutput(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to marshal component response as JSON %w", err)
+		return err
 	}
-	fmt.Println(string(componentDetails))
+
+	err = output.Write(format, componentResource, cmd.OutOrStdout(), objectformats.GetComponentTableFormat())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

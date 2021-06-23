@@ -1,0 +1,164 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package output
+
+import (
+	"bytes"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+type tableInput struct {
+	Size   string
+	IsCool bool
+}
+
+var tableInputOptions = FormatterOptions{
+	// Note: We're not testing the behavior of JSONPath in detail since we don't implement that, just the E2E.
+	Columns: []Column{
+		{
+			Heading:  "Size",
+			JSONPath: "{ .Size }",
+		},
+		{
+			Heading:  "Coolness",
+			JSONPath: "{ .IsCool }",
+		},
+		{
+			Heading:  "Unknown",
+			JSONPath: "{ .FieldDoesNotExist }",
+		},
+		{
+			Heading:  "Static",
+			JSONPath: "Some-Value",
+		},
+	},
+}
+
+func Test_Table_NoColumns(t *testing.T) {
+	obj := struct{}{}
+
+	formatter := &TableFormatter{}
+
+	buffer := &bytes.Buffer{}
+	err := formatter.Format(obj, buffer, FormatterOptions{})
+	require.Error(t, err)
+	require.Equal(t, "no columns were defined, table format is not supported for this command", err.Error())
+}
+
+func Test_Table_Scalar(t *testing.T) {
+	obj := tableInput{
+		Size:   "mega",
+		IsCool: true,
+	}
+
+	formatter := &TableFormatter{}
+
+	buffer := &bytes.Buffer{}
+	err := formatter.Format(obj, buffer, tableInputOptions)
+	require.NoError(t, err)
+
+	expected := `Size      Coolness  Unknown   Static
+mega      true                Some-Value  
+`
+	require.Equal(t, expected, buffer.String())
+}
+
+func Test_Table_Slice(t *testing.T) {
+	obj := []interface{}{
+		tableInput{
+			Size:   "mega",
+			IsCool: true,
+		},
+		tableInput{
+			Size:   "medium",
+			IsCool: false,
+		},
+	}
+
+	formatter := &TableFormatter{}
+
+	buffer := &bytes.Buffer{}
+	err := formatter.Format(obj, buffer, tableInputOptions)
+	require.NoError(t, err)
+
+	expected := `Size      Coolness  Unknown   Static
+mega      true                Some-Value  
+medium    false               Some-Value  
+`
+	require.Equal(t, expected, buffer.String())
+}
+
+func Test_convertToStruct(t *testing.T) {
+	aStruct := tableInput{
+		Size: "medium",
+	}
+	inputs := []convertInput{
+		{
+			Name:    "string",
+			Input:   "test",
+			Success: false,
+		},
+		{
+			Name:    "nil",
+			Input:   nil,
+			Success: false,
+		},
+		{
+			Name:    "nil pointer",
+			Input:   (*tableInput)(nil),
+			Success: false,
+		},
+		{
+			Name:    "struct",
+			Input:   aStruct,
+			Success: true,
+			Expected: []interface{}{
+				aStruct,
+			},
+		},
+		{
+			Name:    "struct pointer",
+			Input:   &aStruct,
+			Success: true,
+			Expected: []interface{}{
+				aStruct,
+			},
+		},
+		{
+			Name: "slice",
+			Input: []interface{}{
+				aStruct, &aStruct, "test", []interface{}{},
+			},
+			Success: true,
+			Expected: []interface{}{
+				aStruct, &aStruct, "test", []interface{}{},
+			},
+		},
+	}
+
+	formatter := &TableFormatter{}
+
+	for _, input := range inputs {
+		t.Run(input.Name, func(t *testing.T) {
+			actual, err := formatter.convertToSlice(input.Input)
+			if input.Success {
+				require.NoError(t, err)
+				require.Equal(t, input.Expected, actual)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
+type convertInput struct {
+	Name     string
+	Input    interface{}
+	Success  bool
+	Expected []interface{}
+}
