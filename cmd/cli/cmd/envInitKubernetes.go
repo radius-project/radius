@@ -33,7 +33,7 @@ var envInitKubernetesCmd = &cobra.Command{
 	Short: "Initializes a kubernetes environment",
 	Long:  `Initializes a kubernetes environment`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, err := cmd.Flags().GetString("name")
+		name, err := cmd.Flags().GetString("environment")
 		if err != nil {
 			return err
 		}
@@ -70,8 +70,9 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		env.Items[name] = map[string]interface{}{
-			"kind":    environments.KindKubernetes,
-			"context": k8sconfig.CurrentContext,
+			"kind":      environments.KindKubernetes,
+			"context":   k8sconfig.CurrentContext,
+			"namespace": "default", // TODO should this be configurable
 		}
 
 		logger.LogInfo("using environment %v", name)
@@ -89,8 +90,6 @@ var envInitKubernetesCmd = &cobra.Command{
 
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
-
-	envInitKubernetesCmd.Flags().StringP("name", "n", "kubernetes", "The environment name")
 }
 
 // RunCLICommand runs a kubectl CLI command with stdout and stderr forwarded to this process's output.

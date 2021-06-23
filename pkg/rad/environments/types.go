@@ -14,6 +14,7 @@ import (
 
 const (
 	KindAzureCloud                   = "azure"
+	KindKubernetes                   = "kubernetes"
 	KindLocalRP                      = "localrp"
 	EnvironmentKeyDefaultApplication = "defaultapplication"
 )
