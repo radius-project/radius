@@ -10,13 +10,22 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )
 
+func createContext(t *testing.T) context.Context {
+	logger, _ := radlogger.NewTestLogger(t)
+	ctx := logr.NewContext(context.Background(), logger)
+	return ctx
+}
+
 func Test_Render_Managed_Success(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -33,7 +42,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(context.Background(), workload)
+	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
 
 	require.Len(t, resources, 1)
@@ -54,6 +63,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 }
 
 func Test_Render_Unmanaged_Success(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -70,7 +80,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(context.Background(), workload)
+	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
 
 	require.Len(t, resources, 1)
@@ -92,6 +102,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 }
 
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -108,12 +119,13 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a Storage Account", err.Error())
 }
 
 func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -129,12 +141,13 @@ func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
 	require.Equal(t, workloads.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }
 
 func Test_Render_SQL_Managed_Success(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -151,7 +164,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(context.Background(), workload)
+	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
 
 	require.Len(t, resources, 1)
@@ -172,6 +185,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 }
 
 func Test_Render_UnsupportedKind(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -188,12 +202,13 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", supportedStateStoreKindValues), err.Error())
 }
 
 func Test_Render_SQL_Unmanaged_Failure(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -210,7 +225,7 @@ func Test_Render_SQL_Unmanaged_Failure(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
 	require.Equal(t, "only Radius managed resources are supported for Dapr SQL Server", err.Error())
 }

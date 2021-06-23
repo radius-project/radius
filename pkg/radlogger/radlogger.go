@@ -10,11 +10,14 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"testing"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
 )
 
 // Radius uses the Zapr: https://github.com/go-logr/zapr which implements a logr interface
@@ -85,18 +88,25 @@ func NewLogger(name string) (logr.Logger, error) {
 		name = DefaultLoggerName
 	}
 
-	logConfig, err := InitRadLoggerConfig()
+	zapLogger, err := InitRadLoggerConfig()
 	if err != nil {
 		return nil, err
 	}
-	log := zapr.NewLogger(logConfig)
-	log = log.WithName(name)
+	logger := zapr.NewLogger(zapLogger).WithName(name)
+	defer zapLogger.Sync()
+	return logger, nil
+}
+
+func NewTestLogger(t *testing.T) (logr.Logger, error) {
+	zapLogger := zaptest.NewLogger(t)
+	log := zapr.NewLogger(zapLogger)
+	defer zapLogger.Sync()
 	return log, nil
 }
 
 func WrapLogContext(ctx context.Context, keyValues ...interface{}) context.Context {
-	logger := logr.FromContext(ctx).WithValues(keyValues...)
-	ctx = logr.NewContext(ctx, logger)
+	logger := logr.FromContext(ctx)
+	ctx = logr.NewContext(ctx, logger.WithValues(keyValues...))
 	return ctx
 }
 

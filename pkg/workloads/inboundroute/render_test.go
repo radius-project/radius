@@ -10,8 +10,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -27,8 +29,15 @@ func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorklo
 	return []workloads.OutputResource{}, nil
 }
 
+func createContext(t *testing.T) context.Context {
+	logger, _ := radlogger.NewTestLogger(t)
+	ctx := logr.NewContext(context.Background(), logger)
+	return ctx
+}
+
 // No hostname or any other settings, should be using a default backend
 func Test_Render_Simple(t *testing.T) {
+	ctx := createContext(t)
 	renderer := &Renderer{
 		Inner: &noop{},
 	}
@@ -46,7 +55,7 @@ func Test_Render_Simple(t *testing.T) {
 	}
 	w := makeContainerComponent(trait, bindings)
 
-	resources, err := renderer.Render(context.Background(), w)
+	resources, err := renderer.Render(ctx, w)
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
@@ -79,6 +88,7 @@ func Test_Render_Simple(t *testing.T) {
 }
 
 func Test_Render_WithHostname(t *testing.T) {
+	ctx := createContext(t)
 	renderer := &Renderer{
 		Inner: &noop{},
 	}
@@ -97,7 +107,7 @@ func Test_Render_WithHostname(t *testing.T) {
 	}
 	w := makeContainerComponent(trait, bindings)
 
-	resources, err := renderer.Render(context.Background(), w)
+	resources, err := renderer.Render(ctx, w)
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
