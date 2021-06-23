@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const TimeoutForPodValidation = 5 * time.Minute
 const IntervalForPodShutdown = 10 * time.Second
 
 type K8sObjectSet struct {
@@ -37,6 +38,9 @@ func NewK8sObjectForComponent(application string, name string) K8sObject {
 }
 
 func ValidateDeploymentsRunning(t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet, ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, TimeoutForPodValidation)
+	defer cancel()
+
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating deployments in namespace %v", namespace)
 		for {

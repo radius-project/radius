@@ -11,7 +11,7 @@ test: ## Runs unit tests, excluding kubernetes controller tests
 
 .PHONY: test-integration
 test-integration: ## Runs integration tests
-	go test ./test/integrationtests/... -timeout 1h -v
+	go test ./test/integrationtests/... -timeout 1h -parallel 20 -v
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.19.2
