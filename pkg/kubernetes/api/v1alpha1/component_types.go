@@ -6,31 +6,66 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ComponentSpec defines the desired state of Component
 type ComponentSpec struct {
-	Application string                  `json:"application"`
-	Name        string                  `json:"name"`
-	Kind        string                  `json:"kind"`
-	Config      *runtime.RawExtension   `json:"config,omitempty"`
-	Run         *runtime.RawExtension   `json:"run,omitempty"`
-	DependsOn   *[]runtime.RawExtension `json:"dependsOn,omitempty"`
-	Provides    *[]runtime.RawExtension `json:"provides,omitempty"`
-	Traits      *[]runtime.RawExtension `json:"traits,omitempty"`
+	Kind string `json:"kind"`
+
+	Hierarchy []string `json:"hierarchy,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Config *runtime.RawExtension `json:"config,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Run *runtime.RawExtension `json:"run,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Uses *[]runtime.RawExtension `json:"uses,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Bindings runtime.RawExtension `json:"bindings,omitempty"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Traits *[]runtime.RawExtension `json:"traits,omitempty"`
+}
+
+type ComponentStatusBinding struct {
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Values runtime.RawExtension `json:"values,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component
 type ComponentStatus struct {
+	// +optional
+	Bindings []ComponentStatusBinding `json:"bindings,omitempty"`
+
+	// +optional
+	Resources map[string]corev1.ObjectReference `json:"resources,omitempty"`
+
+	// +optional
+	Phrase string `json:"phrase,omitempty"`
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:categories={"all","radius"}
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.hierarchy[1]"
+//+kubebuilder:printcolumn:name="Component",type="string",JSONPath=".spec.hierarchy[2]"
+//+kubebuilder:printcolumn:name="Kind",type="string",JSONPath=".spec.kind"
+//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
 
 // Component is the Schema for the components API
 type Component struct {

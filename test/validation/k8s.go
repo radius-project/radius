@@ -1,3 +1,7 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 package validation
 
 import (
@@ -15,16 +19,16 @@ import (
 
 const IntervalForPodShutdown = 10 * time.Second
 
-type PodSet struct {
-	Namespaces map[string][]Pod
+type K8sObjectSet struct {
+	Namespaces map[string][]K8sObject
 }
 
-type Pod struct {
+type K8sObject struct {
 	Labels map[string]string
 }
 
-func NewPodForComponent(application string, name string) Pod {
-	return Pod{
+func NewK8sObjectForComponent(application string, name string) K8sObject {
+	return K8sObject{
 		Labels: map[string]string{
 			workloads.LabelRadiusApplication: application,
 			workloads.LabelRadiusComponent:   name,
@@ -32,45 +36,101 @@ func NewPodForComponent(application string, name string) Pod {
 	}
 }
 
-// ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
-func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected PodSet, ctx context.Context) {
+func ValidateDeploymentsRunning(t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet, ctx context.Context) {
+	for namespace, expectedPods := range expected.Namespaces {
+		t.Logf("validating deployments in namespace %v", namespace)
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				var err error
 
+				deployments, err := k8s.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+				require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
+
+				remaining := make([]K8sObject, len(expectedPods))
+				copy(remaining, expectedPods)
+
+				for _, actualDeployment := range deployments.Items {
+					// validate that this matches one of our expected deployment
+					index := matchesExpectedLabels(remaining, actualDeployment.Labels)
+					if index == nil {
+						// this is not a match
+						assert.Failf(t,
+							"unrecognized deployment",
+							"count not find a match for Pod with namespace: %v name: %v labels: %v",
+							actualDeployment.Namespace,
+							actualDeployment.Name,
+							actualDeployment.Labels)
+						continue
+					}
+
+					// trim the list of 'remaining' deployments
+					remaining = append(remaining[:*index], remaining[*index+1:]...)
+				}
+
+				if len(remaining) == 0 {
+					return
+				}
+				for _, remainingPod := range remaining {
+					t.Logf("failed to match deployment in namespace %v with labels %v, retrying", namespace, remainingPod.Labels)
+				}
+
+			case <-ctx.Done():
+				assert.Fail(t, "timed out after waiting for deployments to be created")
+			}
+		}
+	}
+}
+
+// ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
+func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet, ctx context.Context) {
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating pods in namespace %v", namespace)
+		var actualPods *corev1.PodList
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				var err error
 
-		actualPods, err := k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-		require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
+				actualPods, err = k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+				require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
 
-		// log all the data so its there if we need to analyze a failure
-		logPods(t, actualPods.Items)
+				// log all the data so its there if we need to analyze a failure
+				logPods(t, actualPods.Items)
 
-		// switch to using assert so we can validate all the details without failing fast
-		assert.Equalf(t, len(expectedPods), len(actualPods.Items), "different number of pods than expected in namespace %v", namespace)
+				// copy the list of expected pods so we can remove from it
+				//
+				// this way we "check off" each pod as it is matched
+				remaining := make([]K8sObject, len(expectedPods))
+				copy(remaining, expectedPods)
 
-		// copy the list of expected pods so we can remove from it
-		//
-		// this way we "check off" each pod as it is matched
-		remaining := make([]Pod, len(expectedPods))
-		copy(remaining, expectedPods)
+				for _, actualPod := range actualPods.Items {
+					// validate that this matches one of our expected pods
+					index := matchesExpectedLabels(remaining, actualPod.Labels)
+					if index == nil {
+						// this is not a match
+						assert.Failf(t, "unrecognized pod", "count not find a match for Pod with namespace: %v name: %v labels: %v", actualPod.Namespace, actualPod.Name, actualPod.Labels)
+						continue
+					}
 
-		for _, actualPod := range actualPods.Items {
-			// validate that this matches one of our expected pods
-			index := matchesExpectedPod(remaining, actualPod)
-			if index == nil {
-				// this is not a match
-				assert.Failf(t, "count not find a match for Pod with namespace: %v name: %v labels: %v", actualPod.Namespace, actualPod.Name, actualPod.Labels)
-				continue
+					// trim the list of 'remaining' pods
+					remaining = append(remaining[:*index], remaining[*index+1:]...)
+				}
+
+				if len(remaining) == 0 {
+					goto podcheck
+				}
+				for _, remainingPod := range remaining {
+					t.Logf("failed to match pod in namespace %v with labels %v, retrying", namespace, remainingPod.Labels)
+				}
+
+			case <-ctx.Done():
+				assert.Fail(t, "timed out after waiting for pods to be created")
 			}
-
-			// trim the list of 'remaining' pods
-			remaining = append(remaining[:*index], remaining[*index+1:]...)
-		}
-
-		for _, remainingPod := range remaining {
-			assert.Failf(t, "failed to match pod in namespace %v with labels %v", namespace, remainingPod.Labels)
 		}
 
 		// Now check the status of the pods
+	podcheck:
 		for _, actualPod := range actualPods.Items {
 			if actualPod.Status.Phase == corev1.PodRunning {
 				continue
@@ -148,18 +208,18 @@ func logPods(t *testing.T, pods []corev1.Pod) {
 }
 
 // returns the index if its found, otherwise nil
-func matchesExpectedPod(expectedPods []Pod, actualPod corev1.Pod) *int {
+func matchesExpectedLabels(expectedPods []K8sObject, labels map[string]string) *int {
+	if labels == nil {
+		return nil
+	}
 	for index, expectedPod := range expectedPods {
 
 		// we don't need to match all of the labels on the expected pod
 		matchesPod := true
 		for key, value := range expectedPod.Labels {
 			// just in case
-			if actualPod.Labels == nil {
-				return nil
-			}
 
-			if actualPod.Labels[key] != value {
+			if labels[key] != value {
 				// not a match for this pod
 				matchesPod = false
 				break

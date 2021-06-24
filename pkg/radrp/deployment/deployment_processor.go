@@ -183,9 +183,17 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				BindingValues: bindingValues,
 			}
 
-			resources, err := dp.renderWorkload(ctx, inst)
+			outputResources, err := dp.renderWorkload(ctx, inst)
 			if err != nil {
 				errs = append(errs, err)
+				dbOutputResources := []db.OutputResource{}
+				for _, resource := range outputResources {
+					// Even if the operation fails, return the output resources created so far
+					// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+					// we no longer need to track the output resources on error
+					addDBOutputResource(resource, &dbOutputResources)
+				}
+				action.Definition.Properties.OutputResources = dbOutputResources
 				continue
 			}
 
@@ -197,7 +205,8 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 			}
 
-			for _, resource := range resources {
+			dbOutputResources := []db.OutputResource{}
+			for _, resource := range outputResources {
 				var existingResource *db.DeploymentResource
 				if existingStatus != nil {
 					for _, existing := range existingStatus.Resources {
@@ -208,7 +217,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					}
 				}
 
-				resourceType, err := dp.appmodel.LookupResource(resource.Type)
+				resourceType, err := dp.appmodel.LookupResource(resource.ResourceKind)
 				if err != nil {
 					errs = append(errs, err)
 					continue
@@ -220,6 +229,9 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					Resource:    resource,
 					Existing:    existingResource,
 				})
+				// Record the output resources created so far
+				addDBOutputResource(resource, &dbOutputResources)
+
 				if err != nil {
 					errs = append(errs, fmt.Errorf("error applying workload resource %v %v: %w", properties, action.ComponentName, err))
 					continue
@@ -227,11 +239,14 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 				dr := db.DeploymentResource{
 					LocalID:    resource.LocalID,
-					Type:       resource.Type,
+					Type:       resource.ResourceKind,
 					Properties: properties,
 				}
 				dw.Resources = append(dw.Resources, dr)
 			}
+
+			// Add the output resources to the DB component definition
+			action.Definition.Properties.OutputResources = dbOutputResources
 
 			wrps := []workloads.WorkloadResourceProperties{}
 			for _, resource := range dw.Resources {
@@ -318,6 +333,19 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 	return nil
 }
 
+func addDBOutputResource(resource workloads.OutputResource, dbOutputResources *[]db.OutputResource) {
+	// Save the output resource to DB
+	dbr := db.OutputResource{
+		Managed:            resource.Managed,
+		LocalID:            resource.LocalID,
+		ResourceKind:       resource.ResourceKind,
+		OutputResourceInfo: resource.OutputResourceInfo,
+		OutputResourceType: resource.OutputResourceType,
+		Resource:           resource.Resource,
+	}
+	*dbOutputResources = append(*dbOutputResources, dbr)
+}
+
 func (dp *deploymentProcessor) orderActions(actions map[string]ComponentAction) ([]ComponentAction, error) {
 	unordered := []graph.DependencyItem{}
 	for _, action := range actions {
@@ -376,15 +404,22 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 	return nil
 }
 
-func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	componentKind, err := dp.appmodel.LookupComponent(w.Workload.Kind)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.OutputResource{}, err
 	}
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
+	log.Printf("Created output resources for workload: %s\n", w.Name)
+	for _, o := range resources {
+		log.Printf("LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType)
+	}
 	if err != nil {
-		return []workloads.WorkloadResource{}, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
+		return resources, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
 
 	return resources, nil

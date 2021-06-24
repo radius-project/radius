@@ -68,7 +68,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for servicebus workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	component := ServiceBusQueueComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
@@ -86,8 +86,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a servicebus queue
 
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureServiceBusQueue,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureServiceBusQueue,
 			Resource: map[string]string{
 				handlers.ManagedKey:             "true",
 				handlers.ServiceBusQueueNameKey: component.Config.Queue,
@@ -95,7 +95,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
@@ -106,9 +106,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		// generate data we can use to connect to a servicebus queue
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureServiceBusQueue,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureServiceBusQueue,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 
@@ -121,6 +120,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	}
 }

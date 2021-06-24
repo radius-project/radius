@@ -18,10 +18,11 @@ import (
 )
 
 type TestEnvironment struct {
-	ResourceGroup  string
-	SubscriptionID string
-	ClusterName    string
-	ConfigPath     string
+	ResourceGroup             string
+	ControlPlaneResourceGroup string
+	SubscriptionID            string
+	ClusterName               string
+	ConfigPath                string
 }
 
 func GetTestEnvironment(ctx context.Context, config *config.AzureConfig) (*TestEnvironment, error) {
@@ -89,8 +90,9 @@ func readDefaultEnvironment(v *viper.Viper) (*TestEnvironment, error) {
 	}
 
 	return &TestEnvironment{
-		SubscriptionID: azure.SubscriptionID,
-		ResourceGroup:  azure.ResourceGroup,
-		ConfigPath:     v.ConfigFileUsed(),
+		SubscriptionID:            azure.SubscriptionID,
+		ResourceGroup:             azure.ResourceGroup,
+		ControlPlaneResourceGroup: azure.ControlPlaneResourceGroup,
+		ConfigPath:                v.ConfigFileUsed(),
 	}, nil
 }

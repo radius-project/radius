@@ -81,8 +81,8 @@ type ComponentCreateParameters struct {
 	// Resource type of the component
 	Kind *string `json:"kind,omitempty"`
 
-	// Any object
-	Properties interface{} `json:"properties,omitempty"`
+	// Properties of a component.
+	Properties *ComponentProperties `json:"properties,omitempty"`
 }
 
 // ComponentDeleteOptions contains the optional parameters for the Component.Delete method.
@@ -115,6 +115,28 @@ type ComponentListResponse struct {
 	RawResponse *http.Response
 }
 
+// Properties of a component.
+type ComponentProperties struct {
+	// Bindings spec of the component
+	Bindings interface{} `json:"bindings,omitempty"`
+
+	// Config of the component
+	Config interface{} `json:"config,omitempty"`
+	OutputResources *[]interface{} `json:"outputResources,omitempty"`
+
+	// Revision of the component
+	Revision interface{} `json:"revision,omitempty"`
+
+	// Run spec of the component
+	Run interface{} `json:"run,omitempty"`
+
+	// Traits spec of the component
+	Traits interface{} `json:"traits,omitempty"`
+
+	// Uses spec of the component
+	Uses interface{} `json:"uses,omitempty"`
+}
+
 // Component resource.
 type ComponentResource struct {
 	TrackedResource
@@ -122,7 +144,7 @@ type ComponentResource struct {
 	Kind *string `json:"kind,omitempty"`
 
 	// Properties of the component.
-	Properties interface{} `json:"properties,omitempty"`
+	Properties *ComponentProperties `json:"properties,omitempty"`
 }
 
 // ComponentResourceResponse is the response envelope for operations that return a ComponentResource type.

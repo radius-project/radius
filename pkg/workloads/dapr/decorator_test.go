@@ -22,10 +22,10 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 	return map[string]components.BindingState{}, nil
 }
 
-func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	// Return a deployment so the Dapr trait can modify it
 	d := appsv1.Deployment{}
-	return []workloads.WorkloadResource{workloads.NewKubernetesResource("Deployment", &d)}, nil
+	return []workloads.OutputResource{workloads.NewKubernetesResource("Deployment", &d)}, nil
 }
 
 func Test_Render_Success(t *testing.T) {
@@ -69,7 +69,7 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, expected, deployment.Spec.Template.Annotations)
 }
 
-func findDeployment(resources []workloads.WorkloadResource) *appsv1.Deployment {
+func findDeployment(resources []workloads.OutputResource) *appsv1.Deployment {
 	for _, r := range resources {
 		if !r.IsKubernetesResource() {
 			continue

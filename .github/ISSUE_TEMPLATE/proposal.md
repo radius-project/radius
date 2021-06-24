@@ -1,12 +1,12 @@
 ---
-name: Proposal/Feature Request
-about: Proposal or feature request for Project Radius
-title: "[Proposal] - <PROPOSAL TITLE>"
-labels: proposal
+name: Feature Request
+about: Request a feature in Project Radius
+title: "<PROPOSAL TITLE>"
+labels: kind/feature
 assignees: ''
 ---
 
-**Overview of proposal/feature request**
+**Overview of feature request**
 <!--What are you proposing Project Radius add/update/remove?-->
 
 **Screenshots**

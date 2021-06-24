@@ -19,37 +19,29 @@ docker build . -t <your registry>/radius-rp:latest
 docker push <your registry>/radius-rp
 ```
 
-### Step 2: Create a Service Principal
-
-```sh
-az ad sp create-for-rbac --sdk-auth --role Contributor > "creds.json"
-```
-
 ### Step 2: Deploy the ARM Template
-
-**Create a resource group (if desired):**
-
-```sh
-az group create --name <resource group> --location <location>
-```
 
 **Deploy**
 
 ```sh
-az deployment group create \
+az deployment sub create \
   --template-file deploy/rp-full.json \
-  --resource-group <resource group> \
   --parameter "image=<repository>/radius-rp:latest" \
-  --parameter "servicePrincipalClientId=$(jq '.clientId' --raw-output creds.json)" \
-  --parameter "servicePrincipalClientSecret=$(jq '.clientSecret' --raw-output creds.json)" \
-  --parameter "sshRSAPublicKey=$(<~/.ssh/id_rsa.pub)"
+  --parameter "location=..." \
+  --parameter "resourceGroup=..." \
+  --parameter "controlPlaneResourcGroup=..."
 ```
 
-If you open the Azure portal and navigate to your resource group you should see an:
-- App Service Plan
-- App Service Site
-- CosmosDB account
-- Custom Resource Provider registration 
-- Kubernetes Cluster
-- Deployment Script
-- Managed Identity
+If you open the Azure portal and navigate to your subscription you should see two resource groups you should see an:
+
+- App Resource Group:
+  - Custom Resource Provider registration 
+
+- Control Plane Resource Group:
+  - App Service Plan
+  - App Service Site
+  - CosmosDB account
+
+  - Kubernetes Cluster
+  - Deployment Script
+  - Managed Identity

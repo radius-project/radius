@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/revision"
+	"github.com/fatih/structs"
 )
 
 // This package defines the data types that we store in the db - these are different from
@@ -68,12 +69,13 @@ type Component struct {
 
 // ComponentProperties represents the properties of an Radius Component.
 type ComponentProperties struct {
-	Build    map[string]interface{}      `bson:"build,omitempty"`
-	Config   map[string]interface{}      `bson:"config,omitempty"`
-	Run      map[string]interface{}      `bson:"run,omitempty"`
-	Bindings map[string]ComponentBinding `bson:"provides,omitempty"`
-	Uses     []ComponentDependency       `bson:"dependsOn,omitempty"`
-	Traits   []ComponentTrait            `bson:"traits,omitempty"`
+	Build           map[string]interface{}      `bson:"build,omitempty"`
+	Config          map[string]interface{}      `bson:"config,omitempty"`
+	Run             map[string]interface{}      `bson:"run,omitempty"`
+	Bindings        map[string]ComponentBinding `bson:"provides,omitempty"`
+	Uses            []ComponentDependency       `bson:"dependsOn,omitempty"`
+	Traits          []ComponentTrait            `bson:"traits,omitempty"`
+	OutputResources []OutputResource            `bson:"outputResources,omitempty" structs:"-"` // Ignore stateful property during serialization
 }
 
 // ComponentBinding represents a binding provided by an Radius Component.
@@ -99,6 +101,16 @@ type ComponentDependencySecrets struct {
 type ComponentTrait struct {
 	Kind                 string                 `bson:"kind"`
 	AdditionalProperties map[string]interface{} `bson:",inline"`
+}
+
+// OutputResource represents an output resource comprising a Radius component.
+type OutputResource struct {
+	LocalID            string      `bson:"id"`
+	ResourceKind       string      `bson:"resourceKind"`
+	OutputResourceInfo interface{} `bson:"outputResourceInfo"`
+	Managed            bool        `bson:"managed"`
+	OutputResourceType string      `bson:"outputResourceType"`
+	Resource           interface{} `bson:"resource"`
 }
 
 // Scope represents an Radius Scope.
@@ -127,7 +139,7 @@ type DeploymentWorkload struct {
 	Resources     []DeploymentResource `bson:"resources,omitempty"`
 }
 
-// DeploymentResource represents a deployed kubernetes resource.
+// DeploymentResource represents a deployed resource by Radius.
 type DeploymentResource struct {
 	LocalID    string            `bson:"id"`
 	Type       string            `bson:"type"`
@@ -164,9 +176,11 @@ type Operation struct {
 
 // Marshal implements revision.Marshal for Component.
 func (c *Component) Marshal() interface{} {
+	props := structs.Map(c.Properties)
+
 	return map[string]interface{}{
 		"kind":       c.Kind,
-		"properties": c.Properties,
+		"properties": props,
 	}
 }
 

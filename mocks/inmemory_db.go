@@ -37,6 +37,10 @@ func NewInMemoryRadrpDB(ctrl *gomock.Controller) *MockRadrpDB {
 		AnyTimes().DoAndReturn(store.PatchApplication)
 
 	base.EXPECT().
+		UpdateApplication(gomock.Any(), gomock.Any()).
+		AnyTimes().DoAndReturn(store.UpdateApplication)
+
+	base.EXPECT().
 		DeleteApplicationByID(gomock.Any(), gomock.Any()).
 		AnyTimes().DoAndReturn(store.DeleteApplicationByID)
 
@@ -196,6 +200,37 @@ func (s *store) PatchApplication(ctx context.Context, patch *db.ApplicationPatch
 	new.Properties = patch.Properties
 
 	(*list)[patch.FriendlyName()] = new
+	return old == nil, nil
+}
+
+func (s *store) UpdateApplication(ctx context.Context, app *db.Application) (bool, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	k := applicationKey{app.SubscriptionID, app.ResourceGroup}
+	list := s.applications[k]
+	if list == nil {
+		list = &map[string]*db.Application{}
+		s.applications[k] = list
+	}
+
+	old := (*list)[app.FriendlyName()]
+	new := &db.Application{}
+
+	if old == nil {
+		new.Components = map[string]db.Component{}
+		new.Deployments = map[string]db.Deployment{}
+		new.Scopes = map[string]db.Scope{}
+	} else {
+		new.Components = old.Components
+		new.Deployments = old.Deployments
+		new.Scopes = old.Scopes
+	}
+
+	new.ResourceBase = app.ResourceBase
+	new.Properties = app.Properties
+
+	(*list)[app.FriendlyName()] = new
 	return old == nil, nil
 }
 

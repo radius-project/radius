@@ -15,7 +15,7 @@ import (
 type PutOptions struct {
 	Application string
 	Component   string
-	Resource    workloads.WorkloadResource
+	Resource    workloads.OutputResource
 	Existing    *db.DeploymentResource
 }
 

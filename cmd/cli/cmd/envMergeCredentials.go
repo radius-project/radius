@@ -49,7 +49,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 			return err
 		}
 
-		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", az.SubscriptionID, "--resource-group", az.ResourceGroup, "--name", az.ClusterName)
+		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", az.SubscriptionID, "--resource-group", az.ControlPlaneResourceGroup, "--name", az.ClusterName)
 		return err
 
 	},

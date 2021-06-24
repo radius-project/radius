@@ -8,6 +8,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/subscriptions"
@@ -15,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/Azure/radius/pkg/workloads"
 	"github.com/gofrs/uuid"
 )
 
@@ -59,6 +61,16 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if options.Resource.Deployed {
+		return properties, nil
+	}
+
+	options.Resource.OutputResourceInfo = workloads.ARMInfo{
+		ResourceID:   properties[KeyVaultIDKey],
+		ResourceType: "Microsoft.KeyVault/vaults",
+		APIVersion:   strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " profiles")[0],
 	}
 
 	return properties, nil

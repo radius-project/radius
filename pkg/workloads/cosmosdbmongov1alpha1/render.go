@@ -86,30 +86,29 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render WorkloadRenderer implementation for CosmosDB for MongoDB workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	component := CosmosDBMongoComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.OutputResource{}, err
 	}
 
+	var resource workloads.OutputResource
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a cosmosdb instance
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureCosmosDBMongo,
+		resource = workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureCosmosDBMongo,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
 				handlers.CosmosDBDatabaseNameKey: w.Workload.Name,
 			},
+			Managed: true,
 		}
-
-		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
@@ -120,9 +119,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		// generate data we can use to connect to a servicebus queue
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureCosmosDBMongo,
+		resource = workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureCosmosDBMongo,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 
@@ -133,8 +131,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,
 			},
 		}
-
-		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
 	}
+	return []workloads.OutputResource{resource}, nil
 }

@@ -62,20 +62,23 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	return bindings, nil
 }
 
-// Render is the WorkloadRenderer implementation for the dapr trait decorator.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+// Render is the WorkloadRenderer implementation for the dapr deployment decorator.
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	// Let the inner renderer do its work
 	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
+		return resources, err
 	}
 
 	trait := Trait{}
 	found, err := w.Workload.FindTrait(Kind, &trait)
-	if err != nil {
-		return []workloads.WorkloadResource{}, err
-	} else if !found {
-		// no trait
+	if !found || err != nil {
+		// Even if the operation fails, return the output resources created so far
+		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+		// we no longer need to track the output resources on error
 		return resources, err
 	}
 
@@ -88,7 +91,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		o, ok := res.Resource.(runtime.Object)
 		if !ok {
-			return []workloads.WorkloadResource{}, errors.New("Found kubernetes resource with non-Kubernetes paylod")
+			// Even if the operation fails, return the output resources created so far
+			// TODO: This is temporary. Once there are no resources actually deployed during render phase,
+			// we no longer need to track the output resources on error
+			return resources, errors.New("Found kubernetes resource with non-Kubernetes paylod")
 		}
 
 		annotations, ok := r.getAnnotations(o)

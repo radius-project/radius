@@ -20,7 +20,7 @@ import (
 type Renderer struct {
 }
 
-// Allocate is the WorkloadRenderer implementation for dapr pubsub workload.
+// AllocateBindings is the WorkloadRenderer implementation for dapr pubsub workload.
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	if len(workload.Workload.Bindings) > 0 {
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
@@ -52,11 +52,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for dapr pubsub workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	component := DaprPubSubComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.OutputResource{}, err
 	}
 
 	// The Dapr pubsub name can default to the component name.
@@ -66,7 +66,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if component.Config.Managed {
 		if component.Config.Topic == "" {
-			return []workloads.WorkloadResource{}, errors.New("the 'topic' field is required when 'managed=true'")
+			return []workloads.OutputResource{}, errors.New("the 'topic' field is required when 'managed=true'")
 		}
 
 		if component.Config.Resource != "" {
@@ -74,8 +74,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to manage a servicebus topic
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -86,7 +86,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	} else {
 		if component.Config.Topic != "" {
 			return nil, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
@@ -101,9 +101,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		// generate data we can use to connect to a servicebus topic
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -118,6 +117,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,
 			},
 		}
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	}
 }
