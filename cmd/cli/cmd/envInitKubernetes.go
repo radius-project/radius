@@ -21,6 +21,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -36,6 +37,17 @@ var envInitKubernetesCmd = &cobra.Command{
 		name, err := cmd.Flags().GetString("environment")
 		if err != nil {
 			return err
+		}
+
+		interactive, err := cmd.Flags().GetBool("interactive")
+
+		// TODO need to be able to switch namespaces.
+		var namespace string = "default"
+		if interactive {
+			namespace, err = choseNamespace(cmd.Context())
+			if err != nil {
+				return err
+			}
 		}
 
 		k8sconfig, err := kubernetes.ReadKubeConfig()
@@ -72,7 +84,7 @@ var envInitKubernetesCmd = &cobra.Command{
 		env.Items[name] = map[string]interface{}{
 			"kind":      environments.KindKubernetes,
 			"context":   k8sconfig.CurrentContext,
-			"namespace": "default", // TODO should this be configurable
+			"namespace": namespace,
 		}
 
 		logger.LogInfo("using environment %v", name)
@@ -90,6 +102,12 @@ var envInitKubernetesCmd = &cobra.Command{
 
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
+	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
+}
+
+func choseNamespace(ctx context.Context) (string, error) {
+	name, err := prompt.Text("Enter a Resource Group name (empty for default namespace):", prompt.EmptyValidator)
+	return name, err
 }
 
 // RunCLICommand runs a kubectl CLI command with stdout and stderr forwarded to this process's output.

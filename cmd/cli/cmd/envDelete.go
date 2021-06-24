@@ -46,41 +46,40 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	az, err := environments.RequireAzureCloud(env)
-	if err != nil {
-		return err
-	}
+	az, ok := env.(*environments.AzureCloudEnvironment)
+	if ok {
 
-	if !yes {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and %s with all their resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup, az.ControlPlaneResourceGroup))
+		if !yes {
+			confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and %s with all their resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup, az.ControlPlaneResourceGroup))
+			if err != nil {
+				return err
+			}
+
+			if !confirmed {
+				logger.LogInfo("Delete cancelled.")
+				return nil
+			}
+		}
+
+		// Delete environment, this will delete the resource group and all the resources in it
+		authorizer, err := auth.NewAuthorizerFromCLI()
 		if err != nil {
 			return err
 		}
 
-		if !confirmed {
-			logger.LogInfo("Delete cancelled.")
-			return nil
+		if err = deleteResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
+			return err
 		}
-	}
 
-	// Delete environment, this will delete the resource group and all the resources in it
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		return err
-	}
-
-	if err = deleteResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
-		return err
-	}
-
-	if err = deleteResourceGroup(cmd.Context(), authorizer, az.ControlPlaneResourceGroup, az.SubscriptionID); err != nil {
-		return err
+		if err = deleteResourceGroup(cmd.Context(), authorizer, az.ControlPlaneResourceGroup, az.SubscriptionID); err != nil {
+			return err
+		}
 	}
 
 	logger.LogInfo("Environment deleted")
 
 	// Delete env from the config, update default env if needed
-	if err = deleteEnvFromConfig(az.Name); err != nil {
+	if err = deleteEnvFromConfig(env.GetName()); err != nil {
 		return err
 	}
 
