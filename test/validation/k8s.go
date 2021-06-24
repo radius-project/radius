@@ -36,7 +36,7 @@ func NewK8sObjectForComponent(application string, name string) K8sObject {
 	}
 }
 
-func ValidateDeploymentsRunning(t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet, ctx context.Context) {
+func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating deployments in namespace %v", namespace)
 		for {
@@ -83,7 +83,7 @@ func ValidateDeploymentsRunning(t *testing.T, k8s *kubernetes.Clientset, expecte
 }
 
 // ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
-func ValidatePodsRunning(t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet, ctx context.Context) {
+func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating pods in namespace %v", namespace)
 		var actualPods *corev1.PodList
