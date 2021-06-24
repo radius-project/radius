@@ -3,8 +3,8 @@ kind: Service
 metadata:
   labels:
     control-plane: controller-manager
-  name: controller-manager-metrics-service
-  namespace: system
+  name: radius-controller-manager-metrics-service
+  namespace: radius-system
 spec:
   ports:
   - name: https
