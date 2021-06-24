@@ -101,7 +101,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger, err := radlogger.NewLogger("radRP")
+	logger, flushLogs, err := radlogger.NewLogger("radRP")
 	if err != nil {
 		panic(err)
 	}
@@ -120,5 +120,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	logger.Info("shutting down...")
+	flushLogs()
 }

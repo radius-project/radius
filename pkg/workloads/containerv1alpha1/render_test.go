@@ -21,9 +21,12 @@ import (
 )
 
 func createContext(t *testing.T) context.Context {
-	logger, _ := radlogger.NewTestLogger(t)
-	ctx := logr.NewContext(context.Background(), logger)
-	return ctx
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
 }
 
 func Test_AllocateBindings_NoHTTPBinding(t *testing.T) {

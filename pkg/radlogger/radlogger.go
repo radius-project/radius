@@ -83,24 +83,27 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	return logger, nil
 }
 
-func NewLogger(name string) (logr.Logger, error) {
+func NewLogger(name string) (logr.Logger, func(), error) {
 	if name == "" {
 		name = DefaultLoggerName
 	}
 
 	zapLogger, err := InitRadLoggerConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	logger := zapr.NewLogger(zapLogger).WithName(name)
-	defer zapLogger.Sync()
-	return logger, nil
+
+	// The underlying zap logger needs to be flushed before server exits
+	flushLogs := func() {
+		zapLogger.Sync()
+	}
+	return logger, flushLogs, nil
 }
 
 func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	zapLogger := zaptest.NewLogger(t)
 	log := zapr.NewLogger(zapLogger)
-	defer zapLogger.Sync()
 	return log, nil
 }
 
