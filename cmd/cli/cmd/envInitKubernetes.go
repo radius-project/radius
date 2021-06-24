@@ -6,28 +6,37 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
+	"embed"
 	_ "embed"
 	"errors"
 	"fmt"
-	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
-	"os/exec"
-	"runtime"
+	"path/filepath"
+	"time"
 
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
+	"github.com/Azure/radius/pkg/version"
+	"github.com/Azure/radius/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	helm "helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//go:embed radius-k8s.yaml
-var k8sManifest []byte
+//go:embed Chart
+var chartFolder embed.FS
 
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
@@ -42,7 +51,7 @@ var envInitKubernetesCmd = &cobra.Command{
 		interactive, err := cmd.Flags().GetBool("interactive")
 
 		// TODO need to be able to switch namespaces.
-		var namespace string = "default"
+		var namespace string = "radius-system"
 		if interactive {
 			namespace, err = choseNamespace(cmd.Context())
 			if err != nil {
@@ -65,7 +74,10 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		step := logger.BeginStep("Installing Radius...")
-		err = runKubectlApply(cmd.Context(), k8sManifest)
+		err = install(cmd.Context(), KubernetesInitConfig{
+			Namespace: namespace,
+			Version:   version.Version(),
+		})
 		if err != nil {
 			return err
 		}
@@ -103,63 +115,153 @@ var envInitKubernetesCmd = &cobra.Command{
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
+	envInitKubernetesCmd.Flags().StringP("namespace", "n", "radius-system", "The Kubernetes namespace to install Radius in")
 }
 
 func choseNamespace(ctx context.Context) (string, error) {
-	name, err := prompt.Text("Enter a Resource Group name (empty for default namespace):", prompt.EmptyValidator)
+	name, err := prompt.Text("Enter a Resource Group name (empty to default to 'radius-system' namespace):", prompt.EmptyValidator)
+	if name == "" {
+		name = "radius-system"
+	}
 	return name, err
 }
 
+type KubernetesInitConfig struct {
+	Namespace string
+	Version   string
+}
+
+func createNamespace(ctx context.Context, namespace string) error {
+	// GetClient for kubernetes
+	client, err := utils.GetKubernetesClient()
+	if err != nil {
+		return fmt.Errorf("can't connect to a Kubernetes cluster: %v", err)
+	}
+
+	ns := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespace,
+		},
+	}
+
+	client.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+	return nil
+}
+
+func helmConfig(namespace string) (*helm.Configuration, error) {
+	ac := helm.Configuration{}
+	flags := &genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+	err := ac.Init(flags, namespace, "secret", ignoreLog)
+	return &ac, err
+}
+
+func ignoreLog(format string, v ...interface{}) {
+}
+
+func locateChartFile(dirPath string) (string, error) {
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dirPath, files[0].Name()), nil
+}
+
+func createTempDir() (string, error) {
+	dir, err := os.MkdirTemp("", "radius")
+	if err != nil {
+		return "", fmt.Errorf("error creating temp dir: %s", err)
+	}
+	return dir, nil
+}
+
+// TODO Need to support either local or remote
+func radiusChart(version string, config *helm.Configuration) (*chart.Chart, error) {
+	dir, err := createTempDir()
+	if err != nil {
+		return nil, err
+	}
+
+	err = fs.WalkDir(chartFolder, "Chart", func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			err := os.MkdirAll(filepath.Join(dir, path), os.ModePerm)
+			return err
+		}
+
+		file, err := chartFolder.Open(path)
+		stat, err := file.Stat()
+		totalLen := int(stat.Size())
+		buffer := make([]byte, totalLen)
+
+		for len := 0; len != totalLen; {
+			readLen, err := file.Read(buffer)
+			if err != nil {
+				return err
+			}
+			len += readLen
+		}
+		fullPath := filepath.Join(dir, path)
+
+		err = os.WriteFile(fullPath, buffer, os.ModePerm)
+
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer os.RemoveAll(dir)
+
+	loader, err := loader.LoadDir(filepath.Join(dir, "Chart"))
+	if err != nil {
+		return nil, err
+	}
+	return loader, nil
+}
+
 // RunCLICommand runs a kubectl CLI command with stdout and stderr forwarded to this process's output.
-func runKubectlApply(ctx context.Context, content []byte) error {
-	var executableName string
-	var executableArgs []string
-	if runtime.GOOS == "windows" {
-		// Use shell on windows since az is a script not an executable
-		executableName = fmt.Sprintf("%s\\system32\\cmd.exe", os.Getenv("windir"))
-		executableArgs = append(executableArgs, "/c", "kubectl")
-	} else {
-		executableName = "kubectl"
+func install(ctx context.Context, config KubernetesInitConfig) error {
+	// Create namespace if not present
+	err := createNamespace(ctx, config.Namespace)
+	if err != nil {
+		return err
 	}
-
-	executableArgs = append(executableArgs, "apply", "-f", "-")
-	c := exec.CommandContext(ctx, executableName, executableArgs...)
-
-	buf := bytes.Buffer{}
-	stdin, err := c.StdinPipe()
+	// Get helm chart (needs to either be in repo or outside)
+	helmConf, err := helmConfig(config.Namespace)
 	if err != nil {
 		return err
 	}
 
-	stdout, err := c.StdoutPipe()
+	radiusChart, err := radiusChart(config.Version, helmConf)
 	if err != nil {
 		return err
 	}
 
-	stderr, err := c.StderrPipe()
+	version, err := getVersion(config.Version)
 	if err != nil {
 		return err
 	}
 
-	err = c.Start()
+	err = applyCRDs(fmt.Sprintf("v%s", version))
 	if err != nil {
 		return err
 	}
 
-	go io.Copy(&buf, stdout)
-	go io.Copy(&buf, stderr)
+	installClient := helm.NewInstall(helmConf)
+	installClient.ReleaseName = daprReleaseName
+	installClient.Namespace = config.Namespace
+	installClient.Wait = config.Wait
+	installClient.Timeout = time.Duration(config.Timeout) * time.Second
 
-	writeme := bytes.NewBuffer(content)
-	_, err = io.Copy(stdin, writeme)
+	values, err := chartValues(config)
 	if err != nil {
 		return err
 	}
-	stdin.Close()
 
-	err = c.Wait()
-	if err != nil {
-		text, _ := ioutil.ReadAll(&buf)
-		return fmt.Errorf("failed to install radius: %w\noutput: %s", err, string(text))
+	if _, err = installClient.Run(radiusChart, values); err != nil {
+		return err
 	}
 
 	return err

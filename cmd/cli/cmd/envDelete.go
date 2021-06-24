@@ -45,7 +45,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	// TODO env delete k8s should remove controller and definitions from cluster?
 	az, ok := env.(*environments.AzureCloudEnvironment)
 	if ok {
 
