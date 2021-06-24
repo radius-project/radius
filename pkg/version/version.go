@@ -13,6 +13,23 @@ var (
 	commit  = "unknown"
 )
 
+// VersionInfo is used for a serializable representation of our versioning info.
+type VersionInfo struct {
+	Channel string `json:"channel"`
+	Commit  string `json:"commit"`
+	Release string `json:"release"`
+	Version string `json:"version"`
+}
+
+func NewVersionInfo() VersionInfo {
+	return VersionInfo{
+		Channel: Channel(),
+		Commit:  Commit(),
+		Release: Release(),
+		Version: Version(),
+	}
+}
+
 // Channel returns the designated channel for downloads of assets.
 //
 // For a real release this will be the major.minor - for any other build it's the same

@@ -226,7 +226,8 @@ jobs:
         go run cmd/testenv/main.go \
           update-rp \
           --configpath ~/.rad/config.yaml \
-          --image radiusteam/radius-rp:${{ env.REL_VERSION }}
+          --image radiusteam/radius-rp:${{ env.REL_VERSION }} \
+          --check-version ${{ env.REL_VERSION }}
     - name: Run integration tests
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH

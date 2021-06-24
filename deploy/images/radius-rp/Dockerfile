@@ -1,5 +1,4 @@
 FROM golang:alpine AS build-env
-ARG LDFLAGS="-w -s"
 RUN apk --no-cache add build-base git gcc
 WORKDIR /src
 COPY go.mod ./
@@ -9,7 +8,7 @@ COPY . ./
 
 # ARG needs to come after FROM
 ARG LDFLAGS="-w -s"
-RUN CGO_ENABLED=0 go build -v -o radius-rp -ldflags "$LD_FLAGS" cmd/rp/main.go
+RUN CGO_ENABLED=0 go build -v -o radius-rp -ldflags "$LDFLAGS" cmd/rp/main.go
 
 FROM alpine
 RUN apk --no-cache add ca-certificates

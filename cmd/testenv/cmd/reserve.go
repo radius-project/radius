@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -73,10 +74,11 @@ var reserveCmd = &cobra.Command{
 		// we're using it for tracking.
 		env.Default = testenv.Name
 		env.Items[testenv.Name] = map[string]interface{}{
-			"kind":           "azure",
-			"subscriptionId": testenv.SubscriptionID,
-			"resourceGroup":  testenv.ResourceGroup,
-			"clusterName":    testenv.ClusterName,
+			"kind":                      "azure",
+			"subscriptionId":            testenv.SubscriptionID,
+			"resourceGroup":             testenv.ResourceGroup,
+			"controlPlaneResourceGroup": azure.GetControlPlaneResourceGroup(testenv.ResourceGroup),
+			"clusterName":               testenv.ClusterName,
 		}
 
 		rad.UpdateEnvironmentSection(v, env)

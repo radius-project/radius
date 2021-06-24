@@ -6,6 +6,7 @@
 package radrp
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/Azure/radius/pkg/version"
 	"github.com/gorilla/mux"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -62,6 +64,8 @@ func NewServer(options ServerOptions) *http.Server {
 	s.Methods("PUT").HandlerFunc(h.updateScope)
 	s.Methods("DELETE").HandlerFunc(h.deleteScope)
 
+	r.Path("/version").Methods("GET").HandlerFunc(reportVersion)
+
 	app := rewrite(r)
 
 	if options.Authenticate {
@@ -72,6 +76,19 @@ func NewServer(options ServerOptions) *http.Server {
 		Addr:    options.Address,
 		Handler: app,
 	}
+}
+
+func reportVersion(w http.ResponseWriter, req *http.Request) {
+	info := version.NewVersionInfo()
+
+	b, err := json.MarshalIndent(&info, "", "  ")
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	_, _ = w.Write(b)
 }
 
 // A custom resource provider typically uses a single HTTP endpoint with the original resource ID
