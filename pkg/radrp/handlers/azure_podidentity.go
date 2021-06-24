@@ -52,7 +52,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 	mcc.Authorizer = handler.arm.Auth
 
 	// Get the cluster and modify it to remove pod identity
-	managedCluster, err := mcc.Get(ctx, handler.arm.ResourceGroup, podidentityCluster)
+	managedCluster, err := mcc.Get(ctx, handler.arm.K8sResourceGroup, podidentityCluster)
 	if err != nil {
 		return fmt.Errorf("failed to get managed cluster: %w", err)
 	}
@@ -76,7 +76,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 	// Remove the pod identity at the matching index
 	identities = append(identities[:i], identities[i+1:]...)
 
-	mcFuture, err := mcc.CreateOrUpdate(ctx, handler.arm.ResourceGroup, podidentityCluster, containerservice.ManagedCluster{
+	mcFuture, err := mcc.CreateOrUpdate(ctx, handler.arm.K8sResourceGroup, podidentityCluster, containerservice.ManagedCluster{
 		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
 				Enabled:                   to.BoolPtr(true),
