@@ -70,7 +70,7 @@ endef
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes deployment manifests
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) \
-		rbac:roleName=manager-role webhook \
+		rbac:roleName=radius-manager-role webhook \
 		paths="./..." \
 		output:crd:artifacts:config=cmd/cli/cmd/Chart/templates/ \
 		output:rbac:artifacts:config=cmd/cli/cmd/Chart/templates/ \
