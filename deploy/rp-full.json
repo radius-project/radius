@@ -236,15 +236,15 @@
                         },
                         {
                             "type": "Microsoft.Authorization/roleAssignments",
-                            "apiVersion": "2017-09-01",
+                            "apiVersion": "2018-09-01-preview",
                             "name": "[variables('deploymentRoleDefinitionName')]",
                             "tags": "[parameters('resourceTags')]",
                             "dependsOn": [
-                                "[parameters('deploymentScriptIdentityName')]"
+                                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('deploymentScriptIdentityName'))]"
                             ],
                             "properties": {
                                 "roleDefinitionId": "[variables('deploymentRoleDefinitionId')]",
-                                "principalId": "[reference(parameters('deploymentScriptIdentityName')).principalId]",
+                                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('deploymentScriptIdentityName'))).principalId]",
                                 "principalType": "ServicePrincipal"
                             }
                         },
@@ -334,7 +334,7 @@
                         },
                         {
                             "type": "Microsoft.Authorization/roleAssignments",
-                            "apiVersion": "2017-09-01",
+                            "apiVersion": "2018-09-01-preview",
                             "name": "[variables('clusterIdentityRoleDefinitionName')]",
                             "tags": "[parameters('resourceTags')]",
                             "dependsOn": [
@@ -462,7 +462,7 @@
                         },
                         {
                             "type": "Microsoft.Authorization/roleAssignments",
-                            "apiVersion": "2017-09-01",
+                            "apiVersion": "2018-09-01-preview",
                             "name": "[variables('rpControlPlaneRoleDefinitionName')]",
                             "tags": "[parameters('resourceTags')]",
                             "dependsOn": [
@@ -566,7 +566,7 @@
                         },
                         {
                             "type": "Microsoft.Authorization/roleAssignments",
-                            "apiVersion": "2017-09-01",
+                            "apiVersion": "2018-09-01-preview",
                             "name": "[variables('rpGroupRoleDefinitionName')]",
                             "tags": "[parameters('resourceTags')]",
                             "properties": {
@@ -577,7 +577,7 @@
                         },
                         {
                             "type": "Microsoft.Authorization/roleAssignments",
-                            "apiVersion": "2017-09-01",
+                            "apiVersion": "2018-09-01-preview",
                             "name": "[variables('clusterIdentityRoleDefinitionName')]",
                             "tags": "[parameters('resourceTags')]",
                             "properties": {
