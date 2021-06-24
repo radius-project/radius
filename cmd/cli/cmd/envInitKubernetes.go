@@ -6,27 +6,37 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
+	"embed"
 	_ "embed"
 	"errors"
 	"fmt"
-	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
-	"os/exec"
-	"runtime"
+	"path/filepath"
+	"time"
 
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
+	"github.com/Azure/radius/pkg/version"
+	"github.com/Azure/radius/test/utils"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	helm "helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//go:embed radius-k8s.yaml
-var k8sManifest []byte
+//go:embed Chart
+var chartFolder embed.FS
 
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
@@ -70,7 +80,10 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		step := logger.BeginStep("Installing Radius...")
-		err = runKubectlApply(cmd.Context(), k8sManifest)
+		err = install(cmd.Context(), KubernetesInitConfig{
+			Namespace: namespace,
+			Version:   version.Version(),
+		})
 		if err != nil {
 			return err
 		}
@@ -135,17 +148,17 @@ func runKubectlApply(ctx context.Context, content []byte) error {
 		return err
 	}
 
-	stdout, err := c.StdoutPipe()
+	radiusChart, err := radiusChart(config.Version, helmConf)
 	if err != nil {
 		return err
 	}
 
-	stderr, err := c.StderrPipe()
+	version, err := getVersion(config.Version)
 	if err != nil {
 		return err
 	}
 
-	err = c.Start()
+	err = applyCRDs(fmt.Sprintf("v%s", version))
 	if err != nil {
 		return err
 	}
@@ -160,17 +173,13 @@ func runKubectlApply(ctx context.Context, content []byte) error {
 		_, _ = io.Copy(&buf, stderr)
 	}()
 
-	writeme := bytes.NewBuffer(content)
-	_, err = io.Copy(stdin, writeme)
+	values, err := chartValues(config)
 	if err != nil {
 		return err
 	}
-	stdin.Close()
 
-	err = c.Wait()
-	if err != nil {
-		text, _ := ioutil.ReadAll(&buf)
-		return fmt.Errorf("failed to install radius: %w\noutput: %s", err, string(text))
+	if _, err = installClient.Run(radiusChart, values); err != nil {
+		return err
 	}
 
 	return err
