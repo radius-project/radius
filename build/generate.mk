@@ -72,9 +72,9 @@ generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) \
 		rbac:roleName=manager-role webhook \
 		paths="./..." \
-		output:crd:artifacts:config=deploy/k8s/config/crd/bases \
-		output:rbac:artifacts:config=deploy/k8s/config/rbac \
-		output:webhook:artifacts:config=deploy/k8s/config/webhook
+		output:crd:artifacts:config=cmd/cli/cmd/Chart/templates/ \
+		output:rbac:artifacts:config=cmd/cli/cmd/Chart/templates/ \
+		output:webhook:artifacts:config=cmd/cli/cmd/Chart/templates/
 
 generate-controller: generate-controller-gen-installed ## Generate controller code
 	$(CONTROLLER_GEN) object:headerFile="boilerplate.go.txt" paths="./..."
