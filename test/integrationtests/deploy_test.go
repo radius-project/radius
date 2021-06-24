@@ -388,7 +388,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 		require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
-		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods, at.Options.Context)
+		validation.ValidatePodsRunning(at.Options.Context, t, at.Options.K8s, at.Row.Pods)
 
 		// Validate that all expected output resources are created
 		validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Row.Components)

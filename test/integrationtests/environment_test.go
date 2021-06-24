@@ -123,7 +123,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 			},
 		}
 
-		validation.ValidatePodsRunning(t, k8s, expectedPods, ctx)
+		validation.ValidatePodsRunning(ctx, t, k8s, expectedPods)
 	})
 }
 

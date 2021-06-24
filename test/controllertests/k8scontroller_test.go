@@ -338,5 +338,5 @@ func (ct ControllerTest) Test(t *testing.T) {
 		require.NoError(t, err, "failed to create component")
 	}
 	// ValidatePodsRunning triggers its own assertions, no need to handle errors
-	validation.ValidateDeploymentsRunning(t, ct.Options.K8s, ct.Row.Pods, ct.Options.Context)
+	validation.ValidateDeploymentsRunning(ct.Options.Context, t, ct.Options.K8s, ct.Row.Pods)
 }
