@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
+	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/spf13/cobra"
 )
 
@@ -91,7 +92,7 @@ func unregister(ctx context.Context, accountName string, accountKey string, tabl
 
 	entity := table.GetEntityReference(env, env)
 	err = entity.Delete(true, &storage.EntityOptions{})
-	if err != nil {
+	if err != nil && !util.IsAutorest404Error(err) {
 		return fmt.Errorf("failed to delete entity: %w", err)
 	}
 
