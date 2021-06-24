@@ -96,7 +96,10 @@ func NewLogger(name string) (logr.Logger, func(), error) {
 
 	// The underlying zap logger needs to be flushed before server exits
 	flushLogs := func() {
-		zapLogger.Sync()
+		err := zapLogger.Sync()
+		if err != nil {
+			panic(err)
+		}
 	}
 	return logger, flushLogs, nil
 }

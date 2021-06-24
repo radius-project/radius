@@ -60,7 +60,6 @@ type rp struct {
 	db     db.RadrpDB
 	v      *validator.Validate
 	deploy deployment.DeploymentProcessor
-	logger logr.Logger
 }
 
 func (r *rp) ListApplications(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
@@ -500,7 +499,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 		// Update components to track output resources created during deployment
 		for c, action := range actions {
-			logger.Info(fmt.Sprintf("Updating component %v output resources", len(action.Definition.Properties.OutputResources)))
+			logger.Info(fmt.Sprintf("Updating component with %v output resources", len(action.Definition.Properties.OutputResources)))
 			a.Components[c] = *action.Definition
 		}
 

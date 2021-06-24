@@ -125,10 +125,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 	logger.Info("actions in order:")
 	for i, action := range ordered {
-		logger.Info(
-			fmt.Sprintf("%v", i),
-			radlogger.LogFieldComponentName, action.ComponentName,
-		)
+		logger.Info(fmt.Sprintf("%v - %v", i, action.ComponentName))
 	}
 
 	bindingValues := map[components.BindingKey]components.BindingState{}
