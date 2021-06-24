@@ -22,7 +22,7 @@ jobs:
 
     # Rough order of logic here
     #
-    # - Get code (we need to build/run `rad env delete`)
+    # - Get code (we need to build/run testenv)
     # - az login
     # - Remove environment from environment table
     # - Delete environment
@@ -54,11 +54,18 @@ jobs:
             --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
             --tablename environments \
             --environment ${{ github.event.client_payload.environment }}
-      - name: Delete Environment
+      - name: Delete Environment Application Resource Group
         run: |
           az group delete \
             --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ github.event.client_payload.environment}} \
+            --yes \
+            --verbose
+      - name: Delete Environment Contol Plane Resource Group
+        run: |
+          az group delete \
+            --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --resource-group RE-${{ github.event.client_payload.environment}} \
             --yes \
             --verbose
       - name: Create issue on failure
