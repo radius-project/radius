@@ -9,14 +9,14 @@ controller-run: generate-k8s-manifests generate-controller ## Run the controller
 	SKIP_WEBHOOKS=true go run ./cmd/k8s/main.go
 
 controller-install: generate-k8s-manifests generate-kustomize-installed ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build deploy/k8s/config/crd | kubectl apply -f -
+	kubectl apply -f cmd/cli/cmd/Chart/templates/ 
 
 controller-uninstall: generate-k8s-manifests generate-kustomize-installed ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build deploy/k8s/config/crd | kubectl delete -f -
+	kubectl delete -f cmd/cli/cmd/Chart/templates/ 
 
-controller-deploy: generate-k8s-manifests generate-kustomize-installed ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd deploy/k8s/config/manager && $(KUSTOMIZE) edit set image controller=${DOCKER_TAG_VERSION}
-	$(KUSTOMIZE) build deploy/k8s/config/default | kubectl apply -f -
+# controller-deploy: generate-k8s-manifests generate-kustomize-installed ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+# 	cd deploy/k8s/config/manager && $(KUSTOMIZE) edit set image controller=${DOCKER_TAG_VERSION}
+# 	$(KUSTOMIZE) build cmd/cli/cmd/Chart/templates/ | kubectl apply -f -
 
-controller-undeploy: generate-kustomize-installed ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build deploy/k8s/config/default | kubectl delete -f -
+# controller-undeploy: generate-kustomize-installed ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
+# 	$(KUSTOMIZE) build deploy/k8s/config/default | kubectl delete -f -

@@ -15,7 +15,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -131,6 +130,8 @@ type KubernetesInitConfig struct {
 	Version   string
 }
 
+// TODO currently the namespace creation is part of the template,
+// we should re-enable this to make it work
 func createNamespace(ctx context.Context, namespace string) error {
 	// GetClient for kubernetes
 	client, err := utils.GetKubernetesClient()
@@ -224,10 +225,10 @@ func radiusChart(version string, config *helm.Configuration) (*chart.Chart, erro
 // RunCLICommand runs a kubectl CLI command with stdout and stderr forwarded to this process's output.
 func install(ctx context.Context, config KubernetesInitConfig) error {
 	// Create namespace if not present
-	err := createNamespace(ctx, config.Namespace)
-	if err != nil {
-		return err
-	}
+	// err := createNamespace(ctx, config.Namespace)
+	// if err != nil {
+	// 	return err
+	// }
 	// Get helm chart (needs to either be in repo or outside)
 	helmConf, err := helmConfig(config.Namespace)
 	if err != nil {
@@ -239,28 +240,18 @@ func install(ctx context.Context, config KubernetesInitConfig) error {
 		return err
 	}
 
-	version, err := getVersion(config.Version)
-	if err != nil {
-		return err
-	}
-
-	err = applyCRDs(fmt.Sprintf("v%s", version))
-	if err != nil {
-		return err
-	}
-
 	installClient := helm.NewInstall(helmConf)
-	installClient.ReleaseName = daprReleaseName
+	installClient.ReleaseName = "radius"
 	installClient.Namespace = config.Namespace
-	installClient.Wait = config.Wait
-	installClient.Timeout = time.Duration(config.Timeout) * time.Second
+	// installClient.Wait = config.Wait
+	// installClient.Timeout = time.Duration(config.Timeout) * time.Second
 
-	values, err := chartValues(config)
-	if err != nil {
-		return err
-	}
+	// values, err := chartValues(config)
+	// if err != nil {
+	// return err
+	// }
 
-	if _, err = installClient.Run(radiusChart, values); err != nil {
+	if _, err = installClient.Run(radiusChart, nil); err != nil {
 		return err
 	}
 
