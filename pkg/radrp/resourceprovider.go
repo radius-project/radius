@@ -564,10 +564,6 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 	// OK we've updated the database to denote that the deployment is in process - now we're ready
 	// to start deploying in the background.
 	go func() {
-		ctx := radlogger.WrapLogContext(context.Background(),
-			radlogger.LogFieldAppName, d.App.Name(),
-			radlogger.LogFieldDeploymentName, d.Resource.Name())
-		logger := radlogger.GetLogger(ctx)
 		logger.Info("processing deletion of deployment in the background")
 		var failure *armerrors.ErrorDetails = nil
 		status := rest.SuccededStatus
