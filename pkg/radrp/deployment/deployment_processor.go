@@ -18,7 +18,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/revision"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/go-logr/logr"
 )
 
 // DeploymentOperation represents an operation performed on a workload.
@@ -102,7 +101,7 @@ type deploymentProcessor struct {
 }
 
 // NewDeploymentProcessor initializes a deployment processor.
-func NewDeploymentProcessor(appmodel model.ApplicationModel, logger logr.Logger) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel) DeploymentProcessor {
 	return &deploymentProcessor{
 		appmodel: appmodel,
 	}
@@ -389,14 +388,10 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 		radlogger.LogFieldDeploymentName, name)
 	logger := radlogger.GetLogger(ctx)
 
-	logger.Info(
-		"Deleting deployment",
-	)
+	logger.Info("Deleting deployment")
 	errs := []error{}
 	for _, wl := range d.Workloads {
-		logger := logger.WithValues(
-			radlogger.LogFieldComponentName, wl.ComponentName,
-		)
+		logger := logger.WithValues(radlogger.LogFieldComponentName, wl.ComponentName)
 		logger.Info("Deleting workload")
 		for _, resource := range wl.Resources {
 			logger.WithValues(

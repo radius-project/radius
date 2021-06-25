@@ -36,22 +36,23 @@ type handler struct {
 }
 
 func (h *handler) listApplications(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.ListApplications(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.ListApplications(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(req.Context(), w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(req.Context(), w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(req.Context(), w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) getApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.GetApplication(req.Context(), resourceID(req))
+	response, err := h.rp.GetApplication(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -81,14 +82,14 @@ func (h *handler) updateApplication(w http.ResponseWriter, req *http.Request) {
 
 	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(req.Context(), w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) deleteApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.DeleteApplication(req.Context(), resourceID(req))
+	response, err := h.rp.DeleteApplication(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -103,7 +104,7 @@ func (h *handler) deleteApplication(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) listComponents(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.ListComponents(req.Context(), resourceID(req))
+	response, err := h.rp.ListComponents(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -118,7 +119,7 @@ func (h *handler) listComponents(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) getComponent(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.GetComponent(req.Context(), resourceID(req))
+	response, err := h.rp.GetComponent(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -141,7 +142,7 @@ func (h *handler) updateComponent(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.rp.UpdateComponent(req.Context(), input)
+	response, err := h.rp.UpdateComponent(ctx, input)
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -155,36 +156,38 @@ func (h *handler) updateComponent(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) deleteComponent(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.DeleteComponent(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.DeleteComponent(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(req.Context(), w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(req.Context(), w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(req.Context(), w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) listDeployments(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.ListDeployments(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.ListDeployments(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(req.Context(), w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(req.Context(), w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(req.Context(), w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) getDeployment(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.GetDeployment(req.Context(), resourceID(req))
+	response, err := h.rp.GetDeployment(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -206,7 +209,7 @@ func (h *handler) updateDeployment(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.rp.UpdateDeployment(req.Context(), input)
+	response, err := h.rp.UpdateDeployment(ctx, input)
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -221,7 +224,7 @@ func (h *handler) updateDeployment(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) deleteDeployment(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.DeleteDeployment(req.Context(), resourceID(req))
+	response, err := h.rp.DeleteDeployment(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -236,7 +239,7 @@ func (h *handler) deleteDeployment(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) listScopes(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.ListScopes(req.Context(), resourceID(req))
+	response, err := h.rp.ListScopes(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -251,7 +254,7 @@ func (h *handler) listScopes(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) getScope(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.GetScope(req.Context(), resourceID(req))
+	response, err := h.rp.GetScope(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -273,7 +276,7 @@ func (h *handler) updateScope(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.rp.UpdateScope(req.Context(), input)
+	response, err := h.rp.UpdateScope(ctx, input)
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return
@@ -303,7 +306,7 @@ func (h *handler) deleteScope(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) getDeploymentOperation(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.GetDeploymentOperationByID(req.Context(), resourceID(req))
+	response, err := h.rp.GetDeploymentOperationByID(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, err)
 		return

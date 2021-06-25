@@ -102,6 +102,7 @@ func main() {
 	}
 
 	logger, flushLogs, err := radlogger.NewLogger("radRP")
+	defer flushLogs()
 	logger.WithValues(
 		radlogger.LogFieldResourceGroup, arm.ResourceGroup,
 		radlogger.LogFieldSubscriptionID, arm.SubscriptionID)
@@ -112,7 +113,7 @@ func main() {
 	options := radrp.ServerOptions{
 		Address:      ":" + port,
 		Authenticate: authenticate,
-		Deploy:       deployment.NewDeploymentProcessor(appmodel, logger),
+		Deploy:       deployment.NewDeploymentProcessor(appmodel),
 		DB:           db.NewRadrpDB(client.Database(dbName)),
 		Logger:       logger,
 	}
@@ -125,5 +126,4 @@ func main() {
 	}
 
 	logger.Info("shutting down...")
-	flushLogs()
 }

@@ -420,7 +420,12 @@ func Test_ListApplications_Found(t *testing.T) {
 
 func rewriteHandler(t *testing.T, h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		logger, _ := radlogger.NewTestLogger(t)
+		logger, err := radlogger.NewTestLogger(t)
+		if err != nil {
+			t.Error(err)
+			h.ServeHTTP(w, r.WithContext(context.Background()))
+			return
+		}
 		ctx := logr.NewContext(context.Background(), logger)
 		h.ServeHTTP(w, r.WithContext(ctx))
 	}

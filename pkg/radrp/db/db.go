@@ -276,7 +276,7 @@ func (d radrpDB) ListDeploymentsByApplicationID(ctx context.Context, id resource
 func (d radrpDB) GetDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Deployment, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldAppID, id,
-		radlogger.LogFieldAppName, name)
+		radlogger.LogFieldDeploymentName, name)
 	logger.Info("Getting deployment")
 	application, err := d.GetApplicationByID(ctx, id)
 	if err != nil {
@@ -299,7 +299,7 @@ func (d radrpDB) PatchDeploymentByApplicationID(ctx context.Context, id resource
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldAppID, id,
-		radlogger.LogFieldAppName, name,
+		radlogger.LogFieldDeploymentName, name,
 		radlogger.LogFieldOperationFilter, filter)
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: patch}}}}
 
@@ -320,7 +320,7 @@ func (d radrpDB) DeleteDeploymentByApplicationID(ctx context.Context, id resourc
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldAppID, id,
-		radlogger.LogFieldAppName, name,
+		radlogger.LogFieldDeploymentName, name,
 		radlogger.LogFieldOperationFilter, filter)
 	update := bson.D{{Key: "$unset", Value: bson.D{{Key: key}}}}
 
