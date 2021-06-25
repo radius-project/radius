@@ -1,10 +1,10 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    control-plane: controller-manager
-  name: radius-system
----
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   labels:
+#     control-plane: controller-manager
+#   name: radius-system
+# ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -130,8 +130,6 @@ type KubernetesInitConfig struct {
 	Version   string
 }
 
-// TODO currently the namespace creation is part of the template,
-// we should re-enable this to make it work
 func createNamespace(ctx context.Context, namespace string) error {
 	// GetClient for kubernetes
 	client, err := utils.GetKubernetesClient()
@@ -145,6 +143,7 @@ func createNamespace(ctx context.Context, namespace string) error {
 		},
 	}
 
+	// Ignore failures if namespace already exists
 	client.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
 	return nil
 }
@@ -225,10 +224,11 @@ func radiusChart(version string, config *helm.Configuration) (*chart.Chart, erro
 // RunCLICommand runs a kubectl CLI command with stdout and stderr forwarded to this process's output.
 func install(ctx context.Context, config KubernetesInitConfig) error {
 	// Create namespace if not present
-	// err := createNamespace(ctx, config.Namespace)
-	// if err != nil {
-	// 	return err
-	// }
+	err := createNamespace(ctx, config.Namespace)
+	if err != nil {
+		return err
+	}
+
 	// Get helm chart (needs to either be in repo or outside)
 	helmConf, err := helmConfig(config.Namespace)
 	if err != nil {
@@ -248,10 +248,9 @@ func install(ctx context.Context, config KubernetesInitConfig) error {
 
 	// values, err := chartValues(config)
 	// if err != nil {
-	// return err
+	// 	return err
 	// }
-
-	if _, err = installClient.Run(radiusChart, nil); err != nil {
+	if _, err = installClient.Run(radiusChart, radiusChart.Values); err != nil {
 		return err
 	}
 
