@@ -250,6 +250,7 @@ func install(ctx context.Context, config KubernetesInitConfig) error {
 	// if err != nil {
 	// 	return err
 	// }
+
 	if _, err = installClient.Run(radiusChart, radiusChart.Values); err != nil {
 		return err
 	}
