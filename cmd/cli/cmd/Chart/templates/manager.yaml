@@ -42,7 +42,7 @@ spec:
         env:
         - name: SKIP_WEBHOOKS
           value: "true"
-        image: rynowak/radius-controller:latest
+        image: {{ .Values.controller }}
         livenessProbe:
           httpGet:
             path: /healthz
