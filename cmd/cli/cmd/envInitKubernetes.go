@@ -174,10 +174,9 @@ func runKubectlApply(ctx context.Context, content []byte) error {
 
 	// values, err := chartValues(config)
 	// if err != nil {
-	// return err
+	// 	return err
 	// }
-
-	if _, err = installClient.Run(radiusChart, nil); err != nil {
+	if _, err = installClient.Run(radiusChart, radiusChart.Values); err != nil {
 		return err
 	}
 
