@@ -141,6 +141,125 @@ As an example, for this specific section the complete reference to the page and 
 {{</* ref "contributing-docs.md#referencing-sections-in-other-pages" */>}}
 ```
 
+### Code snippets
+
+Use the `rad` shortcode to reference code snippets from a file. By convention place code snippets in a `snippets` folder.
+
+{{</* rad file="snippets/mysample.bicep" embed=true */>}}
+
+{{% alert title="Warning" color="warning" %}}
+All Bicep sample code should be self-contained in separate files, not in markdown. We validate all `.bicep` files as part of the build for syntactic and semantic correctness, and so all `.bicep` sample code must be complete and correct. Use the techniques described here to highlight the parts of the sample code users should focus on.
+{{% /alert %}}
+
+Use the `embed` parameter (default `false`) to include a download link and embed the content in the page.
+
+Use the `lang` (default `bicep`) parameter to configure the language used for syntax highlighting.
+
+Use the `marker` parameter to limit the embedded snipped to a portion of the sample file. This is useful when you want to show just a portion of a larger file. The typical way to do this is surround the interesting code with comments, and then pass the comment text into `marker`.
+
+The shortcode below and code sample:
+
+{{</* rad file="snippets/mysample.bicep" embed=true marker="//SAMPLE" */>}}
+
+```bicep
+// in snippets/mysample.bicep
+resource app 'radius.dev/Applications@v1alpha1' = {
+  name: 'storefront-app'
+
+  //SAMPLE
+  resource store 'Components' = {
+    name: 'storefront'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: { 
+        container: {
+          image: 'foo'
+        }
+      }
+      bindings: {
+        web: {
+          kind: 'http'
+          targetPort: 3000
+        }
+      }
+    }
+  }
+  //SAMPLE
+}
+```
+
+Will result in the following output:
+
+```bicep
+  resource store 'Components' = {
+    name: 'storefront'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: { 
+        container: {
+          image: 'foo'
+        }
+      }
+      bindings: {
+        web: {
+          kind: 'http'
+          targetPort: 3000
+        }
+      }
+    }
+  }
+```
+
+Use the `replace-key-[token]` and `replace-value-[token]` parameters to limit the embedded snipped to a portion of the sample file. This is useful when you want abbreviate a portion of the code sample. Multiple replacements are supported with multiple values of `token`. 
+
+The shortcode below and code sample:
+
+{{</* rad file="snippets/mysample.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" */>}}
+
+```bicep
+// in snippets/mysample.bicep
+resource app 'radius.dev/Applications@v1alpha1' = {
+  name: 'storefront-app'
+
+  //SAMPLE
+  resource store 'Components' = {
+    name: 'storefront'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      //RUN
+      run: { 
+        container: {
+          image: 'foo'
+        }
+      }
+      //RUN
+      //BINDINGS
+      bindings: {
+        web: {
+          kind: 'http'
+          targetPort: 3000
+        }
+      }
+      //BINDINGS
+    }
+  }
+  //SAMPLE
+}
+```
+
+Will result in the following output:
+
+```bicep
+  resource store 'Components' = {
+    name: 'storefront'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: {...}
+      bindings: {...}
+    }
+  }
+```
+
 ### Images
 
 The markdown spec used by Docsy and Hugo does not give an option to resize images using markdown notation. Instead, raw HTML is used.
