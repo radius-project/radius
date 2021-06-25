@@ -78,7 +78,7 @@ func (d radrpDB) ListApplicationsByResourceGroup(ctx context.Context, id resourc
 
 	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup}}
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationFilter, filter)
-	logger.Info(fmt.Sprintf("listing Applications"))
+	logger.Info("Listing applications")
 	col := d.db.Collection(applicationsCollection)
 	cursor, err := col.Find(ctx, filter)
 	if err != nil {
@@ -90,7 +90,7 @@ func (d radrpDB) ListApplicationsByResourceGroup(ctx context.Context, id resourc
 		return items, fmt.Errorf("error reading Applications: %w", err)
 	}
 
-	logger.Info("Found %d Applications", len(items))
+	logger.Info(fmt.Sprintf("Found %d Applications", len(items)))
 	return items, nil
 }
 
@@ -194,7 +194,7 @@ func (d radrpDB) ListComponentsByApplicationID(ctx context.Context, id resources
 func (d radrpDB) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Component, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldAppID, id,
-		radlogger.LogFieldAppName, name)
+		radlogger.LogFieldComponentName, name)
 	logger.Info("Getting components")
 	application, err := d.GetApplicationByID(ctx, id)
 	if err != nil {

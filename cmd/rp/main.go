@@ -102,6 +102,9 @@ func main() {
 	}
 
 	logger, flushLogs, err := radlogger.NewLogger("radRP")
+	logger.WithValues(
+		radlogger.LogFieldResourceGroup, arm.ResourceGroup,
+		radlogger.LogFieldSubscriptionID, arm.SubscriptionID)
 	if err != nil {
 		panic(err)
 	}
