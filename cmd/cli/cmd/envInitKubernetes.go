@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -51,17 +50,14 @@ var envInitKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
 		namespace, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			return err
 		}
 
 		if interactive {
-			namespace, err = prompt.Text("Enter a namespace name:", prompt.EmptyValidator)
 			if err != nil {
 				return err
-			}
 		}
 
 		k8sconfig, err := kubernetes.ReadKubeConfig()
@@ -80,7 +76,7 @@ var envInitKubernetesCmd = &cobra.Command{
 
 		step := logger.BeginStep("Installing Radius...")
 		err = install(cmd.Context(), KubernetesInitConfig{
-			Namespace: namespace,
+			Namespace: "radius-system",
 			Version:   version.Version(),
 		})
 		if err != nil {
