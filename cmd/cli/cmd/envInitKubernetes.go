@@ -51,7 +51,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		namespace := "radius-system"
+		namespace := "default"
 		if interactive {
 			namespace, err = choseNamespace(cmd.Context())
 			if err != nil {

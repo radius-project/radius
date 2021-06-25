@@ -35,7 +35,7 @@ func TestK8sController(t *testing.T) {
 	defer cancel()
 
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "deploy", "k8s", "config", "crd", "bases")},
+		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "cmd", "cli", "cmd", "Chart", "templates", "bases")},
 		ErrorIfCRDPathMissing:    true,
 		AttachControlPlaneOutput: true,
 	}
