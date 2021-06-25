@@ -37,20 +37,7 @@ Different [binding types]({{< ref bindings-model.md >}}) may also have additiona
 
 In the following example a container offers an HTTP binding on port 3000:
 
-```sh
-resource store 'Components' = {
-  name: 'storefront'
-  kind: 'radius.dev/Container@v1alpha1'
-  properties: {
-    bindings: 
-      web: {
-        kind: 'http'
-        targetPort: 3000
-      }
-    ]
-  }
-}
-```
+{{< rad file="snippets/components-model-storefront.bicep" embed=true marker="//SAMPLE" replace-key-hide="//HIDE" replace-value-hide="run: {...}" >}}
 
 ## Uses
 
