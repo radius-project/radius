@@ -122,9 +122,8 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 		return err
 	}
 
-	logger.Info("actions in order:")
 	for i, action := range ordered {
-		logger.Info(fmt.Sprintf("%v - %v", i, action.ComponentName))
+		logger.Info(fmt.Sprintf("actions order: %v - %v", i, action.ComponentName))
 	}
 
 	bindingValues := map[components.BindingKey]components.BindingState{}
@@ -135,7 +134,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			radlogger.LogFieldAction, action.Operation,
 			radlogger.LogFieldComponentName, action.ComponentName,
 		)
-		logger.Info("executing")
+		logger.Info("executing action")
 
 		// while we do bookkeeping, also update the deployment record
 		switch action.Operation {
@@ -286,10 +285,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				d.Workloads = append(d.Workloads, dw)
 			}
 
-			logger.Info(
-				"successfully applied workload",
-				radlogger.LogFieldComponentKind, action.Component.Kind,
-			)
+			logger.WithValues(radlogger.LogFieldComponentKind, action.Component.Kind).Info("successfully applied workload")
 
 		case DeleteWorkload:
 			// Remove the deployment record
@@ -383,9 +379,6 @@ func (dp *deploymentProcessor) orderActions(actions map[string]ComponentAction) 
 }
 
 func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus) error {
-	ctx = radlogger.WrapLogContext(ctx,
-		radlogger.LogFieldAppName, appName,
-		radlogger.LogFieldDeploymentName, name)
 	logger := radlogger.GetLogger(ctx)
 
 	logger.Info("Deleting deployment")
@@ -436,9 +429,8 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 	}
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
-	logger.Info("Created output resources for workload")
 	for _, o := range resources {
-		logger.Info(fmt.Sprintf("LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType))
+		logger.Info(fmt.Sprintf("Created output resource for workload - LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType))
 	}
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far

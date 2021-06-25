@@ -410,7 +410,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 	logger = logger.WithValues(
 		radlogger.LogFieldResourceID, oid.Resource.ID,
-		radlogger.LogFieldResourceName, oid.Resource.Name)
+		radlogger.LogFieldResourceName, oid.Resource.Name())
 
 	_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 	if err != nil {
@@ -564,11 +564,13 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 	// OK we've updated the database to denote that the deployment is in process - now we're ready
 	// to start deploying in the background.
 	go func() {
-		ctx := context.Background()
+		ctx := radlogger.WrapLogContext(context.Background(),
+			radlogger.LogFieldAppName, d.App.Name(),
+			radlogger.LogFieldDeploymentName, d.Resource.Name())
+		logger := radlogger.GetLogger(ctx)
 		logger.Info("processing deletion of deployment in the background")
 		var failure *armerrors.ErrorDetails = nil
 		status := rest.SuccededStatus
-
 		err := r.deploy.DeleteDeployment(ctx, d.App.Name(), d.Resource.Name(), &current.Status)
 		if _, ok := err.(*deployment.CompositeError); ok {
 			// Composite error is what we use for validation problems

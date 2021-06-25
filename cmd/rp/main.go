@@ -101,9 +101,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger, flushLogs, err := radlogger.NewLogger("radRP")
+	logger, flushLogs, err := radlogger.NewLogger(fmt.Sprintf("radRP-%s", arm.ResourceGroup))
 	defer flushLogs()
-	logger.WithValues(
+	logger = logger.WithValues(
 		radlogger.LogFieldResourceGroup, arm.ResourceGroup,
 		radlogger.LogFieldSubscriptionID, arm.SubscriptionID)
 	if err != nil {

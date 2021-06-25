@@ -112,7 +112,7 @@ func rewrite(ctx context.Context, h http.Handler) http.Handler {
 		logger := radlogger.GetLogger(ctx)
 		header := r.Header.Get("X-MS-CustomProviders-RequestPath")
 		if header != "" {
-			logger.Info(fmt.Sprintf("Rewriting URL Path to: '%s'", header))
+			logger.V(radlogger.Verbose).Info(fmt.Sprintf("Rewriting URL Path to: '%s'", header))
 			r.URL.Path = header
 			r.URL.RawPath = header
 		}
@@ -126,14 +126,14 @@ func authenticateCert(ctx context.Context, h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		logger := radlogger.GetLogger(ctx)
 		if !strings.HasPrefix(r.URL.Path, "/subscriptions/") {
-			logger.Info("request is not for a sensitive URL - allowing")
+			logger.V(radlogger.Verbose).Info("request is not for a sensitive URL - allowing")
 			h.ServeHTTP(w, r)
 			return
 		}
 
 		header := r.Header.Get("X-ARR-ClientCert")
 		if header == "" {
-			logger.Info("X-ARR-ClientCert as not present")
+			logger.V(radlogger.Verbose).Info("X-ARR-ClientCert as not present")
 			w.WriteHeader(401)
 			return
 		}
@@ -145,7 +145,7 @@ func authenticateCert(ctx context.Context, h http.Handler) http.Handler {
 			return
 		}
 
-		logger.Info("Client-cert is valid")
+		logger.V(radlogger.Verbose).Info("Client-cert is valid")
 		h.ServeHTTP(w, r)
 	}
 
