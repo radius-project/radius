@@ -42,7 +42,7 @@ spec:
         env:
         - name: SKIP_WEBHOOKS
           value: "true"
-        image: {{ .Values.controller }}
+        image: {{ .Values.container }}
         livenessProbe:
           httpGet:
             path: /healthz
