@@ -15,7 +15,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
@@ -173,12 +172,12 @@ func runKubectlApply(ctx context.Context, content []byte) error {
 		_, _ = io.Copy(&buf, stderr)
 	}()
 
-	values, err := chartValues(config)
-	if err != nil {
-		return err
-	}
+	// values, err := chartValues(config)
+	// if err != nil {
+	// return err
+	// }
 
-	if _, err = installClient.Run(radiusChart, values); err != nil {
+	if _, err = installClient.Run(radiusChart, nil); err != nil {
 		return err
 	}
 
