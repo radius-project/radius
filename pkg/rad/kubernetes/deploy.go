@@ -31,6 +31,9 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 	}
 
 	resources, err := localrp.Eval(template, localrp.TemplateOptions{})
+	if err != nil {
+		return err
+	}
 
 	for _, resource := range resources {
 		gvr, kind, err := gvr(resource)

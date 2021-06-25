@@ -74,7 +74,3 @@ generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes
 
 generate-controller: generate-controller-gen-installed ## Generate controller code
 	$(CONTROLLER_GEN) object:headerFile="boilerplate.go.txt" paths="./..."
-
-# generate-baked-manifests: generate-k8s-manifests generate-kustomize-installed
-# 	cd deploy/k8s/config/manager && $(KUSTOMIZE) edit set image controller=$(DOCKER_REGISTRY)/radius-controller:$(DOCKER_TAG_VERSION)
-# 	$(KUSTOMIZE) build deploy/k8s/config/default > cmd/cli/cmd/radius-k8s.yaml

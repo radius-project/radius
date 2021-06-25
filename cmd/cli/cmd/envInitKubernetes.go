@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -48,9 +47,11 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		interactive, err := cmd.Flags().GetBool("interactive")
+		if err != nil {
+			return err
+		}
 
-		// TODO need to be able to switch namespaces.
-		var namespace string = "radius-system"
+		namespace := "radius-system"
 		if interactive {
 			namespace, err = choseNamespace(cmd.Context())
 			if err != nil {
@@ -74,7 +75,7 @@ var envInitKubernetesCmd = &cobra.Command{
 
 		step := logger.BeginStep("Installing Radius...")
 		err = install(cmd.Context(), KubernetesInitConfig{
-			Namespace: namespace,
+			Namespace: "radius-system",
 			Version:   version.Version(),
 		})
 		if err != nil {
@@ -120,7 +121,7 @@ func init() {
 func choseNamespace(ctx context.Context) (string, error) {
 	name, err := prompt.Text("Enter a Resource Group name (empty to default to 'radius-system' namespace):", prompt.EmptyValidator)
 	if name == "" {
-		name = "radius-system"
+		name = "default"
 	}
 	return name, err
 }
@@ -144,7 +145,7 @@ func createNamespace(ctx context.Context, namespace string) error {
 	}
 
 	// Ignore failures if namespace already exists
-	client.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+	_, _ = client.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
 	return nil
 }
 
@@ -160,14 +161,6 @@ func helmConfig(namespace string) (*helm.Configuration, error) {
 func ignoreLog(format string, v ...interface{}) {
 }
 
-func locateChartFile(dirPath string) (string, error) {
-	files, err := ioutil.ReadDir(dirPath)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dirPath, files[0].Name()), nil
-}
-
 func createTempDir() (string, error) {
 	dir, err := os.MkdirTemp("", "radius")
 	if err != nil {
@@ -176,31 +169,47 @@ func createTempDir() (string, error) {
 	return dir, nil
 }
 
-// TODO Need to support either local or remote
 func radiusChart(version string, config *helm.Configuration) (*chart.Chart, error) {
 	dir, err := createTempDir()
 	if err != nil {
 		return nil, err
 	}
 
+	defer os.RemoveAll(dir)
+
+	// Iterate through everything in the chart and write it to a
+	// temp folder, then load the helm chart.
 	err = fs.WalkDir(chartFolder, "Chart", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if d.IsDir() {
+			// Make sure directory exists in temp directory.
 			err := os.MkdirAll(filepath.Join(dir, path), os.ModePerm)
 			return err
 		}
 
 		file, err := chartFolder.Open(path)
+		if err != nil {
+			return err
+		}
 		stat, err := file.Stat()
+		if err != nil {
+			return err
+		}
+
 		totalLen := int(stat.Size())
 		buffer := make([]byte, totalLen)
 
-		for len := 0; len != totalLen; {
-			readLen, err := file.Read(buffer)
+		for runningLength := 0; runningLength != totalLen; {
+			temp, err := file.Read(buffer)
 			if err != nil {
 				return err
 			}
-			len += readLen
+			runningLength += temp
 		}
+
 		fullPath := filepath.Join(dir, path)
 
 		err = os.WriteFile(fullPath, buffer, os.ModePerm)
@@ -211,8 +220,6 @@ func radiusChart(version string, config *helm.Configuration) (*chart.Chart, erro
 	if err != nil {
 		return nil, err
 	}
-
-	defer os.RemoveAll(dir)
 
 	loader, err := loader.LoadDir(filepath.Join(dir, "Chart"))
 	if err != nil {
@@ -243,13 +250,6 @@ func install(ctx context.Context, config KubernetesInitConfig) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = "radius"
 	installClient.Namespace = config.Namespace
-	// installClient.Wait = config.Wait
-	// installClient.Timeout = time.Duration(config.Timeout) * time.Second
-
-	// values, err := chartValues(config)
-	// if err != nil {
-	// 	return err
-	// }
 
 	if _, err = installClient.Run(radiusChart, radiusChart.Values); err != nil {
 		return err
