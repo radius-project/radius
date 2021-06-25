@@ -22,3 +22,6 @@ test-get-envtools:
 	
 test-controller: generate-k8s-manifests generate-controller test-get-envtools ## Runs controller tests, note arm64 version not available.
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go test ./test/controllertests/...  
+
+test-validate-bicep: ## Validates that all .bicep files compile cleanly
+	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
