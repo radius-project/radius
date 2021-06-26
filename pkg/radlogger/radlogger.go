@@ -26,7 +26,7 @@ import (
 const (
 	DefaultLoggerName = "radiusRP"
 	RadLogLevel       = "RADIUS_LOG_LEVEL" // Env variable that determines the log level
-	RadProfile        = "RADIUS_PROFILE"   // Env variable that determines the logger config presets
+	RadLogProfile     = "RADIUS_LOG_PROFILE" // Env variable that determines the logger config presets
 )
 
 // Log levels
@@ -49,7 +49,7 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	var cfg zap.Config
 
 	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
-	profile := os.Getenv(RadProfile)
+	profile := os.Getenv(RadLogProfile)
 	if profile == "" {
 		profile = DefaultLoggerProfile
 	}

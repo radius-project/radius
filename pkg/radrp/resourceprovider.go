@@ -564,6 +564,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 	// OK we've updated the database to denote that the deployment is in process - now we're ready
 	// to start deploying in the background.
 	go func() {
+		ctx := logr.NewContext(context.Background(), logger)
 		logger.Info("processing deletion of deployment in the background")
 		var failure *armerrors.ErrorDetails = nil
 		status := rest.SuccededStatus
