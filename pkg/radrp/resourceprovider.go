@@ -409,6 +409,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	}
 
 	logger = logger.WithValues(
+		radlogger.LogFieldOperationID, oid.Resource.ID,
 		radlogger.LogFieldResourceName, id.Resource.Name(),
 		radlogger.LogFieldResourceID, id.Resource.ID)
 

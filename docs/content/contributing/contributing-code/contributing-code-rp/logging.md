@@ -28,7 +28,7 @@ func (r *rp) UpdateDeployment(**ctx context.Context**, d *rest.Deployment) (rest
 logger := radlogger.GetLogger(ctx)
 ```
 
-* Whenever there is more new relevant information that becomes available in a method, add new information fields to the logs. Radius logging uses a structured format for logging. Add a new constant field under the radlogger package and add it to the logging context.
+* Whenever there is more new relevant information that becomes available in a method, add new information fields to the logs. Radius uses a structured format for logging. Add a new constant field under the radlogger package and add it to the logging context.
 
 ```go
 const (
