@@ -21,7 +21,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 const (
@@ -49,9 +48,7 @@ var updateRPCmd = &cobra.Command{
 			return err
 		}
 
-		v := viper.GetViper()
-		v.SetConfigFile(configpath)
-		err = v.ReadInConfig()
+		v, err := rad.LoadConfig(configpath)
 		if err != nil {
 			return err
 		}

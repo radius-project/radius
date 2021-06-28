@@ -40,8 +40,10 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	config := ConfigFromContext(cmd.Context())
+
 	// Validate environment exists, retrieve associated resource group and subscription id
-	env, err := rad.RequireEnvironmentArgs(cmd, args)
+	env, err := rad.RequireEnvironmentArgs(cmd, config, args)
 	if err != nil {
 		return err
 	}
@@ -80,7 +82,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	logger.LogInfo("Environment deleted")
 
 	// Delete env from the config, update default env if needed
-	if err = deleteEnvFromConfig(az.Name); err != nil {
+	if err = deleteEnvFromConfig(config, az.Name); err != nil {
 		return err
 	}
 
@@ -122,10 +124,9 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 	return nil
 }
 
-func deleteEnvFromConfig(envName string) error {
+func deleteEnvFromConfig(config *viper.Viper, envName string) error {
 	logger.LogInfo("Updating config")
-	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
+	env, err := rad.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -139,8 +140,8 @@ func deleteEnvFromConfig(envName string) error {
 			break
 		}
 	}
-	rad.UpdateEnvironmentSection(v, env)
-	if err = rad.SaveConfig(); err != nil {
+	rad.UpdateEnvironmentSection(config, env)
+	if err = rad.SaveConfig(config); err != nil {
 		return err
 	}
 

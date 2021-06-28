@@ -34,7 +34,6 @@ import (
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var supportedLocations = [5]string{
@@ -599,8 +598,8 @@ func findClusterInDeployment(ctx context.Context, deployment resources.Deploymen
 func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, controlPlaneResourceGroup string, clusterName string) error {
 	step := logger.BeginStep("Updating Config...")
 
-	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
+	config := ConfigFromContext(ctx)
+	env, err := rad.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -615,9 +614,9 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	if len(env.Items) == 1 {
 		env.Default = name
 	}
-	rad.UpdateEnvironmentSection(v, env)
+	rad.UpdateEnvironmentSection(config, env)
 
-	err = rad.SaveConfig()
+	err = rad.SaveConfig(config)
 	if err != nil {
 		return err
 	}
