@@ -409,8 +409,8 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	}
 
 	logger = logger.WithValues(
-		radlogger.LogFieldResourceID, oid.Resource.ID,
-		radlogger.LogFieldResourceName, oid.Resource.Name())
+		radlogger.LogFieldResourceName, id.Resource.Name(),
+		radlogger.LogFieldResourceID, id.Resource.ID)
 
 	_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 	if err != nil {

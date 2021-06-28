@@ -190,7 +190,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				BindingValues: bindingValues,
 			}
 
-			logger.V(radlogger.Verbose).Info("Rendering workload")
+			logger.Info("Rendering workload")
 			outputResources, err := dp.renderWorkload(ctx, inst)
 			if err != nil {
 				errs = append(errs, err)
