@@ -92,6 +92,7 @@ func unregister(ctx context.Context, accountName string, accountKey string, tabl
 
 	entity := table.GetEntityReference(env, env)
 	err = entity.Delete(true, &storage.EntityOptions{})
+	// Treat NotFound error as delete operation succeeded
 	if err != nil && !util.IsAutorest404Error(err) {
 		return fmt.Errorf("failed to delete entity: %w", err)
 	}
