@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 const leaseTimeout = 30 * time.Minute
@@ -63,7 +62,11 @@ var reserveCmd = &cobra.Command{
 			return err
 		}
 
-		v := viper.GetViper()
+		v, err := rad.LoadConfig(configpath)
+		if err != nil {
+			return err
+		}
+
 		env, err := rad.ReadEnvironmentSection(v)
 		if err != nil {
 			return err
@@ -82,12 +85,11 @@ var reserveCmd = &cobra.Command{
 		}
 
 		rad.UpdateEnvironmentSection(v, env)
-		err = v.SafeWriteConfigAs(configpath)
+		err = rad.SaveConfig(v)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("wrote config to '%v'\n", configpath)
 		return nil
 	},
 }

@@ -26,7 +26,8 @@ Press CTRL+C to exit the command and terminate the tunnel.`,
 # on local port 5000
 rad component expose --application icecream-store orders --port 5000 --remote-port 80`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		env, err := rad.RequireEnvironment(cmd)
+		config := ConfigFromContext(cmd.Context())
+		env, err := rad.RequireEnvironment(cmd, config)
 		if err != nil {
 			return err
 		}
