@@ -19,12 +19,12 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	cliutils "github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/Azure/radius/test/config"
-	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/radcli"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
@@ -40,24 +40,25 @@ func TestDeployment(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
-	config, err := config.NewAzureConfig()
-	require.NoError(t, err, "failed to initialize azure config")
+	config, err := rad.LoadConfig("")
+	require.NoError(t, err, "failed to read radius config")
 
-	// Find a test cluster
-	env, err := environment.GetTestEnvironment(ctx, config)
-	require.NoError(t, err)
-
-	k8s, err := utils.GetKubernetesClient()
-	require.NoError(t, err, "failed to create kubernetes client")
+	auth, err := azure.GetResourceManagerEndpointAuthorizer()
+	require.NoError(t, err, "failed to authenticate with azure")
 
 	// Build rad application client
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	require.NoErrorf(t, err, "failed to obtain Azure credentials")
 	con := armcore.NewDefaultConnection(azcred, nil)
 
-	// Access Azure credentials
-	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
-	require.NoErrorf(t, err, "failed to obtain Azure credentials")
+	env, err := rad.GetEnvironment(config, "")
+	require.NoError(t, err, "failed to read default environment")
+
+	az, err := environments.RequireAzureCloud(env)
+	require.NoError(t, err, "environment was not azure cloud")
+
+	k8s, err := utils.GetKubernetesClient()
+	require.NoError(t, err, "failed to create kubernetes client")
 
 	// Ensure rad-bicep has been downloaded before we go parallel
 	installed, err := bicep.IsBicepInstalled()
@@ -68,11 +69,12 @@ func TestDeployment(t *testing.T) {
 	}
 
 	options := Options{
-		Environment:   env,
-		ARMConnection: con,
-		K8s:           k8s,
-		Authorizer:    armauth,
-		Context:       ctx,
+		ConfigFilePath: config.ConfigFileUsed(),
+		Environment:    az,
+		ARMConnection:  con,
+		K8s:            k8s,
+		Authorizer:     auth,
+		Context:        ctx,
 	}
 
 	table := []Row{
@@ -112,7 +114,7 @@ func TestDeployment(t *testing.T) {
 				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
 				// get application and verify name
-				response, err := appclient.Get(ctx, env.ResourceGroup, "frontend-backend", nil)
+				response, err := appclient.Get(ctx, az.ResourceGroup, "frontend-backend", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
 				assert.Equal(t, "frontend-backend", *response.ApplicationResource.Name)
 			},
@@ -254,7 +256,7 @@ func TestDeployment(t *testing.T) {
 				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
 				// get application and verify name
-				response, err := appclient.Get(ctx, env.ResourceGroup, "radius-keyvault", nil)
+				response, err := appclient.Get(ctx, az.ResourceGroup, "radius-keyvault", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
 				assert.Equal(t, "radius-keyvault", *response.ApplicationResource.Name)
 			},
@@ -350,11 +352,12 @@ type Row struct {
 }
 
 type Options struct {
-	Environment   *environment.TestEnvironment
-	K8s           *kubernetes.Clientset
-	ARMConnection *armcore.Connection
-	Authorizer    autorest.Authorizer
-	Context       context.Context
+	ConfigFilePath string
+	Environment    *environments.AzureCloudEnvironment
+	K8s            *kubernetes.Clientset
+	ARMConnection  *armcore.Connection
+	Authorizer     autorest.Authorizer
+	Context        context.Context
 }
 
 type ApplicationTest struct {
@@ -379,7 +382,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
-	cli := radcli.NewCLI(t, at.Options.Environment.ConfigPath)
+	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.

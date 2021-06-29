@@ -39,6 +39,15 @@ type ApplicationSection struct {
 	Default string `mapstructure:"default" yaml:"default"`
 }
 
+func GetEnvironment(v *viper.Viper, name string) (environments.Environment, error) {
+	section, err := ReadEnvironmentSection(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return section.GetEnvironment(name)
+}
+
 // ReadEnvironmentSection reads the EnvironmentSection from radius config.
 func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 	s := v.Sub(EnvironmentKey)
