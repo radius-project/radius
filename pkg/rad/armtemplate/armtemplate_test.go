@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package localrp
+package armtemplate
 
 import (
 	"io/ioutil"

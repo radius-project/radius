@@ -40,6 +40,9 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		interactive, err := cmd.Flags().GetBool("interactive")
+		if err != nil {
+			return err
+		}
 
 		// TODO need to be able to switch namespaces.
 		var namespace string = "default"
@@ -146,8 +149,15 @@ func runKubectlApply(ctx context.Context, content []byte) error {
 		return err
 	}
 
-	go io.Copy(&buf, stdout)
-	go io.Copy(&buf, stderr)
+	go func() {
+		// ignore errors from copy failing
+		_, _ = io.Copy(&buf, stdout)
+	}()
+
+	go func() {
+		// ignore errors from copy failing
+		_, _ = io.Copy(&buf, stderr)
+	}()
 
 	writeme := bytes.NewBuffer(content)
 	_, err = io.Copy(stdin, writeme)

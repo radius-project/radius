@@ -6,7 +6,7 @@
 // This package has TEMPORARY code that we use for fill the role of the ARM deployment engine
 // in environments where it can't run right now (K8s, local testing). We don't intend to
 // maintain this long-term and we don't intend to achieve parity.
-package localrp
+package armtemplate
 
 import (
 	"encoding/json"

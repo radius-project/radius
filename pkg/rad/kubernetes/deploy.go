@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/radius/pkg/rad/localrp"
+	"github.com/Azure/radius/pkg/rad/armtemplate"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -25,12 +25,15 @@ type KubernetesDeploymentClient struct {
 }
 
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) error {
-	template, err := localrp.Parse(content)
+	template, err := armtemplate.Parse(content)
 	if err != nil {
 		return err
 	}
 
-	resources, err := localrp.Eval(template, localrp.TemplateOptions{})
+	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{})
+	if err != nil {
+		return err
+	}
 
 	for _, resource := range resources {
 		gvr, kind, err := gvr(resource)
@@ -100,7 +103,7 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 	return nil
 }
 
-func gvr(resource localrp.Resource) (schema.GroupVersionResource, string, error) {
+func gvr(resource armtemplate.Resource) (schema.GroupVersionResource, string, error) {
 	if resource.Type == radresources.ApplicationResourceType.Type() {
 		return schema.GroupVersionResource{
 			Group:    "applications.radius.dev",
