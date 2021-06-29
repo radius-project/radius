@@ -1,9 +1,13 @@
 {{ $file := .Get "file" }}
 {{ $filePath := (path.Join $.Page.File.Dir $file ) }}
 {{ $fileContents := $filePath | readFile }}
-{{ $lang := "bicep" }}
+{{ $lang := "sh" }}
 {{ $embed := .Get "embed" | default false }}
+{{ $download := .Get "download" | default false }}
+{{ if $download }}
 <a class="btn btn-info btn-sm" href={{ print $file }} download>Download template file</a>
+<br /><br />
+{{ end }}
 {{ if $embed }}
 {{ if isset .Params "marker" }}
     {{ $marker := .Get "marker" }}

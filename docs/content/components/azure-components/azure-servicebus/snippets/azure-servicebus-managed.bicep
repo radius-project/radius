@@ -1,6 +1,20 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'radius-servicebus'
 
+  //SAMPLE
+  //BUS
+  resource sbq 'Components' = {
+    name: 'sbq'
+    kind: 'azure.com/ServiceBusQueue@v1alpha1'
+    properties: {
+      config: {
+        managed: true
+        queue: 'radius-queue1'
+      }
+    }
+  }
+  //BUS
+  //SENDER
   resource sender 'Components' = {
     name: 'sender'
     kind: 'radius.dev/Container@v1alpha1'
@@ -22,7 +36,10 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       ]
     }
   }
+  //SENDER
+  //SAMPLE
 
+  //RECEIVER
   resource receiver 'Components' = {
     name: 'receiver'
     kind: 'radius.dev/Container@v1alpha1'
@@ -44,15 +61,5 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       ]
     }
   }
-
-  resource sbq 'Components' = {
-    name: 'sbq'
-    kind: 'azure.com/ServiceBusQueue@v1alpha1'
-    properties: {
-      config: {
-        managed: true
-        queue: 'radius-queue1'
-      }
-    }
-  }
+  //RECEIVER
 }
