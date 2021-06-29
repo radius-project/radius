@@ -20,6 +20,18 @@ Resources like databases and message queues can be described via non-runnable Co
 
 The `bindings` configuration defines the [Bindings]({{< ref bindings-model.md >}}) which the Component offers. These Bindings can range from HTTP ports being opened on a container to an API that a database resource offers. For more information on Bindings visit the [Bindings documentation]({{< ref bindings-model.md >}}).
 
+## Resource lifecycle
+
+Radius components can be deployed and managed by either Radius (managed) or by a user (unmanaged).
+
+### Radius managed
+
+When `properties.config.managed` is set to `true`, Radius will manage the lifecycle of the underlying resource, meaning it will deploy and manage the resource itself on the [hosting platform]({{< ref environments >}}).
+
+### User managed
+
+When `properties.config.managed` is set to `false` or omitted, you can explicitly specify an existing resource which you manage. This allows you to connect your Radius Components to existing databases, queues, and other non-compute resources. When you delete your application Radius will not change or delete your existing resource.
+
 ## Configuration
 
 | Key  | Description |

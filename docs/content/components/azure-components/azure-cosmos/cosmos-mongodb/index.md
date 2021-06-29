@@ -5,107 +5,53 @@ linkTitle: "Azure CosmosDB Mongo"
 description: "Sample application running MongoDB through Azure CosmosDB API"
 ---
 
-The `azure.com/CosmosDBMongo` component defined an [Azure CosmosDB](https://azure.microsoft.com/en-us/services/cosmos-db/) configured with a MongoDB API.
+The `azure.com/CosmosDBMongo` Component defines an [Azure CosmosDB](https://azure.microsoft.com/en-us/services/cosmos-db/) configured with a MongoDB API.
 
 ## Resource lifecycle
 
-An `azure.com/CosmosDBMongo` Component can be deployed and managed by either by a user (unmanaged) or by Radius (managed).
+An `azure.com/CosmosDBMongo` can be either Radius-managed or user-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}})
 
-## Using a Radius-managed CosmosDB
+## Configuration
 
-When `properties.config.managed` is set to `true`, Radius will manage the lifecycle of the underlying database account and database:
+| Property | Description | Example(s) |
+|----------|-------------|---------|
+| managed | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. | `true`, `false`
+| resource | The ID of the user-managed CosmosDB with Mongo API to use for this Component. | `account::mongodb.id`
 
-```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'cosmos-container-managed'
+## Bindings
 
-  resource db 'Components' = {
-    name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
-    properties: {
-      config: {
-        managed: true
-      }
-    }
-  }
+### cosmos
 
-  resource webapp 'Components' = {
-    name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: {...}
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
-          }
-        }
-      ]
-    }
-  }
-}
-```
+The `cosmos` Binding of kind `azure.com/CosmosDBMongo` represents the the CosmosDB resource itself, and all APIs it offers.
 
-{{< rad file="managed.bicep">}}
+| Property | Description |
+|----------|-------------|
+| `connectionString` | The MongoDB connection string used to connect to the database.
+| `dbname` | The name of the database to which you are connecting.
 
-## Using a user-managed CosmosDB
+### mongo
 
-When `properties.config.managed` is set to `false` or omitted, you can explicitly specify an existing Azure `resource` which you manage. This allows you to connect your Radius Components to existing databases. When you delete your application Radius will not change or delete your existing database.
+The `mongo` Binding of kind `mongodb.com/Mongo` represents the Mongo API offered by the CosmosDB resource.
 
-In this example `Microsoft.DocumentDB/databaseAccounts` and `mongodbDatabases` resources are defined in Bicep, and then referenced in a Radius application. Note you can also use Bicep's [existing functionality](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?tabs=azure-powershell#reference-existing-resources) to reference a resource that has previously been deployed.
+| Property | Description |
+|----------|-------------|
+| `connectionString` | The MongoDB connection string used to connect to the database.
+| `dbname` | The name of the database to which you are connecting.
 
-```sh
-resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'account-${guid(resourceGroup().name)}'
-  location: resourceGroup().location
-  kind: 'MongoDB'
-  properties: {...}
+## Example
 
-  resource mongodb 'mongodbDatabases' = {
-    name: 'mydb'
-    properties: {
-      resource: {
-        id: 'mydb'
-      }
-      options: { 
-        throughput: 400
-      }
-    }
-  }
-}
+{{< tabs "Radius Managed" "User Managed" >}}
 
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'cosmos-container-usermanaged'
+{{% codetab %}}
+{{< rad file="snippets/azure-cosmos-mongo-managed.bicep" embed=true marker="//SAMPLE" replace-key-hide="//HIDE" replace-value-hide="run: {...}" >}}
+{{% /codetab %}}
 
-  resource db 'Components' = {
-    name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
-    properties: {
-      config: {
-        resource: account::mongodb.id
-      }
-    }
-  }
+{{% codetab %}}
+In this example, `Microsoft.DocumentDB/databaseAccounts` and `mongodbDatabases` resources are defined in Bicep, and then referenced in a Radius application.
 
-  resource webapp 'Components' = {
-    name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: {...}
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
-          }
-        }
-      ]
-    }
-  }
+You can also use Bicep's [existing functionality](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?tabs=azure-powershell#reference-existing-resources) to reference a resource that has previously been deployed.
 
-}
+{{< rad file="snippets/azure-cosmos-mongo-usermanaged.bicep" embed=true marker="//SAMPLE" replace-key-hide="//HIDE" replace-value-hide="run: {...}" replace-key-properties="//PROPERTIES" replace-value-properties="properties: {...}" >}}
+{{% /codetab %}}
 
-```
-
-{{< rad file="usermanaged.bicep">}}
+{{< /tabs >}}
