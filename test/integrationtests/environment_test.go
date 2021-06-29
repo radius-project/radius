@@ -10,9 +10,11 @@ import (
 	"testing"
 
 	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/test/config"
-	"github.com/Azure/radius/test/environment"
+	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/azure"
+	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -22,19 +24,24 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
-	config, err := config.NewAzureConfig()
-	require.NoError(t, err, "failed to initialize azure config")
+	config, err := rad.LoadConfig("")
+	require.NoError(t, err, "failed to read radius config")
 
-	// Find a test cluster
-	env, err := environment.GetTestEnvironment(ctx, config)
-	require.NoError(t, err)
+	auth, err := azure.GetResourceManagerEndpointAuthorizer()
+	require.NoError(t, err, "failed to authenticate with azure")
+
+	env, err := rad.GetEnvironment(config, "")
+	require.NoError(t, err, "failed to read default environment")
+
+	az, err := environments.RequireAzureCloud(env)
+	require.NoError(t, err, "environment was not azure cloud")
 
 	k8s, err := utils.GetKubernetesClient()
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	t.Run("Validate App Resource Group", func(t *testing.T) {
 
-		resources := listRadiusEnvironmentResources(ctx, t, env, config, env.ResourceGroup)
+		resources := listRadiusEnvironmentResources(ctx, t, az, auth, az.ControlPlaneResourceGroup)
 		require.Equal(t, len(resources), 1, "Number of resources created by init step is less than expected")
 
 		_, found := resources["Microsoft.CustomProviders/resourceProviders"]
@@ -42,7 +49,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	})
 
 	t.Run("Validate Control Plane Resource Group", func(t *testing.T) {
-		resources := listRadiusEnvironmentResources(ctx, t, env, config, env.ControlPlaneResourceGroup)
+		resources := listRadiusEnvironmentResources(ctx, t, az, auth, az.ControlPlaneResourceGroup)
 
 		_, found := resources["Microsoft.ContainerService/managedClusters"]
 		require.True(t, found, "Microsoft.ContainerService/managedClusters resource not created")
@@ -97,10 +104,10 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	})
 }
 
-func listRadiusEnvironmentResources(ctx context.Context, t *testing.T, env *environment.TestEnvironment, config *config.AzureConfig, resourceGroup string) map[string]string {
+func listRadiusEnvironmentResources(ctx context.Context, t *testing.T, env *environments.AzureCloudEnvironment, auth autorest.Authorizer, resourceGroup string) map[string]string {
 	resourceMap := make(map[string]string)
 	resc := azresources.NewClient(env.SubscriptionID)
-	resc.Authorizer = config.Authorizer
+	resc.Authorizer = auth
 
 	for page, err := resc.ListByResourceGroup(ctx, resourceGroup, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
 		require.NoError(t, err, "failed to list resources")
