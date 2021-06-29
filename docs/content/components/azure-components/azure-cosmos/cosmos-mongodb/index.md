@@ -27,7 +27,7 @@ The `cosmos` Binding of kind `azure.com/CosmosDBMongo` represents the the Cosmos
 | Property | Description |
 |----------|-------------|
 | `connectionString` | The MongoDB connection string used to connect to the database.
-| `dbname` | The name of the database to which you are connecting.
+| `database` | The name of the database to which you are connecting.
 
 ### mongo
 
@@ -36,7 +36,7 @@ The `mongo` Binding of kind `mongodb.com/Mongo` represents the Mongo API offered
 | Property | Description |
 |----------|-------------|
 | `connectionString` | The MongoDB connection string used to connect to the database.
-| `dbname` | The name of the database to which you are connecting.
+| `database` | The name of the database to which you are connecting.
 
 ## Example
 
