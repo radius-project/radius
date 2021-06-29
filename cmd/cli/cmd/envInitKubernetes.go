@@ -44,10 +44,13 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		// TODO need to be able to switch namespaces.
-		var namespace string = "default"
+		namespace, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			return err
+		}
+
 		if interactive {
-			namespace, err = choseNamespace(cmd.Context())
+			namespace, err = prompt.Text("Enter a namespace name:", prompt.EmptyValidator)
 			if err != nil {
 				return err
 			}
@@ -106,11 +109,7 @@ var envInitKubernetesCmd = &cobra.Command{
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
-}
-
-func choseNamespace(ctx context.Context) (string, error) {
-	name, err := prompt.Text("Enter a Resource Group name (empty for default namespace):", prompt.EmptyValidator)
-	return name, err
+	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
 }
 
 // RunCLICommand runs a kubectl CLI command with stdout and stderr forwarded to this process's output.

@@ -41,7 +41,6 @@ func (e *KubernetesEnvironment) GetDefaultApplication() string {
 }
 
 func (e *KubernetesEnvironment) GetStatusLink() string {
-	// TODO what would the status link be?
 	return ""
 }
 
