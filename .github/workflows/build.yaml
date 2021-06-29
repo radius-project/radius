@@ -239,7 +239,13 @@ jobs:
           --configpath ~/.rad/config.yaml \
           --image radiusteam/radius-rp:${{ env.REL_VERSION }} \
           --check-version ${{ env.REL_VERSION }}
-    - name: Run integration tests
+    - name: Download Bicep
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        cd $GITHUB_WORKSPACE
+        which rad || { echo "cannot find rad"; exit 1; }
+        rad bicep download
+    - name: Run Azure functional tests
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
@@ -249,7 +255,7 @@ jobs:
         cd $GITHUB_WORKSPACE
         echo "PATH is $PATH"
         which rad || { echo "cannot find rad"; exit 1; }
-        make test-integration
+        make test-functional-azure
 
     # Now we'll delete the test environment we used. This prevents PRs from
     # dirtying state in a preserved environment

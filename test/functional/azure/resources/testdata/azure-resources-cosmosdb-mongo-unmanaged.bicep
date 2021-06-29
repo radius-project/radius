@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'cosmos-container-unmanaged'
+  name: 'azure-resources-cosmosdb-mongo-unmanaged'
   
   resource webapp 'Components' = {
     name: 'todoapp'
@@ -36,6 +36,9 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'account-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   kind: 'MongoDB'
+  tags: {
+    radiustest: 'true'
+  }
   properties: {
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'

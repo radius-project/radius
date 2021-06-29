@@ -1,14 +1,16 @@
 ---
 type: docs
-title: "Running Radius integration tests"
-linkTitle: "Deploy tests"
-description: "How to run Radius integration tests"
+title: "Running Radius functional tests"
+linkTitle: "Functional tests"
+description: "How to run Radius functional tests"
 weight: 200
 ---
 
+You can find the functional tests under `./test/functional`. A functional tests (in our terminology) is a test that interacts with real hosting enviroments (Azure, Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
+
 These tests verify whether:
 
-- That Radius environments can be created on Azure successfully.
+- That Radius environments can be created successfully.
 - That Bicep templates of sample applications ca be deployed to the Radius environment. 
 
 These run on Azure Radius environments (also called Radius test clusters) that are managed dynamically as part of the test process.
@@ -53,13 +55,31 @@ The tests use our product functionality (the Radius config file) to configure th
 1. Create an environment (`rad env init azure -i`)
 2. Merge your AKS credentials to your kubeconfig (`rad env merge-credentials -e azure`)
 3. Place `rad` on your path
-4. Run:
+4. Make sure `rad-bicep` is downloaded (`rad bicep download`)
+5. Run:
 
     ```sh
-    make integration-tests
+    make test-functional-azure
     ```
 
 When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`.
+
+You can also run/debug individual tests from VSCode
+
+### Seeing log output
+
+Some of these tests take a few minutes to run since they interact with cloud resources. You should configure VSCode to output verbose output so you can see the progress.
+
+Open your VSCode `settings.json` with the command `Preferences: Open Settings (JSON)` and configure the following options:
+```
+{
+    ...
+    "go.testTimeout": "60m",
+    "go.testFlags": [
+        "-v"
+    ]
+}
+```
 
 ## Controlling test environments
 
