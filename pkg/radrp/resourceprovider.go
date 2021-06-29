@@ -434,7 +434,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 		err := r.deploy.UpdateDeployment(ctx, app.FriendlyName(), newdbitem.Name, &newdbitem.Status, actions)
 		if _, ok := err.(*deployment.CompositeError); ok {
-			logger.WithValues(radlogger.LogFieldErrors, err).Info("deployment failed")
+			logger.Error(err, "deployment failed")
 			// Composite error is what we use for validation problems
 			status = rest.FailedStatus
 			failure = &armerrors.ErrorDetails{
@@ -443,7 +443,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 				Target:  id.Resource.ID,
 			}
 		} else if err != nil {
-			logger.WithValues(radlogger.LogFieldErrors, err).Info("deployment failed")
+			logger.Error(err, "deployment failed")
 			// Other errors represent a generic failure, this should map to a 500.
 			status = rest.FailedStatus
 			failure = &armerrors.ErrorDetails{
@@ -458,8 +458,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		if err != nil {
 			// If we get here we're not going to be able to update the operation
 			// try to update the deployment as a cleanup step (if possible).
-			logger.WithValues(radlogger.LogFieldErrors, err).
-				Info("failed to retrieve operation. marking deployment as failed")
+			logger.Error(err, "failed to retrieve operation. marking deployment as failed")
 			if status == rest.SuccededStatus {
 				status = rest.FailedStatus
 			}
@@ -472,8 +471,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 			_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 			if err != nil {
-				logger.WithValues(radlogger.LogFieldErrors, err).
-					Info("failed to update operation. marking deployment as failed")
+				logger.Error(err, "failed to update operation. marking deployment as failed")
 				if status == rest.SuccededStatus {
 					status = rest.FailedStatus
 				}
@@ -484,14 +482,14 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 		d, err := r.db.GetDeploymentByApplicationID(ctx, id.App, id.Resource.Name())
 		if err != nil {
-			logger.WithValues(radlogger.LogFieldErrors, err).Info("failed to retrieve operation")
+			logger.Error(err, "failed to retrieve operation")
 			return
 		}
 		d.Properties.ProvisioningState = string(status)
 		d.Status = newdbitem.Status
 		a, err := r.db.GetApplicationByID(ctx, id.App)
 		if err != nil {
-			logger.WithValues(radlogger.LogFieldErrors, err).Info("failed to retrieve application")
+			logger.Error(err, "failed to retrieve application")
 			return
 		}
 		// Update the deployment in the application
@@ -507,7 +505,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		logger.Info("Updating application")
 		ok, err := r.db.UpdateApplication(ctx, a)
 		if err != nil || !ok {
-			logger.WithValues(radlogger.LogFieldErrors, err).Info("failed to update application")
+			logger.Error(err, "failed to update application")
 			return
 		}
 		logger.WithValues(radlogger.LogFieldOperationStatus, status).Info("completed deployment in the background with status")
@@ -592,7 +590,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		if err != nil {
 			// If we get here we're not going to be able to update the operation
 			// try to update the deployment as a cleanup step (if possible).
-			logger.WithValues(radlogger.LogFieldErrors, err).Info("failed to retrieve operation. marking deletion as failed")
+			logger.Error(err, "failed to retrieve operation. marking deletion as failed")
 			if status == rest.SuccededStatus {
 				status = rest.FailedStatus
 			}
@@ -604,7 +602,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 
 			_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 			if err != nil {
-				logger.WithValues(radlogger.LogFieldErrors, err).Info("failed to update operation. marking deployment as failed")
+				logger.Error(err, "failed to update operation. marking deployment as failed")
 				if status == rest.SuccededStatus {
 					status = rest.FailedStatus
 				}
@@ -613,14 +611,14 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 
 		dd, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 		if err != nil {
-			logger.WithValues(radlogger.LogFieldErrors, err).Info("failed to retrieve deployment")
+			logger.Error(err, "failed to retrieve deployment")
 			return
 		}
 
 		if status == rest.SuccededStatus {
 			err := r.db.DeleteDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 			if err != nil {
-				logger.WithValues(radlogger.LogFieldErrors, err).Info("failed to delete deployment")
+				logger.Error(err, "failed to delete deployment")
 				return
 			}
 		} else {
@@ -629,7 +627,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 			dd.Properties.ProvisioningState = string(status)
 			_, err = r.db.PatchDeploymentByApplicationID(ctx, d.App, d.Resource.Name(), dd)
 			if err != nil {
-				logger.WithValues(radlogger.LogFieldErrors, err).Info("failed to update deployment")
+				logger.Error(err, "failed to update deployment")
 				return
 			}
 		}

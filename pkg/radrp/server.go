@@ -140,7 +140,7 @@ func authenticateCert(ctx context.Context, h http.Handler) http.Handler {
 
 		err := certs.Validate(header)
 		if err != nil {
-			logger.WithValues(radlogger.LogFieldErrors, err).Info("Failed to validate client-cert")
+			logger.Error(err, "Failed to validate client-cert")
 			w.WriteHeader(401)
 			return
 		}

@@ -25,7 +25,7 @@ import (
 
 const (
 	DefaultLoggerName = "radiusRP"
-	RadLogLevel       = "RADIUS_LOG_LEVEL" // Env variable that determines the log level
+	RadLogLevel       = "RADIUS_LOG_LEVEL"   // Env variable that determines the log level
 	RadLogProfile     = "RADIUS_LOG_PROFILE" // Env variable that determines the logger config presets
 )
 

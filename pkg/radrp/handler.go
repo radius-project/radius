@@ -341,13 +341,13 @@ func badRequest(ctx context.Context, w http.ResponseWriter, err error) {
 	// If we fail to serialize the error, log it and just reply with a 'plain' 500
 	bytes, err := json.MarshalIndent(body, "", "  ")
 	if err != nil {
-		logger.WithValues(radlogger.LogFieldErrors, err).Info(fmt.Sprintf("error marshaling %T", body))
+		logger.Error(err, fmt.Sprintf("error marshaling %T", body))
 		w.WriteHeader(500)
 		return
 	}
 
 	if err != nil {
-		logger.WithValues(radlogger.LogFieldErrors, err).Info(fmt.Sprintf("error marshaling %T", body))
+		logger.Error(err, fmt.Sprintf("error marshaling %T", body))
 		w.WriteHeader(500)
 		return
 	}
@@ -358,7 +358,7 @@ func badRequest(ctx context.Context, w http.ResponseWriter, err error) {
 	if err != nil {
 		// There's no way to recover if we fail writing here, we already set the stautus
 		// code and likly partially wrote to the response stream.
-		logger.WithValues(radlogger.LogFieldErrors, err).Info(fmt.Sprintf("error writing marshaled %T bytes to output", body))
+		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
 	}
 }
 
@@ -375,13 +375,13 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, err error) 
 	// If we fail to serialize the error, log it and just reply with a 'plain' 500
 	bytes, err := json.MarshalIndent(body, "", "  ")
 	if err != nil {
-		logger.WithValues(radlogger.LogFieldErrors, err).Info(fmt.Sprintf("error marshaling %T", body))
+		logger.Error(err, fmt.Sprintf("error marshaling %T", body))
 		w.WriteHeader(500)
 		return
 	}
 
 	if err != nil {
-		logger.WithValues(radlogger.LogFieldErrors, err).Info(fmt.Sprintf("error marshaling %T", body))
+		logger.Error(err, fmt.Sprintf("error marshaling %T", body))
 		w.WriteHeader(500)
 		return
 	}
@@ -392,7 +392,7 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, err error) 
 	if err != nil {
 		// There's no way to recover if we fail writing here, we already set the stautus
 		// code and likly partially wrote to the response stream.
-		logger.WithValues(radlogger.LogFieldErrors, err).Info(fmt.Sprintf("error writing marshaled %T bytes to output", body))
+		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
 	}
 }
 
