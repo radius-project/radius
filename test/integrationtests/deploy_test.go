@@ -14,17 +14,12 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest"
 	cliutils "github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
-	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/radcli"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
@@ -32,33 +27,12 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes"
 )
 
 // Tests application deployment using radius
 func TestDeployment(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
-
-	config, err := rad.LoadConfig("")
-	require.NoError(t, err, "failed to read radius config")
-
-	auth, err := azure.GetResourceManagerEndpointAuthorizer()
-	require.NoError(t, err, "failed to authenticate with azure")
-
-	// Build rad application client
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
-	require.NoErrorf(t, err, "failed to obtain Azure credentials")
-	con := armcore.NewDefaultConnection(azcred, nil)
-
-	env, err := rad.GetEnvironment(config, "")
-	require.NoError(t, err, "failed to read default environment")
-
-	az, err := environments.RequireAzureCloud(env)
-	require.NoError(t, err, "environment was not azure cloud")
-
-	k8s, err := utils.GetKubernetesClient()
-	require.NoError(t, err, "failed to create kubernetes client")
 
 	// Ensure rad-bicep has been downloaded before we go parallel
 	installed, err := bicep.IsBicepInstalled()
@@ -68,14 +42,7 @@ func TestDeployment(t *testing.T) {
 		require.NoErrorf(t, err, "failed to download rad-bicep")
 	}
 
-	options := Options{
-		ConfigFilePath: config.ConfigFileUsed(),
-		Environment:    az,
-		ARMConnection:  con,
-		K8s:            k8s,
-		Authorizer:     auth,
-		Context:        ctx,
-	}
+	options := azuretest.NewTestOptions(t)
 
 	table := []Row{
 		{
@@ -114,7 +81,7 @@ func TestDeployment(t *testing.T) {
 				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
 				// get application and verify name
-				response, err := appclient.Get(ctx, az.ResourceGroup, "frontend-backend", nil)
+				response, err := appclient.Get(ctx, at.Options.Environment.ResourceGroup, "frontend-backend", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
 				assert.Equal(t, "frontend-backend", *response.ApplicationResource.Name)
 			},
@@ -138,7 +105,7 @@ func TestDeployment(t *testing.T) {
 					keys.LabelRadiusApplication: "inbound-route",
 					keys.LabelRadiusComponent:   "frontend",
 				}
-				matches, err := at.Options.K8s.NetworkingV1().Ingresses("inbound-route").List(context.Background(), v1.ListOptions{
+				matches, err := at.Options.K8sClient.NetworkingV1().Ingresses("inbound-route").List(context.Background(), v1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 				require.NoError(t, err, "failed to list ingresses")
@@ -190,7 +157,7 @@ func TestDeployment(t *testing.T) {
 			PostDeleteVerify: func(t *testing.T, at ApplicationTest) {
 				// Verify that the servicebus resources were not deleted
 				nsc := servicebus.NewNamespacesClient(at.Options.Environment.SubscriptionID)
-				nsc.Authorizer = at.Options.Authorizer
+				nsc.Authorizer = at.Options.ARMAuthorizer
 
 				// We have to use a generated name due to uniqueness requirements, so lookup based on tags
 				var ns *servicebus.SBNamespace
@@ -213,7 +180,7 @@ func TestDeployment(t *testing.T) {
 				require.NotNilf(t, ns, "failed to find servicebus namespace with 'radiustest' tag")
 
 				tc := servicebus.NewTopicsClient(at.Options.Environment.SubscriptionID)
-				tc.Authorizer = at.Options.Authorizer
+				tc.Authorizer = at.Options.ARMAuthorizer
 
 				_, err = tc.Get(context.Background(), at.Options.Environment.ResourceGroup, *ns.Name, "TOPIC_A")
 				require.NoErrorf(t, err, "failed to find servicebus topic")
@@ -256,7 +223,7 @@ func TestDeployment(t *testing.T) {
 				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
 				// get application and verify name
-				response, err := appclient.Get(ctx, az.ResourceGroup, "radius-keyvault", nil)
+				response, err := appclient.Get(ctx, at.Options.Environment.ResourceGroup, "radius-keyvault", nil)
 				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
 				assert.Equal(t, "radius-keyvault", *response.ApplicationResource.Name)
 			},
@@ -304,7 +271,7 @@ func TestDeployment(t *testing.T) {
 			PostDeleteVerify: func(t *testing.T, at ApplicationTest) {
 				// Verify that the cosmosdb resources were not deleted
 				ac := documentdb.NewDatabaseAccountsClient(at.Options.Environment.SubscriptionID)
-				ac.Authorizer = at.Options.Authorizer
+				ac.Authorizer = at.Options.ARMAuthorizer
 
 				// We have to use a generated name due to uniqueness requirements, so lookup based on tags
 				var account *documentdb.DatabaseAccountGetResults
@@ -322,7 +289,7 @@ func TestDeployment(t *testing.T) {
 				require.NotNilf(t, account, "failed to find database account with 'radiustest' tag")
 
 				dbc := documentdb.NewMongoDBResourcesClient(at.Options.Environment.SubscriptionID)
-				dbc.Authorizer = at.Options.Authorizer
+				dbc.Authorizer = at.Options.ARMAuthorizer
 
 				_, err = dbc.GetMongoDBDatabase(context.Background(), at.Options.Environment.ResourceGroup, *account.Name, "mydb")
 				require.NoErrorf(t, err, "failed to find mongo database")
@@ -336,7 +303,9 @@ func TestDeployment(t *testing.T) {
 	t.Run("deploytests", func(t *testing.T) {
 		for _, row := range table {
 			test := NewApplicationTest(options, row)
-			t.Run(row.Description, test.Test)
+			t.Run(row.Description, func(t *testing.T) {
+				test.Test(ctx, t)
+			})
 		}
 	})
 }
@@ -351,25 +320,16 @@ type Row struct {
 	PostDeleteVerify func(*testing.T, ApplicationTest)
 }
 
-type Options struct {
-	ConfigFilePath string
-	Environment    *environments.AzureCloudEnvironment
-	K8s            *kubernetes.Clientset
-	ARMConnection  *armcore.Connection
-	Authorizer     autorest.Authorizer
-	Context        context.Context
-}
-
 type ApplicationTest struct {
-	Options Options
+	Options azuretest.TestOptions
 	Row     Row
 }
 
-func NewApplicationTest(options Options, row Row) ApplicationTest {
+func NewApplicationTest(options azuretest.TestOptions, row Row) ApplicationTest {
 	return ApplicationTest{Options: options, Row: row}
 }
 
-func (at ApplicationTest) Test(t *testing.T) {
+func (at ApplicationTest) Test(ctx context.Context, t *testing.T) {
 	// This runs each application deploy as a nested test, with the cleanup as part of the surrounding test.
 	// This way we can catch deletion failures and report them as test failures.
 	//
@@ -391,13 +351,13 @@ func (at ApplicationTest) Test(t *testing.T) {
 	t.Run(fmt.Sprintf("deploy %s", at.Row.Description), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, at.Row.Template)
 		t.Logf("deploying %s from file %s", at.Row.Description, at.Row.Template)
-		err := cli.Deploy(at.Options.Context, templateFilePath)
+		err := cli.Deploy(ctx, templateFilePath)
 		require.NoErrorf(t, err, "failed to deploy %s", at.Row.Description)
 		t.Logf("finished deploying %s from file %s", at.Row.Description, at.Row.Template)
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
 		t.Logf("validating creation of pods for %s", at.Row.Description)
-		validation.ValidatePodsRunning(at.Options.Context, t, at.Options.K8s, at.Row.Pods)
+		validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, at.Row.Pods)
 		t.Logf("finished creation of validating pods for %s", at.Row.Description)
 
 		// Validate that all expected output resources are created
@@ -418,13 +378,13 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	t.Logf("deleting %s", at.Row.Description)
-	err = cli.ApplicationDelete(at.Options.Context, at.Row.Application)
+	err = cli.ApplicationDelete(ctx, at.Row.Application)
 	require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
 	t.Logf("finished deleting %s", at.Row.Description)
 
 	t.Logf("validating deletion of pods for %s", at.Row.Description)
 	for ns := range at.Row.Pods.Namespaces {
-		validation.ValidateNoPodsInNamespace(at.Options.Context, t, at.Options.K8s, ns)
+		validation.ValidateNoPodsInNamespace(ctx, t, at.Options.K8sClient, ns)
 	}
 	t.Logf("finished deletion of pods for %s", at.Row.Description)
 

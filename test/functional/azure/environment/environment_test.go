@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package integrationtests
+package environment
 
 import (
 	"context"
@@ -12,36 +12,21 @@ import (
 	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAzureEnvironmentSetup(t *testing.T) {
+func TestAzureEnvironment(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
-	config, err := rad.LoadConfig("")
-	require.NoError(t, err, "failed to read radius config")
-
-	auth, err := azure.GetResourceManagerEndpointAuthorizer()
-	require.NoError(t, err, "failed to authenticate with azure")
-
-	env, err := rad.GetEnvironment(config, "")
-	require.NoError(t, err, "failed to read default environment")
-
-	az, err := environments.RequireAzureCloud(env)
-	require.NoError(t, err, "environment was not azure cloud")
-
-	k8s, err := utils.GetKubernetesClient()
-	require.NoError(t, err, "failed to create kubernetes client")
+	options := azuretest.NewTestOptions(t)
 
 	t.Run("Validate App Resource Group", func(t *testing.T) {
-
-		resources := listRadiusEnvironmentResources(ctx, t, az, auth, az.ControlPlaneResourceGroup)
+		resources := listRadiusEnvironmentResources(ctx, t, options.Environment, options.ARMAuthorizer, options.Environment.ControlPlaneResourceGroup)
 		require.Equal(t, len(resources), 1, "Number of resources created by init step is less than expected")
 
 		_, found := resources["Microsoft.CustomProviders/resourceProviders"]
@@ -49,7 +34,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	})
 
 	t.Run("Validate Control Plane Resource Group", func(t *testing.T) {
-		resources := listRadiusEnvironmentResources(ctx, t, az, auth, az.ControlPlaneResourceGroup)
+		resources := listRadiusEnvironmentResources(ctx, t, options.Environment, options.ARMAuthorizer, options.Environment.ControlPlaneResourceGroup)
 
 		_, found := resources["Microsoft.ContainerService/managedClusters"]
 		require.True(t, found, "Microsoft.ContainerService/managedClusters resource not created")
@@ -100,7 +85,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 			},
 		}
 
-		validation.ValidatePodsRunning(ctx, t, k8s, expectedPods)
+		validation.ValidatePodsRunning(ctx, t, options.K8sClient, expectedPods)
 	})
 }
 
