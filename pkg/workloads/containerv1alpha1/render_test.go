@@ -293,7 +293,7 @@ func Test_Render_Success_NonDefaultPort(t *testing.T) {
 	})
 }
 
-func findDeployment(resources []workloads.WorkloadResource) *appsv1.Deployment {
+func findDeployment(resources []workloads.OutputResource) *appsv1.Deployment {
 	for _, r := range resources {
 		if !r.IsKubernetesResource() {
 			continue
@@ -310,7 +310,7 @@ func findDeployment(resources []workloads.WorkloadResource) *appsv1.Deployment {
 	return nil
 }
 
-func findService(resources []workloads.WorkloadResource) *corev1.Service {
+func findService(resources []workloads.OutputResource) *corev1.Service {
 	for _, r := range resources {
 		if !r.IsKubernetesResource() {
 			continue

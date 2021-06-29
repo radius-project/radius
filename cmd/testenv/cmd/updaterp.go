@@ -7,7 +7,11 @@ package cmd
 
 import (
 	"context"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
 	"github.com/Azure/go-autorest/autorest"
@@ -15,8 +19,14 @@ import (
 	"github.com/Azure/radius/pkg/rad/azcli"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+)
+
+const (
+	VersionQueryAttempts = 10
+	VersionQueryDelay    = 10 * time.Second
 )
 
 var updateRPCmd = &cobra.Command{
@@ -25,6 +35,11 @@ var updateRPCmd = &cobra.Command{
 	Long:  `Updates a test environment to use a specific container image. Updates the environment specified by the provided config file.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		image, err := cmd.Flags().GetString("image")
+		if err != nil {
+			return err
+		}
+
+		checkVersion, err := cmd.Flags().GetString("check-version")
 		if err != nil {
 			return err
 		}
@@ -63,7 +78,7 @@ var updateRPCmd = &cobra.Command{
 
 		fmt.Printf("updating environment '%v' to use '%v'\n", az.ResourceGroup, image)
 
-		err = updateRP(cmd.Context(), auth, *az, image)
+		err = updateRP(cmd.Context(), auth, *az, image, checkVersion)
 		if err != nil {
 			return err
 		}
@@ -81,6 +96,8 @@ func init() {
 		panic(err)
 	}
 
+	updateRPCmd.Flags().String("check-version", "", "image version to check")
+
 	updateRPCmd.Flags().StringP("configpath", "t", "", "specifies location to write config")
 	err = updateRPCmd.MarkFlagRequired("configpath")
 	if err != nil {
@@ -88,26 +105,26 @@ func init() {
 	}
 }
 
-func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.AzureCloudEnvironment, image string) error {
+func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.AzureCloudEnvironment, image string, checkVersion string) error {
 	webc := web.NewAppsClient(env.SubscriptionID)
 	webc.Authorizer = auth
 
-	list, err := webc.ListByResourceGroupComplete(ctx, env.ResourceGroup, nil)
+	list, err := webc.ListByResourceGroupComplete(ctx, env.ControlPlaneResourceGroup, nil)
 	if err != nil {
 		return fmt.Errorf("cannot read web sites: %w", err)
 	}
 
 	if !list.NotDone() {
-		return fmt.Errorf("failed to find website in resource group '%v'", env.ResourceGroup)
+		return fmt.Errorf("failed to find website in resource group '%v'", env.ControlPlaneResourceGroup)
 	}
 
 	website := *list.Value().Name
-	fmt.Printf("found website '%v' in resource group '%v'", website, env.ResourceGroup)
+	fmt.Printf("found website '%v' in resource group '%v'", website, env.ControlPlaneResourceGroup)
 
 	// This command will update the deployed image
 	args := []string{
 		"webapp", "config", "container", "set",
-		"--resource-group", env.ResourceGroup,
+		"--resource-group", env.ControlPlaneResourceGroup,
 		"--subscription", env.SubscriptionID,
 		"--name", website,
 		"--docker-custom-image-name", image,
@@ -121,7 +138,7 @@ func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.Az
 	// This command will restart the webapp
 	args = []string{
 		"webapp", "restart",
-		"--resource-group", env.ResourceGroup,
+		"--resource-group", env.ControlPlaneResourceGroup,
 		"--subscription", env.SubscriptionID,
 		"--name", website,
 	}
@@ -131,5 +148,65 @@ func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.Az
 		return fmt.Errorf("failed to restart rp: %w", err)
 	}
 
+	if checkVersion != "" {
+		fmt.Printf("checking for release version: %s\n", checkVersion)
+		url := fmt.Sprintf("https://%s.azurewebsites.net/version", website)
+		fmt.Printf("querying website version at: %s\n", url)
+
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				// We need this to talk to app service for some reason.
+				// https://stackoverflow.com/questions/57420833/tls-no-renegotiation-error-on-http-request
+				Renegotiation: tls.RenegotiateOnceAsClient,
+			},
+		}
+
+		client := &http.Client{
+			Transport: transport,
+		}
+
+		for i := 0; i < 10; i++ {
+			info, err := queryVersion(client, url)
+			if err != nil {
+				fmt.Println("error: " + err.Error())
+				fmt.Printf("waiting %s\n", VersionQueryDelay)
+				time.Sleep(VersionQueryDelay)
+				continue
+			}
+
+			if info.Release != checkVersion {
+				fmt.Printf("mismatched version - expected: %s actual: %+v\n", checkVersion, info)
+				fmt.Printf("waiting %s\n", VersionQueryDelay)
+				time.Sleep(VersionQueryDelay)
+				continue
+			}
+
+			fmt.Printf("found version match - expected: %s actual: %+v\n", checkVersion, info)
+			break
+		}
+	}
+
 	return nil
+}
+
+func queryVersion(client *http.Client, url string) (*version.VersionInfo, error) {
+	response, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query version: %w", err)
+	}
+
+	if response.StatusCode < 200 || response.StatusCode > 299 {
+		return nil, fmt.Errorf("response status was: %d", response.StatusCode)
+	}
+
+	decoder := json.NewDecoder(response.Body)
+	defer response.Body.Close()
+
+	info := version.VersionInfo{}
+	err = decoder.Decode(&info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response payload: %w", err)
+	}
+
+	return &info, nil
 }

@@ -23,9 +23,12 @@ const (
 
 // ArmConfig is the configuration we use for managing ARM resources
 type ArmConfig struct {
-	Auth           autorest.Authorizer
-	SubscriptionID string
-	ResourceGroup  string
+	Auth              autorest.Authorizer
+	SubscriptionID    string
+	ResourceGroup     string
+	K8sSubscriptionID string
+	K8sResourceGroup  string
+	K8sClusterName    string
 }
 
 // GetArmConfig gets the configuration we use for managing ARM resources
@@ -37,20 +40,22 @@ func GetArmConfig() (ArmConfig, error) {
 
 	subscriptionID := os.Getenv("ARM_SUBSCRIPTION_ID")
 	if subscriptionID == "" {
+		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
+		// as it was in 0.2.
 		subscriptionID = os.Getenv("K8S_SUBSCRIPTION_ID")
 	}
-
 	if subscriptionID == "" {
-		return ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID or K8S_SUBSCRIPTION_ID is missing")
+		return ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID is missing")
 	}
 
 	resourceGroup := os.Getenv("ARM_RESOURCE_GROUP")
 	if resourceGroup == "" {
+		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
+		// as it was in 0.2.
 		resourceGroup = os.Getenv("K8S_RESOURCE_GROUP")
 	}
-
 	if resourceGroup == "" {
-		return ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP or K8S_RESOURCE_GROUP is missing")
+		return ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
 	}
 
 	log.Printf("Using SubscriptionId = '%v' and Resource Group = '%v'", subscriptionID, resourceGroup)
@@ -59,6 +64,10 @@ func GetArmConfig() (ArmConfig, error) {
 		Auth:           auth,
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,
+
+		K8sSubscriptionID: os.Getenv("K8S_SUBSCRIPTION_ID"),
+		K8sResourceGroup:  os.Getenv("K8S_RESOURCE_GROUP"),
+		K8sClusterName:    os.Getenv("K8S_CLUSTER_NAME"),
 	}, nil
 }
 

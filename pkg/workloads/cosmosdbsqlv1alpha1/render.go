@@ -76,11 +76,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render WorkloadRenderer implementation for CosmosDB for SQL workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	component := CosmosDBSQLComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.OutputResource{}, err
 	}
 
 	if component.Config.Managed {
@@ -89,8 +89,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to manage a cosmosdb instance
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureCosmosDBSQL,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindAzureCosmosDBSQL,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
@@ -99,32 +99,29 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
-	} else {
-		if component.Config.Resource == "" {
-			return nil, workloads.ErrResourceMissingForUnmanagedResource
-		}
-
-		databaseID, err := workloads.ValidateResourceID(component.Config.Resource, SQLResourceType, "CosmosDB SQL Database")
-		if err != nil {
-			return nil, err
-		}
-
-		// generate data we can use to connect to a servicebus queue
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindAzureCosmosDBSQL,
-			Resource: map[string]string{
-				handlers.ManagedKey: "false",
-
-				// Truncate the database part of the ID to make an ID for the account
-				handlers.CosmosDBAccountIDKey:    resources.MakeID(databaseID.SubscriptionID, databaseID.ResourceGroup, databaseID.Types[0]),
-				handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
-				handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,
-				handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,
-			},
-		}
-
-		// It's already in the correct format
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	}
+
+	if component.Config.Resource == "" {
+		return nil, workloads.ErrResourceMissingForUnmanagedResource
+	}
+
+	databaseID, err := workloads.ValidateResourceID(component.Config.Resource, SQLResourceType, "CosmosDB SQL Database")
+	if err != nil {
+		return nil, err
+	}
+
+	resource := workloads.OutputResource{
+		ResourceKind: workloads.ResourceKindAzureCosmosDBSQL,
+		Resource: map[string]string{
+			handlers.ManagedKey: "false",
+
+			// Truncate the database part of the ID to make an ID for the account
+			handlers.CosmosDBAccountIDKey:    resources.MakeID(databaseID.SubscriptionID, databaseID.ResourceGroup, databaseID.Types[0]),
+			handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
+			handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,
+			handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,
+		},
+	}
+	return []workloads.OutputResource{resource}, nil
 }

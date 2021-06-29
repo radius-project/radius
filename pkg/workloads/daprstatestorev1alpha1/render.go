@@ -41,11 +41,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for dapr statestore workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.WorkloadResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	component := DaprStateStoreComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.WorkloadResource{}, err
+		return []workloads.OutputResource{}, err
 	}
 
 	resourceKind := ""
@@ -54,7 +54,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	} else if component.Config.Kind == "state.sqlserver" {
 		resourceKind = workloads.ResourceKindDaprStateStoreSQLServer
 	} else {
-		return []workloads.WorkloadResource{}, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, supportedStateStoreKindValues)
+		return []workloads.OutputResource{}, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, supportedStateStoreKindValues)
 	}
 
 	if component.Config.Managed {
@@ -62,8 +62,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
-		resource := workloads.WorkloadResource{
-			Type: resourceKind,
+		resource := workloads.OutputResource{
+			ResourceKind: resourceKind,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.KubernetesNameKey:       w.Name,
@@ -74,7 +74,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	} else {
 		if component.Config.Kind == "state.sqlserver" {
 			return nil, errors.New("only Radius managed resources are supported for Dapr SQL Server")
@@ -90,8 +90,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to connect to a Storage Account
-		resource := workloads.WorkloadResource{
-			Type: workloads.ResourceKindDaprStateStoreAzureStorage,
+		resource := workloads.OutputResource{
+			ResourceKind: workloads.ResourceKindDaprStateStoreAzureStorage,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.KubernetesNameKey:       w.Name,
@@ -103,6 +103,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.StorageAccountNameKey: accountID.Types[0].Name,
 			},
 		}
-		return []workloads.WorkloadResource{resource}, nil
+		return []workloads.OutputResource{resource}, nil
 	}
 }

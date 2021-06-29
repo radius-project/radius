@@ -16,7 +16,7 @@ COPY cmd/k8s/main.go cmd/k8s/main.go
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o radius-controller -ldflags "$LD_FLAGS" cmd/k8s/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o radius-controller -ldflags "$LDFLAGS" cmd/k8s/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details

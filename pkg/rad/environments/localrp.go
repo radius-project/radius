@@ -18,12 +18,13 @@ import (
 
 // LocalRPEnvironment represents a local test setup for Azure Cloud Radius environment.
 type LocalRPEnvironment struct {
-	Name               string `mapstructure:"name" validate:"required"`
-	Kind               string `mapstructure:"kind" validate:"required"`
-	SubscriptionID     string `mapstructure:"subscriptionid" validate:"required"`
-	ResourceGroup      string `mapstructure:"resourcegroup" validate:"required"`
-	ClusterName        string `mapstructure:"clustername" validate:"required"`
-	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
+	Name                      string `mapstructure:"name" validate:"required"`
+	Kind                      string `mapstructure:"kind" validate:"required"`
+	SubscriptionID            string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required"`
+	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
+	ClusterName               string `mapstructure:"clustername" validate:"required"`
+	DefaultApplication        string `mapstructure:"defaultapplication,omitempty"`
 
 	// URL for the local RP
 	URL string `mapstructure:"url,omitempty" validate:"required"`
@@ -66,7 +67,7 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 }
 
 func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	config, err := azure.GetAKSMonitoringCredentials(ctx, e.SubscriptionID, e.ResourceGroup, e.ClusterName)
+	config, err := azure.GetAKSMonitoringCredentials(ctx, e.SubscriptionID, e.ControlPlaneResourceGroup, e.ClusterName)
 	if err != nil {
 		return nil, err
 	}

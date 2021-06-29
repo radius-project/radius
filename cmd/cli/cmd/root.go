@@ -8,8 +8,10 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/output"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -42,4 +44,7 @@ func init() {
 
 	RootCmd.Flags().BoolP("version", "v", false, "version for radius")
 	RootCmd.PersistentFlags().StringVar(&rad.CfgFile, "config", "", "config file (default is $HOME/.rad/config.yaml)")
+
+	outputDescription := fmt.Sprintf("output format (default is %s, supported formats are %s)", output.DefaultFormat, strings.Join(output.SupportedFormats(), ", "))
+	RootCmd.PersistentFlags().StringP("output", "o", "table", outputDescription)
 }

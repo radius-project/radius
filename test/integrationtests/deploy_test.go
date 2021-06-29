@@ -24,6 +24,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
+	"github.com/Azure/radius/test/radcli"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/assert"
@@ -78,11 +79,31 @@ func TestDeployment(t *testing.T) {
 			Application: "frontend-backend",
 			Description: "frontend-backend",
 			Template:    "../../docs/content/components/radius-components/container/frontend-backend.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"frontend-backend": {
-						validation.NewPodForComponent("frontend-backend", "frontend"),
-						validation.NewPodForComponent("frontend-backend", "backend"),
+						validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
+						validation.NewK8sObjectForComponent("frontend-backend", "backend"),
+					},
+				},
+			},
+			Components: validation.ComponentSet{
+				Components: []validation.Component{
+					{
+						ApplicationName: "frontend-backend",
+						ComponentName:   "frontend",
+						OutputResources: map[string]validation.OutputResourceSet{
+							"Deployment": validation.NewOutputResource("Deployment", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							"Service":    validation.NewOutputResource("Service", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+						},
+					},
+					{
+						ApplicationName: "frontend-backend",
+						ComponentName:   "backend",
+						OutputResources: map[string]validation.OutputResourceSet{
+							"Deployment": validation.NewOutputResource("Deployment", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							"Service":    validation.NewOutputResource("Service", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+						},
 					},
 				},
 			},
@@ -99,11 +120,11 @@ func TestDeployment(t *testing.T) {
 			Application: "inbound-route",
 			Description: "inbound-route",
 			Template:    "../../docs/content/components/radius-components/container/inboundroute.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"inbound-route": {
-						validation.NewPodForComponent("inbound-route", "frontend"),
-						validation.NewPodForComponent("inbound-route", "backend"),
+						validation.NewK8sObjectForComponent("inbound-route", "frontend"),
+						validation.NewK8sObjectForComponent("inbound-route", "backend"),
 					},
 				},
 			},
@@ -125,11 +146,11 @@ func TestDeployment(t *testing.T) {
 			Application: "radius-servicebus",
 			Description: "azure-servicebus",
 			Template:    "../../docs/content/components/azure-components/azure-servicebus/template.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"radius-servicebus": {
-						validation.NewPodForComponent("radius-servicebus", "sender"),
-						validation.NewPodForComponent("radius-servicebus", "receiver"),
+						validation.NewK8sObjectForComponent("radius-servicebus", "sender"),
+						validation.NewK8sObjectForComponent("radius-servicebus", "receiver"),
 					},
 				},
 			},
@@ -138,11 +159,11 @@ func TestDeployment(t *testing.T) {
 			Application: "dapr-pubsub-managed",
 			Description: "dapr-pubsub (Azure + Radius-managed)",
 			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/managed.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"dapr-pubsub-managed": {
-						validation.NewPodForComponent("dapr-pubsub-managed", "nodesubscriber"),
-						validation.NewPodForComponent("dapr-pubsub-managed", "pythonpublisher"),
+						validation.NewK8sObjectForComponent("dapr-pubsub-managed", "nodesubscriber"),
+						validation.NewK8sObjectForComponent("dapr-pubsub-managed", "pythonpublisher"),
 					},
 				},
 			},
@@ -151,11 +172,11 @@ func TestDeployment(t *testing.T) {
 			Application: "dapr-pubsub-unmanaged",
 			Description: "dapr-pubsub (Azure + user-managed)",
 			Template:    "../../docs/content/components/dapr-components/dapr-pubsub/dapr-pubsub-servicebus/unmanaged.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"dapr-pubsub-unmanaged": {
-						validation.NewPodForComponent("dapr-pubsub-unmanaged", "nodesubscriber"),
-						validation.NewPodForComponent("dapr-pubsub-unmanaged", "pythonpublisher"),
+						validation.NewK8sObjectForComponent("dapr-pubsub-unmanaged", "nodesubscriber"),
+						validation.NewK8sObjectForComponent("dapr-pubsub-unmanaged", "pythonpublisher"),
 					},
 				},
 			},
@@ -199,23 +220,53 @@ func TestDeployment(t *testing.T) {
 			Application: "radius-keyvault",
 			Description: "azure-keyvault",
 			Template:    "../../docs/content/components/azure-components/azure-keyvault/template.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"radius-keyvault": {
-						validation.NewPodForComponent("radius-keyvault", "kvaccessor"),
+						validation.NewK8sObjectForComponent("radius-keyvault", "kvaccessor"),
 					},
 				},
+			},
+			Components: validation.ComponentSet{
+				Components: []validation.Component{
+					{
+						ApplicationName: "radius-keyvault",
+						ComponentName:   "kv",
+						OutputResources: map[string]validation.OutputResourceSet{
+							"KeyVault": validation.NewOutputResource("KeyVault", workloads.OutputResourceTypeArm, workloads.ResourceKindAzureKeyVault, true),
+						},
+					},
+					{
+						ApplicationName: "radius-keyvault",
+						ComponentName:   "kvaccessor",
+						OutputResources: map[string]validation.OutputResourceSet{
+							"Deployment":                     validation.NewOutputResource("Deployment", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							"UserAssignedManagedIdentity-KV": validation.NewOutputResource("UserAssignedManagedIdentity-KV", workloads.OutputResourceTypeArm, workloads.ResourceKindAzureUserAssignedManagedIdentity, true),
+							"RoleAssignment-KVKeys":          validation.NewOutputResource("RoleAssignment-KVKeys", workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
+							"RoleAssignment-KVSecretsCerts":  validation.NewOutputResource("RoleAssignment-KVSecretsCerts", workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
+							"AADPodIdentity":                 validation.NewOutputResource("AADPodIdentity", workloads.OutputResourceTypePodIdentity, workloads.ResourceKindAzurePodIdentity, true),
+						},
+					},
+				},
+			},
+			PostDeployVerify: func(t *testing.T, at ApplicationTest) {
+				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
+
+				// get application and verify name
+				response, err := appclient.Get(ctx, env.ResourceGroup, "radius-keyvault", nil)
+				require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
+				assert.Equal(t, "radius-keyvault", *response.ApplicationResource.Name)
 			},
 		},
 		{
 			Application: "dapr-hello",
 			Description: "dapr-hello (Tutorial)",
 			Template:    "../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"dapr-hello": {
-						validation.NewPodForComponent("dapr-hello", "nodeapp"),
-						validation.NewPodForComponent("dapr-hello", "pythonapp"),
+						validation.NewK8sObjectForComponent("dapr-hello", "nodeapp"),
+						validation.NewK8sObjectForComponent("dapr-hello", "pythonapp"),
 					},
 				},
 			},
@@ -224,10 +275,10 @@ func TestDeployment(t *testing.T) {
 			Application: "cosmos-container-managed",
 			Description: "cosmos-container (radius managed)",
 			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/managed.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"cosmos-container-managed": {
-						validation.NewPodForComponent("cosmos-container-managed", "todoapp"),
+						validation.NewK8sObjectForComponent("cosmos-container-managed", "todoapp"),
 					},
 				},
 			},
@@ -236,10 +287,10 @@ func TestDeployment(t *testing.T) {
 			Application: "cosmos-container-usermanaged",
 			Description: "cosmos-container (user managed)",
 			Template:    "../../docs/content/components/azure-components/azure-cosmos/cosmos-mongodb/usermanaged.bicep",
-			Pods: validation.PodSet{
-				Namespaces: map[string][]validation.Pod{
+			Pods: validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
 					"cosmos-container-usermanaged": {
-						validation.NewPodForComponent("cosmos-container-usermanaged", "todoapp"),
+						validation.NewK8sObjectForComponent("cosmos-container-usermanaged", "todoapp"),
 					},
 				},
 			},
@@ -291,7 +342,8 @@ type Row struct {
 	Application      string
 	Description      string
 	Template         string
-	Pods             validation.PodSet
+	Pods             validation.K8sObjectSet
+	Components       validation.ComponentSet
 	PostDeployVerify func(*testing.T, ApplicationTest)
 	PostDeleteVerify func(*testing.T, ApplicationTest)
 }
@@ -326,6 +378,8 @@ func (at ApplicationTest) Test(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
+	cli := radcli.NewCLI(t, at.Options.Environment.ConfigPath)
+
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
@@ -333,30 +387,49 @@ func (at ApplicationTest) Test(t *testing.T) {
 	t.Run(fmt.Sprintf("deploy %s", at.Row.Description), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, at.Row.Template)
 		t.Logf("deploying %s from file %s", at.Row.Description, at.Row.Template)
-		err := utils.RunRadDeployCommand(at.Options.Context, templateFilePath, at.Options.Environment.ConfigPath)
-		require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
+		err := cli.Deploy(at.Options.Context, templateFilePath)
+		require.NoErrorf(t, err, "failed to deploy %s", at.Row.Description)
+		t.Logf("finished deploying %s from file %s", at.Row.Description, at.Row.Template)
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
-		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods, at.Options.Context)
+		t.Logf("validating creation of pods for %s", at.Row.Description)
+		validation.ValidatePodsRunning(at.Options.Context, t, at.Options.K8s, at.Row.Pods)
+		t.Logf("finished creation of validating pods for %s", at.Row.Description)
+
+		// Validate that all expected output resources are created
+		t.Logf("validating output resources for %s", at.Row.Description)
+		validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Row.Components)
+		t.Logf("finished validating output resources for %s", at.Row.Description)
 
 		// Custom verification is expected to use `t` to trigger its own assertions
 		if at.Row.PostDeployVerify != nil {
+			t.Logf("running post-deploy verification for %s", at.Row.Description)
 			at.Row.PostDeployVerify(t, at)
+			t.Logf("finished post-deploy verification for %s", at.Row.Description)
 		}
 	})
 
 	// In the future we can add more subtests here for multi-phase tests that change what's deployed.
+	t.Logf("beginning cleanup phase of %s", at.Row.Description)
 
 	// Cleanup code here will run regardless of pass/fail of subtests
-	err = utils.RunRadApplicationDeleteCommand(at.Options.Context, at.Row.Application, at.Options.Environment.ConfigPath)
+	t.Logf("deleting %s", at.Row.Description)
+	err = cli.ApplicationDelete(at.Options.Context, at.Row.Application)
 	require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
+	t.Logf("finished deleting %s", at.Row.Description)
 
+	t.Logf("validating deletion of pods for %s", at.Row.Description)
 	for ns := range at.Row.Pods.Namespaces {
 		validation.ValidateNoPodsInNamespace(at.Options.Context, t, at.Options.K8s, ns)
 	}
+	t.Logf("finished deletion of pods for %s", at.Row.Description)
 
 	// Custom verification is expected to use `t` to trigger its own assertions
 	if at.Row.PostDeleteVerify != nil {
+		t.Logf("running post-delete verification for %s", at.Row.Description)
 		at.Row.PostDeleteVerify(t, at)
+		t.Logf("finished post-delete verification for %s", at.Row.Description)
 	}
+
+	t.Logf("finished cleanup phase of %s", at.Row.Description)
 }

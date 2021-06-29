@@ -64,6 +64,8 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 			Build:  original.Properties.Build,
 			Config: original.Properties.Config,
 			Run:    original.Properties.Run,
+			// OutputResources are intentionally not copied over since they are read-only
+			OutputResources: []db.OutputResource{},
 		},
 	}
 
@@ -151,6 +153,7 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 		c.Properties.Traits = append(c.Properties.Traits, tt)
 	}
 
+	c.Properties.OutputResources = newRESTOutputResourcesFromDB(original.Properties.OutputResources)
 	return c
 }
 
@@ -180,7 +183,6 @@ func newDBDeploymentFromREST(original *rest.Deployment) *db.Deployment {
 		cc := &db.DeploymentComponent{
 			ID:            c.ID,
 			ComponentName: c.ComponentName,
-
 			// We don't allow a REST deployment to specify the revision - it's readonly.
 		}
 
@@ -213,4 +215,21 @@ func newRESTDeploymentFromDB(original *db.Deployment) *rest.Deployment {
 	}
 
 	return d
+}
+
+func newRESTOutputResourcesFromDB(original []db.OutputResource) []rest.OutputResource {
+	rrs := []rest.OutputResource{}
+	for _, r := range original {
+		rr := rest.OutputResource{
+			LocalID:            r.LocalID,
+			ResourceKind:       r.ResourceKind,
+			OutputResourceInfo: r.OutputResourceInfo,
+			OutputResourceType: r.OutputResourceType,
+			Managed:            r.Managed,
+			// Resource includes the body of the resource which would make the REST
+			// response too verbose. Hence excluded
+		}
+		rrs = append(rrs, rr)
+	}
+	return rrs
 }

@@ -1,8 +1,8 @@
 ---
 name: Bug Report
 about: Report broken functionality within Radius
-title: "[Bug] - <BUG TITLE>"
-labels: bug
+title: "<BUG TITLE>"
+labels: kind/bug
 assignees: ''
 ---
 
@@ -14,6 +14,8 @@ assignees: ''
 
 **OS/rad version**
 <!--What operating system and rad cli version are you running?-->
+
+<!-- PASTE OUTPUT OF rad --version -->
 
 **Screenshots**
 <!--If applicable, add screenshots to help explain your problem-->

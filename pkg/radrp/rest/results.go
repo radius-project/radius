@@ -47,7 +47,6 @@ func (r *OKResponse) Apply(w http.ResponseWriter, req *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
 	}
-
 	return nil
 }
 

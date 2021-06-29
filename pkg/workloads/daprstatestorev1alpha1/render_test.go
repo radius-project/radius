@@ -40,7 +40,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, "", resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprStateStoreAzureStorage, resource.Type)
+	require.Equal(t, workloads.ResourceKindDaprStateStoreAzureStorage, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
@@ -77,7 +77,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, "", resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprStateStoreAzureStorage, resource.Type)
+	require.Equal(t, workloads.ResourceKindDaprStateStoreAzureStorage, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "false",
@@ -158,7 +158,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, "", resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprStateStoreSQLServer, resource.Type)
+	require.Equal(t, workloads.ResourceKindDaprStateStoreSQLServer, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",

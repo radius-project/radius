@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/radius/pkg/radrp/armauth"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
 const (
@@ -30,26 +29,13 @@ type azurePodIdentityHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (handler *azurePodIdentityHandler) GetProperties(resource workloads.WorkloadResource) (map[string]string, error) {
-	item, err := convertToUnstructured(resource)
-	if err != nil {
-		return nil, err
-	}
-
-	p := map[string]string{
-		"kind":       item.GetKind(),
-		"apiVersion": item.GetAPIVersion(),
-		"namespace":  item.GetNamespace(),
-		"name":       item.GetName(),
-	}
-	return p, nil
-}
-
 func (handler *azurePodIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
 
-	// TODO: right now this resource is created during the rendering process :(
+	// if !options.Resource.Deployed {
+	// TODO: right now this resource is already deployed during the rendering process :(
 	// this should be done here instead when we have built a more mature system.
+	// }
 
 	return properties, nil
 }
@@ -66,7 +52,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 	mcc.Authorizer = handler.arm.Auth
 
 	// Get the cluster and modify it to remove pod identity
-	managedCluster, err := mcc.Get(ctx, handler.arm.ResourceGroup, podidentityCluster)
+	managedCluster, err := mcc.Get(ctx, handler.arm.K8sResourceGroup, podidentityCluster)
 	if err != nil {
 		return fmt.Errorf("failed to get managed cluster: %w", err)
 	}
@@ -90,7 +76,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 	// Remove the pod identity at the matching index
 	identities = append(identities[:i], identities[i+1:]...)
 
-	mcFuture, err := mcc.CreateOrUpdate(ctx, handler.arm.ResourceGroup, podidentityCluster, containerservice.ManagedCluster{
+	mcFuture, err := mcc.CreateOrUpdate(ctx, handler.arm.K8sResourceGroup, podidentityCluster, containerservice.ManagedCluster{
 		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
 				Enabled:                   to.BoolPtr(true),
