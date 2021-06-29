@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/radius/pkg/rad/azure"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
@@ -50,7 +49,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	})
 
 	t.Run("Validate Control Plane Resource Group", func(t *testing.T) {
-		resources := listRadiusEnvironmentResources(ctx, t, env, config, azure.GetControlPlaneResourceGroup(env.ResourceGroup))
+		resources := listRadiusEnvironmentResources(ctx, t, env, config, env.ControlPlaneResourceGroup)
 
 		_, found := resources["Microsoft.ContainerService/managedClusters"]
 		require.True(t, found, "Microsoft.ContainerService/managedClusters resource not created")
@@ -123,7 +122,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 			},
 		}
 
-		validation.ValidatePodsRunning(t, k8s, expectedPods, ctx)
+		validation.ValidatePodsRunning(ctx, t, k8s, expectedPods)
 	})
 }
 
@@ -132,7 +131,7 @@ func listRadiusEnvironmentResources(ctx context.Context, t *testing.T, env *envi
 	resc := azresources.NewClient(env.SubscriptionID)
 	resc.Authorizer = config.Authorizer
 
-	for page, err := resc.ListByResourceGroup(ctx, env.ResourceGroup, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
+	for page, err := resc.ListByResourceGroup(ctx, resourceGroup, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
 		require.NoError(t, err, "failed to list resources")
 
 		// Filter to the set of resources we deploy - this allows this test to run concurrently

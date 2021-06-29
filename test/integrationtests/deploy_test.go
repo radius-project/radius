@@ -24,6 +24,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
+	"github.com/Azure/radius/test/radcli"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/assert"
@@ -377,6 +378,8 @@ func (at ApplicationTest) Test(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
+	cli := radcli.NewCLI(t, at.Options.Environment.ConfigPath)
+
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
@@ -384,33 +387,49 @@ func (at ApplicationTest) Test(t *testing.T) {
 	t.Run(fmt.Sprintf("deploy %s", at.Row.Description), func(t *testing.T) {
 		templateFilePath := filepath.Join(cwd, at.Row.Template)
 		t.Logf("deploying %s from file %s", at.Row.Description, at.Row.Template)
-		err := utils.RunRadDeployCommand(at.Options.Context, templateFilePath, at.Options.Environment.ConfigPath)
-		require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
+		err := cli.Deploy(at.Options.Context, templateFilePath)
+		require.NoErrorf(t, err, "failed to deploy %s", at.Row.Description)
+		t.Logf("finished deploying %s from file %s", at.Row.Description, at.Row.Template)
 
 		// ValidatePodsRunning triggers its own assertions, no need to handle errors
-		validation.ValidatePodsRunning(t, at.Options.K8s, at.Row.Pods, at.Options.Context)
+		t.Logf("validating creation of pods for %s", at.Row.Description)
+		validation.ValidatePodsRunning(at.Options.Context, t, at.Options.K8s, at.Row.Pods)
+		t.Logf("finished creation of validating pods for %s", at.Row.Description)
 
 		// Validate that all expected output resources are created
+		t.Logf("validating output resources for %s", at.Row.Description)
 		validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Row.Components)
+		t.Logf("finished validating output resources for %s", at.Row.Description)
 
 		// Custom verification is expected to use `t` to trigger its own assertions
 		if at.Row.PostDeployVerify != nil {
+			t.Logf("running post-deploy verification for %s", at.Row.Description)
 			at.Row.PostDeployVerify(t, at)
+			t.Logf("finished post-deploy verification for %s", at.Row.Description)
 		}
 	})
 
 	// In the future we can add more subtests here for multi-phase tests that change what's deployed.
+	t.Logf("beginning cleanup phase of %s", at.Row.Description)
 
 	// Cleanup code here will run regardless of pass/fail of subtests
-	err = utils.RunRadApplicationDeleteCommand(at.Options.Context, at.Row.Application, at.Options.Environment.ConfigPath)
+	t.Logf("deleting %s", at.Row.Description)
+	err = cli.ApplicationDelete(at.Options.Context, at.Row.Application)
 	require.NoErrorf(t, err, "failed to delete %s", at.Row.Description)
+	t.Logf("finished deleting %s", at.Row.Description)
 
+	t.Logf("validating deletion of pods for %s", at.Row.Description)
 	for ns := range at.Row.Pods.Namespaces {
 		validation.ValidateNoPodsInNamespace(at.Options.Context, t, at.Options.K8s, ns)
 	}
+	t.Logf("finished deletion of pods for %s", at.Row.Description)
 
 	// Custom verification is expected to use `t` to trigger its own assertions
 	if at.Row.PostDeleteVerify != nil {
+		t.Logf("running post-delete verification for %s", at.Row.Description)
 		at.Row.PostDeleteVerify(t, at)
+		t.Logf("finished post-delete verification for %s", at.Row.Description)
 	}
+
+	t.Logf("finished cleanup phase of %s", at.Row.Description)
 }

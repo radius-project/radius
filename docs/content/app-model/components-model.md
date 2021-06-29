@@ -12,6 +12,35 @@ The component is documentation for a piece of code, data, or infrastructure. It 
 
 ## Runnable components
 
+## Configuration
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| name | y | The name of your component. Used for defining relationships and getting status for your components. | `frontend`
+| properties.uses | | Other components which your component depends on for bindings and/or data. Learn more [below](#uses). | [See below](#uses)
+| properties.bindings | | [Bindings]({{< ref bindings-model.md >}}) which the component offers to other components or users. | [See below](#bindings).
+
+Different [component types]({{< ref components >}}) may also have additional properties and configuration which can be set as part of the component definition.
+
+## Bindings
+
+The `bindings` configuration defines [bindings]({{< ref bindings-model.md >}}) which the component offers. These bindings can range from HTTP ports being opened on a container to an API that a database resource offers.
+
+### Global bindings configuration
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| kind | y | The type of binding your component provides. | `http`
+| name | y | The name of the binding which you provide. | `web`
+
+Different [binding types]({{< ref bindings-model.md >}}) may also have additional properties and configuration which can be set as part of the component binding definition.
+
+### Example
+
+In the following example a container offers an HTTP binding on port 3000:
+
+{{< rad file="snippets/components-model-storefront.bicep" embed=true marker="//SAMPLE" replace-key-hide="//HIDE" replace-value-hide="run: {...}" >}}
+
 Runnable components run your logic & code. They can both provide and consume [bindings]({{< ref bindings-model.md >}}) to/from other components in your Application. For example, a [`radius.dev/Container` component]({{< ref container >}}) can describe and run your container workloads.
 
 ## Non-runnable components
