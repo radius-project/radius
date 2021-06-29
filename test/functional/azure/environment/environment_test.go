@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package environment
+package environment_test
 
 import (
 	"context"
@@ -26,7 +26,7 @@ func TestAzureEnvironment(t *testing.T) {
 	options := azuretest.NewTestOptions(t)
 
 	t.Run("Validate App Resource Group", func(t *testing.T) {
-		resources := listRadiusEnvironmentResources(ctx, t, options.Environment, options.ARMAuthorizer, options.Environment.ControlPlaneResourceGroup)
+		resources := listRadiusEnvironmentResources(ctx, t, options.Environment, options.ARMAuthorizer, options.Environment.ResourceGroup)
 		require.Equal(t, len(resources), 1, "Number of resources created by init step is less than expected")
 
 		_, found := resources["Microsoft.CustomProviders/resourceProviders"]

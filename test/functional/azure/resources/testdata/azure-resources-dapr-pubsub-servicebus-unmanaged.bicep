@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'dapr-pubsub-unmanaged'
+  name: 'azure-resources-dapr-pubsub-servicebus-unmanaged'
 
   resource nodesubscriber 'Components' = {
     name: 'nodesubscriber'
@@ -71,6 +71,9 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
   name: 'ns-${guid(resourceGroup().name)}'
   location: resourceGroup().location
+  tags: {
+    radiustest: 'true'
+  }
 
   resource topic 'topics' = {
     name: 'TOPIC_A'
