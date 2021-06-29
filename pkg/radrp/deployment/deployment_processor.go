@@ -430,7 +430,7 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
 	for _, o := range resources {
-		logger.Info(fmt.Sprintf("Created output resource for workload - LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType))
+		logger.WithValues(radlogger.LogFieldLocalID, o.LocalID).Info(fmt.Sprintf("Created output resource for workload - LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType))
 	}
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far

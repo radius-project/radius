@@ -92,8 +92,9 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	return bindings, nil
 }
 
-func (r Renderer) createManagedIdentity(ctx context.Context, identityName, location string) (msi.Identity, error) {
+func (r Renderer) createManagedIdentity(ctx context.Context, identityName, location string) (msi.Identity, string, error) {
 	logger := radlogger.GetLogger(ctx)
+	localID := "UserAssignedManagedIdentity-KV"
 	// Create a user assigned managed identity
 	msiClient := msi.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID)
 	msiClient.Authorizer = r.Arm.Auth
@@ -101,12 +102,14 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 		Location: to.StringPtr(location),
 	})
 	if err != nil {
-		return msi.Identity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+		return msi.Identity{}, "", fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
-	logger.WithValues(radlogger.LogFieldLocalID, *id.ID).Info("Created managed identity for KeyVault access")
+	logger.WithValues(
+		radlogger.LogFieldResourceID, *id.ID,
+		radlogger.LogFieldLocalID, localID).Info("Created managed identity for KeyVault access")
 
-	return id, nil
+	return id, localID, nil
 }
 
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, []workloads.OutputResource, error) {
@@ -142,7 +145,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("could not find resource group: %w", err)
 	}
-	mid, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
+	mid, midLocalID, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -155,7 +158,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureUserAssignedManagedIdentity,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            "UserAssignedManagedIdentity-KV",
+		LocalID:            midLocalID,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *mid.ID,
