@@ -122,7 +122,7 @@ func SaveConfig(v *viper.Viper) error {
 			os.Exit(1)
 		}
 
-		path.Join(home, ".rad", "config.yaml")
+		configFilePath = path.Join(home, ".rad", "config.yaml")
 	}
 
 	dir := path.Dir(configFilePath)
