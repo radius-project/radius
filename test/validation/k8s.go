@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -38,8 +38,8 @@ type K8sObject struct {
 func NewK8sObjectForComponent(application string, name string) K8sObject {
 	return K8sObject{
 		Labels: map[string]string{
-			workloads.LabelRadiusApplication: application,
-			workloads.LabelRadiusComponent:   name,
+			keys.LabelRadiusApplication: application,
+			keys.LabelRadiusComponent:   name,
 		},
 	}
 }

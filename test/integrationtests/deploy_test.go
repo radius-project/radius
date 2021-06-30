@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	cliutils "github.com/Azure/radius/cmd/cli/utils"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/radclient"
@@ -132,8 +133,8 @@ func TestDeployment(t *testing.T) {
 				// Verify that we've created an ingress resource. We don't verify reachability because allocating
 				// a public IP can take a few minutes.
 				labelset := map[string]string{
-					workloads.LabelRadiusApplication: "inbound-route",
-					workloads.LabelRadiusComponent:   "frontend",
+					keys.LabelRadiusApplication: "inbound-route",
+					keys.LabelRadiusComponent:   "frontend",
 				}
 				matches, err := at.Options.K8s.NetworkingV1().Ingresses("inbound-route").List(context.Background(), v1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),

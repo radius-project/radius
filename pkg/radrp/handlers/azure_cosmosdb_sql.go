@@ -11,9 +11,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )
 
@@ -45,7 +45,7 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 		// There is no clear documentation on this mapping of GlobalDocumentDB to SQL.
 		// Used this ARM template example as a reference to verify that this is the right option:
 		//   https://docs.microsoft.com/en-us/azure/cosmos-db/how-to-manage-database-account
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.GlobalDocumentDB)
+		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.GlobalDocumentDB, options)
 		if err != nil {
 			return nil, err
 		}
@@ -137,10 +137,7 @@ func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, ac
 				},
 			},
 		},
-		Tags: map[string]*string{
-			resources.TagRadiusApplication: &options.Application,
-			resources.TagRadiusComponent:   &options.Component,
-		},
+		Tags: keys.MakeTagsForRadiusComponent(options.Application, options.Component),
 	})
 
 	if err != nil {

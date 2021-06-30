@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -62,7 +63,7 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 }
 
 // CreateCosmosDBAccount creates CosmosDB account. Account name is randomly generated with specified database name as prefix.
-func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Context, properties map[string]string, databaseKind documentdb.DatabaseAccountKind) (*documentdb.DatabaseAccountGetResults, error) {
+func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Context, properties map[string]string, databaseKind documentdb.DatabaseAccountKind, options PutOptions) (*documentdb.DatabaseAccountGetResults, error) {
 	cosmosDBClient := documentdb.NewDatabaseAccountsClient(handler.arm.SubscriptionID)
 	cosmosDBClient.Authorizer = handler.arm.Auth
 
@@ -79,6 +80,7 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 	accountFuture, err := cosmosDBClient.CreateOrUpdate(ctx, handler.arm.ResourceGroup, accountName, documentdb.DatabaseAccountCreateUpdateParameters{
 		Kind:     databaseKind,
 		Location: location,
+		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
 		DatabaseAccountCreateUpdateProperties: &documentdb.DatabaseAccountCreateUpdateProperties{
 			DatabaseAccountOfferType: to.StringPtr("Standard"), // Standard is the only supported option
 			Locations: &[]documentdb.Location{
