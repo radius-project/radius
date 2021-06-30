@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
@@ -77,7 +78,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 		return nil, err
 	}
 
-	err = handler.CreateDaprStateStore(ctx, *account.Name, *key.Value, properties)
+	err = handler.CreateDaprStateStore(ctx, *account.Name, *key.Value, properties, options)
 	if err != nil {
 		return nil, err
 	}
@@ -167,15 +168,12 @@ func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx conte
 
 	future, err := sc.Create(ctx, handler.arm.ResourceGroup, accountName, storage.AccountCreateParameters{
 		Location: location,
+		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
 		Kind:     storage.StorageV2,
 		Sku: &storage.Sku{
 			Name: storage.StandardLRS,
 		},
 		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{},
-		Tags: map[string]*string{
-			radresources.TagRadiusApplication: &options.Application,
-			radresources.TagRadiusComponent:   &options.Component,
-		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create/update storage account: %w", err)
@@ -194,7 +192,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx conte
 	return &account, nil
 }
 
-func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx context.Context, accountName string, accountKey string, properties map[string]string) error {
+func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx context.Context, accountName string, accountKey string, properties map[string]string, options PutOptions) error {
 	err := handler.PatchNamespace(ctx, properties[KubernetesNamespaceKey])
 	if err != nil {
 		return err
@@ -207,6 +205,13 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      properties[ComponentNameKey],
+				"labels": map[string]string{
+					keys.LabelRadiusApplication:   options.Application,
+					keys.LabelRadiusComponent:     options.Component,
+					keys.LabelKubernetesName:      options.Component,
+					keys.LabelKubernetesPartOf:    options.Application,
+					keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
+				},
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.azure.tablestorage",
@@ -229,7 +234,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 		},
 	}
 
-	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: keys.FieldManager})
 	if err != nil {
 		return fmt.Errorf("failed to create/update Dapr Component: %w", err)
 	}

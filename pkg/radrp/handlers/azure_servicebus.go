@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -154,7 +155,7 @@ func (handler *azureServiceBusBaseHandler) LookupSharedManagedNamespaceFromResou
 	// Azure Service Bus needs StandardTier or higher SKU to support topics
 	if list.NotDone() &&
 		list.Value().Sku.Tier != servicebus.SkuTierBasic &&
-		radresources.HasRadiusApplicationTag(list.Value().Tags, application) {
+		keys.HasRadiusApplicationTag(list.Value().Tags, application) {
 		// A service bus namespace already exists
 		namespace := list.Value()
 		return &namespace, nil
@@ -182,8 +183,11 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 			Capacity: to.Int32Ptr(1),
 		},
 		Location: location,
+
+		// NOTE: this is a special case, we currently share servicebus resources per-application
+		// they are not directly associated with a component. See: #176
 		Tags: map[string]*string{
-			radresources.TagRadiusApplication: &application,
+			keys.TagRadiusApplication: &application,
 		},
 	})
 	if err != nil {
@@ -212,6 +216,8 @@ func (handler *azureServiceBusBaseHandler) CreateTopic(ctx context.Context, name
 		SBTopicProperties: &servicebus.SBTopicProperties{
 			MaxSizeInMegabytes: to.Int32Ptr(1024),
 		},
+
+		// NOTE: Service bus topics don't support tags
 	})
 
 	if err != nil {

@@ -27,12 +27,12 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad"
 	radazure "github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/rad/util"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -423,7 +423,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 			return false, "", fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
 
-		if radresources.HasRadiusEnvironmentTag(list.Value().Tags) {
+		if keys.HasRadiusEnvironmentTag(list.Value().Tags) {
 			temp := list.Value()
 			cluster = &temp
 			break

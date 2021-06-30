@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -484,30 +485,28 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			Name:      cc.Name,
 			Namespace: w.Application,
 			Labels: map[string]string{
-				workloads.LabelRadiusApplication: w.Application,
-				workloads.LabelRadiusComponent:   cc.Name,
-				// TODO get the component revision here...
-				"app.kubernetes.io/name":       cc.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
+				keys.LabelRadiusApplication:   w.Application,
+				keys.LabelRadiusComponent:     cc.Name,
+				keys.LabelKubernetesName:      cc.Name,
+				keys.LabelKubernetesPartOf:    w.Application,
+				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{
 				MatchLabels: map[string]string{
-					workloads.LabelRadiusApplication: w.Application,
-					workloads.LabelRadiusComponent:   cc.Name,
+					keys.LabelRadiusApplication: w.Application,
+					keys.LabelRadiusComponent:   cc.Name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						workloads.LabelRadiusApplication: w.Application,
-						workloads.LabelRadiusComponent:   cc.Name,
-						// TODO get the component revision here...
-						"app.kubernetes.io/name":       cc.Name,
-						"app.kubernetes.io/part-of":    w.Application,
-						"app.kubernetes.io/managed-by": "radius-rp",
+						keys.LabelRadiusApplication:   w.Application,
+						keys.LabelRadiusComponent:     cc.Name,
+						keys.LabelKubernetesName:      cc.Name,
+						keys.LabelKubernetesPartOf:    w.Application,
+						keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -708,18 +707,17 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 			Name:      cc.Name,
 			Namespace: w.Application, // TODO why is this a different namespace
 			Labels: map[string]string{
-				workloads.LabelRadiusApplication: w.Application,
-				workloads.LabelRadiusComponent:   cc.Name,
-				// TODO get the component revision here...
-				"app.kubernetes.io/name":       cc.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
+				keys.LabelRadiusApplication:   w.Application,
+				keys.LabelRadiusComponent:     cc.Name,
+				keys.LabelKubernetesName:      cc.Name,
+				keys.LabelKubernetesPartOf:    w.Application,
+				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				workloads.LabelRadiusApplication: w.Application,
-				workloads.LabelRadiusComponent:   cc.Name,
+				keys.LabelRadiusApplication: w.Application,
+				keys.LabelRadiusComponent:   cc.Name,
 			},
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{},

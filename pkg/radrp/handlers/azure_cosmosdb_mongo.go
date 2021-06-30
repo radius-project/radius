@@ -11,9 +11,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )
 
@@ -41,7 +41,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 	var account *documentdb.DatabaseAccountGetResults
 	if properties[CosmosDBAccountIDKey] == "" {
 		// If we don't have an ID already then we will need to create a new one.
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.MongoDB)
+		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.MongoDB, options)
 		if err != nil {
 			return nil, err
 		}
@@ -133,10 +133,7 @@ func (handler *azureCosmosDBMongoHandler) CreateDatabase(ctx context.Context, ac
 				},
 			},
 		},
-		Tags: map[string]*string{
-			resources.TagRadiusApplication: &options.Application,
-			resources.TagRadiusComponent:   &options.Component,
-		},
+		Tags: keys.MakeTagsForRadiusComponent(options.Application, options.Component),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)

@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/workloads"
@@ -160,16 +161,16 @@ func Test_Render_Success_DefaultPort(t *testing.T) {
 	require.NotNil(t, service)
 
 	labels := map[string]string{
-		workloads.LabelRadiusApplication: "test-app",
-		workloads.LabelRadiusComponent:   "test-container",
-		"app.kubernetes.io/name":         "test-container",
-		"app.kubernetes.io/part-of":      "test-app",
-		"app.kubernetes.io/managed-by":   "radius-rp",
+		keys.LabelRadiusApplication:   "test-app",
+		keys.LabelRadiusComponent:     "test-container",
+		keys.LabelKubernetesName:      "test-container",
+		keys.LabelKubernetesPartOf:    "test-app",
+		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 	}
 
 	matchLabels := map[string]string{
-		workloads.LabelRadiusApplication: "test-app",
-		workloads.LabelRadiusComponent:   "test-container",
+		keys.LabelRadiusApplication: "test-app",
+		keys.LabelRadiusComponent:   "test-container",
 	}
 
 	t.Run("verify deployment", func(t *testing.T) {
@@ -253,16 +254,16 @@ func Test_Render_Success_NonDefaultPort(t *testing.T) {
 	require.NotNil(t, service)
 
 	labels := map[string]string{
-		workloads.LabelRadiusApplication: "test-app",
-		workloads.LabelRadiusComponent:   "test-container",
-		"app.kubernetes.io/name":         "test-container",
-		"app.kubernetes.io/part-of":      "test-app",
-		"app.kubernetes.io/managed-by":   "radius-rp",
+		keys.LabelRadiusApplication:   "test-app",
+		keys.LabelRadiusComponent:     "test-container",
+		keys.LabelKubernetesName:      "test-container",
+		keys.LabelKubernetesPartOf:    "test-app",
+		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 	}
 
 	matchLabels := map[string]string{
-		workloads.LabelRadiusApplication: "test-app",
-		workloads.LabelRadiusComponent:   "test-container",
+		keys.LabelRadiusApplication: "test-app",
+		keys.LabelRadiusComponent:   "test-container",
 	}
 
 	t.Run("verify deployment", func(t *testing.T) {

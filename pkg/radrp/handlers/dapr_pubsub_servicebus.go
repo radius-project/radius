@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,7 +89,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options Put
 		return nil, err
 	}
 
-	err = handler.PatchDaprPubSub(ctx, properties, *cs)
+	err = handler.PatchDaprPubSub(ctx, properties, *cs, options)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +124,7 @@ func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, options 
 	return nil
 }
 
-func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context, properties map[string]string, cs string) error {
+func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context, properties map[string]string, cs string, options PutOptions) error {
 	err := handler.PatchNamespace(ctx, properties[KubernetesNamespaceKey])
 	if err != nil {
 		return err
@@ -136,6 +137,13 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      properties[ComponentNameKey],
+				"labels": map[string]string{
+					keys.LabelRadiusApplication:   options.Application,
+					keys.LabelRadiusComponent:     options.Component,
+					keys.LabelKubernetesName:      options.Component,
+					keys.LabelKubernetesPartOf:    options.Application,
+					keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
+				},
 			},
 			"spec": map[string]interface{}{
 				"type":    "pubsub.azure.servicebus",
@@ -150,7 +158,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 		},
 	}
 
-	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: keys.FieldManager})
 	if err != nil {
 		return fmt.Errorf("failed to patch Dapr PubSub: %w", err)
 	}

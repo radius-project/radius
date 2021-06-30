@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/test/config"
 	"github.com/Azure/radius/test/environment"
 	"github.com/Azure/radius/test/utils"
@@ -88,7 +88,7 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 				},
 				// verify ingress-nginx
 				"radius-system": {
-					validation.K8sObject{Labels: map[string]string{"app.kubernetes.io/name": "ingress-nginx"}},
+					validation.K8sObject{Labels: map[string]string{keys.LabelKubernetesName: "ingress-nginx"}},
 				},
 			},
 		}
@@ -108,7 +108,7 @@ func listRadiusEnvironmentResources(ctx context.Context, t *testing.T, env *envi
 		// Filter to the set of resources we deploy - this allows this test to run concurrently
 		// with others.
 		for _, r := range page.Values() {
-			if radresources.HasRadiusEnvironmentTag(r.Tags) {
+			if keys.HasRadiusEnvironmentTag(r.Tags) {
 				resourceMap[*r.Type] = *r.ID
 				t.Logf("environment resource: %s", *r.ID)
 			} else {
