@@ -97,7 +97,7 @@ var envInitKubernetesCmd = &cobra.Command{
 		env.Default = environmentName
 		rad.UpdateEnvironmentSection(v, env)
 
-		err = rad.SaveConfig()
+		err = rad.SaveConfig(v)
 		if err != nil {
 			return err
 		}
