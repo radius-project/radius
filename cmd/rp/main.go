@@ -102,13 +102,13 @@ func main() {
 	}
 
 	logger, flushLogs, err := radlogger.NewLogger(fmt.Sprintf("radRP-%s", arm.ResourceGroup))
+	if err != nil {
+		panic(err)
+	}
 	defer flushLogs()
 	logger = logger.WithValues(
 		radlogger.LogFieldResourceGroup, arm.ResourceGroup,
 		radlogger.LogFieldSubscriptionID, arm.SubscriptionID)
-	if err != nil {
-		panic(err)
-	}
 
 	options := radrp.ServerOptions{
 		Address:      ":" + port,

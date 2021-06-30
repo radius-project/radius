@@ -14,7 +14,6 @@ const (
 	LogFieldDeploymentID       = "deploymentID"
 	LogFieldDeploymentName     = "deploymentName"
 	LogFieldLocalID            = "localID"
-	LogFieldOperationFilter    = "operationFilter"
 	LogFieldOperationID        = "operationID"
 	LogFieldOperationStatus    = "operationStatus"
 	LogFieldResourceGroup      = "resourceGroup"
