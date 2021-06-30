@@ -33,15 +33,8 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	t.Run("Validate App Resource Group", func(t *testing.T) {
-		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
-		// as it was in 0.2.
-		isSingleResourceGroup := env.ResourceGroup == env.ControlPlaneResourceGroup
-		if isSingleResourceGroup {
-			return
-		}
 
 		resources := listRadiusEnvironmentResources(ctx, t, env, config, env.ResourceGroup)
-
 		require.Equal(t, len(resources), 1, "Number of resources created by init step is less than expected")
 
 		_, found := resources["Microsoft.CustomProviders/resourceProviders"]
@@ -66,41 +59,19 @@ func TestAzureEnvironmentSetup(t *testing.T) {
 		_, found = resources["Microsoft.Web/sites"]
 		require.True(t, found, "Microsoft.Web/sites resource not created")
 
-		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
-		// as it was in 0.2.
-		isSingleResourceGroup := env.ResourceGroup == env.ControlPlaneResourceGroup
-		if isSingleResourceGroup {
-			_, found = resources["Microsoft.CustomProviders/resourceProviders"]
-			require.True(t, found, "Microsoft.CustomProviders/resourceProviders resource not created")
-
-			// Currently, we have a retention policy on the deploymentScript for 1 day.
-			// "retentionInterval": "P1D"
-			// This means the script may or may not be present when checking the number of resources
-			// if the environment was created over a day ago.
-			// Verify that either 6 or 7 resources are present, and only check the deploymentScripts
-			// if there are 6 resources
-			if len(resources) == 7 {
-				_, found = resources["Microsoft.Resources/deploymentScripts"]
-				require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
-			}
-
-			require.GreaterOrEqual(t, len(resources), 6, "Number of resources created by init step is less than expected")
-			require.LessOrEqual(t, len(resources), 7, "Number of resources created by init step is greater than expected")
-		} else {
-			// Currently, we have a retention policy on the deploymentScript for 1 day.
-			// "retentionInterval": "P1D"
-			// This means the script may or may not be present when checking the number of resources
-			// if the environment was created over a day ago.
-			// Verify that either 5 or 6 resources are present, and only check the deploymentScripts
-			// if there are 6 resources
-			if len(resources) == 6 {
-				_, found = resources["Microsoft.Resources/deploymentScripts"]
-				require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
-			}
-
-			require.GreaterOrEqual(t, len(resources), 5, "Number of resources created by init step is less than expected")
-			require.LessOrEqual(t, len(resources), 6, "Number of resources created by init step is greater than expected")
+		// Currently, we have a retention policy on the deploymentScript for 1 day.
+		// "retentionInterval": "P1D"
+		// This means the script may or may not be present when checking the number of resources
+		// if the environment was created over a day ago.
+		// Verify that either 5 or 6 resources are present, and only check the deploymentScripts
+		// if there are 6 resources
+		if len(resources) == 6 {
+			_, found = resources["Microsoft.Resources/deploymentScripts"]
+			require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
 		}
+
+		require.GreaterOrEqual(t, len(resources), 5, "Number of resources created by init step is less than expected")
+		require.LessOrEqual(t, len(resources), 6, "Number of resources created by init step is greater than expected")
 
 	})
 

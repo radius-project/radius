@@ -170,12 +170,6 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 
 		decoded.Name = name
 
-		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
-		// as it was in 0.2.
-		if decoded.ControlPlaneResourceGroup == "" {
-			decoded.ControlPlaneResourceGroup = decoded.ResourceGroup
-		}
-
 		err = validate(decoded)
 		if err != nil {
 			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
@@ -190,12 +184,6 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		}
 
 		decoded.Name = name
-
-		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
-		// as it was in 0.2.
-		if decoded.ControlPlaneResourceGroup == "" {
-			decoded.ControlPlaneResourceGroup = decoded.ResourceGroup
-		}
 
 		err = validate(decoded)
 		if err != nil {

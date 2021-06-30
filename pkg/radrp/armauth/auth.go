@@ -40,20 +40,10 @@ func GetArmConfig() (ArmConfig, error) {
 
 	subscriptionID := os.Getenv("ARM_SUBSCRIPTION_ID")
 	if subscriptionID == "" {
-		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
-		// as it was in 0.2.
-		subscriptionID = os.Getenv("K8S_SUBSCRIPTION_ID")
-	}
-	if subscriptionID == "" {
 		return ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID is missing")
 	}
 
 	resourceGroup := os.Getenv("ARM_RESOURCE_GROUP")
-	if resourceGroup == "" {
-		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
-		// as it was in 0.2.
-		resourceGroup = os.Getenv("K8S_RESOURCE_GROUP")
-	}
 	if resourceGroup == "" {
 		return ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
 	}
