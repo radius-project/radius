@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/arm/operationalinsights"
 	"github.com/Azure/azure-sdk-for-go/profiles/2017-03-09/resources/mgmt/features"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerregistry/mgmt/containerregistry"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
@@ -84,7 +85,7 @@ rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NA
 			a.Name = a.ResourceGroup
 		}
 
-		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry)
+		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry, a.LogAnalyticsWorkspaceID)
 		if err != nil {
 			return err
 		}
@@ -107,13 +108,15 @@ func init() {
 }
 
 type arguments struct {
-	Name               string
-	Interactive        bool
-	SubscriptionID     string
-	ResourceGroup      string
-	Location           string
-	DeploymentTemplate string
-	ContainerRegistry  string
+	Name                      string
+	Interactive               bool
+	SubscriptionID            string
+	ResourceGroup             string
+	Location                  string
+	DeploymentTemplate        string
+	ContainerRegistry         string
+	LogAnalyticsWorkspaceName string
+	LogAnalyticsWorkspaceID   string
 }
 
 func validate(cmd *cobra.Command, args []string) (arguments, error) {
@@ -167,6 +170,16 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
+	// logAnalyticsWorkspaceName, err := cmd.Flags().GetString("loganalytics-workspace-name")
+	// if err != nil {
+	// 	return arguments{}, err
+	// }
+
+	logAnalyticsWorkspaceID, err := cmd.Flags().GetString("loganalytics-workspace-id")
+	if err != nil {
+		return arguments{}, err
+	}
+
 	if location != "" && !isSupportedLocation(location) {
 		return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
 	}
@@ -179,6 +192,8 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		Location:           location,
 		DeploymentTemplate: deploymentTemplate,
 		ContainerRegistry:  registryName,
+		// LogAnalyticsWorkspaceName: logAnalyticsWorkspaceName,
+		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
 	}, nil
 }
 
@@ -298,7 +313,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string) error {
+func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string) error {
 	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
@@ -347,6 +362,14 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
+	logAnalyticsWorkspaceName := ""
+	if logAnalyticsWorkspaceID != "" {
+		logAnalyticsWorkspaceName, err = validateLogAnalyticsWorkspace(ctx, armauth, subscriptionID, logAnalyticsWorkspaceID)
+		if err != nil {
+			return err
+		}
+	}
+
 	if group != nil {
 		if !isSupportedLocation(*group.Location) {
 			return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
@@ -362,6 +385,8 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		DeploymentTemplate:        deploymentTemplate,
 		RegistryID:                registryID,
 		RegistryName:              registryName,
+		LogAnalyticsWorkspaceName: logAnalyticsWorkspaceName,
+		LogAnalyticsWorkspaceID:   logAnalyticsWorkspaceID,
 	}
 	deployment, err := deployEnvironment(ctx, armauth, name, subscriptionID, params)
 	if err != nil {
@@ -475,6 +500,19 @@ func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subsc
 	}
 
 	return "", fmt.Errorf("failed to find registry %s in subscription %s. The container registry must be in the same subscription as the environment.", registryName, subscriptionID)
+}
+
+func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, logAnalyticsWorkspaceID string) (string, error) {
+	step := logger.BeginStep("Validating Log Analytics Workspace ID for %s...", logAnalyticsWorkspaceID)
+	l, err := azure.ParseResourceID(logAnalyticsWorkspaceID)
+	if err != nil {
+		return "", fmt.Errorf("invalid log analytics workspace id: %w", err)
+	}
+
+	lwc := operationalinsights.NewWorkspacesClient(subscriptionID)
+	lwc.Authorizer = authorizer
+	lwc.Get(logAnalyticsWorkspaceID)
+
 }
 
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, params deploymentParameters) (resources.DeploymentExtended, error) {
@@ -643,4 +681,6 @@ type deploymentParameters struct {
 	DeploymentTemplate        string
 	RegistryID                string
 	RegistryName              string
+	LogAnalyticsWorkspaceName string
+	LogAnalyticsWorkspaceID   string
 }
