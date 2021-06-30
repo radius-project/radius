@@ -34,7 +34,7 @@ var envInitKubernetesCmd = &cobra.Command{
 	Short: "Initializes a kubernetes environment",
 	Long:  `Initializes a kubernetes environment`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, err := cmd.Flags().GetString("environment")
+		environmentName, err := cmd.Flags().GetString("environment")
 		if err != nil {
 			return err
 		}
@@ -83,18 +83,18 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		if name == "" {
-			name = k8sconfig.CurrentContext
+		if environmentName == "" {
+			environmentName = k8sconfig.CurrentContext
 		}
 
-		env.Items[name] = map[string]interface{}{
+		env.Items[environmentName] = map[string]interface{}{
 			"kind":      environments.KindKubernetes,
 			"context":   k8sconfig.CurrentContext,
 			"namespace": namespace,
 		}
 
-		logger.LogInfo("using environment %v", name)
-		env.Default = name
+		logger.LogInfo("using environment %v", environmentName)
+		env.Default = environmentName
 		rad.UpdateEnvironmentSection(v, env)
 
 		err = rad.SaveConfig()

@@ -742,7 +742,7 @@ spec:
         env:
         - name: SKIP_WEBHOOKS
           value: "true"
-        image: rynowak/radius-controller:latest
+        image: jkotalik/radius-controller:latest
         livenessProbe:
           httpGet:
             path: /healthz

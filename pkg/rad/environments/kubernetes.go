@@ -40,6 +40,7 @@ func (e *KubernetesEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+// No Status Link for kubernetes
 func (e *KubernetesEnvironment) GetStatusLink() string {
 	return ""
 }
