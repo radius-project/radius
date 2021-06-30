@@ -8,12 +8,12 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/gofrs/uuid"
@@ -132,6 +132,7 @@ func (handler *azureCosmosDBBaseHandler) DeleteCosmosDBAccount(ctx context.Conte
 // This is needed since CosmosDB account names are required to be unique across Azure.
 func generateCosmosDBAccountName(ctx context.Context,
 	properties map[string]string, cosmosDBClient documentdb.DatabaseAccountsClient) (string, error) {
+	logger := radlogger.GetLogger(ctx)
 	retryAttempts := 10
 	name, ok := properties[CosmosDBAccountNameKey]
 	if !ok {
@@ -157,7 +158,7 @@ func generateCosmosDBAccountName(ctx context.Context,
 				return name, nil
 			}
 
-			log.Printf("cosmosDB account name generation failed after %d attempts", i)
+			logger.Info(fmt.Sprintf("cosmosDB account name generation failed after %d attempts", i))
 		}
 
 		return "", fmt.Errorf("cosmosDB account name generation failed to create a unique name after %d attempts", retryAttempts)

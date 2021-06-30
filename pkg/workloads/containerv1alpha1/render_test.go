@@ -9,8 +9,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,7 +20,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+func createContext(t *testing.T) context.Context {
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
+}
+
 func Test_AllocateBindings_NoHTTPBinding(t *testing.T) {
+	ctx := createContext(t)
 	renderer := &Renderer{}
 
 	w := workloads.InstantiatedWorkload{
@@ -40,13 +52,14 @@ func Test_AllocateBindings_NoHTTPBinding(t *testing.T) {
 		},
 	}
 
-	bindings, err := renderer.AllocateBindings(context.Background(), w, nil)
+	bindings, err := renderer.AllocateBindings(ctx, w, nil)
 	require.NoError(t, err)
 
 	require.Len(t, bindings, 0)
 }
 
 func Test_AllocateBindings_HTTPBindings(t *testing.T) {
+	ctx := createContext(t)
 	renderer := &Renderer{}
 
 	w := workloads.InstantiatedWorkload{
@@ -79,7 +92,7 @@ func Test_AllocateBindings_HTTPBindings(t *testing.T) {
 		},
 	}
 
-	bindings, err := renderer.AllocateBindings(context.Background(), w, nil)
+	bindings, err := renderer.AllocateBindings(ctx, w, nil)
 	require.NoError(t, err)
 
 	expected := map[string]components.BindingState{
@@ -111,6 +124,7 @@ func Test_AllocateBindings_HTTPBindings(t *testing.T) {
 }
 
 func Test_Render_Success_DefaultPort(t *testing.T) {
+	ctx := createContext(t)
 	renderer := &Renderer{}
 
 	w := workloads.InstantiatedWorkload{
@@ -135,7 +149,7 @@ func Test_Render_Success_DefaultPort(t *testing.T) {
 		},
 	}
 
-	resources, err := renderer.Render(context.Background(), w)
+	resources, err := renderer.Render(ctx, w)
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
 
@@ -202,6 +216,7 @@ func Test_Render_Success_DefaultPort(t *testing.T) {
 }
 
 func Test_Render_Success_NonDefaultPort(t *testing.T) {
+	ctx := createContext(t)
 	renderer := &Renderer{}
 
 	w := workloads.InstantiatedWorkload{
@@ -227,7 +242,7 @@ func Test_Render_Success_NonDefaultPort(t *testing.T) {
 		},
 	}
 
-	resources, err := renderer.Render(context.Background(), w)
+	resources, err := renderer.Render(ctx, w)
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
 

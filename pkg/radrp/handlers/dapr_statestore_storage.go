@@ -8,11 +8,11 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/gofrs/uuid"
@@ -105,6 +105,7 @@ func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, op
 }
 
 func (handler *daprStateStoreAzureStorageHandler) GenerateStorageAccountName(ctx context.Context, baseName string) (*string, error) {
+	logger := radlogger.GetLogger(ctx)
 	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
 	sc.Authorizer = handler.arm.Auth
 
@@ -132,7 +133,7 @@ func (handler *daprStateStoreAzureStorageHandler) GenerateStorageAccountName(ctx
 			return &name, nil
 		}
 
-		log.Printf("storage account name generation failed: %v %v", result.Reason, result.Message)
+		logger.Info(fmt.Sprintf("storage account name generation failed: %v %v", result.Reason, result.Message))
 	}
 
 	return nil, fmt.Errorf("failed to find a storage account name")

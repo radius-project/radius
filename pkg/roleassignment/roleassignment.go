@@ -7,18 +7,19 @@ package roleassignment
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/gofrs/uuid"
 )
 
 // Create assigns the specified role name to the Identity over the specified scope
 func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string, resourceGroup, principalID, scope, roleName string) (*authorization.RoleAssignment, error) {
+	logger := radlogger.GetLogger(ctx)
 	rdc := authorization.NewRoleDefinitionsClient(subscriptionID)
 	rdc.Authorizer = auth
 
@@ -72,7 +73,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 			return nil, fmt.Errorf("failed to create role assignment with error: %v, statuscode: %v", detailed.Message, detailed.StatusCode)
 		}
 
-		log.Printf("Failed to create role assignment. Retrying: %d attempt ...", i)
+		logger.Info(fmt.Sprintf("Failed to create role assignment. Retrying: %d attempt ...", i))
 		time.Sleep(5 * time.Second)
 	}
 
