@@ -74,7 +74,7 @@ jobs:
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WORKFLOWID: ${{ env.GITHUB_RUN_ID }}
-          WORKFLOWURL: 'https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}'
+          WORKFLOWID: ${{ github.run_id }}
+          WORKFLOWURL: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
         with:
           filename: .github/ISSUE_TEMPLATE/environment-failure.md
