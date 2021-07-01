@@ -487,54 +487,55 @@
                             }
                         },
                         {
-                            "condition": "[not(equals(parameters('logAnalyticsWorkspaceName'), ''))]",
+                            "condition": "[not(equals(parameters('logAnalyticsWorkspaceID'), ''))]",
                             "type": "Microsoft.Web/sites/providers/diagnosticSettings",
-                            "apiVersion": "2020-01-01-preview",
+                            "apiVersion": "2017-05-01-preview",
                             "name": "[concat(parameters('siteName'),'/Microsoft.Insights/', parameters('logAnalyticsWorkspaceName'))]",
                             "dependsOn":[
+                                "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
                             ],    
                             "properties": {
-                            "workspaceId": "[parameters('logAnalyticsWorkspaceID')]",
-                            "logs": [
+                              "workspaceId": "[parameters('logAnalyticsWorkspaceID')]",
+                              "logs": [
                                 {
-                                "category": "AppServiceAntivirusScanAuditLogs",
-                                "enabled": false
+                                  "category": "AppServiceAntivirusScanAuditLogs",
+                                  "enabled": false
                                 },
                                 {
-                                "category": "AppServiceHTTPLogs",
-                                "enabled": false
+                                  "category": "AppServiceHTTPLogs",
+                                  "enabled": false
                                 },
                                 {
-                                "category": "AppServiceConsoleLogs",
-                                "enabled": true
+                                  "category": "AppServiceConsoleLogs",
+                                  "enabled": true
                                 },
                                 {
-                                "category": "AppServiceAppLogs",
-                                "enabled": true
+                                  "category": "AppServiceAppLogs",
+                                  "enabled": false
                                 },
                                 {
-                                "category": "AppServiceFileAuditLogs",
-                                "enabled": false
+                                  "category": "AppServiceFileAuditLogs",
+                                  "enabled": false
                                 },
                                 {
-                                "category": "AppServiceAuditLogs",
-                                "enabled": true
+                                  "category": "AppServiceAuditLogs",
+                                  "enabled": false
                                 },
                                 {
-                                "category": "AppServiceIPSecAuditLogs",
-                                "enabled": true
+                                  "category": "AppServiceIPSecAuditLogs",
+                                  "enabled": false
                                 },
                                 {
-                                "category": "AppServicePlatformLogs",
-                                "enabled": false
+                                  "category": "AppServicePlatformLogs",
+                                  "enabled": false
                                 }
-                            ],
-                            "metrics": [
+                              ],
+                              "metrics": [
                                 {
-                                "category": "AllMetrics",
-                                "enabled": true
+                                  "category": "AllMetrics",
+                                  "enabled": true
                                 }
-                            ]
+                              ]
                             }
                         },
                         {

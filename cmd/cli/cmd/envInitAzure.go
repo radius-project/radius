@@ -16,18 +16,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/arm/operationalinsights"
 	"github.com/Azure/azure-sdk-for-go/profiles/2017-03-09/resources/mgmt/features"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerregistry/mgmt/containerregistry"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/operationalinsights/mgmt/operationalinsights"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/customproviders/mgmt/customproviders"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azure"
+	radazure "github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/rad/util"
@@ -102,6 +103,7 @@ func init() {
 	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
 	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
 	envInitAzureCmd.Flags().String("container-registry", "", "Specify the name of an existing Azure Container Registry to grant the environment access to pull containers from the registry")
+	envInitAzureCmd.Flags().StringP("loganalytics-workspace-id", "w", "", "Specify the ARM resource ID of the log analytics workspace where the logs should be redirected to")
 
 	// development support
 	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
@@ -170,11 +172,6 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
-	// logAnalyticsWorkspaceName, err := cmd.Flags().GetString("loganalytics-workspace-name")
-	// if err != nil {
-	// 	return arguments{}, err
-	// }
-
 	logAnalyticsWorkspaceID, err := cmd.Flags().GetString("loganalytics-workspace-id")
 	if err != nil {
 		return arguments{}, err
@@ -185,14 +182,13 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	}
 
 	return arguments{
-		Name:               name,
-		Interactive:        interactive,
-		SubscriptionID:     subscriptionID,
-		ResourceGroup:      resourceGroup,
-		Location:           location,
-		DeploymentTemplate: deploymentTemplate,
-		ContainerRegistry:  registryName,
-		// LogAnalyticsWorkspaceName: logAnalyticsWorkspaceName,
+		Name:                    name,
+		Interactive:             interactive,
+		SubscriptionID:          subscriptionID,
+		ResourceGroup:           resourceGroup,
+		Location:                location,
+		DeploymentTemplate:      deploymentTemplate,
+		ContainerRegistry:       registryName,
 		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
 	}, nil
 }
@@ -216,23 +212,23 @@ func choose(ctx context.Context) (string, string, error) {
 	return sub.SubscriptionID, resourceGroup, nil
 }
 
-func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (azure.Subscription, error) {
+func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (radazure.Subscription, error) {
 	subc := subscription.NewSubscriptionsClient()
 	subc.Authorizer = authorizer
 
-	subs, err := azure.LoadSubscriptionsFromProfile()
+	subs, err := radazure.LoadSubscriptionsFromProfile()
 	if err != nil {
 		// Failed to load subscriptions from the user profile, fall back to online.
-		subs, err = azure.LoadSubscriptionsFromAzure(ctx, authorizer)
+		subs, err = radazure.LoadSubscriptionsFromAzure(ctx, authorizer)
 		if err != nil {
-			return azure.Subscription{}, err
+			return radazure.Subscription{}, err
 		}
 	}
 
 	if subs.Default != nil {
 		confirmed, err := prompt.Confirm(fmt.Sprintf("Use Subscription '%v' [y/n]?", subs.Default.DisplayName))
 		if err != nil {
-			return azure.Subscription{}, err
+			return radazure.Subscription{}, err
 		}
 
 		if confirmed {
@@ -248,13 +244,13 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (az
 
 	index, err := prompt.Select("Select Subscription:", names)
 	if err != nil {
-		return azure.Subscription{}, err
+		return radazure.Subscription{}, err
 	}
 
 	return subs.Subscriptions[index], nil
 }
 
-func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription) (string, error) {
+func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (string, error) {
 	rgc := resources.NewGroupsClient(sub.SubscriptionID)
 	rgc.Authorizer = authorizer
 
@@ -314,7 +310,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string) error {
-	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
+	armauth, err := radazure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -326,7 +322,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, resourceGroup)
+	envUrl, err := radazure.GenerateAzureEnvUrl(subscriptionID, resourceGroup)
 	if err != nil {
 		return err
 	}
@@ -335,7 +331,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		// We already have a provider in this resource group
 		logger.LogInfo("Found existing environment...\n\n"+
 			"Environment '%v' available at:\n%v\n", name, envUrl)
-		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, azure.GetControlPlaneResourceGroup(resourceGroup), clusterName)
+		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, radazure.GetControlPlaneResourceGroup(resourceGroup), clusterName)
 		if err != nil {
 			return err
 		}
@@ -380,7 +376,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 
 	params := deploymentParameters{
 		ResourceGroup:             resourceGroup,
-		ControlPlaneResourceGroup: azure.GetControlPlaneResourceGroup(resourceGroup),
+		ControlPlaneResourceGroup: radazure.GetControlPlaneResourceGroup(resourceGroup),
 		Location:                  location,
 		DeploymentTemplate:        deploymentTemplate,
 		RegistryID:                registryID,
@@ -423,7 +419,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	mcc.Authorizer = authorizer
 
 	var cluster *containerservice.ManagedCluster
-	for list, err := mcc.ListByResourceGroupComplete(ctx, azure.GetControlPlaneResourceGroup(resourceGroup)); list.NotDone(); err = list.NextWithContext(ctx) {
+	for list, err := mcc.ListByResourceGroupComplete(ctx, radazure.GetControlPlaneResourceGroup(resourceGroup)); list.NotDone(); err = list.NextWithContext(ctx) {
 		if err != nil {
 			return false, "", fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
@@ -436,7 +432,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	}
 
 	if cluster == nil {
-		return false, "", fmt.Errorf("could not find an AKS instance in resource group '%v'", azure.GetControlPlaneResourceGroup(resourceGroup))
+		return false, "", fmt.Errorf("could not find an AKS instance in resource group '%v'", radazure.GetControlPlaneResourceGroup(resourceGroup))
 	}
 
 	return true, *cluster.Name, nil
@@ -504,19 +500,22 @@ func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subsc
 
 func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, logAnalyticsWorkspaceID string) (string, error) {
 	step := logger.BeginStep("Validating Log Analytics Workspace ID for %s...", logAnalyticsWorkspaceID)
-	l, err := azure.ParseResourceID(logAnalyticsWorkspaceID)
+	resource, err := azure.ParseResourceID(logAnalyticsWorkspaceID)
 	if err != nil {
 		return "", fmt.Errorf("invalid log analytics workspace id: %w", err)
 	}
-
-	lwc := operationalinsights.NewWorkspacesClient(subscriptionID)
+	lwc := operationalinsights.NewWorkspacesClient(resource.SubscriptionID)
 	lwc.Authorizer = authorizer
-	lwc.Get(logAnalyticsWorkspaceID)
-
+	_, err = lwc.Get(ctx, resource.ResourceGroup, resource.ResourceName)
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve log analytics workspace: %w", err)
+	}
+	logger.CompleteStep(step)
+	return resource.ResourceName, nil
 }
 
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, params deploymentParameters) (resources.DeploymentExtended, error) {
-	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, params.ResourceGroup)
+	envUrl, err := radazure.GenerateAzureEnvUrl(subscriptionID, params.ResourceGroup)
 	if err != nil {
 		return resources.DeploymentExtended{}, err
 	}
@@ -553,6 +552,12 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 		},
 		"registryName": map[string]interface{}{
 			"value": params.RegistryName,
+		},
+		"logAnalyticsWorkspaceName": map[string]interface{}{
+			"value": params.LogAnalyticsWorkspaceName,
+		},
+		"logAnalyticsWorkspaceID": map[string]interface{}{
+			"value": params.LogAnalyticsWorkspaceID,
 		},
 	}
 
