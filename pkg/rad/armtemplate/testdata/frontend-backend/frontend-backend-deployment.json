@@ -1,0 +1,28 @@
+{
+    "apiVersion": "applications.radius.dev/v1alpha1",
+    "kind": "Deployment",
+    "metadata": {
+        "annotations": {
+            "radius.dev/applications": "frontend-backend",
+            "radius.dev/deployments": "default",
+            "radius.dev/resourceproviders": "radius"
+        },
+        "name": "radius-frontend-backend-default",
+        "namespace": "default"
+    },
+    "spec": {
+        "components": [
+            {
+                "componentName": "backend"
+            },
+            {
+                "componentName": "frontend"
+            }
+        ],
+        "hierarchy": [
+            "radius",
+            "frontend-backend",
+            "default"
+        ]
+    }
+}
