@@ -112,7 +112,7 @@ func init() {
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
 }
 
-// RunCLICommand runs a kubectl CLI command with stdout and stderr forwarded to this process's output.
+// RunCLICommand runs a kubectl CLI command with stdout and stderr buffered for logging when there is an error.
 func runKubectlApply(ctx context.Context, content []byte) error {
 	var executableName string
 	var executableArgs []string

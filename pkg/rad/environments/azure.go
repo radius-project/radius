@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/clients"
+	"github.com/Azure/radius/pkg/rad/kubernetes"
 	k8s "k8s.io/client-go/kubernetes"
 )
 
@@ -96,7 +97,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	return &azure.ARMDiagnosticsClient{
+	return &kubernetes.KubernetesDiagnosticsClient{
 		Client:     k8sClient,
 		RestConfig: config,
 	}, nil

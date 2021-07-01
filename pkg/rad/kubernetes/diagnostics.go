@@ -14,8 +14,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/clients"
-	"github.com/Azure/radius/pkg/workloads"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -95,8 +95,8 @@ func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace str
 	// and then choose one that's in the running state.
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
 		LabelSelector: labels.FormatLabels(map[string]string{
-			workloads.LabelRadiusApplication: application,
-			workloads.LabelRadiusComponent:   component,
+			keys.LabelRadiusApplication: application,
+			keys.LabelRadiusComponent:   component,
 		}),
 	})
 	if err != nil {
@@ -145,7 +145,7 @@ func runPortforward(restconfig *rest.Config, client *k8s.Clientset, replica *cor
 
 func getAppContainerName(replica *corev1.Pod) string {
 	// The container name will be the component name
-	component := replica.Labels[workloads.LabelRadiusComponent]
+	component := replica.Labels[keys.LabelRadiusComponent]
 	return component
 }
 

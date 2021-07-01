@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/clients"
+	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/rad/localrp"
 	"github.com/Azure/radius/pkg/radclient"
 	k8s "k8s.io/client-go/kubernetes"
@@ -77,7 +78,7 @@ func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clien
 		return nil, err
 	}
 
-	return &azure.ARMDiagnosticsClient{
+	return &kubernetes.KubernetesDiagnosticsClient{
 		Client:     k8sClient,
 		RestConfig: config,
 	}, nil
