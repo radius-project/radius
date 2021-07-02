@@ -81,8 +81,8 @@ jobs:
             -e ${{ steps.generate-resource-group-name.outputs.result }} \
             --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
-            --location "${{ steps.select-location.outputs.result }} \
-            --loganalytics-workspace-id ${{ env.INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID }}"
+            --location "${{ steps.select-location.outputs.result }}" \
+            --loganalytics-workspace-id "${{ env.INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID }}"
       - name: Display Environment (Sanity Check)
         run: go run cmd/cli/main.go env list
       - name: Register Environment
