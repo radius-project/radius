@@ -8,7 +8,7 @@
 # Radius CLI location
 : ${RADIUS_INSTALL_DIR:="/usr/local/bin"}
 
-# sudo is required to copy binary to RADIUS_INSTALL_DIR for linux
+# sudo is required to copy binary to RADIUS_INSTALL_DIR for linux and M1 macs
 : ${USE_SUDO:="false"}
 
 # Http request CLI
