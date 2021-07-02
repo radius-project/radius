@@ -467,13 +467,27 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	step := logger.BeginStep("Registering Subscription for required features...")
 	fc := features.NewClient(subscriptionID)
 	fc.Authorizer = authorizer
+
+	providerClient := resources.NewProvidersClient(subscriptionID)
+	providerClient.Authorizer = authorizer
+
 	for feature, namespace := range requiredFeatures {
 		_, err := fc.Register(ctx, namespace, feature)
 		if err != nil {
 			return fmt.Errorf("failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
 		}
+
+		// We've seen customers still hitting issues where they hit the error:
+		// "PodIdentity addon is not allowed since feature 'Microsoft.ContainerService/EnablePodIdentityPreview' is not enabled"
+		// Force the provider to be registered, causing the RP to refresh it's info.
+		_, err = providerClient.Register(ctx, namespace)
+		if err != nil {
+			return fmt.Errorf("failed to register subscription: %v for provider %v: %w", subscriptionID, namespace, err)
+		}
+
 		logger.LogInfo("Sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
 	}
+
 	logger.CompleteStep(step)
 	return nil
 }
