@@ -410,9 +410,10 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 		}
 	}
 
-	logger.Info(fmt.Sprintf("Deletion of deployment completed with %d errors", len(errs)))
+	compositeErr := CompositeError{errs}
+	logger.Error(fmt.Errorf(compositeErr.Error()), fmt.Sprintf("Deletion of deployment completed with %d errors", len(errs)))
 	if len(errs) > 0 {
-		return &CompositeError{errs}
+		return &compositeErr
 	}
 
 	return nil

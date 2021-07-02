@@ -48,6 +48,20 @@
                 "description": "The name of your Web Site."
             }
         },
+        "logAnalyticsWorkspaceName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The log analytics workspace name where the Radius Resource Provider logs will be redirected to."
+            }
+        },
+        "logAnalyticsWorkspaceID": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The ARM resource ID of the log analytics workspace where the Radius Resource Provider logs will be redirected to."
+            }
+        },
         "accountName": {
             "type": "string",
             "defaultValue": "[concat('radius-rp-', uniquestring(parameters('controlPlaneResourceGroup')))]",
@@ -167,6 +181,12 @@
                     },
                     "siteName": {
                         "value": "[parameters('siteName')]"
+                    },
+                    "logAnalyticsWorkspaceName": {
+                        "value": "[parameters('logAnalyticsWorkspaceName')]"
+                    },
+                    "logAnalyticsWorkspaceID": {
+                        "value": "[parameters('logAnalyticsWorkspaceID')]"
                     }
                 },
                 "template": {
@@ -208,6 +228,12 @@
                         },
                         "siteName": {
                             "type": "string"
+                        },
+                        "logAnalyticsWorkspaceName": {
+                            "type": "string"
+                        },
+                        "logAnalyticsWorkspaceID": {
+                            "type": "string"
                         }
                     },
                     "variables": {
@@ -224,7 +250,8 @@
                         "deploymentRoleDefinitionName": "[guid(parameters('deploymentScriptIdentityName'), subscription().subscriptionId)]",
                         "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
                         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
-                        "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), parameters('controlPlaneResourceGroup'), subscription().subscriptionId)]"
+                        "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), parameters('controlPlaneResourceGroup'), subscription().subscriptionId)]",
+                        "loganalyticsworkspacename": "[concat(parameters('siteName'), '/Microsoft.Insights/', if(equals(parameters('logAnalyticsWorkspaceID'), ''), 'fake', parameters('logAnalyticsWorkspaceName')))]"
                     },
                     "resources": [
                         {
@@ -461,6 +488,58 @@
                             }
                         },
                         {
+                            "condition": "[not(equals(parameters('logAnalyticsWorkspaceID'), ''))]",
+                            "type": "Microsoft.Web/sites/providers/diagnosticSettings",
+                            "apiVersion": "2017-05-01-preview",
+                            "name": "[variables('loganalyticsworkspacename')]",
+                            "dependsOn":[
+                                "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
+                            ],    
+                            "properties": {
+                              "workspaceId": "[parameters('logAnalyticsWorkspaceID')]",
+                              "logs": [
+                                {
+                                  "category": "AppServiceAntivirusScanAuditLogs",
+                                  "enabled": false
+                                },
+                                {
+                                  "category": "AppServiceHTTPLogs",
+                                  "enabled": false
+                                },
+                                {
+                                  "category": "AppServiceConsoleLogs",
+                                  "enabled": true
+                                },
+                                {
+                                  "category": "AppServiceAppLogs",
+                                  "enabled": false
+                                },
+                                {
+                                  "category": "AppServiceFileAuditLogs",
+                                  "enabled": false
+                                },
+                                {
+                                  "category": "AppServiceAuditLogs",
+                                  "enabled": false
+                                },
+                                {
+                                  "category": "AppServiceIPSecAuditLogs",
+                                  "enabled": false
+                                },
+                                {
+                                  "category": "AppServicePlatformLogs",
+                                  "enabled": false
+                                }
+                              ],
+                              "metrics": [
+                                {
+                                  "category": "AllMetrics",
+                                  "enabled": true
+                                }
+                              ]
+                            }
+                        },
+                        {
                             "type": "Microsoft.Authorization/roleAssignments",
                             "apiVersion": "2018-09-01-preview",
                             "name": "[variables('rpControlPlaneRoleDefinitionName')]",
@@ -500,6 +579,12 @@
                     "siteName": {
                         "value": "[parameters('siteName')]"
                     },
+                    "logAnalyticsWorkspaceName": {
+                        "value": "[parameters('logAnalyticsWorkspaceName')]"
+                    },
+                    "logAnalyticsWorkspaceID": {
+                        "value": "[parameters('logAnalyticsWorkspaceID')]"
+                    },
                     "controlPlaneResourceGroup": {
                         "value": "[parameters('controlPlaneResourceGroup')]"
                     },
@@ -526,6 +611,12 @@
                             "type": "object"
                         },
                         "siteName": {
+                            "type": "string"
+                        },
+                        "logAnalyticsWorkspaceName": {
+                            "type": "string"
+                        },
+                        "logAnalyticsWorkspaceID": {
                             "type": "string"
                         },
                         "controlPlaneResourceGroup": {
