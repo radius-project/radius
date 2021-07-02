@@ -34,7 +34,8 @@ getSystemInfo() {
     fi
 
     # Most linux distro needs root permission to copy the file to /usr/local/bin
-    if [ "$OS" == "linux" ] && [ "$RADIUS_INSTALL_DIR" == "/usr/local/bin" ]; then
+    # Also, for M1 macs, we also need sudo permission for /usr/local/bin
+    if [[ "$OS" == "linux" || ( "$OS" == "macos" && ( "$ARCH" == "arm" || "$ARCH" == "arm64" ))]] && [ "$RADIUS_INSTALL_DIR" == "/usr/local/bin" ]; then
         USE_SUDO="true"
     fi
 }
