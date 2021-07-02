@@ -120,7 +120,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. You can confirm that the new `db` component was deployed by running:
 
    ```sh
-   rad deployment list --application webapp
+   rad deployment list --application webapp -o json
    ```
 
    You should see both `db` and `todoapp` components in your `webapp` application. Example output: 

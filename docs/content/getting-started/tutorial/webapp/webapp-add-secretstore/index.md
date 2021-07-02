@@ -164,7 +164,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. You can confirm that the new `kv` component was deployed by running:
 
    ```sh
-   rad deployment list --application-name webapp
+   rad deployment list --application-name webapp -o json
    ```
 
    You should see `kv`, `db` and `todoapp` components in your `webapp` application. Example output: 
