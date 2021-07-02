@@ -6,8 +6,11 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -34,10 +37,20 @@ func TestK8sController(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
+	assetsDirectory := os.Getenv("KUBEBUILDER_ASSETS")
+
+	if assetsDirectory == "" {
+		// run setup-envtest to get the path to binary assets
+		var err error
+		assetsDirectory, err = getEnvTestBinaryPath()
+		require.NoError(t, err, "failed to call setup-envtest to find path")
+	}
+
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "deploy", "k8s", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing:    true,
 		AttachControlPlaneOutput: true,
+		BinaryAssetsDirectory:    assetsDirectory,
 	}
 
 	scheme := runtime.NewScheme()
@@ -339,4 +352,14 @@ func (ct ControllerTest) Test(t *testing.T) {
 	}
 	// ValidatePodsRunning triggers its own assertions, no need to handle errors
 	validation.ValidateDeploymentsRunning(ct.Options.Context, t, ct.Options.K8s, ct.Row.Pods)
+}
+
+func getEnvTestBinaryPath() (string, error) {
+	// TODO not a fan of having hard coded kubernetes version
+	cmd := exec.Command("setup-envtest", "use", "-p", "path", "1.19.x", "--arch", "amd64")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+
+	return out.String(), err
 }
