@@ -61,3 +61,5 @@ Use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}):
 rad env delete -e <ENVIRONMENT_NAME> --yes
 ```
 
+This will currently remove the entry for the kubernetes environment in your config file. It will *NOT* remove the resources created in the kubernetes cluster. In future updates, a better story around uninstalling/deletion will be provided.
+
