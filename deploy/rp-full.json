@@ -250,7 +250,8 @@
                         "deploymentRoleDefinitionName": "[guid(parameters('deploymentScriptIdentityName'), subscription().subscriptionId)]",
                         "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
                         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
-                        "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), parameters('controlPlaneResourceGroup'), subscription().subscriptionId)]"
+                        "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), parameters('controlPlaneResourceGroup'), subscription().subscriptionId)]",
+                        "loganalyticsworkspacename": "[concat(parameters('siteName'), '/Microsoft.Insights/', if(equals(parameters('logAnalyticsWorkspaceID'), ''), 'fake', parameters('logAnalyticsWorkspaceName')))]"
                     },
                     "resources": [
                         {
@@ -490,7 +491,7 @@
                             "condition": "[not(equals(parameters('logAnalyticsWorkspaceID'), ''))]",
                             "type": "Microsoft.Web/sites/providers/diagnosticSettings",
                             "apiVersion": "2017-05-01-preview",
-                            "name": "[concat(parameters('siteName'),'/Microsoft.Insights/', parameters('logAnalyticsWorkspaceName'))]",
+                            "name": "[variables('loganalyticsworkspacename')]",
                             "dependsOn":[
                                 "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
                             ],    
