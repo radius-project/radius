@@ -141,6 +141,16 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
+
+      # Timeout used for Azure functional tests
+      AZURE_FUNCTIONALTEST_TIMEOUT: 60m
+
+      # Amount of time we are willing to wait for an available environment
+      AZURE_ENVIRONMENT_RESERVE_TIMEOUT: 60m
+
+      # The amount of time during which we consider an environment lease valid.
+      # Includes a generous extra grace period for the building of tests and cleanup/deletion
+      AZURE_ENVIRONMENT_LEASE_TIMEOUT: 120m
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -206,7 +216,8 @@ jobs:
           --accountname ${{ secrets.INTEGRATION_TEST_STORAGE_NAME }} \
           --tablename environments \
           --configpath ~/.rad/config.yaml \
-          --timeout 60
+          --timeout ${{ env.AZURE_ENVIRONMENT_RESERVE_TIMEOUT }} \
+          --lease-timeout ${{ env.AZURE_ENVIRONMENT_LEASE_TIMEOUT }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
         # Output environment name
@@ -234,6 +245,7 @@ jobs:
         export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
         export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
         export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
+        export TEST_TIMEOUT=${{ env.AZURE_FUNCTIONALTEST_TIMEOUT }}
         cd $GITHUB_WORKSPACE
         echo "PATH is $PATH"
         which rad || { echo "cannot find rad"; exit 1; }

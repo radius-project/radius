@@ -16,8 +16,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const leaseTimeout = 30 * time.Minute
-
 // The wait interval while we're polling for an available environment
 const waitDuration = 30 * time.Second
 
@@ -49,15 +47,20 @@ var reserveCmd = &cobra.Command{
 			return err
 		}
 
-		timeout, err := cmd.Flags().GetInt("timeout")
+		timeout, err := cmd.Flags().GetDuration("timeout")
 		if err != nil {
 			return err
 		}
 
-		ctx, cancel := context.WithTimeout(cmd.Context(), time.Minute*time.Duration(timeout))
+		leaseTimeout, err := cmd.Flags().GetDuration("lease-timeout")
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithTimeout(cmd.Context(), timeout)
 		defer cancel()
 
-		testenv, err := lease(ctx, accountName, accountKey, tableName)
+		testenv, err := lease(ctx, accountName, accountKey, tableName, leaseTimeout)
 		if err != nil {
 			return err
 		}
@@ -120,14 +123,20 @@ func init() {
 		panic(err)
 	}
 
-	reserveCmd.Flags().IntP("timeout", "t", 30, "specifies wait timeout in minutes")
+	reserveCmd.Flags().DurationP("timeout", "t", 60*time.Minute, "specifies wait timeout")
 	err = reserveCmd.MarkFlagRequired("timeout")
+	if err != nil {
+		panic(err)
+	}
+
+	reserveCmd.Flags().Duration("lease-timeout", 120*time.Minute, "specifies duration an existing lease is considered valid")
+	err = reserveCmd.MarkFlagRequired("lease-timeout")
 	if err != nil {
 		panic(err)
 	}
 }
 
-func lease(ctx context.Context, accountName string, accountKey string, tableName string) (*testEnvironment, error) {
+func lease(ctx context.Context, accountName string, accountKey string, tableName string, leaseTimeout time.Duration) (*testEnvironment, error) {
 	client, err := storage.NewBasicClient(accountName, accountKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to authenticate with table storage: %w", err)
@@ -148,7 +157,7 @@ func lease(ctx context.Context, accountName string, accountKey string, tableName
 		}
 
 		fmt.Println("scanning test environments...")
-		available := findAvailableEnvironment(result)
+		available := findAvailableEnvironment(result, leaseTimeout)
 		if available != nil {
 			// We've taken the lease on this cluster, return it.
 			return &testEnvironment{
@@ -174,7 +183,7 @@ func lease(ctx context.Context, accountName string, accountKey string, tableName
 }
 
 // We're just logging errors here instead of halting, we want to keep retrying.
-func findAvailableEnvironment(response *storage.EntityQueryResult) *storage.Entity {
+func findAvailableEnvironment(response *storage.EntityQueryResult, leaseTimeout time.Duration) *storage.Entity {
 	now := time.Now().UTC()
 	for _, env := range response.Entities {
 		fmt.Printf("checking environment '%v'...\n", env.RowKey)
