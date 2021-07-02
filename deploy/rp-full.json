@@ -283,6 +283,14 @@
                             "tags": "[parameters('resourceTags')]",
                             "kind": "MongoDB",
                             "properties": {
+                                "capabilities": [
+                                    {
+                                        "name": "EnableMongo"
+                                    },
+                                    {
+                                        "name": "DisableRateLimitingResponses"
+                                    }
+                                ],
                                 "locations": [
                                     {
                                         "locationName": "[resourceGroup().location]",
