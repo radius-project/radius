@@ -79,7 +79,7 @@ Now you are ready to deploy the application for the first time.
 1. Confirm that your Radius application was deployed:
 
    ```sh
-   rad application list
+   rad application list -o json
    ```
    
    You should see your `webapp` application. Example output: 
