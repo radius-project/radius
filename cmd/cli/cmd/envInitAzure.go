@@ -477,9 +477,11 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 			return fmt.Errorf("failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
 		}
 
-		// We've seen customers still hitting issues where they hit the error:
+		// See: https://github.com/Azure/radius/issues/520
+		// We've seen users still hitting issues where they see the error:
 		// "PodIdentity addon is not allowed since feature 'Microsoft.ContainerService/EnablePodIdentityPreview' is not enabled"
-		// Force the provider to be registered, causing the RP to refresh it's info.
+		// Our working theory is that we need to force the provider to be registered again,
+		// causing the RP to refresh it's info about features.
 		_, err = providerClient.Register(ctx, namespace)
 		if err != nil {
 			return fmt.Errorf("failed to register subscription: %v for provider %v: %w", subscriptionID, namespace, err)
