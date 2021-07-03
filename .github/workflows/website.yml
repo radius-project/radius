@@ -3,7 +3,7 @@ name: website
 on:
   push:
     branches:
-      - main
+      - release/0.3
     paths:
       - 'docs/**'
       - 'test/**'
@@ -13,7 +13,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
-      - main
+      - release/0.3
     paths:
       - 'docs/**'
       - 'test/**'
@@ -55,8 +55,8 @@ jobs:
       - name: Deploy to WebApp
         uses: Azure/webapps-deploy@v2
         with:
-          app-name: radius-edge
-          publish-profile: ${{ secrets.EDGE_DOCS_SITE_PUBLISHPROFILE }}
+          app-name: radius
+          publish-profile: ${{ secrets.DOCS_SITE_PUBLISHPROFILE }}
           package: "./docs/public/"
 
   build_docs:

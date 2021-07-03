@@ -1,4 +1,4 @@
-baseURL = "https://edge.radapp.dev/"
+baseURL = "https://radapp.dev/"
 languageCode = "en-us"
 title = "Project Radius"
 theme =  "docsy"
@@ -61,7 +61,7 @@ version_menu = "Releases"
   url = "https://edge.radapp.dev"
 
 [[params.versions]]
-  version = "v0.2 (latest)"
+  version = "v0.3 (latest)"
   url = "https://radapp.dev"
 
 # Markdown Engine - Allow inline html
