@@ -126,26 +126,8 @@ resource app 'radius.dev/Applications@v1alpha1' = {
    You should see both `db` and `todoapp` components in your `webapp` application. Example output: 
 
    ```
-   Using config file: /Users/{USER}/.rad/config.yaml
-   {
-     "value": [
-       {
-         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Deployments/default",
-         "name": "default",
-         "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
-         "properties": {
-           "components": [
-             {
-               "componentName": "db"
-             },
-             {
-               "componentName": "todoapp"
-             }
-           ]
-         }
-       }
-     ]
-   }
+   DEPLOYMENT  COMPONENTS
+   default     db todoapp
    ```
 
 1. To test the database, open a local tunnel on port 3000 again:

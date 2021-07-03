@@ -79,20 +79,13 @@ Now you are ready to deploy the application for the first time.
 1. Confirm that your Radius application was deployed:
 
    ```sh
-   rad application list -o json
+   rad component list --application webapp
    ```
    
-   You should see your `webapp` application. Example output: 
+   You should see your `todoapp` component. Example output: 
    ```
-   {
-     "value": [
-       {
-         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp",
-         "name": "webapp",
-         "type": "Microsoft.CustomProviders/resourceProviders/Applications"
-       }
-     ]
-   }
+   COMPONENT  KIND
+   todoapp    radius.dev/Container@v1alpha1 
    ```
 
 1. To test your `webapp` application, open a local tunnel to your application:

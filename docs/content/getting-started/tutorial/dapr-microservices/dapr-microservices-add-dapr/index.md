@@ -104,7 +104,8 @@ The `statestore` component implicitly declares a built-in binding named `default
   resource nodeapplication 'Components' = {
     name: 'nodeapp'
     kind: 'radius.dev/Container@v1alpha1'
-    properties: { ... }
+    properties: {
+      run: { ... }
       uses: [
         {
           binding: statestore.properties.bindings.default
@@ -193,26 +194,8 @@ resource app 'radius.dev/Applications@v1alpha1' = {
    You should see both `nodeapp` and `statestore` components in your `dapr-hello` application. Example output: 
 
    ```
-   Using config file: /Users/{USER}/.rad/config.yaml
-   {
-     "value": [
-       {
-         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/dapr-hello/Deployments/default",
-         "name": "default",
-         "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
-         "properties": {
-           "components": [
-             {
-               "componentName": "nodeapp"
-             },
-             {
-               "componentName": "statestore"
-             }
-           ]
-         }
-       }
-     ]
-   }
+   DEPLOYMENT  COMPONENTS
+   default     nodeapp statestore
    ```
 
 1. To test out the state store, open a local tunnel on port 3000 again:

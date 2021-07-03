@@ -164,35 +164,14 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 1. You can confirm that the new `kv` component was deployed by running:
 
    ```sh
-   rad deployment list --application-name webapp -o json
+   rad deployment list --application webapp
    ```
 
    You should see `kv`, `db` and `todoapp` components in your `webapp` application. Example output: 
 
    ```
-   Using config file: /Users/{USER}/.rad/config.yaml
-   {
-     "value": [
-       {
-         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/webapp/Deployments/default",
-         "name": "default",
-         "type": "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
-         "properties": {
-           "components": [
-             {
-               "componentName": "db"
-             },
-             {
-               "componentName": "kv"
-             },
-             {
-               "componentName": "todoapp"
-             }
-           ]
-         }
-       }
-     ]
-   }
+   DEPLOYMENT  COMPONENTS
+   default     db kv todoapp 
    ```
 
 1. To test the database, open a local tunnel on port 3000 again:
