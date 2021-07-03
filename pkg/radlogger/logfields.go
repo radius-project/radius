@@ -25,4 +25,6 @@ const (
 	LogFieldSubscriptionID     = "subscriptionID"
 	LogFieldWorkLoadKind       = "workloadKind"
 	LogFieldWorkLoadName       = "workloadName"
+	LogFieldSpan               = "span"
+	LogFieldStatusCode         = "statusCode"
 )

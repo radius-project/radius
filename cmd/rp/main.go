@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/go-autorest/tracing"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp"
@@ -100,6 +101,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Enable tracing for Track1 Azure SDKs
+	tracing.Register(&radlogger.Tracer{})
 
 	logger, flushLogs, err := radlogger.NewLogger(fmt.Sprintf("radRP-%s", arm.ResourceGroup))
 	if err != nil {
