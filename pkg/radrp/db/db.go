@@ -250,13 +250,14 @@ func (d radrpDB) DeleteComponentByApplicationID(ctx context.Context, id resource
 
 func (d radrpDB) ListDeploymentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Deployment, error) {
 	application, err := d.GetApplicationByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldAppID, id,
 		radlogger.LogFieldAppName, application.Name)
 	logger.Info("Getting deployments from DB")
-	if err != nil {
-		return nil, err
-	}
 
 	items := make([]Deployment, 0, len(application.Deployments))
 	for _, v := range application.Deployments {

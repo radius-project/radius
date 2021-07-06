@@ -49,10 +49,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	resourceKind := ""
+	localID := ""
 	if component.Config.Kind == "any" || component.Config.Kind == "state.azure.tablestorage" {
 		resourceKind = workloads.ResourceKindDaprStateStoreAzureStorage
+		localID = "DaprStateStoreAzureStorage"
 	} else if component.Config.Kind == "state.sqlserver" {
 		resourceKind = workloads.ResourceKindDaprStateStoreSQLServer
+		localID = "DaprStateStoreSQLServer"
 	} else {
 		return []workloads.OutputResource{}, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, supportedStateStoreKindValues)
 	}
@@ -63,6 +66,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := workloads.OutputResource{
+			LocalID:      localID,
 			ResourceKind: resourceKind,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
@@ -91,6 +95,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to connect to a Storage Account
 		resource := workloads.OutputResource{
+			LocalID:      localID,
 			ResourceKind: workloads.ResourceKindDaprStateStoreAzureStorage,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
