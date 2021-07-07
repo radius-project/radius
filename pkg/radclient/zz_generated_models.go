@@ -8,10 +8,9 @@
 package radclient
 
 import (
-	"context"
-	"fmt"
-	"net/http"
-	"time"
+	"encoding/json"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"reflect"
 )
 
 // ApplicationCreateOrUpdateOptions contains the optional parameters for the Application.CreateOrUpdate method.
@@ -19,10 +18,10 @@ type ApplicationCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Parameters used to create an application.
+// ApplicationCreateParameters - Parameters used to create an application.
 type ApplicationCreateParameters struct {
-	// Any object
-	Properties interface{} `json:"properties,omitempty"`
+	// REQUIRED; Any object
+	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 
 // ApplicationDeleteOptions contains the optional parameters for the Application.Delete method.
@@ -35,10 +34,17 @@ type ApplicationGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Application list.
+// ApplicationList - Application list.
 type ApplicationList struct {
-	// List of applications.
-	Value *[]ApplicationResource `json:"value,omitempty"`
+	// REQUIRED; List of applications.
+	Value []*ApplicationResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ApplicationList.
+func (a ApplicationList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", a.Value)
+	return json.Marshal(objectMap)
 }
 
 // ApplicationListByResourceGroupOptions contains the optional parameters for the Application.ListByResourceGroup method.
@@ -46,29 +52,18 @@ type ApplicationListByResourceGroupOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ApplicationListResponse is the response envelope for operations that return a ApplicationList type.
-type ApplicationListResponse struct {
-	// Application list.
-	ApplicationList *ApplicationList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// Application resource.
+// ApplicationResource - Application resource.
 type ApplicationResource struct {
 	TrackedResource
-	// Properties of the application.
-	Properties interface{} `json:"properties,omitempty"`
+	// REQUIRED; Properties of the application.
+	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 
-// ApplicationResourceResponse is the response envelope for operations that return a ApplicationResource type.
-type ApplicationResourceResponse struct {
-	// Application resource.
-	ApplicationResource *ApplicationResource
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// MarshalJSON implements the json.Marshaller interface for type ApplicationResource.
+func (a ApplicationResource) MarshalJSON() ([]byte, error) {
+	objectMap := a.TrackedResource.marshalInternal()
+	populate(objectMap, "properties", a.Properties)
+	return json.Marshal(objectMap)
 }
 
 // ComponentCreateOrUpdateOptions contains the optional parameters for the Component.CreateOrUpdate method.
@@ -76,12 +71,12 @@ type ComponentCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Parameters used to create a component.
+// ComponentCreateParameters - Parameters used to create a component.
 type ComponentCreateParameters struct {
-	// Resource type of the component
+	// REQUIRED; Resource type of the component
 	Kind *string `json:"kind,omitempty"`
 
-	// Properties of a component.
+	// REQUIRED; Properties of a component.
 	Properties *ComponentProperties `json:"properties,omitempty"`
 }
 
@@ -95,10 +90,17 @@ type ComponentGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Component list.
+// ComponentList - Component list.
 type ComponentList struct {
-	// List of components.
-	Value *[]ComponentResource `json:"value,omitempty"`
+	// REQUIRED; List of components.
+	Value []*ComponentResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ComponentList.
+func (c ComponentList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", c.Value)
+	return json.Marshal(objectMap)
 }
 
 // ComponentListByApplicationOptions contains the optional parameters for the Component.ListByApplication method.
@@ -106,54 +108,57 @@ type ComponentListByApplicationOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ComponentListResponse is the response envelope for operations that return a ComponentList type.
-type ComponentListResponse struct {
-	// Component list.
-	ComponentList *ComponentList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// Properties of a component.
+// ComponentProperties - Properties of a component.
 type ComponentProperties struct {
 	// Bindings spec of the component
-	Bindings interface{} `json:"bindings,omitempty"`
+	Bindings map[string]interface{} `json:"bindings,omitempty"`
 
 	// Config of the component
-	Config interface{} `json:"config,omitempty"`
-	OutputResources *[]interface{} `json:"outputResources,omitempty"`
+	Config map[string]interface{} `json:"config,omitempty"`
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 
 	// Revision of the component
-	Revision interface{} `json:"revision,omitempty"`
+	Revision map[string]interface{} `json:"revision,omitempty"`
 
 	// Run spec of the component
-	Run interface{} `json:"run,omitempty"`
+	Run map[string]interface{} `json:"run,omitempty"`
 
 	// Traits spec of the component
-	Traits interface{} `json:"traits,omitempty"`
+	Traits map[string]interface{} `json:"traits,omitempty"`
 
 	// Uses spec of the component
-	Uses interface{} `json:"uses,omitempty"`
+	Uses map[string]interface{} `json:"uses,omitempty"`
 }
 
-// Component resource.
+// MarshalJSON implements the json.Marshaller interface for type ComponentProperties.
+func (c ComponentProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "bindings", c.Bindings)
+	populate(objectMap, "config", c.Config)
+	populate(objectMap, "outputResources", c.OutputResources)
+	populate(objectMap, "revision", c.Revision)
+	populate(objectMap, "run", c.Run)
+	populate(objectMap, "traits", c.Traits)
+	populate(objectMap, "uses", c.Uses)
+	return json.Marshal(objectMap)
+}
+
+// ComponentResource - Component resource.
 type ComponentResource struct {
 	TrackedResource
-	// Resource type of the component
+	// REQUIRED; Resource type of the component
 	Kind *string `json:"kind,omitempty"`
 
-	// Properties of the component.
+	// REQUIRED; Properties of the component.
 	Properties *ComponentProperties `json:"properties,omitempty"`
 }
 
-// ComponentResourceResponse is the response envelope for operations that return a ComponentResource type.
-type ComponentResourceResponse struct {
-	// Component resource.
-	ComponentResource *ComponentResource
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// MarshalJSON implements the json.Marshaller interface for type ComponentResource.
+func (c ComponentResource) MarshalJSON() ([]byte, error) {
+	objectMap := c.TrackedResource.marshalInternal()
+	populate(objectMap, "kind", c.Kind)
+	populate(objectMap, "properties", c.Properties)
+	return json.Marshal(objectMap)
 }
 
 // DeploymentBeginCreateOrUpdateOptions contains the optional parameters for the Deployment.BeginCreateOrUpdate method.
@@ -166,9 +171,9 @@ type DeploymentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Parameters used to create a deployment.
+// DeploymentCreateParameters - Parameters used to create a deployment.
 type DeploymentCreateParameters struct {
-	// Properties of a deployment.
+	// REQUIRED; Properties of a deployment.
 	Properties *DeploymentProperties `json:"properties,omitempty"`
 }
 
@@ -177,10 +182,17 @@ type DeploymentGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Deployment list.
+// DeploymentList - Deployment list.
 type DeploymentList struct {
-	// List of deployments.
-	Value *[]DeploymentResource `json:"value,omitempty"`
+	// REQUIRED; List of deployments.
+	Value []*DeploymentResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DeploymentList.
+func (d DeploymentList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
 }
 
 // DeploymentListByApplicationOptions contains the optional parameters for the Deployment.ListByApplication method.
@@ -188,73 +200,57 @@ type DeploymentListByApplicationOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DeploymentListResponse is the response envelope for operations that return a DeploymentList type.
-type DeploymentListResponse struct {
-	// Deployment list.
-	DeploymentList *DeploymentList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// DeploymentProperties - Properties of a deployment.
+type DeploymentProperties struct {
+	// REQUIRED; List of components in the deployment.
+	Components []*DeploymentPropertiesComponentsItem `json:"components,omitempty"`
 }
 
-// Properties of a deployment.
-type DeploymentProperties struct {
-	// List of components in the deployment.
-	Components *[]DeploymentPropertiesComponentsItem `json:"components,omitempty"`
+// MarshalJSON implements the json.Marshaller interface for type DeploymentProperties.
+func (d DeploymentProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "components", d.Components)
+	return json.Marshal(objectMap)
 }
 
 type DeploymentPropertiesComponentsItem struct {
-	// Name of the component
+	// REQUIRED; Name of the component
 	ComponentName *string `json:"componentName,omitempty"`
 }
 
-// Deployment resource.
+// DeploymentResource - Deployment resource.
 type DeploymentResource struct {
 	TrackedResource
-	// Properties of the deployment.
+	// REQUIRED; Properties of the deployment.
 	Properties *DeploymentProperties `json:"properties,omitempty"`
 }
 
-// DeploymentResourcePollerResponse is the response envelope for operations that asynchronously return a DeploymentResource type.
-type DeploymentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (DeploymentResourceResponse, error)
-
-	// Poller contains an initialized poller.
-	Poller DeploymentResourcePoller
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// MarshalJSON implements the json.Marshaller interface for type DeploymentResource.
+func (d DeploymentResource) MarshalJSON() ([]byte, error) {
+	objectMap := d.TrackedResource.marshalInternal()
+	populate(objectMap, "properties", d.Properties)
+	return json.Marshal(objectMap)
 }
 
-// DeploymentResourceResponse is the response envelope for operations that return a DeploymentResource type.
-type DeploymentResourceResponse struct {
-	// Deployment resource.
-	DeploymentResource *DeploymentResource
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// The resource management error additional info.
+// ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.
-	Info interface{} `json:"info,omitempty" azure:"ro"`
+	Info map[string]interface{} `json:"info,omitempty" azure:"ro"`
 
 	// READ-ONLY; The additional info type.
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// The error detail.
+// ErrorDetail - The error detail.
 type ErrorDetail struct {
 	// READ-ONLY; The error additional info.
-	AdditionalInfo *[]ErrorAdditionalInfo `json:"additionalInfo,omitempty" azure:"ro"`
+	AdditionalInfo []*ErrorAdditionalInfo `json:"additionalInfo,omitempty" azure:"ro"`
 
 	// READ-ONLY; The error code.
 	Code *string `json:"code,omitempty" azure:"ro"`
 
 	// READ-ONLY; The error details.
-	Details *[]ErrorDetail `json:"details,omitempty" azure:"ro"`
+	Details []*ErrorDetail `json:"details,omitempty" azure:"ro"`
 
 	// READ-ONLY; The error message.
 	Message *string `json:"message,omitempty" azure:"ro"`
@@ -263,53 +259,33 @@ type ErrorDetail struct {
 	Target *string `json:"target,omitempty" azure:"ro"`
 }
 
-// Common error response for all Azure Resource Manager APIs to return error details for failed operations. (This also follows the OData error response
-// format.).
+// MarshalJSON implements the json.Marshaller interface for type ErrorDetail.
+func (e ErrorDetail) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "additionalInfo", e.AdditionalInfo)
+	populate(objectMap, "code", e.Code)
+	populate(objectMap, "details", e.Details)
+	populate(objectMap, "message", e.Message)
+	populate(objectMap, "target", e.Target)
+	return json.Marshal(objectMap)
+}
+
+// ErrorResponse - Common error response for all Azure Resource Manager APIs to return error details for failed operations. (This also follows the OData
+// error response format.).
+// Implements the error and azcore.HTTPResponse interfaces.
 type ErrorResponse struct {
+	raw string
 	// The error object.
 	InnerError *ErrorDetail `json:"error,omitempty"`
 }
 
 // Error implements the error interface for type ErrorResponse.
+// The contents of the error text are not contractual and subject to change.
 func (e ErrorResponse) Error() string {
-	msg := ""
-	if e.InnerError != nil {
-		msg += "InnerError: \n"
-		if e.InnerError.Code != nil {
-			msg += fmt.Sprintf("\tCode: %v\n", *e.InnerError.Code)
-		}
-		if e.InnerError.Message != nil {
-			msg += fmt.Sprintf("\tMessage: %v\n", *e.InnerError.Message)
-		}
-		if e.InnerError.Target != nil {
-			msg += fmt.Sprintf("\tTarget: %v\n", *e.InnerError.Target)
-		}
-		if e.InnerError.Details != nil {
-			msg += fmt.Sprintf("\tDetails: %v\n", *e.InnerError.Details)
-		}
-		if e.InnerError.AdditionalInfo != nil {
-			msg += fmt.Sprintf("\tAdditionalInfo: %v\n", *e.InnerError.AdditionalInfo)
-		}
-	}
-	if msg == "" {
-		msg = "missing error info"
-	}
-	return msg
+	return e.raw
 }
 
-// HTTPPollerResponse contains the asynchronous HTTP response from the call to the service endpoint.
-type HTTPPollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (*http.Response, error)
-
-	// Poller contains an initialized poller.
-	Poller HTTPPoller
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// Common fields that are returned in the response for all Azure Resource Manager resources
+// Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty" azure:"ro"`
@@ -321,13 +297,50 @@ type Resource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'
+// MarshalJSON implements the json.Marshaller interface for type Resource.
+func (r Resource) MarshalJSON() ([]byte, error) {
+	objectMap := r.marshalInternal()
+	return json.Marshal(objectMap)
+}
+
+func (r Resource) marshalInternal() map[string]interface{} {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "id", r.ID)
+	populate(objectMap, "name", r.Name)
+	populate(objectMap, "type", r.Type)
+	return objectMap
+}
+
+// TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'
 type TrackedResource struct {
 	Resource
-	// The geo-location where the resource lives
+	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// Resource tags.
-	Tags *map[string]string `json:"tags,omitempty"`
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type TrackedResource.
+func (t TrackedResource) MarshalJSON() ([]byte, error) {
+	objectMap := t.marshalInternal()
+	return json.Marshal(objectMap)
+}
+
+func (t TrackedResource) marshalInternal() map[string]interface{} {
+	objectMap := t.Resource.marshalInternal()
+	populate(objectMap, "location", t.Location)
+	populate(objectMap, "tags", t.Tags)
+	return objectMap
+}
+
+func populate(m map[string]interface{}, k string, v interface{}) {
+	if v == nil {
+		return
+	} else if azcore.IsNullValue(v) {
+		m[k] = nil
+	} else if !reflect.ValueOf(v).IsNil() {
+		m[k] = v
+	}
 }
 
