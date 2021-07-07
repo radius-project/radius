@@ -118,7 +118,7 @@ type ComponentProperties struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 
 	// Revision of the component
-	Revision map[string]interface{} `json:"revision,omitempty"`
+	Revision *string `json:"revision,omitempty"`
 
 	// Run spec of the component
 	Run map[string]interface{} `json:"run,omitempty"`

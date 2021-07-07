@@ -732,7 +732,7 @@
       "type": "object",
       "properties": {
         "revision": {
-          "type": "object",
+          "type": "string",
           "description": "Revision of the component"
         },
         "config": {
