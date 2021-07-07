@@ -47,9 +47,7 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println()
 	fmt.Println(string(b))
-	fmt.Println()
 	return nil
 
 }
