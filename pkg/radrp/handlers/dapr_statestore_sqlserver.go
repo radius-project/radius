@@ -7,7 +7,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 
 	"fmt"
 	"strings"
@@ -15,7 +14,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -60,14 +61,14 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 	password := generatePassword(passwordConditions)
 
 	// Generate server name and create server
-	serverName, err := handler.createServer(ctx, location, dbName, password)
+	serverName, err := handler.createServer(ctx, location, dbName, password, options)
 	if err != nil {
 		return nil, err
 	}
 	properties[serverNameKey] = serverName
 
 	// Create database
-	err = handler.createSQLDB(ctx, location, serverName, dbName)
+	err = handler.createSQLDB(ctx, location, serverName, dbName, options)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +90,13 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 			"metadata": map[string]interface{}{
 				"name":      properties[KubernetesNameKey],
 				"namespace": properties[KubernetesNamespaceKey],
+				"labels": map[string]string{
+					keys.LabelRadiusApplication:   options.Application,
+					keys.LabelRadiusComponent:     options.Component,
+					keys.LabelKubernetesName:      options.Component,
+					keys.LabelKubernetesPartOf:    options.Application,
+					keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
+				},
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.sqlserver",
@@ -107,7 +115,7 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 		},
 	}
 
-	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: keys.FieldManager})
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +174,9 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 }
 
 // createServer creates SQL server instance with a generated unique server name prefixed with specified database name
-func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context, location *string, databaseName string, password string) (string, error) {
+func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context, location *string, databaseName string, password string, options PutOptions) (string, error) {
+	logger := radlogger.GetLogger(ctx)
+	
 	sqlServerClient := sql.NewServersClient(handler.arm.SubscriptionID)
 	sqlServerClient.Authorizer = handler.arm.Auth
 
@@ -198,12 +208,13 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 			break
 		}
 
-		log.Printf("sql server name generation failed after %d attempts: %v %v", i, result.Reason, result.Message)
+		logger.Info(fmt.Sprintf("sql server name generation failed after %d attempts: %v %v", i, result.Reason, result.Message))
 	}
 
 	// Create server
 	future, err := sqlServerClient.CreateOrUpdate(ctx, handler.arm.ResourceGroup, serverName, sql.Server{
 		Location: location,
+		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
 		ServerProperties: &sql.ServerProperties{
 			AdministratorLogin:         to.StringPtr(dbLogin),
 			AdministratorLoginPassword: to.StringPtr(password),
@@ -226,7 +237,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 	return serverName, nil
 }
 
-func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, location *string, serverName string, dbName string) error {
+func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, location *string, serverName string, dbName string, options PutOptions) error {
 	sqlDBClient := sql.NewDatabasesClient(handler.arm.SubscriptionID)
 	sqlDBClient.Authorizer = handler.arm.Auth
 
@@ -237,6 +248,7 @@ func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, 
 		dbName,
 		sql.Database{
 			Location: location,
+			Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
 		})
 	if err != nil {
 		return fmt.Errorf("failed to create sql database: %w", err)

@@ -6,22 +6,35 @@
 package radrp
 
 import (
+	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/radrp/revision"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )
 
+func createContext(t *testing.T) context.Context {
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
+}
+
 func Test_DeploymentCreated_NoComponents(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	newer := db.NewDeployment()
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, nil, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, nil, newer)
 	require.NoError(t, err)
 
 	require.True(t, deploymentIsNoOp(actions))
@@ -29,6 +42,7 @@ func Test_DeploymentCreated_NoComponents(t *testing.T) {
 }
 
 func Test_DeploymentCreated_ValidationError(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	newer := db.NewDeployment()
 	newer.Properties.Components = []*db.DeploymentComponent{
@@ -39,11 +53,12 @@ func Test_DeploymentCreated_ValidationError(t *testing.T) {
 
 	rp := rp{}
 
-	_, err := rp.computeDeploymentActions(app, nil, newer)
+	_, err := rp.computeDeploymentActions(ctx, app, nil, newer)
 	require.Error(t, err)
 }
 
 func Test_DeploymentCreated_ErrMissingComponent(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	newer := db.NewDeployment()
 	newer.Properties.Components = []*db.DeploymentComponent{
@@ -54,11 +69,12 @@ func Test_DeploymentCreated_ErrMissingComponent(t *testing.T) {
 
 	rp := rp{}
 
-	_, err := rp.computeDeploymentActions(app, nil, newer)
+	_, err := rp.computeDeploymentActions(ctx, app, nil, newer)
 	require.Error(t, err)
 }
 
 func Test_DeploymentCreated_OneComponent(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	app.Components["A"] = db.Component{
 		Revision:   revision.Revision("1"),
@@ -75,7 +91,7 @@ func Test_DeploymentCreated_OneComponent(t *testing.T) {
 
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, nil, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, nil, newer)
 	require.NoError(t, err)
 
 	require.False(t, deploymentIsNoOp(actions))
@@ -93,6 +109,7 @@ func Test_DeploymentCreated_OneComponent(t *testing.T) {
 }
 
 func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	app.Components["A"] = db.Component{
 		Kind:       containerv1alpha1.Kind,
@@ -126,7 +143,7 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, nil, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, nil, newer)
 	require.NoError(t, err)
 
 	require.False(t, deploymentIsNoOp(actions))
@@ -165,6 +182,7 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 }
 
 func Test_DeploymentUpdated_OneComponent_Deleted(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	app.Components["A"] = db.Component{
 		Kind:       containerv1alpha1.Kind,
@@ -185,7 +203,7 @@ func Test_DeploymentUpdated_OneComponent_Deleted(t *testing.T) {
 
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, older, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, older, newer)
 	require.NoError(t, err)
 
 	require.False(t, deploymentIsNoOp(actions))
@@ -203,6 +221,7 @@ func Test_DeploymentUpdated_OneComponent_Deleted(t *testing.T) {
 }
 
 func Test_DeploymentUpdated_OneComponent_NoAction(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	app.Components["A"] = db.Component{
 		Kind:       containerv1alpha1.Kind,
@@ -228,7 +247,7 @@ func Test_DeploymentUpdated_OneComponent_NoAction(t *testing.T) {
 
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, older, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, older, newer)
 	require.NoError(t, err)
 
 	require.True(t, deploymentIsNoOp(actions))
@@ -246,6 +265,7 @@ func Test_DeploymentUpdated_OneComponent_NoAction(t *testing.T) {
 }
 
 func Test_DeploymentUpdated_OneComponent_RevisionUpgraded(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	app.Components["A"] = db.Component{
 		Kind:       containerv1alpha1.Kind,
@@ -271,7 +291,7 @@ func Test_DeploymentUpdated_OneComponent_RevisionUpgraded(t *testing.T) {
 
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, older, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, older, newer)
 	require.NoError(t, err)
 
 	require.False(t, deploymentIsNoOp(actions))
@@ -289,6 +309,7 @@ func Test_DeploymentUpdated_OneComponent_RevisionUpgraded(t *testing.T) {
 }
 
 func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	app.Name = "testapp"
 	app.Components["A"] = db.Component{
@@ -346,7 +367,7 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, nil, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, nil, newer)
 	require.NoError(t, err)
 
 	require.False(t, deploymentIsNoOp(actions))
@@ -366,6 +387,7 @@ func Test_DeploymentCreated_MultipleComponents_ServiceBinding(t *testing.T) {
 }
 
 func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	app.Name = "radius/myapp"
 	app.Components["A"] = db.Component{
@@ -401,7 +423,7 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, nil, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, nil, newer)
 	require.NoError(t, err)
 
 	require.False(t, deploymentIsNoOp(actions))
@@ -435,6 +457,7 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 }
 
 func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
+	ctx := createContext(t)
 	app := db.NewApplication()
 	app.Name = "radius/myapp"
 	app.Components["A"] = db.Component{
@@ -469,7 +492,7 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 
 	rp := rp{}
 
-	actions, err := rp.computeDeploymentActions(app, nil, newer)
+	actions, err := rp.computeDeploymentActions(ctx, app, nil, newer)
 	require.NoError(t, err)
 
 	require.False(t, deploymentIsNoOp(actions))

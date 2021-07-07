@@ -77,20 +77,13 @@ Now you are ready to deploy the application for the first time.
 1. Confirm that your Radius application was deployed:
 
    ```sh
-   rad application list
+   rad component list --application dapr-hello
    ```
 
-   You should see your `dapr-hello` application. Example output: 
+   You should see your `nodeapp` component. Example output: 
    ```
-   {
-     "value": [
-       {
-         "id": "/subscriptions/{SUB-ID}/resourceGroups/{RESOURCE-GROUP}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/dapr-hello",
-         "name": "radius/dapr-hello",
-         "type": "Microsoft.CustomProviders/resourceProviders/Applications"
-       }
-     ]
-   }
+   COMPONENT  KIND
+   nodeapp    radius.dev/Container@v1alpha1
    ```
 
 1. To test your `dapr-hello` application, open a local tunnel to your application:

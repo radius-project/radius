@@ -5,13 +5,16 @@
 
 ##@ Test
 
+# Will be set by our build workflow, this is just a default
+TEST_TIMEOUT ?=1h
+
 .PHONY: test
 test: ## Runs unit tests, excluding kubernetes controller tests
 	go test ./pkg/...
 
-.PHONY: test-integration
-test-integration: ## Runs integration tests
-	go test ./test/integrationtests/... -timeout 1h -v -parallel 20
+.PHONY: test-functional-azure
+test-functional-azure: ## Runs Azure functional tests
+	go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.19.2

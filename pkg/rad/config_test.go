@@ -128,6 +128,7 @@ environment:
       kind: azure
       subscriptionid: testsub
       resourcegroup: testrg
+      controlplaneresourcegroup: FAKE-testrg
       clustername: testcluster
       extra: testextra
 `
@@ -148,6 +149,7 @@ environment:
 	require.Equal(t, "azure", aenv.Kind)
 	require.Equal(t, "testsub", aenv.SubscriptionID)
 	require.Equal(t, "testrg", aenv.ResourceGroup)
+	require.Equal(t, "FAKE-testrg", aenv.ControlPlaneResourceGroup)
 	require.Equal(t, map[string]interface{}{"extra": "testextra"}, aenv.Properties)
 }
 

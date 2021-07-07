@@ -8,7 +8,6 @@ package cmd
 import (
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var envInitLocalCmd = &cobra.Command{
@@ -16,8 +15,8 @@ var envInitLocalCmd = &cobra.Command{
 	Short: "Initializes a local environment",
 	Long:  `Initializes a local environment`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		v := viper.GetViper()
-		env, err := rad.ReadEnvironmentSection(v)
+		config := ConfigFromContext(cmd.Context())
+		env, err := rad.ReadEnvironmentSection(config)
 		if err != nil {
 			return err
 		}
@@ -28,9 +27,9 @@ var envInitLocalCmd = &cobra.Command{
 		if len(env.Items) == 1 {
 			env.Default = "local"
 		}
-		rad.UpdateEnvironmentSection(v, env)
+		rad.UpdateEnvironmentSection(config, env)
 
-		err = rad.SaveConfig()
+		err = rad.SaveConfig(config)
 		if err != nil {
 			return err
 		}

@@ -43,6 +43,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
 		workloads.ResourceKindAzurePodIdentity:                 handlers.NewAzurePodIdentityHandler(arm),
 		workloads.ResourceKindAzureUserAssignedManagedIdentity: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 		workloads.ResourceKindAzureRoleAssignment:              handlers.NewAzureRoleAssignmentHandler(arm),
+		workloads.ResourceKindAzureKeyVaultSecret:              handlers.NewAzureKeyVaultSecretHandler(arm),
 	}
 	return NewModel(renderers, handlers)
 }

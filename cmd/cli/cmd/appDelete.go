@@ -35,7 +35,8 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	env, err := rad.RequireEnvironment(cmd)
+	config := ConfigFromContext(cmd.Context())
+	env, err := rad.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}
@@ -82,7 +83,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = updateApplicationConfig(env, applicationName)
+	err = updateApplicationConfig(config, env, applicationName)
 	if err != nil {
 		return err
 	}
@@ -91,11 +92,10 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func updateApplicationConfig(env environments.Environment, applicationName string) error {
+func updateApplicationConfig(config *viper.Viper, env environments.Environment, applicationName string) error {
 	// If the application we are deleting is the default application, remove it
 	if env.GetDefaultApplication() == applicationName {
-		v := viper.GetViper()
-		envSection, err := rad.ReadEnvironmentSection(v)
+		envSection, err := rad.ReadEnvironmentSection(config)
 		if err != nil {
 			return err
 		}
@@ -104,9 +104,9 @@ func updateApplicationConfig(env environments.Environment, applicationName strin
 
 		envSection.Items[env.GetName()][environments.EnvironmentKeyDefaultApplication] = ""
 
-		rad.UpdateEnvironmentSection(v, envSection)
+		rad.UpdateEnvironmentSection(config, envSection)
 
-		err = rad.SaveConfig()
+		err = rad.SaveConfig(config)
 		if err != nil {
 			return err
 		}

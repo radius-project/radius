@@ -19,6 +19,8 @@ jobs:
 
       # Radius Test subscription
       INTEGRATION_TEST_SUBSCRIPTION_ID: "85716382-7362-45c3-ae03-2126e459a123"
+      # Log Analytics workspace ID where the test logs will be redirected to.
+      INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourcegroups/radiusrplogs/providers/microsoft.operationalinsights/workspaces/rplogs"
 
     # Rough order of logic here
     #
@@ -79,7 +81,8 @@ jobs:
             -e ${{ steps.generate-resource-group-name.outputs.result }} \
             --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
-            --location "${{ steps.select-location.outputs.result }}"
+            --location "${{ steps.select-location.outputs.result }}" \
+            --loganalytics-workspace-id "${{ env.INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID }}"
       - name: Display Environment (Sanity Check)
         run: go run cmd/cli/main.go env list
       - name: Register Environment
@@ -97,8 +100,8 @@ jobs:
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WORKFLOWID: ${{ env.GITHUB_RUN_ID }}
-          WORKFLOWURL: 'https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}'
+          WORKFLOWID: ${{ github.run_id }}
+          WORKFLOWURL: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
         with:
           filename: .github/ISSUE_TEMPLATE/environment-failure.md
       - name: Cleanup on failure

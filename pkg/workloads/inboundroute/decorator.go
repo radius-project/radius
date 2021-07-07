@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
@@ -78,12 +79,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			Name:      w.Name,
 			Namespace: w.Application,
 			Labels: map[string]string{
-				"radius.dev/application": w.Application,
-				"radius.dev/component":   w.Name,
-				// TODO get the component revision here...
-				"app.kubernetes.io/name":       w.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
+				keys.LabelRadiusApplication:   w.Application,
+				keys.LabelRadiusComponent:     w.Name,
+				keys.LabelKubernetesName:      w.Name,
+				keys.LabelKubernetesPartOf:    w.Application,
+				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 			},
 		},
 	}

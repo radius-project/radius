@@ -8,9 +8,9 @@ package radrp
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/db"
@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/revision"
+	"github.com/go-logr/logr"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -78,6 +79,7 @@ func (r *rp) ListApplications(ctx context.Context, id resources.ResourceID) (res
 	}
 
 	list := &rest.ResourceList{Value: items}
+
 	return rest.NewOKResponse(list), nil
 }
 
@@ -99,6 +101,10 @@ func (r *rp) GetApplication(ctx context.Context, id resources.ResourceID) (rest.
 }
 
 func (r *rp) UpdateApplication(ctx context.Context, a *rest.Application) (rest.Response, error) {
+	ctx = radlogger.WrapLogContext(ctx,
+		radlogger.LogFieldAppName, a.Name,
+		radlogger.LogFieldAppID, a.ID,
+	)
 	_, err := a.GetApplicationID()
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -320,6 +326,13 @@ func (r *rp) GetDeployment(ctx context.Context, id resources.ResourceID) (rest.R
 
 func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Response, error) {
 	id, err := d.GetDeploymentID()
+	ctx = radlogger.WrapLogContext(ctx,
+		radlogger.LogFieldDeploymentName, d.Name,
+		radlogger.LogFieldAppName, id.App.Name(),
+		radlogger.LogFieldAppID, id.App.ID,
+		radlogger.LogFieldDeploymentID, d.ID)
+	logger := radlogger.GetLogger(ctx)
+
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
@@ -354,7 +367,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	// TODO: support for cancellation of a deployment in flight. We don't have a good way now to
 	// cancel a deployment that's in progress. If you deploy twice at once the results are not determinisitic.
 
-	actions, err := r.computeDeploymentActions(app, olddbitem, newdbitem)
+	actions, err := r.computeDeploymentActions(ctx, app, olddbitem, newdbitem)
 	if err != nil {
 		// An error computing deployment actions is generally the users' fault.
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -363,7 +376,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	eq := deploymentIsNoOp(actions)
 	if eq && olddbitem != nil {
 		// No changes to the deployment - nothing to do.
-		log.Printf("%T is unchanged.", olddbitem)
+		logger.Info("Deployment is unchanged.")
 		return rest.NewOKResponse(newRESTDeploymentFromDB(olddbitem)), nil
 	}
 
@@ -395,6 +408,11 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		PercentComplete: 0,
 	}
 
+	logger = logger.WithValues(
+		radlogger.LogFieldOperationID, oid.Resource.ID,
+		radlogger.LogFieldResourceName, id.Resource.Name(),
+		radlogger.LogFieldResourceID, id.Resource.ID)
+
 	_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 	if err != nil {
 		return nil, err
@@ -409,14 +427,14 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	// OK we've updated the database to denote that the deployment is in process - now we're ready
 	// to start deploying in the background.
 	go func() {
-		ctx := context.Background()
-		log.Printf("processing deployment '%s' in the background", d.ID)
+		ctx := logr.NewContext(context.Background(), logger)
+		logger.Info("processing deployment in the background")
 		var failure *armerrors.ErrorDetails = nil
 		status := rest.SuccededStatus
 
 		err := r.deploy.UpdateDeployment(ctx, app.FriendlyName(), newdbitem.Name, &newdbitem.Status, actions)
 		if _, ok := err.(*deployment.CompositeError); ok {
-			log.Printf("deployment '%s' failed with error: %v", d.ID, err)
+			logger.Error(err, "deployment failed")
 			// Composite error is what we use for validation problems
 			status = rest.FailedStatus
 			failure = &armerrors.ErrorDetails{
@@ -425,7 +443,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 				Target:  id.Resource.ID,
 			}
 		} else if err != nil {
-			log.Printf("deployment '%s' failed with error: %v", d.ID, err)
+			logger.Error(err, "deployment failed")
 			// Other errors represent a generic failure, this should map to a 500.
 			status = rest.FailedStatus
 			failure = &armerrors.ErrorDetails{
@@ -440,12 +458,12 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		if err != nil {
 			// If we get here we're not going to be able to update the operation
 			// try to update the deployment as a cleanup step (if possible).
-			log.Printf("failed to retrieve operation '%s' - marking deployment as failed: %v", oid.Resource.ID, err)
+			logger.Error(err, "failed to retrieve operation. marking deployment as failed")
 			if status == rest.SuccededStatus {
 				status = rest.FailedStatus
 			}
 		} else {
-			log.Printf("updating operation '%s'", oid.Resource.ID)
+			logger.Info("updating operation")
 			operation.EndTime = time.Now().UTC().Format(time.RFC3339)
 			operation.PercentComplete = 100
 			operation.Status = string(status)
@@ -453,44 +471,44 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 			_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 			if err != nil {
-				log.Printf("failed to update operation '%s' - marking deployment as failed: %v", oid.Resource.ID, err)
+				logger.Error(err, "failed to update operation. marking deployment as failed")
 				if status == rest.SuccededStatus {
 					status = rest.FailedStatus
 				}
 			}
 
-			log.Printf("updated operation '%s' with status %s", oid.Resource.ID, status)
+			logger.WithValues(radlogger.LogFieldOperationStatus, status).Info("updated operation")
 		}
 
 		d, err := r.db.GetDeploymentByApplicationID(ctx, id.App, id.Resource.Name())
 		if err != nil {
-			log.Printf("failed to retrieve deployment '%s': %v", oid.Resource.ID, err)
+			logger.Error(err, "failed to retrieve operation")
 			return
 		}
 		d.Properties.ProvisioningState = string(status)
 		d.Status = newdbitem.Status
 		a, err := r.db.GetApplicationByID(ctx, id.App)
 		if err != nil {
-			log.Printf("failed to retrieve application '%s': %v", id.App.ID, err)
+			logger.Error(err, "failed to retrieve application")
 			return
 		}
 		// Update the deployment in the application
-		log.Printf("Updating deployment: %s in application", d.Name)
+		logger.Info("Updating deployment")
 		a.Deployments[id.Resource.Name()] = *d
 
 		// Update components to track output resources created during deployment
 		for c, action := range actions {
-			log.Printf("Updating component: %s in application with %v output resources", c, len(action.Definition.Properties.OutputResources))
+			logger.Info(fmt.Sprintf("Updating component with %v output resources", len(action.Definition.Properties.OutputResources)))
 			a.Components[c] = *action.Definition
 		}
 
-		log.Printf("Updating application: %s", id.App)
+		logger.Info("Updating application")
 		ok, err := r.db.UpdateApplication(ctx, a)
 		if err != nil || !ok {
-			log.Printf("failed to update application '%s': %v", id.App.ID, err)
+			logger.Error(err, "failed to update application")
 			return
 		}
-		log.Printf("completed deployment '%s' in the background with status %s", d.ID, status)
+		logger.WithValues(radlogger.LogFieldOperationStatus, status).Info("completed deployment in the background with status")
 	}()
 
 	// As a limitation of custom resource providers, we have to use HTTP 202 for this.
@@ -500,6 +518,12 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	d, err := id.Deployment()
+	ctx = radlogger.WrapLogContext(ctx,
+		radlogger.LogFieldAppID, d.App.ID,
+		radlogger.LogFieldAppName, d.App.Name(),
+		radlogger.LogFieldResourceID, d.Resource.ID,
+		radlogger.LogFieldResourceName, d.Resource.Name())
+	logger := radlogger.GetLogger(ctx)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
@@ -524,7 +548,6 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		StartTime:       time.Now().UTC().Format(time.RFC3339),
 		PercentComplete: 0,
 	}
-
 	_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 	if err != nil {
 		return nil, err
@@ -540,11 +563,10 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 	// OK we've updated the database to denote that the deployment is in process - now we're ready
 	// to start deploying in the background.
 	go func() {
-		ctx := context.Background()
-		log.Printf("processing deletion of deployment '%s' in the background", d.Resource.ID)
+		ctx := logr.NewContext(context.Background(), logger)
+		logger.Info("processing deletion of deployment in the background")
 		var failure *armerrors.ErrorDetails = nil
 		status := rest.SuccededStatus
-
 		err := r.deploy.DeleteDeployment(ctx, d.App.Name(), d.Resource.Name(), &current.Status)
 		if _, ok := err.(*deployment.CompositeError); ok {
 			// Composite error is what we use for validation problems
@@ -568,7 +590,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		if err != nil {
 			// If we get here we're not going to be able to update the operation
 			// try to update the deployment as a cleanup step (if possible).
-			log.Printf("failed to retrieve operation '%s' - marking deletion as failed: %v", oid.Resource.ID, err)
+			logger.Error(err, "failed to retrieve operation. marking deletion as failed")
 			if status == rest.SuccededStatus {
 				status = rest.FailedStatus
 			}
@@ -580,7 +602,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 
 			_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
 			if err != nil {
-				log.Printf("failed to update operation '%s' - marking deployment as failed: %v", oid.Resource.ID, err)
+				logger.Error(err, "failed to update operation. marking deployment as failed")
 				if status == rest.SuccededStatus {
 					status = rest.FailedStatus
 				}
@@ -589,14 +611,14 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 
 		dd, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 		if err != nil {
-			log.Printf("failed to retrieve deployment '%s': %v", oid.Resource.ID, err)
+			logger.Error(err, "failed to retrieve deployment")
 			return
 		}
 
 		if status == rest.SuccededStatus {
 			err := r.db.DeleteDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 			if err != nil {
-				log.Printf("failed to delete deployment '%s': %v", oid.Resource.ID, err)
+				logger.Error(err, "failed to delete deployment")
 				return
 			}
 		} else {
@@ -605,12 +627,12 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 			dd.Properties.ProvisioningState = string(status)
 			_, err = r.db.PatchDeploymentByApplicationID(ctx, d.App, d.Resource.Name(), dd)
 			if err != nil {
-				log.Printf("failed to update deployment '%s': %v", oid.Resource.ID, err)
+				logger.Error(err, "failed to update deployment")
 				return
 			}
 		}
 
-		log.Printf("completed deployment '%s' in the background", d.Resource.ID)
+		logger.Info("completed deployment in the background")
 	}()
 
 	return rest.NewAcceptedAsyncResponse(newRESTDeploymentFromDB(current), operation.ID), nil
@@ -767,7 +789,8 @@ func (r *rp) validate(obj interface{}) (rest.Response, error) {
 	return nil, err
 }
 
-func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment, newer *db.Deployment) (map[string]deployment.ComponentAction, error) {
+func (r *rp) computeDeploymentActions(ctx context.Context, app *db.Application, older *db.Deployment, newer *db.Deployment) (map[string]deployment.ComponentAction, error) {
+	logger := radlogger.GetLogger(ctx)
 	// This will stamp the deployment object with the identity of all of the 'latest' revisions
 	// of the components.
 	active, err := newer.AssignRevisions(app)
@@ -838,16 +861,17 @@ func (r *rp) computeDeploymentActions(app *db.Application, older *db.Deployment,
 	}
 
 	for _, action := range actions {
+		logger := logger.WithValues(radlogger.LogFieldComponentName, action.ComponentName)
 		if action.Operation == deployment.CreateWorkload {
-			log.Printf("component %s is added in this update", action.ComponentName)
+			logger.Info("component is added in this update")
 		} else if action.Operation == deployment.DeleteWorkload {
-			log.Printf("component %s is removed in this update", action.ComponentName)
+			logger.Info("component is removed in this update")
 		} else if action.Operation == deployment.UpdateWorkload && action.NewRevision != action.OldRevision {
-			log.Printf("component %s is upgraded %s->%s in this update", action.ComponentName, action.OldRevision, action.NewRevision)
+			logger.Info(fmt.Sprintf("component is upgraded %s->%s in this update", action.OldRevision, action.NewRevision))
 		} else if action.Operation == deployment.UpdateWorkload && action.NewRevision == action.Definition.Revision {
-			log.Printf("component %s is being upgraded without a definition change", action.ComponentName)
+			logger.Info("component is being upgraded without a definition change")
 		} else {
-			log.Printf("component %s is unchanged in this update", action.ComponentName)
+			logger.Info("component is unchanged in this update")
 		}
 	}
 

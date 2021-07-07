@@ -6,11 +6,12 @@
 package radrp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
@@ -35,282 +36,301 @@ type handler struct {
 }
 
 func (h *handler) listApplications(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.ListApplications(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.ListApplications(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) getApplication(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.GetApplication(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.GetApplication(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) updateApplication(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	input := &rest.Application{}
 	err := readJSONResource(req, input, resourceID(req))
 	if err != nil {
-		badRequest(w, err)
+		badRequest(ctx, w, err)
 		return
 	}
 
-	response, err := h.rp.UpdateApplication(req.Context(), input)
+	response, err := h.rp.UpdateApplication(ctx, input)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) deleteApplication(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.DeleteApplication(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.DeleteApplication(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) listComponents(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.ListComponents(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.ListComponents(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) getComponent(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.GetComponent(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.GetComponent(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) updateComponent(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	// Treat invalid input as a bad request
 	input := &rest.Component{}
 	err := readJSONResource(req, input, resourceID(req))
 	if err != nil {
-		badRequest(w, err)
+		badRequest(ctx, w, err)
 		return
 	}
 
-	response, err := h.rp.UpdateComponent(req.Context(), input)
+	response, err := h.rp.UpdateComponent(ctx, input)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) deleteComponent(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.DeleteComponent(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.DeleteComponent(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) listDeployments(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.ListDeployments(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.ListDeployments(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) getDeployment(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.GetDeployment(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.GetDeployment(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) updateDeployment(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	input := &rest.Deployment{}
 	err := readJSONResource(req, input, resourceID(req))
 	if err != nil {
-		badRequest(w, err)
+		badRequest(ctx, w, err)
 		return
 	}
 
-	response, err := h.rp.UpdateDeployment(req.Context(), input)
+	response, err := h.rp.UpdateDeployment(ctx, input)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) deleteDeployment(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.DeleteDeployment(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.DeleteDeployment(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) listScopes(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.ListScopes(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.ListScopes(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) getScope(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.GetScope(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.GetScope(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) updateScope(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	input := &rest.Scope{}
 	err := readJSONResource(req, input, resourceID(req))
 	if err != nil {
-		badRequest(w, err)
+		badRequest(ctx, w, err)
 		return
 	}
 
-	response, err := h.rp.UpdateScope(req.Context(), input)
+	response, err := h.rp.UpdateScope(ctx, input)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) deleteScope(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.DeleteScope(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.DeleteScope(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func (h *handler) getDeploymentOperation(w http.ResponseWriter, req *http.Request) {
-	response, err := h.rp.GetDeploymentOperationByID(req.Context(), resourceID(req))
+	ctx := req.Context()
+	response, err := h.rp.GetDeploymentOperationByID(ctx, resourceID(req))
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 
-	err = response.Apply(w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
-		internalServerError(w, err)
+		internalServerError(ctx, w, err)
 		return
 	}
 }
 
 func resourceID(req *http.Request) resources.ResourceID {
+	logger := radlogger.GetLogger(req.Context())
 	id, err := resources.Parse(req.URL.Path)
 	if err != nil {
-		log.Printf("URL was not a valid resource id: %v", req.URL.Path)
+		logger.Info("URL was not a valid resource id: %v", req.URL.Path)
 		// just log the error - it will be handled in the RP layer.
 	}
 	return id
 }
 
-func badRequest(w http.ResponseWriter, err error) {
+func badRequest(ctx context.Context, w http.ResponseWriter, err error) {
+	logger := radlogger.GetLogger(ctx)
 	// Try to use the ARM format to send back the error info
 	body := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
@@ -321,13 +341,13 @@ func badRequest(w http.ResponseWriter, err error) {
 	// If we fail to serialize the error, log it and just reply with a 'plain' 500
 	bytes, err := json.MarshalIndent(body, "", "  ")
 	if err != nil {
-		log.Printf("error marshaling %T: %v", body, err)
+		logger.Error(err, fmt.Sprintf("error marshaling %T", body))
 		w.WriteHeader(500)
 		return
 	}
 
 	if err != nil {
-		log.Printf("error marshaling %T: %v", body, err)
+		logger.Error(err, fmt.Sprintf("error marshaling %T", body))
 		w.WriteHeader(500)
 		return
 	}
@@ -338,12 +358,13 @@ func badRequest(w http.ResponseWriter, err error) {
 	if err != nil {
 		// There's no way to recover if we fail writing here, we already set the stautus
 		// code and likly partially wrote to the response stream.
-		log.Printf("error writing marshaled %T bytes to output: %s", body, err)
+		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
 	}
 }
 
 // Responds with an HTTP 500
-func internalServerError(w http.ResponseWriter, err error) {
+func internalServerError(ctx context.Context, w http.ResponseWriter, err error) {
+	logger := radlogger.GetLogger(ctx)
 	// Try to use the ARM format to send back the error info
 	body := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
@@ -354,13 +375,13 @@ func internalServerError(w http.ResponseWriter, err error) {
 	// If we fail to serialize the error, log it and just reply with a 'plain' 500
 	bytes, err := json.MarshalIndent(body, "", "  ")
 	if err != nil {
-		log.Printf("error marshaling %T: %v", body, err)
+		logger.Error(err, fmt.Sprintf("error marshaling %T", body))
 		w.WriteHeader(500)
 		return
 	}
 
 	if err != nil {
-		log.Printf("error marshaling %T: %v", body, err)
+		logger.Error(err, fmt.Sprintf("error marshaling %T", body))
 		w.WriteHeader(500)
 		return
 	}
@@ -371,7 +392,7 @@ func internalServerError(w http.ResponseWriter, err error) {
 	if err != nil {
 		// There's no way to recover if we fail writing here, we already set the stautus
 		// code and likly partially wrote to the response stream.
-		log.Printf("error writing marshaled %T bytes to output: %s", body, err)
+		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
 	}
 }
 

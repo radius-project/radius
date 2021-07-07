@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var releaseCmd = &cobra.Command{
@@ -100,9 +99,7 @@ func init() {
 }
 
 func readEnvironmentFromConfigfile(configpath string, name string) (*environments.AzureCloudEnvironment, error) {
-	v := viper.GetViper()
-	v.SetConfigFile(configpath)
-	err := v.ReadInConfig()
+	v, err := rad.LoadConfig(configpath)
 	if err != nil {
 		return nil, err
 	}

@@ -11,18 +11,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"net/textproto"
 	"testing"
 	"time"
 
 	"github.com/Azure/radius/mocks"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/revision"
+	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -36,12 +39,13 @@ const (
 )
 
 type test struct {
-	t      *testing.T
-	db     *mocks.MockRadrpDB
-	ctrl   *gomock.Controller
-	k8s    *mocks.MockClient
-	server *httptest.Server
-	deploy *mocks.MockDeploymentProcessor
+	t       *testing.T
+	db      *mocks.MockRadrpDB
+	ctrl    *gomock.Controller
+	k8s     *mocks.MockClient
+	server  *httptest.Server
+	deploy  *mocks.MockDeploymentProcessor
+	handler http.Handler
 }
 
 func start(t *testing.T) *test {
@@ -59,17 +63,18 @@ func start(t *testing.T) *test {
 	}
 
 	s := NewServer(options)
-
 	server := httptest.NewServer(s.Handler)
+	h := rewriteHandler(t, server.Config.Handler)
 	t.Cleanup(server.Close)
 
 	return &test{
-		t:      t,
-		db:     db,
-		k8s:    k8s,
-		deploy: deploy,
-		ctrl:   ctrl,
-		server: server,
+		t:       t,
+		db:      db,
+		k8s:     k8s,
+		deploy:  deploy,
+		ctrl:    ctrl,
+		server:  server,
+		handler: h,
 	}
 }
 
@@ -258,7 +263,7 @@ func (test *test) ValidateDeploymentOperationInProgress(location string) *rest.D
 	req := httptest.NewRequest("GET", location, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(test.t, 202, w.Code)
 	require.Equal(test.t, location, w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location")))
@@ -277,7 +282,7 @@ func (test *test) PollForTerminalStatus(id resources.ResourceID) (*httptest.Resp
 		req := httptest.NewRequest("GET", id.ID, nil)
 		w = httptest.NewRecorder()
 
-		test.server.Config.Handler.ServeHTTP(w, req)
+		test.handler.ServeHTTP(w, req)
 		if w.Code == 404 {
 			return w, nil
 		}
@@ -318,7 +323,7 @@ func (test *test) PollForFailedOperation(id resources.ResourceID, location strin
 	req := httptest.NewRequest("GET", location, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	armerr := armerrors.ErrorResponse{}
 	err := json.Unmarshal(w.Body.Bytes(), &armerr)
@@ -334,7 +339,7 @@ func Test_GetApplication_NotFound(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -356,7 +361,7 @@ func Test_GetApplication_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", applicationID.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -378,7 +383,7 @@ func Test_ListApplications_Empty(t *testing.T) {
 	req := httptest.NewRequest("GET", applicationList().ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -394,7 +399,7 @@ func Test_ListApplications_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", applicationList().ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -413,6 +418,21 @@ func Test_ListApplications_Found(t *testing.T) {
 	requireJSON(t, expected, w)
 }
 
+func rewriteHandler(t *testing.T, h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		logger, err := radlogger.NewTestLogger(t)
+		if err != nil {
+			t.Error(err)
+			h.ServeHTTP(w, r.WithContext(context.Background()))
+			return
+		}
+		ctx := logr.NewContext(context.Background(), logger)
+		h.ServeHTTP(w, r.WithContext(ctx))
+	}
+
+	return http.HandlerFunc(fn)
+}
+
 func Test_UpdateApplication_Create(t *testing.T) {
 	test := start(t)
 
@@ -426,7 +446,7 @@ func Test_UpdateApplication_Create(t *testing.T) {
 	req := httptest.NewRequest("PUT", applicationID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 201, w.Code)
 
@@ -462,7 +482,7 @@ func Test_UpdateApplication_Update(t *testing.T) {
 	req := httptest.NewRequest("PUT", applicationID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -490,7 +510,7 @@ func Test_DeleteApplication_NotFound(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -504,7 +524,7 @@ func Test_DeleteApplication_Found(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -516,7 +536,7 @@ func Test_GetComponent_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -538,7 +558,7 @@ func Test_GetComponent_NotFound(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -561,7 +581,7 @@ func Test_GetComponent_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", componentID.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -588,7 +608,7 @@ func Test_ListComponents_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -613,7 +633,7 @@ func Test_ListComponents_Empty(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -630,7 +650,7 @@ func Test_ListComponents_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", componentList(TestApplicationName).ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -667,7 +687,7 @@ func Test_UpdateComponent_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -703,7 +723,7 @@ func Test_UpdateComponent_Create(t *testing.T) {
 	req := httptest.NewRequest("PUT", componentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 201, w.Code)
 
@@ -740,7 +760,7 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 	req := httptest.NewRequest("PUT", componentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -789,7 +809,7 @@ func Test_UpdateComponent_Update(t *testing.T) {
 	req := httptest.NewRequest("PUT", componentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -819,7 +839,7 @@ func Test_DeleteComponent_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -833,7 +853,7 @@ func Test_DeleteComponent_NotFound(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -848,7 +868,7 @@ func Test_DeleteComponent_Found(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -860,7 +880,7 @@ func Test_GetDeployment_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -882,7 +902,7 @@ func Test_GetDeployment_NotFound(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -905,7 +925,7 @@ func Test_GetDeployment_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", deploymentID.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -929,7 +949,7 @@ func Test_ListDeployments_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -954,7 +974,7 @@ func Test_ListDeployments_Empty(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -971,7 +991,7 @@ func Test_ListDeployments_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", deploymentList(TestApplicationName).ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -1004,7 +1024,7 @@ func Test_UpdateDeployment_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -1049,7 +1069,7 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1111,7 +1131,7 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1174,7 +1194,7 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1252,7 +1272,7 @@ func Test_UpdateDeployment_FailureCanBeRetried(t *testing.T) {
 	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1297,7 +1317,7 @@ func Test_UpdateDeployment_FailureCanBeRetried(t *testing.T) {
 	req = httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w = httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location = w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1352,7 +1372,7 @@ func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
 	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1403,7 +1423,7 @@ func Test_UpdateDeployment_UpdateNoOp(t *testing.T) {
 	req := httptest.NewRequest("PUT", deploymentID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -1427,7 +1447,7 @@ func Test_DeleteDeployment_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -1441,7 +1461,7 @@ func Test_DeleteDeployment_NotFound(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -1470,7 +1490,7 @@ func Test_DeleteDeployment_Found_Success(t *testing.T) {
 	req := httptest.NewRequest("DELETE", deploymentID.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1526,7 +1546,7 @@ func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
 	req := httptest.NewRequest("DELETE", deploymentID.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1584,7 +1604,7 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 	req := httptest.NewRequest("DELETE", deploymentID.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 202, w.Code)
 	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
@@ -1625,7 +1645,7 @@ func Test_GetScope_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -1647,7 +1667,7 @@ func Test_GetScope_NotFound(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -1670,7 +1690,7 @@ func Test_GetScope_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", scopeID.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -1693,7 +1713,7 @@ func Test_ListScopes_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -1718,7 +1738,7 @@ func Test_ListScopes_Empty(t *testing.T) {
 	req := httptest.NewRequest("GET", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -1735,7 +1755,7 @@ func Test_ListScopes_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", scopeList(TestApplicationName).ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -1768,7 +1788,7 @@ func Test_UpdateScopes_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("PUT", id.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 404, w.Code)
 
@@ -1800,7 +1820,7 @@ func Test_UpdateScopes_Create(t *testing.T) {
 	req := httptest.NewRequest("PUT", scopeID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 201, w.Code)
 
@@ -1833,7 +1853,7 @@ func Test_UpdateScopes_UpdateNoOp(t *testing.T) {
 	req := httptest.NewRequest("PUT", scopeID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -1866,7 +1886,7 @@ func Test_UpdateScopes_Update(t *testing.T) {
 	req := httptest.NewRequest("PUT", scopeID.ID, bytes.NewReader(b))
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 200, w.Code)
 
@@ -1890,7 +1910,7 @@ func Test_DeleteScope_NoApplication(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -1904,7 +1924,7 @@ func Test_DeleteScope_NotFound(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }
@@ -1919,7 +1939,7 @@ func Test_DeleteScope_Found(t *testing.T) {
 	req := httptest.NewRequest("DELETE", id.ID, nil)
 	w := httptest.NewRecorder()
 
-	test.server.Config.Handler.ServeHTTP(w, req)
+	test.handler.ServeHTTP(w, req)
 
 	require.Equal(t, 204, w.Code)
 }

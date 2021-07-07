@@ -2,10 +2,6 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'account-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   kind: 'MongoDB'
-  tags: {
-    radiustest: 'true'
-  }
-  //PROPERTIES
   properties: {
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'

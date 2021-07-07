@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/subscriptions"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
@@ -144,9 +145,7 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 				},
 				EnableRbacAuthorization: to.BoolPtr(true),
 			},
-			Tags: map[string]*string{
-				radresources.TagRadiusApplication: &options.Application,
-			},
+			Tags: keys.MakeTagsForRadiusComponent(options.Application, options.Component),
 		},
 	)
 

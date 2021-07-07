@@ -41,7 +41,8 @@ rad component logs orders --application icecream-store --follow
 # read logs from the 'daprd' sidecar container of the 'orders' component of the 'icecream-store' application
 rad component logs orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		env, err := rad.RequireEnvironment(cmd)
+		config := ConfigFromContext(cmd.Context())
+		env, err := rad.RequireEnvironment(cmd, config)
 		if err != nil {
 			return err
 		}

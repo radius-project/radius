@@ -10,7 +10,6 @@ import (
 
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,8 +19,8 @@ var envListCmd = &cobra.Command{
 	Long:  `List environments`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		v := viper.GetViper()
-		env, err := rad.ReadEnvironmentSection(v)
+		config := ConfigFromContext(cmd.Context())
+		env, err := rad.ReadEnvironmentSection(config)
 		if err != nil {
 			return err
 		}

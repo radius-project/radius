@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/model"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/db"
@@ -100,18 +101,29 @@ func main() {
 		log.Fatal(err)
 	}
 
+	logger, flushLogs, err := radlogger.NewLogger(fmt.Sprintf("radRP-%s", arm.ResourceGroup))
+	if err != nil {
+		panic(err)
+	}
+	defer flushLogs()
+	logger = logger.WithValues(
+		radlogger.LogFieldResourceGroup, arm.ResourceGroup,
+		radlogger.LogFieldSubscriptionID, arm.SubscriptionID)
+
 	options := radrp.ServerOptions{
 		Address:      ":" + port,
 		Authenticate: authenticate,
 		Deploy:       deployment.NewDeploymentProcessor(appmodel),
 		DB:           db.NewRadrpDB(client.Database(dbName)),
+		Logger:       logger,
 	}
 
-	log.Printf("listening on: '%s'...", options.Address)
+	logger.Info(fmt.Sprintf("listening on: '%s'...", options.Address))
 	server := radrp.NewServer(options)
 	err = server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
-	log.Println("shutting down...")
+
+	logger.Info("shutting down...")
 }

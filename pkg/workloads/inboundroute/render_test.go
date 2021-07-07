@@ -10,8 +10,11 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -27,8 +30,18 @@ func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorklo
 	return []workloads.OutputResource{}, nil
 }
 
+func createContext(t *testing.T) context.Context {
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
+}
+
 // No hostname or any other settings, should be using a default backend
 func Test_Render_Simple(t *testing.T) {
+	ctx := createContext(t)
 	renderer := &Renderer{
 		Inner: &noop{},
 	}
@@ -46,7 +59,7 @@ func Test_Render_Simple(t *testing.T) {
 	}
 	w := makeContainerComponent(trait, bindings)
 
-	resources, err := renderer.Render(context.Background(), w)
+	resources, err := renderer.Render(ctx, w)
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
@@ -54,11 +67,11 @@ func Test_Render_Simple(t *testing.T) {
 	require.NotNil(t, ingress)
 
 	labels := map[string]string{
-		workloads.LabelRadiusApplication: "test-app",
-		workloads.LabelRadiusComponent:   "test-container",
-		"app.kubernetes.io/name":         "test-container",
-		"app.kubernetes.io/part-of":      "test-app",
-		"app.kubernetes.io/managed-by":   "radius-rp",
+		keys.LabelRadiusApplication:   "test-app",
+		keys.LabelRadiusComponent:     "test-container",
+		keys.LabelKubernetesName:      "test-container",
+		keys.LabelKubernetesPartOf:    "test-app",
+		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 	}
 
 	require.Equal(t, "test-container", ingress.Name)
@@ -79,6 +92,7 @@ func Test_Render_Simple(t *testing.T) {
 }
 
 func Test_Render_WithHostname(t *testing.T) {
+	ctx := createContext(t)
 	renderer := &Renderer{
 		Inner: &noop{},
 	}
@@ -97,7 +111,7 @@ func Test_Render_WithHostname(t *testing.T) {
 	}
 	w := makeContainerComponent(trait, bindings)
 
-	resources, err := renderer.Render(context.Background(), w)
+	resources, err := renderer.Render(ctx, w)
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
@@ -105,11 +119,11 @@ func Test_Render_WithHostname(t *testing.T) {
 	require.NotNil(t, ingress)
 
 	labels := map[string]string{
-		workloads.LabelRadiusApplication: "test-app",
-		workloads.LabelRadiusComponent:   "test-container",
-		"app.kubernetes.io/name":         "test-container",
-		"app.kubernetes.io/part-of":      "test-app",
-		"app.kubernetes.io/managed-by":   "radius-rp",
+		keys.LabelRadiusApplication:   "test-app",
+		keys.LabelRadiusComponent:     "test-container",
+		keys.LabelKubernetesName:      "test-container",
+		keys.LabelKubernetesPartOf:    "test-app",
+		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 	}
 
 	require.Equal(t, "test-container", ingress.Name)
