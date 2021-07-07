@@ -66,8 +66,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := workloads.OutputResource{
-			LocalID:      localID,
-			ResourceKind: resourceKind,
+			LocalID:            localID,
+			ResourceKind:       resourceKind,
+			OutputResourceType: workloads.OutputResourceTypeArm,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.KubernetesNameKey:       w.Name,
@@ -95,8 +96,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to connect to a Storage Account
 		resource := workloads.OutputResource{
-			LocalID:      localID,
-			ResourceKind: workloads.ResourceKindDaprStateStoreAzureStorage,
+			LocalID:            localID,
+			ResourceKind:       workloads.ResourceKindDaprStateStoreAzureStorage,
+			OutputResourceType: workloads.OutputResourceTypeArm,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.KubernetesNameKey:       w.Name,

@@ -75,8 +75,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a servicebus topic
 		resource := workloads.OutputResource{
-			LocalID:      "AzureServiceBusTopic",
-			ResourceKind: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
+			LocalID:            "AzureServiceBusTopic",
+			ResourceKind:       workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
+			OutputResourceType: workloads.OutputResourceTypeArm,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -103,8 +104,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := workloads.OutputResource{
-			LocalID:      "AzureServiceBusTopic",
-			ResourceKind: workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
+			LocalID:            "AzureServiceBusTopic",
+			ResourceKind:       workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
+			OutputResourceType: workloads.OutputResourceTypeArm,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.ComponentNameKey:        component.Config.Name,
