@@ -19,11 +19,11 @@ func stringP(s string) *string {
 
 func TestGenerateErrorMessage(t *testing.T) {
 	type Info struct {
-		Code           string                          `json:"code,omitempty"`
-		Target         string                          `json:"target,omitempty"`
-		Message        string                          `json:"message,omitempty"`
-		Details        []radclient.ErrorDetail         `json:"details,omitempty"`
-		AdditionalInfo []radclient.ErrorAdditionalInfo `json:"additionalInfo,omitempty"`
+		Code           string                          `json:"code"`
+		Target         string                          `json:"target"`
+		Message        string                          `json:"message"`
+		Details        []radclient.ErrorDetail         `json:"details"`
+		AdditionalInfo []radclient.ErrorAdditionalInfo `json:"additionalInfo"`
 	}
 	for _, tc := range []struct {
 		name       string
