@@ -4,8 +4,8 @@ go 1.16
 
 require (
 	github.com/Azure/azure-sdk-for-go v53.3.0+incompatible
-	github.com/Azure/azure-sdk-for-go/sdk/armcore v0.6.0
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.14.2
+	github.com/Azure/azure-sdk-for-go/sdk/armcore v0.8.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.16.2
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.8.0
 	github.com/Azure/azure-sdk-for-go/sdk/to v0.1.4
 	github.com/Azure/go-autorest/autorest v0.11.18
@@ -24,7 +24,6 @@ require (
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang/mock v1.5.0
-	github.com/google/go-cmp v0.5.2
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/imdario/mergo v0.3.12 // indirect
@@ -41,10 +40,9 @@ require (
 	go.mongodb.org/mongo-driver v1.5.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
-	golang.org/x/net v0.0.0-20210326220855-61e056675ecf // indirect
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20210326220804-49726bf1d181 // indirect
-	golang.org/x/text v0.3.5
+	golang.org/x/text v0.3.6
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
