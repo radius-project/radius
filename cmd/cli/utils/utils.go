@@ -43,33 +43,11 @@ func UnwrapErrorFromRawResponse(err error) error {
 // GenerateErrorMessage generates error message from InnerError
 // Mostly replicated from Error interface implementation of generated model.
 func GenerateErrorMessage(e radclient.ErrorResponse) string {
-	msg := ""
-	if e.InnerError != nil {
-		msg += "Error: \n"
-		if e.InnerError.Code != nil {
-			msg += fmt.Sprintf("\tCode: %v\n", *e.InnerError.Code)
-		}
-		if e.InnerError.Message != nil {
-			msg += fmt.Sprintf("\tMessage: %v\n", *e.InnerError.Message)
-		}
-		if e.InnerError.Target != nil {
-			msg += fmt.Sprintf("\tTarget: %v\n", *e.InnerError.Target)
-		}
-		if e.InnerError.Details != nil {
-			for _, value := range *e.InnerError.Details {
-				if value.Message != nil {
-					msg += fmt.Sprintf("\tDetails: %v\n", *value.Message)
-				}
-			}
-		}
-		if e.InnerError.AdditionalInfo != nil {
-			msg += fmt.Sprintf("\tAdditionalInfo: %v\n", *e.InnerError.AdditionalInfo)
-		}
+	if e.InnerError == nil {
+		return "missing error info"
 	}
-	if msg == "" {
-		msg = "missing error info"
-	}
-	return msg
+	b, _ := json.MarshalIndent(e.InnerError, "", "\t")
+	return string(b)
 }
 
 // GenerateEnvUrl Returns the URL string for an environment based on its subscriptionID and resourceGroup.
