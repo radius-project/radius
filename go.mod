@@ -24,6 +24,7 @@ require (
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang/mock v1.5.0
+	github.com/google/go-cmp v0.5.2
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/imdario/mergo v0.3.12 // indirect
