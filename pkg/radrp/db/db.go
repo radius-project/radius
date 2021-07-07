@@ -213,7 +213,7 @@ func (d radrpDB) PatchComponentByApplicationID(ctx context.Context, id resources
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldAppID, id,
-		radlogger.LogFieldAppName, name)
+		radlogger.LogFieldComponentName, name)
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: patch}}}}
 
 	logger.Info(fmt.Sprintf("Updating component in DB with operation filter: %s", filter))
