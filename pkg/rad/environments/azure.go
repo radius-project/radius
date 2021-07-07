@@ -29,12 +29,12 @@ func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
 
 // AzureCloudEnvironment represents an Azure Cloud Radius environment.
 type AzureCloudEnvironment struct {
-	Name                      string `mapstructure:"name" validate:"required" yaml:",omitempty"`
-	Kind                      string `mapstructure:"kind" validate:"required" yaml:",omitempty"`
-	SubscriptionID            string `mapstructure:"subscriptionid" validate:"required" yaml:",omitempty"`
-	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required" yaml:",omitempty"`
-	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required" yaml:",omitempty"`
-	ClusterName               string `mapstructure:"clustername" validate:"required" yaml:",omitempty"`
+	Name                      string `mapstructure:"name" validate:"required"`
+	Kind                      string `mapstructure:"kind" validate:"required"`
+	SubscriptionID            string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required"`
+	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
+	ClusterName               string `mapstructure:"clustername" validate:"required"`
 	DefaultApplication        string `mapstructure:"defaultapplication" yaml:",omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
