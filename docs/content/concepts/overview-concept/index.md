@@ -3,7 +3,7 @@ type: docs
 title: "Overview of Project Radius application model"
 linkTitle: "Application model"
 description: An overview of Project Radius application model and what it provides to the user
-weight: 10
+weight: 200
 ---
 
 Project Radius provides an *application model* - a descriptive framework for cloud native applications and their requirements. This section is a conceptual guide for how the Radius model is structured, and explains at high level the concepts at work when you describe and deploy an application with Radius.
@@ -164,7 +164,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     ...
 
     resource inventory 'Components' = {
-        name: 'inventory-store'
+        name: 'inventorystore'
         kind: 'dapr.io/StateStore@v1alpha1'
         properties: {
             config: {
@@ -201,69 +201,70 @@ Each Binding is provided by a single Component, which may specify:
 A Binding might be provided *implicitily* as part of the Component's kind. *eg. A PostgreSQL Component will also provide a PostgreSQL Binding without manual annotations.* It is typical for compute Components (your code) to require manual annotation of Binding, and non-compute Components (databases, infrastructure) to provide them implicitly.
 {{% /alert %}} 
 
-#### Dependencies
+#### Using a binding 
 
-A Binding may be **depended-upon** by multiple Components, which may specify:
+A Binding may be **depended-upon** by multiple Components (via `uses`), which may specify:
 
 - **Name** - the logical name of the Binding and Component that is being used
-- **Actions** - the ability to inject data into the dependent Component. eg. Set an environment variable to contain the connection string to a database
+- **Actions** - the ability to inject data into the dependent Component. eg. Set an environment variable to contain the connection string to a database (code example below)
 
-#### Computed values
+#### Using computed values in a binding 
 
-In addition to expressing a *logical* relationship, a Binding may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a binding can specify how wire up a *computed value* to an application concern. *eg. set the `DBCONNECTION` environment variable to the database's connection string*. These items are computed when the related resource is deployed. 
+In addition to expressing a *logical* relationship, a Binding may provide access to *computed values* such as a URI or connection string. These values are used to support loose-coupling in application code. The consumer of a binding can specify how wire up a *computed value* to an application concern. 
+
+For example, in the Radius application below, the `webapp` Component `uses` a Binding from the Component named `db`. For that Binding, the environment variable `DBCONNECTION` is being set to the `db` Component's MongoDB connection string. 
+
+```sh
+resource app 'radius.dev/Applications@v1alpha1' = {
+  name: 'cosmos-container'
+  
+  resource webapp 'Components' = {
+    name: 'todoapp'
+    kind: 'radius.dev/Container@v1alpha1'
+    properties: {
+      run: {...}
+      bindings: {
+        web: {
+          kind: 'http'
+          targetPort: 80
+        }
+      }
+
+      uses: [
+        {
+          binding: db.properties.bindings.mongo
+          env: {
+            DBCONNECTION: db.properties.bindings.mongo.connectionString
+          }
+        }
+      ]
+    }
+  }
+
+  resource db 'Components' = {
+    name: 'db'
+    kind: 'azure.com/CosmosDBMongo@v1alpha1'
+    properties: {
+      config: {
+        managed: true
+      }
+    }
+  }
+}
+```
 
 {{% alert title="💡 Key concept" color="info" %}}
-A Binding dependency between Components *may* affect the deployment order of Components or it *may not* depending on the kind of binding. eg. HTTP communication between components *may* be bi-directional, so it does not affect deployment order.
+A Binding dependency between Components *may* affect the deployment order of Components depending on the kind of binding. eg. HTTP communication between components *may* be bi-directional, so it does not affect deployment order.
 {{% /alert %}} 
 
-#### Kind
+#### Binding kind
 
 Bindings have a **Kind** that is protocol-oriented so that Components are minimally-coupled. Documenting protocols provides flexiblity when deploying to multiple environments.
 
-For example, in development you can use MongoDB in a container as a database. In production you might use Azure CosmosDB's MongoDB support. You can swap out a single Component definition (the database component) to make this change since all of your application code Components express a dependency on the MongoDB protocol, rather than a specific implementation.
+For example, in development you might use MongoDB in a container for your database, but in production you might use Azure CosmosDB's MongoDB support instead. You can swap out a single Component definition (the database component) to make this change since all of your application code Components express a dependency on the MongoDB protocol, rather than a specific implementation.
 
-### Example
+This flexibility is demonstrated in the above code example where the `webapp` Component `uses` the `db` Component's *MongoDB* binding: `db.properties.bindings.mongo`. 
 
-```bash
-resource app 'radius.dev/Applications@v1alpha1' = {
-    name: 'shopping-app'
-
-    resource store 'Components' = {
-        name: 'storefront'
-        kind: 'radius.dev/Container@v1alpha1'
-        properties: {
-            run: {
-                container: {
-                    image: 'radiusteam/storefront'
-                }
-            }
-            bindings: {
-                web: {
-                    kind: 'http'
-                    targetPort: 80
-                }
-            }
-            uses: [
-                {
-                    binding: inventory.properties.bindings.default
-                }
-            ]
-        }
-    }
-
-    resource inventory 'Components' = {
-        name: 'inventory-store'
-        kind: 'dapr.io/StateStore@v1alpha1'
-        properties: {
-            config: {
-                kind: 'state.azure.tablestorage'
-                managed: true
-            }
-        }
-    }
-
-}
-```
 
 ## Moving to production
 
@@ -343,7 +344,7 @@ This use of a *Kubernetes Label trait* is an example of extensibility. The defin
 
 Another benefit of using a trait like this is that you *also* benefit from separation of concerns. It seems likely that a *Kubernetes label trait* would be applied per-deployment rather than as part of the Component definition.
 
-### Example
+#### Example
 
 The above application updated to include traits would look like:
 
@@ -387,29 +388,28 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     resource cart 'Components' = {
         name: 'cart-api'
         kind: 'radius.dev/Container@v1alpha1'
-            properties: {
-                run: {
-                    container: {
-                        image: 'radiusteam/cart-api'
-                    }
+        properties: {
+            run: {
+                container: {
+                    image: 'radiusteam/cart-api'
                 }
-                uses: [
-                    {
-                        binding: store.properties.bindings.invoke
-                    }
-                ]
-                traits: [
-                    {
-                        kind: 'dapr.io/App@v1alpha1'
-                        appId: 'cart-api'
-                    }
-                ]
             }
+            uses: [
+                {
+                    binding: store.properties.bindings.invoke
+                }
+            ]
+            traits: [
+                {
+                    kind: 'dapr.io/App@v1alpha1'
+                    appId: 'cart-api'
+                }
+            ]
         }
     }
 
     resource inventory 'Components' = {
-        name: 'inventory-store'
+        name: 'inventorystore'
         kind: 'dapr.io/StateStore@v1alpha1'
         properties: {
             config: {
@@ -421,3 +421,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
 }
 ```
+
+## More info
+
+For further detail and examples about the Radius app model, see the [App model page]({{< ref app-model >}})

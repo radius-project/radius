@@ -3,20 +3,53 @@ type: docs
 title: "Azure CosmosDB Mongo"
 linkTitle: "Azure CosmosDB Mongo"
 description: "Sample application running MongoDB through Azure CosmosDB API"
+weight: 200
 ---
 
-This application showcases how Radius can use an Azure CosmosDB API for MongoDB in two different scenarios.
+The `azure.com/CosmosDBMongo` Component defines an [Azure CosmosDB](https://azure.microsoft.com/en-us/services/cosmos-db/) configured with a MongoDB API.
 
-## Using a Radius-managed CosmosDB
+## Configuration
 
-This example sets the property `managed: true` for the CosmosDB component. When `managed` is set to true, Radius will manage the lifecycle of the underlying database account and database.
+| Property | Description | Example(s) |
+|----------|-------------|---------|
+| managed | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. | `true`, `false`
+| resource | The ID of the user-managed CosmosDB with Mongo API to use for this Component. | `account::mongodb.id`
 
-{{< rad file="managed.bicep">}}
+## Resource lifecycle
 
-## Using a user-managed CosmosDB
+An `azure.com/CosmosDBMongo` can be either Radius-managed or user-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}})
 
-This example sets the `resource` property to a CosmosDB Mongo database. Setting `managed: false` or using the default value allows you to explicitly specify a link to an Azure resource that you manage. When you supply your own `resource` value, Radius will not change or delete the resource you provide. 
+### Radius managed
 
-In this example the CosmosDB resources are configured as part of the same `.bicep` template.
+{{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
 
-{{< rad file="unmanaged.bicep">}}
+### User managed
+
+#### Radius component
+
+{{< rad file="snippets/user-managed.bicep" embed=true marker="//SAMPLE" >}}
+
+#### Bicep resource
+
+{{< rad file="snippets/user-managed.bicep" embed=true marker="//BICEP" >}}
+
+## Bindings
+
+### cosmos
+
+The `cosmos` Binding of kind `azure.com/CosmosDBMongo` represents the the CosmosDB resource itself, and all APIs it offers.
+
+| Property | Description |
+|----------|-------------|
+| `connectionString` | The MongoDB connection string used to connect to the database.
+| `database` | The name of the database to which you are connecting.
+
+### mongo
+
+The `mongo` Binding of kind `mongodb.com/Mongo` represents the Mongo API offered by the CosmosDB resource.
+
+| Property | Description |
+|----------|-------------|
+| `connectionString` | The MongoDB connection string used to connect to the database.
+| `database` | The name of the database to which you are connecting.
+

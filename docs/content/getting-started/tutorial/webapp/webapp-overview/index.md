@@ -8,7 +8,7 @@ weight: 1000
 
 You will be deploying a *To-Do List* website. It will have two Radius *components*:
 
-- A containerized website written in Node.JS ("webapp")
+- A containerized website written in Node.JS ("todoapp")
 - An Azure CosmosDB database ("db")
 
 

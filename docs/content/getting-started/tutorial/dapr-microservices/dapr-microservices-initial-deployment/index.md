@@ -64,7 +64,7 @@ Note that you don't have to interact with multiple Resource Providers or manage 
 
 Now you are ready to deploy the application for the first time. 
 
-> **Reminder:** At this point, you should already be logged into the az CLI and already have an environment initialized. 
+> **Reminder:** At this point, you should already be logged into the az CLI and already have an [environment initialized]({{< ref create-environment.md >}}). 
 
 1. Deploy to your Radius environment via the rad CLI:
 

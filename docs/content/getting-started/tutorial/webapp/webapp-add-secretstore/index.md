@@ -33,10 +33,9 @@ A `kv` secret store component is used to specify a few properties about the KeyV
 
 Once the secret store is defined as a component, you can connect to it by referencing the `kv` component from within the `todoapp` component via a `uses` section. 
 
-The `uses` section is used to configure relationships between a component and bindings provided by other components. The `kv` is of kind `azure.com/AzureKeyVault@v1alpha1`.
-Here's what the todoapp component will look like with the `uses` section added within its properties:
+Here's what the `todoapp` component will look like with the key vault binding info added to the `uses` section. 
 
-```sh
+```
   resource todoapplication 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'
@@ -50,7 +49,13 @@ Here's what the todoapp component will look like with the `uses` section added w
           }
         }
         {
-          ...
+          binding: db.properties.bindings.mongo
+          secrets: {
+            store: kv.properties.bindings.default
+            keys: {
+              DBCONNECTION: db.properties.bindings.mongo.connectionString
+            }
+          }
         }
       ]
       bindings: [ ... ]
@@ -62,9 +67,9 @@ The `env` section declares operations to perform *based on* the relationship. In
 
 ## Modify the db dependency to create a secret
 
-Now, we no longer want the application to access the connection string to the database in clear text as an environment variable. Instead, we want to create a secret in the secret store which will store the connection string. For this, modify the `uses` section as below:-
+Now, we no longer want the application to access the connection string to the database in clear text as an environment variable. Instead, we want to create a secret in the secret store which will store the connection string. 
 
-```sh
+```
   uses: [
     {
       binding: kv.properties.bindings.default
@@ -84,7 +89,9 @@ Now, we no longer want the application to access the connection string to the da
   ]
 ```
 
-Here, the `secret` section declares the secrets to be created for the container to access the `db` component. In this case the `connectionString` value will be retrieved from the database and set as a secret in the secret store (identified by `store`) and the secret name will be `DBCONNECTION`.
+The `secrets` section declares the secrets to be created for the container to access the `db` component. 
+- The `connectionString` value will be retrieved from the database and set as a secret in the secret store (identified by `store` property)  
+- The secret name will be `DBCONNECTION`.
 
 ## Update your template.bicep file 
 
@@ -159,7 +166,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
    rad deploy template.bicep
    ```
 
-   This may take a few minutes because of the time required to create the database.
+   This may take a few minutes because of the time required to create the key vault.
 
 1. You can confirm that the new `kv` component was deployed by running:
 
@@ -184,7 +191,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 
    <img src="todoapp-withdb.png" width="400" alt="screenshot of the todo application with a database">
 
-   If your page matches, then it means that the container is able to access the connection string to the database from the secret store and use it to connect to the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database.
+   If your page matches, then it means that the container is able to access the connection string to the database from the secret store and use it to connect to the database. Just like before, you can test the features of the todo app. 
 
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 

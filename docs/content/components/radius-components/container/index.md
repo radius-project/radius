@@ -17,10 +17,6 @@ The `radius.dev/Container` component provides an abstraction for a container wor
 | properties.run.container.image | y | The registry and image to download and run in your container. | `radiusteam/frontend`
 | properties.bindings |  | Bindings that your container provides to other components. See [bindings](#bindings) for more  information | -
 
-### Environment variables
-
-Environment variables can be configured automatically via the component [`uses`configuration]({{< ref "components-model.md#uses" >}}).
-
 ## Bindings
 
 ### HTTP endpoint
@@ -30,25 +26,10 @@ The `http` binding provides an HTTP endpoint which opens a specified port on a c
 | Key | Required | Description | Example |
 |-----|:--------:|-------------|---------|
 | kind | y | Defines the binding type. | `http`
-| targetPort | Y | The HTTP port that is listening inside the container. | `3000`
+| targetPort | y | The HTTP port your application is listening on inside the container. Defaults to value of `port`. | `3000`
+| port | n | The port to serve the HTTP binding on. Defaults to `80`. | `3500`
 
-{{< rad file="frontend-backend.bicep" >}}
-
-```sh
-resource frontend 'Components' = {
-  name: 'frontend'
-  kind: 'radius.dev/Container@v1alpha1'
-  properties: {
-    run: {...}
-    bindings:
-      web: {
-        kind: 'http'
-        targetPort: 3000
-      }
-    }
-  }
-}
-```
+{{< rad file="snippets/frontend-backend.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
 
 ## Traits
 
@@ -59,33 +40,10 @@ The `radius.dev/InboundRoute` trait adds an ingress controller to the container 
 | Key | Required | Description | Example |
 |-----|:--------:|-------------|---------|
 | kind | y | Defines the trait type. | `'radius.dev/InboundRoute@v1alpha1'`
-| properties.binding | y | The binding to create an ingress controller on and expose to the internet. | `'frontend'`
+| binding | y | The binding to create an ingress controller on and expose to the internet. | `'frontend'`
+| hostname | n | The hostname to use for the inbound route. | `example.com`
 
-{{< rad file="inboundroute.bicep" >}}
-
-```sh
-resource frontend 'Components' = {
-  name: 'frontend'
-  kind: 'radius.dev/Container@v1alpha1'
-  properties: {
-    run: {...}
-    bindings: {
-      web: {
-        kind: 'http'
-        targetPort: 3000
-      }
-    }
-    traits: [
-      {
-        kind: 'radius.dev/InboundRoute@v1alpha1'
-        properties: {
-          binding: 'web'
-        }
-      }
-    ]
-  }
-}
-```
+{{< rad file="snippets/inboundroute.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
 
 ### Dapr sidecar
 
@@ -93,53 +51,8 @@ The `dapr.io/App` trait adds a [Dapr](https://dapr.io) sidecar to the container,
 
 | Key | Required | Description | Example |
 |-----|:--------:|-------------|---------|
+| kind | y | Defines the trait type. | `'dapr.io/App@v1alpha1'`
 | appId | y | The unique name for your Dapr application. | `frontend`
 | appPort | y | The name used to describe the component. Used when providing status and visualizing your application & component. | `webserver`
 
-```sh
-resource frontend 'Components' = {
-  name: 'frontend'
-  kind: 'radius.dev/Container@v1alpha1'
-  properties: {
-    run: {...}
-    traits: [
-      {
-        kind: 'dapr.io/App@v1alpha1'
-        appId: 'frontend'
-        appPort: 3000
-      }
-    ]
-  }
-}
-```
-
-## Example
-
-The following example shows a container component that provides an HTTP binding on container port 3000 and has a Dapr app trait.
-
-```sh
-resource todoapplication 'Components' = {
-  name: 'todoapp'
-  kind: 'radius.dev/Container@v1alpha1'
-  properties: {
-    run: {
-      container: {
-        image: 'radiusteam/tutorial-todoapp'
-      }
-    }
-    bindings: {
-      web: {
-        kind: 'http'
-        targetPort: 3000
-      }
-    }
-    traits: [
-      {
-        kind: 'dapr.io/App@v1alpha1'
-        appId: 'todoapp'
-        appPort: 3000
-      }
-    ]
-  }
-}
-```
+{{< rad file="snippets/dapr.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}

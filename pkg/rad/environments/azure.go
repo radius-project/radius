@@ -35,10 +35,10 @@ type AzureCloudEnvironment struct {
 	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required"`
 	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
 	ClusterName               string `mapstructure:"clustername" validate:"required"`
-	DefaultApplication        string `mapstructure:"defaultapplication,omitempty"`
+	DefaultApplication        string `mapstructure:"defaultapplication" yaml:",omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
-	Properties map[string]interface{} `mapstructure:",remain"`
+	Properties map[string]interface{} `mapstructure:",remain" yaml:",omitempty"`
 }
 
 func (e *AzureCloudEnvironment) GetName() string {

@@ -1,9 +1,13 @@
 {{ $file := .Get "file" }}
 {{ $filePath := (path.Join $.Page.File.Dir $file ) }}
 {{ $fileContents := $filePath | readFile }}
-{{ $lang := "bicep" }}
+{{ $lang := "sh" }}
 {{ $embed := .Get "embed" | default false }}
-<a href={{ print $file }} download>Download template file</a><br /><br />
+{{ $download := .Get "download" | default false }}
+{{ if $download }}
+<a class="btn btn-info btn-sm" href={{ print $file }} download>Download template file</a>
+<br /><br />
+{{ end }}
 {{ if $embed }}
 {{ if isset .Params "marker" }}
     {{ $marker := .Get "marker" }}
@@ -14,7 +18,6 @@
     {{ if hasPrefix $key "replace-key" }}
         {{ $replace := $value }}
         {{ $replaceValueParameter := printf "replace-value-%s" (slicestr $key (len "replace-key-")) }}
-        <p>{{ $replaceValueParameter }}</p>
         {{ $replaceWith := index $.Params $replaceValueParameter }}
         {{ $regex := printf "(?s)%s%s%s" $replace `(\n)?(?P<inner>.*?)(\n\s+)?` $replace }}
         {{ $fileContents = replaceRE $regex $replaceWith $fileContents}}
