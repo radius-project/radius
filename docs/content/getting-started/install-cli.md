@@ -24,19 +24,6 @@ These steps will setup the required tools and extensions to get you up and runni
 powershell -Command "iwr -useb https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1 | iex"
 ```
 
-### Install the latest unstable version
-
-```powershell
-powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList edge"
-```
-
-
-### Install a specific version
-
-```powershell
-powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>"
-```
-
 {{% /codetab %}}
 {{% codetab %}}
 
@@ -44,18 +31,6 @@ powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.n
 
 ```bash
 curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
-```
-
-### Install the latest unstable version
-
-```bash
-curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s edge
-```
-
-### Install a specific version
-
-```bash
-curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s <Version>
 ```
 
 {{% /codetab %}}
@@ -66,18 +41,6 @@ curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /
 
 ```bash
 wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash
-```
-
-### Install the latest unstable version
-
-```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s edge
-```
-
-### Install a specific version
-
-```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s <Version>
 ```
 
 {{% /codetab %}}
@@ -94,29 +57,11 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - |
 
 1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
-### Install the latest unstable version
-
-1. Download the `rad` CLI from one of these URLs:
-
-   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/edge/macos-x64/rad
-   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad
-   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/edge/windows-x64/rad.exe
-
-1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
-
-### Install a specific version
-
-1. Download the `rad` CLI from one of these URLs (replace `<version>` with your desired version):
-
-   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/macos-x64/rad
-   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/linux-x64/rad
-   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/windows-x64/rad.exe
-
-2. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
-
 {{% /codetab %}}
 
 {{< /tabs >}}
+
+For information on downloading the latest `edge` versions of Radius, select the "Edge" docs version from the dropdown above.
 
 ## Test it out
 
@@ -124,24 +69,26 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - |
 
    ```bash
    $ rad
-   
+   Project Radius CLI
+
    Usage:
      rad [command]
    
    Available Commands:
      application Manage applications
      bicep       Manage bicep compiler
+     completion  Generates shell completion scripts
      component   Manage components
      deploy      Deploy a RAD application
      deployment  Manage deployments
      env         Manage environments
-     expose      Expose local port
      help        Help about any command
    
    Flags:
          --config string   config file (default is $HOME/.rad/config.yaml)
      -h, --help            help for rad
-     -v, --version         version for rad
+     -o, --output string   output format (default is table, supported formats are json, table) (default "table")
+     -v, --version         version for radius
    
    Use "rad [command] --help" for more information about a command.
    ```
