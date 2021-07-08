@@ -1,0 +1,130 @@
+<mxfile>
+    <diagram id="DjvGPxJVZaPVGA5VkIdF" name="Page-1">
+        <mxGraphModel dx="1235" dy="654" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="RP" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#647687;strokeColor=#314354;fontColor=#ffffff;" vertex="1" parent="1">
+                    <mxGeometry x="120" y="120" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Provisioning&amp;nbsp;&lt;br&gt;Engine" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#647687;strokeColor=#314354;fontColor=#ffffff;" vertex="1" parent="1">
+                    <mxGeometry x="390" y="120" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Health Monitor" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#647687;strokeColor=#314354;fontColor=#ffffff;" vertex="1" parent="1">
+                    <mxGeometry x="400" y="420" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="RPs" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.azure_subscription;" vertex="1" parent="1">
+                    <mxGeometry x="630" y="50" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="Kubernetes" style="html=1;dashed=0;whitespace=wrap;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];shape=mxgraph.kubernetes.icon;prIcon=api;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" vertex="1" parent="1">
+                    <mxGeometry x="640" y="360" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="Health Data Planes" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=#10739e;fillColor=#b1ddf0;shape=mxgraph.azure.azure_subscription;" vertex="1" parent="1">
+                    <mxGeometry x="640" y="200" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="" style="shape=flexArrow;endArrow=classic;html=1;width=26;endSize=5.9;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" target="2">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="20" y="150" as="sourcePoint"/>
+                        <mxPoint x="110" y="149.5" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="12" value="Deployment" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="11">
+                    <mxGeometry x="-0.34" y="1" relative="1" as="geometry">
+                        <mxPoint x="10" y="1" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="13" value="" style="shape=flexArrow;endArrow=classic;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;width=20;endSize=7.43;fillColor=#dae8fc;strokeColor=#6c8ebf;" edge="1" parent="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="240" y="150" as="sourcePoint"/>
+                        <mxPoint x="390" y="150" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="14" value="Push Desired State" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="13">
+                    <mxGeometry x="-0.4384" y="-2" relative="1" as="geometry">
+                        <mxPoint x="15" y="-2" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="15" value="&lt;h1&gt;Rendering&lt;/h1&gt;&lt;p&gt;The RP accepts state changes to Components, Scopes, etc via ARM calls.&amp;nbsp;&lt;/p&gt;&lt;p&gt;The RP &quot;renders&quot; the output of each component and scope into its &lt;b&gt;desired state&lt;/b&gt;.&lt;/p&gt;&lt;p&gt;&lt;br&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="10" y="180" width="190" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="&lt;h1&gt;Provisioning&lt;/h1&gt;&lt;p&gt;The provisioning engine accepts as input the &lt;b&gt;desired state&lt;/b&gt; as well as the &lt;b&gt;actual state&lt;/b&gt; of resources.&lt;/p&gt;&lt;p&gt;The provisioning engine outputs the &lt;b&gt;actual state&lt;/b&gt; for the health monitor to consume&lt;/p&gt;&lt;p&gt;&lt;br&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="280" y="180" width="190" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="" style="shape=flexArrow;endArrow=classic;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;width=23;endSize=5.39;fillColor=#d5e8d4;strokeColor=#82b366;" edge="1" parent="1" source="3">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="510" y="280" as="sourcePoint"/>
+                        <mxPoint x="480" y="416" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="18" value="Push&lt;br&gt;Actual State" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="490" y="250" width="50" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="" style="endArrow=classic;startArrow=classic;html=1;entryX=0.029;entryY=0.883;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" target="5">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="510" y="150" as="sourcePoint"/>
+                        <mxPoint x="560" y="100" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="21" value="" style="endArrow=classic;startArrow=classic;html=1;entryX=0.02;entryY=0.666;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" target="8">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="510" y="167.02" as="sourcePoint"/>
+                        <mxPoint x="633.48" y="120.00000000000001" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="22" value="" style="endArrow=classic;startArrow=classic;html=1;" edge="1" parent="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="510" y="180" as="sourcePoint"/>
+                        <mxPoint x="680" y="360" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="23" value="" style="endArrow=classic;html=1;exitX=0.92;exitY=-0.058;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.14;entryY=0.98;entryDx=0;entryDy=0;entryPerimeter=0;fillColor=#f9f7ed;strokeColor=#CCCCCC;" edge="1" parent="1" source="4" target="5">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="510" y="420" as="sourcePoint"/>
+                        <mxPoint x="560" y="370" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="24" value="" style="endArrow=classic;html=1;exitX=0.92;exitY=-0.058;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.012;entryY=0.858;entryDx=0;entryDy=0;entryPerimeter=0;fillColor=#f9f7ed;strokeColor=#CCCCCC;" edge="1" parent="1" target="8">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="520.4000000000001" y="426.52" as="sourcePoint"/>
+                        <mxPoint x="656.8" y="118.79999999999995" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="25" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;fillColor=#f9f7ed;strokeColor=#CCCCCC;" edge="1" parent="1" source="4">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="530.4000000000001" y="436.52" as="sourcePoint"/>
+                        <mxPoint x="667" y="400" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="26" value="Query Actual State&amp;nbsp;&lt;br&gt;Apply Desired State" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="510" y="60" width="110" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="27" value="Query Health based on Actual State" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="530" y="440" width="130" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="28" value="" style="shape=flexArrow;endArrow=classic;html=1;strokeColor=#36393d;entryX=0.82;entryY=1.02;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;width=26;endSize=4.68;fillColor=#ffcc99;" edge="1" parent="1" source="4" target="2">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="510" y="360" as="sourcePoint"/>
+                        <mxPoint x="560" y="310" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="218" y="450"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="29" value="Push Actual State with Health" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="28">
+                    <mxGeometry x="-0.443" y="3" relative="1" as="geometry">
+                        <mxPoint x="36" y="27" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="30" value="&lt;h1&gt;Health Tracking&lt;/h1&gt;&lt;p&gt;The health monitor accepts updates to the &lt;b&gt;actual state&lt;/b&gt;&amp;nbsp;of resources as input.&lt;/p&gt;&lt;p&gt;The health monitor uses both push and pull techniques to monitor the health of resources and send updates to the RP.&lt;/p&gt;&lt;p&gt;The health monitor pushes the actual state + health info to the RP.&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="400" y="480" width="190" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" value="&lt;h1&gt;Desired State&lt;/h1&gt;&lt;p&gt;The output of &lt;b&gt;rendering&lt;/b&gt;&amp;nbsp;components and scope. Includes the state of logical resources and a dependency graph.&amp;nbsp;&lt;/p&gt;&lt;p&gt;Rendering is a pure function and does not mutate the state of any resources. Rendering is idempotent and the same definitions will always yield the same desired state.&lt;/p&gt;&lt;p&gt;Does not contain computed (physical) details of resources.&amp;nbsp;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry y="560" width="190" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="&lt;h1&gt;Actual State&lt;/h1&gt;&lt;p&gt;The output of reconciling the &lt;b&gt;desired state&lt;/b&gt;&amp;nbsp;against the hosting platform. Refers to real resources that exist or are being created.&lt;/p&gt;&lt;p&gt;Reconciliation matches the desired state against the actual state and captures the physical resources that match the logical resources in the desired state.&lt;/p&gt;&lt;p&gt;&lt;span&gt;Can refer to computed details (physical details of resources). eg: generated resource names, generated connection strings.&lt;/span&gt;&lt;br&gt;&lt;/p&gt;&lt;span style=&quot;color: rgba(0 , 0 , 0 , 0) ; font-family: monospace ; font-size: 0px&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20value%3D%22%22%20style%3D%22endArrow%3Dclassic%3Bhtml%3D1%3BexitX%3D0.92%3BexitY%3D-0.058%3BexitDx%3D0%3BexitDy%3D0%3BexitPerimeter%3D0%3BentryX%3D0.14%3BentryY%3D0.98%3BentryDx%3D0%3BentryDy%3D0%3BentryPerimeter%3D0%3BfillColor%3D%23f9f7ed%3BstrokeColor%3D%23CCCCCC%3B%22%20edge%3D%221%22%20parent%3D%221%22%3E%3CmxGeometry%20width%3D%2250%22%20height%3D%2250%22%20relative%3D%221%22%20as%3D%22geometry%22%3E%3CmxPoint%20x%3D%22510.4000000000001%22%20y%3D%22416.52%22%20as%3D%22sourcePoint%22%2F%3E%3CmxPoint%20x%3D%22646.8%22%20y%3D%22108.79999999999995%22%20as%3D%22targetPoint%22%2F%3E%3C%2FmxGeometry%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E ag&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="190" y="560" width="190" height="270" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

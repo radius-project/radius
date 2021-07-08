@@ -8,11 +8,11 @@ package deployment
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
 	"github.com/Azure/radius/pkg/model"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/handlers"
@@ -102,7 +102,9 @@ type deploymentProcessor struct {
 
 // NewDeploymentProcessor initializes a deployment processor.
 func NewDeploymentProcessor(appmodel model.ApplicationModel) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel}
+	return &deploymentProcessor{
+		appmodel: appmodel,
+	}
 }
 
 func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus, actions map[string]ComponentAction) error {
@@ -112,22 +114,27 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 	// TODO - we don't handle the case where resources disappear without the component being
 	// deleted. All of the resources we support so far are 1-1 with the components.
 	errs := []error{}
+	ctx = radlogger.WrapLogContext(ctx, radlogger.LogFieldAppName, appName)
+	logger := radlogger.GetLogger(ctx)
 
 	ordered, err := dp.orderActions(actions)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("actions in order:")
 	for i, action := range ordered {
-		log.Printf("%v - %s", i, action.ComponentName)
+		logger.Info(fmt.Sprintf("actions order: %v - %v", i, action.ComponentName))
 	}
 
 	bindingValues := map[components.BindingKey]components.BindingState{}
 
 	// Process each action and update the deployment status as we go ...
 	for _, action := range ordered {
-		log.Printf("executing action %s for component %s", action.Operation, action.ComponentName)
+		logger = logger.WithValues(
+			radlogger.LogFieldAction, action.Operation,
+			radlogger.LogFieldComponentName, action.ComponentName,
+		)
+		logger.Info("executing action")
 
 		// while we do bookkeeping, also update the deployment record
 		switch action.Operation {
@@ -183,6 +190,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				BindingValues: bindingValues,
 			}
 
+			logger.Info("Rendering workload")
 			outputResources, err := dp.renderWorkload(ctx, inst)
 			if err != nil {
 				errs = append(errs, err)
@@ -277,7 +285,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				d.Workloads = append(d.Workloads, dw)
 			}
 
-			log.Printf("successfully applied workload %v %v", action.Component.Kind, action.ComponentName)
+			logger.WithValues(radlogger.LogFieldComponentKind, action.Component.Kind).Info("successfully applied workload")
 
 		case DeleteWorkload:
 			// Remove the deployment record
@@ -313,7 +321,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 			}
 
-			log.Printf("successfully deleted workload %v", action.ComponentName)
+			logger.Info("successfully deleted workload")
 		}
 	}
 
@@ -371,12 +379,18 @@ func (dp *deploymentProcessor) orderActions(actions map[string]ComponentAction) 
 }
 
 func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus) error {
-	log.Printf("Deleting deployment %v", name)
+	logger := radlogger.GetLogger(ctx)
+
+	logger.Info("Deleting deployment")
 	errs := []error{}
 	for _, wl := range d.Workloads {
-		log.Printf("Deleting workload %v", wl.ComponentName)
+		logger := logger.WithValues(radlogger.LogFieldComponentName, wl.ComponentName)
+		logger.Info("Deleting workload")
 		for _, resource := range wl.Resources {
-			log.Printf("Deleting resource %v %v", resource.Type, resource.Properties)
+			logger.WithValues(
+				radlogger.LogFieldResourceType, resource.Type,
+				radlogger.LogFieldResourceProperties, resource.Properties,
+			).Info("Deleting resource")
 
 			resourceType, err := dp.appmodel.LookupResource(resource.Type)
 			if err != nil {
@@ -396,24 +410,28 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 		}
 	}
 
-	log.Printf("Deletion of deployment %v completed with %d errors", name, len(errs))
+	compositeErr := CompositeError{errs}
+	logger.Error(fmt.Errorf(compositeErr.Error()), fmt.Sprintf("Deletion of deployment completed with %d errors", len(errs)))
 	if len(errs) > 0 {
-		return &CompositeError{errs}
+		return &compositeErr
 	}
 
 	return nil
 }
 
 func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+	ctx = radlogger.WrapLogContext(ctx,
+		radlogger.LogFieldWorkLoadKind, w.Workload.Kind,
+		radlogger.LogFieldWorkLoadName, w.Name)
+	logger := radlogger.GetLogger(ctx)
 	componentKind, err := dp.appmodel.LookupComponent(w.Workload.Kind)
 	if err != nil {
 		return []workloads.OutputResource{}, err
 	}
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
-	log.Printf("Created output resources for workload: %s\n", w.Name)
 	for _, o := range resources {
-		log.Printf("LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType)
+		logger.WithValues(radlogger.LogFieldLocalID, o.LocalID).Info(fmt.Sprintf("Created output resource for workload - LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType))
 	}
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far

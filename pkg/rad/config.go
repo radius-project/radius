@@ -23,8 +23,6 @@ import (
 	"golang.org/x/text/cases"
 )
 
-var CfgFile string
-
 // EnvironmentKey is the key used for the environment section
 const (
 	EnvironmentKey string = "environment"
@@ -39,6 +37,15 @@ type EnvironmentSection struct {
 
 type ApplicationSection struct {
 	Default string `mapstructure:"default" yaml:"default"`
+}
+
+func GetEnvironment(v *viper.Viper, name string) (environments.Environment, error) {
+	section, err := ReadEnvironmentSection(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return section.GetEnvironment(name)
 }
 
 // ReadEnvironmentSection reads the EnvironmentSection from radius config.
@@ -82,13 +89,11 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 	return env.decodeEnvironmentSection(name)
 }
 
-// initConfig reads in config file and ENV variables if set.
-func InitConfig() {
-	if CfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(CfgFile)
-	} else {
-		// Find home directory.
+func LoadConfig(configFilePath string) (*viper.Viper, error) {
+	config := viper.New()
+
+	if configFilePath == "" {
+		// Set config file using the HOME directory.
 		home, err := homedir.Dir()
 		if err != nil {
 			fmt.Println(err)
@@ -96,39 +101,56 @@ func InitConfig() {
 		}
 
 		rad := path.Join(home, ".rad")
-		viper.AddConfigPath(rad)
-		viper.SetConfigName("config")
+		config.AddConfigPath(rad)
+		config.SetConfigName("config")
+	} else {
+		config.SetConfigFile(configFilePath)
 	}
 
-	// If a config file is found, read it in.
-	err := viper.ReadInConfig()
+	err := config.ReadInConfig()
 	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		// It's ok the config file is not found, this could be the first time the CLI
+		// is running. Commands that require configuration will check for the data they need.
+	} else if os.IsNotExist(err) {
+		// It's ok the config file is not found, this could be the first time the CLI
+		// is running. Commands that require configuration will check for the data they need.
+	} else if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func SaveConfig(v *viper.Viper) error {
+	configFilePath := v.ConfigFileUsed()
+	if configFilePath == "" {
+		// Set config file using the HOME directory.
 		home, err := homedir.Dir()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		// Set the default config file so we can write to it if desired
-		CfgFile = path.Join(home, ".rad", "config.yaml")
-	} else if err == nil {
-		CfgFile = viper.ConfigFileUsed()
+		configFilePath = path.Join(home, ".rad", "config.yaml")
 	}
-}
 
-func SaveConfig() error {
-	dir := path.Dir(CfgFile)
+	dir := path.Dir(configFilePath)
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
-		_ = os.MkdirAll(dir, os.ModeDir|0755)
+		err := os.MkdirAll(dir, os.ModeDir|0755)
+		if err != nil {
+			return fmt.Errorf("failed to create directory '%s': %w", dir, err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("failed to find directory '%s': %w", dir, err)
 	}
 
-	err = viper.WriteConfigAs(CfgFile)
+	err = v.WriteConfigAs(configFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to write config to '%s': %w", configFilePath, err)
 	}
 
-	fmt.Printf("Successfully wrote configuration to %v\n", CfgFile)
+	fmt.Printf("Successfully wrote configuration to %v\n", configFilePath)
 	return nil
 }
 
@@ -157,12 +179,6 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 
 		decoded.Name = name
 
-		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
-		// as it was in 0.2.
-		if decoded.ControlPlaneResourceGroup == "" {
-			decoded.ControlPlaneResourceGroup = decoded.ResourceGroup
-		}
-
 		err = validate(decoded)
 		if err != nil {
 			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
@@ -177,12 +193,6 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		}
 
 		decoded.Name = name
-
-		// See #565: this is temporary code that handles the case where the app resource group and control plane group are the same
-		// as it was in 0.2.
-		if decoded.ControlPlaneResourceGroup == "" {
-			decoded.ControlPlaneResourceGroup = decoded.ResourceGroup
-		}
 
 		err = validate(decoded)
 		if err != nil {

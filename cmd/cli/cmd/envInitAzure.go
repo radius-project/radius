@@ -19,22 +19,23 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/2017-03-09/resources/mgmt/features"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerregistry/mgmt/containerregistry"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/operationalinsights/mgmt/operationalinsights"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/customproviders/mgmt/customproviders"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azure"
+	radazure "github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/rad/util"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var supportedLocations = [5]string{
@@ -85,7 +86,7 @@ rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NA
 			a.Name = a.ResourceGroup
 		}
 
-		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry)
+		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry, a.LogAnalyticsWorkspaceID)
 		if err != nil {
 			return err
 		}
@@ -102,19 +103,21 @@ func init() {
 	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
 	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
 	envInitAzureCmd.Flags().String("container-registry", "", "Specify the name of an existing Azure Container Registry to grant the environment access to pull containers from the registry")
+	envInitAzureCmd.Flags().String("loganalytics-workspace-id", "", "Specify the ARM resource ID of the log analytics workspace where the logs should be redirected to")
 
 	// development support
 	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
 }
 
 type arguments struct {
-	Name               string
-	Interactive        bool
-	SubscriptionID     string
-	ResourceGroup      string
-	Location           string
-	DeploymentTemplate string
-	ContainerRegistry  string
+	Name                    string
+	Interactive             bool
+	SubscriptionID          string
+	ResourceGroup           string
+	Location                string
+	DeploymentTemplate      string
+	ContainerRegistry       string
+	LogAnalyticsWorkspaceID string
 }
 
 func validate(cmd *cobra.Command, args []string) (arguments, error) {
@@ -168,18 +171,24 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
+	logAnalyticsWorkspaceID, err := cmd.Flags().GetString("loganalytics-workspace-id")
+	if err != nil {
+		return arguments{}, err
+	}
+
 	if location != "" && !isSupportedLocation(location) {
 		return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
 	}
 
 	return arguments{
-		Name:               name,
-		Interactive:        interactive,
-		SubscriptionID:     subscriptionID,
-		ResourceGroup:      resourceGroup,
-		Location:           location,
-		DeploymentTemplate: deploymentTemplate,
-		ContainerRegistry:  registryName,
+		Name:                    name,
+		Interactive:             interactive,
+		SubscriptionID:          subscriptionID,
+		ResourceGroup:           resourceGroup,
+		Location:                location,
+		DeploymentTemplate:      deploymentTemplate,
+		ContainerRegistry:       registryName,
+		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
 	}, nil
 }
 
@@ -202,23 +211,23 @@ func choose(ctx context.Context) (string, string, error) {
 	return sub.SubscriptionID, resourceGroup, nil
 }
 
-func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (azure.Subscription, error) {
+func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (radazure.Subscription, error) {
 	subc := subscription.NewSubscriptionsClient()
 	subc.Authorizer = authorizer
 
-	subs, err := azure.LoadSubscriptionsFromProfile()
+	subs, err := radazure.LoadSubscriptionsFromProfile()
 	if err != nil {
 		// Failed to load subscriptions from the user profile, fall back to online.
-		subs, err = azure.LoadSubscriptionsFromAzure(ctx, authorizer)
+		subs, err = radazure.LoadSubscriptionsFromAzure(ctx, authorizer)
 		if err != nil {
-			return azure.Subscription{}, err
+			return radazure.Subscription{}, err
 		}
 	}
 
 	if subs.Default != nil {
 		confirmed, err := prompt.Confirm(fmt.Sprintf("Use Subscription '%v' [y/n]?", subs.Default.DisplayName))
 		if err != nil {
-			return azure.Subscription{}, err
+			return radazure.Subscription{}, err
 		}
 
 		if confirmed {
@@ -234,13 +243,13 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (az
 
 	index, err := prompt.Select("Select Subscription:", names)
 	if err != nil {
-		return azure.Subscription{}, err
+		return radazure.Subscription{}, err
 	}
 
 	return subs.Subscriptions[index], nil
 }
 
-func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription) (string, error) {
+func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (string, error) {
 	rgc := resources.NewGroupsClient(sub.SubscriptionID)
 	rgc.Authorizer = authorizer
 
@@ -299,8 +308,8 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string) error {
-	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
+func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string) error {
+	armauth, err := radazure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -312,7 +321,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, resourceGroup)
+	envUrl, err := radazure.GenerateAzureEnvUrl(subscriptionID, resourceGroup)
 	if err != nil {
 		return err
 	}
@@ -321,7 +330,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		// We already have a provider in this resource group
 		logger.LogInfo("Found existing environment...\n\n"+
 			"Environment '%v' available at:\n%v\n", name, envUrl)
-		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, azure.GetControlPlaneResourceGroup(resourceGroup), clusterName)
+		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, radazure.GetControlPlaneResourceGroup(resourceGroup), clusterName)
 		if err != nil {
 			return err
 		}
@@ -348,6 +357,14 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		}
 	}
 
+	logAnalyticsWorkspaceName := ""
+	if logAnalyticsWorkspaceID != "" {
+		logAnalyticsWorkspaceName, err = validateLogAnalyticsWorkspace(ctx, armauth, subscriptionID, logAnalyticsWorkspaceID)
+		if err != nil {
+			return err
+		}
+	}
+
 	if group != nil {
 		if !isSupportedLocation(*group.Location) {
 			return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
@@ -358,11 +375,13 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 
 	params := deploymentParameters{
 		ResourceGroup:             resourceGroup,
-		ControlPlaneResourceGroup: azure.GetControlPlaneResourceGroup(resourceGroup),
+		ControlPlaneResourceGroup: radazure.GetControlPlaneResourceGroup(resourceGroup),
 		Location:                  location,
 		DeploymentTemplate:        deploymentTemplate,
 		RegistryID:                registryID,
 		RegistryName:              registryName,
+		LogAnalyticsWorkspaceName: logAnalyticsWorkspaceName,
+		LogAnalyticsWorkspaceID:   logAnalyticsWorkspaceID,
 	}
 	deployment, err := deployEnvironment(ctx, armauth, name, subscriptionID, params)
 	if err != nil {
@@ -399,12 +418,12 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	mcc.Authorizer = authorizer
 
 	var cluster *containerservice.ManagedCluster
-	for list, err := mcc.ListByResourceGroupComplete(ctx, azure.GetControlPlaneResourceGroup(resourceGroup)); list.NotDone(); err = list.NextWithContext(ctx) {
+	for list, err := mcc.ListByResourceGroupComplete(ctx, radazure.GetControlPlaneResourceGroup(resourceGroup)); list.NotDone(); err = list.NextWithContext(ctx) {
 		if err != nil {
 			return false, "", fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
 
-		if radresources.HasRadiusEnvironmentTag(list.Value().Tags) {
+		if keys.HasRadiusEnvironmentTag(list.Value().Tags) {
 			temp := list.Value()
 			cluster = &temp
 			break
@@ -412,7 +431,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	}
 
 	if cluster == nil {
-		return false, "", fmt.Errorf("could not find an AKS instance in resource group '%v'", azure.GetControlPlaneResourceGroup(resourceGroup))
+		return false, "", fmt.Errorf("could not find an AKS instance in resource group '%v'", radazure.GetControlPlaneResourceGroup(resourceGroup))
 	}
 
 	return true, *cluster.Name, nil
@@ -448,13 +467,29 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	step := logger.BeginStep("Registering Subscription for required features...")
 	fc := features.NewClient(subscriptionID)
 	fc.Authorizer = authorizer
+
+	providerClient := resources.NewProvidersClient(subscriptionID)
+	providerClient.Authorizer = authorizer
+
 	for feature, namespace := range requiredFeatures {
 		_, err := fc.Register(ctx, namespace, feature)
 		if err != nil {
 			return fmt.Errorf("failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
 		}
+
+		// See: https://github.com/Azure/radius/issues/520
+		// We've seen users still hitting issues where they see the error:
+		// "PodIdentity addon is not allowed since feature 'Microsoft.ContainerService/EnablePodIdentityPreview' is not enabled"
+		// Our working theory is that we need to force the provider to be registered again,
+		// causing the RP to refresh it's info about features.
+		_, err = providerClient.Register(ctx, namespace)
+		if err != nil {
+			return fmt.Errorf("failed to register subscription: %v for provider %v: %w", subscriptionID, namespace, err)
+		}
+
 		logger.LogInfo("Sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
 	}
+
 	logger.CompleteStep(step)
 	return nil
 }
@@ -478,8 +513,24 @@ func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subsc
 	return "", fmt.Errorf("failed to find registry %s in subscription %s. The container registry must be in the same subscription as the environment.", registryName, subscriptionID)
 }
 
+func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, logAnalyticsWorkspaceID string) (string, error) {
+	step := logger.BeginStep("Validating Log Analytics Workspace ID for %s...", logAnalyticsWorkspaceID)
+	resource, err := azure.ParseResourceID(logAnalyticsWorkspaceID)
+	if err != nil {
+		return "", fmt.Errorf("invalid log analytics workspace id: %w", err)
+	}
+	lwc := operationalinsights.NewWorkspacesClient(resource.SubscriptionID)
+	lwc.Authorizer = authorizer
+	_, err = lwc.Get(ctx, resource.ResourceGroup, resource.ResourceName)
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve log analytics workspace: %w", err)
+	}
+	logger.CompleteStep(step)
+	return resource.ResourceName, nil
+}
+
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, params deploymentParameters) (resources.DeploymentExtended, error) {
-	envUrl, err := azure.GenerateAzureEnvUrl(subscriptionID, params.ResourceGroup)
+	envUrl, err := radazure.GenerateAzureEnvUrl(subscriptionID, params.ResourceGroup)
 	if err != nil {
 		return resources.DeploymentExtended{}, err
 	}
@@ -516,6 +567,12 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 		},
 		"registryName": map[string]interface{}{
 			"value": params.RegistryName,
+		},
+		"logAnalyticsWorkspaceName": map[string]interface{}{
+			"value": params.LogAnalyticsWorkspaceName,
+		},
+		"logAnalyticsWorkspaceID": map[string]interface{}{
+			"value": params.LogAnalyticsWorkspaceID,
 		},
 	}
 
@@ -599,8 +656,8 @@ func findClusterInDeployment(ctx context.Context, deployment resources.Deploymen
 func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, controlPlaneResourceGroup string, clusterName string) error {
 	step := logger.BeginStep("Updating Config...")
 
-	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
+	config := ConfigFromContext(ctx)
+	env, err := rad.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -615,9 +672,9 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	if len(env.Items) == 1 {
 		env.Default = name
 	}
-	rad.UpdateEnvironmentSection(v, env)
+	rad.UpdateEnvironmentSection(config, env)
 
-	err = rad.SaveConfig()
+	err = rad.SaveConfig(config)
 	if err != nil {
 		return err
 	}
@@ -644,4 +701,6 @@ type deploymentParameters struct {
 	DeploymentTemplate        string
 	RegistryID                string
 	RegistryName              string
+	LogAnalyticsWorkspaceName string
+	LogAnalyticsWorkspaceID   string
 }

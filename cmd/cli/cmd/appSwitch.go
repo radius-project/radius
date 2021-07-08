@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // appSwitchCmd command to switch applications
@@ -50,8 +49,8 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no application specified")
 	}
 
-	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
+	config := ConfigFromContext(cmd.Context())
+	env, err := rad.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -78,7 +77,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 
 	env.Items[e.GetName()][environments.EnvironmentKeyDefaultApplication] = applicationName
 
-	rad.UpdateEnvironmentSection(v, env)
-	err = rad.SaveConfig()
+	rad.UpdateEnvironmentSection(config, env)
+	err = rad.SaveConfig(config)
 	return err
 }

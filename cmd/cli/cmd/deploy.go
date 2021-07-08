@@ -43,7 +43,8 @@ func deploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	env, err := rad.RequireEnvironment(cmd)
+	config := ConfigFromContext(cmd.Context())
+	env, err := rad.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}

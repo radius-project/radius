@@ -10,7 +10,6 @@ import (
 
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,8 +31,8 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	v := viper.GetViper()
-	env, err := rad.ReadEnvironmentSection(v)
+	config := ConfigFromContext(cmd.Context())
+	env, err := rad.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -48,9 +47,7 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println()
 	fmt.Println(string(b))
-	fmt.Println()
 	return nil
 
 }

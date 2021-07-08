@@ -14,9 +14,8 @@ import (
 )
 
 // Used by commands that require a named environment to be an azure cloud environment.
-func ValidateNamedEnvironment(name string) (environments.Environment, error) {
-	v := viper.GetViper()
-	env, err := ReadEnvironmentSection(v)
+func ValidateNamedEnvironment(config *viper.Viper, name string) (environments.Environment, error) {
+	env, err := ReadEnvironmentSection(config)
 	if err != nil {
 		return nil, err
 	}
@@ -29,23 +28,23 @@ func ValidateNamedEnvironment(name string) (environments.Environment, error) {
 	return e, nil
 }
 
-func RequireEnvironment(cmd *cobra.Command) (environments.Environment, error) {
+func RequireEnvironment(cmd *cobra.Command, config *viper.Viper) (environments.Environment, error) {
 	environmentName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return nil, err
 	}
 
-	env, err := ValidateNamedEnvironment(environmentName)
+	env, err := ValidateNamedEnvironment(config, environmentName)
 	return env, err
 }
 
-func RequireEnvironmentArgs(cmd *cobra.Command, args []string) (environments.Environment, error) {
+func RequireEnvironmentArgs(cmd *cobra.Command, config *viper.Viper, args []string) (environments.Environment, error) {
 	environmentName, err := RequireEnvironmentNameArgs(cmd, args)
 	if err != nil {
 		return nil, err
 	}
 
-	env, err := ValidateNamedEnvironment(environmentName)
+	env, err := ValidateNamedEnvironment(config, environmentName)
 	return env, err
 }
 

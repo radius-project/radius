@@ -2,7 +2,7 @@
 type: docs
 title: "Radius resource provider settings"
 linkTitle: "Resource provider settings"
-description: "Settings supported by the Radius resource rrovider"
+description: "Settings supported by the Radius resource provider"
 weight: 30
 ---
 
@@ -39,6 +39,8 @@ Enum values are compared *case-insensitively*.
 | K8S_CLUSTER_NAME               | *see Kubernetes section*   | string  | Configures the resource name of an AKS cluster. Used to identify and connect to the Kubernetes cluster by retrieving credentials from ARM.   |
 | K8S_SUBSCRIPTION_ID            | *see Kubernetes section*   | string  | Configures the subscription id of an AKS cluster. Used to identify and connect to the Kubernetes cluster by retrieving credentials from ARM. |
 | K8S_RESOURCE_GROUP             | *see Kubernetes section*   | string  | Configures the resource group of an AKS cluster. Used to identify and connect to the Kubernetes cluster by retrieving credentials from ARM.  |
+| RADIUS_LOG_PROFILE                 | no (`development`)   | string  | Configures the log profile for Radius |
+| RADIUS_LOG_LEVEL                   | *see Logging section*   | string  | Configures the log level for Radius |
 
 ## ARM authentication
 
@@ -63,3 +65,13 @@ The RP can connect to Kubernetes using three different strategies to find the id
 - Using ARM to fetch credentials based on `K8S_CLUSTER_NAME`/`K8S_SUBSCRIPTION_ID`/`K8S_RESOURCE_GROUP` (used when deployed)
 
 Our detection logic treats `K8S_LOCAL` and `K8S_CLUSTER` as overrides. We will attempt to find the cluster using ARM by default.
+
+## Logging
+
+Radius Resource Provider uses the zap logger as the log sink and logr as the interface.
+
+### Configuring Radius Log Profile
+Radius Log Profile can be set using the environment variable RADIUS_LOG_PROFILE. The allowed values are `production` and `development`. This setting controls the output log encoding format, default log level and other related zap logger settings.
+
+### Configuring Radius Log Level
+Radius Log Level can be set using the environment variable RADIUS_LOG_LEVEL. The allowed values are `normal` or `verbose`. If this environment variable is not set, the default log level is determined by the log profile configured above.

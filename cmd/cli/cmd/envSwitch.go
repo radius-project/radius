@@ -11,7 +11,6 @@ import (
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var envSwitchCmd = &cobra.Command{
@@ -26,8 +25,8 @@ func init() {
 }
 
 func switchEnv(cmd *cobra.Command, args []string) error {
-	v := viper.GetViper()
-	section, err := rad.ReadEnvironmentSection(v)
+	config := ConfigFromContext(cmd.Context())
+	section, err := rad.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -49,7 +48,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	// Retrieve associated resource group and subscription id
-	env, err := rad.ValidateNamedEnvironment(envName)
+	env, err := rad.ValidateNamedEnvironment(config, envName)
 	if err != nil {
 		return err
 	}
@@ -66,8 +65,8 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	logger.LogInfo(text)
 
 	section.Default = envName
-	rad.UpdateEnvironmentSection(v, section)
-	err = rad.SaveConfig()
+	rad.UpdateEnvironmentSection(config, section)
+	err = rad.SaveConfig(config)
 	if err != nil {
 		return err
 	}

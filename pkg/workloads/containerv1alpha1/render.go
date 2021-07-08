@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -27,7 +26,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
@@ -92,7 +93,9 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	return bindings, nil
 }
 
-func (r Renderer) createManagedIdentity(ctx context.Context, identityName, location string) (msi.Identity, error) {
+func (r Renderer) createManagedIdentity(ctx context.Context, identityName, location string) (msi.Identity, string, error) {
+	logger := radlogger.GetLogger(ctx)
+	localID := "UserAssignedManagedIdentity-KV"
 	// Create a user assigned managed identity
 	msiClient := msi.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID)
 	msiClient.Authorizer = r.Arm.Auth
@@ -100,15 +103,18 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 		Location: to.StringPtr(location),
 	})
 	if err != nil {
-		return msi.Identity{}, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+		return msi.Identity{}, "", fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
-	log.Printf("Created managed identity for KeyVault access: %v", *id.ID)
+	logger.WithValues(
+		radlogger.LogFieldResourceID, *id.ID,
+		radlogger.LogFieldLocalID, localID).Info("Created managed identity for KeyVault access")
 
-	return id, nil
+	return id, localID, nil
 }
 
 func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, []workloads.OutputResource, error) {
+	logger := radlogger.GetLogger(ctx)
 	// Read the keyvault URI so we can get the keyvault name for permissions
 	outputResources := []workloads.OutputResource{}
 	value, ok := store.Properties[handlers.KeyVaultURIKey]
@@ -140,7 +146,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("could not find resource group: %w", err)
 	}
-	mid, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
+	mid, midLocalID, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -153,7 +159,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureUserAssignedManagedIdentity,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            "UserAssignedManagedIdentity-KV",
+		LocalID:            midLocalID,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *mid.ID,
@@ -189,11 +195,12 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", mid.Name, err)
 	}
 	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
+	localIDSecretsCerts := "RoleAssignment-KVSecretsCerts"
 	res = workloads.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            "RoleAssignment-KVSecretsCerts",
+		LocalID:            localIDSecretsCerts,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *ra.ID,
@@ -211,11 +218,14 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", mid.Name, err)
 	}
+	logger.WithValues(radlogger.LogFieldLocalID, localIDSecretsCerts).Info(fmt.Sprintf("Created certs/secrets role assignment for %v to access %v", *mid.ID, *kv.ID))
+
+	localIDKeys := "RoleAssignment-KVKeys"
 	res = workloads.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            "RoleAssignment-KVKeys",
+		LocalID:            localIDKeys,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *ra.ID,
@@ -225,12 +235,13 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 	outputResources = append(outputResources, res)
 
-	log.Printf("Created role assignment for %v to access %v", *mid.ID, *kv.ID)
+	logger.WithValues(radlogger.LogFieldLocalID, localIDKeys).Info(fmt.Sprintf("Created keys role assignment for %v to access %v", *mid.ID, *kv.ID))
 
 	return &mid, outputResources, nil
 }
 
 func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, []workloads.OutputResource, error) {
+	logger := radlogger.GetLogger(ctx)
 	var podIdentity AADPodIdentity
 
 	outputResources := []workloads.OutputResource{}
@@ -261,11 +272,12 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				// we no longer need to track the output resources on error
 				return AADPodIdentity{}, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
 			}
+			localID := "AADPodIdentity"
 			res := workloads.OutputResource{
 				Deployed:           true,
 				ResourceKind:       workloads.ResourceKindAzurePodIdentity,
 				OutputResourceType: workloads.OutputResourceTypePodIdentity,
-				LocalID:            "AADPodIdentity",
+				LocalID:            localID,
 				Managed:            true,
 				OutputResourceInfo: outputresourceinfo.AADPodIdentity{
 					AKSClusterName: podIdentity.ClusterName,
@@ -279,7 +291,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 			}
 			outputResources = append(outputResources, res)
 
-			log.Printf("Created pod identity %v to bind %v", podIdentity.Name, *msi.ID)
+			logger.WithValues(radlogger.LogFieldLocalID, localID).Info(fmt.Sprintf("Created pod identity %v to bind %v", podIdentity.Name, *msi.ID))
 			return podIdentity, outputResources, nil
 		}
 	}
@@ -473,30 +485,28 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 			Name:      cc.Name,
 			Namespace: w.Application,
 			Labels: map[string]string{
-				workloads.LabelRadiusApplication: w.Application,
-				workloads.LabelRadiusComponent:   cc.Name,
-				// TODO get the component revision here...
-				"app.kubernetes.io/name":       cc.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
+				keys.LabelRadiusApplication:   w.Application,
+				keys.LabelRadiusComponent:     cc.Name,
+				keys.LabelKubernetesName:      cc.Name,
+				keys.LabelKubernetesPartOf:    w.Application,
+				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{
 				MatchLabels: map[string]string{
-					workloads.LabelRadiusApplication: w.Application,
-					workloads.LabelRadiusComponent:   cc.Name,
+					keys.LabelRadiusApplication: w.Application,
+					keys.LabelRadiusComponent:   cc.Name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						workloads.LabelRadiusApplication: w.Application,
-						workloads.LabelRadiusComponent:   cc.Name,
-						// TODO get the component revision here...
-						"app.kubernetes.io/name":       cc.Name,
-						"app.kubernetes.io/part-of":    w.Application,
-						"app.kubernetes.io/managed-by": "radius-rp",
+						keys.LabelRadiusApplication:   w.Application,
+						keys.LabelRadiusComponent:     cc.Name,
+						keys.LabelKubernetesName:      cc.Name,
+						keys.LabelKubernetesPartOf:    w.Application,
+						keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -517,6 +527,7 @@ type AADPodIdentity struct {
 }
 
 func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, containerName, podNamespace string) (AADPodIdentity, error) {
+	logger := radlogger.GetLogger(ctx)
 	if r.Arm.K8sSubscriptionID == "" || r.Arm.K8sResourceGroup == "" || r.Arm.K8sClusterName == "" {
 		return AADPodIdentity{}, errors.New("pod identity is not supported because the RP is not configured for AKS")
 	}
@@ -587,7 +598,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster with error: %v, status code: %v", detailed.Message, detailed.StatusCode)
 		}
 
-		fmt.Println("failed to add pod identity. Retrying...")
+		logger.V(radlogger.Verbose).Info("failed to add pod identity. Retrying...")
 		time.Sleep(5 * time.Second)
 		continue
 	}
@@ -608,6 +619,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 const SecretsResourceType = "Microsoft.KeyVault/vaults/secrets"
 
 func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue string) (workloads.OutputResource, error) {
+	logger := radlogger.GetLogger(ctx)
 	// Create secret in the Key Vault using ARM since ARM has write permissions to create secrets
 	// and no special role assignment is needed.
 
@@ -659,7 +671,6 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 	if err != nil {
 		return workloads.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
 	}
-	log.Printf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName)
 
 	secretResource := azure.Resource{
 		SubscriptionID: r.Arm.SubscriptionID,
@@ -668,11 +679,12 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		ResourceType:   SecretsResourceType,
 		ResourceName:   secretFullName,
 	}
+	localID := "KeyVaultSecret"
 	or := workloads.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureKeyVaultSecret,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            "KeyVaultSecret",
+		LocalID:            localID,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           secretResource.String(),
@@ -680,6 +692,7 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 			APIVersion:      kvAPIVersion,
 		},
 	}
+	logger.WithValues(radlogger.LogFieldLocalID, localID).Info(fmt.Sprintf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName))
 
 	return or, nil
 }
@@ -694,18 +707,17 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 			Name:      cc.Name,
 			Namespace: w.Application, // TODO why is this a different namespace
 			Labels: map[string]string{
-				workloads.LabelRadiusApplication: w.Application,
-				workloads.LabelRadiusComponent:   cc.Name,
-				// TODO get the component revision here...
-				"app.kubernetes.io/name":       cc.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
+				keys.LabelRadiusApplication:   w.Application,
+				keys.LabelRadiusComponent:     cc.Name,
+				keys.LabelKubernetesName:      cc.Name,
+				keys.LabelKubernetesPartOf:    w.Application,
+				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				workloads.LabelRadiusApplication: w.Application,
-				workloads.LabelRadiusComponent:   cc.Name,
+				keys.LabelRadiusApplication: w.Application,
+				keys.LabelRadiusComponent:   cc.Name,
 			},
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{},

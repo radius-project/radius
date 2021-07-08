@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,7 +50,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 		// For now, no need to process any further
 		return p, nil
 	}
-	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: keys.FieldManager})
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +74,13 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 			"metadata": map[string]interface{}{
 				"name": namespace,
 				"labels": map[string]interface{}{
-					"app.kubernetes.io/managed-by": "radius-rp",
+					keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 				},
 			},
 		},
 	}
 
-	err := handler.k8s.Patch(ctx, ns, client.Apply, &client.PatchOptions{FieldManager: "radius-rp"})
+	err := handler.k8s.Patch(ctx, ns, client.Apply, &client.PatchOptions{FieldManager: keys.FieldManager})
 	if err != nil {
 		// we consider this fatal - without a namespace we won't be able to apply anything else
 		return fmt.Errorf("error applying namespace: %w", err)

@@ -9,8 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -77,7 +77,8 @@ func (d radrpDB) ListApplicationsByResourceGroup(ctx context.Context, id resourc
 	items := make([]Application, 0)
 
 	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup}}
-	log.Printf("listing Applications with: %s", filter)
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("Listing applications from DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	cursor, err := col.Find(ctx, filter)
 	if err != nil {
@@ -89,7 +90,7 @@ func (d radrpDB) ListApplicationsByResourceGroup(ctx context.Context, id resourc
 		return items, fmt.Errorf("error reading Applications: %w", err)
 	}
 
-	log.Printf("Found %d Applications with: %s", len(items), filter)
+	logger.Info(fmt.Sprintf("Found %d Applications", len(items)))
 	return items, nil
 }
 
@@ -98,18 +99,19 @@ func (d radrpDB) GetApplicationByID(ctx context.Context, id resources.Applicatio
 	item := &Application{}
 
 	filter := bson.D{{Key: "_id", Value: id.ID}}
-	log.Printf("Getting %v", id)
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("Getting application from DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result := col.FindOne(ctx, filter)
 	err := result.Err()
 	if err == mongo.ErrNoDocuments {
-		log.Printf("%v was not found.", id)
+		logger.Info("Application was not found.")
 		return nil, ErrNotFound
 	} else if err != nil {
 		return nil, fmt.Errorf("error querying %v: %w", id, err)
 	}
 
-	log.Printf("Found %v", id)
+	logger.Info("Found application in DB")
 	err = result.Decode(item)
 	if err != nil {
 		return nil, fmt.Errorf("error reading %v: %w", id, err)
@@ -121,39 +123,40 @@ func (d radrpDB) GetApplicationByID(ctx context.Context, id resources.Applicatio
 func (d radrpDB) PatchApplication(ctx context.Context, patch *ApplicationPatch) (bool, error) {
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: patch.ResourceBase.ID}}
+	logger := radlogger.GetLogger(ctx)
 	update := bson.D{{Key: "$set", Value: patch}}
 
-	log.Printf("Updating Application with _id: %s", patch.ResourceBase.ID)
+	logger.Info(fmt.Sprintf("Updating Application in DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return false, fmt.Errorf("error updating Application: %s", err)
 	}
 
-	log.Printf("Updated Application with _id: %s - %+v", patch.ResourceBase.ID, result)
+	logger.Info(fmt.Sprintf("Successfully updated Application in DB with result - %+v", result))
 	return result.UpsertedCount > 0, nil
 }
 
 func (d radrpDB) UpdateApplication(ctx context.Context, app *Application) (bool, error) {
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: app.ResourceBase.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, app.ResourceBase.ID)
 	update := bson.D{{Key: "$set", Value: app}}
 
-	log.Printf("Updating Application with _id: %s", app.ResourceBase.ID)
+	logger.Info(fmt.Sprintf("Updating Application in DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return false, fmt.Errorf("error updating Application: %s", err)
 	}
-
-	log.Printf("Updated Application with _id: %s - %+v", app.ResourceBase.ID, result)
+	logger.Info(fmt.Sprintf("Updated Application in DB - %+v", result))
 	return (result.UpsertedCount > 0 || result.ModifiedCount > 0), nil
 }
 
 func (d radrpDB) DeleteApplicationByID(ctx context.Context, id resources.ApplicationID) error {
 	filter := bson.D{{Key: "_id", Value: id.ID}}
-
-	log.Printf("Deleting Application with _id: %s", id)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id)
+	logger.Info(fmt.Sprintf("Deleting Application from DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result := col.FindOneAndDelete(ctx, filter)
 	err := result.Err()
@@ -163,12 +166,13 @@ func (d radrpDB) DeleteApplicationByID(ctx context.Context, id resources.Applica
 		return fmt.Errorf("error deleting Application with _id: '%s': %w", id, err)
 	}
 
-	log.Printf("Deleted Application with _id: %s", id)
+	logger.Info("Deleted Application from DB")
 	return nil
 }
 
 func (d radrpDB) ListComponentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Component, error) {
-	log.Printf("Listing Components with Application id: %s", id)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id)
+	logger.Info("Listing Components from DB")
 	application, err := d.GetApplicationByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -179,12 +183,15 @@ func (d radrpDB) ListComponentsByApplicationID(ctx context.Context, id resources
 		items = append(items, item)
 	}
 
-	log.Printf("Found %d Component with Application id: %s", len(application.Components), id)
+	logger.Info(fmt.Sprintf("Found %d components in DB", len(application.Components)))
 	return items, nil
 }
 
 func (d radrpDB) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Component, error) {
-	log.Printf("Getting Component with Application id, name, and revision: %s, %s", id, name)
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldComponentName, name)
+	logger.Info("Getting components")
 	application, err := d.GetApplicationByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -192,11 +199,11 @@ func (d radrpDB) GetComponentByApplicationID(ctx context.Context, id resources.A
 
 	item, ok := application.Components[name]
 	if !ok {
-		log.Printf("Failed to find Component with Application id and name: %s, %s", id, name)
+		logger.Info("Failed to find components in DB")
 		return nil, ErrNotFound
 	}
 
-	log.Printf("Found Component with Application id, name, and revision: %s, %s, %s", id, name, item.Revision)
+	logger.Info(fmt.Sprintf("Found component with revision: %s in DB", item.Revision))
 	return &item, nil
 }
 
@@ -204,16 +211,19 @@ func (d radrpDB) PatchComponentByApplicationID(ctx context.Context, id resources
 	options := options.Update().SetUpsert(true)
 	key := fmt.Sprintf("components.%s", name)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldAppName, name)
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: patch}}}}
 
-	log.Printf("Updating Component with Application id and name: %s, %s", id, name)
+	logger.Info(fmt.Sprintf("Updating component in DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return false, fmt.Errorf("error updating Component: %s", err)
 	}
 
-	log.Printf("Updated Component with Application id and name: %s, %s", id, name)
+	logger.Info("Updated component in DB")
 
 	return result.UpsertedCount > 1, nil
 }
@@ -222,22 +232,28 @@ func (d radrpDB) DeleteComponentByApplicationID(ctx context.Context, id resource
 	options := options.Update().SetUpsert(true)
 	key := fmt.Sprintf("components.%s", name)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldAppName, name)
 	update := bson.D{{Key: "$unset", Value: bson.D{{Key: key, Value: ""}}}}
 
-	log.Printf("Deleting Component with Application id and name: %s, %s", id, name)
+	logger.Info(fmt.Sprintf("Deleting component from DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return fmt.Errorf("error deleting Application: %s", err)
 	}
 
-	log.Printf("Deleted Component with Application id and name: %s, %s - %+v", id, name, result)
+	logger.Info(fmt.Sprintf("Deleted component in DB - %+v", result))
 	return nil
 }
 
 func (d radrpDB) ListDeploymentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Deployment, error) {
-	log.Printf("Getting Deployments with Application id: %s", id)
 	application, err := d.GetApplicationByID(ctx, id)
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldAppName, application.Name)
+	logger.Info("Getting deployments from DB")
 	if err != nil {
 		return nil, err
 	}
@@ -247,12 +263,15 @@ func (d radrpDB) ListDeploymentsByApplicationID(ctx context.Context, id resource
 		items = append(items, v)
 	}
 
-	log.Printf("Found %d Deployments with Application id: %s", len(items), id)
+	logger.Info(fmt.Sprintf("Found %d Deployments in DB", len(items)))
 	return items, nil
 }
 
 func (d radrpDB) GetDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Deployment, error) {
-	log.Printf("Getting Deployment with Application id and name: %s, %s", id, name)
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldDeploymentName, name)
+	logger.Info("Getting deployment from DB")
 	application, err := d.GetApplicationByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -260,11 +279,11 @@ func (d radrpDB) GetDeploymentByApplicationID(ctx context.Context, id resources.
 
 	item, ok := application.Deployments[name]
 	if !ok {
-		log.Printf("Failed to find Deployment with Application id and name: %s, %s", id, name)
+		logger.Info("Failed to find deployment in DB")
 		return nil, ErrNotFound
 	}
 
-	log.Printf("Found Deployment with Application id and name: %s, %s", id, name)
+	logger.Info("Found Deployment in DB")
 	return &item, nil
 }
 
@@ -272,16 +291,19 @@ func (d radrpDB) PatchDeploymentByApplicationID(ctx context.Context, id resource
 	options := options.Update().SetUpsert(true)
 	key := fmt.Sprintf("deployments.%s", name)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldDeploymentName, name)
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: patch}}}}
 
-	log.Printf("Updating Deployment with Application id and name: %s, %s", id, name)
+	logger.Info(fmt.Sprintf("Updating deployment in DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return false, fmt.Errorf("error updating Application: %s", err)
 	}
 
-	log.Printf("Updated Application with Application id and name: %s, %s - %+v", id, name, result)
+	logger.Info(fmt.Sprintf("Updated application in DB - %+v", result))
 	return result.UpsertedCount > 1, nil
 }
 
@@ -289,22 +311,28 @@ func (d radrpDB) DeleteDeploymentByApplicationID(ctx context.Context, id resourc
 	options := options.Update().SetUpsert(true)
 	key := fmt.Sprintf("deployments.%s", name)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldDeploymentName, name)
 	update := bson.D{{Key: "$unset", Value: bson.D{{Key: key}}}}
 
-	log.Printf("Deleting Deployment with Application id and name: %s, %s, %s", id, name, update)
+	logger.Info(fmt.Sprintf("Deleting deployment from DB: %s with operation filter: %s", update, filter))
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return fmt.Errorf("error deleting Application: %s", err)
 	}
 
-	log.Printf("Deleted Deployment with Application id and name: %s, %s - %+v", id, name, result)
+	logger.Info(fmt.Sprintf("Deleted deployment from DB- %+v", result))
 	return nil
 }
 
 func (d radrpDB) ListScopesByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Scope, error) {
-	log.Printf("Getting Scopes with Application id: %s", id)
 	application, err := d.GetApplicationByID(ctx, id)
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldAppName, application.Name)
+	logger.Info("Getting Scopes from DB")
 	if err != nil {
 		return nil, err
 	}
@@ -314,24 +342,28 @@ func (d radrpDB) ListScopesByApplicationID(ctx context.Context, id resources.App
 		items = append(items, v)
 	}
 
-	log.Printf("Found %d Scopes with Application id: %s", len(items), id)
+	logger.Info(fmt.Sprintf("Found %d Scopes in DB", len(items)))
 	return items, nil
 }
 
 func (d radrpDB) GetScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Scope, error) {
-	log.Printf("Getting Scope with Application id and name: %s, %s", id, name)
 	application, err := d.GetApplicationByID(ctx, id)
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldAppName, application.Name,
+		radlogger.LogFieldScopeName, name)
+	logger.Info("Getting scope from DB")
 	if err != nil {
 		return nil, err
 	}
 
 	item, ok := application.Scopes[name]
 	if !ok {
-		log.Printf("Failed to find Scope with Application id and name: %s, %s", id, name)
+		logger.Info("Failed to find scope in DB")
 		return nil, ErrNotFound
 	}
 
-	log.Printf("Found Scope with Application id and name: %s, %s", id, name)
+	logger.Info("Found scope in DB")
 	return &item, nil
 }
 
@@ -339,16 +371,19 @@ func (d radrpDB) PatchScopeByApplicationID(ctx context.Context, id resources.App
 	options := options.Update().SetUpsert(true)
 	key := fmt.Sprintf("scopes.%s", name)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldScopeName, name)
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: key, Value: patch}}}}
 
-	log.Printf("Updating Scope with Application id and name: %s, %s", id, name)
+	logger.Info(fmt.Sprintf("Updating scope in DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return false, fmt.Errorf("error updating Scope: %s", err)
 	}
 
-	log.Printf("Updated Scope with Application id and name: %s, %s - %+v", id, name, result)
+	logger.Info(fmt.Sprintf("Updated scope in DB - %+v", result))
 	return result.UpsertedCount > 1, nil
 }
 
@@ -356,16 +391,19 @@ func (d radrpDB) DeleteScopeByApplicationID(ctx context.Context, id resources.Ap
 	options := options.Update().SetUpsert(true)
 	key := fmt.Sprintf("scopes.%s", name)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldAppID, id,
+		radlogger.LogFieldScopeName, name)
 	update := bson.D{{Key: "$unset", Value: bson.D{{Key: key, Value: ""}}}}
 
-	log.Printf("Deleting Scope with Application id and name: %s, %s", id, name)
+	logger.Info(fmt.Sprintf("Deleting scope from DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return fmt.Errorf("error deleting Application: %s", err)
 	}
 
-	log.Printf("Deleted Scope with Application id and name: %s, %s - %+v", id, name, result)
+	logger.Info(fmt.Sprintf("Deleted scope from DB - %+v", result))
 	return nil
 }
 
@@ -373,18 +411,20 @@ func (d radrpDB) GetOperationByID(ctx context.Context, id resources.ResourceID) 
 	item := &Operation{}
 
 	filter := bson.D{{Key: "_id", Value: id.ID}}
-	log.Printf("Getting %v", id)
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldOperationID, id)
+	logger.Info(fmt.Sprintf("Getting operation from DB with operation filter: %s", filter))
 	col := d.db.Collection(operationsCollection)
 	result := col.FindOne(ctx, filter)
 	err := result.Err()
 	if err == mongo.ErrNoDocuments {
-		log.Printf("%v was not found.", id)
+		logger.Info("operation was not found.")
 		return nil, ErrNotFound
 	} else if err != nil {
 		return nil, fmt.Errorf("error querying %v: %w", id, err)
 	}
 
-	log.Printf("Found %v", id)
+	logger.Info("Found operation in DB")
 	err = result.Decode(item)
 	if err != nil {
 		return nil, fmt.Errorf("error reading %v: %w", id, err)
@@ -396,23 +436,26 @@ func (d radrpDB) GetOperationByID(ctx context.Context, id resources.ResourceID) 
 func (d radrpDB) PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *Operation) (bool, error) {
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldOperationID, id)
 	update := bson.D{{Key: "$set", Value: patch}}
 
-	log.Printf("Updating Operation with _id: %s", id.ID)
+	logger.Info(fmt.Sprintf("Updating operation in DB with operation filter: %s", filter))
 	col := d.db.Collection(operationsCollection)
 	result, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return false, fmt.Errorf("error updating Operation: %s", err)
 	}
 
-	log.Printf("Updated Operation with _id: %s - %+v", id.ID, result)
+	logger.Info(fmt.Sprintf("Updated operation in DB - %+v", result))
 	return result.UpsertedCount > 1, nil
 }
 
 func (d radrpDB) DeleteOperationByID(ctx context.Context, id resources.ResourceID) error {
 	filter := bson.D{{Key: "_id", Value: id.ID}}
-
-	log.Printf("Deleting Operation with _id: %s", id)
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldOperationID, id)
+	logger.Info(fmt.Sprintf("Deleting operation from DB with operation filter: %s", filter))
 	col := d.db.Collection(operationsCollection)
 	result := col.FindOneAndDelete(ctx, filter)
 	err := result.Err()
@@ -422,6 +465,6 @@ func (d radrpDB) DeleteOperationByID(ctx context.Context, id resources.ResourceI
 		return fmt.Errorf("error deleting Operation with _id: '%s': %w", id, err)
 	}
 
-	log.Printf("Deleted Operation with _id: %s", id)
+	logger.Info("Deleted operation from DB")
 	return nil
 }

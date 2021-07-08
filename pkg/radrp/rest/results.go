@@ -6,13 +6,14 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/textproto"
 	"net/url"
 
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/go-playground/validator/v10"
@@ -21,7 +22,7 @@ import (
 // Response represents a category of HTTP response (eg. OK with payload).
 type Response interface {
 	// Apply modifies the ResponseWriter to send the desired details back to the client.
-	Apply(w http.ResponseWriter, req *http.Request) error
+	Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error
 }
 
 // OKResponse represents an HTTP 200 with a JSON payload.
@@ -35,7 +36,7 @@ func NewOKResponse(body interface{}) Response {
 	return &OKResponse{Body: body}
 }
 
-func (r *OKResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -61,7 +62,7 @@ func NewCreatedResponse(body interface{}) Response {
 	return &CreatedResponse{Body: body}
 }
 
-func (r *CreatedResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -89,7 +90,7 @@ func NewCreatedAsyncResponse(body interface{}, location string) Response {
 	return &CreatedAsyncResponse{Body: body, Location: location}
 }
 
-func (r *CreatedAsyncResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -134,7 +135,8 @@ func NewAcceptedAsyncResponse(body interface{}, location string) Response {
 	return &AcceptedAsyncResponse{Body: body, Location: location}
 }
 
-func (r *AcceptedAsyncResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -156,7 +158,7 @@ func (r *AcceptedAsyncResponse) Apply(w http.ResponseWriter, req *http.Request) 
 		location.Scheme = "http"
 	}
 
-	log.Printf("Returning location: %s", location.String())
+	logger.Info(fmt.Sprintf("Returning location: %s", location.String()))
 
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", location.String())
@@ -179,7 +181,7 @@ func NewNoContentResponse() Response {
 	return &NoContentResponse{}
 }
 
-func (r *NoContentResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *NoContentResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(204)
 	return nil
 }
@@ -207,7 +209,7 @@ func NewBadRequestARMResponse(body armerrors.ErrorResponse) Response {
 	}
 }
 
-func (r *BadRequestResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *BadRequestResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -248,7 +250,7 @@ func NewValidationErrorResponse(errors validator.ValidationErrors) Response {
 	return &ValidationErrorResponse{Body: body}
 }
 
-func (r *ValidationErrorResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *ValidationErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -282,7 +284,7 @@ func NewNotFoundResponse(id resources.ResourceID) Response {
 	}
 }
 
-func (r *NotFoundResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -315,7 +317,7 @@ func NewConflictResponse(message string) Response {
 	}
 }
 
-func (r *ConflictResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -341,7 +343,7 @@ func NewInternalServerErrorARMResponse(body armerrors.ErrorResponse) Response {
 	}
 }
 
-func (r *InternalServerErrorResponse) Apply(w http.ResponseWriter, req *http.Request) error {
+func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
