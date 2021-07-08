@@ -1,11 +1,10 @@
 ---
 type: docs
 title: "Deploy the Dapr microservices tutorial frontend"
-linkTitle: "Deploy frontend"
-description: "Deploy the application frontend in a container"
+linkTitle: "Deploy backend"
+description: "Deploy the application backend container"
 weight: 2000
 ---
-
 
 ## Define a Radius app as a .bicep file
 
@@ -20,17 +19,17 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-## Add a container component 
+## Add backend container
 
-Next you'll add a `nodeapp` component for the website's frontend.
+Next you'll add a `nodeapp` component for the website's backend.
 
-Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `nodeapp` component in your template.bicep file will contain everything needed for the website frontend to run. 
+Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `nodeapp` component in your template.bicep file will contain everything needed for the website frontend to run.
 
-Your `nodeapp` component will specify:  
-- **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
-- **container image:** `radiusteam/tutorial-nodeapp`, a Docker image the container will run. This is where your application's front end code lives. 
+Your `nodeapp` component will specify:
+
+- **kind:** `radius.dev/Container@v1alpha1`, a generic container.
+- **container image:** `radiusteam/tutorial-nodeapp`, a Docker image the container will run. This is where your application's front end code lives.
 - **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).
-
 
 Update your template.bicep file to match the full application definition:
 
@@ -58,13 +57,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 }
 ```
 
-Note that you don't have to interact with multiple Resource Providers or manage details like connection string injection.   
+## Deploy the application
 
-## Deploy the application 
+Now you are ready to deploy the application for the first time.
 
-Now you are ready to deploy the application for the first time. 
-
-> **Reminder:** At this point, you should already be logged into the az CLI and already have an environment initialized. 
+> At this point, you should already be logged into the az CLI and have an environment initialized.
 
 1. Deploy to your Radius environment via the rad CLI:
 
@@ -80,7 +77,8 @@ Now you are ready to deploy the application for the first time.
    rad component list --application dapr-hello
    ```
 
-   You should see your `nodeapp` component. Example output: 
+   You should see your `nodeapp` component. Example output:
+
    ```
    COMPONENT  KIND
    nodeapp    radius.dev/Container@v1alpha1
@@ -98,7 +96,9 @@ Now you are ready to deploy the application for the first time.
 
 1. Visit the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. For now you should see a message like:
 
-   `{"message":"The container is running, but Dapr has not been configured."}`
+   ```
+   {"message":"The container is running, but Dapr has not been configured."}
+   ```
 
    If the message matches, then it means that the container is running as expected.
 

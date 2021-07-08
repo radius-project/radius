@@ -1,23 +1,23 @@
 ---
 type: docs
-title: "Add a content generator to the app"
-linkTitle: "Add a content generator"
-description: "How to add a content generator to the tutorial application"
+title: "Add a frontend UI to the app"
+linkTitle: "Add frontend"
+description: "How to add a frontend user interface to the tutorial application"
 weight: 4000
 ---
 
-
-To complete the application, you'll add another component for the order generating microservice. 
+To complete the application, you'll add another component for the frontend user interface.
 
 Again, we'll discuss changes to template.bicep and then provide the full, updated file before deployment.
 
-## Add pythonapp component
+## Add frontend component
+
 Another container component is used to specify a few properties about the order generator: 
 
-- **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
+- **kind:** `radius.dev/Container@v1alpha1`, a generic container.
 - **container image:** `radiusteam/tutorial-pythonapp`, a Docker image the container will run.
-- **uses:** `nodeapplication`, which declares the intention for `pythonapp` to communicate with `nodeapplication` using `dapr.io/Invoke` as the protocol. 
-- **traits:** `appId: pythonapp`, required Dapr configuration. 
+- **uses:** `nodeapplication`, which declares the intention for `pythonapp` to communicate with `nodeapplication` using `dapr.io/Invoke` as the protocol.
+- **traits:** `appId: pythonapp`, required Dapr configuration.
 
 ```sh
   resource pythonapplication 'Components' = {
