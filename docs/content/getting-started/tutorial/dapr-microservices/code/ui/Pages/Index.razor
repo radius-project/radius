@@ -1,28 +1,32 @@
 @page "/"
 @inject HttpClient Client
 
-<h1>Welcome to the Dapr store...</h1>
+<h1>Welcome to the Dapr Store</h1>
+
+<hr />
+<h3>Place an order:</h3>
 
 <EditForm Model="@current" OnValidSubmit="OnOrderPlacedAsync">
     <DataAnnotationsValidator />
     
     <div class="form-group">
         <label for="itemInput">Item</label>
-        <InputText @bind-Value="@current.Item" id="itemInput" class="form-control" placeholder="Enter the item"/>
-        <small class="form-text text-muted">Order whatever you want we have everything...</small>
+        <InputText @bind-Value="@current.Item" id="itemInput" class="form-control" placeholder="Enter the item you wish to purchase"/>
+        <small class="form-text text-muted">eg. bread, eggs, cheese</small>
     </div>
     <div class="form-group">
         <label for="priceInput">Item</label>
         <InputNumber @bind-Value="@current.Price" id="priceInput" class="form-control" placeholder="Choose the price"/>
+        <small class="form-text text-muted">eg. 2.99, 4, 6</small>
     </div>
 
-    <button type="submit" class="btn btn-primary">Order</button>
+    <button type="submit" class="btn btn-primary">Place Order</button>
 
 </EditForm>
 
 <hr />
 
-<h3>Previous orders...</h3>
+<h3>Previous orders:</h3>
 
 @if (loading)
 {
@@ -30,7 +34,8 @@
 }
 else if (error != null)
 {
-    <p class="danger">Error: @error</p>
+    <p><b>Error</b></p>
+    <pre><code>@error</code></pre>
 }
 else if (message != null)
 {
@@ -41,7 +46,7 @@ else
 <ul class="list-group">
     @foreach (var order in orders)
     {
-        <li class="list-group-item">@order.Item - @order.Price?.ToString("C")</li>
+        <li class="list-group-item">@order.Item: @order.Price?.ToString()</li>
     }
 </ul>
 }
