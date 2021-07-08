@@ -13,7 +13,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/rad/clients"
 	"github.com/Azure/radius/pkg/radclient"
 )
@@ -30,7 +29,7 @@ func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient
 	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.ListByResourceGroup(ctx, dm.ResourceGroup, nil)
 	if err != nil {
-		return nil, utils.UnwrapErrorFromRawResponse(err)
+		return nil, err
 	}
 
 	return response.ApplicationList, nil
@@ -40,7 +39,7 @@ func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationN
 	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.Get(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return nil, utils.UnwrapErrorFromRawResponse(err)
+		return nil, err
 	}
 
 	return response.ApplicationResource, err
@@ -52,7 +51,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, applicatio
 
 	_, err := ac.Delete(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return utils.UnwrapErrorFromRawResponse(err)
+		return err
 	}
 
 	return err
@@ -63,7 +62,7 @@ func (dm *ARMManagementClient) ListComponents(ctx context.Context, applicationNa
 
 	response, err := componentClient.ListByApplication(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
-		return nil, utils.UnwrapErrorFromRawResponse(err)
+		return nil, err
 	}
 	return response.ComponentList, err
 }
@@ -73,7 +72,7 @@ func (dm *ARMManagementClient) ShowComponent(ctx context.Context, applicationNam
 
 	response, err := componentClient.Get(ctx, dm.ResourceGroup, applicationName, componentName, nil)
 	if err != nil {
-		return nil, utils.UnwrapErrorFromRawResponse(err)
+		return nil, err
 	}
 
 	return response.ComponentResource, err
@@ -83,12 +82,12 @@ func (dm *ARMManagementClient) DeleteDeployment(ctx context.Context, deploymentN
 	dc := radclient.NewDeploymentClient(dm.Connection, dm.SubscriptionID)
 	poller, err := dc.BeginDelete(ctx, dm.ResourceGroup, applicationName, deploymentName, nil)
 	if err != nil {
-		return utils.UnwrapErrorFromRawResponse(err)
+		return err
 	}
 
 	_, err = poller.PollUntilDone(ctx, radclient.PollInterval)
 	if err != nil {
-		return utils.UnwrapErrorFromRawResponse(err)
+		return err
 	}
 	return err
 }
@@ -105,7 +104,7 @@ func (dm *ARMManagementClient) ListDeployments(ctx context.Context, applicationN
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 
-		return nil, utils.UnwrapErrorFromRawResponse(err)
+		return nil, err
 	}
 
 	return response.DeploymentList, err
@@ -122,7 +121,7 @@ func (dm *ARMManagementClient) ShowDeployment(ctx context.Context, deploymentNam
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 
-		return nil, utils.UnwrapErrorFromRawResponse(err)
+		return nil, err
 	}
 
 	return response.DeploymentResource, err

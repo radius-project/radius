@@ -34,8 +34,7 @@ func Test_FormatApplicationTable(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := `APPLICATION
-test-app  
-`
+test-app  ` + "\n"
 	require.Equal(t, expected, buffer.String())
 }
 
@@ -57,8 +56,7 @@ func Test_FormatComponentTable(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := `COMPONENT       KIND
-test-component  radius.dev/TestComponent@v1alpha1  
-`
+test-component  radius.dev/TestComponent@v1alpha1  ` + "\n"
 	require.Equal(t, expected, buffer.String())
 }
 
@@ -66,7 +64,7 @@ func Test_FormatDeploymentTable(t *testing.T) {
 	options := GetDeploymentTableFormat()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	components := []radclient.DeploymentPropertiesComponentsItem{
+	components := []*radclient.DeploymentPropertiesComponentsItem{
 		{
 			ComponentName: to.StringPtr("frontend"),
 		},
@@ -81,7 +79,7 @@ func Test_FormatDeploymentTable(t *testing.T) {
 			},
 		},
 		Properties: &radclient.DeploymentProperties{
-			Components: &components,
+			Components: components,
 		},
 	}
 
@@ -90,7 +88,6 @@ func Test_FormatDeploymentTable(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := `DEPLOYMENT       COMPONENTS
-test-deployment  frontend backend  
-`
+test-deployment  frontend backend  ` + "\n"
 	require.Equal(t, expected, buffer.String())
 }

@@ -9,6 +9,8 @@ package radclient
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"net/http"
@@ -29,6 +31,7 @@ func NewComponentClient(con *armcore.Connection, subscriptionID string) *Compone
 }
 
 // CreateOrUpdate - Creates or updates a component.
+// If the operation fails it returns the *ErrorResponse error type.
 func (client *ComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, componentName string, parameters ComponentCreateParameters, options *ComponentCreateOrUpdateOptions) (ComponentResourceResponse, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, componentName, parameters, options)
 	if err != nil {
@@ -47,18 +50,30 @@ func (client *ComponentClient) CreateOrUpdate(ctx context.Context, resourceGroup
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *ComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, componentName string, parameters ComponentCreateParameters, options *ComponentCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Components/{componentName}"
+	if client.subscriptionID == "" {
+		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	if applicationName == "" {
+		return nil, errors.New("parameter applicationName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
+	if componentName == "" {
+		return nil, errors.New("parameter componentName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{componentName}", url.PathEscape(componentName))
 	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
 	req.Telemetry(telemetryInfo)
-	query := req.URL.Query()
-	query.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = query.Encode()
+	reqQP := req.URL.Query()
+	reqQP.Set("api-version", "2018-09-01-preview")
+	req.URL.RawQuery = reqQP.Encode()
 	req.Header.Set("Accept", "application/json")
 	return req, req.MarshalAsJSON(parameters)
 }
@@ -74,14 +89,19 @@ return ComponentResourceResponse{RawResponse: resp.Response, ComponentResource: 
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *ComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
-var err ErrorResponse
-	if err := resp.UnmarshalAsJSON(&err); err != nil {
-		return err
+	body, err := resp.Payload()
+	if err != nil {
+		return azcore.NewResponseError(err, resp.Response)
 	}
-	return azcore.NewResponseError(&err, resp.Response)
+		errType := ErrorResponse{raw: string(body)}
+	if err := resp.UnmarshalAsJSON(&errType); err != nil {
+		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	}
+	return azcore.NewResponseError(&errType, resp.Response)
 }
 
 // Delete - Deletes a component.
+// If the operation fails it returns the *ErrorResponse error type.
 func (client *ComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, componentName string, options *ComponentDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, componentName, options)
 	if err != nil {
@@ -100,32 +120,49 @@ func (client *ComponentClient) Delete(ctx context.Context, resourceGroupName str
 // deleteCreateRequest creates the Delete request.
 func (client *ComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, componentName string, options *ComponentDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Components/{componentName}"
+	if client.subscriptionID == "" {
+		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	if applicationName == "" {
+		return nil, errors.New("parameter applicationName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
+	if componentName == "" {
+		return nil, errors.New("parameter componentName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{componentName}", url.PathEscape(componentName))
 	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
 	req.Telemetry(telemetryInfo)
-	query := req.URL.Query()
-	query.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = query.Encode()
+	reqQP := req.URL.Query()
+	reqQP.Set("api-version", "2018-09-01-preview")
+	req.URL.RawQuery = reqQP.Encode()
 	req.Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
 func (client *ComponentClient) deleteHandleError(resp *azcore.Response) error {
-var err ErrorResponse
-	if err := resp.UnmarshalAsJSON(&err); err != nil {
-		return err
+	body, err := resp.Payload()
+	if err != nil {
+		return azcore.NewResponseError(err, resp.Response)
 	}
-	return azcore.NewResponseError(&err, resp.Response)
+		errType := ErrorResponse{raw: string(body)}
+	if err := resp.UnmarshalAsJSON(&errType); err != nil {
+		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	}
+	return azcore.NewResponseError(&errType, resp.Response)
 }
 
 // Get - Gets a component by name.
+// If the operation fails it returns the *ErrorResponse error type.
 func (client *ComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, componentName string, options *ComponentGetOptions) (ComponentResourceResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, componentName, options)
 	if err != nil {
@@ -144,18 +181,30 @@ func (client *ComponentClient) Get(ctx context.Context, resourceGroupName string
 // getCreateRequest creates the Get request.
 func (client *ComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, componentName string, options *ComponentGetOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Components/{componentName}"
+	if client.subscriptionID == "" {
+		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	if applicationName == "" {
+		return nil, errors.New("parameter applicationName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
+	if componentName == "" {
+		return nil, errors.New("parameter componentName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{componentName}", url.PathEscape(componentName))
 	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
 	req.Telemetry(telemetryInfo)
-	query := req.URL.Query()
-	query.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = query.Encode()
+	reqQP := req.URL.Query()
+	reqQP.Set("api-version", "2018-09-01-preview")
+	req.URL.RawQuery = reqQP.Encode()
 	req.Header.Set("Accept", "application/json")
 	return req, nil
 }
@@ -171,14 +220,19 @@ return ComponentResourceResponse{RawResponse: resp.Response, ComponentResource: 
 
 // getHandleError handles the Get error response.
 func (client *ComponentClient) getHandleError(resp *azcore.Response) error {
-var err ErrorResponse
-	if err := resp.UnmarshalAsJSON(&err); err != nil {
-		return err
+	body, err := resp.Payload()
+	if err != nil {
+		return azcore.NewResponseError(err, resp.Response)
 	}
-	return azcore.NewResponseError(&err, resp.Response)
+		errType := ErrorResponse{raw: string(body)}
+	if err := resp.UnmarshalAsJSON(&errType); err != nil {
+		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	}
+	return azcore.NewResponseError(&errType, resp.Response)
 }
 
 // ListByApplication - List components deployed in the application.
+// If the operation fails it returns the *ErrorResponse error type.
 func (client *ComponentClient) ListByApplication(ctx context.Context, resourceGroupName string, applicationName string, options *ComponentListByApplicationOptions) (ComponentListResponse, error) {
 	req, err := client.listByApplicationCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
@@ -197,17 +251,26 @@ func (client *ComponentClient) ListByApplication(ctx context.Context, resourceGr
 // listByApplicationCreateRequest creates the ListByApplication request.
 func (client *ComponentClient) listByApplicationCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ComponentListByApplicationOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Components"
+	if client.subscriptionID == "" {
+		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	if applicationName == "" {
+		return nil, errors.New("parameter applicationName cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
 	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
 	req.Telemetry(telemetryInfo)
-	query := req.URL.Query()
-	query.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = query.Encode()
+	reqQP := req.URL.Query()
+	reqQP.Set("api-version", "2018-09-01-preview")
+	req.URL.RawQuery = reqQP.Encode()
 	req.Header.Set("Accept", "application/json")
 	return req, nil
 }
@@ -223,10 +286,14 @@ return ComponentListResponse{RawResponse: resp.Response, ComponentList: val}, ni
 
 // listByApplicationHandleError handles the ListByApplication error response.
 func (client *ComponentClient) listByApplicationHandleError(resp *azcore.Response) error {
-var err ErrorResponse
-	if err := resp.UnmarshalAsJSON(&err); err != nil {
-		return err
+	body, err := resp.Payload()
+	if err != nil {
+		return azcore.NewResponseError(err, resp.Response)
 	}
-	return azcore.NewResponseError(&err, resp.Response)
+		errType := ErrorResponse{raw: string(body)}
+	if err := resp.UnmarshalAsJSON(&errType); err != nil {
+		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	}
+	return azcore.NewResponseError(&errType, resp.Response)
 }
 

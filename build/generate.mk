@@ -22,7 +22,7 @@ generate-autorest-installed:
 
 .PHONY: generate-radclient
 generate-radclient: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
-	autorest --use=@autorest/go@4.0.0-preview.14 \
+	autorest --use=@autorest/go@4.0.0-preview.22 \
 		schemas/rest-api-specs/readme.md \
 		--tag=package-2018-09-01-preview \
 		--go  \
@@ -43,7 +43,7 @@ generate-mockgen-installed:
 .PHONY: generate-go
 generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mocks).
 	@echo "$(ARROW) Running go generate..."
-	go generate -v ./... 
+	go generate -v ./...
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 generate-controller-gen-installed:
