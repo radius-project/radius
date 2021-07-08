@@ -748,12 +748,18 @@
           "description": "Bindings spec of the component"
         },
         "uses": {
-          "type": "object",
-          "description": "Uses spec of the component"
+          "type": "array",
+          "description": "Uses spec of the component",
+          "items": {
+	      "type": "object"
+          }
         },
         "traits": {
-          "type": "object",
-          "description": "Traits spec of the component"
+          "type": "array",
+          "description": "Traits spec of the component",
+          "items": {
+	      "type": "object"
+          }
         },
         "outputResources": {
           "type": "array",

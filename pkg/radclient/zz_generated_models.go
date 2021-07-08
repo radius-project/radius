@@ -124,10 +124,10 @@ type ComponentProperties struct {
 	Run map[string]interface{} `json:"run,omitempty"`
 
 	// Traits spec of the component
-	Traits map[string]interface{} `json:"traits,omitempty"`
+	Traits []map[string]interface{} `json:"traits,omitempty"`
 
 	// Uses spec of the component
-	Uses map[string]interface{} `json:"uses,omitempty"`
+	Uses []map[string]interface{} `json:"uses,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ComponentProperties.
