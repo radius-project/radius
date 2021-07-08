@@ -11,6 +11,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
     }
   }
+  //SAMPLE
 
   resource webapp 'Components' = {
     name: 'todoapp'
@@ -33,5 +34,4 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       ]
     }
   }
-  //SAMPLE
 }

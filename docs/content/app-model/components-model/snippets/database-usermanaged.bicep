@@ -1,3 +1,4 @@
+//COSMOS
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'account-${guid(resourceGroup().name)}'
   location: resourceGroup().location
@@ -15,11 +16,9 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     ]
     databaseAccountOfferType: 'Standard'
   }
-  //PROPERTIES
 
   resource mongodb 'mongodbDatabases' = {
     name: 'mydb'
-    //PROPERTIES
     properties: {
       resource: {
         id: 'mydb'
@@ -28,13 +27,14 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
         throughput: 400
       }
     }
-    //PROPERTIES
   }
 }
+//COSMOS
 
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'cosmos-container-usermanaged'
   
+  //SAMPLE
   resource db 'Components' = {
     name: 'db'
     kind: 'azure.com/CosmosDBMongo@v1alpha1'
@@ -44,7 +44,8 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
     }
   }
-
+  //SAMPLE
+  
   resource webapp 'Components' = {
     name: 'todoapp'
     kind: 'radius.dev/Container@v1alpha1'

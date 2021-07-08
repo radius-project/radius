@@ -20,4 +20,4 @@ This example shows a blank application with nothing in it. Deploying this would 
 
 Now that you are familiar with Radius applications, the next step is to learn about Radius components.
 
-{{< button text="Learn about components" page="components-model.md" >}}
+{{< button text="Learn about Components" page="components-model.md" >}}

@@ -3,6 +3,7 @@ type: docs
 title: "Azure CosmosDB SQL"
 linkTitle: "Azure CosmosDB SQL"
 description: "Sample application running on an Azure CosmosDB with SQL"
+weight: 100
 ---
 
 This application showcases how Radius can use a managed Azure CosmosDB with SQL API.
@@ -13,6 +14,12 @@ This application showcases how Radius can use a managed Azure CosmosDB with SQL 
 |----------|-------------|---------|
 | managed | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. | `true`, `false`
 | resource | The ID of the user-managed CosmosDB with SQL API to use for this Component. | `account::sqldb.id`
+
+## Resource lifecycle
+
+An `azure.com/CosmosDBSQL` can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
+
+{{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
 
 ## Bindings
 
@@ -33,7 +40,3 @@ The `sql` Binding of kind `microsoft.com/SQL` represents the SQL API offered by 
 |----------|-------------|
 | `connectionString` | The SQL connection string used to connect to the database.
 | `database` | The name of the database to which you are connecting.
-
-## Example
-
-{{< rad file="snippets/azure-cosmos-sql-manged.bicep" embed=true replace-key-hide="//HIDE" replace-value-hide="run: {...}" >}}

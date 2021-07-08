@@ -12,9 +12,13 @@ weight: 200
 
 Runnable components run your logic & code. They can both provide and consume [bindings]({{< ref bindings-model.md >}}) to/from other components in your Application. For example, a [`radius.dev/Container` component]({{< ref container >}}) can describe and run your container workloads.
 
+{{< rad file="snippets/container.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" >}}
+
 ## Non-runnable components
 
 Resources like databases and message queues can be described via non-runnable Components, which can only provide [Bindings]({{< ref bindings-model.md >}}) and not consume them. For example, a [`azure.com/CosmosDBMongo` Component]({{< ref cosmos-mongodb >}}) is a non-runnable Component that describes an Azure CosmosDb account and database configured with the MongoDb API.
+
+{{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
 
 ## Bindings
 
@@ -28,9 +32,19 @@ Radius components can be deployed and managed by either Radius (managed) or by a
 
 When `properties.config.managed` is set to `true`, Radius will manage the lifecycle of the underlying resource, meaning it will deploy and manage the resource itself on the [hosting platform]({{< ref environments >}}).
 
+{{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
+
 ### User managed
 
 When `properties.config.managed` is set to `false` or omitted, you can explicitly specify an existing resource which you manage. This allows you to connect your Radius Components to existing databases, queues, and other non-compute resources. When you delete your application Radius will not change or delete your existing resource.
+
+#### Radius component
+
+{{< rad file="snippets/database-usermanaged.bicep" embed=true marker="//SAMPLE" >}}
+
+#### Bicep resources
+
+{{< rad file="snippets/database-usermanaged.bicep" embed=true marker="//COSMOS" >}}
 
 ## Configuration
 
@@ -39,17 +53,12 @@ When `properties.config.managed` is set to `false` or omitted, you can explicitl
 | name | The name of your component. Used for defining relationships and getting status for your components.
 | properties.bindings | List of [bindings]({{< ref bindings-model.md >}}) which your Component offers to other Components or users.
 | properties.uses | List of [bindings]({{< ref bindings-model.md >}}) which your runnable Component depends on for APIs and/or data.
+| properties.config | Configuration of the Radius component, such as `managed` and `resource`.
 
 Different [component types]({{< ref components >}}) may also have additional properties and configuration which can be set as part of the component definition.
-
-## Example
-
-In the following example a container offers an HTTP binding on port 3000:
-
-{{< rad file="snippets/components-model-storefront.bicep" embed=true marker="//SAMPLE" replace-key-hide="//HIDE" replace-value-hide="run: {...}" >}}
 
 ## Next step
 
 Now that you are familiar with Radius components, the next step is to learn about Radius bindings.
 
-{{< button text="Learn about bindings" page="bindings-model.md" >}}
+{{< button text="Learn about Bindings" page="bindings-model.md" >}}

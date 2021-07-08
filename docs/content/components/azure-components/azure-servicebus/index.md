@@ -18,9 +18,14 @@ The Azure ServiceBus component offers to the user:
 
 | Property | Description | Example(s) |
 |----------|-------------|---------|
-| managed | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. | `true`, `false`
-| queue | The name of the queue=
-| resource | The ID of the user-managed CosmosDB with Mongo API to use for this Component. | `account::mongodb.id`
+| managed | Indicates if the resource is Radius-managed. For now only `true` is accepted for this Component. | `true`
+| queue | The name of the queue
+
+## Resource lifecycle
+
+An `azure.com/ServiceBusQueue` Component can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
+
+{{< rad file="snippets/managed.bicep" embed=true marker="//BUS" >}}
 
 ## Bindings
 
@@ -33,12 +38,6 @@ The `default` Binding of kind `azure.com/ServiceBusQueue` represents the the Ser
 | `connectionString` | The Service Bus connection string used to connect to the resource.
 | `namespace` | The namespace of the Service Bus.
 | `queue` | The message queue to which you are connecting.
-
-### Example
-
-A ServiceBus Queue resource can be modeled with the `azure.com/ServiceBusQueue@v1alpha1` kind:
-
-{{< rad file="snippets/azure-servicebus-managed.bicep" embed=true marker="//SAMPLE" replace-key-hide="//HIDE" replace-value-hide="run: {...}">}}
 
 ## Tutorial
 
@@ -62,25 +61,25 @@ The application you will be deploying is a simple sender-receiver application us
 
 Radius will create a new ServiceBus namespace if one does not already exist in the resource group and add the queue name `radius-queue1` as specified in the deployment template below. If you change the queue name, it is automatically injected into the sender/receiver app containers and they start sending/listening on the new queue accoridingly.
 
-{{< rad file="snippets/azure-servicebus-managed.bicep" embed=true marker="//BUS" >}}
+{{< rad file="snippets/managed.bicep" embed=true marker="//BUS" >}}
 
 #### Receiver application
 
 The receiver application is a simple listener that listens to an Azure ServiceBus queue named `radius-queue1` and prints out the messages received:
 
-{{< rad file="snippets/azure-servicebus-managed.bicep" embed=true marker="//RECEIVER" >}}
+{{< rad file="snippets/managed.bicep" embed=true marker="//RECEIVER" >}}
 
 #### Sender application
 
 The sender application sends messages over an Azure ServiceBus queue named `radius-queue1` with a delay of 1s:
 
-{{< rad file="snippets/azure-servicebus-managed.bicep" embed=true marker="//SENDER" >}}
+{{< rad file="snippets/managed.bicep" embed=true marker="//SENDER" >}}
 
 ### Deploy application
 
 #### Download Bicep file
 
-{{< rad file="snippets/azure-servicebus-managed.bicep" download=true >}}
+{{< rad file="snippets/managed.bicep" download=true >}}
 
 Alternately, you can create a new file named `azure-servicebus-managed.bicep` and paste the above components into an `app` resource.  
 

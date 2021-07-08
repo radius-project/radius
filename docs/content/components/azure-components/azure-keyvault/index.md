@@ -34,6 +34,12 @@ The Radius KeyVault component `azure.com/KeyVault` offers to the user:
 |----------|-------------|---------|
 | managed | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. (KeyVault currently only supports `true`) | `true`, `false`
 
+## Resource lifecycle
+
+An `azure.com/KeyVault` can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
+
+{{< rad file="snippets/managed.bicep" embed=true marker="//KEYVAULT" >}}
+
 ## Bindings
 
 ### default
@@ -69,13 +75,13 @@ The accessor uses an [Azure managed identity](https://docs.microsoft.com/en-us/a
 
 The following Radius application component describes a managed Azure KeyVault:
 
-{{< rad file="snippets/azure-keyvault-managed.bicep" embed=true marker="//KEYVAULT" >}}
+{{< rad file="snippets/managed.bicep" embed=true marker="//KEYVAULT" >}}
 
 #### KeyVault accessor application
 
 The keyvault accessor application is a simple python application that tries to access the keyvault at the KV_URI environment variable and then tries to list the secrets.
 
-{{< rad file="snippets/azure-keyvault-managed.bicep" embed=true marker="//ACCESSOR">}}
+{{< rad file="snippets/managed.bicep" embed=true marker="//ACCESSOR">}}
 
 Here, Radius creates the Azure KeyVault and injects the KV_URI environment variable into the container with the uri. The application reads this environment variable to access the KeyVault. By default, the container is granted access as KeyVault Reader with scope as KeyVault
 
@@ -83,7 +89,7 @@ Here, Radius creates the Azure KeyVault and injects the KV_URI environment varia
 
 1. Download the Radius Key Vault application:
 
-   {{< rad file="snippets/azure-keyvault-managed.bicep" download=true >}}
+   {{< rad file="snippets/managed.bicep" download=true >}}
 
 1. Submit the Radius template to Azure using:
 

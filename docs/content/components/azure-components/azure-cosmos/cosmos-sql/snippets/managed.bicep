@@ -1,6 +1,7 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'cosmos-container'
   
+  //SAMPLE
   resource db 'Components' = {
     name: 'db'
     kind: 'azure.com/CosmosDBSQL@v1alpha1'
@@ -10,6 +11,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
     }
   }
+  //SAMPLE
 
   resource webapp 'Components' = {
     name: 'todoapp'
