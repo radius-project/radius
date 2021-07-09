@@ -38,7 +38,7 @@ func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, "AzureServiceBusTopic", resource.LocalID)
+	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 
 	expected := map[string]string{
@@ -76,7 +76,7 @@ func Test_Render_Managed_Success_SpecifyName(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, "AzureServiceBusTopic", resource.LocalID)
+	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 
 	expected := map[string]string{
@@ -136,7 +136,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, "AzureServiceBusTopic", resource.LocalID)
+	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 
 	expected := map[string]string{

@@ -104,7 +104,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		resource = workloads.OutputResource{
 			ResourceKind:       workloads.ResourceKindAzureCosmosDBMongo,
 			OutputResourceType: workloads.OutputResourceTypeArm,
-			LocalID:            "AzureCosmosDBMongo",
+			LocalID:            workloads.LocalIDAzureCosmosDBMongo,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
@@ -124,7 +124,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		resource = workloads.OutputResource{
 			ResourceKind:       workloads.ResourceKindAzureCosmosDBMongo,
-			LocalID:            "AzureCosmosDBMongo",
+			LocalID:            workloads.LocalIDAzureCosmosDBMongo,
 			OutputResourceType: workloads.OutputResourceTypeArm,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",

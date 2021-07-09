@@ -32,16 +32,16 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "frontend",
 						OutputResources: map[string]validation.OutputResourceSet{
-							"Deployment": validation.NewOutputResource("Deployment", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
-							"Service":    validation.NewOutputResource("Service", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
 						OutputResources: map[string]validation.OutputResourceSet{
-							"Deployment": validation.NewOutputResource("Deployment", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
-							"Service":    validation.NewOutputResource("Service", workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
 					},
 				},

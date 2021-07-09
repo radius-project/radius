@@ -52,10 +52,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	localID := ""
 	if component.Config.Kind == "any" || component.Config.Kind == "state.azure.tablestorage" {
 		resourceKind = workloads.ResourceKindDaprStateStoreAzureStorage
-		localID = "DaprStateStoreAzureStorage"
+		localID = workloads.LocalIDDaprStateStoreAzureStorage
 	} else if component.Config.Kind == "state.sqlserver" {
 		resourceKind = workloads.ResourceKindDaprStateStoreSQLServer
-		localID = "DaprStateStoreSQLServer"
+		localID = workloads.LocalIDDaprStateStoreSQLServer
 	} else {
 		return []workloads.OutputResource{}, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, supportedStateStoreKindValues)
 	}

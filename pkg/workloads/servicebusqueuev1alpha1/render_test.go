@@ -50,7 +50,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, "AzureServiceBusQueue", resource.LocalID)
+	require.Equal(t, workloads.LocalIDAzureServiceBusQueue, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindAzureServiceBusQueue, resource.ResourceKind)
 
 	expected := map[string]string{
@@ -83,7 +83,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, "AzureServiceBusQueue", resource.LocalID)
+	require.Equal(t, workloads.LocalIDAzureServiceBusQueue, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindAzureServiceBusQueue, resource.ResourceKind)
 
 	expected := map[string]string{

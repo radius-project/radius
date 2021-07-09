@@ -93,7 +93,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		resource := workloads.OutputResource{
 			ResourceKind:       workloads.ResourceKindAzureCosmosDBSQL,
 			OutputResourceType: workloads.OutputResourceTypeArm,
-			LocalID:            "AzureCosmosDBSQL",
+			LocalID:            workloads.LocalIDAzureCosmosDBSQL,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
@@ -117,7 +117,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	resource := workloads.OutputResource{
 		ResourceKind:       workloads.ResourceKindAzureCosmosDBSQL,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            "AzureCosmosDBSQL",
+		LocalID:            workloads.LocalIDAzureCosmosDBSQL,
 		Resource: map[string]string{
 			handlers.ManagedKey: "false",
 

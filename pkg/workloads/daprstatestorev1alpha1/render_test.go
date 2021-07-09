@@ -51,7 +51,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, "DaprStateStoreAzureStorage", resource.LocalID)
+	require.Equal(t, workloads.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprStateStoreAzureStorage, resource.ResourceKind)
 
 	expected := map[string]string{
@@ -89,7 +89,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, "DaprStateStoreAzureStorage", resource.LocalID)
+	require.Equal(t, workloads.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprStateStoreAzureStorage, resource.ResourceKind)
 
 	expected := map[string]string{
@@ -173,7 +173,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, "DaprStateStoreSQLServer", resource.LocalID)
+	require.Equal(t, workloads.LocalIDDaprStateStoreSQLServer, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprStateStoreSQLServer, resource.ResourceKind)
 
 	expected := map[string]string{
