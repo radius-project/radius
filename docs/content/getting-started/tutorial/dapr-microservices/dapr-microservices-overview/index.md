@@ -14,9 +14,9 @@ In this tutorial you will be deploying an online store where you an order items:
 
 This Radius application will have three [Components]({{< ref components-model.md >}}):
 
-- A UI for users to place orders written with .NET Blazor ("frontend")
-- An backend order processing microservice written in Node.JS ("nodeapp")
-- A Dapr state store used to store the orders ("statestore")
+- A UI for users to place orders written with .NET Blazor (`frontend`)
+- A backend order processing microservice written in Node.JS (`backend`)
+- A Dapr state store used to store the orders (`statestore`)
 
 ### Frontend
 
@@ -26,13 +26,15 @@ The user-facing UI app (`frontend`) offers a portal for users to place orders. U
 
 ### Backend
 
-The order processing microservice (`nodeapp`) accepts HTTP requests to create or display orders. It accepts HTTP requests on two endpoints: `GET /order` and `POST /neworder`.
+The order processing microservice (`backend`) accepts HTTP requests to create or display orders. It accepts HTTP requests on two endpoints: `GET /order` and `POST /neworder`.
 
-<img src="./backend.png" alt="A diagram of the nodeapp order processing service" width=700 />
+<img src="./backend.png" alt="A diagram of the backend order processing service" width=600 />
 
 ### Statestore
 
 The Dapr state store (`statestore`) stores information about orders. It could be any compatible [Dapr state store](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/). In this tutorial we will use Azure Table Storage.
+
+<img src="./statestore.png" alt="A diagram of the Dapr state store" width=400 />
 
 ## Bindings
 
