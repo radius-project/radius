@@ -26,7 +26,7 @@ This example sets the `resource` property to a ServiceBus topic for the Dapr Pub
 
 In this example the ServiceBus resources are configured as part of the same `.bicep` template.
 
-{{< rad file="unmanaged.bicep">}}
+{{< rad file="usermanaged.bicep">}}
 
 ## Access from a container
 
@@ -77,8 +77,6 @@ The application you will be deploying is a simple publisher-subscriber applicati
 - A publisher written in Python
 - A subscriber written in Node.js
 - A Dapr PubSub component that uses Azure Service Bus
-
-You can find the source code for the sender and receiver applications [here](https://github.com/Azure/radius/tree/main/examples/dapr-examples/dapr-pubsub-azure/apps).
 
 #### Subscriber application
 
@@ -204,16 +202,18 @@ rad deploy template.bicep
 
 This will deploy the application, create the ServiceBus queue and launch the containers.
 
-To see the publisher and subscriber applications working, you can check logs:
+To see the publisher and subscriber components working, you can check their logs. For example: 
 
 ```sh
-rad logs dapr-pubsub pythonpublisher
-rad logs dapr-pubsub nodesubscriber
+rad component logs pythonpublisher --application dapr-pubsub 
+```
+```sh
+rad component logs nodesubscriber --application dapr-pubsub 
 ```
 
-You should see the publisher sending messages and the subscriber receiving them as below:-
+You should see the publisher sending messages and the subscriber receiving them as below:
 
-```txt
+```
 TOPIC_A :  hello world
 TOPIC_A :  hello world
 TOPIC_A :  hello world

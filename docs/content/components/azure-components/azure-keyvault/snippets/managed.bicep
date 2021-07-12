@@ -1,6 +1,8 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'radius-keyvault'
 
+  //SAMPLE
+  //KEYVAULT
   resource kv 'Components' = {
     name: 'kv'
     kind: 'azure.com/KeyVault@v1alpha1'
@@ -10,7 +12,9 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
     }
   }
+  //KEYVAULT
 
+  //ACCESSOR
   resource kvaccessor 'Components' = {
     name: 'kvaccessor'
     kind: 'radius.dev/Container@v1alpha1'
@@ -30,4 +34,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       ]
     }
   }
+  //ACCESSOR
+  //SAMPLE
 }

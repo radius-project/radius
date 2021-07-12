@@ -3,7 +3,7 @@ type: docs
 title: "Radius environments concept"
 linkTitle: "Environments"
 description: "Information on Radius environments and how they host Radius applications"
-weight: 30
+weight: 300
 ---
 
 {{% alert title="😱 Warning" color="warning" %}}
@@ -14,8 +14,8 @@ This page is still an early work in progress, and is subject to change based upo
 - For now you will see Radius implementation details as resources in your subscription
 {{% /alert %}}
 
-
 Environments are the combination of two things:
+
 - A **control-plane** which communicates with with the rad CLI
 - A **runtime** to which applications are deployed
 
