@@ -124,6 +124,8 @@ func runKubectlApply(ctx context.Context, content []byte) error {
 		executableName = "kubectl"
 	}
 
+	// kubectl can accept a file via stdin via passing '-f -'.
+	// Ex: cat pod.json | kubectl apply -f - would pass pod.json to kubectl apply.
 	executableArgs = append(executableArgs, "apply", "-f", "-")
 	c := exec.CommandContext(ctx, executableName, executableArgs...)
 

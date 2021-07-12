@@ -63,12 +63,12 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Delete environment, this will delete the resource group and all the resources in it
 		authorizer, err := auth.NewAuthorizerFromCLI()
 		if err != nil {
 			return err
 		}
 
+		// Delete environment, this will delete the resource group and all the resources in it
 		if err = deleteResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 			return err
 		}
