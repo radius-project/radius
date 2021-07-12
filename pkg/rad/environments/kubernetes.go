@@ -10,10 +10,6 @@ import (
 
 	"github.com/Azure/radius/pkg/rad/clients"
 	"github.com/Azure/radius/pkg/rad/kubernetes"
-	"k8s.io/client-go/dynamic"
-	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
@@ -46,7 +42,7 @@ func (e *KubernetesEnvironment) GetStatusLink() string {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	client, err := e.CreateDynamicClient()
+	client, err := kubernetes.CreateDynamicClient(e.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +54,7 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 }
 
 func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	client, config, err := e.CreateTypedClient()
+	client, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -68,44 +64,4 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		RestConfig: config,
 		Namespace:  e.Namespace,
 	}, nil
-}
-
-func (e KubernetesEnvironment) CreateDynamicClient() (dynamic.Interface, error) {
-	config, err := kubernetes.ReadKubeConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	clientconfig := clientcmd.NewNonInteractiveClientConfig(*config, e.Context, nil, nil)
-	merged, err := clientconfig.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := dynamic.NewForConfig(merged)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, err
-}
-
-func (e KubernetesEnvironment) CreateTypedClient() (*k8s.Clientset, *rest.Config, error) {
-	config, err := kubernetes.ReadKubeConfig()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	clientconfig := clientcmd.NewNonInteractiveClientConfig(*config, e.Context, nil, nil)
-	merged, err := clientconfig.ClientConfig()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	client, err := k8s.NewForConfig(merged)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return client, merged, err
 }

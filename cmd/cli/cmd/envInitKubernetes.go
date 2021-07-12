@@ -7,12 +7,11 @@ package cmd
 
 import (
 	"context"
-	"embed"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
+	"io/ioutil"
 	"path/filepath"
 
 	"github.com/Azure/radius/pkg/rad"
@@ -20,21 +19,64 @@ import (
 	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
-	"github.com/Azure/radius/pkg/version"
-	"github.com/Azure/radius/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	helm "helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	k8s "k8s.io/client-go/kubernetes"
 )
 
-//go:embed Chart
-var chartFolder embed.FS
+func createNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
+	// Patch the namespace to avoid checking existance
+	ns := &v1.Namespace{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name: namespace,
+		},
+	}
+
+	jsonNamespace, err := json.Marshal(ns)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.CoreV1().Namespaces().Patch(ctx, namespace, types.JSONPatchType, jsonNamespace, meta_v1.PatchOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// func getVersion(version string) (string, error) {
+// 	if version == latestVersion {
+// 		var err error
+// 		version, err = cli_ver.GetDaprVersion()
+// 		if err != nil {
+// 			return "", fmt.Errorf("cannot get the latest release version: %s", err)
+// 		}
+// 		version = version[1:]
+// 	}
+// 	return version, nil
+// }
+
+func createTempDir() (string, error) {
+	dir, err := ioutil.TempDir("", "dapr")
+	if err != nil {
+		return "", fmt.Errorf("error creating temp dir: %s", err)
+	}
+	return dir, nil
+}
+
+func locateChartFile(dirPath string) (string, error) {
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dirPath, files[0].Name()), nil
+}
+
+func debugLogf(format string, v ...interface{}) {
+}
 
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
@@ -50,14 +92,17 @@ var envInitKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		namespace, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			return err
 		}
 
 		if interactive {
+			namespace, err = prompt.Text("Enter a namespace name:", prompt.EmptyValidator)
 			if err != nil {
 				return err
+			}
 		}
 
 		k8sconfig, err := kubernetes.ReadKubeConfig()
@@ -75,13 +120,17 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		step := logger.BeginStep("Installing Radius...")
-		err = install(cmd.Context(), KubernetesInitConfig{
-			Namespace: "radius-system",
-			Version:   version.Version(),
-		})
+
+		client, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 		if err != nil {
 			return err
 		}
+
+		err = createNamespace(cmd.Context(), client, "radius-system")
+		if err != nil {
+			return err
+		}
+
 		logger.CompleteStep(step)
 
 		config := ConfigFromContext(cmd.Context())
@@ -120,62 +169,66 @@ func init() {
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
 }
 
-// runKubectlApply runs a kubectl CLI command with stdout and stderr buffered for logging when there is an error.
-func runKubectlApply(ctx context.Context, content []byte) error {
-	var executableName string
-	var executableArgs []string
-	if runtime.GOOS == "windows" {
-		// Use shell on windows since az is a script not an executable
-		executableName = fmt.Sprintf("%s\\system32\\cmd.exe", os.Getenv("windir"))
-		executableArgs = append(executableArgs, "/c", "kubectl")
-	} else {
-		executableName = "kubectl"
-	}
+// RunCLICommand runs a kubectl CLI command with stdout and stderr buffered for logging when there is an error.
+// func runKubectlApply(ctx context.Context, content []byte) error {
+// 	var executableName string
+// 	var executableArgs []string
+// 	if runtime.GOOS == "windows" {
+// 		// Use shell on windows since az is a script not an executable
+// 		executableName = fmt.Sprintf("%s\\system32\\cmd.exe", os.Getenv("windir"))
+// 		executableArgs = append(executableArgs, "/c", "kubectl")
+// 	} else {
+// 		executableName = "kubectl"
+// 	}
 
-	// kubectl can accept a file via stdin via passing '-f -'.
-	// Ex: cat pod.json | kubectl apply -f - would pass pod.json to kubectl apply.
-	executableArgs = append(executableArgs, "apply", "-f", "-")
-	c := exec.CommandContext(ctx, executableName, executableArgs...)
+// 	// kubectl can accept a file via stdin via passing '-f -'.
+// 	// Ex: cat pod.json | kubectl apply -f - would pass pod.json to kubectl apply.
+// 	executableArgs = append(executableArgs, "apply", "-f", "-")
+// 	c := exec.CommandContext(ctx, executableName, executableArgs...)
 
-	buf := bytes.Buffer{}
-	stdin, err := c.StdinPipe()
-	if err != nil {
-		return err
-	}
+// 	buf := bytes.Buffer{}
+// 	stdin, err := c.StdinPipe()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	radiusChart, err := radiusChart(config.Version, helmConf)
-	if err != nil {
-		return err
-	}
+// 	stdout, err := c.StdoutPipe()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	version, err := getVersion(config.Version)
-	if err != nil {
-		return err
-	}
+// 	stderr, err := c.StderrPipe()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	err = applyCRDs(fmt.Sprintf("v%s", version))
-	if err != nil {
-		return err
-	}
+// 	err = c.Start()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	go func() {
-		// ignore errors from copy failing
-		_, _ = io.Copy(&buf, stdout)
-	}()
+// 	go func() {
+// 		// ignore errors from copy failing
+// 		_, _ = io.Copy(&buf, stdout)
+// 	}()
 
-	go func() {
-		// ignore errors from copy failing
-		_, _ = io.Copy(&buf, stderr)
-	}()
+// 	go func() {
+// 		// ignore errors from copy failing
+// 		_, _ = io.Copy(&buf, stderr)
+// 	}()
 
-	// values, err := chartValues(config)
-	// if err != nil {
-	// 	return err
-	// }
+// 	writeme := bytes.NewBuffer(content)
+// 	_, err = io.Copy(stdin, writeme)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	stdin.Close()
 
-	if _, err = installClient.Run(radiusChart, radiusChart.Values); err != nil {
-		return err
-	}
+// 	err = c.Wait()
+// 	if err != nil {
+// 		text, _ := ioutil.ReadAll(&buf)
+// 		return fmt.Errorf("failed to install radius: %w\noutput: %s", err, string(text))
+// 	}
 
-	return err
-}
+// 	return err
+// }
