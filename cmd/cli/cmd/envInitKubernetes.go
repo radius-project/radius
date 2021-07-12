@@ -23,7 +23,6 @@ import (
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 //go:embed radius-k8s.yaml
@@ -77,8 +76,9 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 		logger.CompleteStep(step)
 
-		v := viper.GetViper()
-		env, err := rad.ReadEnvironmentSection(v)
+		config := ConfigFromContext(cmd.Context())
+
+		env, err := rad.ReadEnvironmentSection(config)
 		if err != nil {
 			return err
 		}
@@ -95,9 +95,9 @@ var envInitKubernetesCmd = &cobra.Command{
 
 		logger.LogInfo("using environment %v", environmentName)
 		env.Default = environmentName
-		rad.UpdateEnvironmentSection(v, env)
+		rad.UpdateEnvironmentSection(config, env)
 
-		err = rad.SaveConfig(v)
+		err = rad.SaveConfig(config)
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func init() {
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
 }
 
-// RunCLICommand runs a kubectl CLI command with stdout and stderr buffered for logging when there is an error.
+// runKubectlApply runs a kubectl CLI command with stdout and stderr buffered for logging when there is an error.
 func runKubectlApply(ctx context.Context, content []byte) error {
 	var executableName string
 	var executableArgs []string
