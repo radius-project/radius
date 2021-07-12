@@ -8,7 +8,6 @@ package cmd
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -20,27 +19,15 @@ import (
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	v1 "k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
 )
 
 func createNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
-	// Patch the namespace to avoid checking existance
-	ns := &v1.Namespace{
-		ObjectMeta: meta_v1.ObjectMeta{
-			Name: namespace,
-		},
-	}
+	namespaceApply := applycorev1.Namespace(namespace)
 
-	jsonNamespace, err := json.Marshal(ns)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.CoreV1().Namespaces().Patch(ctx, namespace, types.JSONPatchType, jsonNamespace, meta_v1.PatchOptions{})
+	_, err := client.CoreV1().Namespaces().Apply(ctx, namespaceApply, metav1.ApplyOptions{FieldManager: "rad"})
 	if err != nil {
 		return err
 	}
