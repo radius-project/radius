@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Developing the Radius Kubernetes Integration"
-linkTitle: "Radius RP"
+title: "Developing for the Radius Kubernetes hosting platform"
+linkTitle: "Kubernetes platform"
 weight: 30
 ---
