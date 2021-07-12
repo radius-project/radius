@@ -50,21 +50,3 @@ func NewKubernetesResource(localID string, obj runtime.Object) OutputResource {
 func (wr OutputResource) IsKubernetesResource() bool {
 	return wr.ResourceKind == ResourceKindKubernetes
 }
-
-// Represents local IDs used for output resources
-const (
-	LocalIDAzureCosmosDBMongo            = "AzureCosmosDBMongo"
-	LocalIDDaprStateStoreAzureStorage    = "DaprStateStoreAzureStorage"
-	LocalIDDaprStateStoreSQLServer       = "DaprStateStoreSQLServer"
-	LocalIDKeyVault                      = "KeyVault"
-	LocalIDKeyVaultSecret                = "KeyVaultSecret"
-	LocalIDDeployment                    = "Deployment"
-	LocalIDService                       = "Service"
-	LocalIDUserAssignedManagedIdentityKV = "UserAssignedManagedIdentity-KV"
-	LocalIDRoleAssignmentKVKeys          = "RoleAssignment-KVKeys"
-	LocalIDRoleAssignmentKVSecretsCerts  = "RoleAssignment-KVSecretsCerts"
-	LocalIDAADPodIdentity                = "AADPodIdentity"
-	LocalIDAzureServiceBusTopic          = "AzureServiceBusTopic"
-	LocalIDAzureServiceBusQueue          = "AzureServiceBusQueue"
-	LocalIDAzureCosmosDBSQL              = "AzureCosmosDBSQL"
-)

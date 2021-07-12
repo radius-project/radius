@@ -37,6 +37,9 @@ func Test_TutorialDaprMicroservices(t *testing.T) {
 
 func Test_TutorialWebApp(t *testing.T) {
 	applicationName := "webapp"
+	componentNameWebApp := "todoapp"
+	componentNameKV := "kv"
+	componentNameDB := "db"
 	template := "../../../../docs/content/getting-started/tutorial/webapp/code/template.bicep"
 	test := azuretest.NewApplicationTest(t, applicationName, []azuretest.Step{
 		{
@@ -44,7 +47,7 @@ func Test_TutorialWebApp(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					applicationName: {
-						validation.NewK8sObjectForComponent(applicationName, "todoapp"),
+						validation.NewK8sObjectForComponent(applicationName, componentNameWebApp),
 					},
 				},
 			},
@@ -53,21 +56,21 @@ func Test_TutorialWebApp(t *testing.T) {
 				Components: []validation.Component{
 					{
 						ApplicationName: applicationName,
-						ComponentName:   "kv",
+						ComponentName:   componentNameKV,
 						OutputResources: map[string]validation.OutputResourceSet{
 							workloads.LocalIDKeyVault: validation.NewOutputResource(workloads.LocalIDKeyVault, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureKeyVault, true),
 						},
 					},
 					{
 						ApplicationName: applicationName,
-						ComponentName:   "db",
+						ComponentName:   componentNameDB,
 						OutputResources: map[string]validation.OutputResourceSet{
 							workloads.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(workloads.LocalIDAzureCosmosDBMongo, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureCosmosDBMongo, true),
 						},
 					},
 					{
 						ApplicationName: applicationName,
-						ComponentName:   "todoapp",
+						ComponentName:   componentNameWebApp,
 						OutputResources: map[string]validation.OutputResourceSet{
 							workloads.LocalIDDeployment:                    validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 							workloads.LocalIDService:                       validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
