@@ -15,8 +15,7 @@ An Azure Radius environment consists of various resources that together act as t
 {{% alert title="⚠ Caution" color="warning" %}}
 While this page describes the current implementation of Azure Radius environments, this is subject to change as the project matures and as Radius moves toward the goal of a fully hosted, multi-tenant, service.
 
-- For now we only support Azure as the environment
-- For now we use AKS as the runtime/data-plane
+- For now we use AKS as the runtime/data-plane when running with Azure.
 - For now you will see all of the environment's control plane resources in your subscription and resource group
 {{% /alert %}}
 
