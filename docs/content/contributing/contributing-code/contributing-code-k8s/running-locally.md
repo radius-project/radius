@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Running the Radius Kubernetes controller locally"
-linkTitle: "Kubernetes controller"
+linkTitle: "Run controller locally"
 description: "How to get the Radius Kubernetes controller running locally"
 weight: 20
 ---
