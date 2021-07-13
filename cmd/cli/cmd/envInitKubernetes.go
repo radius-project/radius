@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/Azure/radius/pkg/rad"
@@ -19,9 +20,21 @@ import (
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
+	helm "helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
+)
+
+const (
+	radiusReleaseName     = "radius"
+	radiusHelmRepo        = "https://radius.azurecr.io/helm/v1/repo"
+	radiusSystemNamespace = "radius-system"
 )
 
 func createNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
@@ -34,20 +47,20 @@ func createNamespace(ctx context.Context, client *k8s.Clientset, namespace strin
 	return nil
 }
 
-// func getVersion(version string) (string, error) {
-// 	if version == latestVersion {
-// 		var err error
-// 		version, err = cli_ver.GetDaprVersion()
-// 		if err != nil {
-// 			return "", fmt.Errorf("cannot get the latest release version: %s", err)
-// 		}
-// 		version = version[1:]
-// 	}
-// 	return version, nil
-// }
+func helmConfig(namespace string) (*helm.Configuration, error) {
+	ac := helm.Configuration{}
+	flags := &genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+
+	// helmDriver is "secret" to make the backend storage driver
+	// use kubernetes secrets.
+	err := ac.Init(flags, namespace, "secret", debugLogf)
+	return &ac, err
+}
 
 func createTempDir() (string, error) {
-	dir, err := ioutil.TempDir("", "dapr")
+	dir, err := ioutil.TempDir("", radiusReleaseName)
 	if err != nil {
 		return "", fmt.Errorf("error creating temp dir: %s", err)
 	}
@@ -60,6 +73,36 @@ func locateChartFile(dirPath string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(dirPath, files[0].Name()), nil
+}
+
+func radiusChart(version string, config *helm.Configuration) (*chart.Chart, error) {
+	pull := helm.NewPull()
+	pull.RepoURL = radiusHelmRepo
+	pull.Settings = &cli.EnvSettings{}
+
+	// If version isn't set, it will use the latest version.
+	if version != "" {
+		pull.Version = version
+	}
+
+	dir, err := createTempDir()
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+
+	pull.DestDir = dir
+
+	_, err = pull.Run(radiusReleaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	chartPath, err := locateChartFile(dir)
+	if err != nil {
+		return nil, err
+	}
+	return loader.Load(chartPath)
 }
 
 func debugLogf(format string, v ...interface{}) {
@@ -81,6 +124,11 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		namespace, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			return err
+		}
+
+		version, err := cmd.Flags().GetString("version")
 		if err != nil {
 			return err
 		}
@@ -113,9 +161,49 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = createNamespace(cmd.Context(), client, "radius-system")
+		err = createNamespace(cmd.Context(), client, radiusSystemNamespace)
 		if err != nil {
 			return err
+		}
+
+		helmConf, err := helmConfig(radiusSystemNamespace)
+		if err != nil {
+			return err
+		}
+
+		radiusChart, err := radiusChart(version, helmConf)
+		if err != nil {
+			return err
+		}
+
+		// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
+		// TODO: Apply CRDs because Helm doesn't upgrade CRDs for you.
+		// We need the CRDs to be public to do this (or consider unpacking the chart
+		// for the CRDs)
+
+		histClient := helm.NewHistory(helmConf)
+		histClient.Max = 1 // Only need to check if at least 1 exists
+
+		// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
+		// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
+		// and invoke the install client.
+		if _, err := histClient.Run(radiusReleaseName); err == driver.ErrReleaseNotFound {
+			logger.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", radiusSystemNamespace)
+
+			installClient := helm.NewInstall(helmConf)
+			installClient.ReleaseName = radiusReleaseName
+			installClient.Namespace = radiusSystemNamespace
+			if _, err = installClient.Run(radiusChart, radiusChart.Values); err != nil {
+				return err
+			}
+		} else {
+			logger.LogInfo("Found existing Radius Kubernetes environment, upgrading", radiusSystemNamespace)
+			upgradeClient := helm.NewUpgrade(helmConf)
+			upgradeClient.Namespace = radiusSystemNamespace
+
+			if _, err = upgradeClient.Run(radiusReleaseName, radiusChart, radiusChart.Values); err != nil {
+				return err
+			}
 		}
 
 		logger.CompleteStep(step)
@@ -154,68 +242,5 @@ func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
+	envInitKubernetesCmd.Flags().StringP("version", "v", "", "The version of the Radius runtime to install, for example: 0.3.0")
 }
-
-// RunCLICommand runs a kubectl CLI command with stdout and stderr buffered for logging when there is an error.
-// func runKubectlApply(ctx context.Context, content []byte) error {
-// 	var executableName string
-// 	var executableArgs []string
-// 	if runtime.GOOS == "windows" {
-// 		// Use shell on windows since az is a script not an executable
-// 		executableName = fmt.Sprintf("%s\\system32\\cmd.exe", os.Getenv("windir"))
-// 		executableArgs = append(executableArgs, "/c", "kubectl")
-// 	} else {
-// 		executableName = "kubectl"
-// 	}
-
-// 	// kubectl can accept a file via stdin via passing '-f -'.
-// 	// Ex: cat pod.json | kubectl apply -f - would pass pod.json to kubectl apply.
-// 	executableArgs = append(executableArgs, "apply", "-f", "-")
-// 	c := exec.CommandContext(ctx, executableName, executableArgs...)
-
-// 	buf := bytes.Buffer{}
-// 	stdin, err := c.StdinPipe()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	stdout, err := c.StdoutPipe()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	stderr, err := c.StderrPipe()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	err = c.Start()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	go func() {
-// 		// ignore errors from copy failing
-// 		_, _ = io.Copy(&buf, stdout)
-// 	}()
-
-// 	go func() {
-// 		// ignore errors from copy failing
-// 		_, _ = io.Copy(&buf, stderr)
-// 	}()
-
-// 	writeme := bytes.NewBuffer(content)
-// 	_, err = io.Copy(stdin, writeme)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	stdin.Close()
-
-// 	err = c.Wait()
-// 	if err != nil {
-// 		text, _ := ioutil.ReadAll(&buf)
-// 		return fmt.Errorf("failed to install radius: %w\noutput: %s", err, string(text))
-// 	}
-
-// 	return err
-// }
