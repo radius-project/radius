@@ -198,7 +198,7 @@ var envInitKubernetesCmd = &cobra.Command{
 				return err
 			}
 		} else {
-			logger.LogInfo("Found existing Radius Kubernetes environment, upgrading", radiusSystemNamespace)
+			logger.LogInfo("Found existing Radius Kubernetes environment, upgrading")
 			upgradeClient := helm.NewUpgrade(helmConf)
 			upgradeClient.Namespace = radiusSystemNamespace
 
