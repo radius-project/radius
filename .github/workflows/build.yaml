@@ -135,7 +135,7 @@ jobs:
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
   helm:
     name: Helm chart build
-    needs: ['build', 'images']
+    needs: ['images']
     runs-on: ubuntu-latest
     env:
       ARTIFACT_DIR: ./release
@@ -151,6 +151,8 @@ jobs:
           username_secret: DOCKER_USERNAME
           password_secret: DOCKER_PASSWORD
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: Install helm
         uses: Azure/setup-helm@v1
         with:
