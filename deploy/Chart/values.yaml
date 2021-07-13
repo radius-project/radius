@@ -1,1 +1,1 @@
-container: jkotalik/radius-controller:latest
+container: radius.azurecr.io/radius-controller:latest

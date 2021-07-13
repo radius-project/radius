@@ -9,13 +9,13 @@ controller-run: generate-k8s-manifests generate-controller ## Run the controller
 	SKIP_WEBHOOKS=true go run ./cmd/k8s/main.go
 
 controller-install: generate-k8s-manifests  ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	kubectl apply -f cmd/cli/cmd/Chart/templates/bases/
+	kubectl apply -f deploy/Chart/crds/
 
 controller-uninstall: generate-k8s-manifests  ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	kubectl delete -f cmd/cli/cmd/Chart/templates/bases/
+	kubectl delete -f deploy/Chart/crds/
 
 controller-deploy: generate-k8s-manifests docker-build docker-push ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	helm upgrade --wait --install --set container=$(DOCKER_REGISTRY)/radius-controller:$(DOCKER_TAG_VERSION) $(DOCKER_TAG_VERSION) cmd/cli/cmd/Chart/
+	helm upgrade --wait --install --set container=$(DOCKER_REGISTRY)/radius-controller:$(DOCKER_TAG_VERSION) $(DOCKER_TAG_VERSION) deploy/Chart
 
 controller-undeploy: generate-k8s-manifests ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	helm uninstall $(DOCKER_TAG_VERSION)
