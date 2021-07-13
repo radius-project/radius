@@ -133,6 +133,42 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+  helm:
+    name: Helm chart build
+    needs: ['build', 'images']
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACT_DIR: ./release
+      HELM_PACKAGE_DIR: helm
+    strategy:
+      fail-fast: false
+      matrix:
+        destination: ['acr']
+        include:
+        - destination: acr
+          registry: radius.azurecr.io
+          login_server: radius.azurecr.io
+          username_secret: DOCKER_USERNAME
+          password_secret: DOCKER_PASSWORD
+    steps:
+      - name: Install helm
+        uses: Azure/setup-helm@v1
+        with:
+          version: latest
+      - name: Package Helm chart
+        env:
+          HELM_CHARTS_DIR: deploy/Chart
+        run: |
+          mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+          helm package ${{ env.HELM_CHARTS_DIR }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+      - uses: azure/docker-login@v1
+        with:
+          login-server: ${{ matrix.login_server }}
+          username: '${{ secrets[matrix.username_secret] }}'
+          password: '${{ secrets[matrix.password_secret] }}'
+      - name: Push helm chart to ACR
+        run: |
+          az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-0.4.0.tgz
 
   deploy_tests: 
     name: Run deployment tests
