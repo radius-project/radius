@@ -326,16 +326,16 @@ func (r *rp) GetDeployment(ctx context.Context, id resources.ResourceID) (rest.R
 
 func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Response, error) {
 	id, err := d.GetDeploymentID()
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
 	ctx = radlogger.WrapLogContext(ctx,
 		radlogger.LogFieldDeploymentName, d.Name,
 		radlogger.LogFieldAppName, id.App.Name(),
 		radlogger.LogFieldAppID, id.App.ID,
 		radlogger.LogFieldDeploymentID, d.ID)
 	logger := radlogger.GetLogger(ctx)
-
-	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
-	}
 
 	response, err := r.validate(d)
 	if err != nil {
@@ -518,15 +518,16 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
 	d, err := id.Deployment()
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
 	ctx = radlogger.WrapLogContext(ctx,
 		radlogger.LogFieldAppID, d.App.ID,
 		radlogger.LogFieldAppName, d.App.Name(),
 		radlogger.LogFieldResourceID, d.Resource.ID,
 		radlogger.LogFieldResourceName, d.Resource.Name())
 	logger := radlogger.GetLogger(ctx)
-	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
-	}
 
 	current, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 	if err == db.ErrNotFound {

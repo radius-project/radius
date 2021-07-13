@@ -69,7 +69,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := workloads.OutputResource{
-			LocalID:            "KeyVault",
+			LocalID:            workloads.LocalIDKeyVault,
 			ResourceKind:       workloads.ResourceKindAzureKeyVault,
 			OutputResourceType: workloads.OutputResourceTypeArm,
 			Managed:            true,
@@ -85,13 +85,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}
 
-		vaultID, err := workloads.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, "KeyVault")
+		vaultID, err := workloads.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, workloads.LocalIDKeyVault)
 		if err != nil {
 			return nil, err
 		}
 
 		resource := workloads.OutputResource{
-			LocalID:            "KeyVault",
+			LocalID:            workloads.LocalIDKeyVault,
 			ResourceKind:       workloads.ResourceKindAzureKeyVault,
 			OutputResourceType: workloads.OutputResourceTypeArm,
 			Managed:            false,

@@ -95,7 +95,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 func (r Renderer) createManagedIdentity(ctx context.Context, identityName, location string) (msi.Identity, string, error) {
 	logger := radlogger.GetLogger(ctx)
-	localID := "UserAssignedManagedIdentity-KV"
+	localID := workloads.LocalIDUserAssignedManagedIdentityKV
 	// Create a user assigned managed identity
 	msiClient := msi.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID)
 	msiClient.Authorizer = r.Arm.Auth
@@ -195,12 +195,11 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", mid.Name, err)
 	}
 	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
-	localIDSecretsCerts := "RoleAssignment-KVSecretsCerts"
 	res = workloads.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            localIDSecretsCerts,
+		LocalID:            workloads.LocalIDRoleAssignmentKVSecretsCerts,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *ra.ID,
@@ -218,14 +217,13 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Crypto User permissions to managed identity: %v: %w", mid.Name, err)
 	}
-	logger.WithValues(radlogger.LogFieldLocalID, localIDSecretsCerts).Info(fmt.Sprintf("Created certs/secrets role assignment for %v to access %v", *mid.ID, *kv.ID))
+	logger.WithValues(radlogger.LogFieldLocalID, workloads.LocalIDRoleAssignmentKVSecretsCerts).Info(fmt.Sprintf("Created certs/secrets role assignment for %v to access %v", *mid.ID, *kv.ID))
 
-	localIDKeys := "RoleAssignment-KVKeys"
 	res = workloads.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            localIDKeys,
+		LocalID:            workloads.LocalIDRoleAssignmentKVKeys,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           *ra.ID,
@@ -235,7 +233,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 	outputResources = append(outputResources, res)
 
-	logger.WithValues(radlogger.LogFieldLocalID, localIDKeys).Info(fmt.Sprintf("Created keys role assignment for %v to access %v", *mid.ID, *kv.ID))
+	logger.WithValues(radlogger.LogFieldLocalID, workloads.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created keys role assignment for %v to access %v", *mid.ID, *kv.ID))
 
 	return &mid, outputResources, nil
 }
@@ -272,12 +270,11 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				// we no longer need to track the output resources on error
 				return AADPodIdentity{}, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
 			}
-			localID := "AADPodIdentity"
 			res := workloads.OutputResource{
 				Deployed:           true,
 				ResourceKind:       workloads.ResourceKindAzurePodIdentity,
 				OutputResourceType: workloads.OutputResourceTypePodIdentity,
-				LocalID:            localID,
+				LocalID:            workloads.LocalIDAADPodIdentity,
 				Managed:            true,
 				OutputResourceInfo: outputresourceinfo.AADPodIdentity{
 					AKSClusterName: podIdentity.ClusterName,
@@ -291,7 +288,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 			}
 			outputResources = append(outputResources, res)
 
-			logger.WithValues(radlogger.LogFieldLocalID, localID).Info(fmt.Sprintf("Created pod identity %v to bind %v", podIdentity.Name, *msi.ID))
+			logger.WithValues(radlogger.LogFieldLocalID, workloads.LocalIDAADPodIdentity).Info(fmt.Sprintf("Created pod identity %v to bind %v", podIdentity.Name, *msi.ID))
 			return podIdentity, outputResources, nil
 		}
 	}
@@ -341,7 +338,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		Deployed:           false,
 		ResourceKind:       workloads.ResourceKindKubernetes,
 		OutputResourceType: workloads.OutputResourceTypeKubernetes,
-		LocalID:            "Deployment",
+		LocalID:            workloads.LocalIDDeployment,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.K8sInfo{
 			Kind:       deployment.TypeMeta.Kind,
@@ -358,7 +355,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			Deployed:           false,
 			ResourceKind:       workloads.ResourceKindKubernetes,
 			OutputResourceType: workloads.OutputResourceTypeKubernetes,
-			LocalID:            "Service",
+			LocalID:            workloads.LocalIDService,
 			Managed:            true,
 			OutputResourceInfo: outputresourceinfo.K8sInfo{
 				Kind:       deployment.TypeMeta.Kind,
@@ -679,12 +676,11 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		ResourceType:   SecretsResourceType,
 		ResourceName:   secretFullName,
 	}
-	localID := "KeyVaultSecret"
 	or := workloads.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureKeyVaultSecret,
 		OutputResourceType: workloads.OutputResourceTypeArm,
-		LocalID:            localID,
+		LocalID:            workloads.LocalIDKeyVaultSecret,
 		Managed:            true,
 		OutputResourceInfo: outputresourceinfo.ARMInfo{
 			ARMID:           secretResource.String(),
@@ -692,7 +688,7 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 			APIVersion:      kvAPIVersion,
 		},
 	}
-	logger.WithValues(radlogger.LogFieldLocalID, localID).Info(fmt.Sprintf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName))
+	logger.WithValues(radlogger.LogFieldLocalID, workloads.LocalIDKeyVaultSecret).Info(fmt.Sprintf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName))
 
 	return or, nil
 }

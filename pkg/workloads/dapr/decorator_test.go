@@ -25,7 +25,7 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	// Return a deployment so the Dapr trait can modify it
 	d := appsv1.Deployment{}
-	return []workloads.OutputResource{workloads.NewKubernetesResource("Deployment", &d)}, nil
+	return []workloads.OutputResource{workloads.NewKubernetesResource(workloads.LocalIDDeployment, &d)}, nil
 }
 
 func Test_Render_Success(t *testing.T) {
