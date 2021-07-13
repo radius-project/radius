@@ -178,6 +178,7 @@ var envInitKubernetesCmd = &cobra.Command{
 
 		// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
 		// TODO: Apply CRDs because Helm doesn't upgrade CRDs for you.
+		// https://github.com/Azure/radius/issues/712
 		// We need the CRDs to be public to do this (or consider unpacking the chart
 		// for the CRDs)
 
