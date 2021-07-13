@@ -1,6 +1,6 @@
 ---
 type: docs
 title: "Developing the Radius resource provider"
-linkTitle: "Radius RP"
+linkTitle: "Azure platform"
 weight: 30
 ---
