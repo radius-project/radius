@@ -14,14 +14,10 @@ Radius applications are meaningless without the [components]({{< ref components-
 
 This example shows a blank application with nothing in it. Deploying this would do nothing as there are no [components]({{< ref components-model.md >}}).
 
-```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'shopping-app'
-}
-```
+{{< rad file="snippets/application.bicep" embed=true >}}
 
 ## Next step
 
 Now that you are familiar with Radius applications, the next step is to learn about Radius components.
 
-{{< button text="Learn about components" page="components-model.md" >}}
+{{< button text="Learn about Components" page="components-model.md" >}}

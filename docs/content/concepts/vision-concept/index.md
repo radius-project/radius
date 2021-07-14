@@ -3,7 +3,7 @@ type: docs
 title: Overview of Project Radius vision
 linkTitle: Radius vision
 description: An overview of Project Radius long-term vision and offerings
-weight: 50
+weight: 100
 ---
 
 - Radius is an industry standard for microservices application deployment and management

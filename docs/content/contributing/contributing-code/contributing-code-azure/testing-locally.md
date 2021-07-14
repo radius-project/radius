@@ -3,10 +3,8 @@ type: docs
 title: "Test Radius locally"
 linkTitle: "Test locally"
 description: "How to run integration tests on Radius locally"
-weight: 30
+weight: 45
 ---
-
-# Testing locally
 
 Testing the RP locally can be challenging because the Radius RP is just one part of a distributed system. The actual processing of ARM templates (the output of a `.bicep file`) is handled by the ARM deployment engine, not us.
 

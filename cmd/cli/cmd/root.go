@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/bicep"
 	"github.com/Azure/radius/pkg/rad/output"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
@@ -50,7 +51,7 @@ func init() {
 
 	// Initialize support for --version
 	RootCmd.Version = version.Release()
-	template := fmt.Sprintf("Release: %s \nVersion: %s\nCommit: %s\n", version.Release(), version.Version(), version.Commit())
+	template := fmt.Sprintf("Release: %s \nVersion: %s\nBicep version: %s\nCommit: %s\n", version.Release(), version.Version(), bicep.Version(), version.Commit())
 	RootCmd.SetVersionTemplate(template)
 
 	RootCmd.Flags().BoolP("version", "v", false, "version for radius")

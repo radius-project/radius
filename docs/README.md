@@ -16,24 +16,25 @@ git clone https://github.com/Azure/radius.git
 ```
 3. Generate CLI docs:
 ```sh
+cd radius
 go run ./cmd/docgen/main.go ./docs/content/reference/cli
 ```
-4. Change to daprdocs directory: 
+4. Change to docs directory:
 ```sh
-cd ./radius/docs
+cd docs
 ```
-5. Update submodules: 
+5. Update submodules:
 ```sh
 git submodule update --init --recursive
 ```
-6. Install npm packages: 
+6. Install npm packages:
 ```sh
 npm install
 ```
 
 ## Run local server
 1. Make sure you're still in the `docs` directory
-2. Run 
+2. Run
 ```sh
 hugo server
 ```

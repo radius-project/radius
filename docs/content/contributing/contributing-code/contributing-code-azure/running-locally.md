@@ -24,7 +24,7 @@ The resource provider uses MongoDB (CosmosDB in production). For local testing w
 
 **Adding an /etc/hosts Entry**
 
-Add an entry to `/etc/hosts` to map `mongo` to `127.0.0.1`. 
+Add an entry to `/etc/hosts` to map `mongo` to `127.0.0.1`.
 
 A non-localhost hostname is required if you're running the resource provider in your host environment. You can choose a different hostname if you want, but update both the `docker run` command below and the connection string above to match if you do so.
 
@@ -36,7 +36,7 @@ A non-localhost hostname is required if you're running the resource provider in 
 # - with 'mongoadmin' as a username
 # - with 'secret' as the password
 # - with 'rpdb' as the database name
-docker run \
+docker run --daemon \
     -p 27017:27017 \
     --hostname mongo \
     -e MONGO_INITDB_ROOT_USERNAME=mongoadmin \
@@ -62,7 +62,7 @@ export MONGODB_CONNECTION_STRING='mongodb://mongoadmin:secret@mongo:27017/rpdb?a
 export MONGODB_DATABASE='rpdb'
 export K8S_LOCAL=true
 export ARM_RESOURCE_GROUP="$(whoami)-radius"
-export ARM_SUBSCRIPTION_ID="$(az account show | jq .id --raw-output)"
+export ARM_SUBSCRIPTION_ID="$(az account show -o json | jq .id --raw-output)"
 ```
 
 Configures all of the required environment variables:
@@ -87,8 +87,8 @@ We require configuration for connecting to MongoDB:
 
 We require configuration for connecting to a Kubernetes cluster. You have some options...
 
-- Use local Kubernetes configuration: 
-  - `K8S_LOCAL=true` 
+- Use local Kubernetes configuration:
+  - `K8S_LOCAL=true`
 - Retrieve a Kubernetes configuration from ARM using the az CLI to authorize:
   - `K8S_CLUSTER_NAME`
   - `K8S_RESOURCE_GROUP`
@@ -125,4 +125,4 @@ Open `cmd/rp/main.go` and then launch the debugger from VSCode.
 
 ## Next: Testing locally
 
-Move over to [testing-locally](testing-locally.md)...
+Move over to [testing locally]({{<ref testing-locally.md>}}).

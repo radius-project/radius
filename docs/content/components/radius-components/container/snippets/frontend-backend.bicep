@@ -1,16 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'inbound-route'
-
-  // deploy two containers
-  // - frontend: rynowak/frontend:0.5.0-dev
-  // - backend: rynowak/backend:0.5.0-dev
-  //
-  // - frontend is exposed to internet traffic
-  // - backend is not exposed to internet traffic
-  //
-  // need to communicate via HTTP from frontend->backend and pass the URL to frontend with env-vars:
-  // - SERVICE__BACKEND__HOST
-  // - SERVICE__BACKEND__PORT
+  name: 'frontend-backend'
 
   resource frontend 'Components' = {
     name: 'frontend'
@@ -36,24 +25,21 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           targetPort: 80
         }
       }
-      traits: [
-        {
-          kind: 'radius.dev/InboundRoute@v1alpha1'
-          binding: 'web'
-        }
-      ]
     }
   }
 
+  //SAMPLE
   resource backend 'Components' = {
     name: 'backend'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
+      //HIDE
       run: {
         container: {
           image: 'rynowak/backend:0.5.0-dev'
         }
       }
+      //HIDE
       bindings: {
         web: {
           kind: 'http'
@@ -62,4 +48,5 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
     }
   }
+  //SAMPLE
 }

@@ -8,7 +8,7 @@ weight: 1
 
 ## Getting started
 
-Write and deploy your first appliction in minutes with Radius:
+Author and deploy your first appliction in minutes with Radius:
 
 {{< button text="Install Radius 🚀" page="install-cli.md" color="success" >}}
 

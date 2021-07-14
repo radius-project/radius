@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	cliutils "github.com/Azure/radius/cmd/cli/utils"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -45,10 +44,9 @@ func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, su
 	componentsClient := radclient.NewComponentClient(armConnection, subscriptionID)
 	for _, c := range expected.Components {
 		component, err := componentsClient.Get(context.Background(), resourceGroup, c.ApplicationName, c.ComponentName, nil)
-		require.NoError(t, cliutils.UnwrapErrorFromRawResponse(err))
-		assert.Equal(t, len(c.OutputResources), len(*component.ComponentResource.Properties.OutputResources))
-		for _, or := range *component.ComponentResource.Properties.OutputResources {
-			r := or.(map[string]interface{})
+		require.NoError(t, err)
+		assert.Equal(t, len(c.OutputResources), len(component.ComponentResource.Properties.OutputResources))
+		for _, r := range component.ComponentResource.Properties.OutputResources {
 			key := r["localId"].(string)
 			assert.Equal(t, c.OutputResources[key].LocalID, r["localId"].(string))
 			assert.Equal(t, c.OutputResources[key].OutputResourceType, r["outputResourceType"].(string))

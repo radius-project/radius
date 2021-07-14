@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'dapr-pubsub-unmanaged'
+  name: 'dapr-pubsub-usermanaged'
 
   resource nodesubscriber 'Components' = {
     name: 'nodesubscriber'
