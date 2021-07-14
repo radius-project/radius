@@ -125,4 +125,4 @@ Open `cmd/rp/main.go` and then launch the debugger from VSCode.
 
 ## Next: Testing locally
 
-Move over to [testing locally]({{<ref "../testing-locally.md">}}).
+Move over to [testing locally]({{<ref testing-locally.md>}}).
