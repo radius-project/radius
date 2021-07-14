@@ -35,11 +35,13 @@ const (
 	radiusReleaseName     = "radius"
 	radiusHelmRepo        = "https://radius.azurecr.io/helm/v1/repo"
 	radiusSystemNamespace = "radius-system"
+	helmDriverSecret      = "secret"
 )
 
 func createNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
 	namespaceApply := applycorev1.Namespace(namespace)
 
+	// Use Apply instead of Create to avoid failures on a namespace already existing.
 	_, err := client.CoreV1().Namespaces().Apply(ctx, namespaceApply, metav1.ApplyOptions{FieldManager: "rad"})
 	if err != nil {
 		return err
@@ -48,15 +50,15 @@ func createNamespace(ctx context.Context, client *k8s.Clientset, namespace strin
 }
 
 func helmConfig(namespace string) (*helm.Configuration, error) {
-	ac := helm.Configuration{}
+	hc := helm.Configuration{}
 	flags := &genericclioptions.ConfigFlags{
 		Namespace: &namespace,
 	}
 
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.
-	err := ac.Init(flags, namespace, "secret", debugLogf)
-	return &ac, err
+	err := hc.Init(flags, namespace, helmDriverSecret, debugLogf)
+	return &hc, err
 }
 
 func createTempDir() (string, error) {
@@ -72,6 +74,10 @@ func locateChartFile(dirPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if len(files) != 1 {
+		return "", errors.New("radius helm chart not found")
+	}
+
 	return filepath.Join(dirPath, files[0].Name()), nil
 }
 
@@ -188,7 +194,9 @@ var envInitKubernetesCmd = &cobra.Command{
 		// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
 		// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 		// and invoke the install client.
-		if _, err := histClient.Run(radiusReleaseName); err == driver.ErrReleaseNotFound {
+		_, err = histClient.Run(radiusReleaseName)
+
+		if err == driver.ErrReleaseNotFound {
 			logger.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", radiusSystemNamespace)
 
 			installClient := helm.NewInstall(helmConf)
@@ -197,7 +205,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			if _, err = installClient.Run(radiusChart, radiusChart.Values); err != nil {
 				return err
 			}
-		} else {
+		} else if err == nil {
 			logger.LogInfo("Found existing Radius Kubernetes environment, upgrading")
 			upgradeClient := helm.NewUpgrade(helmConf)
 			upgradeClient.Namespace = radiusSystemNamespace
@@ -205,6 +213,8 @@ var envInitKubernetesCmd = &cobra.Command{
 			if _, err = upgradeClient.Run(radiusReleaseName, radiusChart, radiusChart.Values); err != nil {
 				return err
 			}
+		} else {
+			return err
 		}
 
 		logger.CompleteStep(step)
