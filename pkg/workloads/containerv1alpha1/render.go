@@ -300,7 +300,6 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	outputResources := []workloads.OutputResource{}
 	cw, err := r.convert(w)
-
 	if err != nil {
 		return []workloads.OutputResource{}, err
 	}
