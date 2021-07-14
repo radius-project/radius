@@ -2,6 +2,7 @@
 type: docs
 title: "Dapr microservices tutorial app overview"
 linkTitle: "App overview"
+slug: "overview"
 description: "Overview of the Dapr microservices tutorial application"
 weight: 1000
 ---
