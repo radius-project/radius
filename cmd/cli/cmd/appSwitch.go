@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
 )
 
 // appSwitchCmd command to switch applications
@@ -55,7 +56,11 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if env.Default == "" {
+	if environmentName == "" {
+		environmentName = env.Default
+	}
+
+	if environmentName == "" {
 		return errors.New("no environment set, run 'rad env switch'")
 	}
 
@@ -75,7 +80,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		logger.LogInfo("Switching default application to %v", applicationName)
 	}
 
-	env.Items[e.GetName()][environments.EnvironmentKeyDefaultApplication] = applicationName
+	env.Items[cases.Fold().String(environmentName)][environments.EnvironmentKeyDefaultApplication] = applicationName
 
 	rad.UpdateEnvironmentSection(config, env)
 	err = rad.SaveConfig(config)
