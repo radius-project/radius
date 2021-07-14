@@ -12,12 +12,7 @@ Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-re
 
 Create a new file named `template.bicep` and paste the following:
 
-```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'dapr-hello'
-
-}
-```
+{{< rad file="snippets/app.bicep" embed=true >}}
 
 ## Add backend container
 
