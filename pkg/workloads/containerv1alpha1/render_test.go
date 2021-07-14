@@ -30,7 +30,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_AllocateBindings_NoHTTPBinding(t *testing.T) {
+func TestAllocateBindings_NoHTTPBinding(t *testing.T) {
 	ctx := createContext(t)
 	renderer := &Renderer{}
 
@@ -59,7 +59,7 @@ func Test_AllocateBindings_NoHTTPBinding(t *testing.T) {
 	require.Len(t, bindings, 0)
 }
 
-func Test_AllocateBindings_HTTPBindings(t *testing.T) {
+func TestAllocateBindings_HTTPBindings(t *testing.T) {
 	ctx := createContext(t)
 	renderer := &Renderer{}
 
@@ -124,7 +124,7 @@ func Test_AllocateBindings_HTTPBindings(t *testing.T) {
 
 }
 
-func Test_Render_Success_DefaultPort(t *testing.T) {
+func TestRender_Success_DefaultPort(t *testing.T) {
 	ctx := createContext(t)
 	renderer := &Renderer{}
 
@@ -137,6 +137,9 @@ func Test_Render_Success_DefaultPort(t *testing.T) {
 			Run: map[string]interface{}{
 				"container": map[string]interface{}{
 					"image": "test/test-image:latest",
+					"env": map[string]string{
+						"APPLICATION_NAME": "Awesome Test Application",
+					},
 				},
 			},
 			Bindings: map[string]components.GenericBinding{
@@ -192,6 +195,11 @@ func Test_Render_Success_DefaultPort(t *testing.T) {
 		require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
 		require.Len(t, container.Ports, 1)
 
+		env := container.Env
+		require.Equal(t, 1, len(env))
+		require.Equal(t, "APPLICATION_NAME", env[0].Name)
+		require.Equal(t, "Awesome Test Application", env[0].Value)
+
 		port := container.Ports[0]
 		require.Equal(t, "test-binding", port.Name)
 		require.Equal(t, v1.ProtocolTCP, port.Protocol)
@@ -216,7 +224,7 @@ func Test_Render_Success_DefaultPort(t *testing.T) {
 	})
 }
 
-func Test_Render_Success_NonDefaultPort(t *testing.T) {
+func TestRender_Success_NonDefaultPort(t *testing.T) {
 	ctx := createContext(t)
 	renderer := &Renderer{}
 

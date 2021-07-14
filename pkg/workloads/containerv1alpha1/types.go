@@ -27,8 +27,8 @@ type ContainerRun struct {
 }
 
 type ContainerRunContainer struct {
-	Image       string            `json:"image"`
-	Environment []ContainerEnvVar `json:"env,omitempty"`
+	Image string            `json:"image"`
+	Env   map[string]string `json:"env,omitempty"`
 }
 
 // ContainerEnvVar is the definition of an environment variable

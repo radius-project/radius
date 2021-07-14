@@ -300,6 +300,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
 	outputResources := []workloads.OutputResource{}
 	cw, err := r.convert(w)
+
 	if err != nil {
 		return []workloads.OutputResource{}, err
 	}
@@ -392,14 +393,11 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		Env:             []corev1.EnvVar{},
 	}
 
-	for _, e := range cc.Run.Container.Environment {
-		if e.Value != nil {
-			container.Env = append(container.Env, corev1.EnvVar{
-				Name:  e.Name,
-				Value: *e.Value,
-			})
-			continue
-		}
+	for k, v := range cc.Run.Container.Env {
+		container.Env = append(container.Env, corev1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
 	}
 
 	for _, dep := range cc.Uses {
