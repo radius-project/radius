@@ -398,15 +398,9 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 			Run: map[string]interface{}{
 				"container": map[string]interface{}{
 					"image": "rynowak/frontend:0.5.0-dev",
-					"env": []interface{}{
-						map[string]interface{}{
-							"name":  "SERVICE__BACKEND__HOST",
-							"value": "backend",
-						},
-						map[string]interface{}{
-							"name":  "SERVICE__BACKEND__PORT",
-							"value": "80",
-						},
+					"env": map[string]interface{}{
+						"SERVICE__BACKEND__HOST": "backend",
+						"SERVICE__BACKEND__PORT": "80",
 					},
 				},
 			},
@@ -449,11 +443,9 @@ func Test_DeploymentUpdated_RenderRealisticContainer(t *testing.T) {
 	cont := component.Run.Container
 	require.Equal(t, "rynowak/frontend:0.5.0-dev", cont.Image)
 
-	require.Len(t, cont.Environment, 2)
-	require.Equal(t, "SERVICE__BACKEND__HOST", cont.Environment[0].Name)
-	require.Equal(t, "backend", *cont.Environment[0].Value)
-	require.Equal(t, "SERVICE__BACKEND__PORT", cont.Environment[1].Name)
-	require.Equal(t, "80", *cont.Environment[1].Value)
+	require.Len(t, cont.Env, 2)
+	require.Equal(t, "backend", cont.Env["SERVICE__BACKEND__HOST"])
+	require.Equal(t, "80", cont.Env["SERVICE__BACKEND__PORT"])
 }
 
 func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
