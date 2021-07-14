@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/radius/pkg/rad/armtemplate"
 	"github.com/Azure/radius/pkg/rad/clients"
 	"github.com/Azure/radius/pkg/radclient"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
@@ -32,12 +33,12 @@ type LocalRPDeploymentClient struct {
 var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
 
 func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string) error {
-	template, err := Parse(content)
+	template, err := armtemplate.Parse(content)
 	if err != nil {
 		return err
 	}
 
-	resources, err := Eval(template, TemplateOptions{
+	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{
 		SubscriptionID: dc.SubscriptionID,
 		ResourceGroup:  dc.ResourceGroup,
 	})
@@ -60,7 +61,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string) e
 	return nil
 }
 
-func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connection *armcore.Connection, resource Resource) (*http.Response, error) {
+func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connection *armcore.Connection, resource armtemplate.Resource) (*http.Response, error) {
 	if resource.Type == radresources.ApplicationResourceType.Type() {
 		return dc.deployApplication(ctx, connection, resource)
 	} else if resource.Type == radresources.ComponentResourceType.Type() {
@@ -72,7 +73,7 @@ func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connectio
 	return nil, fmt.Errorf("unsupported resource type '%s'. radtest only supports radius types", resource.Type)
 }
 
-func (dc *LocalRPDeploymentClient) deployApplication(ctx context.Context, connection *armcore.Connection, resource Resource) (*http.Response, error) {
+func (dc *LocalRPDeploymentClient) deployApplication(ctx context.Context, connection *armcore.Connection, resource armtemplate.Resource) (*http.Response, error) {
 	client := radclient.NewApplicationClient(connection, dc.SubscriptionID)
 
 	names := strings.Split(resource.Name, "/")
@@ -94,7 +95,7 @@ func (dc *LocalRPDeploymentClient) deployApplication(ctx context.Context, connec
 	return response.RawResponse, nil
 }
 
-func (dc *LocalRPDeploymentClient) deployComponent(ctx context.Context, connection *armcore.Connection, resource Resource) (*http.Response, error) {
+func (dc *LocalRPDeploymentClient) deployComponent(ctx context.Context, connection *armcore.Connection, resource armtemplate.Resource) (*http.Response, error) {
 	client := radclient.NewComponentClient(connection, dc.SubscriptionID)
 
 	names := strings.Split(resource.Name, "/")
@@ -116,7 +117,7 @@ func (dc *LocalRPDeploymentClient) deployComponent(ctx context.Context, connecti
 	return response.RawResponse, nil
 }
 
-func (dc *LocalRPDeploymentClient) deployDeployment(ctx context.Context, connection *armcore.Connection, resource Resource) (*http.Response, error) {
+func (dc *LocalRPDeploymentClient) deployDeployment(ctx context.Context, connection *armcore.Connection, resource armtemplate.Resource) (*http.Response, error) {
 	client := radclient.NewDeploymentClient(connection, dc.SubscriptionID)
 
 	names := strings.Split(resource.Name, "/")

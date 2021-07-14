@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azure
+package kubernetes
 
 import (
 	"context"
@@ -25,15 +25,23 @@ import (
 	"k8s.io/client-go/transport/spdy"
 )
 
-type ARMDiagnosticsClient struct {
+type KubernetesDiagnosticsClient struct {
 	Client     *k8s.Clientset
 	RestConfig *rest.Config
+
+	// If set, the value of this field will be used to find replicas. Otherwise the application name will be used.
+	Namespace string
 }
 
-var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
+var _ clients.DiagnosticsClient = (*KubernetesDiagnosticsClient)(nil)
 
-func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {
-	replica, err := getRunningReplica(ctx, dc.Client, options.Application, options.Component)
+func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {
+	namespace := dc.Namespace
+	if namespace == "" {
+		namespace = options.Application
+	}
+
+	replica, err := getRunningReplica(ctx, dc.Client, namespace, options.Application, options.Component)
 	if err != nil {
 		return
 	}
@@ -52,10 +60,13 @@ func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.Expo
 	return
 }
 
-func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) (io.ReadCloser, error) {
-	component := options.Component
+func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) (io.ReadCloser, error) {
+	namespace := dc.Namespace
+	if namespace == "" {
+		namespace = options.Application
+	}
 
-	replica, err := getRunningReplica(ctx, dc.Client, options.Application, component)
+	replica, err := getRunningReplica(ctx, dc.Client, namespace, options.Application, options.Component)
 
 	if err != nil {
 		return nil, err
@@ -67,22 +78,22 @@ func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOp
 		// We don't really expect this to fail, but let's do something reasonable if it does...
 		container = getAppContainerName(replica)
 		if container == "" {
-			return nil, fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", component)
+			return nil, fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", options.Component)
 		}
 	}
 
 	stream, err := streamLogs(ctx, dc.RestConfig, dc.Client, replica, container, follow)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open log stream to %s: %w", component, err)
+		return nil, fmt.Errorf("failed to open log stream to %s: %w", options.Component, err)
 	}
 
 	return stream, err
 }
 
-func getRunningReplica(ctx context.Context, client *k8s.Clientset, application string, component string) (*corev1.Pod, error) {
+func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace string, application string, component string) (*corev1.Pod, error) {
 	// Right now this connects to a pod related to a component. We can find the pods with the labels
 	// and then choose one that's in the running state.
-	pods, err := client.CoreV1().Pods(application).List(ctx, v1.ListOptions{
+	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
 		LabelSelector: labels.FormatLabels(map[string]string{
 			keys.LabelRadiusApplication: application,
 			keys.LabelRadiusComponent:   component,

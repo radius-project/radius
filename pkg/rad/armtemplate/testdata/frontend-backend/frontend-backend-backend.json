@@ -1,0 +1,32 @@
+{
+    "apiVersion": "applications.radius.dev/v1alpha1",
+    "kind": "Component",
+    "metadata": {
+        "annotations": {
+            "radius.dev/applications": "frontend-backend",
+            "radius.dev/components": "backend",
+            "radius.dev/resourceproviders": "radius"
+        },
+        "name": "radius-frontend-backend-backend",
+        "namespace": "default"
+    },
+    "spec": {
+        "bindings": {
+            "web": {
+                "kind": "http",
+                "targetPort": 80
+            }
+        },
+        "hierarchy": [
+            "radius",
+            "frontend-backend",
+            "backend"
+        ],
+        "kind": "radius.dev/Container@v1alpha1",
+        "run": {
+            "container": {
+                "image": "rynowak/backend:0.5.0-dev"
+            }
+        }
+    }
+}
