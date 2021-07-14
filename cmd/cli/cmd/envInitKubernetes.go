@@ -74,8 +74,12 @@ func locateChartFile(dirPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(files) != 1 {
+	if len(files) == 0 {
 		return "", errors.New("radius helm chart not found")
+	}
+
+	if len(files) > 1 {
+		return "", errors.New("unexpected files found when downloading helm chart")
 	}
 
 	return filepath.Join(dirPath, files[0].Name()), nil
