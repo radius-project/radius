@@ -44,6 +44,7 @@ func mergeProperties(resource workloads.OutputResource, existing *db.DeploymentR
 func getResourceGroupLocation(ctx context.Context, armConfig armauth.ArmConfig) (*string, error) {
 	rgc := resources.NewGroupsClient(armConfig.SubscriptionID)
 	rgc.Authorizer = armConfig.Auth
+	rgc.PollingDuration = 0
 
 	resourceGroup, err := rgc.Get(ctx, armConfig.ResourceGroup)
 	if err != nil {

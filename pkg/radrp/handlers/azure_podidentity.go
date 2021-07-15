@@ -50,6 +50,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 
 	mcc := containerservice.NewManagedClustersClient(handler.arm.SubscriptionID)
 	mcc.Authorizer = handler.arm.Auth
+	mcc.PollingDuration = 0
 
 	// Get the cluster and modify it to remove pod identity
 	managedCluster, err := mcc.Get(ctx, handler.arm.K8sResourceGroup, podidentityCluster)
@@ -108,6 +109,8 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 func (handler *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
 	msiClient := msi.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID)
 	msiClient.Authorizer = handler.arm.Auth
+	msiClient.PollingDuration = 0
+
 	msiResource, err := azure.ParseResourceID(msiResourceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)

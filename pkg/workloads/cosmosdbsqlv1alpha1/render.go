@@ -42,6 +42,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 	cosmosDBClient := documentdb.NewDatabaseAccountsClient(r.Arm.SubscriptionID)
 	cosmosDBClient.Authorizer = r.Arm.Auth
+	cosmosDBClient.PollingDuration = 0
 
 	connectionStrings, err := cosmosDBClient.ListConnectionStrings(ctx, r.Arm.ResourceGroup, accountname)
 	if err != nil {

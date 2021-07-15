@@ -93,6 +93,7 @@ func listRadiusEnvironmentResources(ctx context.Context, t *testing.T, env *envi
 	resourceMap := make(map[string]string)
 	resc := azresources.NewClient(env.SubscriptionID)
 	resc.Authorizer = auth
+	resc.PollingDuration = 0
 
 	for page, err := resc.ListByResourceGroup(ctx, resourceGroup, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
 		require.NoError(t, err, "failed to list resources")

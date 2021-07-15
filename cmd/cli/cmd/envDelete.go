@@ -92,8 +92,6 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string) error {
 	rgc := resources.NewGroupsClient(subscriptionID)
 	rgc.Authorizer = authorizer
-
-	// Don't timeout, let the user cancel
 	rgc.PollingDuration = 0
 
 	logger.LogInfo("Deleting resource group %v", resourceGroup)

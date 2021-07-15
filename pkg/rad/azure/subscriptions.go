@@ -64,6 +64,7 @@ func LoadSubscriptionsFromProfile() (SubscriptionResult, error) {
 func LoadSubscriptionsFromAzure(ctx context.Context, authorizer autorest.Authorizer) (SubscriptionResult, error) {
 	subc := subscription.NewSubscriptionsClient()
 	subc.Authorizer = authorizer
+	subc.PollingDuration = 0
 
 	// ARM doesn't have the concept of a "default" subscription so we skip it here.
 	result := SubscriptionResult{}

@@ -62,6 +62,7 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 		// Verify that the cosmosdb resources were not deleted
 		ac := documentdb.NewDatabaseAccountsClient(at.Options.Environment.SubscriptionID)
 		ac.Authorizer = at.Options.ARMAuthorizer
+		ac.PollingDuration = 0
 
 		// We have to use a generated name due to uniqueness requirements, so lookup based on tags
 		var account *documentdb.DatabaseAccountGetResults
@@ -80,7 +81,7 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 
 		dbc := documentdb.NewMongoDBResourcesClient(at.Options.Environment.SubscriptionID)
 		dbc.Authorizer = at.Options.ARMAuthorizer
-
+		dbc.PollingDuration = 0
 		_, err = dbc.GetMongoDBDatabase(context.Background(), at.Options.Environment.ResourceGroup, *account.Name, "mydb")
 		require.NoErrorf(t, err, "failed to find mongo database")
 	}

@@ -214,6 +214,7 @@ func choose(ctx context.Context) (string, string, error) {
 func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (radazure.Subscription, error) {
 	subc := subscription.NewSubscriptionsClient()
 	subc.Authorizer = authorizer
+	subc.PollingDuration = 0
 
 	subs, err := radazure.LoadSubscriptionsFromProfile()
 	if err != nil {
@@ -252,6 +253,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (string, error) {
 	rgc := resources.NewGroupsClient(sub.SubscriptionID)
 	rgc.Authorizer = authorizer
+	rgc.PollingDuration = 0
 
 	name, err := prompt.Text("Enter a Resource Group name:", prompt.EmptyValidator)
 	if err != nil {
@@ -270,6 +272,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 
 	subc := subscription.NewSubscriptionsClient()
 	subc.Authorizer = authorizer
+	subc.PollingDuration = 0
 
 	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
 	if err != nil {
@@ -404,6 +407,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (bool, string, error) {
 	cpc := customproviders.NewCustomResourceProviderClient(subscriptionID)
 	cpc.Authorizer = authorizer
+	cpc.PollingDuration = 0
 
 	_, err := cpc.Get(ctx, resourceGroup, "radius")
 	if detail, ok := util.ExtractDetailedError(err); ok && detail.StatusCode == 404 {
@@ -416,6 +420,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	// Custom Provider already exists, find the cluster...
 	mcc := containerservice.NewManagedClustersClient(subscriptionID)
 	mcc.Authorizer = authorizer
+	mcc.PollingDuration = 0
 
 	var cluster *containerservice.ManagedCluster
 	for list, err := mcc.ListByResourceGroupComplete(ctx, radazure.GetControlPlaneResourceGroup(resourceGroup)); list.NotDone(); err = list.NextWithContext(ctx) {
@@ -442,6 +447,7 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 	sc := subscription.NewSubscriptionsClient()
 	sc.Authorizer = authorizer
+	sc.PollingDuration = 0
 
 	_, err := sc.Get(ctx, subscriptionID)
 	if err != nil {
@@ -450,6 +456,7 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 	rgc := resources.NewGroupsClient(subscriptionID)
 	rgc.Authorizer = authorizer
+	rgc.PollingDuration = 0
 
 	group, err := rgc.Get(ctx, resourceGroup)
 	if group.StatusCode == 404 {
@@ -467,9 +474,11 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 	step := logger.BeginStep("Registering Subscription for required features...")
 	fc := features.NewClient(subscriptionID)
 	fc.Authorizer = authorizer
+	fc.PollingDuration = 0
 
 	providerClient := resources.NewProvidersClient(subscriptionID)
 	providerClient.Authorizer = authorizer
+	providerClient.PollingDuration = 0
 
 	for feature, namespace := range requiredFeatures {
 		_, err := fc.Register(ctx, namespace, feature)
@@ -498,6 +507,7 @@ func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subsc
 	step := logger.BeginStep("Validating Container Registry for %s...", registryName)
 	crc := containerregistry.NewRegistriesClient(subscriptionID)
 	crc.Authorizer = authorizer
+	crc.PollingDuration = 0
 
 	for list, err := crc.ListComplete(ctx); list.NotDone(); err = list.NextWithContext(ctx) {
 		if err != nil {
@@ -521,6 +531,7 @@ func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Auth
 	}
 	lwc := operationalinsights.NewWorkspacesClient(resource.SubscriptionID)
 	lwc.Authorizer = authorizer
+	lwc.PollingDuration = 0
 	_, err = lwc.Get(ctx, resource.ResourceGroup, resource.ResourceName)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve log analytics workspace: %w", err)

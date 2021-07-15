@@ -22,6 +22,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 	logger := radlogger.GetLogger(ctx)
 	rdc := authorization.NewRoleDefinitionsClient(subscriptionID)
 	rdc.Authorizer = auth
+	rdc.PollingDuration = 0
 
 	roleFilter := fmt.Sprintf("roleName eq '%s'", roleName)
 	roleList, err := rdc.List(ctx, scope, roleFilter)
@@ -31,6 +32,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 
 	rac := authorization.NewRoleAssignmentsClient(subscriptionID)
 	rac.Authorizer = auth
+	rac.PollingDuration = 0
 	raName, _ := uuid.NewV4()
 
 	MaxRetries := 100

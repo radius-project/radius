@@ -39,6 +39,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 	sbClient := servicebus.NewNamespacesClient(r.Arm.SubscriptionID)
 	sbClient.Authorizer = r.Arm.Auth
+	sbClient.PollingDuration = 0
 	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
 
 	if err != nil {

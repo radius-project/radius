@@ -64,7 +64,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 		// Verify that the servicebus resources were not deleted
 		nsc := servicebus.NewNamespacesClient(at.Options.Environment.SubscriptionID)
 		nsc.Authorizer = at.Options.ARMAuthorizer
-
+		nsc.PollingDuration = 0
 		// We have to use a generated name due to uniqueness requirements, so lookup based on tags
 		var ns *servicebus.SBNamespace
 		list, err := nsc.ListByResourceGroup(context.Background(), at.Options.Environment.ResourceGroup)
@@ -87,6 +87,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 
 		tc := servicebus.NewTopicsClient(at.Options.Environment.SubscriptionID)
 		tc.Authorizer = at.Options.ARMAuthorizer
+		tc.PollingDuration = 0
 
 		_, err = tc.Get(context.Background(), at.Options.Environment.ResourceGroup, *ns.Name, "TOPIC_A")
 		require.NoErrorf(t, err, "failed to find servicebus topic")

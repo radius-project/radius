@@ -102,6 +102,7 @@ func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id str
 
 	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
 	kvc.Authorizer = handler.arm.Auth
+	kvc.PollingDuration = 0
 
 	kv, err := kvc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
 	if err != nil {
@@ -114,9 +115,11 @@ func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id str
 func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultName string, options PutOptions) (*keyvault.Vault, error) {
 	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
 	kvc.Authorizer = handler.arm.Auth
+	kvc.PollingDuration = 0
 
 	sc := subscriptions.NewClient()
 	sc.Authorizer = handler.arm.Auth
+	sc.PollingDuration = 0
 	s, err := sc.Get(ctx, handler.arm.SubscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find subscription: %w", err)
@@ -169,6 +172,7 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 func (handler *azureKeyVaultHandler) DeleteKeyVault(ctx context.Context, vaultName string) error {
 	kvClient := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
 	kvClient.Authorizer = handler.arm.Auth
+	kvClient.PollingDelay = 0
 
 	_, err := kvClient.Delete(ctx, handler.arm.ResourceGroup, vaultName)
 	if err != nil {

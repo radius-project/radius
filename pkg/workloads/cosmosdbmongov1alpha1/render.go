@@ -44,6 +44,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	// cosmos uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
 	dac := documentdb.NewDatabaseAccountsClient(r.Arm.SubscriptionID)
 	dac.Authorizer = r.Arm.Auth
+	dac.PollingDuration = 0
 
 	css, err := dac.ListConnectionStrings(ctx, r.Arm.ResourceGroup, accountname)
 	if err != nil {

@@ -53,6 +53,7 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 
 	cosmosDBClient := documentdb.NewDatabaseAccountsClient(parsed.SubscriptionID)
 	cosmosDBClient.Authorizer = handler.arm.Auth
+	cosmosDBClient.PollingDuration = 0
 
 	account, err := cosmosDBClient.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
 	if err != nil {
@@ -66,6 +67,7 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Context, properties map[string]string, databaseKind documentdb.DatabaseAccountKind, options PutOptions) (*documentdb.DatabaseAccountGetResults, error) {
 	cosmosDBClient := documentdb.NewDatabaseAccountsClient(handler.arm.SubscriptionID)
 	cosmosDBClient.Authorizer = handler.arm.Auth
+	cosmosDBClient.PollingDuration = 0
 
 	accountName, err := generateCosmosDBAccountName(ctx, properties, cosmosDBClient)
 	if err != nil {
@@ -111,6 +113,7 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 func (handler *azureCosmosDBBaseHandler) DeleteCosmosDBAccount(ctx context.Context, accountName string) error {
 	cosmosDBClient := documentdb.NewDatabaseAccountsClient(handler.arm.SubscriptionID)
 	cosmosDBClient.Authorizer = handler.arm.Auth
+	cosmosDBClient.PollingDuration = 0
 
 	accountFuture, err := cosmosDBClient.Delete(ctx, handler.arm.ResourceGroup, accountName)
 	if err != nil {

@@ -109,6 +109,7 @@ func (handler *daprStateStoreAzureStorageHandler) GenerateStorageAccountName(ctx
 	logger := radlogger.GetLogger(ctx)
 	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
 	sc.Authorizer = handler.arm.Auth
+	sc.PollingDuration = 0
 
 	// names are kinda finicky here - they have to be unique across azure.
 	name := ""
@@ -148,6 +149,7 @@ func (handler *daprStateStoreAzureStorageHandler) GetStorageAccountByID(ctx cont
 
 	sac := storage.NewAccountsClient(parsed.SubscriptionID)
 	sac.Authorizer = handler.arm.Auth
+	sac.PollingDuration = 0
 
 	account, err := sac.GetProperties(ctx, parsed.ResourceGroup, parsed.Types[0].Name, storage.AccountExpand(""))
 	if err != nil {
@@ -165,6 +167,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx conte
 
 	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
 	sc.Authorizer = handler.arm.Auth
+	sc.PollingDuration = 0
 
 	future, err := sc.Create(ctx, handler.arm.ResourceGroup, accountName, storage.AccountCreateParameters{
 		Location: location,
@@ -245,6 +248,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 func (handler *daprStateStoreAzureStorageHandler) FindStorageKey(ctx context.Context, accountName string) (*storage.AccountKey, error) {
 	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
 	sc.Authorizer = handler.arm.Auth
+	sc.PollingDuration = 0
 
 	keys, err := sc.ListKeys(ctx, handler.arm.ResourceGroup, accountName, "")
 	if err != nil {
@@ -270,6 +274,7 @@ func (handler *daprStateStoreAzureStorageHandler) FindStorageKey(ctx context.Con
 func (handler *daprStateStoreAzureStorageHandler) DeleteStorageAccount(ctx context.Context, accountName string) error {
 	sc := storage.NewAccountsClient(handler.arm.SubscriptionID)
 	sc.Authorizer = handler.arm.Auth
+	sc.PollingDuration = 0
 
 	_, err := sc.Delete(ctx, handler.arm.ResourceGroup, accountName)
 	if err != nil {

@@ -113,6 +113,7 @@ func (handler *azureCosmosDBSQLDBHandler) GetDatabaseByID(ctx context.Context, d
 
 	mongoClient := documentdb.NewSQLResourcesClient(parsed.SubscriptionID)
 	mongoClient.Authorizer = handler.arm.Auth
+	mongoClient.PollingDuration = 0
 
 	account, err := mongoClient.GetSQLDatabase(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
 	if err != nil {
@@ -125,6 +126,7 @@ func (handler *azureCosmosDBSQLDBHandler) GetDatabaseByID(ctx context.Context, d
 func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, accountName string, dbName string, options PutOptions) (*documentdb.SQLDatabaseGetResults, error) {
 	sqlClient := documentdb.NewSQLResourcesClient(handler.arm.SubscriptionID)
 	sqlClient.Authorizer = handler.arm.Auth
+	sqlClient.PollingDuration = 0
 
 	dbfuture, err := sqlClient.CreateUpdateSQLDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName, documentdb.SQLDatabaseCreateUpdateParameters{
 		SQLDatabaseCreateUpdateProperties: &documentdb.SQLDatabaseCreateUpdateProperties{
@@ -160,6 +162,7 @@ func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, ac
 func (handler *azureCosmosDBSQLDBHandler) DeleteDatabase(ctx context.Context, accountName string, dbName string) error {
 	sqlClient := documentdb.NewSQLResourcesClient(handler.arm.SubscriptionID)
 	sqlClient.Authorizer = handler.arm.Auth
+	sqlClient.PollingDuration = 0
 
 	dbfuture, err := sqlClient.DeleteSQLDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
 	if err != nil && dbfuture.Response().StatusCode != 404 {

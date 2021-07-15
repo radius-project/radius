@@ -147,6 +147,7 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 	// Delete database
 	sqlDBClient := sql.NewDatabasesClient(handler.arm.SubscriptionID)
 	sqlDBClient.Authorizer = handler.arm.Auth
+	sqlDBClient.PollingDuration = 0
 	response, err := sqlDBClient.Delete(ctx, handler.arm.ResourceGroup, serverName, databaseName)
 	if err != nil && response.StatusCode != 404 {
 		return fmt.Errorf("failed to delete sql database `%s`: %w", databaseName, err)
@@ -155,6 +156,7 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 	// Delete the server
 	sqlServerClient := sql.NewServersClient(handler.arm.SubscriptionID)
 	sqlServerClient.Authorizer = handler.arm.Auth
+	sqlServerClient.PollingDuration = 0
 	future, err := sqlServerClient.Delete(ctx, handler.arm.ResourceGroup, serverName)
 	if err != nil && future.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to delete sql server `%s`: %w", serverName, err)
@@ -176,9 +178,10 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 // createServer creates SQL server instance with a generated unique server name prefixed with specified database name
 func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context, location *string, databaseName string, password string, options PutOptions) (string, error) {
 	logger := radlogger.GetLogger(ctx)
-	
+
 	sqlServerClient := sql.NewServersClient(handler.arm.SubscriptionID)
 	sqlServerClient.Authorizer = handler.arm.Auth
+	sqlServerClient.PollingDuration = 0
 
 	var serverName = ""
 	retryAttempts := 10
@@ -240,6 +243,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, location *string, serverName string, dbName string, options PutOptions) error {
 	sqlDBClient := sql.NewDatabasesClient(handler.arm.SubscriptionID)
 	sqlDBClient.Authorizer = handler.arm.Auth
+	sqlDBClient.PollingDuration = 0
 
 	future, err := sqlDBClient.CreateOrUpdate(
 		ctx,

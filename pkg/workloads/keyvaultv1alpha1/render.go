@@ -36,6 +36,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	vaultName := properties[handlers.KeyVaultNameKey]
 	kvClient := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
 	kvClient.Authorizer = r.Arm.Auth
+	kvClient.PollingDuration = 0
 	vault, err := kvClient.Get(ctx, r.Arm.ResourceGroup, vaultName)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch keyvault")
