@@ -31,12 +31,6 @@ type ContainerRunContainer struct {
 	Env   map[string]string `json:"env,omitempty"`
 }
 
-// ContainerEnvVar is the definition of an environment variable
-type ContainerEnvVar struct {
-	Name  string  `json:"name"`
-	Value *string `json:"value,omitempty"`
-}
-
 const KindHTTP = "http"
 
 // HTTPProvidesService is the definition of an 'http' binding for a container.
@@ -62,4 +56,5 @@ func (h HTTPBinding) GetEffectiveContainerPort() int {
 	} else {
 		return 80
 	}
-}
+}xm
+z
