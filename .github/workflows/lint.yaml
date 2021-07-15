@@ -30,8 +30,6 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GOVER }}
-      - name: Parse release version and set REL_VERSION
-        run: python ./.github/scripts/get_release_version.py
       - name: Run linter
         uses: golangci/golangci-lint-action@v2
         with:
