@@ -10,32 +10,17 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 
+	"github.com/Azure/radius/pkg/helm"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
-	helm "helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/storage/driver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
-)
-
-const (
-	radiusReleaseName     = "radius"
-	radiusHelmRepo        = "https://radius.azurecr.io/helm/v1/repo"
-	radiusSystemNamespace = "radius-system"
-	helmDriverSecret      = "secret"
 )
 
 func createNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
@@ -47,75 +32,6 @@ func createNamespace(ctx context.Context, client *k8s.Clientset, namespace strin
 		return err
 	}
 	return nil
-}
-
-func helmConfig(namespace string) (*helm.Configuration, error) {
-	hc := helm.Configuration{}
-	flags := &genericclioptions.ConfigFlags{
-		Namespace: &namespace,
-	}
-
-	// helmDriver is "secret" to make the backend storage driver
-	// use kubernetes secrets.
-	err := hc.Init(flags, namespace, helmDriverSecret, debugLogf)
-	return &hc, err
-}
-
-func createTempDir() (string, error) {
-	dir, err := ioutil.TempDir("", radiusReleaseName)
-	if err != nil {
-		return "", fmt.Errorf("error creating temp dir: %s", err)
-	}
-	return dir, nil
-}
-
-func locateChartFile(dirPath string) (string, error) {
-	files, err := ioutil.ReadDir(dirPath)
-	if err != nil {
-		return "", err
-	}
-	if len(files) == 0 {
-		return "", errors.New("radius helm chart not found")
-	}
-
-	if len(files) > 1 {
-		return "", errors.New("unexpected files found when downloading helm chart")
-	}
-
-	return filepath.Join(dirPath, files[0].Name()), nil
-}
-
-func radiusChart(version string, config *helm.Configuration) (*chart.Chart, error) {
-	pull := helm.NewPull()
-	pull.RepoURL = radiusHelmRepo
-	pull.Settings = &cli.EnvSettings{}
-
-	// If version isn't set, it will use the latest version.
-	if version != "" {
-		pull.Version = version
-	}
-
-	dir, err := createTempDir()
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(dir)
-
-	pull.DestDir = dir
-
-	_, err = pull.Run(radiusReleaseName)
-	if err != nil {
-		return nil, err
-	}
-
-	chartPath, err := locateChartFile(dir)
-	if err != nil {
-		return nil, err
-	}
-	return loader.Load(chartPath)
-}
-
-func debugLogf(format string, v ...interface{}) {
 }
 
 var envInitKubernetesCmd = &cobra.Command{
@@ -171,53 +87,13 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = createNamespace(cmd.Context(), client, radiusSystemNamespace)
+		err = createNamespace(cmd.Context(), client, helm.RadiusSystemNamespace)
 		if err != nil {
 			return err
 		}
 
-		helmConf, err := helmConfig(radiusSystemNamespace)
+		err = helm.ApplyRadiusHelmChart(version)
 		if err != nil {
-			return err
-		}
-
-		radiusChart, err := radiusChart(version, helmConf)
-		if err != nil {
-			return err
-		}
-
-		// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
-		// TODO: Apply CRDs because Helm doesn't upgrade CRDs for you.
-		// https://github.com/Azure/radius/issues/712
-		// We need the CRDs to be public to do this (or consider unpacking the chart
-		// for the CRDs)
-
-		histClient := helm.NewHistory(helmConf)
-		histClient.Max = 1 // Only need to check if at least 1 exists
-
-		// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
-		// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
-		// and invoke the install client.
-		_, err = histClient.Run(radiusReleaseName)
-
-		if err == driver.ErrReleaseNotFound {
-			logger.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", radiusSystemNamespace)
-
-			installClient := helm.NewInstall(helmConf)
-			installClient.ReleaseName = radiusReleaseName
-			installClient.Namespace = radiusSystemNamespace
-			if _, err = installClient.Run(radiusChart, radiusChart.Values); err != nil {
-				return err
-			}
-		} else if err == nil {
-			logger.LogInfo("Found existing Radius Kubernetes environment, upgrading")
-			upgradeClient := helm.NewUpgrade(helmConf)
-			upgradeClient.Namespace = radiusSystemNamespace
-
-			if _, err = upgradeClient.Run(radiusReleaseName, radiusChart, radiusChart.Values); err != nil {
-				return err
-			}
-		} else {
 			return err
 		}
 
