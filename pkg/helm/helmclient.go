@@ -14,8 +14,8 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	storageerrors "k8s.io/helm/pkg/storage/errors"
 )
 
 const (
@@ -52,8 +52,7 @@ func ApplyRadiusHelmChart(version string) error {
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
-
-	if err == storageerrors.ErrReleaseNotFound(radiusReleaseName) {
+	if err == driver.ErrReleaseNotFound {
 		logger.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", RadiusSystemNamespace)
 
 		err = runRadiusHelmInstall(helmConf, radiusChart)
