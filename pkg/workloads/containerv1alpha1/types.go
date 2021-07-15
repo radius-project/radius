@@ -56,5 +56,4 @@ func (h HTTPBinding) GetEffectiveContainerPort() int {
 	} else {
 		return 80
 	}
-}xm
-z
+}
