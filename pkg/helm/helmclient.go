@@ -27,20 +27,16 @@ const (
 
 func ApplyRadiusHelmChart(version string) error {
 	// For capturing output from helm.
-	output := make(chan string)
-	done := make(chan bool)
-	helmConf, err := helmConfig(RadiusSystemNamespace, output, done)
+	var helmOutput strings.Builder
+
+	helmConf, err := helmConfig(RadiusSystemNamespace, helmOutput)
 	if err != nil {
-		// Note: this is assuming that no logs from helm will be written
-		helmOutput := getOutputFromChannel(output)
-		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput)
+		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	radiusChart, err := radiusChart(version, helmConf)
 	if err != nil {
-		done <- true
-		helmOutput := getOutputFromChannel(output)
-		return fmt.Errorf("failed to get radius chart, err: %w, helm output: %s", err, helmOutput)
+		return fmt.Errorf("failed to get radius chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
@@ -62,21 +58,16 @@ func ApplyRadiusHelmChart(version string) error {
 
 		err = runHelmInstall(helmConf, radiusChart)
 		if err != nil {
-			done <- true
-			helmOutput := getOutputFromChannel(output)
-			return fmt.Errorf("failed to run helm install, err: %w, helm output: %s", err, helmOutput)
+			return fmt.Errorf("failed to run helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	} else if err == nil {
 		logger.LogInfo("Found existing Radius Kubernetes environment, upgrading")
 
 		if err != nil {
-			done <- true
-			helmOutput := getOutputFromChannel(output)
-			return fmt.Errorf("failed to run helm upgrade, err: %w, helm output: %s", err, helmOutput)
+			return fmt.Errorf("failed to run helm upgrade, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	}
 
-	close(output)
 	return err
 }
 
@@ -96,34 +87,16 @@ func runHelmInstall(helmConf *helm.Configuration, radiusChart *chart.Chart) erro
 	return err
 }
 
-func helmConfig(namespace string, output chan string, done chan bool) (*helm.Configuration, error) {
+func helmConfig(namespace string, builder strings.Builder) (*helm.Configuration, error) {
 	hc := helm.Configuration{}
 	flags := &genericclioptions.ConfigFlags{
 		Namespace: &namespace,
 	}
 
-	// Create a temp channel to be able to handle signal for completion
-	temp := make(chan string)
-
-	go func() {
-		for {
-			select {
-			case msg := <-temp:
-				output <- msg
-			case <-done:
-				// Allowing the string to be terminated
-				// Don't need to close temp as channels don't need to be closed
-				// and closing outside of the sender is a bad idea.
-				close(output)
-				return
-			}
-		}
-	}()
-
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.
 	err := hc.Init(flags, namespace, helmDriverSecret, func(format string, v ...interface{}) {
-		temp <- fmt.Sprintf(format, v...)
+		builder.WriteString(fmt.Sprintf(format, v...))
 	})
 	return &hc, err
 }
@@ -180,18 +153,4 @@ func radiusChart(version string, config *helm.Configuration) (*chart.Chart, erro
 		return nil, err
 	}
 	return loader.Load(chartPath)
-}
-
-func getOutputFromChannel(output chan string) string {
-	var sb strings.Builder
-
-	for {
-		select {
-		case msg, done := <-output:
-			if done {
-				return sb.String()
-			}
-			sb.WriteString(msg)
-		}
-	}
 }
