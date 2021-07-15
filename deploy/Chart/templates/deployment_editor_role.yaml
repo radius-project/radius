@@ -5,7 +5,7 @@ metadata:
   name: deployment-editor-role
 rules:
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - deployments
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - deployments/status
   verbs:

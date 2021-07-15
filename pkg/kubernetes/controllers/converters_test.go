@@ -69,7 +69,7 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 
 	original := radiusv1alpha1.Component{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "applications.radius.dev/v1alpha1",
+			APIVersion: "radius.dev/v1alpha1",
 			Kind:       "Component",
 		},
 		ObjectMeta: metav1.ObjectMeta{

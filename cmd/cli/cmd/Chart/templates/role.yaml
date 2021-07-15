@@ -19,7 +19,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - applications
   verbs:
@@ -31,13 +31,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - applications/finalizers
   verbs:
   - update
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - applications/status
   verbs:
@@ -45,7 +45,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - components
   verbs:
@@ -57,13 +57,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - components/finalizers
   verbs:
   - update
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - components/status
   verbs:
@@ -71,7 +71,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - deployments
   verbs:
@@ -83,13 +83,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - deployments/finalizers
   verbs:
   - update
 - apiGroups:
-  - applications.radius.dev
+  - radius.dev
   resources:
   - deployments/status
   verbs:

@@ -15,7 +15,7 @@ controller-uninstall: generate-k8s-manifests  ## Uninstall CRDs from the K8s clu
 	kubectl delete -f deploy/Chart/crds/
 
 controller-deploy: generate-k8s-manifests docker-build docker-push ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	helm upgrade --wait --install --set container=$(DOCKER_REGISTRY)/radius-controller:$(DOCKER_TAG_VERSION) $(DOCKER_TAG_VERSION) deploy/Chart
+	helm upgrade --wait --install --set container=$(DOCKER_REGISTRY)/radius-controller:$(DOCKER_TAG_VERSION) radius deploy/Chart
 
 controller-undeploy: generate-k8s-manifests ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
-	helm uninstall $(DOCKER_TAG_VERSION)
+	helm uninstall radius

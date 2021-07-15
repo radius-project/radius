@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: deployments.applications.radius.dev
+  name: deployments.radius.dev
 spec:
-  group: applications.radius.dev
+  group: radius.dev
   names:
     categories:
     - all

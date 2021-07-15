@@ -23,9 +23,9 @@ type ApplicationReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=applications.radius.dev,resources=applications,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=applications.radius.dev,resources=applications/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=applications.radius.dev,resources=applications/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=applications,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=applications/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=applications/finalizers,verbs=update
 
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("application", req.NamespacedName)

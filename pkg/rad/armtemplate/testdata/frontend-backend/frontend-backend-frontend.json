@@ -1,5 +1,5 @@
 {
-    "apiVersion": "applications.radius.dev/v1alpha1",
+    "apiVersion": "radius.dev/v1alpha1",
     "kind": "Component",
     "metadata": {
         "annotations": {

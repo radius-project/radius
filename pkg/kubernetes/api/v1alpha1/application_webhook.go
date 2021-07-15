@@ -23,7 +23,7 @@ func (r *Application) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-//+kubebuilder:webhook:path=/mutate-radius-radius-dev-v1alpha1-application,mutating=true,failurePolicy=fail,sideEffects=None,groups=applications.radius.dev,resources=applications,verbs=create;update,versions=v1alpha1,name=mapplication.kb.io,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/mutate-radius-radius-dev-v1alpha1-application,mutating=true,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=applications,verbs=create;update,versions=v1alpha1,name=mapplication.kb.io,admissionReviewVersions={v1,v1beta1}
 
 var _ webhook.Defaulter = &Application{}
 
@@ -35,7 +35,7 @@ func (r *Application) Default() {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-radius-radius-dev-v1alpha1-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=applications.radius.dev,resources=applications,verbs=create;update,versions=v1alpha1,name=vapplication.kb.io,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/validate-radius-radius-dev-v1alpha1-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=applications,verbs=create;update,versions=v1alpha1,name=vapplication.kb.io,admissionReviewVersions={v1,v1beta1}
 
 var _ webhook.Validator = &Application{}
 

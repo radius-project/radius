@@ -34,13 +34,7 @@ func ReadKubeConfig() (*api.Config, error) {
 }
 
 func CreateDynamicClient(context string) (dynamic.Interface, error) {
-	config, err := ReadKubeConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	clientconfig := clientcmd.NewNonInteractiveClientConfig(*config, context, nil, nil)
-	merged, err := clientconfig.ClientConfig()
+	merged, err := getConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -54,13 +48,7 @@ func CreateDynamicClient(context string) (dynamic.Interface, error) {
 }
 
 func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
-	config, err := ReadKubeConfig()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	clientconfig := clientcmd.NewNonInteractiveClientConfig(*config, context, nil, nil)
-	merged, err := clientconfig.ClientConfig()
+	merged, err := getConfig(context)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -71,6 +59,20 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 	}
 
 	return client, merged, err
+}
+
+func getConfig(context string) (*rest.Config, error) {
+	config, err := ReadKubeConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	clientconfig := clientcmd.NewNonInteractiveClientConfig(*config, context, nil, nil)
+	merged, err := clientconfig.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	return merged, err
 }
 
 func homeDir() string {
