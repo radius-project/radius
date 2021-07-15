@@ -15,7 +15,7 @@
 docs/content/reference/cli/rad*
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 
 # Build Output 
 bin/
