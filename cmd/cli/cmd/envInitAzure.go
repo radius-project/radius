@@ -261,7 +261,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 
 	logger.LogInfo("Resource Group '%v' will be created...", name)
 
-	subc := azclients.NewSubscriptionsClient(authorizer)
+	subc := azclients.NewSubscriptionClient(authorizer)
 
 	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
 	if err != nil {
@@ -430,7 +430,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (*resources.Group, error) {
 	step := logger.BeginStep("Validating Subscription...")
 
-	sc := azclients.NewSubscriptionsClient(authorizer)
+	sc := azclients.NewSubscriptionClient(authorizer)
 
 	_, err := sc.Get(ctx, subscriptionID)
 	if err != nil {

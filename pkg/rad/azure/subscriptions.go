@@ -62,7 +62,7 @@ func LoadSubscriptionsFromProfile() (SubscriptionResult, error) {
 
 // LoadSubscriptionsFromAzure uses ARM to find subscription data.
 func LoadSubscriptionsFromAzure(ctx context.Context, authorizer autorest.Authorizer) (SubscriptionResult, error) {
-	subc := azclients.NewSubscriptionsClient(authorizer)
+	subc := azclients.NewSubscriptionClient(authorizer)
 
 	// ARM doesn't have the concept of a "default" subscription so we skip it here.
 	result := SubscriptionResult{}

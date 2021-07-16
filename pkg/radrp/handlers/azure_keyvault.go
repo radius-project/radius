@@ -113,7 +113,7 @@ func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id str
 func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultName string, options PutOptions) (*keyvault.Vault, error) {
 	kvc := azclients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	sc := azclients.NewSubscriptionsClient(handler.arm.Auth)
+	sc := azclients.NewSubscriptionClient(handler.arm.Auth)
 
 	s, err := sc.Get(ctx, handler.arm.SubscriptionID)
 	if err != nil {

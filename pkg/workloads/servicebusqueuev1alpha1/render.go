@@ -37,7 +37,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
 	queueName := properties[handlers.ServiceBusQueueNameKey]
 
-	sbClient := azclients.NewNamespacesClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	sbClient := azclients.NewServiceBusNamespacesClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
 
 	if err != nil {
