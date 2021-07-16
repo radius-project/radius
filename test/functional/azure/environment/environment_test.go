@@ -9,8 +9,8 @@ import (
 	"context"
 	"testing"
 
-	azresources "github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/test/azuretest"
@@ -91,8 +91,7 @@ func TestAzureEnvironment(t *testing.T) {
 
 func listRadiusEnvironmentResources(ctx context.Context, t *testing.T, env *environments.AzureCloudEnvironment, auth autorest.Authorizer, resourceGroup string) map[string]string {
 	resourceMap := make(map[string]string)
-	resc := azresources.NewClient(env.SubscriptionID)
-	resc.Authorizer = auth
+	resc := azclients.NewResourcesClient(env.SubscriptionID, auth)
 
 	for page, err := resc.ListByResourceGroup(ctx, resourceGroup, "", "", nil); page.NotDone(); err = page.NextWithContext(ctx) {
 		require.NoError(t, err, "failed to list resources")

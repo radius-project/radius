@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/clients"
 	"github.com/Azure/radius/pkg/rad/kubernetes"
@@ -65,19 +65,14 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 }
 
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	dc := resources.NewDeploymentsClient(e.SubscriptionID)
 	armauth, err := azure.GetResourceManagerEndpointAuthorizer()
 	if err != nil {
 		return nil, err
 	}
 
-	dc.Authorizer = armauth
-
+	dc := azclients.NewDeploymentsClient(e.SubscriptionID, armauth)
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
-
-	// Don't timeout, let the user cancel
-	dc.PollingDuration = 0
 
 	return &azure.ARMDeploymentClient{
 		Client:         dc,

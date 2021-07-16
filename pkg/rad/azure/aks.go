@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	"github.com/Azure/radius/pkg/azclients"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -24,8 +24,7 @@ func GetAKSMonitoringCredentials(ctx context.Context, subscriptionID string, res
 	// Currently we go to AKS every time to ask for credentials, we don't
 	// cache them locally. This could be done in the future, but skipping it for now
 	// since it's non-obvious that we'd store credentials in your ~/.rad directory
-	mcc := containerservice.NewManagedClustersClient(subscriptionID)
-	mcc.Authorizer = armauth
+	mcc := azclients.NewManagedClustersClient(subscriptionID, armauth)
 
 	results, err := mcc.ListClusterMonitoringUserCredentials(ctx, resourceGroup, clusterName)
 	if err != nil {

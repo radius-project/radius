@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
@@ -37,8 +37,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
 	queueName := properties[handlers.ServiceBusQueueNameKey]
 
-	sbClient := servicebus.NewNamespacesClient(r.Arm.SubscriptionID)
-	sbClient.Authorizer = r.Arm.Auth
+	sbClient := azclients.NewServiceBusNamespacesClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
 
 	if err != nil {

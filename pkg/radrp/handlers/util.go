@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/workloads"
@@ -42,8 +42,7 @@ func mergeProperties(resource workloads.OutputResource, existing *db.DeploymentR
 }
 
 func getResourceGroupLocation(ctx context.Context, armConfig armauth.ArmConfig) (*string, error) {
-	rgc := resources.NewGroupsClient(armConfig.SubscriptionID)
-	rgc.Authorizer = armConfig.Auth
+	rgc := azclients.NewGroupsClient(armConfig.SubscriptionID, armConfig.Auth)
 
 	resourceGroup, err := rgc.Get(ctx, armConfig.ResourceGroup)
 	if err != nil {

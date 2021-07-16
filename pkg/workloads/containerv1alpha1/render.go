@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -97,8 +98,7 @@ func (r Renderer) createManagedIdentity(ctx context.Context, identityName, locat
 	logger := radlogger.GetLogger(ctx)
 	localID := workloads.LocalIDUserAssignedManagedIdentityKV
 	// Create a user assigned managed identity
-	msiClient := msi.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID)
-	msiClient.Authorizer = r.Arm.Auth
+	msiClient := azclients.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	id, err := msiClient.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, identityName, msi.Identity{
 		Location: to.StringPtr(location),
 	})
@@ -137,9 +137,9 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	// Create user assigned managed identity
 	managedIdentityName := kvName + "-" + cw.Name + "-msi"
 
-	g := resources.NewGroupsClient(r.Arm.SubscriptionID)
-	g.Authorizer = r.Arm.Auth
-	rg, err := g.Get(ctx, r.Arm.ResourceGroup)
+	rgc := azclients.NewGroupsClient(r.Arm.SubscriptionID, r.Arm.Auth)
+
+	rg, err := rgc.Get(ctx, r.Arm.ResourceGroup)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -169,8 +169,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 	outputResources = append(outputResources, res)
 
-	kvc := keyvault.NewVaultsClient(r.Arm.SubscriptionID)
-	kvc.Authorizer = r.Arm.Auth
+	kvc := azclients.NewVaultsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -527,8 +526,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	}
 
 	// Get AKS cluster name in current resource group
-	mcc := containerservice.NewManagedClustersClient(r.Arm.K8sSubscriptionID)
-	mcc.Authorizer = r.Arm.Auth
+	mcc := azclients.NewManagedClustersClient(r.Arm.K8sSubscriptionID, r.Arm.Auth)
 
 	// Note: Pod Identity name cannot have camel case
 	podIdentityName := "podid-" + strings.ToLower(containerName)
@@ -640,8 +638,7 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		},
 	}
 
-	dc := resources.NewDeploymentsClient(r.Arm.SubscriptionID)
-	dc.Authorizer = r.Arm.Auth
+	dc := azclients.NewDeploymentsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	parameters := map[string]interface{}{}
 	deploymentProperties := &resources.DeploymentProperties{
 		Parameters: parameters,

@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/logger"
@@ -90,11 +90,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 
 // Deletes resource group and all its resources
 func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string) error {
-	rgc := resources.NewGroupsClient(subscriptionID)
-	rgc.Authorizer = authorizer
-
-	// Don't timeout, let the user cancel
-	rgc.PollingDuration = 0
+	rgc := azclients.NewGroupsClient(subscriptionID, authorizer)
 
 	logger.LogInfo("Deleting resource group %v", resourceGroup)
 

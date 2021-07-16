@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -107,8 +108,7 @@ func (handler *azureCosmosDBMongoHandler) GetDatabaseByID(ctx context.Context, d
 		return nil, fmt.Errorf("failed to parse CosmosDB Mongo Database resource id: %w", err)
 	}
 
-	mongoClient := documentdb.NewMongoDBResourcesClient(parsed.SubscriptionID)
-	mongoClient.Authorizer = handler.arm.Auth
+	mongoClient := azclients.NewMongoDBResourcesClient(parsed.SubscriptionID, handler.arm.Auth)
 
 	account, err := mongoClient.GetMongoDBDatabase(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
 	if err != nil {
@@ -119,8 +119,7 @@ func (handler *azureCosmosDBMongoHandler) GetDatabaseByID(ctx context.Context, d
 }
 
 func (handler *azureCosmosDBMongoHandler) CreateDatabase(ctx context.Context, accountName string, dbName string, options PutOptions) (*documentdb.MongoDBDatabaseGetResults, error) {
-	mrc := documentdb.NewMongoDBResourcesClient(handler.arm.SubscriptionID)
-	mrc.Authorizer = handler.arm.Auth
+	mrc := azclients.NewMongoDBResourcesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	dbfuture, err := mrc.CreateUpdateMongoDBDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName, documentdb.MongoDBDatabaseCreateUpdateParameters{
 		MongoDBDatabaseCreateUpdateProperties: &documentdb.MongoDBDatabaseCreateUpdateProperties{
@@ -153,8 +152,7 @@ func (handler *azureCosmosDBMongoHandler) CreateDatabase(ctx context.Context, ac
 }
 
 func (handler *azureCosmosDBMongoHandler) DeleteDatabase(ctx context.Context, accountName string, dbName string) error {
-	mrc := documentdb.NewMongoDBResourcesClient(handler.arm.SubscriptionID)
-	mrc.Authorizer = handler.arm.Auth
+	mrc := azclients.NewMongoDBResourcesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	// It's possible that this is a retry and we already deleted the account on a previous attempt.
 	// When that happens a delete for the database (a nested resource) can fail with a 404, but it's

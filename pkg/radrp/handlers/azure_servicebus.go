@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/rad/util"
@@ -130,8 +131,7 @@ func (handler *azureServiceBusBaseHandler) GetNamespaceByID(ctx context.Context,
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: %w", err)
 	}
 
-	sbc := servicebus.NewNamespacesClient(parsed.SubscriptionID)
-	sbc.Authorizer = handler.arm.Auth
+	sbc := azclients.NewServiceBusNamespacesClient(parsed.SubscriptionID, handler.arm.Auth)
 
 	// Check if a service bus namespace exists in the resource group for this application
 	namespace, err := sbc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
@@ -143,8 +143,7 @@ func (handler *azureServiceBusBaseHandler) GetNamespaceByID(ctx context.Context,
 }
 
 func (handler *azureServiceBusBaseHandler) LookupSharedManagedNamespaceFromResourceGroup(ctx context.Context, application string) (*servicebus.SBNamespace, error) {
-	sbc := servicebus.NewNamespacesClient(handler.arm.SubscriptionID)
-	sbc.Authorizer = handler.arm.Auth
+	sbc := azclients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	// Check if a service bus namespace exists in the resource group for this application
 	list, err := sbc.ListByResourceGroupComplete(ctx, handler.arm.ResourceGroup)
@@ -165,8 +164,7 @@ func (handler *azureServiceBusBaseHandler) LookupSharedManagedNamespaceFromResou
 }
 
 func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, application string) (*servicebus.SBNamespace, error) {
-	sbc := servicebus.NewNamespacesClient(handler.arm.SubscriptionID)
-	sbc.Authorizer = handler.arm.Auth
+	sbc := azclients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	location, err := getResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
@@ -208,8 +206,7 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 }
 
 func (handler *azureServiceBusBaseHandler) CreateTopic(ctx context.Context, namespaceName string, topicName string) (*servicebus.SBTopic, error) {
-	tc := servicebus.NewTopicsClient(handler.arm.SubscriptionID)
-	tc.Authorizer = handler.arm.Auth
+	tc := azclients.NewTopicsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	topic, err := tc.CreateOrUpdate(ctx, handler.arm.ResourceGroup, namespaceName, topicName, servicebus.SBTopic{
 		Name: to.StringPtr(topicName),
@@ -233,8 +230,7 @@ func (handler *azureServiceBusBaseHandler) GetTopicByID(ctx context.Context, id 
 		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
 	}
 
-	tc := servicebus.NewTopicsClient(parsed.SubscriptionID)
-	tc.Authorizer = handler.arm.Auth
+	tc := azclients.NewTopicsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	topic, err := tc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
 	if err != nil {
@@ -245,8 +241,7 @@ func (handler *azureServiceBusBaseHandler) GetTopicByID(ctx context.Context, id 
 }
 
 func (handler *azureServiceBusBaseHandler) CreateQueue(ctx context.Context, namespaceName string, queueName string) (*servicebus.SBQueue, error) {
-	qc := servicebus.NewQueuesClient(handler.arm.SubscriptionID)
-	qc.Authorizer = handler.arm.Auth
+	qc := azclients.NewQueuesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	queue, err := qc.CreateOrUpdate(ctx, handler.arm.ResourceGroup, namespaceName, queueName, servicebus.SBQueue{
 		Name: to.StringPtr(queueName),
@@ -268,8 +263,7 @@ func (handler *azureServiceBusBaseHandler) GetQueueByID(ctx context.Context, id 
 		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
 	}
 
-	qc := servicebus.NewQueuesClient(parsed.ID)
-	qc.Authorizer = handler.arm.Auth
+	qc := azclients.NewQueuesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	queue, err := qc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
 	if err != nil {
@@ -280,8 +274,7 @@ func (handler *azureServiceBusBaseHandler) GetQueueByID(ctx context.Context, id 
 }
 
 func (handler *azureServiceBusBaseHandler) GetConnectionString(ctx context.Context, namespaceName string) (*string, error) {
-	sbc := servicebus.NewNamespacesClient(handler.arm.SubscriptionID)
-	sbc.Authorizer = handler.arm.Auth
+	sbc := azclients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	accessKeys, err := sbc.ListKeys(ctx, handler.arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
 	if err != nil {
@@ -297,8 +290,7 @@ func (handler *azureServiceBusBaseHandler) GetConnectionString(ctx context.Conte
 
 func (handler *azureServiceBusBaseHandler) DeleteNamespace(ctx context.Context, namespaceName string) error {
 	// The last queue in the service bus namespace was deleted. Now delete the namespace as well
-	sbc := servicebus.NewNamespacesClient(handler.arm.SubscriptionID)
-	sbc.Authorizer = handler.arm.Auth
+	sbc := azclients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	sbNamespaceFuture, err := sbc.Delete(ctx, handler.arm.ResourceGroup, namespaceName)
 	if err != nil && sbNamespaceFuture.Response().StatusCode != 404 {
@@ -320,8 +312,7 @@ func (handler *azureServiceBusBaseHandler) DeleteNamespace(ctx context.Context, 
 
 // Returns true if the namespace can be deleted
 func (handler *azureServiceBusBaseHandler) DeleteTopic(ctx context.Context, namespaceName string, topicName string) (bool, error) {
-	tc := servicebus.NewTopicsClient(handler.arm.SubscriptionID)
-	tc.Authorizer = handler.arm.Auth
+	tc := azclients.NewTopicsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	// We might see a 404 here due the namespace already being deleted. This is benign and could occur on retry
 	// of a failed deletion. Either way if the namespace is gone then the topic is gone.
@@ -348,8 +339,7 @@ func (handler *azureServiceBusBaseHandler) DeleteTopic(ctx context.Context, name
 
 // Returns true if the namespace can be deleted
 func (handler *azureServiceBusBaseHandler) DeleteQueue(ctx context.Context, namespaceName, queueName string) (bool, error) {
-	qc := servicebus.NewQueuesClient(handler.arm.SubscriptionID)
-	qc.Authorizer = handler.arm.Auth
+	qc := azclients.NewQueuesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	result, err := qc.Delete(ctx, handler.arm.ResourceGroup, namespaceName, queueName)
 	if err != nil && result.StatusCode != 404 {

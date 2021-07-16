@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/cli"
+	"github.com/Azure/radius/pkg/azclients"
 )
 
 // SubscriptionResult is the result of loading Azure subscriptions for the user.
@@ -62,8 +62,7 @@ func LoadSubscriptionsFromProfile() (SubscriptionResult, error) {
 
 // LoadSubscriptionsFromAzure uses ARM to find subscription data.
 func LoadSubscriptionsFromAzure(ctx context.Context, authorizer autorest.Authorizer) (SubscriptionResult, error) {
-	subc := subscription.NewSubscriptionsClient()
-	subc.Authorizer = authorizer
+	subc := azclients.NewSubscriptionClient(authorizer)
 
 	// ARM doesn't have the concept of a "default" subscription so we skip it here.
 	result := SubscriptionResult{}
