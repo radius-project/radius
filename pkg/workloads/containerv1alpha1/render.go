@@ -392,14 +392,11 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		Env:             []corev1.EnvVar{},
 	}
 
-	for _, e := range cc.Run.Container.Environment {
-		if e.Value != nil {
-			container.Env = append(container.Env, corev1.EnvVar{
-				Name:  e.Name,
-				Value: *e.Value,
-			})
-			continue
-		}
+	for k, v := range cc.Run.Container.Env {
+		container.Env = append(container.Env, corev1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
 	}
 
 	for _, dep := range cc.Uses {

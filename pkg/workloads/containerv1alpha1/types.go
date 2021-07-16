@@ -27,14 +27,8 @@ type ContainerRun struct {
 }
 
 type ContainerRunContainer struct {
-	Image       string            `json:"image"`
-	Environment []ContainerEnvVar `json:"env,omitempty"`
-}
-
-// ContainerEnvVar is the definition of an environment variable
-type ContainerEnvVar struct {
-	Name  string  `json:"name"`
-	Value *string `json:"value,omitempty"`
+	Image string            `json:"image"`
+	Env   map[string]string `json:"env,omitempty"`
 }
 
 const KindHTTP = "http"
