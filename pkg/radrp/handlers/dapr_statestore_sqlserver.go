@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -145,18 +146,14 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 	databaseName := properties[ComponentNameKey]
 
 	// Delete database
-	sqlDBClient := sql.NewDatabasesClient(handler.arm.SubscriptionID)
-	sqlDBClient.Authorizer = handler.arm.Auth
-	sqlDBClient.PollingDuration = 0
+	sqlDBClient := azclients.NewDatabasesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	response, err := sqlDBClient.Delete(ctx, handler.arm.ResourceGroup, serverName, databaseName)
 	if err != nil && response.StatusCode != 404 {
 		return fmt.Errorf("failed to delete sql database `%s`: %w", databaseName, err)
 	}
 
 	// Delete the server
-	sqlServerClient := sql.NewServersClient(handler.arm.SubscriptionID)
-	sqlServerClient.Authorizer = handler.arm.Auth
-	sqlServerClient.PollingDuration = 0
+	sqlServerClient := azclients.NewServersClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	future, err := sqlServerClient.Delete(ctx, handler.arm.ResourceGroup, serverName)
 	if err != nil && future.Response().StatusCode != 404 {
 		return fmt.Errorf("failed to delete sql server `%s`: %w", serverName, err)
@@ -179,9 +176,7 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context, location *string, databaseName string, password string, options PutOptions) (string, error) {
 	logger := radlogger.GetLogger(ctx)
 
-	sqlServerClient := sql.NewServersClient(handler.arm.SubscriptionID)
-	sqlServerClient.Authorizer = handler.arm.Auth
-	sqlServerClient.PollingDuration = 0
+	sqlServerClient := azclients.NewServersClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	var serverName = ""
 	retryAttempts := 10
@@ -241,9 +236,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 }
 
 func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, location *string, serverName string, dbName string, options PutOptions) error {
-	sqlDBClient := sql.NewDatabasesClient(handler.arm.SubscriptionID)
-	sqlDBClient.Authorizer = handler.arm.Auth
-	sqlDBClient.PollingDuration = 0
+	sqlDBClient := azclients.NewDatabasesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	future, err := sqlDBClient.CreateOrUpdate(
 		ctx,

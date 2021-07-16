@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -51,9 +52,7 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 		return nil, fmt.Errorf("failed to parse CosmosDB Account resource id: %w", err)
 	}
 
-	cosmosDBClient := documentdb.NewDatabaseAccountsClient(parsed.SubscriptionID)
-	cosmosDBClient.Authorizer = handler.arm.Auth
-	cosmosDBClient.PollingDuration = 0
+	cosmosDBClient := azclients.NewDatabaseAccountsClient(parsed.SubscriptionID, handler.arm.Auth)
 
 	account, err := cosmosDBClient.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
 	if err != nil {
@@ -65,9 +64,7 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 
 // CreateCosmosDBAccount creates CosmosDB account. Account name is randomly generated with specified database name as prefix.
 func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Context, properties map[string]string, databaseKind documentdb.DatabaseAccountKind, options PutOptions) (*documentdb.DatabaseAccountGetResults, error) {
-	cosmosDBClient := documentdb.NewDatabaseAccountsClient(handler.arm.SubscriptionID)
-	cosmosDBClient.Authorizer = handler.arm.Auth
-	cosmosDBClient.PollingDuration = 0
+	cosmosDBClient := azclients.NewDatabaseAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	accountName, err := generateCosmosDBAccountName(ctx, properties, cosmosDBClient)
 	if err != nil {
@@ -111,9 +108,7 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 
 // DeleteCosmosDBAccount deletes CosmosDB account for the specified account name
 func (handler *azureCosmosDBBaseHandler) DeleteCosmosDBAccount(ctx context.Context, accountName string) error {
-	cosmosDBClient := documentdb.NewDatabaseAccountsClient(handler.arm.SubscriptionID)
-	cosmosDBClient.Authorizer = handler.arm.Auth
-	cosmosDBClient.PollingDuration = 0
+	cosmosDBClient := azclients.NewDatabaseAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	accountFuture, err := cosmosDBClient.Delete(ctx, handler.arm.ResourceGroup, accountName)
 	if err != nil {

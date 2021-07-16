@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azcli"
@@ -103,8 +102,7 @@ func init() {
 }
 
 func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.AzureCloudEnvironment, image string, checkVersion string) error {
-	webc := web.NewAppsClient(env.SubscriptionID)
-	webc.Authorizer = auth
+	webc := azclients.NewAppsClient(env.SubscriptionID, auth)
 	webc.PollingDuration = 0
 
 	list, err := webc.ListByResourceGroupComplete(ctx, env.ControlPlaneResourceGroup, nil)

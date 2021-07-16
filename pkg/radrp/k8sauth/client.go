@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -121,12 +121,12 @@ func createRemote() (*rest.Config, error) {
 		return nil, errors.New("required env-var K8S_SUBSCRIPTION_ID not found")
 	}
 
-	aks := containerservice.NewManagedClustersClient(subscriptionID)
 	auth, err := armauth.GetArmAuthorizer()
 	if err != nil {
 		return nil, fmt.Errorf("cannot authorize with ARM: %w", err)
 	}
-	aks.Authorizer = auth
+
+	aks := azclients.NewManagedClustersClient(subscriptionID, auth)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

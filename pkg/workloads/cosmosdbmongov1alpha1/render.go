@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
@@ -42,9 +42,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	logger.Info(fmt.Sprintf("fulfilling service for account: %v db: %v", accountname, dbname))
 
 	// cosmos uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
-	dac := documentdb.NewDatabaseAccountsClient(r.Arm.SubscriptionID)
-	dac.Authorizer = r.Arm.Auth
-	dac.PollingDuration = 0
+	dac := azclients.NewDatabaseAccountsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 
 	css, err := dac.ListConnectionStrings(ctx, r.Arm.ResourceGroup, accountname)
 	if err != nil {

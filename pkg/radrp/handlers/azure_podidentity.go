@@ -10,9 +10,9 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 )
 
@@ -48,9 +48,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 
 	// Conceptually this resource is always 'managed'
 
-	mcc := containerservice.NewManagedClustersClient(handler.arm.SubscriptionID)
-	mcc.Authorizer = handler.arm.Auth
-	mcc.PollingDuration = 0
+	mcc := azclients.NewManagedClustersClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	// Get the cluster and modify it to remove pod identity
 	managedCluster, err := mcc.Get(ctx, handler.arm.K8sResourceGroup, podidentityCluster)
@@ -107,9 +105,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 }
 
 func (handler *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
-	msiClient := msi.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID)
-	msiClient.Authorizer = handler.arm.Auth
-	msiClient.PollingDuration = 0
+	msiClient := azclients.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	msiResource, err := azure.ParseResourceID(msiResourceID)
 	if err != nil {

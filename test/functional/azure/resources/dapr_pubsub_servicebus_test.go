@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -62,9 +63,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 	// We don't need to delete these, they will be deleted as part of the resource group cleanup.
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
 		// Verify that the servicebus resources were not deleted
-		nsc := servicebus.NewNamespacesClient(at.Options.Environment.SubscriptionID)
-		nsc.Authorizer = at.Options.ARMAuthorizer
-		nsc.PollingDuration = 0
+		nsc := azclients.NewServiceBusNamespacesClient(at.Options.Environment.SubscriptionID, at.Options.ARMAuthorizer)
 		// We have to use a generated name due to uniqueness requirements, so lookup based on tags
 		var ns *servicebus.SBNamespace
 		list, err := nsc.ListByResourceGroup(context.Background(), at.Options.Environment.ResourceGroup)
@@ -85,9 +84,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 
 		require.NotNilf(t, ns, "failed to find servicebus namespace with 'radiustest' tag")
 
-		tc := servicebus.NewTopicsClient(at.Options.Environment.SubscriptionID)
-		tc.Authorizer = at.Options.ARMAuthorizer
-		tc.PollingDuration = 0
+		tc := azclients.NewTopicsClient(at.Options.Environment.SubscriptionID, at.Options.ARMAuthorizer)
 
 		_, err = tc.Get(context.Background(), at.Options.Environment.ResourceGroup, *ns.Name, "TOPIC_A")
 		require.NoErrorf(t, err, "failed to find servicebus topic")

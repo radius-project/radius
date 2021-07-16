@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -60,9 +61,7 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 	// We don't need to delete these, they will be deleted as part of the resource group cleanup.
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
 		// Verify that the cosmosdb resources were not deleted
-		ac := documentdb.NewDatabaseAccountsClient(at.Options.Environment.SubscriptionID)
-		ac.Authorizer = at.Options.ARMAuthorizer
-		ac.PollingDuration = 0
+		ac := azclients.NewDatabaseAccountsClient(at.Options.Environment.SubscriptionID, at.Options.ARMAuthorizer)
 
 		// We have to use a generated name due to uniqueness requirements, so lookup based on tags
 		var account *documentdb.DatabaseAccountGetResults
@@ -79,9 +78,7 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 
 		require.NotNilf(t, account, "failed to find database account with 'radiustest' tag")
 
-		dbc := documentdb.NewMongoDBResourcesClient(at.Options.Environment.SubscriptionID)
-		dbc.Authorizer = at.Options.ARMAuthorizer
-		dbc.PollingDuration = 0
+		dbc := azclients.NewMongoDBResourcesClient(at.Options.Environment.SubscriptionID, at.Options.ARMAuthorizer)
 		_, err = dbc.GetMongoDBDatabase(context.Background(), at.Options.Environment.ResourceGroup, *account.Name, "mydb")
 		require.NoErrorf(t, err, "failed to find mongo database")
 	}

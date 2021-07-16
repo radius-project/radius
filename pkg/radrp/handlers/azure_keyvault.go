@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/subscriptions"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/namegenerator"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -100,9 +100,7 @@ func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id str
 		return nil, fmt.Errorf("failed to parse KeyVault resource id: %w", err)
 	}
 
-	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
-	kvc.Authorizer = handler.arm.Auth
-	kvc.PollingDuration = 0
+	kvc := azclients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	kv, err := kvc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
 	if err != nil {
@@ -113,13 +111,10 @@ func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id str
 }
 
 func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultName string, options PutOptions) (*keyvault.Vault, error) {
-	kvc := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
-	kvc.Authorizer = handler.arm.Auth
-	kvc.PollingDuration = 0
+	kvc := azclients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	sc := subscriptions.NewClient()
-	sc.Authorizer = handler.arm.Auth
-	sc.PollingDuration = 0
+	sc := azclients.NewSubscriptionsClient(handler.arm.Auth)
+
 	s, err := sc.Get(ctx, handler.arm.SubscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find subscription: %w", err)
@@ -170,9 +165,7 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 }
 
 func (handler *azureKeyVaultHandler) DeleteKeyVault(ctx context.Context, vaultName string) error {
-	kvClient := keyvault.NewVaultsClient(handler.arm.SubscriptionID)
-	kvClient.Authorizer = handler.arm.Auth
-	kvClient.PollingDelay = 0
+	kvClient := azclients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	_, err := kvClient.Delete(ctx, handler.arm.ResourceGroup, vaultName)
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
@@ -40,9 +40,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 	logger.Info(fmt.Sprintf("fulfilling service for account: %v, db: %v", accountname, dbname))
 
-	cosmosDBClient := documentdb.NewDatabaseAccountsClient(r.Arm.SubscriptionID)
-	cosmosDBClient.Authorizer = r.Arm.Auth
-	cosmosDBClient.PollingDuration = 0
+	cosmosDBClient := azclients.NewDatabaseAccountsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 
 	connectionStrings, err := cosmosDBClient.ListConnectionStrings(ctx, r.Arm.ResourceGroup, accountname)
 	if err != nil {
