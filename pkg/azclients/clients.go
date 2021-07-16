@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/operationalinsights/mgmt/operationalinsights"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/subscriptions"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
@@ -26,8 +27,15 @@ func NewGroupsClient(subscriptionID string, authorizer autorest.Authorizer) reso
 	return rgc
 }
 
-func NewSubscriptionClient(authorizer autorest.Authorizer) subscription.Client {
-	sc := subscription.NewClient()
+func NewSubscriptionClient(authorizer autorest.Authorizer) subscription.SubscriptionsClient {
+	sc := subscription.NewSubscriptionsClient()
+	sc.Authorizer = authorizer
+	sc.PollingDuration = 0
+	return sc
+}
+
+func NewSubscriptionsClient(authorizer autorest.Authorizer) subscriptions.Client {
+	sc := subscriptions.NewClient()
 	sc.Authorizer = authorizer
 	sc.PollingDuration = 0
 	return sc
