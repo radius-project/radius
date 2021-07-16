@@ -328,7 +328,7 @@ func (handler *azureServiceBusBaseHandler) DeleteTopic(ctx context.Context, name
 
 	// Delete service bus topic only marks the topic for deletion but does not actually delete it. Hence the additional check...
 	// https://docs.microsoft.com/en-us/rest/api/servicebus/delete-topic
-	if tItr.NotDone() && tItr.Value().Name != &topicName {
+	if tItr.NotDone() && *tItr.Value().Name != topicName {
 		// There are other topics in the same service bus namespace. Do not remove the namespace as a part of this delete deployment
 		return false, nil
 	}

@@ -63,8 +63,14 @@ func Test_Render_Simple(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	ingress := findIngress(resources)
+	ingress, resource := findIngress(resources)
 	require.NotNil(t, ingress)
+	require.NotNil(t, resource)
+
+	require.Equal(t, workloads.LocalIDIngress, resource.LocalID)
+	require.Equal(t, workloads.ResourceKindKubernetes, resource.ResourceKind)
+	require.Equal(t, workloads.OutputResourceTypeKubernetes, resource.OutputResourceType)
+	require.True(t, resource.Managed)
 
 	labels := map[string]string{
 		keys.LabelRadiusApplication:   "test-app",
@@ -115,8 +121,14 @@ func Test_Render_WithHostname(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	ingress := findIngress(resources)
+	ingress, resource := findIngress(resources)
 	require.NotNil(t, ingress)
+	require.NotNil(t, resource)
+
+	require.Equal(t, workloads.LocalIDIngress, resource.LocalID)
+	require.Equal(t, workloads.ResourceKindKubernetes, resource.ResourceKind)
+	require.Equal(t, workloads.OutputResourceTypeKubernetes, resource.OutputResourceType)
+	require.True(t, resource.Managed)
 
 	labels := map[string]string{
 		keys.LabelRadiusApplication:   "test-app",
@@ -173,7 +185,7 @@ func makeContainerComponent(trait components.GenericTrait, bindings map[string]c
 	}
 }
 
-func findIngress(resources []workloads.OutputResource) *networkingv1.Ingress {
+func findIngress(resources []workloads.OutputResource) (*networkingv1.Ingress, *workloads.OutputResource) {
 	for _, r := range resources {
 		if !r.IsKubernetesResource() {
 			continue
@@ -184,8 +196,8 @@ func findIngress(resources []workloads.OutputResource) *networkingv1.Ingress {
 			continue
 		}
 
-		return ingress
+		return ingress, &r
 	}
 
-	return nil
+	return nil, nil
 }

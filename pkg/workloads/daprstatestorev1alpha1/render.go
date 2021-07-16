@@ -69,6 +69,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			LocalID:            localID,
 			ResourceKind:       resourceKind,
 			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.KubernetesNameKey:       w.Name,
@@ -99,6 +100,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			LocalID:            localID,
 			ResourceKind:       workloads.ResourceKindDaprStateStoreAzureStorage,
 			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.KubernetesNameKey:       w.Name,

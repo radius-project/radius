@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/test/azuretest"
@@ -29,27 +30,27 @@ func TestAzureEnvironment(t *testing.T) {
 		resources := listRadiusEnvironmentResources(ctx, t, options.Environment, options.ARMAuthorizer, options.Environment.ResourceGroup)
 		require.Equal(t, len(resources), 1, "Number of resources created by init step is less than expected")
 
-		_, found := resources["Microsoft.CustomProviders/resourceProviders"]
-		require.True(t, found, "Microsoft.CustomProviders/resourceProviders resource not created")
+		_, found := resources[azresources.CustomProvidersResourceProviders]
+		require.True(t, found, azresources.CustomProvidersResourceProviders+" resource not created")
 	})
 
 	t.Run("Validate Control Plane Resource Group", func(t *testing.T) {
 		resources := listRadiusEnvironmentResources(ctx, t, options.Environment, options.ARMAuthorizer, options.Environment.ControlPlaneResourceGroup)
 
-		_, found := resources["Microsoft.ContainerService/managedClusters"]
-		require.True(t, found, "Microsoft.ContainerService/managedClusters resource not created")
+		_, found := resources[azresources.ContainerServiceManagedClusters]
+		require.True(t, found, azresources.ContainerServiceManagedClusters+" resource not created")
 
-		_, found = resources["Microsoft.DocumentDB/databaseAccounts"]
-		require.True(t, found, "Microsoft.DocumentDB/databaseAccounts resource not created")
+		_, found = resources[azresources.DocumentDBDatabaseAccounts]
+		require.True(t, found, azresources.DocumentDBDatabaseAccounts+" resource not created")
 
-		_, found = resources["Microsoft.ManagedIdentity/userAssignedIdentities"]
-		require.True(t, found, "Microsoft.ManagedIdentity/userAssignedIdentities resource not created")
+		_, found = resources[azresources.ManagedIdentityUserAssignedIdentities]
+		require.True(t, found, azresources.ManagedIdentityUserAssignedIdentities+" resource not created")
 
-		_, found = resources["Microsoft.Web/serverFarms"]
-		require.True(t, found, "Microsoft.Web/serverFarms resource not created")
+		_, found = resources[azresources.WebServerFarms]
+		require.True(t, found, azresources.WebServerFarms+" resource not created")
 
-		_, found = resources["Microsoft.Web/sites"]
-		require.True(t, found, "Microsoft.Web/sites resource not created")
+		_, found = resources[azresources.WebSites]
+		require.True(t, found, azresources.WebSites+" resource not created")
 
 		// Currently, we have a retention policy on the deploymentScript for 1 day.
 		// "retentionInterval": "P1D"
@@ -58,8 +59,8 @@ func TestAzureEnvironment(t *testing.T) {
 		// Verify that either 5 or 6 resources are present, and only check the deploymentScripts
 		// if there are 6 resources
 		if len(resources) == 6 {
-			_, found = resources["Microsoft.Resources/deploymentScripts"]
-			require.True(t, found, "Microsoft.Resources/deploymentScripts resource not created")
+			_, found = resources[azresources.ResourcesDeploymentScripts]
+			require.True(t, found, azresources.ResourcesDeploymentScripts+" resource not created")
 		}
 
 		require.GreaterOrEqual(t, len(resources), 5, "Number of resources created by init step is less than expected")

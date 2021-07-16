@@ -78,6 +78,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			LocalID:            workloads.LocalIDAzureServiceBusTopic,
 			ResourceKind:       workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -107,6 +108,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			LocalID:            workloads.LocalIDAzureServiceBusTopic,
 			ResourceKind:       workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
 			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.ComponentNameKey:        component.Config.Name,

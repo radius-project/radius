@@ -5,14 +5,17 @@
 
 package daprstatestorev1alpha1
 
-import "github.com/Azure/radius/pkg/radrp/resources"
+import (
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/radrp/resources"
+)
 
 const Kind = "dapr.io/StateStore@v1alpha1"
 
 var StorageAccountResourceType = resources.KnownType{
 	Types: []resources.ResourceType{
 		{
-			Type: "Microsoft.Storage/storageAccounts",
+			Type: azresources.StorageStorageAccounts,
 			Name: "*",
 		},
 	},

@@ -27,6 +27,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -94,13 +95,14 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	return bindings, nil
 }
 
-func (r Renderer) createManagedIdentity(ctx context.Context, identityName, location string) (msi.Identity, string, error) {
+func (r Renderer) createManagedIdentity(ctx context.Context, application, component, identityName, location string) (msi.Identity, string, error) {
 	logger := radlogger.GetLogger(ctx)
 	localID := workloads.LocalIDUserAssignedManagedIdentityKV
 	// Create a user assigned managed identity
 	msiClient := azclients.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	id, err := msiClient.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, identityName, msi.Identity{
 		Location: to.StringPtr(location),
+		Tags:     keys.MakeTagsForRadiusComponent(application, component),
 	})
 	if err != nil {
 		return msi.Identity{}, "", fmt.Errorf("failed to create user assigned managed identity: %w", err)
@@ -146,7 +148,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		// we no longer need to track the output resources on error
 		return nil, outputResources, fmt.Errorf("could not find resource group: %w", err)
 	}
-	mid, midLocalID, err := r.createManagedIdentity(ctx, managedIdentityName, *rg.Location)
+	mid, midLocalID, err := r.createManagedIdentity(ctx, w.Application, w.Name, managedIdentityName, *rg.Location)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -608,7 +610,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	return podIdentity, nil
 }
 
-const SecretsResourceType = "Microsoft.KeyVault/vaults/secrets"
+const SecretsResourceType = azresources.KeyVaultVaults + "/" + azresources.KeyVaultVaultsSecrets
 
 func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue string) (workloads.OutputResource, error) {
 	logger := radlogger.GetLogger(ctx)

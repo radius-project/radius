@@ -40,6 +40,8 @@ func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
+	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.True(t, resource.Managed)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
@@ -78,6 +80,8 @@ func Test_Render_Managed_Success_SpecifyName(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
+	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.True(t, resource.Managed)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
@@ -138,6 +142,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
+	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.False(t, resource.Managed)
 
 	expected := map[string]string{
 		handlers.ManagedKey:                 "false",
