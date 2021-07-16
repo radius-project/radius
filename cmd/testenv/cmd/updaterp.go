@@ -104,7 +104,6 @@ func init() {
 
 func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.AzureCloudEnvironment, image string, checkVersion string) error {
 	webc := azclients.NewWebClient(env.SubscriptionID, auth)
-	webc.PollingDuration = 0
 
 	list, err := webc.ListByResourceGroupComplete(ctx, env.ControlPlaneResourceGroup, nil)
 	if err != nil {
