@@ -20,9 +20,18 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 )
 
+// Contains all Azure Clients we want to use in radius.
+// Allows us to set an infinite timeout by default for each client
+// and maintain all client versions in a single place.
+
+// All Azure Clients should be put in this file. If you see "New(.*)Client" elsewhere,
+// please move it to this file.
+
 func NewGroupsClient(subscriptionID string, authorizer autorest.Authorizer) resources.GroupsClient {
 	rgc := resources.NewGroupsClient(subscriptionID)
 	rgc.Authorizer = authorizer
+
+	// Don't timeout, let the user cancel
 	rgc.PollingDuration = 0
 	return rgc
 }
@@ -129,10 +138,10 @@ func NewVaultsClient(subscriptionID string, authorizer autorest.Authorizer) keyv
 }
 
 func NewUserAssignedIdentitiesClient(subscriptionID string, authorizer autorest.Authorizer) msi.UserAssignedIdentitiesClient {
-	msiClient := msi.NewUserAssignedIdentitiesClient(subscriptionID)
-	msiClient.Authorizer = authorizer
-	msiClient.PollingDuration = 0
-	return msiClient
+	msic := msi.NewUserAssignedIdentitiesClient(subscriptionID)
+	msic.Authorizer = authorizer
+	msic.PollingDuration = 0
+	return msic
 }
 
 func NewServiceBusNamespacesClient(subscriptionID string, authorizer autorest.Authorizer) servicebus.NamespacesClient {
