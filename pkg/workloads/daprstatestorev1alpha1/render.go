@@ -173,6 +173,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 								Ports: []corev1.ContainerPort{
 									{
 										ContainerPort: 6379,
+										Protocol:      corev1.ProtocolTCP,
 									},
 								},
 							},
