@@ -20,7 +20,7 @@ export async function main(): Promise<void> {
     // Access the key vault to fetch the DB connection string
     const credential = new ManagedIdentityCredential();
     const client = new SecretClient(kvURI, credential);
-    connectionString = await (await client.getSecret(secretName)).value || '';
+    connectionString = (await client.getSecret(secretName)).value || '';
     console.log("Retrieved DB connection string from Key Vault")
   } else if (process.env.DBCONNECTION) {
     connectionString = process.env.DBCONNECTION
