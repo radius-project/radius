@@ -6,7 +6,6 @@
 package cmd
 
 import (
-	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -18,21 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	k8s "k8s.io/client-go/kubernetes"
 )
-
-func createNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
-	namespaceApply := applycorev1.Namespace(namespace)
-
-	// Use Apply instead of Create to avoid failures on a namespace already existing.
-	_, err := client.CoreV1().Namespaces().Apply(ctx, namespaceApply, metav1.ApplyOptions{FieldManager: "rad"})
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
@@ -92,7 +77,7 @@ var envInitKubernetesCmd = &cobra.Command{
 		// The controller and other resources are all deployed to the
 		// 'radius-system' namespace. The namespace passed in will be
 		// where pods/services/deployments will be put for rad deploy.
-		err = createNamespace(cmd.Context(), client, helm.RadiusSystemNamespace)
+		err = kubernetes.CreateNamespace(cmd.Context(), client, helm.RadiusSystemNamespace)
 		if err != nil {
 			return err
 		}

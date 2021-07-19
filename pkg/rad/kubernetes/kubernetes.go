@@ -6,10 +6,13 @@
 package kubernetes
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -59,6 +62,17 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 	}
 
 	return client, merged, err
+}
+
+func CreateNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
+	namespaceApply := applycorev1.Namespace(namespace)
+
+	// Use Apply instead of Create to avoid failures on a namespace already existing.
+	_, err := client.CoreV1().Namespaces().Apply(ctx, namespaceApply, metav1.ApplyOptions{FieldManager: "rad"})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getConfig(context string) (*rest.Config, error) {
