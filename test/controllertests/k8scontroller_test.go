@@ -496,9 +496,11 @@ func (ct ControllerTest) Test(t *testing.T) {
 	t.Parallel()
 
 	// Make sure namespace exists
-	kubernetes.CreateNamespace(ct.Options.Context, ct.Options.K8s, ct.Row.Application.Namespace)
+	err := kubernetes.CreateNamespace(ct.Options.Context, ct.Options.K8s, ct.Row.Application.Namespace)
+	require.NoError(t, err, "failed to create namespace")
+
 	// Create Application
-	err := ct.Options.Client.Create(ct.Options.Context, ct.Row.Application)
+	err = ct.Options.Client.Create(ct.Options.Context, ct.Row.Application)
 	require.NoError(t, err, "failed to create application")
 
 	// Create Components
