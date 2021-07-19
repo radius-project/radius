@@ -34,22 +34,22 @@ func Test_ArmToK8sConversion(t *testing.T) {
 		"radius-frontend-backend": {
 			Name:         "radius-frontend-backend",
 			Unstructured: applicationUnstructured,
-			GVR:          schema.GroupVersionResource{Group: "applications.radius.dev", Version: "v1alpha1", Resource: "applications"},
+			GVR:          schema.GroupVersionResource{Group: "radius.dev", Version: "v1alpha1", Resource: "applications"},
 		},
 		"radius-frontend-backend-backend": {
 			Name:         "radius-frontend-backend-backend",
 			Unstructured: backendUnstructured,
-			GVR:          schema.GroupVersionResource{Group: "applications.radius.dev", Version: "v1alpha1", Resource: "components"},
+			GVR:          schema.GroupVersionResource{Group: "radius.dev", Version: "v1alpha1", Resource: "components"},
 		},
 		"radius-frontend-backend-frontend": {
 			Name:         "radius-frontend-backend-frontend",
 			Unstructured: frontendUnstructured,
-			GVR:          schema.GroupVersionResource{Group: "applications.radius.dev", Version: "v1alpha1", Resource: "components"},
+			GVR:          schema.GroupVersionResource{Group: "radius.dev", Version: "v1alpha1", Resource: "components"},
 		},
 		"radius-frontend-backend-default": {
 			Name:         "radius-frontend-backend-default",
 			Unstructured: deploymentUnstructured,
-			GVR:          schema.GroupVersionResource{Group: "applications.radius.dev", Version: "v1alpha1", Resource: "deployments"},
+			GVR:          schema.GroupVersionResource{Group: "radius.dev", Version: "v1alpha1", Resource: "deployments"},
 		},
 	}
 

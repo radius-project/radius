@@ -47,7 +47,7 @@ func TestK8sController(t *testing.T) {
 	}
 
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "deploy", "k8s", "config", "crd", "bases")},
+		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "deploy", "Chart", "crds")},
 		ErrorIfCRDPathMissing:    true,
 		AttachControlPlaneOutput: true,
 		BinaryAssetsDirectory:    assetsDirectory,
@@ -126,7 +126,7 @@ func TestK8sController(t *testing.T) {
 			Description: "frontend-backend",
 			Application: &v1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "applications.radius.dev/v1alpha1",
+					APIVersion: "radius.dev/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -143,7 +143,7 @@ func TestK8sController(t *testing.T) {
 			Components: &[]TestComponent{
 				{
 					TypeMeta: metav1.TypeMeta{
-						APIVersion: "applications.radius.dev/v1alpha1",
+						APIVersion: "radius.dev/v1alpha1",
 						Kind:       "Component",
 					},
 					ObjectMeta: metav1.ObjectMeta{
@@ -180,7 +180,7 @@ func TestK8sController(t *testing.T) {
 				},
 				{
 					TypeMeta: metav1.TypeMeta{
-						APIVersion: "applications.radius.dev/v1alpha1",
+						APIVersion: "radius.dev/v1alpha1",
 						Kind:       "Component",
 					},
 					ObjectMeta: metav1.ObjectMeta{

@@ -53,8 +53,15 @@ Currently performing a release involves our custom Bicep compiler - which is in 
    ```bash
    az storage blob directory list -c environment -d <channel> --account-name radiuspublic --output table
    ```
+3. Updating Helm chart
 
-3. Check the stable version marker
+   Each release, we need to update the verison of the helm chart to the next version. 
+   
+   In the Chart.yaml file, based on whether we are releasing a major, minor, or patch version, increase the version number accordingly. When branching for a major or minor release, we need to increment the version in the 'main' branch, while for patch changes, we updating it in the release/X branch. 
+   
+   For example, if we are releasing 0.4, we change the main branch Chart.yaml version to 0.5.0. If we are releasing a patch on 0.4, we update the Chart.yaml version in the release/0.4 to 0.4.1 (or one higher than the current patch version).
+
+4. Check the stable version marker
 
    If this is a patch release - you can stop here, you are done.
    
@@ -64,7 +71,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
    
    You can find this file in the storage account under `version/stable.txt`.
 
-4. Update the docs
+5. Update the docs
    
    1. Within GitHub delete the branch for the prior Radius release, *e.g. `release/v0.1`*.
    1. Create a new branch named `release/vX.Y` from `main`, using the release version number.

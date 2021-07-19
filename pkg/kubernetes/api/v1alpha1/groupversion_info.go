@@ -5,7 +5,7 @@
 
 // Package v1alpha1 contains API Schema definitions for the radius v1alpha1 API group
 //+kubebuilder:object:generate=true
-//+groupName=applications.radius.dev
+//+groupName=radius.dev
 package v1alpha1
 
 import (
@@ -15,7 +15,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "applications.radius.dev", Version: "v1alpha1"}
+	GroupVersion = schema.GroupVersion{Group: "radius.dev", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

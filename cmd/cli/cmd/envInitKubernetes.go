@@ -6,27 +6,33 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"runtime"
 
+	"github.com/Azure/radius/pkg/helm"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/environments"
 	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	k8s "k8s.io/client-go/kubernetes"
 )
 
-//go:embed radius-k8s.yaml
-var k8sManifest []byte
+func createNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
+	namespaceApply := applycorev1.Namespace(namespace)
+
+	// Use Apply instead of Create to avoid failures on a namespace already existing.
+	_, err := client.CoreV1().Namespaces().Apply(ctx, namespaceApply, metav1.ApplyOptions{FieldManager: "rad"})
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
@@ -44,6 +50,11 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		namespace, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			return err
+		}
+
+		version, err := cmd.Flags().GetString("version")
 		if err != nil {
 			return err
 		}
@@ -70,10 +81,27 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		step := logger.BeginStep("Installing Radius...")
-		err = runKubectlApply(cmd.Context(), k8sManifest)
+
+		client, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 		if err != nil {
 			return err
 		}
+
+		// Do note: the namespace passed in to rad env init kubernetes
+		// doesn't match the namespace where we deploy the controller to.
+		// The controller and other resources are all deployed to the
+		// 'radius-system' namespace. The namespace passed in will be
+		// where pods/services/deployments will be put for rad deploy.
+		err = createNamespace(cmd.Context(), client, helm.RadiusSystemNamespace)
+		if err != nil {
+			return err
+		}
+
+		err = helm.ApplyRadiusHelmChart(version)
+		if err != nil {
+			return err
+		}
+
 		logger.CompleteStep(step)
 
 		config := ConfigFromContext(cmd.Context())
@@ -110,68 +138,5 @@ func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
-}
-
-// runKubectlApply runs a kubectl CLI command with stdout and stderr buffered for logging when there is an error.
-func runKubectlApply(ctx context.Context, content []byte) error {
-	var executableName string
-	var executableArgs []string
-	if runtime.GOOS == "windows" {
-		// Use shell on windows since az is a script not an executable
-		executableName = fmt.Sprintf("%s\\system32\\cmd.exe", os.Getenv("windir"))
-		executableArgs = append(executableArgs, "/c", "kubectl")
-	} else {
-		executableName = "kubectl"
-	}
-
-	// kubectl can accept a file via stdin via passing '-f -'.
-	// Ex: cat pod.json | kubectl apply -f - would pass pod.json to kubectl apply.
-	executableArgs = append(executableArgs, "apply", "-f", "-")
-	c := exec.CommandContext(ctx, executableName, executableArgs...)
-
-	buf := bytes.Buffer{}
-	stdin, err := c.StdinPipe()
-	if err != nil {
-		return err
-	}
-
-	stdout, err := c.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	stderr, err := c.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	err = c.Start()
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		// ignore errors from copy failing
-		_, _ = io.Copy(&buf, stdout)
-	}()
-
-	go func() {
-		// ignore errors from copy failing
-		_, _ = io.Copy(&buf, stderr)
-	}()
-
-	writeme := bytes.NewBuffer(content)
-	_, err = io.Copy(stdin, writeme)
-	if err != nil {
-		return err
-	}
-	stdin.Close()
-
-	err = c.Wait()
-	if err != nil {
-		text, _ := ioutil.ReadAll(&buf)
-		return fmt.Errorf("failed to install radius: %w\noutput: %s", err, string(text))
-	}
-
-	return err
+	envInitKubernetesCmd.Flags().StringP("version", "v", "", "The version of the Radius runtime to install, for example: 0.3.0, defaults to the latest version")
 }

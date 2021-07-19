@@ -80,19 +80,19 @@ func ConvertToK8s(resource Resource, namespace string) (K8sInfo, error) {
 func gvr(resource Resource) (schema.GroupVersionResource, string, error) {
 	if resource.Type == radresources.ApplicationResourceType.Type() {
 		return schema.GroupVersionResource{
-			Group:    "applications.radius.dev",
+			Group:    "radius.dev",
 			Version:  "v1alpha1",
 			Resource: "applications",
 		}, "Application", nil
 	} else if resource.Type == radresources.ComponentResourceType.Type() {
 		return schema.GroupVersionResource{
-			Group:    "applications.radius.dev",
+			Group:    "radius.dev",
 			Version:  "v1alpha1",
 			Resource: "components",
 		}, "Component", nil
 	} else if resource.Type == radresources.DeploymentResourceType.Type() {
 		return schema.GroupVersionResource{
-			Group:    "applications.radius.dev",
+			Group:    "radius.dev",
 			Version:  "v1alpha1",
 			Resource: "deployments",
 		}, "Deployment", nil
