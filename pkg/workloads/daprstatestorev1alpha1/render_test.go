@@ -10,12 +10,18 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func createContext(t *testing.T) context.Context {
@@ -29,7 +35,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{SupportsArm: true}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -69,7 +75,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{SupportsArm: true}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -110,7 +116,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{SupportsArm: true}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -133,7 +139,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 
 func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{SupportsArm: true}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -155,7 +161,7 @@ func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 
 func Test_Render_SQL_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{SupportsArm: true}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -195,7 +201,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 
 func Test_Render_UnsupportedKind(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{SupportsArm: true}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -218,7 +224,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 
 func Test_Render_SQL_Unmanaged_Failure(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{SupportsArm: true}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -237,4 +243,175 @@ func Test_Render_SQL_Unmanaged_Failure(t *testing.T) {
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
 	require.Equal(t, "only Radius managed resources are supported for Dapr SQL Server", err.Error())
+}
+
+func Test_Render_K8s_Managed_Success(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportsKubernetes: true}
+
+	workload := workloads.InstantiatedWorkload{
+		Application: "test-app",
+		Name:        "test-component",
+		Workload: components.GenericComponent{
+			Kind: Kind,
+			Name: "test-component",
+			Config: map[string]interface{}{
+				"managed": true,
+				"kind":    "any",
+			},
+		},
+		BindingValues: map[components.BindingKey]components.BindingState{},
+	}
+
+	resources, err := renderer.Render(ctx, workload)
+	require.NoError(t, err)
+
+	require.Len(t, resources, 3)
+	redisDeployment := resources[0]
+
+	require.Equal(t, workloads.LocalIDRedisDeployment, redisDeployment.LocalID)
+	require.Equal(t, workloads.ResourceKindKubernetes, redisDeployment.ResourceKind)
+	resourceDeployment := redisDeployment.Resource.(*appsv1.Deployment)
+
+	redisService := resources[1]
+	require.Equal(t, workloads.LocalIDRedisService, redisService.LocalID)
+	require.Equal(t, workloads.ResourceKindKubernetes, redisService.ResourceKind)
+	resourceService := redisService.Resource.(*corev1.Service)
+
+	dapr := resources[2]
+	require.Equal(t, workloads.LocalIDDaprStateStoreRedis, dapr.LocalID)
+	require.Equal(t, workloads.ResourceKindKubernetes, dapr.ResourceKind)
+	resourceDapr := dapr.Resource.(*unstructured.Unstructured)
+
+	labels := map[string]string{
+		keys.LabelRadiusApplication:   "test-app",
+		keys.LabelRadiusComponent:     "test-component",
+		keys.LabelKubernetesName:      "test-component",
+		keys.LabelKubernetesPartOf:    "test-app",
+		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
+	}
+
+	matchLabels := map[string]string{
+		keys.LabelRadiusApplication: "test-app",
+		keys.LabelRadiusComponent:   "test-component",
+	}
+
+	t.Run("verify deployment", func(t *testing.T) {
+		require.Equal(t, "test-component", resourceDeployment.Name)
+		require.Equal(t, labels, resourceDeployment.Labels)
+		require.Empty(t, resourceDeployment.Annotations)
+
+		spec := resourceDeployment.Spec
+		require.Equal(t, matchLabels, spec.Selector.MatchLabels)
+
+		template := spec.Template
+		require.Equal(t, labels, template.Labels)
+		require.Len(t, template.Spec.Containers, 1)
+
+		container := template.Spec.Containers[0]
+		require.Equal(t, "redis", container.Name)
+		require.Equal(t, "redis", container.Image)
+		require.Len(t, container.Ports, 1)
+
+		port := container.Ports[0]
+		require.Equal(t, v1.ProtocolTCP, port.Protocol)
+		require.Equal(t, int32(6379), port.ContainerPort)
+	})
+
+	t.Run("verify service", func(t *testing.T) {
+		require.Equal(t, "test-component", resourceService.Name)
+		require.Equal(t, labels, resourceService.Labels)
+		require.Empty(t, resourceService.Annotations)
+
+		spec := resourceService.Spec
+		require.Equal(t, matchLabels, spec.Selector)
+		require.Len(t, spec.Ports, 1)
+
+		port := spec.Ports[0]
+		require.Equal(t, "redis", port.Name)
+		require.Equal(t, v1.ProtocolTCP, port.Protocol)
+		require.Equal(t, int32(6379), port.Port)
+		require.Equal(t, intstr.FromInt(6379), port.TargetPort)
+	})
+
+	t.Run("verify dapr", func(t *testing.T) {
+		expected := &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "dapr.io/v1alpha1",
+				"kind":       "Component",
+				"metadata": map[string]interface{}{
+					"name":      "test-component",
+					"namespace": "default",
+					"labels": map[string]string{
+						keys.LabelRadiusApplication:    "test-app",
+						keys.LabelRadiusComponent:      "test-component",
+						"app.kubernetes.io/name":       "test-component",
+						"app.kubernetes.io/part-of":    "test-app",
+						"app.kubernetes.io/managed-by": "radius-rp",
+					},
+				},
+				"spec": map[string]interface{}{
+					"type":    "state.redis",
+					"version": "v1",
+					"metadata": []interface{}{
+						map[string]interface{}{
+							"name":  "redisHost",
+							"value": "test-component.default.svc.cluster.local:6379",
+						},
+						map[string]interface{}{
+							"name":  "redisPassword",
+							"value": "",
+						},
+					},
+				},
+			},
+		}
+		require.Equal(t, expected, resourceDapr)
+	})
+}
+
+func Test_Render_K8s_Unmanaged_Failure(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportsKubernetes: true}
+
+	workload := workloads.InstantiatedWorkload{
+		Application: "test-app",
+		Name:        "test-component",
+		Workload: components.GenericComponent{
+			Kind: Kind,
+			Name: "test-component",
+			Config: map[string]interface{}{
+				"kind":     "any",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			},
+		},
+		BindingValues: map[components.BindingKey]components.BindingState{},
+	}
+
+	_, err := renderer.Render(ctx, workload)
+	require.Error(t, err)
+	require.Equal(t, "only 'managed=true' is supported right now", err.Error())
+}
+
+func Test_Render_K8s_NonAny_Failure(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportsKubernetes: true}
+
+	workload := workloads.InstantiatedWorkload{
+		Application: "test-app",
+		Name:        "test-component",
+		Workload: components.GenericComponent{
+			Kind: Kind,
+			Name: "test-component",
+			Config: map[string]interface{}{
+				"kind":     "state.sqlserver",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			},
+		},
+		BindingValues: map[components.BindingKey]components.BindingState{},
+	}
+
+	_, err := renderer.Render(ctx, workload)
+	require.Error(t, err)
+	require.Equal(t, "only kind 'any' is supported right now", err.Error())
 }

@@ -129,6 +129,14 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		if !component.Config.Managed {
 			return []workloads.OutputResource{}, errors.New("only 'managed=true' is supported right now")
 		}
+
+		// Require namespace for k8s components here.
+		// Should move this check to a more generalized place.
+		namespace := w.Namespace
+		if namespace == "" {
+			namespace = "default"
+		}
+
 		resources := []workloads.OutputResource{}
 		deployment := appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
@@ -137,7 +145,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      component.Name,
-				Namespace: w.Namespace,
+				Namespace: namespace,
 				Labels: map[string]string{
 					keys.LabelRadiusApplication: w.Application,
 					keys.LabelRadiusComponent:   component.Name,
@@ -182,7 +190,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				},
 			},
 		}
-		resources = append(resources, workloads.NewKubernetesResource("RedisDeployment", &deployment))
+		resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDRedisDeployment, &deployment))
 
 		service := corev1.Service{
 			TypeMeta: metav1.TypeMeta{
@@ -191,7 +199,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      component.Name,
-				Namespace: w.Namespace,
+				Namespace: namespace,
 				Labels: map[string]string{
 					keys.LabelRadiusApplication: w.Application,
 					keys.LabelRadiusComponent:   component.Name,
@@ -217,7 +225,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				},
 			},
 		}
-		resources = append(resources, workloads.NewKubernetesResource("RedisService", &service))
+		resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDRedisService, &service))
 
 		statestore := unstructured.Unstructured{
 			Object: map[string]interface{}{
@@ -225,7 +233,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				"kind":       "Component",
 				"metadata": map[string]interface{}{
 					"name":      component.Name,
-					"namespace": w.Namespace,
+					"namespace": namespace,
 					"labels": map[string]string{
 						keys.LabelRadiusApplication: w.Application,
 						keys.LabelRadiusComponent:   component.Name,
@@ -241,7 +249,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 					"metadata": []interface{}{
 						map[string]interface{}{
 							"name":  "redisHost",
-							"value": fmt.Sprintf("%s.%s.svc.cluster.local:6379", component.Name, w.Namespace),
+							"value": fmt.Sprintf("%s.%s.svc.cluster.local:6379", component.Name, namespace),
 						},
 						map[string]interface{}{
 							"name":  "redisPassword",
@@ -251,7 +259,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				},
 			},
 		}
-		resources = append(resources, workloads.NewKubernetesResource("StateStore", &statestore))
+		resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDDaprStateStoreRedis, &statestore))
 
 		return resources, nil
 	}
