@@ -101,9 +101,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 				require.Fail(t, "no azure resource set was specified and SkipAzureResources == false, either specify a resource set or set SkipAzureResources = true ")
 			} else {
 				// Validate that all expected Azure resources are created
-				t.Logf("validating azure resources for %s", step.Executor.GetDescription())
+				t.Logf("validating Azure resources for %s", step.Executor.GetDescription())
 				validation.ValidateAzureResourcesCreated(ctx, t, at.Options.ARMAuthorizer, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Application, *step.AzureResources)
-				t.Logf("finished validating azure resources for %s", step.Executor.GetDescription())
+				t.Logf("finished validating Azure resources for %s", step.Executor.GetDescription())
 			}
 
 			if step.Components == nil && step.SkipComponents {
