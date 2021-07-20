@@ -138,18 +138,8 @@ jobs:
     needs: ['images']
     runs-on: ubuntu-latest
     env:
-      ARTIFACT_DIR: ./release
+      ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
-    strategy:
-      fail-fast: false
-      matrix:
-        destination: ['acr']
-        include:
-        - destination: acr
-          registry: radius.azurecr.io
-          login_server: radius.azurecr.io
-          username_secret: DOCKER_USERNAME
-          password_secret: DOCKER_PASSWORD
     steps:
       - name: Checkout
         uses: actions/checkout@v2
