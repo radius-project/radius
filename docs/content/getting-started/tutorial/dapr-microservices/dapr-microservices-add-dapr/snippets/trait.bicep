@@ -13,6 +13,12 @@ resource app 'radius.dev/Applications@v1alpha1' = {
         }
       }
       //RUN
+      bindings: {
+        invoke: {
+          kind: 'dapr.io/Invoke'
+        }
+      }
+      //TRAITS
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
@@ -20,6 +26,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           appPort: 3000
         }
       ]
+      //TRAITS
     }
   }
 }
