@@ -154,9 +154,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 		t.Logf("skipping validation of Azure resources..")
 	} else {
 		// Validate that all expected Azure resources were deleted
-		t.Logf("validating deletion of azure resources for %s", last.Executor.GetDescription())
+		t.Logf("validating deletion of Azure resources for %s", last.Executor.GetDescription())
 		validation.ValidateAzureResourcesDeleted(ctx, t, at.Options.ARMAuthorizer, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Application, *last.AzureResources)
-		t.Logf("finished validating deletion of azure resources for %s", last.Executor.GetDescription())
+		t.Logf("finished validating deletion of Azure resources for %s", last.Executor.GetDescription())
 	}
 
 	if last.SkipPods {
