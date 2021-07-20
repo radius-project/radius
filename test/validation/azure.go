@@ -111,27 +111,17 @@ func ValidateAzureResourcesCreated(ctx context.Context, t *testing.T, authorizer
 	// We don't want to have crosstalk between tests
 	actual = v.removeNonApplicationResources(application, actual)
 
-	failed := false
-	if len(actual) > 0 {
+	for _, actualResource := range actual {
 		// If we get here then it means there are resources we found for this application
 		// that don't match the expected resources. This is a failure.
-		failed = true
-		for _, actualResource := range actual {
-			assert.Failf(t, "validation failed", "no match was found for actual resource %s", actualResource.String())
-		}
-
+		assert.Failf(t, "validation failed", "no match was found for actual resource %s", actualResource.String())
 	}
-
-	if len(expected) > 0 {
+	for _, expectedResource := range expected {
 		// If we get here then it means there are resources we were looking for but could not be
 		// found. This is a failure.
-		failed = true
-		for _, expectedResource := range expected {
-			assert.Failf(t, "validation failed", "no match was found for expected resource %s", expectedResource.String())
-		}
+		assert.Failf(t, "validation failed", "no match was found for expected resource %s", expectedResource.String())
 	}
-
-	if failed {
+	if len(actual) > 0 || len(expected) > 0 {
 		// Extra call to require.Fail to stop testing
 		require.Fail(t, "failed resource validation")
 	}
