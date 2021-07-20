@@ -460,6 +460,7 @@
                                 "serverFarmId": "[variables('hostingPlanName')]",
                                 "clientCertEnabled": true,
                                 "clientCertMode": "Optional",
+                                "httpsOnly": true,
                                 "siteConfig": {
                                     "linuxFxVersion": "[concat('DOCKER|', parameters('image'))]",
                                     "appSettings": [
