@@ -1,8 +1,3 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const { response } = require('express');
