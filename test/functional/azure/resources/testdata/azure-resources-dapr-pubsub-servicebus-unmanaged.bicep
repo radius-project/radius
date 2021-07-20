@@ -72,7 +72,7 @@ resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
   name: 'ns-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   tags: {
-    radiustest: 'true'
+    radiustest: 'azure-resources-dapr-pubsub-servicebus-unmanaged'
   }
 
   resource topic 'topics' = {

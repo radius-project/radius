@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -124,7 +125,7 @@ func (handler *daprStateStoreAzureStorageHandler) GenerateStorageAccountName(ctx
 
 		result, err := sc.CheckNameAvailability(ctx, storage.AccountCheckNameAvailabilityParameters{
 			Name: to.StringPtr(name),
-			Type: to.StringPtr("Microsoft.Storage/storageAccounts"),
+			Type: to.StringPtr(azresources.StorageStorageAccounts),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to query storage account name: %w", err)

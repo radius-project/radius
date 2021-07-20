@@ -6,6 +6,7 @@
 package keyvaultv1alpha1
 
 import (
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/radrp/resources"
 )
 
@@ -14,7 +15,7 @@ const Kind = "azure.com/KeyVault@v1alpha1"
 var KeyVaultResourceType = resources.KnownType{
 	Types: []resources.ResourceType{
 		{
-			Type: "Microsoft.KeyVault/vaults",
+			Type: azresources.KeyVaultVaults,
 			Name: "*",
 		},
 	},

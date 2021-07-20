@@ -26,12 +26,17 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
+			AzureResources: &validation.AzureResourceSet{
+				Resources: []validation.ExpectedResource{
+					// Intentionally Empty
+				},
+			},
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "frontend",
-						OutputResources: map[string]validation.OutputResourceSet{
+						OutputResources: map[string]validation.ExpectedOutputResource{
 							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
@@ -39,7 +44,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
-						OutputResources: map[string]validation.OutputResourceSet{
+						OutputResources: map[string]validation.ExpectedOutputResource{
 							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
@@ -54,7 +59,6 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					},
 				},
 			},
-			SkipARMResources: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
 				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
@@ -75,6 +79,11 @@ func Test_ContainerInboundRoute(t *testing.T) {
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
+			AzureResources: &validation.AzureResourceSet{
+				Resources: []validation.ExpectedResource{
+					// Intentionally Empty
+				},
+			},
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
@@ -83,8 +92,27 @@ func Test_ContainerInboundRoute(t *testing.T) {
 					},
 				},
 			},
-			SkipARMResources: true,
-			SkipComponents:   true,
+			Components: &validation.ComponentSet{
+				Components: []validation.Component{
+					{
+						ApplicationName: application,
+						ComponentName:   "frontend",
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDIngress:    validation.NewOutputResource(workloads.LocalIDIngress, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+						},
+					},
+					{
+						ApplicationName: application,
+						ComponentName:   "backend",
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+						},
+					},
+				},
+			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
 				// Verify that we've created an ingress resource. We don't verify reachability because allocating
 				// a public IP can take a few minutes.

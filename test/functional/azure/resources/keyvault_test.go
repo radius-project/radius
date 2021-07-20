@@ -9,6 +9,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/azuretest"
@@ -23,19 +25,37 @@ func Test_KeyVaultManaged(t *testing.T) {
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
+			AzureResources: &validation.AzureResourceSet{
+				Resources: []validation.ExpectedResource{
+					{
+						Type: azresources.ManagedIdentityUserAssignedIdentities,
+						Tags: map[string]string{
+							keys.TagRadiusApplication: application,
+							keys.TagRadiusComponent:   "kvaccessor",
+						},
+					},
+					{
+						Type: azresources.KeyVaultVaults,
+						Tags: map[string]string{
+							keys.TagRadiusApplication: application,
+							keys.TagRadiusComponent:   "kv",
+						},
+					},
+				},
+			},
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "kv",
-						OutputResources: map[string]validation.OutputResourceSet{
+						OutputResources: map[string]validation.ExpectedOutputResource{
 							workloads.LocalIDKeyVault: validation.NewOutputResource(workloads.LocalIDKeyVault, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureKeyVault, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "kvaccessor",
-						OutputResources: map[string]validation.OutputResourceSet{
+						OutputResources: map[string]validation.ExpectedOutputResource{
 							workloads.LocalIDDeployment:                    validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 							workloads.LocalIDUserAssignedManagedIdentityKV: validation.NewOutputResource(workloads.LocalIDUserAssignedManagedIdentityKV, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureUserAssignedManagedIdentity, true),
 							workloads.LocalIDRoleAssignmentKVKeys:          validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVKeys, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
@@ -52,7 +72,6 @@ func Test_KeyVaultManaged(t *testing.T) {
 					},
 				},
 			},
-			SkipARMResources: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
 				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 

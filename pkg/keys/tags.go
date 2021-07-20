@@ -36,6 +36,18 @@ func HasTag(tags map[string]*string, key string, expectedValue string) bool {
 	return false
 }
 
+// HasTagSet returns true if all of the tags in expected are present in actual.
+// Allows actual to define extra tags not present in expected.
+func HasTagSet(actual map[string]*string, expected map[string]string) bool {
+	for k, v := range expected {
+		if !HasTag(actual, k, v) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func MatchesRadiusComponent(tags map[string]*string, application string, component string) bool {
 	return HasRadiusApplicationTag(tags, application) && HasRadiusComponentTag(tags, component)
 }

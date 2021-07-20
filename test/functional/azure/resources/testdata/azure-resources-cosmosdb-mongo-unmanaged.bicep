@@ -37,7 +37,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   location: resourceGroup().location
   kind: 'MongoDB'
   tags: {
-    radiustest: 'true'
+    radiustest: 'azure-resources-cosmosdb-mongo-unmanaged'
   }
   properties: {
     consistencyPolicy: {

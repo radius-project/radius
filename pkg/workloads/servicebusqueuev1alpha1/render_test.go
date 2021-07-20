@@ -52,6 +52,8 @@ func Test_Render_Managed_Success(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusQueue, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindAzureServiceBusQueue, resource.ResourceKind)
+	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.True(t, resource.Managed)
 
 	expected := map[string]string{
 		handlers.ManagedKey:             "true",
@@ -85,6 +87,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusQueue, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindAzureServiceBusQueue, resource.ResourceKind)
+	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.False(t, resource.Managed)
 
 	expected := map[string]string{
 		handlers.ManagedKey:                 "false",

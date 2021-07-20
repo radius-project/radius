@@ -13,6 +13,7 @@ const (
 	LocalIDKeyVault                      = "KeyVault"
 	LocalIDKeyVaultSecret                = "KeyVaultSecret"
 	LocalIDDeployment                    = "Deployment"
+	LocalIDIngress                       = "Ingress"
 	LocalIDService                       = "Service"
 	LocalIDUserAssignedManagedIdentityKV = "UserAssignedManagedIdentity-KV"
 	LocalIDRoleAssignmentKVKeys          = "RoleAssignment-KVKeys"

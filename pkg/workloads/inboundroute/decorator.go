@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/outputresourceinfo"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -124,6 +125,20 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		ingress.Spec = spec
 	}
 
-	resources = append(resources, workloads.NewKubernetesResource("Ingress", ingress))
+	resource := workloads.OutputResource{
+		Deployed:           false,
+		ResourceKind:       workloads.ResourceKindKubernetes,
+		OutputResourceType: workloads.OutputResourceTypeKubernetes,
+		LocalID:            workloads.LocalIDIngress,
+		Managed:            true,
+		OutputResourceInfo: outputresourceinfo.K8sInfo{
+			Kind:       ingress.TypeMeta.Kind,
+			APIVersion: ingress.TypeMeta.APIVersion,
+			Name:       ingress.ObjectMeta.Name,
+			Namespace:  ingress.ObjectMeta.Namespace,
+		},
+		Resource: ingress,
+	}
+	resources = append(resources, resource)
 	return resources, nil
 }

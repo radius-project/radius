@@ -10,11 +10,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/google/uuid"
 )
 
 // baseResourceType declares the base resource type for the Radius RP - all of the Radius resource types are children.
-const baseResourceType = "Microsoft.CustomProviders/resourceProviders"
+const baseResourceType = azresources.CustomProvidersResourceProviders
 
 // applicationResourceType declares the resource type for an Application.
 const applicationResourceType = "Applications"

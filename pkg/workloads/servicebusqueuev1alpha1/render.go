@@ -89,6 +89,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			LocalID:            workloads.LocalIDAzureServiceBusQueue,
 			ResourceKind:       workloads.ResourceKindAzureServiceBusQueue,
 			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            true,
 			Resource: map[string]string{
 				handlers.ManagedKey:             "true",
 				handlers.ServiceBusQueueNameKey: component.Config.Queue,
@@ -111,6 +112,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			LocalID:            workloads.LocalIDAzureServiceBusQueue,
 			ResourceKind:       workloads.ResourceKindAzureServiceBusQueue,
 			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            false,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 

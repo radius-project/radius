@@ -5,18 +5,21 @@
 
 package daprpubsubv1alpha1
 
-import "github.com/Azure/radius/pkg/radrp/resources"
+import (
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/radrp/resources"
+)
 
 const Kind = "dapr.io/PubSubTopic@v1alpha1"
 
 var TopicResourceType = resources.KnownType{
 	Types: []resources.ResourceType{
 		{
-			Type: "Microsoft.ServiceBus/namespaces",
+			Type: azresources.ServiceBusNamespaces,
 			Name: "*",
 		},
 		{
-			Type: "topics",
+			Type: azresources.ServiceBusNamespacesTopics,
 			Name: "*",
 		},
 	},

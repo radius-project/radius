@@ -5,7 +5,10 @@
 
 package cosmosdbmongov1alpha1
 
-import "github.com/Azure/radius/pkg/radrp/resources"
+import (
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/radrp/resources"
+)
 
 const (
 	Kind = "azure.com/CosmosDBMongo@v1alpha1"
@@ -14,11 +17,11 @@ const (
 var MongoResourceType = resources.KnownType{
 	Types: []resources.ResourceType{
 		{
-			Type: "Microsoft.DocumentDB/databaseAccounts",
+			Type: azresources.DocumentDBDatabaseAccounts,
 			Name: "*",
 		},
 		{
-			Type: "mongodbDatabases",
+			Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
 			Name: "*",
 		},
 	},
