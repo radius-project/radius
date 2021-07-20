@@ -31,26 +31,26 @@ func TestAzureEnvironment(t *testing.T) {
 		require.Equal(t, len(resources), 1, "Number of resources created by init step is less than expected")
 
 		_, found := resources[azresources.CustomProvidersResourceProviders]
-		require.True(t, found, azresources.CustomProvidersResourceProviders+" resource not created")
+		require.Truef(t, found, "%s resource not created", azresources.CustomProvidersResourceProviders)
 	})
 
 	t.Run("Validate Control Plane Resource Group", func(t *testing.T) {
 		resources := listRadiusEnvironmentResources(ctx, t, options.Environment, options.ARMAuthorizer, options.Environment.ControlPlaneResourceGroup)
 
 		_, found := resources[azresources.ContainerServiceManagedClusters]
-		require.True(t, found, azresources.ContainerServiceManagedClusters+" resource not created")
+		require.Truef(t, found, "%s resource not created", azresources.ContainerServiceManagedClusters)
 
 		_, found = resources[azresources.DocumentDBDatabaseAccounts]
-		require.True(t, found, azresources.DocumentDBDatabaseAccounts+" resource not created")
+		require.Truef(t, found, "%s resource not created", azresources.DocumentDBDatabaseAccounts)
 
 		_, found = resources[azresources.ManagedIdentityUserAssignedIdentities]
-		require.True(t, found, azresources.ManagedIdentityUserAssignedIdentities+" resource not created")
+		require.Truef(t, found, "%s resource not created", azresources.ManagedIdentityUserAssignedIdentities)
 
 		_, found = resources[azresources.WebServerFarms]
-		require.True(t, found, azresources.WebServerFarms+" resource not created")
+		require.Truef(t, found, "%s resource not created", azresources.WebServerFarms)
 
 		_, found = resources[azresources.WebSites]
-		require.True(t, found, azresources.WebSites+" resource not created")
+		require.Truef(t, found, "%s resource not created", azresources.WebSites)
 
 		// Currently, we have a retention policy on the deploymentScript for 1 day.
 		// "retentionInterval": "P1D"
@@ -60,7 +60,7 @@ func TestAzureEnvironment(t *testing.T) {
 		// if there are 6 resources
 		if len(resources) == 6 {
 			_, found = resources[azresources.ResourcesDeploymentScripts]
-			require.True(t, found, azresources.ResourcesDeploymentScripts+" resource not created")
+			require.Truef(t, found, "%s resource not created", azresources.ResourcesDeploymentScripts)
 		}
 
 		require.GreaterOrEqual(t, len(resources), 5, "Number of resources created by init step is less than expected")

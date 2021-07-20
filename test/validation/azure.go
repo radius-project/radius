@@ -7,6 +7,7 @@ package validation
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -279,7 +280,7 @@ func (v *AzureResourceValidator) findChildResource(ctx context.Context, parent A
 	apiVersion := v.getDefaultAPIVersion(ctx, provider, parentType)
 
 	resource, err := resc.Get(ctx, v.ResourceGroup, provider, parentType+"/"+*parent.Name, child.Type, child.Name, apiVersion)
-	if detailed, ok := err.(*autorest.DetailedError); ok && detailed.StatusCode == 404 {
+	if detailed, ok := err.(*autorest.DetailedError); ok && detailed.StatusCode == http.StatusNotFound {
 		return nil
 	}
 
@@ -299,7 +300,7 @@ func (v *AzureResourceValidator) getDefaultAPIVersion(ctx context.Context, provi
 		}
 	}
 
-	require.Fail(v.T, "failed to find resource type "+resourceType)
+	require.Failf(v.T, "failed to find resource type %s", resourceType)
 	return "" // unreachable
 }
 
