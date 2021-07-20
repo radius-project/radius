@@ -122,117 +122,23 @@ func TestK8sController(t *testing.T) {
 	}
 
 	table := []Row{
-		// {
-		// 	// Testing applications
-		// 	Description: "frontend-backend",
-		// 	Application: &v1alpha1.Application{
-		// 		TypeMeta: metav1.TypeMeta{
-		// 			APIVersion: "radius.dev/v1alpha1",
-		// 			Kind:       "Application",
-		// 		},
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "radius-frontend-backend",
-		// 			Namespace: "frontend-backend",
-		// 			Annotations: map[string]string{
-		// 				"radius.dev/applications": "frontend-backend",
-		// 			},
-		// 		},
-		// 		Spec: radiusv1alpha1.ApplicationSpec{
-		// 			Hierarchy: []string{"radius", "frontend-backend"},
-		// 		},
-		// 	},
-		// 	Components: &[]TestComponent{
-		// 		{
-		// 			TypeMeta: metav1.TypeMeta{
-		// 				APIVersion: "radius.dev/v1alpha1",
-		// 				Kind:       "Component",
-		// 			},
-		// 			ObjectMeta: metav1.ObjectMeta{
-		// 				Name:      "frontend",
-		// 				Namespace: "frontend-backend",
-		// 				Annotations: map[string]string{
-		// 					"radius.dev/applications": "frontend-backend",
-		// 					"radius.dev/components":   "frontend",
-		// 				},
-		// 			},
-		// 			Spec: TestComponentSpec{
-		// 				Kind: "radius.dev/Container@v1alpha1",
-		// 				Run: map[string]interface{}{
-		// 					"container": map[string]interface{}{
-		// 						"image": "rynowak/frontend:0.5.0-dev",
-		// 					},
-		// 				},
-		// 				Bindings: map[string]interface{}{
-		// 					"default": map[string]interface{}{
-		// 						"kind": "http",
-		// 					},
-		// 				},
-		// 				Hierarchy: []string{"radius", "frontend-backend", "frontend"},
-		// 				Uses: []map[string]interface{}{
-		// 					{
-		// 						"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
-		// 						"env": map[string]interface{}{
-		// 							"SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.host]",
-		// 							"SERVICE__BACKEND__PORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.port]",
-		// 						},
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 		{
-		// 			TypeMeta: metav1.TypeMeta{
-		// 				APIVersion: "radius.dev/v1alpha1",
-		// 				Kind:       "Component",
-		// 			},
-		// 			ObjectMeta: metav1.ObjectMeta{
-		// 				Name:      "backend",
-		// 				Namespace: "frontend-backend",
-		// 				Annotations: map[string]string{
-		// 					"radius.dev/applications": "frontend-backend",
-		// 					"radius.dev/components":   "backend",
-		// 				},
-		// 			},
-		// 			Spec: TestComponentSpec{
-		// 				Kind: "radius.dev/Container@v1alpha1",
-		// 				Run: map[string]interface{}{
-		// 					"container": map[string]interface{}{
-		// 						"image": "rynowak/backend:0.5.0-dev",
-		// 					},
-		// 				},
-		// 				Bindings: map[string]interface{}{
-		// 					"default": map[string]interface{}{
-		// 						"kind": "http",
-		// 					},
-		// 				},
-		// 				Hierarchy: []string{"radius", "frontend-backend", "backend"},
-		// 			},
-		// 		},
-		// 	},
-		// 	Pods: validation.K8sObjectSet{
-		// 		Namespaces: map[string][]validation.K8sObject{
-		// 			"frontend-backend": {
-		// 				validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
-		// 				validation.NewK8sObjectForComponent("frontend-backend", "backend"),
-		// 			},
-		// 		},
-		// 	},
-		// },
 		{
-			Description: "dapr-hello",
+			// Testing applications
+			Description: "frontend-backend",
 			Application: &v1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "radius.dev/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "radius-dapr-hello",
-					Namespace: "dapr-hello",
+					Name:      "radius-frontend-backend",
+					Namespace: "frontend-backend",
 					Annotations: map[string]string{
-						"radius.dev/applications": "dapr-hello",
+						"radius.dev/applications": "frontend-backend",
 					},
 				},
 				Spec: radiusv1alpha1.ApplicationSpec{
-					Hierarchy: []string{"radius", "dapr-hello"},
+					Hierarchy: []string{"radius", "frontend-backend"},
 				},
 			},
 			Components: &[]TestComponent{
@@ -242,41 +148,33 @@ func TestK8sController(t *testing.T) {
 						Kind:       "Component",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "nodeapp", // TODO may be radius-dapr-hello-nodeapp
-						Namespace: "dapr-hello",
+						Name:      "frontend",
+						Namespace: "frontend-backend",
 						Annotations: map[string]string{
-							"radius.dev/applications":      "dapr-hello",
-							"radius.dev/components":        "nodeapp",
-							"radius.dev/resourceproviders": "radius",
+							"radius.dev/applications": "frontend-backend",
+							"radius.dev/components":   "frontend",
 						},
 					},
 					Spec: TestComponentSpec{
 						Kind: "radius.dev/Container@v1alpha1",
 						Run: map[string]interface{}{
 							"container": map[string]interface{}{
-								"image": "radiusteam/tutorial-nodeapp",
+								"image": "rynowak/frontend:0.5.0-dev",
 							},
 						},
 						Bindings: map[string]interface{}{
-							"invoke": map[string]interface{}{
-								"kind": "dapr.io/Invoke",
-							},
-							"web": map[string]interface{}{
-								"kind":       "http",
-								"targetPort": 3000,
+							"default": map[string]interface{}{
+								"kind": "http",
 							},
 						},
-						Hierarchy: []string{"radius", "dapr-hello", "nodeapp"},
-						Traits: []map[string]interface{}{
-							{
-								"appId":   "nodeapp",
-								"appPort": 3000,
-								"kind":    "dapr.io/App@v1alpha1",
-							},
-						},
+						Hierarchy: []string{"radius", "frontend-backend", "frontend"},
 						Uses: []map[string]interface{}{
 							{
-								"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'dapr-hello', 'statestore')).bindings.default]",
+								"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
+								"env": map[string]interface{}{
+									"SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.host]",
+									"SERVICE__BACKEND__PORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.port]",
+								},
 							},
 						},
 					},
@@ -287,70 +185,34 @@ func TestK8sController(t *testing.T) {
 						Kind:       "Component",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pythonapp", // TODO may be radius-dapr-hello-nodeapp
-						Namespace: "dapr-hello",
+						Name:      "backend",
+						Namespace: "frontend-backend",
 						Annotations: map[string]string{
-							"radius.dev/applications":      "dapr-hello",
-							"radius.dev/components":        "nodeapp",
-							"radius.dev/resourceproviders": "radius",
+							"radius.dev/applications": "frontend-backend",
+							"radius.dev/components":   "backend",
 						},
 					},
 					Spec: TestComponentSpec{
 						Kind: "radius.dev/Container@v1alpha1",
 						Run: map[string]interface{}{
 							"container": map[string]interface{}{
-								"image": "radiusteam/tutorial-pythonapp",
+								"image": "rynowak/backend:0.5.0-dev",
 							},
 						},
 						Bindings: map[string]interface{}{
-							"invoke": map[string]interface{}{
-								"kind": "dapr.io/Invoke",
+							"default": map[string]interface{}{
+								"kind": "http",
 							},
 						},
-						Hierarchy: []string{"radius", "dapr-hello", "nodeapp"},
-						Traits: []map[string]interface{}{
-							{
-								"appId": "nodeapp",
-								"kind":  "dapr.io/App@v1alpha1",
-							},
-						},
-						Uses: []map[string]interface{}{
-							{
-								"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'dapr-hello', 'nodeapp')).bindings.invoke]",
-							},
-						},
-					},
-				},
-				{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "radius.dev/v1alpha1",
-						Kind:       "Component",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "statestore", // TODO may be radius-dapr-hello-nodeapp
-						Namespace: "dapr-hello",
-						Annotations: map[string]string{
-							"radius.dev/applications":      "dapr-hello",
-							"radius.dev/components":        "statestore",
-							"radius.dev/resourceproviders": "radius",
-						},
-					},
-					Spec: TestComponentSpec{
-						Kind: "dapr.io/StateStore@v1alpha1",
-						Config: map[string]interface{}{
-							"kind":    "any",
-							"managed": true,
-						},
-						Hierarchy: []string{"radius", "dapr-hello", "statestore"},
+						Hierarchy: []string{"radius", "frontend-backend", "backend"},
 					},
 				},
 			},
 			Pods: validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForComponent("dapr-hello", "pythonapp"),
-						validation.NewK8sObjectForComponent("dapr-hello", "nodeapp"),
-						validation.NewK8sObjectForComponent("dapr-hello", "statestore"),
+					"frontend-backend": {
+						validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
+						validation.NewK8sObjectForComponent("frontend-backend", "backend"),
 					},
 				},
 			},
