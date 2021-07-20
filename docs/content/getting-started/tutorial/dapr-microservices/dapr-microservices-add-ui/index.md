@@ -21,13 +21,8 @@ Another container component is used to specify a few properties about the order 
 - `traits: dapr.io/App` configures Dapr on the container.
 
 {{< rad file="snippets/app.bicep" marker="//FRONTEND" embed=true >}}
-
-A few notable differences between `frontend` and the previously-deployed `backend`:
-
-- `frontend` doesn't listen for HTTP traffic, so it configures neither a Dapr app-port nor a binding for HTTP.
-- `frontend` needs to communicate with `backend` using the Dapr service invocation protocol, so it `uses` the `invoke` bindings on `backend`.
   
-## Deploy application with pythonapp
+## Deploy application
 
 1. Make sure your `template.json` file matches the full tutorial file:
 
@@ -42,10 +37,10 @@ A few notable differences between `frontend` and the previously-deployed `backen
 1. To test out the frontend microservice, open a local tunnel on port 80:
 
    ```sh
-   rad component expose frontend --application dapr-tutorial --port 80
+   rad component expose frontend --application dapr-tutorial --port 5000 --remote-port 80
    ```
 
-1. Visit [http://localhost:80](http://localhost:80) in your browser and submit orders.
+1. Visit [http://localhost:5000](http://localhost:5000) in your browser and submit orders.
 
    <img src="frontend.png" alt="Screenshot of frontend application" width=500 >
 

@@ -14,12 +14,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       }
       //RUN
       bindings: {
-        //WEB
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
-        //WEB
         invoke: {
           kind: 'dapr.io/Invoke'
         }

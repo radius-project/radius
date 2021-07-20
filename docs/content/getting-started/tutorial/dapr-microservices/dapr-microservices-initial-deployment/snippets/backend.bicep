@@ -10,12 +10,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           image: 'radius.azurecr.io/daprtutorial-backend'
         }
       }
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
-      }
     }
   }
 }

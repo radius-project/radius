@@ -25,7 +25,6 @@ Your `backend` component will specify:
 
 - **kind:** `radius.dev/Container@v1alpha1`, a generic container.
 - **container image:** `radius.azurecr.io/daprtutorial-backend`, a Docker image the container will run. This is where your application's backend code lives.
-- **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).
 
 Update your template.bicep file to match the full application definition:
 

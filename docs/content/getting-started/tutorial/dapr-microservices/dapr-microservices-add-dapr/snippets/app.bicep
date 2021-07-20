@@ -13,14 +13,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
         }
       }
       //RUN
-      //BINDINGS
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
-      }
-      //BINDINGS
       uses: [
         {
           binding: statestore.properties.bindings.default

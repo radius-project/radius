@@ -13,14 +13,6 @@ resource app 'radius.dev/Applications@v1alpha1' = {
         }
       }
       //RUN
-      //BINDINGS
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
-      }
-      //BINDINGS
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
