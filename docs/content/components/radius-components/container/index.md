@@ -31,6 +31,14 @@ The `http` binding provides an HTTP endpoint which opens a specified port on a c
 
 {{< rad file="snippets/frontend-backend.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
 
+## Dapr invoke
+
+The `dapr.io/Invoke` binding indicates that other components can invoke a service on this container using [Dapr service invocation](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/).
+
+| Key | Required | Description | Example |
+|-----|:--------:|-------------|---------|
+| kind | y | Defines the binding type. | `dapr.io/Invoke`
+
 ## Traits
 
 ### Inbound route

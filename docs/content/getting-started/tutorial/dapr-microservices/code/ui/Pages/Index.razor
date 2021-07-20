@@ -1,0 +1,121 @@
+@page "/"
+@inject HttpClient Client
+
+<h1>Welcome to the Dapr Store</h1>
+
+<hr />
+<h3>Place an order:</h3>
+
+<EditForm Model="@current" OnValidSubmit="OnOrderPlacedAsync">
+    <DataAnnotationsValidator />
+    
+    <div class="form-group">
+        <label for="itemInput">Item</label>
+        <InputText @bind-Value="@current.Item" id="itemInput" class="form-control" placeholder="Enter the item you wish to purchase"/>
+        <small class="form-text text-muted">eg. bread, eggs, cheese</small>
+    </div>
+    <div class="form-group">
+        <label for="priceInput">Item</label>
+        <InputNumber @bind-Value="@current.Price" id="priceInput" class="form-control" placeholder="Choose the price"/>
+        <small class="form-text text-muted">eg. 2.99, 4, 6</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Place Order</button>
+
+</EditForm>
+
+<hr />
+
+<h3>Previous orders:</h3>
+
+@if (loading)
+{
+    <p class="success">Loading...</p>
+}
+else if (error != null)
+{
+    <p><b>Error</b></p>
+    <pre><code>@error</code></pre>
+}
+else if (message != null)
+{
+    <p class="success">@error</p>
+}
+else
+{
+<ul class="list-group">
+    @foreach (var order in orders)
+    {
+        <li class="list-group-item">@order.Item: @order.Price?.ToString()</li>
+    }
+</ul>
+}
+
+@code {
+    string error;
+    string message;
+    bool loading;
+    List<Order> orders = new List<Order>();
+
+    Order current = new Order();
+
+    async Task OnOrderPlacedAsync(EditContext context) 
+    {
+        try
+        {
+            var response = await this.Client.PostAsJsonAsync("/neworder", current);
+            response.EnsureSuccessStatusCode();
+            current = new Order();
+        }
+        catch (Exception ex)
+        {
+            error = ex.ToString();
+            return;
+        }
+
+        await ReloadAsync();
+    }
+
+    async Task ReloadAsync()
+    {
+        try
+        {
+            loading = true;
+            message = null;
+            error = null;
+            this.orders = new List<Order>();
+
+            var response = await this.Client.GetFromJsonAsync<Response>("/order");
+            if (response.Message != null)
+            {
+                message = response.Message;
+                return;
+            }
+
+            if (response.Items != null)
+            {
+                this.orders = response.Items;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.ToString();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private class Response
+    {
+        public string Message { get; set; }
+
+        public List<Order> Items { get; set; }
+    }
+}    

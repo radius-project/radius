@@ -19,7 +19,7 @@ A component may provide one or more bindings to other runnable (*compute*) compo
 - Within the component definition implementation, where the Component offers the binding without any configuration that is "always on"
 - Within the app model declaration, where the Component offers the binding once a user adds it to the configuration and "defines" it
 
-### "Always on" bindings
+### Implicit bindings
 
 Some Radius components provide bindings without any configuration. These bindings can be considered "always on" - the user doesn't need to explicitly define the binding as part of their Component.
 
