@@ -31,6 +31,7 @@ func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component Dapr
 		LocalID:            workloads.LocalIDDaprStateStoreSQLServer,
 		ResourceKind:       workloads.ResourceKindDaprStateStoreSQLServer,
 		OutputResourceType: workloads.OutputResourceTypeArm,
+		Managed:            true,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "true",
 			handlers.KubernetesNameKey:       w.Name,
@@ -56,6 +57,7 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 			LocalID:            localID,
 			ResourceKind:       resourceKind,
 			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.KubernetesNameKey:       w.Name,
@@ -81,6 +83,7 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 			LocalID:            localID,
 			ResourceKind:       resourceKind,
 			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.KubernetesNameKey:       w.Name,
