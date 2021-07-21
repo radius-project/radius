@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/text/cases"
 )
 
 // appDeleteCmd command to delete an application
@@ -102,7 +103,7 @@ func updateApplicationConfig(config *viper.Viper, env environments.Environment, 
 
 		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, env.GetName())
 
-		envSection.Items[env.GetName()][environments.EnvironmentKeyDefaultApplication] = ""
+		envSection.Items[cases.Fold().String(env.GetName())][environments.EnvironmentKeyDefaultApplication] = ""
 
 		rad.UpdateEnvironmentSection(config, envSection)
 
