@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,86 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]workloads.OutputResource, error) {
-	if !component.Config.Managed {
-		return nil, errors.New("only Radius managed resources are supported for Dapr SQL Server")
-	}
-	if component.Config.Resource != "" {
-		return nil, workloads.ErrResourceSpecifiedForManagedResource
-	}
-	// generate data we can use to connect to a Storage Account
-	resource := workloads.OutputResource{
-		LocalID:            workloads.LocalIDDaprStateStoreSQLServer,
-		ResourceKind:       workloads.ResourceKindDaprStateStoreSQLServer,
-		OutputResourceType: workloads.OutputResourceTypeArm,
-		Managed:            true,
-		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
-			handlers.KubernetesNameKey:       w.Name,
-			handlers.KubernetesNamespaceKey:  w.Application,
-			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-			handlers.KubernetesKindKey:       "Component",
-			handlers.ComponentNameKey:        w.Name,
-		},
-	}
-
-	return []workloads.OutputResource{resource}, nil
-}
-
-func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]workloads.OutputResource, error) {
-	resourceKind := workloads.ResourceKindDaprStateStoreAzureStorage
-	localID := workloads.LocalIDDaprStateStoreAzureStorage
-
-	if component.Config.Managed {
-		if component.Config.Resource != "" {
-			return nil, workloads.ErrResourceSpecifiedForManagedResource
-		}
-		resource := workloads.OutputResource{
-			LocalID:            localID,
-			ResourceKind:       resourceKind,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            true,
-			Resource: map[string]string{
-				handlers.ManagedKey:              "true",
-				handlers.KubernetesNameKey:       w.Name,
-				handlers.KubernetesNamespaceKey:  w.Application,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-				handlers.ComponentNameKey:        w.Name,
-			},
-		}
-
-		return []workloads.OutputResource{resource}, nil
-	} else {
-		if component.Config.Resource == "" {
-			return nil, workloads.ErrResourceMissingForUnmanagedResource
-		}
-		accountID, err := workloads.ValidateResourceID(component.Config.Resource, StorageAccountResourceType, "Storage Account")
-		if err != nil {
-			return nil, err
-		}
-
-		// generate data we can use to connect to a Storage Account
-		resource := workloads.OutputResource{
-			LocalID:            localID,
-			ResourceKind:       resourceKind,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            false,
-			Resource: map[string]string{
-				handlers.ManagedKey:              "false",
-				handlers.KubernetesNameKey:       w.Name,
-				handlers.KubernetesNamespaceKey:  w.Application,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-
-				handlers.StorageAccountIDKey:   accountID.ID,
-				handlers.StorageAccountNameKey: accountID.Types[0].Name,
-			},
-		}
-		return []workloads.OutputResource{resource}, nil
-	}
-}
 
 func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]workloads.OutputResource, error) {
 	if !component.Config.Managed {
@@ -233,7 +152,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			},
 		},
 	}
-	resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDDaprStateStoreRedis, &statestore))
+	resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDDaprStateStoreComponent, &statestore))
 
 	return resources, nil
 }

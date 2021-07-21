@@ -27,7 +27,7 @@ Add a [`radius.dev/invoke` binding]({{< ref "container.md#dapr-invoke" >}}) on t
 
 ## Add statestore component
 
-Now the backend is configured with Dapr, we need to define a state store to save information about orders.
+Now that the backend is configured with Dapr, we need to define a state store to save information about orders.
 
 A [`statestore` component]({{< ref dapr-statestore >}}) is used to specify a few properties about the state store:
 
@@ -82,13 +82,13 @@ The [`statestore` component]({{< ref dapr-statestore.md >}}) implicitly declares
    default     backend statestore
    ```
 
-1. To test out the state store, open a local tunnel on port 5000 again:
+1. To test out the state store, open a local tunnel on port 3000 again:
 
    ```sh
-   rad component expose backend --application dapr-tutorial --port 5000
+   rad component expose backend --application dapr-tutorial --port 3000
    ```
 
-1. Visit the the URL [http://localhost:5000/order](http://localhost:5000/order) in your browser. You should see the following message:
+1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:
 
    ```
    {"message":"no orders yet"}

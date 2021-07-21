@@ -35,7 +35,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsArm: true}
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -75,7 +75,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsArm: true}
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -116,7 +116,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsArm: true}
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -139,7 +139,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 
 func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsArm: true}
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -161,7 +161,7 @@ func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 
 func Test_Render_SQL_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsArm: true}
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -201,7 +201,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 
 func Test_Render_UnsupportedKind(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsArm: true}
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -219,12 +219,12 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported for azure. Supported kind values: %s", supportedAzureStoreKindValues), err.Error())
+	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getSortedKeys(SupportedAzureStateStoreKindValues)), err.Error())
 }
 
 func Test_Render_SQL_Unmanaged_Failure(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsArm: true}
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -247,7 +247,7 @@ func Test_Render_SQL_Unmanaged_Failure(t *testing.T) {
 
 func Test_Render_K8s_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsKubernetes: true}
+	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -279,7 +279,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 	resourceService := redisService.Resource.(*corev1.Service)
 
 	dapr := resources[2]
-	require.Equal(t, workloads.LocalIDDaprStateStoreRedis, dapr.LocalID)
+	require.Equal(t, workloads.LocalIDDaprStateStoreComponent, dapr.LocalID)
 	require.Equal(t, workloads.ResourceKindKubernetes, dapr.ResourceKind)
 	resourceDapr := dapr.Resource.(*unstructured.Unstructured)
 
@@ -343,11 +343,11 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 					"name":      "test-component",
 					"namespace": "default",
 					"labels": map[string]string{
-						keys.LabelRadiusApplication:    "test-app",
-						keys.LabelRadiusComponent:      "test-component",
-						"app.kubernetes.io/name":       "test-component",
-						"app.kubernetes.io/part-of":    "test-app",
-						"app.kubernetes.io/managed-by": "radius-rp",
+						keys.LabelRadiusApplication:   "test-app",
+						keys.LabelRadiusComponent:     "test-component",
+						keys.LabelKubernetesName:      "test-component",
+						keys.LabelKubernetesPartOf:    "test-app",
+						keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 					},
 				},
 				"spec": map[string]interface{}{
@@ -372,7 +372,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 
 func Test_Render_K8s_Unmanaged_Failure(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsKubernetes: true}
+	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -393,9 +393,9 @@ func Test_Render_K8s_Unmanaged_Failure(t *testing.T) {
 	require.Equal(t, "only 'managed=true' is supported right now", err.Error())
 }
 
-func Test_Render_K8s_NonAny_Failure(t *testing.T) {
+func Test_Render_NonAny_Failure(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportsKubernetes: true}
+	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -413,5 +413,5 @@ func Test_Render_K8s_NonAny_Failure(t *testing.T) {
 
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("state.sqlserver is not supported for kubernetes. Supported kind values: %s", supportedKubernetesStoreKindValues), err.Error())
+	require.Equal(t, fmt.Sprintf("state.sqlserver is not supported. Supported kind values: %s", getSortedKeys(SupportedKubernetesStateStoreKindValues)), err.Error())
 }

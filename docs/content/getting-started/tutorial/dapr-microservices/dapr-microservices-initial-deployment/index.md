@@ -60,14 +60,14 @@ Now you are ready to deploy the application for the first time.
 1. To test your `dapr-tutorial` application, open a local tunnel to your application:
 
    ```sh
-   rad component expose backend --application dapr-tutorial --port 5000
+   rad component expose backend --application dapr-tutorial --port 3000
    ```
 
    {{% alert title="💡 rad component expose" color="primary" %}}
    The [`rad component expose`]({{< ref rad_component_expose.md >}}) command accepts the component name, and flags for application name and port. If you changed any of these values when deploying, update your command to match.
    {{% /alert %}}
 
-1. Visit the URL [http://localhost:5000/order](http://localhost:5000/order) in your browser. For now you should see a message like:
+1. Visit the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. For now you should see a message like:
 
    ```
    {"message":"The container is running, but Dapr has not been configured."}

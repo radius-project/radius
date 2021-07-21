@@ -19,7 +19,7 @@ import (
 func NewKubernetesModel(k8s *client.Client) ApplicationModel {
 	renderers := map[string]workloads.WorkloadRenderer{
 		containerv1alpha1.Kind:      &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: armauth.ArmConfig{}}}},
-		daprstatestorev1alpha1.Kind: &daprstatestorev1alpha1.Renderer{SupportsKubernetes: true},
+		daprstatestorev1alpha1.Kind: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
 	}
 	handlers := map[string]handlers.ResourceHandler{
 		workloads.ResourceKindKubernetes: handlers.NewKubernetesHandler(*k8s),
