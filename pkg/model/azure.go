@@ -23,7 +23,7 @@ import (
 
 func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
 	renderers := map[string]workloads.WorkloadRenderer{
-		daprstatestorev1alpha1.Kind:  &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
+		daprstatestorev1alpha1.Kind:  &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues},
 		daprpubsubv1alpha1.Kind:      &daprpubsubv1alpha1.Renderer{},
 		cosmosdbmongov1alpha1.Kind:   &cosmosdbmongov1alpha1.Renderer{Arm: arm},
 		cosmosdbsqlv1alpha1.Kind:     &cosmosdbsqlv1alpha1.Renderer{Arm: arm},
