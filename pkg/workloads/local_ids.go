@@ -22,4 +22,7 @@ const (
 	LocalIDAzureServiceBusTopic          = "AzureServiceBusTopic"
 	LocalIDAzureServiceBusQueue          = "AzureServiceBusQueue"
 	LocalIDAzureCosmosDBSQL              = "AzureCosmosDBSQL"
+	LocalIDRedisDeployment               = "KubernetesRedisDeployment"
+	LocalIDRedisService                  = "KubernetesRedisService"
+	LocalIDDaprStateStoreComponent       = "DaprStateStoreComponent"
 )

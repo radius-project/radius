@@ -9,16 +9,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/Azure/radius/pkg/radrp/components"
-	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-var supportedStateStoreKindValues = [3]string{"any", "state.azure.tablestorage", "state.sqlserver"}
+var SupportedAzureStateStoreKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error){
+	"any":                      GetDaprStateStoreAzureStorage,
+	"state.azure.tablestorage": GetDaprStateStoreAzureStorage,
+	"state.sqlserver":          GetDaprStateStoreSQLServer,
+}
+
+var SupportedKubernetesStateStoreKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error){
+	"any":         GetDaprStateStoreKubernetesRedis,
+	"state.redis": GetDaprStateStoreKubernetesRedis,
+}
 
 // Renderer is the WorkloadRenderer implementation for the dapr statestore workload.
 type Renderer struct {
+	StateStores map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error)
 }
 
 // Allocate is the WorkloadRenderer implementation for dapr statestore workload.
@@ -48,70 +58,26 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []workloads.OutputResource{}, err
 	}
 
-	resourceKind := ""
-	localID := ""
-	if component.Config.Kind == "any" || component.Config.Kind == "state.azure.tablestorage" {
-		resourceKind = workloads.ResourceKindDaprStateStoreAzureStorage
-		localID = workloads.LocalIDDaprStateStoreAzureStorage
-	} else if component.Config.Kind == "state.sqlserver" {
-		resourceKind = workloads.ResourceKindDaprStateStoreSQLServer
-		localID = workloads.LocalIDDaprStateStoreSQLServer
-	} else {
-		return []workloads.OutputResource{}, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, supportedStateStoreKindValues)
+	if r.StateStores == nil {
+		return []workloads.OutputResource{}, errors.New("must support either kubernetes or ARM")
 	}
 
-	if component.Config.Managed {
-		if component.Config.Resource != "" {
-			return nil, workloads.ErrResourceSpecifiedForManagedResource
-		}
-
-		resource := workloads.OutputResource{
-			LocalID:            localID,
-			ResourceKind:       resourceKind,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            true,
-			Resource: map[string]string{
-				handlers.ManagedKey:              "true",
-				handlers.KubernetesNameKey:       w.Name,
-				handlers.KubernetesNamespaceKey:  w.Application,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-				handlers.ComponentNameKey:        w.Name,
-			},
-		}
-
-		return []workloads.OutputResource{resource}, nil
-	} else {
-		if component.Config.Kind == "state.sqlserver" {
-			return nil, errors.New("only Radius managed resources are supported for Dapr SQL Server")
-		}
-
-		if component.Config.Resource == "" {
-			return nil, workloads.ErrResourceMissingForUnmanagedResource
-		}
-
-		accountID, err := workloads.ValidateResourceID(component.Config.Resource, StorageAccountResourceType, "Storage Account")
-		if err != nil {
-			return nil, err
-		}
-
-		// generate data we can use to connect to a Storage Account
-		resource := workloads.OutputResource{
-			LocalID:            localID,
-			ResourceKind:       workloads.ResourceKindDaprStateStoreAzureStorage,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            false,
-			Resource: map[string]string{
-				handlers.ManagedKey:              "false",
-				handlers.KubernetesNameKey:       w.Name,
-				handlers.KubernetesNamespaceKey:  w.Application,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-
-				handlers.StorageAccountIDKey:   accountID.ID,
-				handlers.StorageAccountNameKey: accountID.Types[0].Name,
-			},
-		}
-		return []workloads.OutputResource{resource}, nil
+	stateStoreFunc := r.StateStores[component.Config.Kind]
+	if stateStoreFunc == nil {
+		return nil, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, getSortedKeys(r.StateStores))
 	}
+	return stateStoreFunc(w, component)
+}
+
+func getSortedKeys(store map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error)) []string {
+	keys := make([]string, len(store))
+
+	i := 0
+	for k := range store {
+		keys[i] = k
+		i++
+	}
+
+	sort.Strings(keys)
+	return keys
 }

@@ -23,12 +23,13 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
+	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes"
+	k8s "k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	//+kubebuilder:scaffold:imports
 )
@@ -80,7 +81,7 @@ func TestK8sController(t *testing.T) {
 	require.NoError(t, err, "failed to initialize k8s client")
 	require.NotNil(t, k8sClient, "failed to initialize k8s client")
 
-	k8s, err := kubernetes.NewForConfig(cfg)
+	k8s, err := k8s.NewForConfig(cfg)
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -131,7 +132,7 @@ func TestK8sController(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "radius-frontend-backend",
-					Namespace: "default",
+					Namespace: "frontend-backend",
 					Annotations: map[string]string{
 						"radius.dev/applications": "frontend-backend",
 					},
@@ -148,7 +149,7 @@ func TestK8sController(t *testing.T) {
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "frontend",
-						Namespace: "default",
+						Namespace: "frontend-backend",
 						Annotations: map[string]string{
 							"radius.dev/applications": "frontend-backend",
 							"radius.dev/components":   "frontend",
@@ -185,7 +186,7 @@ func TestK8sController(t *testing.T) {
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "backend",
-						Namespace: "default",
+						Namespace: "frontend-backend",
 						Annotations: map[string]string{
 							"radius.dev/applications": "frontend-backend",
 							"radius.dev/components":   "backend",
@@ -209,7 +210,7 @@ func TestK8sController(t *testing.T) {
 			},
 			Pods: validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"frontend-backend": {
 						validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
 						validation.NewK8sObjectForComponent("frontend-backend", "backend"),
 					},
@@ -269,6 +270,19 @@ type TestComponentSpec struct {
 }
 
 func (tc TestComponent) GetComponent() (radiusv1alpha1.Component, error) {
+	// handle defaults
+	if tc.Spec.Run == nil {
+		tc.Spec.Run = map[string]interface{}{}
+	}
+	if tc.Spec.Bindings == nil {
+		tc.Spec.Bindings = map[string]interface{}{}
+	}
+	if tc.Spec.Config == nil {
+		tc.Spec.Config = map[string]interface{}{}
+	}
+	if tc.Spec.Uses == nil {
+		tc.Spec.Uses = []map[string]interface{}{}
+	}
 
 	bindingJson, err := json.Marshal(tc.Spec.Bindings)
 	if err != nil {
@@ -298,6 +312,10 @@ func (tc TestComponent) GetComponent() (radiusv1alpha1.Component, error) {
 		traits = append(traits, runtime.RawExtension{Raw: traitJson})
 	}
 
+	configJson, err := json.Marshal(tc.Spec.Config)
+	if err != nil {
+		return radiusv1alpha1.Component{}, err
+	}
 	return v1alpha1.Component{
 		TypeMeta:   tc.TypeMeta,
 		ObjectMeta: tc.ObjectMeta,
@@ -308,6 +326,7 @@ func (tc TestComponent) GetComponent() (radiusv1alpha1.Component, error) {
 			Hierarchy: tc.Spec.Hierarchy,
 			Uses:      &uses,
 			Traits:    &traits,
+			Config:    &runtime.RawExtension{Raw: configJson},
 		},
 	}, nil
 
@@ -321,7 +340,7 @@ type ControllerTest struct {
 type Options struct {
 	Client  client.Client
 	Context context.Context
-	K8s     *kubernetes.Clientset
+	K8s     *k8s.Clientset
 }
 
 func NewControllerTest(options Options, row Row) ControllerTest {
@@ -338,8 +357,12 @@ func (ct ControllerTest) Test(t *testing.T) {
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
 
+	// Make sure namespace exists
+	err := kubernetes.CreateNamespace(ct.Options.Context, ct.Options.K8s, ct.Row.Application.Namespace)
+	require.NoError(t, err, "failed to create namespace")
+
 	// Create Application
-	err := ct.Options.Client.Create(ct.Options.Context, ct.Row.Application)
+	err = ct.Options.Client.Create(ct.Options.Context, ct.Row.Application)
 	require.NoError(t, err, "failed to create application")
 
 	// Create Components

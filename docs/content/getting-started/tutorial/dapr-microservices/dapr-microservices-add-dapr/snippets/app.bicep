@@ -36,7 +36,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     kind: 'dapr.io/StateStore@v1alpha1'
     properties: {
       config: {
-        kind: 'state.azure.tablestorage'
+        kind: 'any'
         managed: true
       }
     }

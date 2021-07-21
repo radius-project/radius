@@ -27,7 +27,7 @@ Add a [`radius.dev/invoke` binding]({{< ref "container.md#dapr-invoke" >}}) on t
 
 ## Add statestore component
 
-Now the backend is configured with Dapr, and we need to define a state store to save information about orders.
+Now that the backend is configured with Dapr, we need to define a state store to save information about orders.
 
 A [`statestore` component]({{< ref dapr-statestore >}}) is used to specify a few properties about the state store:
 
