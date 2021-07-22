@@ -5,7 +5,7 @@
 
 ##@ Controller
 
-# For CI, supprot passed in container registry
+# For CI, support passed in container registry
 ifeq (,$(REL_CONTAINERREGISTRY))
 	CONTAINERREGISTRY=$(DOCKER_REGISTRY)
 else
