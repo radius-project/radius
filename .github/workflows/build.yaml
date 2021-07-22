@@ -183,7 +183,7 @@ jobs:
       uses: helm/kind-action@v1.0.0
       with:
         cluster_name: radius-kind
-        version:  v1.19.11
+        version:  v0.11.0
     - name: Run Kubernetes tests
       run: make test-controller
   deploy_tests: 
