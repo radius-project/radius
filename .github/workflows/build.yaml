@@ -186,6 +186,14 @@ jobs:
         go-version: ${{ env.GOVER }}
     - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
+    - name: Download release artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: rad_cli_linux_amd64
+        path: dist
+    - name: Make rad executable
+      run: chmod +x rad
+      working-directory: dist
     - name: Create KinD Cluster
       uses: helm/kind-action@v1.0.0
       with:
