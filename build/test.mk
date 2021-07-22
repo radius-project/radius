@@ -32,7 +32,7 @@ test-controller: generate-k8s-manifests generate-controller test-get-envtools ##
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
 
-test-controller-clean: generate-k8s-manifests generate-controller setup-kind controller-install test-controller ## Runs controller tests, note arm64 version not available.
+test-functional-kubernetes-clean: generate-k8s-manifests generate-controller setup-kind controller-install test-controller ## Runs controller tests, note arm64 version not available.
 	kind delete cluster --name radius-kind
 
 setup-kind:
