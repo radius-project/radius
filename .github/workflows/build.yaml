@@ -184,6 +184,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVER }}
+    - name: Parse release version and set environment variables
+      run: python ./.github/scripts/get_release_version.py
     - name: Create KinD Cluster
       uses: helm/kind-action@v1.0.0
       with:
