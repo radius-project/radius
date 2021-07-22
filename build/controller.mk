@@ -5,6 +5,19 @@
 
 ##@ Controller
 
+# For CI, supprot passed in container registry
+ifeq (,$(REL_CONTAINERREGISTRY))
+	CONTAINERREGISTRY=$(DOCKER_REGISTRY)
+else
+	CONTAINERREGISTRY=$(REL_CONTAINERREGISTRY)
+endif
+
+ifeq (,$(REL_VERSION))
+	VERSION=$(DOCKER_TAG_VERSION)
+else
+	VERSION=$(REL_VERSION)
+endif
+
 controller-run: generate-k8s-manifests generate-controller ## Run the controller locally
 	SKIP_WEBHOOKS=true go run ./cmd/k8s/main.go
 
@@ -17,15 +30,11 @@ controller-uninstall: generate-k8s-manifests  ## Uninstall CRDs from the K8s clu
 create-namespace:
 	kubectl create namespace radius-system
 
-
-
 controller-deploy: generate-k8s-manifests docker-build docker-push create-namespace ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	helm upgrade --wait --install --set container=$(DOCKER_REGISTRY)/radius-controller:$(DOCKER_TAG_VERSION) radius deploy/Chart -n radius-system
+	helm upgrade --wait --install --set container=$(CONTAINERREGISTRY)/radius-controller:$(VERSION) radius deploy/Chart -n radius-system
 
-REL_CONTAINERREGISTRY = ${REL_CONTAINERREGISTRY}
-REL_VERSION = ${REL_VERSION}
 controller-deploy-existing: generate-k8s-manifests create-namespace ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	helm upgrade --wait --install --set container=$(REL_CONTAINERREGISTRY)/radius-controller:$(REL_VERSION) radius deploy/Chart -n radius-system
+	helm upgrade --wait --install --set container=$(CONTAINERREGISTRY)/radius-controller:$(VERSION) radius deploy/Chart -n radius-system
 
 controller-undeploy: generate-k8s-manifests ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	helm uninstall radius
