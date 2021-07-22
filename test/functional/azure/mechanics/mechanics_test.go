@@ -42,7 +42,6 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
 						validation.NewK8sObjectForComponent(application, "a"),
-						validation.NewK8sObjectForComponent(application, "b"),
 					},
 				},
 			},

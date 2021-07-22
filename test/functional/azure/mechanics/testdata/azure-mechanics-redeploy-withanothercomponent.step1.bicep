@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'azure-mechanics-redeploy-withantothercomponent'
+  name: 'azure-mechanics-redeploy-withanothercomponent'
 
   resource a 'Components' = {
     name: 'a'
