@@ -498,8 +498,17 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 
 		// Update components to track output resources created during deployment
 		for c, action := range actions {
-			logger.Info(fmt.Sprintf("Updating component with %v output resources", len(action.Definition.Properties.OutputResources)))
-			a.Components[c] = *action.Definition
+			if action.Operation == deployment.DeleteWorkload {
+				// clear out deployment resources since the component was undeployed
+				definition := a.Components[c]
+				definition.Properties.OutputResources = nil
+				a.Components[c] = definition
+			} else if action.Operation != deployment.None {
+				// if the component was updated or created add its resources
+				logger.Info(fmt.Sprintf("Updating component with %v output resources", len(action.Definition.Properties.OutputResources)))
+				a.Components[c] = *action.Definition
+			}
+
 		}
 
 		logger.Info("Updating application")

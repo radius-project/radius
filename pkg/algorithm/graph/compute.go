@@ -45,7 +45,7 @@ func ComputeDependencyGraph(items []DependencyItem) (DependencyGraph, error) {
 		return DependencyGraph{}, fmt.Errorf("the dependency graph has references to the following missing items %s", strings.Join(names, ", "))
 	}
 
-	return DependencyGraph{setsByKey: setsByKey}, nil
+	return DependencyGraph{items: items, setsByKey: setsByKey}, nil
 }
 
 func (dg DependencyGraph) Order() ([]DependencyItem, error) {
@@ -56,8 +56,9 @@ func (dg DependencyGraph) Order() ([]DependencyItem, error) {
 	// Used to store ordered items
 	ordered := []DependencyItem{}
 
-	// Starting point doesn't really matter.
-	for _, set := range dg.setsByKey {
+	// Starting point doesn't really matter, use original list of items for stable ordering behavior.
+	for _, item := range dg.items {
+		set := dg.setsByKey[item.Key()]
 		err := ensureInDependencyOrder(set, members, &ordered)
 		if err != nil {
 			return nil, err

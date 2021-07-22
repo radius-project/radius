@@ -58,6 +58,10 @@ func (action ComponentAction) Key() string {
 }
 
 func (action ComponentAction) GetDependencies() []string {
+	if action.Component == nil {
+		return []string{}
+	}
+
 	dependencies := []string{}
 	for _, dependency := range action.Component.Uses {
 		if dependency.Binding.Kind == components.KindStatic {
