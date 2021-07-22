@@ -159,9 +159,6 @@ func NewTestOptions(t *testing.T) TestOptions {
 	config, err := rad.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
-	// env, err := rad.GetEnvironment(config, "")
-	// require.NoError(t, err, "failed to read default environment")
-
 	k8s, err := utils.GetKubernetesClient()
 	require.NoError(t, err, "failed to create kubernetes client")
 
@@ -264,7 +261,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
+
 				// TODO: create k8s client for validating output resources
+				// Will be done by https://github.com/Azure/radius/issues/760
 				// validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.Components)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
