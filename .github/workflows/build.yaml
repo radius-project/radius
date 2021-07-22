@@ -192,9 +192,7 @@ jobs:
     - name: Deploy Controller
       run: make controller-deploy-existing
     - name: Run Kubernetes tests
-      run: make test-controller
-    - name: Run Kubernetes tests
-      run: make test-controller
+      run: make test-functional-kubernetes
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
