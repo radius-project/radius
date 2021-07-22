@@ -17,8 +17,7 @@ test-functional-azure: ## Runs Azure functional tests
 	go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20
 	
 test-functional-kubernetes: generate-k8s-manifests generate-controller controller-install## Runs controller tests, note arm64 version not available.
-	go test ./test/controllertests/...
-
+	go test ./test/functional/kubernetes/...
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.19.2
