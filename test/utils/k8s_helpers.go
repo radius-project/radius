@@ -11,11 +11,24 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 // GetKubernetesClient returns a kubernetes client
 func GetKubernetesClient() (*kubernetes.Clientset, error) {
+	config, err := GetKubeConfig()
+	if err != nil {
+		return nil, err
+	}
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return k8sClient, nil
+}
+
+func GetKubeConfig() (*rest.Config, error) {
 	home, err := homedir.Dir()
 	if err != nil {
 		return nil, fmt.Errorf("no HOME directory, cannot find kubeconfig: %w", err)
@@ -26,9 +39,5 @@ func GetKubernetesClient() (*kubernetes.Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	k8sClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return k8sClient, nil
+	return config, nil
 }

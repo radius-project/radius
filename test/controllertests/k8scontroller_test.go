@@ -9,16 +9,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
+
+	// "sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
@@ -39,22 +38,6 @@ func TestK8sController(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
-	assetsDirectory := os.Getenv("KUBEBUILDER_ASSETS")
-
-	if assetsDirectory == "" {
-		// run setup-envtest to get the path to binary assets
-		var err error
-		assetsDirectory, err = getEnvTestBinaryPath()
-		require.NoError(t, err, "failed to call setup-envtest to find path")
-	}
-
-	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "deploy", "Chart", "crds")},
-		ErrorIfCRDPathMissing:    true,
-		AttachControlPlaneOutput: true,
-		BinaryAssetsDirectory:    assetsDirectory,
-	}
-
 	scheme := runtime.NewScheme()
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -64,19 +47,13 @@ func TestK8sController(t *testing.T) {
 	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, controllers.ConvertComponentToInternal)
 	require.NoError(t, err, "failed to add conversion func")
 
-	cfg, err := testEnv.Start()
-	require.NoError(t, err, "failed to initialize environment")
-	require.NotNil(t, cfg, "failed to initialize environment")
-
-	defer func() {
-		err := testEnv.Stop()
-		require.NoError(t, err, "failed to clean up resources")
-	}()
-
 	err = radiusv1alpha1.AddToScheme(scheme)
 	require.NoError(t, err, "could not add scheme")
 
 	//+kubebuilder:scaffold:scheme
+
+	cfg, err := utils.GetKubeConfig()
+	require.NoError(t, err, "could not add scheme")
 
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
 	require.NoError(t, err, "failed to initialize k8s client")
