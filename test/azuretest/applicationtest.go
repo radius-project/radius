@@ -70,7 +70,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
-	// This runs each application deploment step as a nested test, with the cleanup as part of the surrounding test.
+	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
 	// This way we can catch deletion failures and report them as test failures.
 
 	// Each of our tests are isolated to a single application, so they can run in parallel.

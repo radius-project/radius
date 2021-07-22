@@ -168,10 +168,12 @@ jobs:
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz --force
   kubernetes_tests:
     name: Run Kubernetes tests
+    needs: [ 'build', 'images' ]
     if: startsWith(github.ref, 'refs/pull/') # run on PR 
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
+      REL_CONTAINERREGISTRY : radius.azurecr.io
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -184,6 +186,8 @@ jobs:
       with:
         cluster_name: radius-kind
         version:  v0.11.0
+    - name: Deploy Controller
+      run: make controller-deploy-existing
     - name: Run Kubernetes tests
       run: make test-controller
   deploy_tests: 
