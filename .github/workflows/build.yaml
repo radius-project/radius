@@ -55,9 +55,6 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm'
         run: make test
-      - name: Run make test-controller (controller tests)
-        if: matrix.target_arch != 'arm' && matrix.target_os != 'windows'
-        run: make test-controller
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:
@@ -169,7 +166,26 @@ jobs:
       - name: Push helm chart to ACR
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz --force
-
+  kubernetes_tests:
+    name: Run Kubernetes tests
+    if: startsWith(github.ref, 'refs/pull/') # run on PR 
+    runs-on: ubuntu-latest
+    env:
+      GOVER: '^1.16.0'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Go ${{ env.GOVER }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GOVER }}
+    - name: Create KinD Cluster
+      uses: helm/kind-action@v1.0.0
+      with:
+        cluster_name: radius-kind
+        version:  v1.19.11
+    - name: Run Kubernetes tests
+      run: make test-controller
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
