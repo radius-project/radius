@@ -12,12 +12,14 @@ import (
 	"path/filepath"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func ReadKubeConfig() (*api.Config, error) {
@@ -62,6 +64,20 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 	}
 
 	return client, merged, err
+}
+
+func CreateRuntimeClient(context string, scheme *runtime.Scheme) (client.Client, error) {
+	merged, err := getConfig(context)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := client.New(merged, client.Options{Scheme: scheme})
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 func CreateNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {

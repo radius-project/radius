@@ -47,7 +47,7 @@ func showDeployment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	deploymentResource, err := client.ShowDeployment(cmd.Context(), deploymentName, applicationName)
+	deploymentResource, err := client.ShowDeployment(cmd.Context(), applicationName, deploymentName)
 	if err != nil {
 		return err
 	}

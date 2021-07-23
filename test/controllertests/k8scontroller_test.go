@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
@@ -134,7 +135,7 @@ func TestK8sController(t *testing.T) {
 					Name:      "radius-frontend-backend",
 					Namespace: "frontend-backend",
 					Annotations: map[string]string{
-						"radius.dev/applications": "frontend-backend",
+						keys.AnnotationsApplication: "frontend-backend",
 					},
 				},
 				Spec: radiusv1alpha1.ApplicationSpec{
@@ -151,8 +152,8 @@ func TestK8sController(t *testing.T) {
 						Name:      "frontend",
 						Namespace: "frontend-backend",
 						Annotations: map[string]string{
-							"radius.dev/applications": "frontend-backend",
-							"radius.dev/components":   "frontend",
+							keys.AnnotationsApplication: "frontend-backend",
+							keys.AnnotationsComponent:   "frontend",
 						},
 					},
 					Spec: TestComponentSpec{
@@ -188,8 +189,8 @@ func TestK8sController(t *testing.T) {
 						Name:      "backend",
 						Namespace: "frontend-backend",
 						Annotations: map[string]string{
-							"radius.dev/applications": "frontend-backend",
-							"radius.dev/components":   "backend",
+							keys.AnnotationsApplication: "frontend-backend",
+							keys.AnnotationsComponent:   "backend",
 						},
 					},
 					Spec: TestComponentSpec{

@@ -65,3 +65,15 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		Namespace:  e.Namespace,
 	}, nil
 }
+
+func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubernetes.KubernetesManagementClient{
+		Client:    client,
+		Namespace: e.Namespace,
+	}, nil
+}
