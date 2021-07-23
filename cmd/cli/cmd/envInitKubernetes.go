@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/pkg/rad/logger"
 	"github.com/Azure/radius/pkg/rad/prompt"
+	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -35,11 +36,6 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			return err
-		}
-
-		version, err := cmd.Flags().GetString("version")
 		if err != nil {
 			return err
 		}
@@ -82,7 +78,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = helm.ApplyRadiusHelmChart(version)
+		err = helm.ApplyRadiusHelmChart(version.NewVersionInfo().Channel)
 		if err != nil {
 			return err
 		}
@@ -123,5 +119,4 @@ func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
-	envInitKubernetesCmd.Flags().StringP("version", "v", "", "The version of the Radius runtime to install, for example: 0.3.0, defaults to the latest version")
 }

@@ -1,1 +1,1 @@
-container: radius.azurecr.io/radius-controller:latest
+container: radius.azurecr.io/radius-controller:latest # This value should be overwritten by CI builds of the helm chart.
