@@ -33,14 +33,14 @@ endef
 DOCKER_IMAGES := radius-rp radius-controller
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile)))
 
-# guineapig comes from our test directory.
-$(eval $(call generateDockerTargets,guineapig,./test/guineapig/,./test/guineapig/Dockerfile))
+# magpie comes from our test directory.
+$(eval $(call generateDockerTargets,magpie,./test/magpie/,./test/magpie/Dockerfile))
 
 # list of 'outputs' to build all images
-DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-guineapig
+DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-magpie
 
 # list of 'outputs' to push all images
-DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE)) docker-push-guineapig
+DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE)) docker-push-magpie
 
 .PHONY: docker-build
 docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.

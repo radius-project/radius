@@ -7,7 +7,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'radius.azurecr.io/guineapig'
+          image: 'radius.azurecr.io/magpie:latest'
         }
       }
     }
@@ -19,7 +19,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'radius.azurecr.io/guineapig'
+          image: 'radius.azurecr.io/magpie:latest'
         }
       }
     }
