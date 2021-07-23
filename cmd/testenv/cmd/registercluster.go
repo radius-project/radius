@@ -60,6 +60,6 @@ var registerClusterCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(registerClusterCmd)
 	registerClusterCmd.Flags().StringP("configpath", "t", "", "specifies location to write config")
-	registerClusterCmd.Flags().StringP("clustername", "cn", "", "specifies the kubernetes clustername")
+	registerClusterCmd.Flags().StringP("clustername", "c", "", "specifies the kubernetes clustername")
 	registerClusterCmd.Flags().StringP("namespace", "n", "", "specifies the namespace for the environment")
 }
