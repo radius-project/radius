@@ -197,7 +197,7 @@ jobs:
     - name: Create KinD Cluster
       uses: helm/kind-action@v1.0.0
       with:
-        cluster_name: radius-kind
+        cluster_name: radius
         version:  v0.11.0
     - name: Update rad env with Kubernetes
       id: reserve
@@ -206,7 +206,7 @@ jobs:
         go run cmd/testenv/main.go \
           registercluster \
           --configpath ~/.rad/config.yaml \
-          --clustername radius-kind \
+          --clustername kind-radius \
           --namespace default \
         # Print config for sanity check
         cat ~/.rad/config.yaml
