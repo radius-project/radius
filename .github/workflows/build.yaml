@@ -147,21 +147,29 @@ jobs:
         uses: Azure/setup-helm@v1
         with:
           version: latest
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
       - name: Package Helm chart
         env:
           HELM_CHARTS_DIR: deploy/Chart
         run: |
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
           helm package ${{ env.HELM_CHARTS_DIR }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+      - name: Validate correct version of helm chart is set # To make sure the helm chart version matches the release version.
+        # if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          test -f ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz
       - name: az CLI login
+        # if: startsWith(github.ref, 'refs/tags/v')
         run: |
           az login --service-principal \
             --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
             --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
             --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
       - name: Push helm chart to ACR
+        # if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-0.4.0.tgz
+          az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz --force
 
   deploy_tests: 
     name: Run deployment tests
