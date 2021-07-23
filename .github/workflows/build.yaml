@@ -202,7 +202,9 @@ jobs:
     - name: Deploy Controller
       run: make controller-deploy-existing
     - name: Run Kubernetes tests
-      run: make test-functional-kubernetes
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        make test-functional-kubernetes
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
