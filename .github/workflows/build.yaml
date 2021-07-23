@@ -199,6 +199,19 @@ jobs:
       with:
         cluster_name: radius-kind
         version:  v0.11.0
+    - name: Update rad env with Kubernetes
+      id: reserve
+      run: |
+        mkdir ~/.rad
+        go run cmd/testenv/main.go \
+          registercluster \
+          --configpath ~/.rad/config.yaml \
+          --clustername radius-kind \
+          --namespace default \
+        # Print config for sanity check
+        cat ~/.rad/config.yaml
+        # Output environment name
+        echo "::set-output name=environment::$(cat ~/.rad/config.yaml | sed -n 's/.*default: \(.*\)/\1/p')"
     - name: Deploy Controller
       run: make controller-deploy-existing
     - name: Run Kubernetes tests
