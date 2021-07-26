@@ -1,1 +1,3 @@
-container: radius.azurecr.io/radius-controller:latest # This value should be overwritten by CI builds of the helm chart.
+global:
+  container: radius.azurecr.io/radius-controller
+  tag: latest # Tag for radius-controller image, include patch version updates.

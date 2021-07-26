@@ -156,7 +156,7 @@ jobs:
           HELM_CHARTS_DIR: deploy/Chart
         run: |
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
-          helm package ${{ env.HELM_CHARTS_DIR }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }} --set container=${{ env.REGISTRY }}/radius-controller:${{ env.REL_VERSION }}
+          helm package ${{ env.HELM_CHARTS_DIR }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
       - name: Validate correct version of helm chart is set # To make sure the helm chart version matches the release version.
         run: |
           test -f ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-0.4.0.tgz
