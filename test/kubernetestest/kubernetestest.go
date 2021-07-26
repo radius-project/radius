@@ -235,7 +235,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
 
-	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
+	// cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
@@ -287,37 +287,5 @@ func (at ApplicationTest) Test(t *testing.T) {
 			}
 		})
 	}
-
-	t.Logf("beginning cleanup phase of %s", at.Description)
-
-	// Cleanup code here will run regardless of pass/fail of subtests
-	t.Logf("deleting %s", at.Description)
-	err := cli.ApplicationDelete(ctx, at.Application)
-	require.NoErrorf(t, err, "failed to delete %s", at.Description)
-	t.Logf("finished deleting %s", at.Description)
-
-	// We run the validation code based on the final step
-	last := at.Steps[len(at.Steps)-1]
-
-	// We don't need to validate the components because they are already gone.
-
-	if last.SkipPods {
-		t.Logf("skipping validation of pods...")
-	} else {
-		t.Logf("validating deletion of pods for %s", at.Description)
-		for _, ns := range at.CollectAllNamespaces() {
-			validation.ValidateNoPodsInNamespace(ctx, t, at.Options.K8sClient, ns)
-		}
-		t.Logf("finished deletion of pods for %s", at.Description)
-	}
-
-	// Custom verification is expected to use `t` to trigger its own assertions
-	if at.PostDeleteVerify != nil {
-		t.Logf("running post-delete verification for %s", at.Description)
-		at.PostDeleteVerify(ctx, t, at)
-		t.Logf("finished post-delete verification for %s", at.Description)
-	}
-
-	t.Logf("finished cleanup phase of %s", at.Description)
-
+	// TODO cleanup
 }

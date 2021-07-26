@@ -41,7 +41,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 			},
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					application: {
+					"default": {
 						validation.NewK8sObjectForComponent(application, "frontend"),
 						validation.NewK8sObjectForComponent(application, "backend"),
 					},
