@@ -6,8 +6,8 @@
 package graph
 
 type DependencyGraph struct {
-	// We store the original slice of items so we can iterate in a stable order
-	items     []DependencyItem
+	// We store the keys in sorted order so that our operations are deterministic.
+	keys      []string
 	setsByKey map[string]set
 }
 

@@ -46,9 +46,9 @@ func Test_DeploymentProcessor_OrderActions(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := []ComponentAction{
-		actions["B"],
 		actions["C"],
 		actions["A"],
+		actions["B"],
 	}
 
 	require.Equal(t, expected, ordered)
