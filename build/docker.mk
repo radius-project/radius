@@ -16,8 +16,8 @@ define generateDockerTargets
 .PHONY: docker-build-$(1)
 docker-build-$(1):
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) from $(2)"
-	docker build . \
-		-f $(2) \
+	docker build $(2) \
+		-f $(3) \
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
 		--build-arg LDFLAGS=$(LDFLAGS) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
@@ -31,13 +31,16 @@ endef
 
 # defines a target for each image
 DOCKER_IMAGES := radius-rp radius-controller
-$(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),./deploy/images/$(IMAGE)/Dockerfile)))
+$(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile)))
+
+# magpie comes from our test directory.
+$(eval $(call generateDockerTargets,magpie,./test/magpie/,./test/magpie/Dockerfile))
 
 # list of 'outputs' to build all images
-DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE))
+DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-magpie
 
 # list of 'outputs' to push all images
-DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE))
+DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE)) docker-push-magpie
 
 .PHONY: docker-build
 docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.

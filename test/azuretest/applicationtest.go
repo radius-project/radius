@@ -91,9 +91,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 				return
 			}
 
-			t.Logf("running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
+			t.Logf("running step %d of %d: %s", i+1, len(at.Steps), step.Executor.GetDescription())
 			step.Executor.Execute(ctx, t, at.Options)
-			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
+			t.Logf("finished running step %d of %d: %s", i+1, len(at.Steps), step.Executor.GetDescription())
 
 			if step.AzureResources == nil && step.SkipAzureResources {
 				t.Logf("skipping validation of Azure resources..")
