@@ -37,6 +37,10 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 					},
 				},
 			},
+
+			// This is currently flaky, tracked by #768
+			SkipAzureResources: true,
+
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
