@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/radrp/components"
@@ -76,8 +77,8 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 			Name:      "frontend",
 			Namespace: "default",
 			Annotations: map[string]string{
-				"radius.dev/applications": "frontend-backend",
-				"radius.dev/components":   "frontend",
+				keys.AnnotationsApplication: "frontend-backend",
+				keys.AnnotationsComponent:   "frontend",
 			},
 		},
 		Spec: v1alpha1.ComponentSpec{

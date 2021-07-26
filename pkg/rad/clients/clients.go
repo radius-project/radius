@@ -48,6 +48,6 @@ type ManagementClient interface {
 	ShowComponent(ctx context.Context, applicationName string, componentName string) (*radclient.ComponentResource, error)
 
 	ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error)
-	ShowDeployment(ctx context.Context, deploymentName string, applicationName string) (*radclient.DeploymentResource, error)
-	DeleteDeployment(ctx context.Context, deploymentName string, applicationName string) error
+	ShowDeployment(ctx context.Context, applicationName string, deploymentName string) (*radclient.DeploymentResource, error)
+	DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error
 }
