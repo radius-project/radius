@@ -14,6 +14,8 @@ endif
 
 ifeq (,$(REL_VERSION))
 	VERSION=$(DOCKER_TAG_VERSION)
+else (edge,$(REL_VERSION)) # for local dev scenarios
+	VERSION=$(DOCKER_TAG_VERSION)
 else
 	VERSION=$(REL_VERSION)
 endif
