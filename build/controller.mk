@@ -27,8 +27,8 @@ controller-install: generate-k8s-manifests  ## Install CRDs into the K8s cluster
 controller-uninstall: generate-k8s-manifests  ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	kubectl delete -f deploy/Chart/crds/
 
-create-namespace:
-	kubectl create namespace radius-system
+create-namespace: # Ignore failures from creating a namespace as it may alreadye exist.
+	-kubectl create namespace radius-system
 
 controller-deploy: generate-k8s-manifests docker-build docker-push create-namespace ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	helm upgrade --wait --install --set container=$(CONTAINERREGISTRY)/radius-controller:$(VERSION) radius deploy/Chart -n radius-system
