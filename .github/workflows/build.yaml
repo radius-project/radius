@@ -210,8 +210,6 @@ jobs:
           --namespace default \
         # Print config for sanity check
         cat ~/.rad/config.yaml
-        # Output environment name
-        echo "::set-output name=environment::$(cat ~/.rad/config.yaml | sed -n 's/.*default: \(.*\)/\1/p')"
     - name: Deploy Controller
       run: make controller-deploy-existing
     - name: Apply CRDs

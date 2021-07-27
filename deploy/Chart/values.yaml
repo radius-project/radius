@@ -1,3 +1,1 @@
-global:
-  container: radius.azurecr.io/radius-controller
-  tag: latest # Tag for radius-controller image, include patch version updates.
+container: radius.azurecr.io/radius-controller:0.4.0 # Tag for radius-controller image, include patch version updates.
