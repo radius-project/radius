@@ -22,6 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
 	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2021-03-15/documentdb"
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
+	"github.com/Azure/azure-sdk-for-go/services/redis/mgmt/2020-12-01/redis"
 	"github.com/Azure/go-autorest/autorest"
 )
 
@@ -133,6 +134,13 @@ func NewSQLResourcesClient(subscriptionID string, authorizer autorest.Authorizer
 	sqlc.Authorizer = authorizer
 	sqlc.PollingDuration = 0
 	return sqlc
+}
+
+func NewRedisClient(subscriptionID string, authorizer autorest.Authorizer) redis.Client {
+	rc := redis.NewClient(subscriptionID)
+	rc.Authorizer = authorizer
+	rc.PollingDuration = 0
+	return rc
 }
 
 func NewVaultsClient(subscriptionID string, authorizer autorest.Authorizer) keyvault.VaultsClient {
