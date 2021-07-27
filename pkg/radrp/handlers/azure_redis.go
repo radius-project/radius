@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/redis/mgmt/2018-03-01/redis"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 )
 
@@ -36,8 +37,11 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options PutOptions) (
 		return nil, fmt.Errorf("missing required property '%s'", AzureRedisNameKey)
 	}
 
-	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
-	rc.Create(ctx, handler.arm.ResourceGroup, redisName, redis.CreateParameters{})
+	_, err := handler.CreateRedis(ctx, redisName)
+	if err != nil {
+		return nil, err
+	}
+
 	return properties, nil
 }
 
@@ -48,10 +52,49 @@ func (handler *azureRedisHandler) Delete(ctx context.Context, options DeleteOpti
 		return nil
 	}
 
-	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
-	_, err := rc.Delete(ctx, handler.arm.ResourceGroup, properties[AzureRedisNameKey])
+	err := handler.DeleteRedis(ctx, properties[AzureRedisNameKey])
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (handler *azureRedisHandler) CreateRedis(ctx context.Context, redisName string) (*redis.ResourceType, error) {
+	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	createFuture, err := rc.Create(ctx, handler.arm.ResourceGroup, redisName, redis.CreateParameters{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create redis: %w", err)
+	}
+
+	err = createFuture.WaitForCompletionRef(ctx, rc.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
+	}
+
+	resourceType, err := createFuture.Result(rc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create/update cosmosdb database: %w", err)
+	}
+
+	return &resourceType, nil
+}
+
+func (handler *azureRedisHandler) DeleteRedis(ctx context.Context, redisName string) error {
+	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
+
+	deletefuture, err := rc.Delete(ctx, handler.arm.ResourceGroup, redisName)
+	if err != nil && deletefuture.Response().StatusCode != 404 {
+		return fmt.Errorf("failed to delete Redis: %w", err)
+	}
+	err = deletefuture.WaitForCompletionRef(ctx, rc.Client)
+	if err != nil && !util.IsAutorest404Error(err) {
+		return fmt.Errorf("failed to delete Redis: %w", err)
+	}
+
+	response, err := deletefuture.Result(rc)
+	if err != nil && response.StatusCode != 404 {
+		return fmt.Errorf("failed to delete Redis: %w", err)
 	}
 
 	return nil
