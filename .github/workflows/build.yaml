@@ -203,11 +203,7 @@ jobs:
       id: reserve
       run: |
         mkdir ~/.rad
-        go run cmd/testenv/main.go \
-          registercluster \
-          --configpath ~/.rad/config.yaml \
-          --clustername kind-radius \
-          --namespace default \
+        rad env init kubernetes
         # Print config for sanity check
         cat ~/.rad/config.yaml
     - name: Deploy Controller

@@ -65,23 +65,9 @@ func ApplyRadiusHelmChart(version string) error {
 			return fmt.Errorf("failed to run helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	} else if err == nil {
-		logger.LogInfo("Found existing Radius Kubernetes environment, upgrading")
-
-		err = runRadiusHelmUpgrade(helmConf, radiusChart)
-
-		if err != nil {
-			return fmt.Errorf("failed to run helm upgrade, err: %w, helm output: %s", err, helmOutput.String())
-		}
+		logger.LogInfo("Found existing Radius Kubernetes environment")
 	}
 
-	return err
-}
-
-func runRadiusHelmUpgrade(helmConf *helm.Configuration, radiusChart *chart.Chart) error {
-	upgradeClient := helm.NewUpgrade(helmConf)
-	upgradeClient.Namespace = RadiusSystemNamespace
-
-	_, err := upgradeClient.Run(radiusReleaseName, radiusChart, radiusChart.Values)
 	return err
 }
 
