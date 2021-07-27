@@ -156,7 +156,10 @@ func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.
 
 	for _, item := range components.Items {
 		if item.Annotations[keys.AnnotationsApplication] == applicationName {
-			mc.Client.Delete(ctx, &item, &client.DeleteOptions{})
+			err = mc.Client.Delete(ctx, &item, &client.DeleteOptions{})
+			if err != nil {
+				return err
+			}
 		}
 	}
 
