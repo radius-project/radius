@@ -137,7 +137,7 @@ func radiusChart(version string, config *helm.Configuration) (*chart.Chart, erro
 	pull.Settings = &cli.EnvSettings{}
 
 	// If version isn't set, it will use the latest version.
-	if version != "" {
+	if version != "" && version != "edge" {
 		pull.Version = version
 	}
 

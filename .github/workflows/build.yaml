@@ -133,6 +133,42 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ matrix.registry }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+  helm:
+    name: Helm chart build
+    needs: ['images']
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    env:
+      ARTIFACT_DIR: ./dist/Charts
+      HELM_PACKAGE_DIR: helm
+      REGISTRY: radius.azurecr.io
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install helm
+        uses: Azure/setup-helm@v1
+        with:
+          version: latest
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+      - name: Package Helm chart
+        env:
+          HELM_CHARTS_DIR: deploy/Chart
+        run: |
+          mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+          helm package ${{ env.HELM_CHARTS_DIR }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+      - name: Validate correct version of helm chart is set # To make sure the helm chart version matches the release version.
+        run: |
+          test -f ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz
+      - name: az CLI login
+        run: |
+          az login --service-principal \
+            --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+            --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+            --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+      - name: Push helm chart to ACR
+        run: |
+          az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz --force
 
   deploy_tests: 
     name: Run deployment tests
