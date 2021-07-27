@@ -7,17 +7,11 @@ package kubernetestest
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-
-	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/test/radcli"
@@ -26,108 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	k8s "k8s.io/client-go/kubernetes"
 )
-
-type Row struct {
-	Application *radiusv1alpha1.Application
-	Components  *[]TestComponent
-	Description string
-	Pods        validation.K8sObjectSet
-}
-
-func (r Row) GetComponents() (*[]radiusv1alpha1.Component, error) {
-	var components []radiusv1alpha1.Component
-
-	for _, testComponent := range *r.Components {
-		component, err := testComponent.GetComponent()
-		if err != nil {
-			return nil, err
-		}
-		components = append(components, component)
-	}
-
-	return &components, nil
-}
-
-// A test only representation of a component, making it easier
-// to write input for (don't need to muck with RawExtension for json)
-type TestComponent struct {
-	TypeMeta   metav1.TypeMeta
-	ObjectMeta metav1.ObjectMeta
-	Spec       TestComponentSpec
-}
-
-type TestComponentSpec struct {
-	Kind      string
-	Hierarchy []string
-	Run       map[string]interface{}
-	Bindings  map[string]interface{}
-	Config    map[string]interface{}
-	Uses      []map[string]interface{}
-	Traits    []map[string]interface{}
-}
-
-func (tc TestComponent) GetComponent() (radiusv1alpha1.Component, error) {
-	// handle defaults
-	if tc.Spec.Run == nil {
-		tc.Spec.Run = map[string]interface{}{}
-	}
-	if tc.Spec.Bindings == nil {
-		tc.Spec.Bindings = map[string]interface{}{}
-	}
-	if tc.Spec.Config == nil {
-		tc.Spec.Config = map[string]interface{}{}
-	}
-	if tc.Spec.Uses == nil {
-		tc.Spec.Uses = []map[string]interface{}{}
-	}
-
-	bindingJson, err := json.Marshal(tc.Spec.Bindings)
-	if err != nil {
-		return radiusv1alpha1.Component{}, err
-	}
-	runJson, err := json.Marshal(tc.Spec.Run)
-	if err != nil {
-		return radiusv1alpha1.Component{}, err
-	}
-
-	uses := []runtime.RawExtension{}
-
-	for _, use := range tc.Spec.Uses {
-		useJson, err := json.Marshal(use)
-		if err != nil {
-			return radiusv1alpha1.Component{}, err
-		}
-		uses = append(uses, runtime.RawExtension{Raw: useJson})
-	}
-
-	traits := []runtime.RawExtension{}
-	for _, trait := range tc.Spec.Traits {
-		traitJson, err := json.Marshal(trait)
-		if err != nil {
-			return radiusv1alpha1.Component{}, err
-		}
-		traits = append(traits, runtime.RawExtension{Raw: traitJson})
-	}
-
-	configJson, err := json.Marshal(tc.Spec.Config)
-	if err != nil {
-		return radiusv1alpha1.Component{}, err
-	}
-	return v1alpha1.Component{
-		TypeMeta:   tc.TypeMeta,
-		ObjectMeta: tc.ObjectMeta,
-		Spec: v1alpha1.ComponentSpec{
-			Kind:      tc.Spec.Kind,
-			Run:       &runtime.RawExtension{Raw: runJson},
-			Bindings:  runtime.RawExtension{Raw: bindingJson},
-			Hierarchy: tc.Spec.Hierarchy,
-			Uses:      &uses,
-			Traits:    &traits,
-			Config:    &runtime.RawExtension{Raw: configJson},
-		},
-	}, nil
-
-}
 
 type Step struct {
 	Executor       StepExecutor
@@ -267,7 +159,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
 
 				// TODO: create k8s client for validating output resources
-				// Will be done by https://github.com/Azure/radius/issues/760
+				// https://github.com/Azure/radius/issues/778
 				// validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.Components)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}

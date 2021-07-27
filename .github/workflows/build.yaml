@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
-      REL_CONTAINERREGISTRY : radius.azurecr.io
+      DOCKER_REGISTRY: radius.azurecr.io
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -214,10 +214,14 @@ jobs:
         echo "::set-output name=environment::$(cat ~/.rad/config.yaml | sed -n 's/.*default: \(.*\)/\1/p')"
     - name: Deploy Controller
       run: make controller-deploy-existing
-    - name: Run Kubernetes tests
+    - name: Apply CRDs
+      run: make controller-crd-install
+    - name: Run Kubernetes tests (PR)
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         make test-functional-kubernetes
+      env:
+        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
