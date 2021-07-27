@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/test/radcli"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
@@ -159,7 +160,10 @@ func NewTestOptions(t *testing.T) TestOptions {
 	config, err := rad.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
-	k8s, err := utils.GetKubernetesClient()
+	k8sconfig, err := kubernetes.ReadKubeConfig()
+	require.NoError(t, err, "failed to read k8s config")
+
+	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	return TestOptions{

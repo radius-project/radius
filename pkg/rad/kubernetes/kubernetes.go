@@ -39,7 +39,7 @@ func ReadKubeConfig() (*api.Config, error) {
 }
 
 func CreateDynamicClient(context string) (dynamic.Interface, error) {
-	merged, err := getConfig(context)
+	merged, err := GetConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func CreateDynamicClient(context string) (dynamic.Interface, error) {
 }
 
 func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
-	merged, err := getConfig(context)
+	merged, err := GetConfig(context)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,7 +67,7 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 }
 
 func CreateRuntimeClient(context string, scheme *runtime.Scheme) (client.Client, error) {
-	merged, err := getConfig(context)
+	merged, err := GetConfig(context)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func CreateNamespace(ctx context.Context, client *k8s.Clientset, namespace strin
 	return nil
 }
 
-func getConfig(context string) (*rest.Config, error) {
+func GetConfig(context string) (*rest.Config, error) {
 	config, err := ReadKubeConfig()
 	if err != nil {
 		return nil, err
