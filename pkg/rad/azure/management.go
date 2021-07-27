@@ -78,7 +78,7 @@ func (dm *ARMManagementClient) ShowComponent(ctx context.Context, applicationNam
 	return response.ComponentResource, err
 }
 
-func (dm *ARMManagementClient) DeleteDeployment(ctx context.Context, deploymentName string, applicationName string) error {
+func (dm *ARMManagementClient) DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error {
 	dc := radclient.NewDeploymentClient(dm.Connection, dm.SubscriptionID)
 	poller, err := dc.BeginDelete(ctx, dm.ResourceGroup, applicationName, deploymentName, nil)
 	if err != nil {
