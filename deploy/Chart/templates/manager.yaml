@@ -36,7 +36,7 @@ spec:
         env:
         - name: SKIP_WEBHOOKS
           value: "true"
-        image: {{ .Values.container }}
+        image: {{ .Values.container }}:{{ .Values.tag }}
         livenessProbe:
           httpGet:
             path: /healthz

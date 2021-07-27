@@ -20,7 +20,7 @@ create-namespace: # Ignore failures from creating a namespace as it may alreadye
 controller-deploy: docker-build docker-push controller-deploy-existing ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	
 controller-deploy-existing: generate-k8s-manifests create-namespace ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	helm upgrade --wait --install --set container=$(DOCKER_REGISTRY)/radius-controller:$(DOCKER_TAG_VERSION) radius deploy/Chart -n radius-system
+	helm upgrade --wait --install --set container=$(DOCKER_REGISTRY)/radius-controller --set tag=$(DOCKER_TAG_VERSION) radius deploy/Chart -n radius-system
 
 controller-undeploy: generate-k8s-manifests ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	helm uninstall radius
