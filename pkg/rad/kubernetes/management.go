@@ -93,7 +93,8 @@ func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, app
 				return err
 			}
 
-			return nil
+			err = mc.deleteComponentsInApplication(ctx, applicationName)
+			return err
 		}
 	}
 
@@ -144,6 +145,22 @@ func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applica
 	}
 
 	return nil, fmt.Errorf("component %s was not found", componentName)
+}
+
+func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.Context, applicationName string) error {
+	components := radiusv1alpha1.ComponentList{}
+	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
+	if err != nil {
+		return err
+	}
+
+	for _, item := range components.Items {
+		if item.Annotations[keys.AnnotationsApplication] == applicationName {
+			mc.Client.Delete(ctx, &item, &client.DeleteOptions{})
+		}
+	}
+
+	return nil
 }
 
 func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error {
