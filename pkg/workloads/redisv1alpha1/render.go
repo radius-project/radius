@@ -14,17 +14,20 @@ import (
 )
 
 type Renderer struct {
-	// Arm armauth.ArmConfig
+	Redis map[string]func(workloads.InstantiatedWorkload, RedisComponent) ([]workloads.OutputResource, error)
 }
 
-var SupportedAzureRedisKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error){
-	"any":         GetDaprStateStoreAzureStorage,
-	"azure.redis": GetDaprStateStoreSQLServer,
+// TODO how do we decide names here.
+var SupportedAzureRedisKindValues = map[string]func(workloads.InstantiatedWorkload, RedisComponent) ([]workloads.OutputResource, error){
+	"any":         GetAzureRedis,
+	"redis":       GetAzureRedis,
+	"azure.redis": GetAzureRedis,
 }
 
-var SupportedKubernetesRedisKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error){
-	"any":   GetDaprStateStoreKubernetesRedis,
-	"redis": GetDaprStateStoreKubernetesRedis,
+var SupportedKubernetesRedisKindValues = map[string]func(workloads.InstantiatedWorkload, RedisComponent) ([]workloads.OutputResource, error){
+	"any":              GetKubernetesRedis,
+	"redis":            GetKubernetesRedis,
+	"kubernetes.redis": GetKubernetesRedis,
 }
 
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {

@@ -15,12 +15,21 @@ func GetAzureRedis(w workloads.InstantiatedWorkload, component RedisComponent) (
 	if component.Config.Managed {
 		resource := workloads.OutputResource{
 			LocalID:            workloads.LocalIDAzureRedis,
+<<<<<<< HEAD
 			ResourceKind:       workloads.KindAzureRedis,
 			OutputResourceType: workloads.OutputResourceTypeArm,
 			Managed:            true,
 			Resource: map[string]string{
 				handlers.ManagedKey:    "true",
 				handlers.RedisBaseName: w.Workload.Name,
+=======
+			ResourceKind:       workloads.ResourceKindAzureRedis,
+			OutputResourceType: workloads.OutputResourceTypeArm,
+			Managed:            true,
+			Resource: map[string]string{
+				handlers.ManagedKey:        "true",
+				handlers.AzureRedisNameKey: component.Config.Name,
+>>>>>>> ae02a78 (Refactor for k8s and azure)
 			},
 		}
 		return []workloads.OutputResource{resource}, nil
