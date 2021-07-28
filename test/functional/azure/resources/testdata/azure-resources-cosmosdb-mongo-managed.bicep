@@ -7,14 +7,14 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'rynowak/node-todo:latest'
+          image: 'radius.azurecr.io/magpie:latest'
         }
       }
       uses: [
         {
           binding: db.properties.bindings.mongo
           env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
+            BINDING_MONGODB_CONNECTIONSTRING: db.properties.bindings.mongo.connectionString
           }
         }
       ]

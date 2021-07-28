@@ -1,56 +1,29 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
   name: 'azure-resources-dapr-pubsub-servicebus-managed'
 
-  resource nodesubscriber 'Components' = {
-    name: 'nodesubscriber'
+  resource publisher 'Components' = {
+    name: 'publisher'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {
       run: {
         container: {
-          image: 'radiusteam/dapr-pubsub-nodesubscriber:latest'
+          image: 'radius.azurecr.io/magpie:latest'
         }
       }
       uses: [
         {
           binding: pubsub.properties.bindings.default
           env: {
-            SB_PUBSUBNAME: pubsub.properties.bindings.default.pubSubName
-            SB_TOPIC: pubsub.properties.bindings.default.topic
+            BINDING_DAPRPUBSUB_NAME: pubsub.properties.bindings.default.pubSubName
+            BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.bindings.default.topic
           }
         }
       ]
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          appId: 'nodesubscriber'
-          appPort: 50051
-        }
-      ]
-    }
-  }
-  
-  resource pythonpublisher 'Components' = {
-    name: 'pythonpublisher'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: {
-        container: {
-          image: 'radiusteam/dapr-pubsub-pythonpublisher:latest'
-        }
-      }
-      uses: [
-        {
-          binding: pubsub.properties.bindings.default
-          env: {
-            SB_PUBSUBNAME: pubsub.properties.bindings.default.pubSubName
-            SB_TOPIC: pubsub.properties.bindings.default.topic
-          }
-        }
-      ]
-      traits: [
-        {
-          kind: 'dapr.io/App@v1alpha1'
-          appId: 'pythonpublisher'
+          appId: 'publisher'
+          appPort: 3000
         }
       ]
     }

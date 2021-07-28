@@ -45,14 +45,7 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
-						ComponentName:   "nodesubscriber",
-						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
-						},
-					},
-					{
-						ApplicationName: application,
-						ComponentName:   "pythonpublisher",
+						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
@@ -69,8 +62,7 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "nodesubscriber"),
-						validation.NewK8sObjectForComponent(application, "pythonpublisher"),
+						validation.NewK8sObjectForComponent(application, "publisher"),
 					},
 				},
 			},
@@ -108,14 +100,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
-						ComponentName:   "nodesubscriber",
-						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
-						},
-					},
-					{
-						ApplicationName: application,
-						ComponentName:   "pythonpublisher",
+						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
@@ -132,8 +117,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "nodesubscriber"),
-						validation.NewK8sObjectForComponent(application, "pythonpublisher"),
+						validation.NewK8sObjectForComponent(application, "publisher"),
 					},
 				},
 			},

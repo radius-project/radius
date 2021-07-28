@@ -17,14 +17,14 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       run: {
         container: {
-          image: 'radiusteam/azure-keyvault-app:latest'
+          image: 'radius.azurecr.io/magpie:latest'
         }
       }
       uses: [
         {
           binding: kv.properties.bindings.default
           env: {
-            KV_URI: kv.properties.bindings.default.uri
+            BINDING_KEYVAULT_URI: kv.properties.bindings.default.uri
           }
         }
       ]
