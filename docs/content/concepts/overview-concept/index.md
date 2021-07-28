@@ -76,11 +76,7 @@ A Radius Application encompases all the containers, databases, and APIs within a
 
 The framework of a Radius application in Bicep would look like:
 
-```bash
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'shopping-app'
-}
-```
+{{< rad file="snippets/blank-app.bicep" embed=true >}}
 
 ### Components
 
@@ -120,25 +116,7 @@ Its up to your discretion as the user to decide which details of your software a
 
 Within the shopping app example, each node is a Radius Component. Taking a look specifically at the storefront container, it would be modeled as:
 
-```bash
-resource app 'radius.dev/Applications@v1alpha1' = {
-    name: 'shopping-app'
-
-    resource store 'Components' = {
-        name: 'storefront'
-        kind: 'radius.dev/Container@v1alpha1'
-        properties: {
-            run: {
-                container: {
-                    image: 'radiusteam/storefront'
-                }
-            }
-        }
-    }
-
-    ...
-}
-```
+{{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" >}}
 
 #### Non-Runnable Components
 
@@ -157,24 +135,7 @@ The difference between a runnable and non-runnable Component is that typically m
 
 An example of a non-runnable Radius Component is the inventory database, modeled as:
 
-```bash
-resource app 'radius.dev/Applications@v1alpha1' = {
-    name: 'shopping-app'
-    
-    ...
-
-    resource inventory 'Components' = {
-        name: 'inventorystore'
-        kind: 'dapr.io/StateStore@v1alpha1'
-        properties: {
-            config: {
-                kind: 'state.azure.tablestorage'
-                managed: true
-            }
-        }
-    }
-}
-```
+{{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
 ### Bindings
 
@@ -214,44 +175,7 @@ In addition to expressing a *logical* relationship, a Binding may provide access
 
 For example, in the Radius application below, the `webapp` Component `uses` a Binding from the Component named `db`. For that Binding, the environment variable `DBCONNECTION` is being set to the `db` Component's MongoDB connection string. 
 
-```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'cosmos-container'
-  
-  resource webapp 'Components' = {
-    name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: {...}
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 80
-        }
-      }
-
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
-          }
-        }
-      ]
-    }
-  }
-
-  resource db 'Components' = {
-    name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
-    properties: {
-      config: {
-        managed: true
-      }
-    }
-  }
-}
-```
+{{< rad file="snippets/full-app.bicep" embed=true replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}"  >}}
 
 {{% alert title="💡 Key concept" color="info" %}}
 A Binding dependency between Components *may* affect the deployment order of Components depending on the kind of binding. eg. HTTP communication between components *may* be bi-directional, so it does not affect deployment order.
@@ -346,81 +270,9 @@ Another benefit of using a trait like this is that you *also* benefit from separ
 
 #### Example
 
-The above application updated to include traits would look like:
+Here is a full example of a Radius application that uses multiple components with provided bindings, consumed bindings, and traits.
 
-```bash
-resource app 'radius.dev/Applications@v1alpha1' = {
-    name: 'shopping-app'
-
-    resource store 'Components' = {
-        name: 'storefront'
-        kind: 'radius.dev/Container@v1alpha1'
-        properties: {
-            run: {
-                container: {
-                    image: 'radiusteam/storefront'
-                }
-            }
-            bindings: {
-                web: {
-                    kind: 'http'
-                    targetPort: 80
-                }
-                invoke: {
-                    kind: 'dapr.io/Invoke'
-                }
-            }
-            uses: [
-                {
-                    binding: inventory.properties.bindings.default
-                }
-            ]
-            traits: [
-                {
-                    kind: 'dapr.io/App@v1alpha1'
-                    appId: 'storefront'
-                    appPort: 80
-                }
-            ]
-        }
-    }
-
-    resource cart 'Components' = {
-        name: 'cart-api'
-        kind: 'radius.dev/Container@v1alpha1'
-        properties: {
-            run: {
-                container: {
-                    image: 'radiusteam/cart-api'
-                }
-            }
-            uses: [
-                {
-                    binding: store.properties.bindings.invoke
-                }
-            ]
-            traits: [
-                {
-                    kind: 'dapr.io/App@v1alpha1'
-                    appId: 'cart-api'
-                }
-            ]
-        }
-    }
-
-    resource inventory 'Components' = {
-        name: 'inventorystore'
-        kind: 'dapr.io/StateStore@v1alpha1'
-        properties: {
-            config: {
-                kind: 'state.azure.tablestorage'
-                managed: true
-            }
-        }
-    }
-
-}
-```
+{{< rad file="snippets/storeapp.bicep" embed=true >}}
 
 ## More info
 
