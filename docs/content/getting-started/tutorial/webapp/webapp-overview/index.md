@@ -11,7 +11,6 @@ You will be deploying a *To-Do List* website. It will have two Radius *component
 - A containerized website written in Node.JS ("todoapp")
 - An Azure CosmosDB database ("db")
 
-
 <img src="todoapp-diagram.png" width=400 alt="Simple app diagram">
 
 ### Website frontend
@@ -21,6 +20,8 @@ The example website (`todoapp`) is a single-page-application (SPA) with a Node.J
 The website listens on port 3000 for HTTP requests. 
 
 The website uses the MongoDB protocol to read and store data in a database. The website reads the environment variable `DBCONNECTION` to discover the database connection string.
+
+#### (optional) Download the source code
 
 You can download the source code [here](/tutorial/webapp.zip) if you want to see how the frontend is built.
 

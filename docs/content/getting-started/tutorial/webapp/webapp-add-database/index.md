@@ -18,17 +18,7 @@ A `db` database component is used to specify a few properties about the database
 - **kind:** `azure.com/CosmosDBMongo@v1alpha1` represents a Cosmos DB database.
 - **managed:** `true` tells Radius to manage the lifetime of the component for you. 
 
-```sh
-  resource db 'Components' = {
-    name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
-    properties: {
-      config: {
-        managed: true
-      }
-    }
-  }
-```
+{{< rad file="snippets/app.bicep" embed=true marker="//COSMOS" >}}
 
 ## Reference db from todoapp
 
@@ -40,24 +30,7 @@ The `uses` section is used to configure relationships between a component and bi
 
 Here's what the `todoapp` component will look like with the `uses` section added within its properties:
 
-```
-  resource todoapplication 'Components' = {
-    name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: { ... }
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
-          }
-        }
-      ]
-      bindings: [ ... ]
-    }
-  }
-```
+{{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" >}}
 
 The `env` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DBCONNECTION` environment variable to access to the database connection string.
 
@@ -65,47 +38,7 @@ The `env` section declares operations to perform *based on* the relationship. In
 
 Update your `template.bicep` file to match the full application definition:
 
-```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'webapp'
-
-  resource todoapplication 'Components' = {
-    name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: {
-        container: {
-          image: 'radiusteam/tutorial-todoapp'
-        }
-      }
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
-          }
-        }
-      ]
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
-      }
-    }
-  }
-
-  resource db 'Components' = {
-    name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
-    properties: {
-      config: {
-        managed: true
-      }
-    }
-  }
-}
-```
+{{< rad file="snippets/app.bicep" download=true >}}
 
 ## Deploy application with database
 
