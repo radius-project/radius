@@ -177,7 +177,6 @@ jobs:
     env:
       GOVER: '^1.16.0'
       DOCKER_REGISTRY: radius.azurecr.io
-      DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -215,6 +214,8 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         make test-functional-kubernetes
+      env:
+        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
