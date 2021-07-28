@@ -14,8 +14,8 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 
 A `kv` secret store component is used to specify a few properties about the KeyVault: 
 
-- **kind:** `azure.com/KeyVault@v1alpha1` represents an Azure Key Vault. 
-- **managed:** `true` tells Radius to manage the lifetime of the component for you. 
+- **kind:** `azure.com/KeyVault@v1alpha1` represents an Azure Key Vault
+- **managed:** `true` tells Radius to manage the lifetime of the component for you ([more information]({{< ref "components-model#radius-managed" >}}))
 
 {{< rad file="snippets/app.bicep" embed=true marker="//KEYVAULT" >}}
 

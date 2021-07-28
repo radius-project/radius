@@ -15,8 +15,8 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add db component
 A `db` database component is used to specify a few properties about the database: 
 
-- **kind:** `azure.com/CosmosDBMongo@v1alpha1` represents a Cosmos DB database.
-- **managed:** `true` tells Radius to manage the lifetime of the component for you. 
+- **kind:** `azure.com/CosmosDBMongo@v1alpha1` represents a Cosmos DB database
+- **managed:** `true` tells Radius to manage the lifetime of the component for you ([more information]({{< ref "components-model#radius-managed" >}}))
 
 {{< rad file="snippets/app.bicep" embed=true marker="//COSMOS" >}}
 
