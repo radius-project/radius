@@ -7,8 +7,11 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/azure-sdk-for-go/services/redis/mgmt/2018-03-01/redis"
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/rad/util"
@@ -62,7 +65,40 @@ func (handler *azureRedisHandler) Delete(ctx context.Context, options DeleteOpti
 
 func (handler *azureRedisHandler) CreateRedis(ctx context.Context, redisName string) (*redis.ResourceType, error) {
 	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
-	createFuture, err := rc.Create(ctx, handler.arm.ResourceGroup, redisName, redis.CreateParameters{})
+	handler.arm.
+	//Check if name is available
+	redisType := "Microsoft.Cache/redis"
+	checkNameParams := redis.CheckNameAvailabilityParameters{
+		Name: &redisName,
+		Type: &redisType,
+	}
+
+	checkNameResult, err := rc.CheckNameAvailability(ctx, checkNameParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if checkNameResult.StatusCode != 200 {
+		log.Println("redis cache name (%s) not available: " + redisName + checkNameResult.Status)
+		return nil, errors.New("redis cache name not available")
+	}
+
+	// Basic redis SKU
+	redisSku := &redis.Sku{
+		Name:     redis.SkuName("Basic"),
+		Family:   redis.SkuFamily("C"),
+		Capacity: to.Int32Ptr(1),
+	}
+
+	createParams := redis.CreateParameters{
+		// Location: to.StringPtr(instance.Spec.Location),
+		CreateProperties: &redis.CreateProperties{
+			// EnableNonSslPort: &props.EnableNonSslPort,
+			Sku: redisSku,
+		},
+	}
+
+	createFuture, err := rc.Create(ctx, handler.arm.ResourceGroup, redisName, createParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create redis: %w", err)
 	}
