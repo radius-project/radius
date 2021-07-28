@@ -6,7 +6,7 @@
 # All of the people (and only those people) from the matching rule will be notified
 
 # Default rule: anything that doesn't match a more specific rule goes here
-* @kachawla @rynowak @vinayada1 @jkotalik
+* @kachawla @rynowak @vinayada1 @jkotalik @tcnghia
 
 # Docs rule: any PR that touches docs goes here
-/docs/ @AaronCrawfis @kachawla @rynowak @vinayada1 @emily-potyraj @jkotalik
+/docs/ @AaronCrawfis @kachawla @rynowak @vinayada1 @emily-potyraj @jkotalik @tcnghia
