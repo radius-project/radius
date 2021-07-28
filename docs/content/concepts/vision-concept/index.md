@@ -6,12 +6,7 @@ description: An overview of Project Radius long-term vision and offerings
 weight: 100
 ---
 
-- Radius is an industry standard for microservices application deployment and management
-- Radius is a community developed open-source project
-- Radius is the first-class managed application concept in Azure
-- Radius is loved by developers building applications 
-
-## Mission
+## Mission & vision
 
 {{% alert title="Project Radius mission" color="primary" %}}
 Improve developer productivity, application reliability and time to market delivery, through intelligent application model that empowers developers to easily deploy and manage applications and dependencies with a serverless experience.
@@ -19,9 +14,9 @@ Improve developer productivity, application reliability and time to market deliv
 
 This mission has the following pillars:
 
-- **Application Model**: Radius applications describe the whole application from the developer's point of view. This includes your code as well as supporting infrastructure like databases and API gateways.
-- **Portability**: Radius applications describe the requirements and intentions of the code, not the exact configuration of the infrastructure. The Radius toolset (rad, Bicep, and VS Code tools) work the same way across different hosting platforms.
-- **Intelligence**: Radius codifies and automates best-practices based on developer intentions. The Radius control plane has the intelligence to perform common operations like managing permissions and secrets.
+- **Make application composition simple**: Radius applications describe the whole application from the developer's point of view. This includes your code as well as supporting infrastructure like databases and API gateways.
+- **Enable portable apps**: Radius applications describe the requirements and intentions of the code, not the exact configuration of the infrastructure. The Radius toolset (rad, Bicep, and VS Code tools) work the same way across different hosting platforms.
+- **Differentiated developer productivity**: Radius codifies and automates best-practices based on developer intentions. The Radius control plane has the intelligence to perform common operations like managing permissions and secrets.
 
 ## Platform strategy
 
@@ -29,6 +24,6 @@ Conceptually Radius can and will support all hosting platforms, from major publi
 
 For now our focus is on delivering good support for the following platforms:
 
-- Azure cloud as a managed *application* serverless PaaS
-- Kubernetes in all flavors and form-factors
+- [Microsoft Azure]({{< ref azure-environments >}}) as a managed-application serverless PaaS
+- [Kubernetes]({{< ref kubernetes-environments >}}) in all flavors and form-factors
 - Local development with Docker as part of a developer inner-loop
