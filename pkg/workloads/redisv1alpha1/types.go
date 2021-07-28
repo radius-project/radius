@@ -22,4 +22,5 @@ type RedisComponent struct {
 type RedisConfig struct {
 	Kind    string `json:"kind"`
 	Managed bool   `json:"managed"`
+	Name    string `json:"name"`
 }

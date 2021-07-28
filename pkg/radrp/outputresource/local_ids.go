@@ -21,6 +21,7 @@ const (
 	LocalIDRoleAssignmentKVKeys          = "RoleAssignment-KVKeys"
 	LocalIDRoleAssignmentKVSecretsCerts  = "RoleAssignment-KVSecretsCerts"
 	LocalIDAADPodIdentity                = "AADPodIdentity"
+	LocalIDAzureRedis                    = "AzureRedis"
 	LocalIDAzureServiceBusTopic          = "AzureServiceBusTopic"
 	LocalIDAzureServiceBusQueue          = "AzureServiceBusQueue"
 	LocalIDAzureCosmosDBSQL              = "AzureCosmosDBSQL"
