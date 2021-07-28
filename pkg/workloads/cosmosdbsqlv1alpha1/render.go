@@ -91,9 +91,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a cosmosdb instance
 		resource := outputresource.OutputResource{
-			ResourceKind:       outputresource.KindAzureCosmosDBSQL,
-			OutputResourceType: outputresource.TypeARM,
-			LocalID:            workloads.LocalIDAzureCosmosDBSQL,
+			Kind:    outputresource.KindAzureCosmosDBSQL,
+			Type:    outputresource.TypeARM,
+			LocalID: outputresource.LocalIDAzureCosmosDBSQL,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
@@ -114,9 +114,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	resource := outputresource.OutputResource{
-		ResourceKind:       outputresource.KindAzureCosmosDBSQL,
-		OutputResourceType: outputresource.TypeARM,
-		LocalID:            workloads.LocalIDAzureCosmosDBSQL,
+		Kind:    outputresource.KindAzureCosmosDBSQL,
+		Type:    outputresource.TypeARM,
+		LocalID: outputresource.LocalIDAzureCosmosDBSQL,
 		Resource: map[string]string{
 			handlers.ManagedKey: "false",
 

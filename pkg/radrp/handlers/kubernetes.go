@@ -55,7 +55,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (
 		return nil, err
 	}
 
-	options.Resource.OutputResourceInfo = outputresource.K8sInfo{
+	options.Resource.Info = outputresource.K8sInfo{
 		Name:       item.GetName(),
 		Namespace:  item.GetNamespace(),
 		Kind:       item.GetKind(),
@@ -106,7 +106,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 }
 
 func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
-	if resource.ResourceKind != outputresource.KindKubernetes {
+	if resource.Kind != outputresource.KindKubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}
 

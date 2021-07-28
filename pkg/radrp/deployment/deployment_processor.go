@@ -230,7 +230,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					}
 				}
 
-				resourceType, err := dp.appmodel.LookupResource(resource.ResourceKind)
+				resourceType, err := dp.appmodel.LookupResource(resource.Kind)
 				if err != nil {
 					errs = append(errs, err)
 					continue
@@ -252,7 +252,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 				dr := db.DeploymentResource{
 					LocalID:    resource.LocalID,
-					Type:       resource.ResourceKind,
+					Type:       resource.Kind,
 					Properties: properties,
 				}
 				dw.Resources = append(dw.Resources, dr)
@@ -351,9 +351,9 @@ func addDBOutputResource(resource outputresource.OutputResource, dbOutputResourc
 	dbr := db.OutputResource{
 		Managed:            resource.Managed,
 		LocalID:            resource.LocalID,
-		ResourceKind:       resource.ResourceKind,
-		OutputResourceInfo: resource.OutputResourceInfo,
-		OutputResourceType: resource.OutputResourceType,
+		ResourceKind:       resource.Kind,
+		OutputResourceInfo: resource.Info,
+		OutputResourceType: resource.Type,
 		Resource:           resource.Resource,
 	}
 	*dbOutputResources = append(*dbOutputResources, dbr)
@@ -437,7 +437,7 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
 	for _, o := range resources {
-		logger.WithValues(radlogger.LogFieldLocalID, o.LocalID).Info(fmt.Sprintf("Created output resource for workload - LocalID: %s, output resource type: %s\n", o.LocalID, o.OutputResourceType))
+		logger.WithValues(radlogger.LogFieldLocalID, o.LocalID).Info(fmt.Sprintf("Created output resource for workload - LocalID: %s, output resource type: %s\n", o.LocalID, o.Type))
 	}
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far

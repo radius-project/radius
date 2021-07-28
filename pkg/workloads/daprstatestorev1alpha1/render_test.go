@@ -58,9 +58,9 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, workloads.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
-	require.Equal(t, outputresource.KindDaprStateStoreAzureStorage, resource.ResourceKind)
-	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
+	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
+	require.Equal(t, outputresource.KindDaprStateStoreAzureStorage, resource.Kind)
+	require.Equal(t, outputresource.TypeARM, resource.Type)
 	require.True(t, resource.Managed)
 
 	expected := map[string]string{
@@ -98,9 +98,9 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, workloads.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
-	require.Equal(t, outputresource.KindDaprStateStoreAzureStorage, resource.ResourceKind)
-	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
+	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
+	require.Equal(t, outputresource.KindDaprStateStoreAzureStorage, resource.Kind)
+	require.Equal(t, outputresource.TypeARM, resource.Type)
 	require.False(t, resource.Managed)
 
 	expected := map[string]string{
@@ -184,9 +184,9 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, workloads.LocalIDDaprStateStoreSQLServer, resource.LocalID)
-	require.Equal(t, outputresource.KindDaprStateStoreSQLServer, resource.ResourceKind)
-	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
+	require.Equal(t, outputresource.LocalIDDaprStateStoreSQLServer, resource.LocalID)
+	require.Equal(t, outputresource.KindDaprStateStoreSQLServer, resource.Kind)
+	require.Equal(t, outputresource.TypeARM, resource.Type)
 	require.True(t, resource.Managed)
 
 	expected := map[string]string{
@@ -270,18 +270,18 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 3)
 	redisDeployment := resources[0]
 
-	require.Equal(t, workloads.LocalIDRedisDeployment, redisDeployment.LocalID)
-	require.Equal(t, outputresource.KindKubernetes, redisDeployment.ResourceKind)
+	require.Equal(t, outputresource.LocalIDRedisDeployment, redisDeployment.LocalID)
+	require.Equal(t, outputresource.KindKubernetes, redisDeployment.Kind)
 	resourceDeployment := redisDeployment.Resource.(*appsv1.Deployment)
 
 	redisService := resources[1]
-	require.Equal(t, workloads.LocalIDRedisService, redisService.LocalID)
-	require.Equal(t, outputresource.KindKubernetes, redisService.ResourceKind)
+	require.Equal(t, outputresource.LocalIDRedisService, redisService.LocalID)
+	require.Equal(t, outputresource.KindKubernetes, redisService.Kind)
 	resourceService := redisService.Resource.(*corev1.Service)
 
 	dapr := resources[2]
-	require.Equal(t, workloads.LocalIDDaprStateStoreComponent, dapr.LocalID)
-	require.Equal(t, outputresource.KindKubernetes, dapr.ResourceKind)
+	require.Equal(t, outputresource.LocalIDDaprStateStoreComponent, dapr.LocalID)
+	require.Equal(t, outputresource.KindKubernetes, dapr.Kind)
 	resourceDapr := dapr.Resource.(*unstructured.Unstructured)
 
 	labels := map[string]string{

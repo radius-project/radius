@@ -39,8 +39,8 @@ func Test_Render_Managed_Success(t *testing.T) {
 
 	renderedResource := resources[0]
 
-	require.Equal(t, workloads.LocalIDAzureCosmosDBSQL, renderedResource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBSQL, renderedResource.ResourceKind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosDBSQL, renderedResource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosDBSQL, renderedResource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
@@ -87,8 +87,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, workloads.LocalIDAzureCosmosDBSQL, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBSQL, resource.ResourceKind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosDBSQL, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosDBSQL, resource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "false",

@@ -85,9 +85,9 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		ResourceKind: outputresource.KindKubernetes,
-		LocalID:      workloads.LocalIDRedisDeployment,
-		Resource:     &deployment})
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDRedisDeployment,
+		Resource: &deployment})
 
 	service := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -123,9 +123,9 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		ResourceKind: outputresource.KindKubernetes,
-		LocalID:      workloads.LocalIDRedisService,
-		Resource:     &service})
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDRedisService,
+		Resource: &service})
 
 	statestore := unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -160,9 +160,9 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		ResourceKind: outputresource.KindKubernetes,
-		LocalID:      workloads.LocalIDRedisDeployment,
-		Resource:     &statestore})
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDDaprStateStoreComponent,
+		Resource: &statestore})
 
 	return resources, nil
 }

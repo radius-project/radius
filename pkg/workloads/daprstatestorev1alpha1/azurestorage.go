@@ -13,17 +13,17 @@ import (
 
 func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]outputresource.OutputResource, error) {
 	resourceKind := outputresource.KindDaprStateStoreAzureStorage
-	localID := workloads.LocalIDDaprStateStoreAzureStorage
+	localID := outputresource.LocalIDDaprStateStoreAzureStorage
 
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 		resource := outputresource.OutputResource{
-			LocalID:            localID,
-			ResourceKind:       resourceKind,
-			OutputResourceType: outputresource.TypeARM,
-			Managed:            true,
+			LocalID: localID,
+			Kind:    resourceKind,
+			Type:    outputresource.TypeARM,
+			Managed: true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.KubernetesNameKey:       w.Name,
@@ -46,10 +46,10 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 
 		// generate data we can use to connect to a Storage Account
 		resource := outputresource.OutputResource{
-			LocalID:            localID,
-			ResourceKind:       resourceKind,
-			OutputResourceType: outputresource.TypeARM,
-			Managed:            false,
+			LocalID: localID,
+			Kind:    resourceKind,
+			Type:    outputresource.TypeARM,
+			Managed: false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.KubernetesNameKey:       w.Name,

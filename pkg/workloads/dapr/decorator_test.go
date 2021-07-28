@@ -28,9 +28,9 @@ func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorklo
 	deployment := appsv1.Deployment{}
 
 	deploymentResource := outputresource.OutputResource{
-		Resource:     &deployment,
-		ResourceKind: outputresource.KindKubernetes,
-		LocalID:      workloads.LocalIDDeployment,
+		Resource: &deployment,
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDDeployment,
 	}
 
 	return []outputresource.OutputResource{deploymentResource}, nil
@@ -79,7 +79,7 @@ func Test_Render_Success(t *testing.T) {
 
 func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
 	for _, r := range resources {
-		if r.ResourceKind != outputresource.KindKubernetes {
+		if r.Kind != outputresource.KindKubernetes {
 			continue
 		}
 

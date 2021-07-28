@@ -70,11 +70,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource = outputresource.OutputResource{
-			LocalID:            workloads.LocalIDKeyVault,
-			ResourceKind:       outputresource.KindAzureKeyVault,
-			OutputResourceType: outputresource.TypeARM,
-			Managed:            true,
-			Deployed:           false,
+			LocalID:  outputresource.LocalIDKeyVault,
+			Kind:     outputresource.KindAzureKeyVault,
+			Type:     outputresource.TypeARM,
+			Managed:  true,
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.ManagedKey: "true",
 			},
@@ -84,18 +84,18 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}
 
-		vaultID, err := workloads.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, workloads.LocalIDKeyVault)
+		vaultID, err := workloads.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)
 		if err != nil {
 			return nil, err
 		}
 
 		resource = outputresource.OutputResource{
-			LocalID:            workloads.LocalIDKeyVault,
-			ResourceKind:       outputresource.KindAzureKeyVault,
-			Managed:            false,
-			Deployed:           true,
-			OutputResourceType: outputresource.TypeARM,
-			OutputResourceInfo: outputresource.ARMInfo{
+			LocalID:  outputresource.LocalIDKeyVault,
+			Kind:     outputresource.KindAzureKeyVault,
+			Managed:  false,
+			Deployed: true,
+			Type:     outputresource.TypeARM,
+			Info: outputresource.ARMInfo{
 				ID:           vaultID.ID,
 				ResourceType: KeyVaultResourceType.Type(),
 				APIVersion:   keyvault.Version(),

@@ -7,13 +7,13 @@ package outputresource
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	Resource           interface{}
-	ResourceKind       string
-	LocalID            string
-	Deployed           bool
-	Managed            bool
-	OutputResourceType string
-	OutputResourceInfo interface{}
+	Resource interface{}
+	Kind     string
+	LocalID  string
+	Deployed bool
+	Managed  bool
+	Type     string
+	Info     interface{}
 }
 
 // ARMInfo info required to identify an ARM resource

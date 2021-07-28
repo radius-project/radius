@@ -22,10 +22,10 @@ func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component Dapr
 	}
 	// generate data we can use to connect to a Storage Account
 	resource := outputresource.OutputResource{
-		LocalID:            workloads.LocalIDDaprStateStoreSQLServer,
-		ResourceKind:       outputresource.KindDaprStateStoreSQLServer,
-		OutputResourceType: outputresource.TypeARM,
-		Managed:            true,
+		LocalID: outputresource.LocalIDDaprStateStoreSQLServer,
+		Kind:    outputresource.KindDaprStateStoreSQLServer,
+		Type:    outputresource.TypeARM,
+		Managed: true,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "true",
 			handlers.KubernetesNameKey:       w.Name,

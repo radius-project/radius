@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -38,16 +37,16 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "frontend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 				},
@@ -99,17 +98,17 @@ func Test_ContainerInboundRoute(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "frontend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
-							workloads.LocalIDIngress:    validation.NewOutputResource(workloads.LocalIDIngress, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDIngress:    validation.NewOutputResource(outputresource.LocalIDIngress, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 				},
