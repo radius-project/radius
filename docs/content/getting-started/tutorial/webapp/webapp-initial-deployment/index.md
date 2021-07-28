@@ -63,7 +63,7 @@ Now you are ready to deploy the application for the first time.
    ```
 
    {{% alert title="💡 rad expose" color="primary" %}}
-   The [`rad expose`]({{< ref rad_expose >}}) command requires the component name, application name flag, and port flag. If you changed any of these names when deploying, update your command to match.
+   The [`rad expose`]({{< ref rad_component_expose >}}) command requires the component name, application name flag, and port flag. If you changed any of these names when deploying, update your command to match.
    {{% /alert %}}
 
 1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. For now you should see a page like:
