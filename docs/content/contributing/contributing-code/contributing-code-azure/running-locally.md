@@ -62,7 +62,7 @@ export MONGODB_CONNECTION_STRING='mongodb://mongoadmin:secret@mongo:27017/rpdb?a
 export MONGODB_DATABASE='rpdb'
 export K8S_LOCAL=true
 export ARM_RESOURCE_GROUP="$(whoami)-radius"
-export ARM_SUBSCRIPTION_ID="$(az account show -o json | jq .id --raw-output)"
+export ARM_SUBSCRIPTION_ID="$(az account show --query 'id'  --output tsv)"
 ```
 
 Configures all of the required environment variables:
