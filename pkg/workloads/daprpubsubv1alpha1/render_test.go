@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +41,7 @@ func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
-	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
 	expected := map[string]string{
@@ -80,7 +81,7 @@ func Test_Render_Managed_Success_SpecifyName(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
-	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
 	expected := map[string]string{
@@ -142,7 +143,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
-	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
 	require.False(t, resource.Managed)
 
 	expected := map[string]string{

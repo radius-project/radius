@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,10 +23,17 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 	return map[string]components.BindingState{}, nil
 }
 
-func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	// Return a deployment so the Dapr trait can modify it
-	d := appsv1.Deployment{}
-	return []workloads.OutputResource{workloads.NewKubernetesResource(workloads.LocalIDDeployment, &d)}, nil
+	deployment := appsv1.Deployment{}
+
+	deploymentResource := outputresource.OutputResource{
+		Resource:     &deployment,
+		ResourceKind: workloads.ResourceKindKubernetes,
+		LocalID:      workloads.LocalIDDeployment,
+	}
+
+	return []outputresource.OutputResource{deploymentResource}, nil
 }
 
 func Test_Render_Success(t *testing.T) {
@@ -69,9 +77,9 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, expected, deployment.Spec.Template.Annotations)
 }
 
-func findDeployment(resources []workloads.OutputResource) *appsv1.Deployment {
+func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
 	for _, r := range resources {
-		if !r.IsKubernetesResource() {
+		if r.ResourceKind != workloads.ResourceKindKubernetes {
 			continue
 		}
 

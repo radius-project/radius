@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
@@ -26,8 +27,8 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 	return nil, errors.New("should not be called in this test")
 }
 
-func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
-	return []workloads.OutputResource{}, nil
+func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+	return []outputresource.OutputResource{}, nil
 }
 
 func createContext(t *testing.T) context.Context {
@@ -69,7 +70,7 @@ func Test_Render_Simple(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDIngress, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindKubernetes, resource.ResourceKind)
-	require.Equal(t, workloads.OutputResourceTypeKubernetes, resource.OutputResourceType)
+	require.Equal(t, outputresource.TypeKubernetes, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
 	labels := map[string]string{
@@ -127,7 +128,7 @@ func Test_Render_WithHostname(t *testing.T) {
 
 	require.Equal(t, workloads.LocalIDIngress, resource.LocalID)
 	require.Equal(t, workloads.ResourceKindKubernetes, resource.ResourceKind)
-	require.Equal(t, workloads.OutputResourceTypeKubernetes, resource.OutputResourceType)
+	require.Equal(t, outputresource.TypeKubernetes, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
 	labels := map[string]string{
@@ -185,9 +186,9 @@ func makeContainerComponent(trait components.GenericTrait, bindings map[string]c
 	}
 }
 
-func findIngress(resources []workloads.OutputResource) (*networkingv1.Ingress, *workloads.OutputResource) {
+func findIngress(resources []outputresource.OutputResource) (*networkingv1.Ingress, *outputresource.OutputResource) {
 	for _, r := range resources {
-		if !r.IsKubernetesResource() {
+		if r.ResourceKind != workloads.ResourceKindKubernetes {
 			continue
 		}
 

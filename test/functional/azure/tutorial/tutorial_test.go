@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -41,22 +42,22 @@ func Test_TutorialDaprMicroservices(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "nodeapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pythonapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "statestore",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDaprStateStoreAzureStorage: validation.NewOutputResource(workloads.LocalIDDaprStateStoreAzureStorage, workloads.OutputResourceTypeArm, workloads.ResourceKindDaprStateStoreAzureStorage, true),
+							workloads.LocalIDDaprStateStoreAzureStorage: validation.NewOutputResource(workloads.LocalIDDaprStateStoreAzureStorage, outputresource.TypeARM, workloads.ResourceKindDaprStateStoreAzureStorage, true),
 						},
 					},
 				},
@@ -128,27 +129,27 @@ func Test_TutorialWebApp(t *testing.T) {
 						ApplicationName: applicationName,
 						ComponentName:   componentNameKV,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDKeyVault: validation.NewOutputResource(workloads.LocalIDKeyVault, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureKeyVault, true),
+							workloads.LocalIDKeyVault: validation.NewOutputResource(workloads.LocalIDKeyVault, outputresource.TypeARM, workloads.ResourceKindAzureKeyVault, true),
 						},
 					},
 					{
 						ApplicationName: applicationName,
 						ComponentName:   componentNameDB,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(workloads.LocalIDAzureCosmosDBMongo, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureCosmosDBMongo, true),
+							workloads.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(workloads.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, workloads.ResourceKindAzureCosmosDBMongo, true),
 						},
 					},
 					{
 						ApplicationName: applicationName,
 						ComponentName:   componentNameWebApp,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment:                    validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDService:                       validation.NewOutputResource(workloads.LocalIDService, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDUserAssignedManagedIdentityKV: validation.NewOutputResource(workloads.LocalIDUserAssignedManagedIdentityKV, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureUserAssignedManagedIdentity, true),
-							workloads.LocalIDRoleAssignmentKVKeys:          validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVKeys, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
-							workloads.LocalIDRoleAssignmentKVSecretsCerts:  validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVSecretsCerts, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
-							workloads.LocalIDAADPodIdentity:                validation.NewOutputResource(workloads.LocalIDAADPodIdentity, workloads.OutputResourceTypePodIdentity, workloads.ResourceKindAzurePodIdentity, true),
-							workloads.LocalIDKeyVaultSecret:                validation.NewOutputResource(workloads.LocalIDKeyVaultSecret, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureKeyVaultSecret, true),
+							workloads.LocalIDDeployment:                    validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDService:                       validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDUserAssignedManagedIdentityKV: validation.NewOutputResource(workloads.LocalIDUserAssignedManagedIdentityKV, outputresource.TypeARM, workloads.ResourceKindAzureUserAssignedManagedIdentity, true),
+							workloads.LocalIDRoleAssignmentKVKeys:          validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVKeys, outputresource.TypeARM, workloads.ResourceKindAzureRoleAssignment, true),
+							workloads.LocalIDRoleAssignmentKVSecretsCerts:  validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVSecretsCerts, outputresource.TypeARM, workloads.ResourceKindAzureRoleAssignment, true),
+							workloads.LocalIDAADPodIdentity:                validation.NewOutputResource(workloads.LocalIDAADPodIdentity, outputresource.TypeAADPodIdentity, workloads.ResourceKindAzurePodIdentity, true),
+							workloads.LocalIDKeyVaultSecret:                validation.NewOutputResource(workloads.LocalIDKeyVaultSecret, outputresource.TypeARM, workloads.ResourceKindAzureKeyVaultSecret, true),
 						},
 					},
 				},

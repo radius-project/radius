@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/revision"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -345,7 +346,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 	return nil
 }
 
-func addDBOutputResource(resource workloads.OutputResource, dbOutputResources *[]db.OutputResource) {
+func addDBOutputResource(resource outputresource.OutputResource, dbOutputResources *[]db.OutputResource) {
 	// Save the output resource to DB
 	dbr := db.OutputResource{
 		Managed:            resource.Managed,
@@ -424,14 +425,14 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 	return nil
 }
 
-func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	ctx = radlogger.WrapLogContext(ctx,
 		radlogger.LogFieldWorkLoadKind, w.Workload.Kind,
 		radlogger.LogFieldWorkLoadName, w.Name)
 	logger := radlogger.GetLogger(ctx)
 	componentKind, err := dp.appmodel.LookupComponent(w.Workload.Kind)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		return []outputresource.OutputResource{}, err
 	}
 
 	resources, err := componentKind.Renderer().Render(ctx, w)

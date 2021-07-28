@@ -9,13 +9,13 @@ import (
 	"context"
 
 	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
 
 type PutOptions struct {
 	Application string
 	Component   string
-	Resource    workloads.OutputResource
+	Resource    outputresource.OutputResource
 	Existing    *db.DeploymentResource
 }
 

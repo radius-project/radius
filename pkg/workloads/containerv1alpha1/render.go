@@ -34,7 +34,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
-	"github.com/Azure/radius/pkg/radrp/outputresourceinfo"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/roleassignment"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -115,10 +115,10 @@ func (r Renderer) createManagedIdentity(ctx context.Context, application, compon
 	return id, localID, nil
 }
 
-func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, []workloads.OutputResource, error) {
+func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store components.BindingState, w workloads.InstantiatedWorkload, cw *ContainerComponent) (*msi.Identity, []outputresource.OutputResource, error) {
 	logger := radlogger.GetLogger(ctx)
 	// Read the keyvault URI so we can get the keyvault name for permissions
-	outputResources := []workloads.OutputResource{}
+	outputResources := []outputresource.OutputResource{}
 	value, ok := store.Properties[handlers.KeyVaultURIKey]
 	if !ok {
 		// Even if the operation fails, return the output resources created so far
@@ -157,13 +157,13 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 
 	apiversionMsi := strings.Split(strings.Split(msi.UserAgent(), "msi/")[1], " profiles")[0]
-	res := workloads.OutputResource{
+	res := outputresource.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureUserAssignedManagedIdentity,
-		OutputResourceType: workloads.OutputResourceTypeArm,
+		OutputResourceType: outputresource.TypeARM,
 		LocalID:            midLocalID,
 		Managed:            true,
-		OutputResourceInfo: outputresourceinfo.ARMInfo{
+		OutputResourceInfo: outputresource.ARMInfo{
 			ARMID:           *mid.ID,
 			ARMResourceType: *mid.Type,
 			APIVersion:      apiversionMsi,
@@ -196,13 +196,13 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 		return nil, outputResources, fmt.Errorf("Failed to create role assignment to assign Key Vault Secrets User permissions to managed identity: %v: %w", mid.Name, err)
 	}
 	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
-	res = workloads.OutputResource{
+	res = outputresource.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
-		OutputResourceType: workloads.OutputResourceTypeArm,
+		OutputResourceType: outputresource.TypeARM,
 		LocalID:            workloads.LocalIDRoleAssignmentKVSecretsCerts,
 		Managed:            true,
-		OutputResourceInfo: outputresourceinfo.ARMInfo{
+		OutputResourceInfo: outputresource.ARMInfo{
 			ARMID:           *ra.ID,
 			ARMResourceType: *ra.Type,
 			APIVersion:      apiversionRA,
@@ -220,13 +220,13 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 	logger.WithValues(radlogger.LogFieldLocalID, workloads.LocalIDRoleAssignmentKVSecretsCerts).Info(fmt.Sprintf("Created certs/secrets role assignment for %v to access %v", *mid.ID, *kv.ID))
 
-	res = workloads.OutputResource{
+	res = outputresource.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
-		OutputResourceType: workloads.OutputResourceTypeArm,
+		OutputResourceType: outputresource.TypeARM,
 		LocalID:            workloads.LocalIDRoleAssignmentKVKeys,
 		Managed:            true,
-		OutputResourceInfo: outputresourceinfo.ARMInfo{
+		OutputResourceInfo: outputresource.ARMInfo{
 			ARMID:           *ra.ID,
 			ARMResourceType: *ra.Type,
 			APIVersion:      apiversionRA,
@@ -239,15 +239,15 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	return &mid, outputResources, nil
 }
 
-func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (AADPodIdentity, []workloads.OutputResource, error) {
+func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, cw *ContainerComponent) (outputresource.AADPodIdentity, []outputresource.OutputResource, error) {
 	logger := radlogger.GetLogger(ctx)
-	var podIdentity AADPodIdentity
+	var podIdentity outputresource.AADPodIdentity
 
-	outputResources := []workloads.OutputResource{}
+	outputResources := []outputresource.OutputResource{}
 	for _, dependency := range cw.Uses {
 		binding, err := dependency.Binding.GetMatchingBinding(w.BindingValues)
 		if err != nil {
-			return AADPodIdentity{}, []workloads.OutputResource{}, err
+			return podIdentity, []outputresource.OutputResource{}, err
 		}
 
 		// If the container depends on a KeyVault, create a pod identity.
@@ -259,7 +259,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				// Even if the operation fails, return the output resources created so far
 				// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 				// we no longer need to track the output resources on error
-				return AADPodIdentity{}, outputResources, err
+				return podIdentity, outputResources, err
 			}
 			outputResources = append(outputResources, or...)
 
@@ -269,22 +269,18 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 				// Even if the operation fails, return the output resources created so far
 				// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 				// we no longer need to track the output resources on error
-				return AADPodIdentity{}, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
+				return podIdentity, outputResources, fmt.Errorf("failed to create pod identity: %w", err)
 			}
-			res := workloads.OutputResource{
+			res := outputresource.OutputResource{
 				Deployed:           true,
 				ResourceKind:       workloads.ResourceKindAzurePodIdentity,
-				OutputResourceType: workloads.OutputResourceTypePodIdentity,
+				OutputResourceType: outputresource.TypeAADPodIdentity,
 				LocalID:            workloads.LocalIDAADPodIdentity,
 				Managed:            true,
-				OutputResourceInfo: outputresourceinfo.AADPodIdentity{
-					AKSClusterName: podIdentity.ClusterName,
-					Name:           podIdentity.Name,
-					Namespace:      podIdentity.Namespace,
-				},
+				OutputResourceInfo: podIdentity,
 				Resource: map[string]string{
-					outputresourceinfo.PodIdentityName:    podIdentity.Name,
-					outputresourceinfo.PodIdentityCluster: podIdentity.ClusterName,
+					handlers.PodIdentityNameKey:    podIdentity.Name,
+					handlers.PodIdentityClusterKey: podIdentity.AKSClusterName,
 				},
 			}
 			outputResources = append(outputResources, res)
@@ -298,11 +294,11 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
-	outputResources := []workloads.OutputResource{}
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+	outputResources := []outputresource.OutputResource{}
 	cw, err := r.convert(w)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		return []outputresource.OutputResource{}, err
 	}
 
 	deployment, or, err := r.makeDeployment(ctx, w, cw)
@@ -335,13 +331,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	// Append the output resources created for podid creation to the final set
 	outputResources = append(outputResources, or...)
 
-	res := workloads.OutputResource{
+	res := outputresource.OutputResource{
 		Deployed:           false,
 		ResourceKind:       workloads.ResourceKindKubernetes,
-		OutputResourceType: workloads.OutputResourceTypeKubernetes,
+		OutputResourceType: outputresource.TypeKubernetes,
 		LocalID:            workloads.LocalIDDeployment,
 		Managed:            true,
-		OutputResourceInfo: outputresourceinfo.K8sInfo{
+		OutputResourceInfo: outputresource.K8sInfo{
 			Kind:       deployment.TypeMeta.Kind,
 			APIVersion: deployment.TypeMeta.APIVersion,
 			Name:       deployment.ObjectMeta.Name,
@@ -352,13 +348,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	outputResources = append(outputResources, res)
 
 	if service != nil {
-		res = workloads.OutputResource{
+		res = outputresource.OutputResource{
 			Deployed:           false,
 			ResourceKind:       workloads.ResourceKindKubernetes,
-			OutputResourceType: workloads.OutputResourceTypeKubernetes,
+			OutputResourceType: outputresource.TypeKubernetes,
 			LocalID:            workloads.LocalIDService,
 			Managed:            true,
-			OutputResourceInfo: outputresourceinfo.K8sInfo{
+			OutputResourceInfo: outputresource.K8sInfo{
 				Kind:       deployment.TypeMeta.Kind,
 				APIVersion: deployment.TypeMeta.APIVersion,
 				Name:       deployment.ObjectMeta.Name,
@@ -382,8 +378,8 @@ func (r Renderer) convert(w workloads.InstantiatedWorkload) (*ContainerComponent
 	return container, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, []workloads.OutputResource, error) {
-	outputResources := []workloads.OutputResource{}
+func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent) (*appsv1.Deployment, []outputresource.OutputResource, error) {
+	outputResources := []outputresource.OutputResource{}
 	container := corev1.Container{
 		Name:  cc.Name,
 		Image: cc.Run.Container.Image,
@@ -514,17 +510,12 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 	return &deployment, outputResources, nil
 }
 
-// AADPodIdentity represents the AAD pod identity added to a Kubernetes cluster
-type AADPodIdentity struct {
-	Name        string
-	Namespace   string
-	ClusterName string
-}
-
-func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, containerName, podNamespace string) (AADPodIdentity, error) {
+func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, containerName, podNamespace string) (outputresource.AADPodIdentity, error) {
 	logger := radlogger.GetLogger(ctx)
+	var podIdentity outputresource.AADPodIdentity
+
 	if r.Arm.K8sSubscriptionID == "" || r.Arm.K8sResourceGroup == "" || r.Arm.K8sClusterName == "" {
-		return AADPodIdentity{}, errors.New("pod identity is not supported because the RP is not configured for AKS")
+		return podIdentity, errors.New("pod identity is not supported because the RP is not configured for AKS")
 	}
 
 	// Get AKS cluster name in current resource group
@@ -536,7 +527,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	// Get the cluster and modify it to add pod identity
 	managedCluster, err := mcc.Get(ctx, r.Arm.K8sResourceGroup, r.Arm.K8sClusterName)
 	if err != nil {
-		return AADPodIdentity{}, fmt.Errorf("failed to get managed cluster: %w", err)
+		return podIdentity, fmt.Errorf("failed to get managed cluster: %w", err)
 	}
 	managedCluster.PodIdentityProfile.Enabled = to.BoolPtr(true)
 	managedCluster.PodIdentityProfile.AllowNetworkPluginKubenet = to.BoolPtr(false)
@@ -562,7 +553,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	for i := 0; i <= MaxRetries; i++ {
 		// Retry to wait for the managed identity to propagate
 		if i >= MaxRetries {
-			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster after retries: %w", err)
+			return podIdentity, fmt.Errorf("failed to add pod identity on the cluster after retries: %w", err)
 		}
 
 		mcFuture, err = mcc.CreateOrUpdate(ctx, r.Arm.K8sResourceGroup, r.Arm.K8sClusterName, containerservice.ManagedCluster{
@@ -583,13 +574,13 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 		// Check the error and determine if it is retryable
 		detailed, ok := util.ExtractDetailedError(err)
 		if !ok {
-			return AADPodIdentity{}, err
+			return podIdentity, err
 		}
 
 		// Sometimes, the managed identity takes a while to propagate and the pod identity creation fails with status code = 0
 		// For other reasons, fail
 		if detailed.StatusCode != 0 {
-			return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster with error: %v, status code: %v", detailed.Message, detailed.StatusCode)
+			return podIdentity, fmt.Errorf("failed to add pod identity on the cluster with error: %v, status code: %v", detailed.Message, detailed.StatusCode)
 		}
 
 		logger.V(radlogger.Verbose).Info("failed to add pod identity. Retrying...")
@@ -599,20 +590,21 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 
 	err = mcFuture.WaitForCompletionRef(ctx, mcc.Client)
 	if err != nil {
-		return AADPodIdentity{}, fmt.Errorf("failed to add pod identity on the cluster: %w", err)
+		return podIdentity, fmt.Errorf("failed to add pod identity on the cluster: %w", err)
 	}
 
-	podIdentity := AADPodIdentity{
-		Name:        podIdentityName,
-		Namespace:   podNamespace,
-		ClusterName: r.Arm.K8sClusterName,
+	podIdentity = outputresource.AADPodIdentity{
+		AKSClusterName: r.Arm.K8sClusterName,
+		Name:           podIdentityName,
+		Namespace:      podNamespace,
 	}
+
 	return podIdentity, nil
 }
 
 const SecretsResourceType = azresources.KeyVaultVaults + "/" + azresources.KeyVaultVaultsSecrets
 
-func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue string) (workloads.OutputResource, error) {
+func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, secretValue string) (outputresource.OutputResource, error) {
 	logger := radlogger.GetLogger(ctx)
 	// Create secret in the Key Vault using ARM since ARM has write permissions to create secrets
 	// and no special role assignment is needed.
@@ -652,17 +644,17 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		Properties: deploymentProperties,
 	})
 	if err != nil {
-		return workloads.OutputResource{}, fmt.Errorf("unable to create secret: %w", err)
+		return outputresource.OutputResource{}, fmt.Errorf("unable to create secret: %w", err)
 	}
 
 	err = op.WaitForCompletionRef(context.Background(), dc.Client)
 	if err != nil {
-		return workloads.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
+		return outputresource.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
 	}
 
 	_, err = op.Result(dc)
 	if err != nil {
-		return workloads.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
+		return outputresource.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
 	}
 
 	secretResource := azure.Resource{
@@ -672,13 +664,13 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		ResourceType:   SecretsResourceType,
 		ResourceName:   secretFullName,
 	}
-	or := workloads.OutputResource{
+	or := outputresource.OutputResource{
 		Deployed:           true,
 		ResourceKind:       workloads.ResourceKindAzureKeyVaultSecret,
-		OutputResourceType: workloads.OutputResourceTypeArm,
+		OutputResourceType: outputresource.TypeARM,
 		LocalID:            workloads.LocalIDKeyVaultSecret,
 		Managed:            true,
-		OutputResourceInfo: outputresourceinfo.ARMInfo{
+		OutputResourceInfo: outputresource.ARMInfo{
 			ARMID:           secretResource.String(),
 			ARMResourceType: SecretsResourceType,
 			APIVersion:      kvAPIVersion,

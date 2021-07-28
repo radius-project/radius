@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -49,18 +50,18 @@ func Test_KeyVaultManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "kv",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDKeyVault: validation.NewOutputResource(workloads.LocalIDKeyVault, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureKeyVault, true),
+							workloads.LocalIDKeyVault: validation.NewOutputResource(workloads.LocalIDKeyVault, outputresource.TypeARM, workloads.ResourceKindAzureKeyVault, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "kvaccessor",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment:                    validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDUserAssignedManagedIdentityKV: validation.NewOutputResource(workloads.LocalIDUserAssignedManagedIdentityKV, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureUserAssignedManagedIdentity, true),
-							workloads.LocalIDRoleAssignmentKVKeys:          validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVKeys, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
-							workloads.LocalIDRoleAssignmentKVSecretsCerts:  validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVSecretsCerts, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureRoleAssignment, true),
-							workloads.LocalIDAADPodIdentity:                validation.NewOutputResource(workloads.LocalIDAADPodIdentity, workloads.OutputResourceTypePodIdentity, workloads.ResourceKindAzurePodIdentity, true),
+							workloads.LocalIDDeployment:                    validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDUserAssignedManagedIdentityKV: validation.NewOutputResource(workloads.LocalIDUserAssignedManagedIdentityKV, outputresource.TypeARM, workloads.ResourceKindAzureUserAssignedManagedIdentity, true),
+							workloads.LocalIDRoleAssignmentKVKeys:          validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVKeys, outputresource.TypeARM, workloads.ResourceKindAzureRoleAssignment, true),
+							workloads.LocalIDRoleAssignmentKVSecretsCerts:  validation.NewOutputResource(workloads.LocalIDRoleAssignmentKVSecretsCerts, outputresource.TypeARM, workloads.ResourceKindAzureRoleAssignment, true),
+							workloads.LocalIDAADPodIdentity:                validation.NewOutputResource(workloads.LocalIDAADPodIdentity, outputresource.TypeAADPodIdentity, workloads.ResourceKindAzurePodIdentity, true),
 						},
 					},
 				},

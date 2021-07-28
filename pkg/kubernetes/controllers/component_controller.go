@@ -16,6 +16,7 @@ import (
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -155,7 +156,7 @@ func (r *ComponentReconciler) FetchKubernetesResources(ctx context.Context, log 
 }
 
 // Make this work for generic
-func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, component *radiusv1alpha1.Component, applicationName string, componentName string) ([]workloads.OutputResource, []radiusv1alpha1.ComponentStatusBinding, bool, error) {
+func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, component *radiusv1alpha1.Component, applicationName string, componentName string) ([]outputresource.OutputResource, []radiusv1alpha1.ComponentStatusBinding, bool, error) {
 	// If the application hasn't been defined yet, then just produce no output.
 	if application == nil {
 		r.recorder.Eventf(component, "Normal", "Waiting", "Component is waiting for application: %s", applicationName)
@@ -192,7 +193,7 @@ func (r *ComponentReconciler) RenderComponent(ctx context.Context, log logr.Logg
 		return nil, nil, false, err
 	}
 
-	resources := []workloads.OutputResource{}
+	resources := []outputresource.OutputResource{}
 	if len(missing) > 0 {
 		missingNames := []string{}
 		for _, key := range missing {
@@ -311,7 +312,7 @@ func (r *ComponentReconciler) ApplyState(
 	application *radiusv1alpha1.Application,
 	component *radiusv1alpha1.Component,
 	actual []client.Object,
-	desired []workloads.OutputResource,
+	desired []outputresource.OutputResource,
 	bindings []radiusv1alpha1.ComponentStatusBinding) error {
 
 	// First we go through the desired state and apply all of those resources.

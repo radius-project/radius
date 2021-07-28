@@ -9,10 +9,11 @@ import (
 	"errors"
 
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]workloads.OutputResource, error) {
+func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]outputresource.OutputResource, error) {
 	if !component.Config.Managed {
 		return nil, errors.New("only Radius managed resources are supported for Dapr SQL Server")
 	}
@@ -20,10 +21,10 @@ func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component Dapr
 		return nil, workloads.ErrResourceSpecifiedForManagedResource
 	}
 	// generate data we can use to connect to a Storage Account
-	resource := workloads.OutputResource{
+	resource := outputresource.OutputResource{
 		LocalID:            workloads.LocalIDDaprStateStoreSQLServer,
 		ResourceKind:       workloads.ResourceKindDaprStateStoreSQLServer,
-		OutputResourceType: workloads.OutputResourceTypeArm,
+		OutputResourceType: outputresource.TypeARM,
 		Managed:            true,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "true",
@@ -35,5 +36,5 @@ func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component Dapr
 		},
 	}
 
-	return []workloads.OutputResource{resource}, nil
+	return []outputresource.OutputResource{resource}, nil
 }

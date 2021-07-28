@@ -11,7 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/components"
-	"github.com/Azure/radius/pkg/radrp/outputresourceinfo"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -31,7 +31,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for the radius.dev/InboundRoute' decorator.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	// Let the inner renderer do its work
 	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
@@ -125,13 +125,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		ingress.Spec = spec
 	}
 
-	resource := workloads.OutputResource{
+	resource := outputresource.OutputResource{
 		Deployed:           false,
 		ResourceKind:       workloads.ResourceKindKubernetes,
-		OutputResourceType: workloads.OutputResourceTypeKubernetes,
+		OutputResourceType: outputresource.TypeKubernetes,
 		LocalID:            workloads.LocalIDIngress,
 		Managed:            true,
-		OutputResourceInfo: outputresourceinfo.K8sInfo{
+		OutputResourceInfo: outputresource.K8sInfo{
 			Kind:       ingress.TypeMeta.Kind,
 			APIVersion: ingress.TypeMeta.APIVersion,
 			Name:       ingress.ObjectMeta.Name,

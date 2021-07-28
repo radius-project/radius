@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -44,14 +45,14 @@ func Test_CosmosDBMongoManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "db",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(workloads.LocalIDAzureCosmosDBMongo, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureCosmosDBMongo, true),
+							workloads.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(workloads.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, workloads.ResourceKindAzureCosmosDBMongo, true),
 						},
 					},
 				},
@@ -99,14 +100,14 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "db",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDAzureCosmosDBMongo, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureCosmosDBMongo, false),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, workloads.ResourceKindAzureCosmosDBMongo, false),
 						},
 					},
 				},

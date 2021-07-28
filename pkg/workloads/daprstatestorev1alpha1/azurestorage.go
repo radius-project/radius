@@ -7,10 +7,11 @@ package daprstatestorev1alpha1
 
 import (
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]workloads.OutputResource, error) {
+func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]outputresource.OutputResource, error) {
 	resourceKind := workloads.ResourceKindDaprStateStoreAzureStorage
 	localID := workloads.LocalIDDaprStateStoreAzureStorage
 
@@ -18,10 +19,10 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 		if component.Config.Resource != "" {
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
-		resource := workloads.OutputResource{
+		resource := outputresource.OutputResource{
 			LocalID:            localID,
 			ResourceKind:       resourceKind,
-			OutputResourceType: workloads.OutputResourceTypeArm,
+			OutputResourceType: outputresource.TypeARM,
 			Managed:            true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
@@ -33,7 +34,7 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 			},
 		}
 
-		return []workloads.OutputResource{resource}, nil
+		return []outputresource.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
@@ -44,10 +45,10 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 		}
 
 		// generate data we can use to connect to a Storage Account
-		resource := workloads.OutputResource{
+		resource := outputresource.OutputResource{
 			LocalID:            localID,
 			ResourceKind:       resourceKind,
-			OutputResourceType: workloads.OutputResourceTypeArm,
+			OutputResourceType: outputresource.TypeARM,
 			Managed:            false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
@@ -60,6 +61,6 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 				handlers.StorageAccountNameKey: accountID.Types[0].Name,
 			},
 		}
-		return []workloads.OutputResource{resource}, nil
+		return []outputresource.OutputResource{resource}, nil
 	}
 }

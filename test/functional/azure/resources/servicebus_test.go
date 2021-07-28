@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -47,14 +48,14 @@ func Test_ServiceBusManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "sender",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "sbq",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDAzureServiceBusQueue: validation.NewOutputResource(workloads.LocalIDAzureServiceBusQueue, workloads.OutputResourceTypeArm, workloads.ResourceKindAzureServiceBusQueue, true),
+							workloads.LocalIDAzureServiceBusQueue: validation.NewOutputResource(workloads.LocalIDAzureServiceBusQueue, outputresource.TypeARM, workloads.ResourceKindAzureServiceBusQueue, true),
 						},
 					},
 				},
