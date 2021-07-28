@@ -73,7 +73,17 @@ Update your `template.bicep` file to match the full application definition:
 
    <img src="todoapp-withdb.png" width="400" alt="screenshot of the todo application with a database">
 
-   If your page matches, then it means that the container is able to communicate with the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database. 
+   If your page matches, then it means that the container is able to communicate with the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database.
+
+1. Open the Azure resource group where your application is deployed. The URL was output during the `rad deploy` command.
+
+1. Open the CosmosDB resource prefixed with `db-`
+
+   <img src="azure-db.png" width="600" alt="Screenshot of the db CosmosDB instance">
+
+1. Open the Data Explorer to the `todos` collection. You can now see the entries you added in the todo app.
+
+   <img src="db-entries.png" width="800" alt="Screenshot of the db CosmosDB Data Explorer with todo items">
 
 1. When you're done testing press CTRL+C to terminate the port-forward. 
 
