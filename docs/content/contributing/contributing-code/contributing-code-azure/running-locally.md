@@ -36,7 +36,7 @@ A non-localhost hostname is required if you're running the resource provider in 
 # - with 'mongoadmin' as a username
 # - with 'secret' as the password
 # - with 'rpdb' as the database name
-docker run --daemon \
+docker run -d \
     -p 27017:27017 \
     --hostname mongo \
     -e MONGO_INITDB_ROOT_USERNAME=mongoadmin \
