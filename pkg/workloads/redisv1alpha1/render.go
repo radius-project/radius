@@ -17,6 +17,16 @@ type Renderer struct {
 	// Arm armauth.ArmConfig
 }
 
+var SupportedAzureRedisKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error){
+	"any":         GetDaprStateStoreAzureStorage,
+	"azure.redis": GetDaprStateStoreSQLServer,
+}
+
+var SupportedKubernetesRedisKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error){
+	"any":   GetDaprStateStoreKubernetesRedis,
+	"redis": GetDaprStateStoreKubernetesRedis,
+}
+
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	if len(workload.Workload.Bindings) > 0 {
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
@@ -25,15 +35,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	properties := resources[0].Properties
 	redisName := properties[handlers.ServiceBusQueueNameKey]
 
-	bindings := map[string]components.BindingState{
-		"default": {
-			Component: workload.Name,
-			Binding:   "default",
-			Properties: map[string]interface{}{
-				"stateStoreName": workload.Name,
-			},
-		},
-	}
+	bindings := map[string]components.BindingState{}
 
 	return bindings, nil
 }
