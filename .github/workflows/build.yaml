@@ -202,8 +202,9 @@ jobs:
     - name: Update rad env with Kubernetes
       id: reserve
       run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        rad env init kubernetes
+        dist/rad env init kubernetes
         # Print config for sanity check
         cat ~/.rad/config.yaml
     - name: Deploy Controller
