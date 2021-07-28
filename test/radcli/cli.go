@@ -43,11 +43,17 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string) error {
 		"deploy",
 		templateFilePath,
 	}
-	args = cli.appendStandardArgs(args)
-
-	cmd := exec.CommandContext(ctx, "rad", args...)
-	err := cli.runCommand(ctx, fmt.Sprintf("rad deploy %s", templateFilePath), cmd)
+	_, err := cli.RunCommand(ctx, fmt.Sprintf("rad deploy %s", templateFilePath), args)
 	return err
+}
+
+func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
+	args := []string{
+		"application",
+		"show",
+		"-a", applicationName,
+	}
+	return cli.RunCommand(ctx, fmt.Sprintf("rad application show -a %s", applicationName), args)
 }
 
 // ApplicationDelete deletes the specified application deployed by Radius.
@@ -58,14 +64,56 @@ func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) e
 		"--yes",
 		"-a", applicationName,
 	}
-	args = cli.appendStandardArgs(args)
-
-	cmd := exec.CommandContext(ctx, "rad", args...)
-	err := cli.runCommand(ctx, fmt.Sprintf("rad delete -a %s", applicationName), cmd)
+	_, err := cli.RunCommand(ctx, fmt.Sprintf("rad application delete -a %s", applicationName), args)
 	return err
 }
 
-func (cli *CLI) runCommand(ctx context.Context, description string, cmd *exec.Cmd) error {
+func (cli *CLI) ComponentShow(ctx context.Context, applicationName string, componentName string) (string, error) {
+	args := []string{
+		"component",
+		"show",
+		"-a", applicationName,
+		componentName,
+	}
+	return cli.RunCommand(ctx, fmt.Sprintf("rad component show -a %s %s", applicationName, componentName), args)
+}
+
+func (cli *CLI) ComponentList(ctx context.Context, applicationName string) (string, error) {
+	args := []string{
+		"component",
+		"list",
+		"-a", applicationName,
+	}
+	return cli.RunCommand(ctx, fmt.Sprintf("rad component list -a %s", applicationName), args)
+}
+
+func (cli *CLI) ComponentLogs(ctx context.Context, applicationName string, componentName string) (string, error) {
+	args := []string{
+		"component",
+		"logs",
+		"-a", applicationName,
+		componentName,
+	}
+	return cli.RunCommand(ctx, fmt.Sprintf("rad component logs -a %s %s", applicationName, componentName), args)
+}
+
+func (cli *CLI) ComponentExpose(ctx context.Context, applicationName string, componentName string, localPort int, remotePort int) (string, error) {
+	args := []string{
+		"component",
+		"expose",
+		"-a", applicationName,
+		componentName,
+		"--port", fmt.Sprintf("%d", localPort),
+		"--remote-port", fmt.Sprintf("%d", remotePort),
+	}
+	return cli.RunCommand(ctx, fmt.Sprintf("rad component expose -a %s %s...", applicationName, componentName), args)
+}
+
+func (cli *CLI) RunCommand(ctx context.Context, description string, args []string) (string, error) {
+	args = cli.appendStandardArgs(args)
+
+	cmd := exec.CommandContext(ctx, "rad", args...)
+
 	// we run a background goroutine to report a heartbeat in the logs while the command
 	// is still running. This makes it easy to see what's still in progress if we hit a timeout.
 	done := make(chan struct{})
@@ -77,20 +125,27 @@ func (cli *CLI) runCommand(ctx context.Context, description string, cmd *exec.Cm
 	}()
 
 	out, err := cmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return fmt.Errorf("command '%s' timed out: %w", description, err)
-	}
 
 	// If there's no context error, we know the command completed (or errored).
 	for _, line := range strings.Split(string(out), "\n") {
 		cli.T.Logf("[rad] %s", line)
 	}
 
-	if err != nil {
-		return fmt.Errorf("command '%s' had non-zero exit code: %w", description, err)
+	if ctx.Err() == context.DeadlineExceeded {
+		return string(out), fmt.Errorf("command '%s' timed out: %w", description, err)
 	}
 
-	return err
+	if ctx.Err() == context.Canceled {
+		// bubble up errors due to cancellation with their output, and let the caller
+		// decide how to handle it.
+		return string(out), ctx.Err()
+	}
+
+	if err != nil {
+		return string(out), fmt.Errorf("command '%s' had non-zero exit code: %w", description, err)
+	}
+
+	return string(out), nil
 }
 
 func (cli *CLI) appendStandardArgs(args []string) []string {
