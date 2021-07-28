@@ -38,16 +38,16 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "frontend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 				},
@@ -99,17 +99,17 @@ func Test_ContainerInboundRoute(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "frontend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDIngress:    validation.NewOutputResource(workloads.LocalIDIngress, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							workloads.LocalIDIngress:    validation.NewOutputResource(workloads.LocalIDIngress, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
-							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							workloads.LocalIDService:    validation.NewOutputResource(workloads.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 				},

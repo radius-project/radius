@@ -126,11 +126,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	resource := outputresource.OutputResource{
-		Deployed:           false,
-		ResourceKind:       workloads.ResourceKindKubernetes,
-		OutputResourceType: outputresource.TypeKubernetes,
+		ResourceKind:       outputresource.KindKubernetes,
 		LocalID:            workloads.LocalIDIngress,
+		Deployed:           false,
 		Managed:            true,
+		OutputResourceType: outputresource.TypeKubernetes,
 		OutputResourceInfo: outputresource.K8sInfo{
 			Kind:       ingress.TypeMeta.Kind,
 			APIVersion: ingress.TypeMeta.APIVersion,

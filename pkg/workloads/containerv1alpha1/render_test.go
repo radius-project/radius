@@ -320,7 +320,7 @@ func TestRender_Success_NonDefaultPort(t *testing.T) {
 
 func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
 	for _, r := range resources {
-		if r.ResourceKind != workloads.ResourceKindKubernetes {
+		if r.ResourceKind != outputresource.KindKubernetes {
 			continue
 		}
 
@@ -337,7 +337,7 @@ func findDeployment(resources []outputresource.OutputResource) *appsv1.Deploymen
 
 func findService(resources []outputresource.OutputResource) *corev1.Service {
 	for _, r := range resources {
-		if r.ResourceKind != workloads.ResourceKindKubernetes {
+		if r.ResourceKind != outputresource.KindKubernetes {
 			continue
 		}
 

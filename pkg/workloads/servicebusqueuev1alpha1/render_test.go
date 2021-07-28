@@ -52,7 +52,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusQueue, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindAzureServiceBusQueue, resource.ResourceKind)
+	require.Equal(t, outputresource.KindAzureServiceBusQueue, resource.ResourceKind)
 	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
@@ -87,7 +87,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusQueue, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindAzureServiceBusQueue, resource.ResourceKind)
+	require.Equal(t, outputresource.KindAzureServiceBusQueue, resource.ResourceKind)
 	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
 	require.False(t, resource.Managed)
 

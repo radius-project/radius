@@ -48,14 +48,14 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDAzureServiceBusTopic: validation.NewOutputResource(workloads.LocalIDAzureServiceBusTopic, outputresource.TypeARM, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, true),
+							workloads.LocalIDAzureServiceBusTopic: validation.NewOutputResource(workloads.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, true),
 						},
 					},
 				},
@@ -103,14 +103,14 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDAzureServiceBusTopic: validation.NewOutputResource(workloads.LocalIDAzureServiceBusTopic, outputresource.TypeARM, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, false),
+							workloads.LocalIDAzureServiceBusTopic: validation.NewOutputResource(workloads.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, false),
 						},
 					},
 				},

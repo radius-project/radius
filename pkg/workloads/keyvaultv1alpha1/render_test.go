@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
@@ -50,7 +51,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, workloads.LocalIDKeyVault, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindAzureKeyVault, resource.ResourceKind)
+	require.Equal(t, outputresource.KindAzureKeyVault, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey: "true",
@@ -82,7 +83,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, workloads.LocalIDKeyVault, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindAzureKeyVault, resource.ResourceKind)
+	require.Equal(t, outputresource.KindAzureKeyVault, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:      "false",

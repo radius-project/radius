@@ -48,14 +48,14 @@ func Test_ServiceBusManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "sender",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, workloads.ResourceKindKubernetes, true),
+							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "sbq",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDAzureServiceBusQueue: validation.NewOutputResource(workloads.LocalIDAzureServiceBusQueue, outputresource.TypeARM, workloads.ResourceKindAzureServiceBusQueue, true),
+							workloads.LocalIDAzureServiceBusQueue: validation.NewOutputResource(workloads.LocalIDAzureServiceBusQueue, outputresource.TypeARM, outputresource.KindAzureServiceBusQueue, true),
 						},
 					},
 				},

@@ -69,9 +69,9 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions
 	}
 
 	options.Resource.OutputResourceInfo = outputresource.ARMInfo{
-		ARMID:           properties[KeyVaultIDKey],
-		ARMResourceType: azresources.KeyVaultVaults,
-		APIVersion:      keyvault.Version(),
+		ID:           properties[KeyVaultIDKey],
+		ResourceType: azresources.KeyVaultVaults,
+		APIVersion:   keyvault.Version(),
 	}
 
 	return properties, nil

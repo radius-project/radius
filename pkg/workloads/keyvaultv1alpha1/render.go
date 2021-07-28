@@ -29,8 +29,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindAzureKeyVault {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", workloads.ResourceKindAzureKeyVault)
+	if len(resources) != 1 || resources[0].Type != outputresource.KindAzureKeyVault {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", outputresource.KindAzureKeyVault)
 	}
 
 	properties := resources[0].Properties
@@ -71,7 +71,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		resource = outputresource.OutputResource{
 			LocalID:            workloads.LocalIDKeyVault,
-			ResourceKind:       workloads.ResourceKindAzureKeyVault,
+			ResourceKind:       outputresource.KindAzureKeyVault,
 			OutputResourceType: outputresource.TypeARM,
 			Managed:            true,
 			Deployed:           false,
@@ -91,14 +91,14 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		resource = outputresource.OutputResource{
 			LocalID:            workloads.LocalIDKeyVault,
-			ResourceKind:       workloads.ResourceKindAzureKeyVault,
-			OutputResourceType: outputresource.TypeARM,
+			ResourceKind:       outputresource.KindAzureKeyVault,
 			Managed:            false,
 			Deployed:           true,
+			OutputResourceType: outputresource.TypeARM,
 			OutputResourceInfo: outputresource.ARMInfo{
-				ARMID:           vaultID.ID,
-				ARMResourceType: KeyVaultResourceType.Type(),
-				APIVersion:      keyvault.Version(),
+				ID:           vaultID.ID,
+				ResourceType: KeyVaultResourceType.Type(),
+				APIVersion:   keyvault.Version(),
 			},
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",

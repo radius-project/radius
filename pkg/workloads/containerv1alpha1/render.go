@@ -158,15 +158,15 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 
 	apiversionMsi := strings.Split(strings.Split(msi.UserAgent(), "msi/")[1], " profiles")[0]
 	res := outputresource.OutputResource{
-		Deployed:           true,
-		ResourceKind:       workloads.ResourceKindAzureUserAssignedManagedIdentity,
-		OutputResourceType: outputresource.TypeARM,
+		ResourceKind:       outputresource.KindAzureUserAssignedManagedIdentity,
 		LocalID:            midLocalID,
+		Deployed:           true,
 		Managed:            true,
+		OutputResourceType: outputresource.TypeARM,
 		OutputResourceInfo: outputresource.ARMInfo{
-			ARMID:           *mid.ID,
-			ARMResourceType: *mid.Type,
-			APIVersion:      apiversionMsi,
+			ID:           *mid.ID,
+			ResourceType: *mid.Type,
+			APIVersion:   apiversionMsi,
 		},
 	}
 	outputResources = append(outputResources, res)
@@ -197,15 +197,15 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
 	res = outputresource.OutputResource{
-		Deployed:           true,
-		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
-		OutputResourceType: outputresource.TypeARM,
+		ResourceKind:       outputresource.KindAzureRoleAssignment,
 		LocalID:            workloads.LocalIDRoleAssignmentKVSecretsCerts,
+		Deployed:           true,
 		Managed:            true,
+		OutputResourceType: outputresource.TypeARM,
 		OutputResourceInfo: outputresource.ARMInfo{
-			ARMID:           *ra.ID,
-			ARMResourceType: *ra.Type,
-			APIVersion:      apiversionRA,
+			ID:           *ra.ID,
+			ResourceType: *ra.Type,
+			APIVersion:   apiversionRA,
 		},
 	}
 	outputResources = append(outputResources, res)
@@ -221,15 +221,15 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	logger.WithValues(radlogger.LogFieldLocalID, workloads.LocalIDRoleAssignmentKVSecretsCerts).Info(fmt.Sprintf("Created certs/secrets role assignment for %v to access %v", *mid.ID, *kv.ID))
 
 	res = outputresource.OutputResource{
-		Deployed:           true,
-		ResourceKind:       workloads.ResourceKindAzureRoleAssignment,
-		OutputResourceType: outputresource.TypeARM,
+		ResourceKind:       outputresource.KindAzureRoleAssignment,
 		LocalID:            workloads.LocalIDRoleAssignmentKVKeys,
+		Deployed:           true,
 		Managed:            true,
+		OutputResourceType: outputresource.TypeARM,
 		OutputResourceInfo: outputresource.ARMInfo{
-			ARMID:           *ra.ID,
-			ARMResourceType: *ra.Type,
-			APIVersion:      apiversionRA,
+			ID:           *ra.ID,
+			ResourceType: *ra.Type,
+			APIVersion:   apiversionRA,
 		},
 	}
 	outputResources = append(outputResources, res)
@@ -273,7 +273,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 			}
 			res := outputresource.OutputResource{
 				Deployed:           true,
-				ResourceKind:       workloads.ResourceKindAzurePodIdentity,
+				ResourceKind:       outputresource.KindAzurePodIdentity,
 				OutputResourceType: outputresource.TypeAADPodIdentity,
 				LocalID:            workloads.LocalIDAADPodIdentity,
 				Managed:            true,
@@ -332,11 +332,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	outputResources = append(outputResources, or...)
 
 	res := outputresource.OutputResource{
-		Deployed:           false,
-		ResourceKind:       workloads.ResourceKindKubernetes,
-		OutputResourceType: outputresource.TypeKubernetes,
+		ResourceKind:       outputresource.KindKubernetes,
 		LocalID:            workloads.LocalIDDeployment,
+		Deployed:           false,
 		Managed:            true,
+		OutputResourceType: outputresource.TypeKubernetes,
 		OutputResourceInfo: outputresource.K8sInfo{
 			Kind:       deployment.TypeMeta.Kind,
 			APIVersion: deployment.TypeMeta.APIVersion,
@@ -349,11 +349,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if service != nil {
 		res = outputresource.OutputResource{
-			Deployed:           false,
-			ResourceKind:       workloads.ResourceKindKubernetes,
-			OutputResourceType: outputresource.TypeKubernetes,
+			ResourceKind:       outputresource.KindKubernetes,
 			LocalID:            workloads.LocalIDService,
+			Deployed:           false,
 			Managed:            true,
+			OutputResourceType: outputresource.TypeKubernetes,
 			OutputResourceInfo: outputresource.K8sInfo{
 				Kind:       deployment.TypeMeta.Kind,
 				APIVersion: deployment.TypeMeta.APIVersion,
@@ -665,15 +665,15 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		ResourceName:   secretFullName,
 	}
 	or := outputresource.OutputResource{
-		Deployed:           true,
-		ResourceKind:       workloads.ResourceKindAzureKeyVaultSecret,
-		OutputResourceType: outputresource.TypeARM,
+		ResourceKind:       outputresource.KindAzureKeyVaultSecret,
 		LocalID:            workloads.LocalIDKeyVaultSecret,
+		Deployed:           true,
 		Managed:            true,
+		OutputResourceType: outputresource.TypeARM,
 		OutputResourceInfo: outputresource.ARMInfo{
-			ARMID:           secretResource.String(),
-			ARMResourceType: SecretsResourceType,
-			APIVersion:      kvAPIVersion,
+			ID:           secretResource.String(),
+			ResourceType: SecretsResourceType,
+			APIVersion:   kvAPIVersion,
 		},
 	}
 	logger.WithValues(radlogger.LogFieldLocalID, workloads.LocalIDKeyVaultSecret).Info(fmt.Sprintf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName))

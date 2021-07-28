@@ -31,8 +31,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindAzureCosmosDBSQL {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", workloads.ResourceKindAzureCosmosDBSQL)
+	if len(resources) != 1 || resources[0].Type != outputresource.KindAzureCosmosDBSQL {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", outputresource.KindAzureCosmosDBSQL)
 	}
 
 	properties := resources[0].Properties
@@ -91,7 +91,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a cosmosdb instance
 		resource := outputresource.OutputResource{
-			ResourceKind:       workloads.ResourceKindAzureCosmosDBSQL,
+			ResourceKind:       outputresource.KindAzureCosmosDBSQL,
 			OutputResourceType: outputresource.TypeARM,
 			LocalID:            workloads.LocalIDAzureCosmosDBSQL,
 			Resource: map[string]string{
@@ -114,7 +114,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	resource := outputresource.OutputResource{
-		ResourceKind:       workloads.ResourceKindAzureCosmosDBSQL,
+		ResourceKind:       outputresource.KindAzureCosmosDBSQL,
 		OutputResourceType: outputresource.TypeARM,
 		LocalID:            workloads.LocalIDAzureCosmosDBSQL,
 		Resource: map[string]string{

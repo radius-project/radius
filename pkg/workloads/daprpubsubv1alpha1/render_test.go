@@ -40,7 +40,7 @@ func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
+	require.Equal(t, outputresource.KindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
@@ -80,7 +80,7 @@ func Test_Render_Managed_Success_SpecifyName(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
+	require.Equal(t, outputresource.KindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
@@ -142,7 +142,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, workloads.LocalIDAzureServiceBusTopic, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
+	require.Equal(t, outputresource.KindDaprPubSubTopicAzureServiceBus, resource.ResourceKind)
 	require.Equal(t, outputresource.TypeARM, resource.OutputResourceType)
 	require.False(t, resource.Managed)
 

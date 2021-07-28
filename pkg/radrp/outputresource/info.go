@@ -8,22 +8,22 @@ package outputresource
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
 	Resource           interface{}
-	Deployed           bool
-	LocalID            string
-	Managed            bool
 	ResourceKind       string
+	LocalID            string
+	Deployed           bool
+	Managed            bool
 	OutputResourceType string
 	OutputResourceInfo interface{}
 }
 
-// ARMInfo info required to deploy an ARM resource
+// ARMInfo info required to identify an ARM resource
 type ARMInfo struct {
-	ARMID           string `bson:"armId"`
-	ARMResourceType string `bson:"armResourceType"`
-	APIVersion      string `bson:"apiVersion"`
+	ID           string `bson:"id"`
+	ResourceType string `bson:"resourceType"`
+	APIVersion   string `bson:"apiVersion"`
 }
 
-// K8sInfo info required to deploy a Kubernetes resource
+// K8sInfo info required to identify a Kubernetes resource
 type K8sInfo struct {
 	Kind       string `bson:"kind"`
 	APIVersion string `bson:"apiVersion"`
@@ -33,7 +33,7 @@ type K8sInfo struct {
 
 // AADPodIdentity pod identity for AKS cluster to enable access to keyvault
 type AADPodIdentity struct {
-	AKSClusterName string `bson:"aadPodIdentity"`
+	AKSClusterName string `bson:"aksClusterName"`
 	Name           string `bson:"name"`
 	Namespace      string `bson:"namespace"`
 }

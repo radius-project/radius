@@ -85,7 +85,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		ResourceKind: workloads.ResourceKindKubernetes,
+		ResourceKind: outputresource.KindKubernetes,
 		LocalID:      workloads.LocalIDRedisDeployment,
 		Resource:     &deployment})
 
@@ -123,7 +123,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		ResourceKind: workloads.ResourceKindKubernetes,
+		ResourceKind: outputresource.KindKubernetes,
 		LocalID:      workloads.LocalIDRedisService,
 		Resource:     &service})
 
@@ -160,7 +160,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		ResourceKind: workloads.ResourceKindKubernetes,
+		ResourceKind: outputresource.KindKubernetes,
 		LocalID:      workloads.LocalIDRedisDeployment,
 		Resource:     &statestore})
 

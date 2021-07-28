@@ -30,8 +30,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindAzureServiceBusQueue {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", workloads.ResourceKindAzureServiceBusQueue)
+	if len(resources) != 1 || resources[0].Type != outputresource.KindAzureServiceBusQueue {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", outputresource.KindAzureServiceBusQueue)
 	}
 
 	properties := resources[0].Properties
@@ -88,7 +88,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		resource := outputresource.OutputResource{
 			LocalID:            workloads.LocalIDAzureServiceBusQueue,
-			ResourceKind:       workloads.ResourceKindAzureServiceBusQueue,
+			ResourceKind:       outputresource.KindAzureServiceBusQueue,
 			OutputResourceType: outputresource.TypeARM,
 			Managed:            true,
 			Resource: map[string]string{
@@ -111,7 +111,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		resource := outputresource.OutputResource{
 			LocalID:            workloads.LocalIDAzureServiceBusQueue,
-			ResourceKind:       workloads.ResourceKindAzureServiceBusQueue,
+			ResourceKind:       outputresource.KindAzureServiceBusQueue,
 			OutputResourceType: outputresource.TypeARM,
 			Managed:            false,
 			Resource: map[string]string{

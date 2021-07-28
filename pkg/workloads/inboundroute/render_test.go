@@ -69,7 +69,7 @@ func Test_Render_Simple(t *testing.T) {
 	require.NotNil(t, resource)
 
 	require.Equal(t, workloads.LocalIDIngress, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindKubernetes, resource.ResourceKind)
+	require.Equal(t, outputresource.KindKubernetes, resource.ResourceKind)
 	require.Equal(t, outputresource.TypeKubernetes, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
@@ -127,7 +127,7 @@ func Test_Render_WithHostname(t *testing.T) {
 	require.NotNil(t, resource)
 
 	require.Equal(t, workloads.LocalIDIngress, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindKubernetes, resource.ResourceKind)
+	require.Equal(t, outputresource.KindKubernetes, resource.ResourceKind)
 	require.Equal(t, outputresource.TypeKubernetes, resource.OutputResourceType)
 	require.True(t, resource.Managed)
 
@@ -188,7 +188,7 @@ func makeContainerComponent(trait components.GenericTrait, bindings map[string]c
 
 func findIngress(resources []outputresource.OutputResource) (*networkingv1.Ingress, *outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceKind != workloads.ResourceKindKubernetes {
+		if r.ResourceKind != outputresource.KindKubernetes {
 			continue
 		}
 

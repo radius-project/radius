@@ -12,7 +12,6 @@ import (
 
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -107,7 +106,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 }
 
 func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
-	if resource.ResourceKind != workloads.ResourceKindKubernetes {
+	if resource.ResourceKind != outputresource.KindKubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}
 
