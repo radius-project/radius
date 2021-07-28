@@ -6,7 +6,9 @@ package redisv1alpha1
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
@@ -48,9 +50,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	component := RedisComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return nil, err
+		return []workloads.OutputResource{}, err
 	}
 
+<<<<<<< HEAD
 	if component.Config.Managed {
 		resource := workloads.OutputResource{
 			LocalID:            workloads.LocalIDAzureRedis,
@@ -68,4 +71,29 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	return []workloads.OutputResource{}, nil
+=======
+	if r.Redis == nil {
+		return []workloads.OutputResource{}, errors.New("must support either kubernetes or ARM")
+	}
+
+	redisFunc := r.Redis[component.Config.Kind]
+	if redisFunc == nil {
+		return nil, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, getAlphabeticallySortedKeys(r.Redis))
+	}
+
+	return redisFunc(w, component)
+}
+
+func getAlphabeticallySortedKeys(store map[string]func(workloads.InstantiatedWorkload, RedisComponent) ([]workloads.OutputResource, error)) []string {
+	keys := make([]string, len(store))
+
+	i := 0
+	for k := range store {
+		keys[i] = k
+		i++
+	}
+
+	sort.Strings(keys)
+	return keys
+>>>>>>> 7d0bece (plugging things in)
 }
