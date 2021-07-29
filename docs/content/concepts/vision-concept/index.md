@@ -6,7 +6,12 @@ description: An overview of Project Radius long-term vision and offerings
 weight: 100
 ---
 
-## Mission & vision
+Radius is an industry standard for microservices application deployment and management. It aims to be:
+- A community developed open-source project
+- The standard first-class managed application concept in Azure
+- Loved by developers building applications
+
+## Mission
 
 {{% alert title="Project Radius mission" color="primary" %}}
 Improve developer productivity, application reliability and time to market delivery, through intelligent application model that empowers developers to easily deploy and manage applications and dependencies with a serverless experience.
