@@ -39,7 +39,7 @@ Here's what the `todoapp` component will look like with the key vault binding in
 
 Update your `template.bicep` file to match the full application definition:
 
-{{< rad file="snippets/app.bicep" download=tru >}}
+{{< rad file="snippets/app.bicep" download=true >}}
 
 ## Deploy application with database and secret store
 
