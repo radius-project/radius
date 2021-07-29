@@ -41,7 +41,9 @@ While not supported in the CLI, a Radius `.config.yaml` file can be manually con
 
 ### Can I modify a component after it’s been deployed?
 
-**No**. You will need to modify the component definition in your .bicep file’s application definition and re-deploy the application.
+**Yes**. You will need to modify the component definition in your .bicep file’s application definition and re-deploy the application.
+
+While updating Radius-managed resources in Azure and Kubernetes is possible outside of a Radius deployment, these changes will place your component into an unknown state and may be overridden the next time you deploy your application.
 
 ### What does `managed: true` mean?
 
