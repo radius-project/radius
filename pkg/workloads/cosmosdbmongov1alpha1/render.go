@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -31,8 +32,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindAzureCosmosDBMongo {
-		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", workloads.ResourceKindAzureCosmosDBMongo)
+	if len(resources) != 1 || resources[0].Type != outputresource.KindAzureCosmosDBMongo {
+		return nil, fmt.Errorf("cannot fulfill service - expected properties for %s", outputresource.KindAzureCosmosDBMongo)
 	}
 
 	properties := resources[0].Properties
@@ -86,24 +87,24 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render WorkloadRenderer implementation for CosmosDB for MongoDB workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	component := CosmosDBMongoComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		return []outputresource.OutputResource{}, err
 	}
 
-	var resource workloads.OutputResource
+	var resource outputresource.OutputResource
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a cosmosdb instance
-		resource = workloads.OutputResource{
-			ResourceKind:       workloads.ResourceKindAzureCosmosDBMongo,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			LocalID:            workloads.LocalIDAzureCosmosDBMongo,
+		resource = outputresource.OutputResource{
+			Kind:    outputresource.KindAzureCosmosDBMongo,
+			Type:    outputresource.TypeARM,
+			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
@@ -121,10 +122,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		resource = workloads.OutputResource{
-			ResourceKind:       workloads.ResourceKindAzureCosmosDBMongo,
-			LocalID:            workloads.LocalIDAzureCosmosDBMongo,
-			OutputResourceType: workloads.OutputResourceTypeArm,
+		resource = outputresource.OutputResource{
+			Kind:    outputresource.KindAzureCosmosDBMongo,
+			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			Type:    outputresource.TypeARM,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 
@@ -136,5 +137,5 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 	}
-	return []workloads.OutputResource{resource}, nil
+	return []outputresource.OutputResource{resource}, nil
 }

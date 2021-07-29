@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,9 +19,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]workloads.OutputResource, error) {
+func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]outputresource.OutputResource, error) {
 	if !component.Config.Managed {
-		return []workloads.OutputResource{}, errors.New("only 'managed=true' is supported right now")
+		return []outputresource.OutputResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 
 	// Require namespace for k8s components here.
@@ -30,7 +31,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		namespace = "default"
 	}
 
-	resources := []workloads.OutputResource{}
+	resources := []outputresource.OutputResource{}
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -83,7 +84,10 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			},
 		},
 	}
-	resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDRedisDeployment, &deployment))
+	resources = append(resources, outputresource.OutputResource{
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDRedisDeployment,
+		Resource: &deployment})
 
 	service := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -118,7 +122,10 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			},
 		},
 	}
-	resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDRedisService, &service))
+	resources = append(resources, outputresource.OutputResource{
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDRedisService,
+		Resource: &service})
 
 	statestore := unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -152,7 +159,10 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			},
 		},
 	}
-	resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDDaprStateStoreComponent, &statestore))
+	resources = append(resources, outputresource.OutputResource{
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDDaprStateStoreComponent,
+		Resource: &statestore})
 
 	return resources, nil
 }

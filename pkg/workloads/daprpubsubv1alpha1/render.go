@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -26,8 +27,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindDaprPubSubTopicAzureServiceBus {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", workloads.ResourceKindDaprPubSubTopicAzureServiceBus)
+	if len(resources) != 1 || resources[0].Type != outputresource.KindDaprPubSubTopicAzureServiceBus {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", outputresource.KindDaprPubSubTopicAzureServiceBus)
 	}
 
 	properties := resources[0].Properties
@@ -52,11 +53,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for dapr pubsub workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	component := DaprPubSubComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		return []outputresource.OutputResource{}, err
 	}
 
 	// The Dapr pubsub name can default to the component name.
@@ -66,7 +67,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if component.Config.Managed {
 		if component.Config.Topic == "" {
-			return []workloads.OutputResource{}, errors.New("the 'topic' field is required when 'managed=true'")
+			return []outputresource.OutputResource{}, errors.New("the 'topic' field is required when 'managed=true'")
 		}
 
 		if component.Config.Resource != "" {
@@ -74,11 +75,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// generate data we can use to manage a servicebus topic
-		resource := workloads.OutputResource{
-			LocalID:            workloads.LocalIDAzureServiceBusTopic,
-			ResourceKind:       workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            true,
+		resource := outputresource.OutputResource{
+			LocalID: outputresource.LocalIDAzureServiceBusTopic,
+			Kind:    outputresource.KindDaprPubSubTopicAzureServiceBus,
+			Type:    outputresource.TypeARM,
+			Managed: true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -89,7 +90,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 
-		return []workloads.OutputResource{resource}, nil
+		return []outputresource.OutputResource{resource}, nil
 	} else {
 		if component.Config.Topic != "" {
 			return nil, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
@@ -104,11 +105,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		resource := workloads.OutputResource{
-			LocalID:            workloads.LocalIDAzureServiceBusTopic,
-			ResourceKind:       workloads.ResourceKindDaprPubSubTopicAzureServiceBus,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            false,
+		resource := outputresource.OutputResource{
+			LocalID: outputresource.LocalIDAzureServiceBusTopic,
+			Kind:    outputresource.KindDaprPubSubTopicAzureServiceBus,
+			Type:    outputresource.TypeARM,
+			Managed: false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -123,6 +124,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,
 			},
 		}
-		return []workloads.OutputResource{resource}, nil
+		return []outputresource.OutputResource{resource}, nil
 	}
 }

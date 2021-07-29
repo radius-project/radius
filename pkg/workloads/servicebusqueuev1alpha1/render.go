@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
@@ -29,8 +30,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindAzureServiceBusQueue {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", workloads.ResourceKindAzureServiceBusQueue)
+	if len(resources) != 1 || resources[0].Type != outputresource.KindAzureServiceBusQueue {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", outputresource.KindAzureServiceBusQueue)
 	}
 
 	properties := resources[0].Properties
@@ -67,7 +68,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for servicebus workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	component := ServiceBusQueueComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
@@ -85,11 +86,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a servicebus queue
 
-		resource := workloads.OutputResource{
-			LocalID:            workloads.LocalIDAzureServiceBusQueue,
-			ResourceKind:       workloads.ResourceKindAzureServiceBusQueue,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            true,
+		resource := outputresource.OutputResource{
+			LocalID: outputresource.LocalIDAzureServiceBusQueue,
+			Kind:    outputresource.KindAzureServiceBusQueue,
+			Type:    outputresource.TypeARM,
+			Managed: true,
 			Resource: map[string]string{
 				handlers.ManagedKey:             "true",
 				handlers.ServiceBusQueueNameKey: component.Config.Queue,
@@ -97,7 +98,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// It's already in the correct format
-		return []workloads.OutputResource{resource}, nil
+		return []outputresource.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
@@ -108,11 +109,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		resource := workloads.OutputResource{
-			LocalID:            workloads.LocalIDAzureServiceBusQueue,
-			ResourceKind:       workloads.ResourceKindAzureServiceBusQueue,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            false,
+		resource := outputresource.OutputResource{
+			LocalID: outputresource.LocalIDAzureServiceBusQueue,
+			Kind:    outputresource.KindAzureServiceBusQueue,
+			Type:    outputresource.TypeARM,
+			Managed: false,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 
@@ -125,6 +126,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		// It's already in the correct format
-		return []workloads.OutputResource{resource}, nil
+		return []outputresource.OutputResource{resource}, nil
 	}
 }

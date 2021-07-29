@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 )
@@ -93,7 +94,7 @@ func (*NoOpRenderer) AllocateBindings(ctx context.Context, workload workloads.In
 	return nil, nil
 }
 
-func (*NoOpRenderer) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (*NoOpRenderer) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	return nil, nil
 }
 

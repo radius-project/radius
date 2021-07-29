@@ -8,13 +8,13 @@ package keyvaultv1alpha1
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -29,8 +29,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != workloads.ResourceKindAzureKeyVault {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", workloads.ResourceKindAzureKeyVault)
+	if len(resources) != 1 || resources[0].Type != outputresource.KindAzureKeyVault {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", outputresource.KindAzureKeyVault)
 	}
 
 	properties := resources[0].Properties
@@ -56,50 +56,49 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for keyvault workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	component := KeyVaultComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		return []outputresource.OutputResource{}, err
 	}
 
+	var resource outputresource.OutputResource
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
-		resource := workloads.OutputResource{
-			LocalID:            workloads.LocalIDKeyVault,
-			ResourceKind:       workloads.ResourceKindAzureKeyVault,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            true,
-			Deployed:           false,
+		resource = outputresource.OutputResource{
+			LocalID:  outputresource.LocalIDKeyVault,
+			Kind:     outputresource.KindAzureKeyVault,
+			Type:     outputresource.TypeARM,
+			Managed:  true,
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.ManagedKey: "true",
 			},
 		}
-		// It's already in the correct format
-		return []workloads.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
 		}
 
-		vaultID, err := workloads.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, workloads.LocalIDKeyVault)
+		vaultID, err := workloads.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)
 		if err != nil {
 			return nil, err
 		}
 
-		resource := workloads.OutputResource{
-			LocalID:            workloads.LocalIDKeyVault,
-			ResourceKind:       workloads.ResourceKindAzureKeyVault,
-			OutputResourceType: workloads.OutputResourceTypeArm,
-			Managed:            false,
-			Deployed:           true,
-			OutputResourceInfo: workloads.ARMInfo{
-				ResourceID:   vaultID.ID,
+		resource = outputresource.OutputResource{
+			LocalID:  outputresource.LocalIDKeyVault,
+			Kind:     outputresource.KindAzureKeyVault,
+			Managed:  false,
+			Deployed: true,
+			Type:     outputresource.TypeARM,
+			Info: outputresource.ARMInfo{
+				ID:           vaultID.ID,
 				ResourceType: KeyVaultResourceType.Type(),
-				APIVersion:   strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " profiles")[0],
+				APIVersion:   keyvault.Version(),
 			},
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
@@ -108,8 +107,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.KeyVaultNameKey: vaultID.Types[0].Name,
 			},
 		}
-
-		// It's already in the correct format
-		return []workloads.OutputResource{resource}, nil
 	}
+
+	return []outputresource.OutputResource{resource}, nil
 }

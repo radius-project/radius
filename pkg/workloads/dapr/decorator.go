@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -63,7 +64,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for the dapr deployment decorator.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	// Let the inner renderer do its work
 	resources, err := r.Inner.Render(ctx, w)
 	if err != nil {
@@ -83,13 +84,13 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	// dapr detected! update the deployment
-	for _, res := range resources {
-		if !res.IsKubernetesResource() {
+	for _, resource := range resources {
+		if resource.Kind != outputresource.KindKubernetes {
 			// Not a kubernetes resource
 			continue
 		}
 
-		o, ok := res.Resource.(runtime.Object)
+		o, ok := resource.Resource.(runtime.Object)
 		if !ok {
 			// Even if the operation fails, return the output resources created so far
 			// TODO: This is temporary. Once there are no resources actually deployed during render phase,

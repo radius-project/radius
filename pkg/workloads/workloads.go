@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
 
 // ErrUnknownType is the error reported when the workload type is unknown or unsupported.
@@ -33,7 +34,7 @@ type WorkloadRenderer interface {
 	// AllocateBindings is called for the component to provide its supported bindings and their values.
 	AllocateBindings(ctx context.Context, workload InstantiatedWorkload, resources []WorkloadResourceProperties) (map[string]components.BindingState, error)
 	// Render is called for the component to provide its output resources.
-	Render(ctx context.Context, workload InstantiatedWorkload) ([]OutputResource, error)
+	Render(ctx context.Context, workload InstantiatedWorkload) ([]outputresource.OutputResource, error)
 }
 
 // WorkloadResourceProperties represents the properties output by deploying a resource.

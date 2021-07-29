@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
@@ -50,9 +51,9 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, workloads.LocalIDAzureServiceBusQueue, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindAzureServiceBusQueue, resource.ResourceKind)
-	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureServiceBusQueue, resource.Kind)
+	require.Equal(t, outputresource.TypeARM, resource.Type)
 	require.True(t, resource.Managed)
 
 	expected := map[string]string{
@@ -85,9 +86,9 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, workloads.LocalIDAzureServiceBusQueue, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindAzureServiceBusQueue, resource.ResourceKind)
-	require.Equal(t, workloads.OutputResourceTypeArm, resource.OutputResourceType)
+	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureServiceBusQueue, resource.Kind)
+	require.Equal(t, outputresource.TypeARM, resource.Type)
 	require.False(t, resource.Managed)
 
 	expected := map[string]string{

@@ -3,11 +3,11 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package workloads
+package outputresource
 
-// OutputResource types
+// OutputResource Types
 const (
-	OutputResourceTypeKubernetes  = "kubernetes"
-	OutputResourceTypePodIdentity = "aadpodidentity"
-	OutputResourceTypeArm         = "arm"
+	TypeARM            = "arm"
+	TypeKubernetes     = "kubernetes"
+	TypeAADPodIdentity = "aadpodidentity"
 )

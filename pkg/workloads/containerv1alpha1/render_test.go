@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
@@ -317,9 +318,9 @@ func TestRender_Success_NonDefaultPort(t *testing.T) {
 	})
 }
 
-func findDeployment(resources []workloads.OutputResource) *appsv1.Deployment {
+func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
 	for _, r := range resources {
-		if !r.IsKubernetesResource() {
+		if r.Kind != outputresource.KindKubernetes {
 			continue
 		}
 
@@ -334,9 +335,9 @@ func findDeployment(resources []workloads.OutputResource) *appsv1.Deployment {
 	return nil
 }
 
-func findService(resources []workloads.OutputResource) *corev1.Service {
+func findService(resources []outputresource.OutputResource) *corev1.Service {
 	for _, r := range resources {
-		if !r.IsKubernetesResource() {
+		if r.Kind != outputresource.KindKubernetes {
 			continue
 		}
 

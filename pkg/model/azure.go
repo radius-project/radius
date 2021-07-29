@@ -8,6 +8,7 @@ package model
 import (
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"
@@ -32,18 +33,18 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
 	}
 	handlers := map[string]handlers.ResourceHandler{
-		workloads.ResourceKindKubernetes:                       handlers.NewKubernetesHandler(*k8s),
-		workloads.ResourceKindDaprStateStoreAzureStorage:       handlers.NewDaprStateStoreAzureStorageHandler(arm, *k8s),
-		workloads.ResourceKindDaprStateStoreSQLServer:          handlers.NewDaprStateStoreSQLServerHandler(arm, *k8s),
-		workloads.ResourceKindDaprPubSubTopicAzureServiceBus:   handlers.NewDaprPubSubServiceBusHandler(arm, *k8s),
-		workloads.ResourceKindAzureCosmosDBMongo:               handlers.NewAzureCosmosDBMongoHandler(arm),
-		workloads.ResourceKindAzureCosmosDBSQL:                 handlers.NewAzureCosmosDBSQLHandler(arm),
-		workloads.ResourceKindAzureServiceBusQueue:             handlers.NewAzureServiceBusQueueHandler(arm),
-		workloads.ResourceKindAzureKeyVault:                    handlers.NewAzureKeyVaultHandler(arm),
-		workloads.ResourceKindAzurePodIdentity:                 handlers.NewAzurePodIdentityHandler(arm),
-		workloads.ResourceKindAzureUserAssignedManagedIdentity: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
-		workloads.ResourceKindAzureRoleAssignment:              handlers.NewAzureRoleAssignmentHandler(arm),
-		workloads.ResourceKindAzureKeyVaultSecret:              handlers.NewAzureKeyVaultSecretHandler(arm),
+		outputresource.KindKubernetes:                       handlers.NewKubernetesHandler(*k8s),
+		outputresource.KindDaprStateStoreAzureStorage:       handlers.NewDaprStateStoreAzureStorageHandler(arm, *k8s),
+		outputresource.KindDaprStateStoreSQLServer:          handlers.NewDaprStateStoreSQLServerHandler(arm, *k8s),
+		outputresource.KindDaprPubSubTopicAzureServiceBus:   handlers.NewDaprPubSubServiceBusHandler(arm, *k8s),
+		outputresource.KindAzureCosmosDBMongo:               handlers.NewAzureCosmosDBMongoHandler(arm),
+		outputresource.KindAzureCosmosDBSQL:                 handlers.NewAzureCosmosDBSQLHandler(arm),
+		outputresource.KindAzureServiceBusQueue:             handlers.NewAzureServiceBusQueueHandler(arm),
+		outputresource.KindAzureKeyVault:                    handlers.NewAzureKeyVaultHandler(arm),
+		outputresource.KindAzurePodIdentity:                 handlers.NewAzurePodIdentityHandler(arm),
+		outputresource.KindAzureUserAssignedManagedIdentity: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
+		outputresource.KindAzureRoleAssignment:              handlers.NewAzureRoleAssignmentHandler(arm),
+		outputresource.KindAzureKeyVaultSecret:              handlers.NewAzureKeyVaultSecretHandler(arm),
 	}
 	return NewModel(renderers, handlers)
 }

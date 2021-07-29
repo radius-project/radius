@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
@@ -49,8 +50,8 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, workloads.LocalIDAzureCosmosDBMongo, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindAzureCosmosDBMongo, resource.ResourceKind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosDBMongo, resource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
@@ -83,8 +84,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, workloads.LocalIDAzureCosmosDBMongo, resource.LocalID)
-	require.Equal(t, workloads.ResourceKindAzureCosmosDBMongo, resource.ResourceKind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosDBMongo, resource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "false",

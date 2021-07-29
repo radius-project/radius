@@ -12,23 +12,24 @@ import (
 	"sort"
 
 	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-var SupportedAzureStateStoreKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error){
+var SupportedAzureStateStoreKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error){
 	"any":                      GetDaprStateStoreAzureStorage,
 	"state.azure.tablestorage": GetDaprStateStoreAzureStorage,
 	"state.sqlserver":          GetDaprStateStoreSQLServer,
 }
 
-var SupportedKubernetesStateStoreKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error){
+var SupportedKubernetesStateStoreKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error){
 	"any":         GetDaprStateStoreKubernetesRedis,
 	"state.redis": GetDaprStateStoreKubernetesRedis,
 }
 
 // Renderer is the WorkloadRenderer implementation for the dapr statestore workload.
 type Renderer struct {
-	StateStores map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error)
+	StateStores map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error)
 }
 
 // Allocate is the WorkloadRenderer implementation for dapr statestore workload.
@@ -51,15 +52,15 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for dapr statestore workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]workloads.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	component := DaprStateStoreComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
-		return []workloads.OutputResource{}, err
+		return []outputresource.OutputResource{}, err
 	}
 
 	if r.StateStores == nil {
-		return []workloads.OutputResource{}, errors.New("must support either kubernetes or ARM")
+		return []outputresource.OutputResource{}, errors.New("must support either kubernetes or ARM")
 	}
 
 	stateStoreFunc := r.StateStores[component.Config.Kind]
@@ -69,7 +70,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	return stateStoreFunc(w, component)
 }
 
-func getSortedKeys(store map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]workloads.OutputResource, error)) []string {
+func getSortedKeys(store map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error)) []string {
 	keys := make([]string, len(store))
 
 	i := 0

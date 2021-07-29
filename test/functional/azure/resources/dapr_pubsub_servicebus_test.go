@@ -10,7 +10,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 )
@@ -47,14 +47,14 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDAzureServiceBusTopic: validation.NewOutputResource(workloads.LocalIDAzureServiceBusTopic, workloads.OutputResourceTypeArm, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, true),
+							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, true),
 						},
 					},
 				},
@@ -102,14 +102,14 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDDeployment: validation.NewOutputResource(workloads.LocalIDDeployment, workloads.OutputResourceTypeKubernetes, workloads.ResourceKindKubernetes, true),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							workloads.LocalIDAzureServiceBusTopic: validation.NewOutputResource(workloads.LocalIDAzureServiceBusTopic, workloads.OutputResourceTypeArm, workloads.ResourceKindDaprPubSubTopicAzureServiceBus, false),
+							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, false),
 						},
 					},
 				},
