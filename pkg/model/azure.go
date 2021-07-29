@@ -34,7 +34,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
 		containerv1alpha1.Kind:       &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
 		servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
-		redisv1alpha1.Kind:           &redisv1alpha1.Renderer{Redis: redisv1alpha1.SupportedAzureRedisKindValues},
+		redisv1alpha1.Kind:           &redisv1alpha1.Renderer{RedisFunc: redisv1alpha1.GetAzureRedis, Arm: arm},
 	}
 	handlers := map[string]handlers.ResourceHandler{
 		outputresource.KindKubernetes:                       handlers.NewKubernetesHandler(*k8s),

@@ -5,7 +5,7 @@
 
 package redisv1alpha1
 
-const Kind = "radius.dev/Redis@v1alpha1"
+const Kind = "redislabs.com/Redis@v1alpha1"
 
 // RedisComponent is the definition of the container component
 type RedisComponent struct {
@@ -20,7 +20,5 @@ type RedisComponent struct {
 
 // RedisConfig is the defintion of the config section
 type RedisConfig struct {
-	Kind    string `json:"kind"`
-	Managed bool   `json:"managed"`
-	Name    string `json:"name"`
+	Managed bool `json:"managed"`
 }
