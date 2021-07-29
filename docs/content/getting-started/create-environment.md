@@ -2,7 +2,7 @@
 type: docs
 title: "Create a Radius  environment"
 linkTitle: "Create environment"
-description: "How to initialize the private Radius resource provider in your Azure subscription or Kubernetes cluster"
+description: "How to initialize a Radius environment in your Azure subscription or Kubernetes cluster"
 weight: 30
 ---
 
