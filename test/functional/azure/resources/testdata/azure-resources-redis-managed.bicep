@@ -14,7 +14,9 @@ resource app 'radius.dev/Applications@v1alpha1' = {
         {
           binding: redis.properties.bindings.redis
           env: {
-            BINDING_REDIS_CONNECTIONSTRING: redis.properties.bindings.redis.connectionString
+            BINDING_REDIS_HOST: redis.properties.bindings.redis.host
+            BINDING_REDIS_PORT: redis.properties.bindings.redis.port
+            BINDING_REDIS_PASSWORD: redis.properties.bindings.redis.primaryKey
           }
         }
       ]
