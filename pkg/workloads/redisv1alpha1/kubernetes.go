@@ -7,6 +7,7 @@ package redisv1alpha1
 
 import (
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisComponent) ([]workloads.OutputResource, error) {
+func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisComponent) ([]outputresource.OutputResource, error) {
 	// Require namespace for k8s components here.
 	// Should move this check to a more generalized place.
 	namespace := w.Namespace
@@ -22,7 +23,7 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 		namespace = "default"
 	}
 
-	resources := []workloads.OutputResource{}
+	resources := []outputresource.OutputResource{}
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -75,7 +76,11 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 			},
 		},
 	}
-	resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDRedisDeployment, &deployment))
+
+	resources = append(resources, outputresource.OutputResource{
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDRedisDeployment,
+		Resource: &deployment})
 
 	service := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -110,7 +115,11 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 			},
 		},
 	}
-	resources = append(resources, workloads.NewKubernetesResource(workloads.LocalIDRedisService, &service))
+
+	resources = append(resources, outputresource.OutputResource{
+		Kind:     outputresource.KindKubernetes,
+		LocalID:  outputresource.LocalIDRedisService,
+		Resource: &service})
 
 	return resources, nil
 }

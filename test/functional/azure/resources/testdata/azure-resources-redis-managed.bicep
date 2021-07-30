@@ -14,7 +14,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
         {
           binding: redis.properties.bindings.redis
           env: {
-            REDISCONNECTION: redis.properties.bindings.redis.connectionString
+            BINDING_REDIS_CONNECTIONSTRING: redis.properties.bindings.redis.connectionString
           }
         }
       ]
