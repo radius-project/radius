@@ -18,7 +18,6 @@ import (
 )
 
 func GetAzureRedis(w workloads.InstantiatedWorkload, component RedisComponent) ([]outputresource.OutputResource, error) {
-
 	if component.Config.Managed {
 		resource := outputresource.OutputResource{
 			LocalID: outputresource.LocalIDAzureRedis,
@@ -32,7 +31,8 @@ func GetAzureRedis(w workloads.InstantiatedWorkload, component RedisComponent) (
 		}
 		return []outputresource.OutputResource{resource}, nil
 	} else {
-		// TODO
+		// TODO support managed redis workload
+		return nil, fmt.Errorf("only managed = true is support for azure redis workload")
 	}
 
 	return []outputresource.OutputResource{}, nil

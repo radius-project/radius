@@ -6,7 +6,11 @@
 package redisv1alpha1
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
@@ -122,4 +126,29 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 		Resource: &service})
 
 	return resources, nil
+}
+
+func AllocateKubernetesBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	namespace := workload.Namespace
+	if namespace == "" {
+		namespace = "default"
+	}
+	// TODO confirm workload.Name == component.Name
+	host := fmt.Sprintf("%s.%s.svc.cluster.local:6379", workload.Name, namespace)
+	port := fmt.Sprint(6379)
+	bindings := map[string]components.BindingState{
+		"redis": {
+			Component: workload.Name,
+			Binding:   "redis",
+			Kind:      "redislabs.com/Redis",
+			Properties: map[string]interface{}{
+				"connectionString": host + ":" + port,
+				"host":             host,
+				"port":             port,
+				"primaryKey":       "", // TODO do we need to fill something out for keys?
+				"secondarykey":     "",
+			},
+		},
+	}
+	return bindings, nil
 }

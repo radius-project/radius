@@ -6,28 +6,23 @@ package redisv1alpha1
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"sort"
 
-	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
-	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
 type Renderer struct {
-	RedisFunc func(workloads.InstantiatedWorkload, RedisComponent) ([]outputresource.OutputResource, error)
-	Arm       armauth.ArmConfig
+	Arm armauth.ArmConfig
 }
 
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	if r.Arm != armauth.ArmConfig{} {
-		AllocateAzureBindings(r.Arm, ctx)
+	if r.Arm != (armauth.ArmConfig{}) {
+		return AllocateAzureBindings(r.Arm, ctx, workload, resources)
 	}
-	return bindings, nil
+	return AllocateKubernetesBindings(ctx, workload, resources)
 }
 
 // Render is the WorkloadRenderer implementation for redis workload.
@@ -38,11 +33,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []outputresource.OutputResource{}, err
 	}
 
-	if r.RedisFunc == nil {
-		return []outputresource.OutputResource{}, errors.New("must support either kubernetes or ARM")
+	if r.Arm != (armauth.ArmConfig{}) {
+		return GetAzureRedis(w, component)
 	}
 
-	return r.RedisFunc(w, component)
+	return GetKubernetesRedis(w, component)
 }
 
 func getAlphabeticallySortedKeys(store map[string]func(workloads.InstantiatedWorkload, RedisComponent) ([]outputresource.OutputResource, error)) []string {
