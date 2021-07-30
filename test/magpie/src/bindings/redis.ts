@@ -1,28 +1,67 @@
 import { Binding, BindingStatus} from '../binding'
-import { RedisClient } from 'redis'
+import redis from 'redis';
 
 // Use this with a value like BINDING_REDIS_CONNECTIONSTRING
 export class RedisBinding implements Binding {
-    private uri: string;
-    private client: RedisClient;
+    private host: string;
+    private port: string;
+    private password: string;
 
     constructor(map: { [key: string]: string }) {
-        this.uri = map['CONNECTIONSTRING'];
-        if (!this.uri) {
-            throw new Error('CONNECTIONSTRING is required');
+        this.host = map['HOST'];
+        if (!this.host) {
+            throw new Error('HOST is required');
         }
 
-        this.client = RedisClient.createClient();
-    }
+        this.port = map['PORT'];
+        if (!this.port) {
+            throw new Error('PORT is required');
+        }
 
-    private async connect(): RedisClient {
-        this.client.set("key", "value");
+        this.password = map['PASSWORD'];
+        if (!this.password) {
+            throw new Error('PORT is required');
+        }
     }
 
     public async status(): Promise<BindingStatus> {
-        // nothing complex, we just connect.
-        await this.connect();
-        return { ok: true, message: "connected"};
+        // from https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-nodejs-get-started
+        var cacheConnection = redis.createClient(+this.port, this.host, 
+            {
+                auth_pass: this.password, 
+                tls: {servername: this.host}
+            });
+
+        cacheConnection.on("error", function(error) {
+            console.error(error);
+        });
+        // Simple PING command
+        console.log("\nCache command: PING");
+        cacheConnection.ping(function(error, res) {
+            if (error != null) {
+                console.error("Error: " + error);
+            }
+            console.log("Cache response : " + res);
+        });
+
+        // Simple get and put of integral data types into the cache
+        console.log("\nCache command: GET Message");
+        console.log("Cache response : " + cacheConnection.get("Message"));    
+
+        console.log("\nCache command: SET Message");
+        console.log("Cache response : " + cacheConnection.set("Message",
+            "Hello! The cache is working from Node.js!"));    
+
+        // Demonstrate "SET Message" executed as expected...
+        console.log("\nCache command: GET Message");
+        console.log("Cache response : " + cacheConnection.get("Message"));    
+
+        // Get the client list, useful to see if connection list is growing...
+        var canList = cacheConnection.client("LIST")
+        console.log("\nCache command: CLIENT LIST");
+        console.log("Cache response : " + cacheConnection.client("LIST")); 
+
+        return { ok: canList, message: "connected"};
     }
 
     public toString = () : string => {
