@@ -36,7 +36,7 @@ A non-localhost hostname is required if you're running the resource provider in 
 # - with 'mongoadmin' as a username
 # - with 'secret' as the password
 # - with 'rpdb' as the database name
-docker run --daemon \
+docker run -d \
     -p 27017:27017 \
     --hostname mongo \
     -e MONGO_INITDB_ROOT_USERNAME=mongoadmin \
@@ -62,7 +62,7 @@ export MONGODB_CONNECTION_STRING='mongodb://mongoadmin:secret@mongo:27017/rpdb?a
 export MONGODB_DATABASE='rpdb'
 export K8S_LOCAL=true
 export ARM_RESOURCE_GROUP="$(whoami)-radius"
-export ARM_SUBSCRIPTION_ID="$(az account show -o json | jq .id --raw-output)"
+export ARM_SUBSCRIPTION_ID="$(az account show --query 'id'  --output tsv)"
 ```
 
 Configures all of the required environment variables:
