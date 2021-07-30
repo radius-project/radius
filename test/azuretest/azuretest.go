@@ -14,9 +14,9 @@ import (
 	"github.com/Azure/radius/pkg/rad"
 	"github.com/Azure/radius/pkg/rad/azure"
 	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/test/utils"
+	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/kubernetes"
+	k8s "k8s.io/client-go/kubernetes"
 )
 
 func NewTestOptions(t *testing.T) TestOptions {
@@ -36,7 +36,10 @@ func NewTestOptions(t *testing.T) TestOptions {
 	az, err := environments.RequireAzureCloud(env)
 	require.NoError(t, err, "environment was not azure cloud")
 
-	k8s, err := utils.GetKubernetesClient()
+	k8sconfig, err := kubernetes.ReadKubeConfig()
+	require.NoError(t, err, "failed to read k8s config")
+
+	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	return TestOptions{
@@ -53,5 +56,5 @@ type TestOptions struct {
 	ARMAuthorizer  autorest.Authorizer
 	ARMConnection  *armcore.Connection
 	Environment    *environments.AzureCloudEnvironment
-	K8sClient      *kubernetes.Clientset
+	K8sClient      *k8s.Clientset
 }

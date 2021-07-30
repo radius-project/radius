@@ -169,7 +169,53 @@ jobs:
       - name: Push helm chart to ACR
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz --force
-
+  kubernetes_tests:
+    name: Run Kubernetes tests
+    needs: [ 'build', 'images' ]
+    if: startsWith(github.ref, 'refs/pull/') # run on PR 
+    runs-on: ubuntu-latest
+    env:
+      GOVER: '^1.16.0'
+      DOCKER_REGISTRY: radius.azurecr.io
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Go ${{ env.GOVER }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GOVER }}
+    - name: Parse release version and set environment variables
+      run: python ./.github/scripts/get_release_version.py
+    - name: Download release artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: rad_cli_linux_amd64
+        path: dist
+    - name: Make rad executable
+      run: chmod +x rad
+      working-directory: dist
+    - name: Create KinD Cluster
+      uses: helm/kind-action@v1.0.0
+      with:
+        cluster_name: radius
+        version:  v0.11.0
+    - name: Apply CRDs
+      run: make controller-crd-install
+    - name: Update rad env with Kubernetes
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        mkdir ~/.rad
+        dist/rad env init kubernetes
+        # Print config for sanity check
+        cat ~/.rad/config.yaml
+    - name: Deploy Controller
+      run: make controller-deploy-existing
+    - name: Run Kubernetes tests (PR)
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        make test-functional-kubernetes
+      env:
+        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]

@@ -72,7 +72,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	for _, deploymentResource := range deploymentList.Value {
 		// This is needed until server side implementation is fixed https://github.com/Azure/radius/issues/159
 		deploymentName := *deploymentResource.Name
-		err = client.DeleteDeployment(cmd.Context(), deploymentName, applicationName)
+		err = client.DeleteDeployment(cmd.Context(), applicationName, deploymentName)
 		if err != nil {
 			return err
 		}

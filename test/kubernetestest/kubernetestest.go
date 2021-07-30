@@ -3,27 +3,31 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azuretest
+package kubernetestest
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/rad/kubernetes"
 	"github.com/Azure/radius/test/radcli"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	k8s "k8s.io/client-go/kubernetes"
 )
 
 type Step struct {
-	Executor           StepExecutor
-	AzureResources     *validation.AzureResourceSet
-	Components         *validation.ComponentSet
-	Pods               *validation.K8sObjectSet
-	PostStepVerify     func(ctx context.Context, t *testing.T, at ApplicationTest)
-	SkipAzureResources bool
-	SkipComponents     bool
-	SkipPods           bool
+	Executor       StepExecutor
+	Components     *validation.ComponentSet
+	Pods           *validation.K8sObjectSet
+	PostStepVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
+	SkipComponents bool
+	SkipPods       bool
 }
 
 type StepExecutor interface {
@@ -39,12 +43,24 @@ type ApplicationTest struct {
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
 }
 
-func NewApplicationTest(t *testing.T, application string, steps []Step) ApplicationTest {
-	return ApplicationTest{
-		Options:     NewTestOptions(t),
-		Application: application,
-		Description: application,
-		Steps:       steps,
+type TestOptions struct {
+	ConfigFilePath string
+	K8sClient      *k8s.Clientset
+}
+
+func NewTestOptions(t *testing.T) TestOptions {
+	config, err := rad.LoadConfig("")
+	require.NoError(t, err, "failed to read radius config")
+
+	k8sconfig, err := kubernetes.ReadKubeConfig()
+	require.NoError(t, err, "failed to read k8s config")
+
+	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
+	require.NoError(t, err, "failed to create kubernetes client")
+
+	return TestOptions{
+		ConfigFilePath: config.ConfigFileUsed(),
+		K8sClient:      k8s,
 	}
 }
 
@@ -64,6 +80,45 @@ func (at ApplicationTest) CollectAllNamespaces() []string {
 	}
 
 	return results
+}
+
+var _ StepExecutor = (*DeployStepExecutor)(nil)
+
+type DeployStepExecutor struct {
+	Description string
+	Template    string
+}
+
+func NewDeployStepExecutor(template string) *DeployStepExecutor {
+	return &DeployStepExecutor{
+		Description: fmt.Sprintf("deploy %s", template),
+		Template:    template,
+	}
+}
+
+func (d *DeployStepExecutor) GetDescription() string {
+	return d.Description
+}
+
+func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options TestOptions) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	templateFilePath := filepath.Join(cwd, d.Template)
+	t.Logf("deploying %s from file %s", d.Description, d.Template)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	err = cli.Deploy(ctx, templateFilePath)
+	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
+	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
+}
+
+func NewApplicationTest(t *testing.T, application string, steps []Step) ApplicationTest {
+	return ApplicationTest{
+		Options:     NewTestOptions(t),
+		Application: application,
+		Description: application,
+		Steps:       steps,
+	}
 }
 
 func (at ApplicationTest) Test(t *testing.T) {
@@ -91,20 +146,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 				return
 			}
 
-			t.Logf("running step %d of %d: %s", i+1, len(at.Steps), step.Executor.GetDescription())
+			t.Logf("running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 			step.Executor.Execute(ctx, t, at.Options)
-			t.Logf("finished running step %d of %d: %s", i+1, len(at.Steps), step.Executor.GetDescription())
-
-			if step.AzureResources == nil && step.SkipAzureResources {
-				t.Logf("skipping validation of Azure resources..")
-			} else if step.AzureResources == nil {
-				require.Fail(t, "no azure resource set was specified and SkipAzureResources == false, either specify a resource set or set SkipAzureResources = true ")
-			} else {
-				// Validate that all expected Azure resources are created
-				t.Logf("validating Azure resources for %s", step.Executor.GetDescription())
-				validation.ValidateAzureResourcesCreated(ctx, t, at.Options.ARMAuthorizer, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Application, *step.AzureResources)
-				t.Logf("finished validating Azure resources for %s", step.Executor.GetDescription())
-			}
+			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 
 			if step.Components == nil && step.SkipComponents {
 				t.Logf("skipping validation of components...")
@@ -113,7 +157,10 @@ func (at ApplicationTest) Test(t *testing.T) {
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.Components)
+
+				// TODO: create k8s client for validating output resources
+				// https://github.com/Azure/radius/issues/778
+				// validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.Components)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 
@@ -147,17 +194,6 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	// We run the validation code based on the final step
 	last := at.Steps[len(at.Steps)-1]
-
-	// We don't need to validate the components because they are already gone.
-
-	if last.SkipAzureResources {
-		t.Logf("skipping validation of Azure resources..")
-	} else {
-		// Validate that all expected Azure resources were deleted
-		t.Logf("validating deletion of Azure resources for %s", last.Executor.GetDescription())
-		validation.ValidateAzureResourcesDeleted(ctx, t, at.Options.ARMAuthorizer, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Application, *last.AzureResources)
-		t.Logf("finished validating deletion of Azure resources for %s", last.Executor.GetDescription())
-	}
 
 	if last.SkipPods {
 		t.Logf("skipping validation of pods...")

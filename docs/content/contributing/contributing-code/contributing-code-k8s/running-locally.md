@@ -48,7 +48,7 @@ kind create cluster
 Next, install the appropriate Custom Resources Definition (CRD) required to run radius on kubernetes. This is done by running:
 
 ```sh
-make controller-install
+make controller-crd-install
 ```
 
 Finally, we can run the controller by running:
