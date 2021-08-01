@@ -161,6 +161,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 				for _, resource := range status.Resources {
 					wr := workloads.WorkloadResourceProperties{
+						LocalID:    resource.LocalID,
 						Type:       resource.Type,
 						Properties: resource.Properties,
 					}
@@ -264,6 +265,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			wrps := []workloads.WorkloadResourceProperties{}
 			for _, resource := range dw.Resources {
 				wr := workloads.WorkloadResourceProperties{
+					LocalID:    resource.LocalID,
 					Type:       resource.Type,
 					Properties: resource.Properties,
 				}

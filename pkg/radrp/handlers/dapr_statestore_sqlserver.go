@@ -91,13 +91,7 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 			"metadata": map[string]interface{}{
 				"name":      properties[KubernetesNameKey],
 				"namespace": properties[KubernetesNamespaceKey],
-				"labels": map[string]string{
-					keys.LabelRadiusApplication:   options.Application,
-					keys.LabelRadiusComponent:     options.Component,
-					keys.LabelKubernetesName:      options.Component,
-					keys.LabelKubernetesPartOf:    options.Application,
-					keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-				},
+				"labels":    keys.MakeDescriptiveLabels(options.Application, options.Component),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.sqlserver",

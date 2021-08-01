@@ -116,10 +116,7 @@ func Test_ContainerInboundRoute(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
 				// Verify that we've created an ingress resource. We don't verify reachability because allocating
 				// a public IP can take a few minutes.
-				labelset := map[string]string{
-					keys.LabelRadiusApplication: application,
-					keys.LabelRadiusComponent:   "frontend",
-				}
+				labelset := keys.MakeSelectorLabels(application, "frontend")
 				matches, err := at.Options.K8sClient.NetworkingV1().Ingresses(application).List(context.Background(), metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})

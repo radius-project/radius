@@ -94,10 +94,7 @@ func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace str
 	// Right now this connects to a pod related to a component. We can find the pods with the labels
 	// and then choose one that's in the running state.
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
-		LabelSelector: labels.FormatLabels(map[string]string{
-			keys.LabelRadiusApplication: application,
-			keys.LabelRadiusComponent:   component,
-		}),
+		LabelSelector: labels.FormatLabels(keys.MakeSelectorLabels(application, component)),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list running replicas for component %v: %w", component, err)

@@ -97,7 +97,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expected, resource.Resource)
 }
 
-func Test_Render_Unmanaged_MissingResourc(t *testing.T) {
+func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 

@@ -79,13 +79,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      w.Name,
 			Namespace: w.Application,
-			Labels: map[string]string{
-				keys.LabelRadiusApplication:   w.Application,
-				keys.LabelRadiusComponent:     w.Name,
-				keys.LabelKubernetesName:      w.Name,
-				keys.LabelKubernetesPartOf:    w.Application,
-				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-			},
+			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 	}
 

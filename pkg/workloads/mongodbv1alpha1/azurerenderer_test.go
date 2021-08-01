@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package keyvaultv1alpha1
+package mongodbv1alpha1
 
 import (
 	"context"
@@ -27,9 +27,9 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Managed_Success(t *testing.T) {
+func Test_AzureRenderer_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := AzureRenderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -50,18 +50,20 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, outputresource.LocalIDKeyVault, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureKeyVault, resource.Kind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosDBMongo, resource.Kind)
 
 	expected := map[string]string{
-		handlers.ManagedKey: "true",
+		handlers.ManagedKey:              "true",
+		handlers.CosmosDBAccountBaseName: "test-component",
+		handlers.CosmosDBDatabaseNameKey: "test-component",
 	}
 	require.Equal(t, expected, resource.Resource)
 }
 
-func Test_Render_Unmanaged_Success(t *testing.T) {
+func Test_AzureRenderer_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := AzureRenderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -70,7 +72,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 			Kind: Kind,
 			Name: "test-component",
 			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.KeyVault/vaults/test-vault",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},
@@ -82,20 +84,22 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, outputresource.LocalIDKeyVault, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureKeyVault, resource.Kind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosDBMongo, resource.Kind)
 
 	expected := map[string]string{
-		handlers.ManagedKey:      "false",
-		handlers.KeyVaultIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.KeyVault/vaults/test-vault",
-		handlers.KeyVaultNameKey: "test-vault",
+		handlers.ManagedKey:              "false",
+		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+		handlers.CosmosDBAccountNameKey:  "test-account",
+		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+		handlers.CosmosDBDatabaseNameKey: "test-database",
 	}
 	require.Equal(t, expected, resource.Resource)
 }
 
-func Test_Render_Unmanaged_MissingResource(t *testing.T) {
+func Test_AzureRenderer_Render_Unmanaged_MissingResource(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := AzureRenderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -116,9 +120,9 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 	require.Equal(t, workloads.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }
 
-func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_AzureRenderer_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := AzureRenderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -127,7 +131,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 			Kind: Kind,
 			Name: "test-component",
 			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/vaults/test-vault",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/mongodbDatabases/test-database",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},
@@ -135,5 +139,5 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a KeyVault", err.Error())
+	require.Equal(t, "the 'resource' field must refer to a CosmosDB Mongo Database", err.Error())
 }

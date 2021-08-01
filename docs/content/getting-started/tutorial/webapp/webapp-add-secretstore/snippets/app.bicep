@@ -45,7 +45,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
   //DATABASE
   resource db 'Components' = {
     name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
+    kind: 'mongodb.com/Mongo@v1alpha1'
     properties: {
       config: {
         managed: true

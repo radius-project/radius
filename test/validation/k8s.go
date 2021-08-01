@@ -37,10 +37,9 @@ type K8sObject struct {
 
 func NewK8sObjectForComponent(application string, name string) K8sObject {
 	return K8sObject{
-		Labels: map[string]string{
-			keys.LabelRadiusApplication: application,
-			keys.LabelRadiusComponent:   name,
-		},
+		// NOTE: we use the selector labels here because the selector labels are intended
+		// to be determininistic. We might add things to the descriptive labels that are NON deterministic.
+		Labels: keys.MakeSelectorLabels(application, name),
 	}
 }
 
@@ -63,10 +62,9 @@ func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernet
 					// validate that this matches one of our expected deployment
 					index := matchesExpectedLabels(remaining, actualDeployment.Labels)
 					if index == nil {
-						// this is not a match
-						assert.Failf(t,
-							"unrecognized deployment",
-							"count not find a match for Pod with namespace: %v name: %v labels: %v",
+						// this is not a match, check if it has a radius application label
+						t.Log(t,
+							"unrecognized deployment, could not find a match for Deployment with namespace: %v name: %v labels: %v",
 							actualDeployment.Namespace,
 							actualDeployment.Name,
 							actualDeployment.Labels)
@@ -119,8 +117,11 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 					// validate that this matches one of our expected pods
 					index := matchesExpectedLabels(remaining, actualPod.Labels)
 					if index == nil {
-						// this is not a match
-						assert.Failf(t, "unrecognized pod", "count not find a match for Pod with namespace: %v name: %v labels: %v", actualPod.Namespace, actualPod.Name, actualPod.Labels)
+						t.Log(t,
+							"unrecognized pod, could not find a match for Pod with namespace: %v name: %v labels: %v",
+							actualPod.Namespace,
+							actualPod.Name,
+							actualPod.Labels)
 						continue
 					}
 

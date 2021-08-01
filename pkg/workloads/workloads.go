@@ -8,6 +8,8 @@ package workloads
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -40,5 +42,22 @@ type WorkloadRenderer interface {
 // WorkloadResourceProperties represents the properties output by deploying a resource.
 type WorkloadResourceProperties struct {
 	Type       string
+	LocalID    string
 	Properties map[string]string
+}
+
+// FindByLocalID finds a WorkloadResourceProperties with a matching LocalID. Returns an error if not found.
+func FindByLocalID(resources []WorkloadResourceProperties, localID string) (*WorkloadResourceProperties, error) {
+	for _, resource := range resources {
+		if resource.LocalID == localID {
+			return &resource, nil
+		}
+	}
+
+	names := []string{}
+	for _, resource := range resources {
+		names = append(names, resource.LocalID)
+	}
+
+	return nil, fmt.Errorf("cannot find a resource matching id %s searched %d resources: %s", localID, len(resources), strings.Join(names, " "))
 }
