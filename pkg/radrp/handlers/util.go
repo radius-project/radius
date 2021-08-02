@@ -13,9 +13,11 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/gofrs/uuid"
 )
 
 // mergeProperties combines properties from a resource definition and a potentially existing resource.
@@ -82,4 +84,33 @@ func generateString(length int, allowedCharacters string) string {
 		str += string(allowedCharacters[rnd.Intn(len(allowedCharacters))])
 	}
 	return str
+}
+
+// generateRandomAzureName generates account name with the specified database name as prefix appended with -<uuid>.
+// This is needed since CosmosDB account names are required to be unique across Azure.
+func generateRandomAzureName(ctx context.Context, nameBase string, checkAvailability func(string) error) (string, error) {
+
+	logger := radlogger.GetLogger(ctx)
+	retryAttempts := 10
+
+	base := nameBase + "-"
+
+	for i := 0; i < retryAttempts; i++ {
+		// 3-24 characters - all alphanumeric and '-'
+		uid, err := uuid.NewV4()
+		if err != nil {
+			return "", fmt.Errorf("failed to generate CosmosDB account name: %w", err)
+		}
+		name := base + strings.ReplaceAll(uid.String(), "-", "")
+		name = name[0:24]
+		err = checkAvailability(name)
+		if err == nil {
+			return name, nil
+		}
+
+		logger.Info(fmt.Sprintf("cosmosDB account name generation failed after %d attempts", i))
+	}
+
+	return "", fmt.Errorf("cosmosDB account name generation failed to create a unique name after %d attempts", retryAttempts)
+
 }

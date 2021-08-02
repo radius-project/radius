@@ -24,7 +24,7 @@ func NewKubernetesModel(k8s *client.Client) ApplicationModel {
 		containerv1alpha1.Kind:      &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: armauth.ArmConfig{}}}},
 		daprstatestorev1alpha1.Kind: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
 		mongodbv1alpha1.Kind:        &mongodbv1alpha1.KubernetesRenderer{},
-		redisv1alpha1.Kind:          &redisv1alpha1.Renderer{},
+		redisv1alpha1.Kind:          &redisv1alpha1.KubernetesRenderer{},
 	}
 	handlers := map[string]handlers.ResourceHandler{
 		outputresource.KindKubernetes: handlers.NewKubernetesHandler(*k8s),

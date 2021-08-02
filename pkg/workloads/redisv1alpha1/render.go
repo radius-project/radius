@@ -14,27 +14,38 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-type Renderer struct {
+type AzureRenderer struct {
 	Arm armauth.ArmConfig
 }
 
-func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	if r.Arm != (armauth.ArmConfig{}) {
-		return AllocateAzureBindings(r.Arm, ctx, workload, resources)
-	}
-	return AllocateKubernetesBindings(ctx, workload, resources)
+type KubernetesRenderer struct {
+}
+
+func (r AzureRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	return AllocateAzureBindings(r.Arm, ctx, workload, resources)
 }
 
 // Render is the WorkloadRenderer implementation for redis workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+func (r AzureRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	component := RedisComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return []outputresource.OutputResource{}, err
 	}
 
-	if r.Arm != (armauth.ArmConfig{}) {
-		return GetAzureRedis(w, component)
+	return GetAzureRedis(w, component)
+}
+
+func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	return AllocateKubernetesBindings(ctx, workload, resources)
+}
+
+// Render is the WorkloadRenderer implementation for redis workload.
+func (r KubernetesRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+	component := RedisComponent{}
+	err := w.Workload.AsRequired(Kind, &component)
+	if err != nil {
+		return []outputresource.OutputResource{}, err
 	}
 
 	return GetKubernetesRedis(w, component)

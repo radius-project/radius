@@ -40,9 +40,9 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 				keys.LabelRadiusApplication: w.Application,
 				keys.LabelRadiusComponent:   component.Name,
 				// TODO get the component revision here...
-				"app.kubernetes.io/name":       component.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
+				keys.LabelKubernetesName:      component.Name,
+				keys.LabelKubernetesPartOf:    w.Application,
+				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -58,9 +58,9 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 						keys.LabelRadiusApplication: w.Application,
 						keys.LabelRadiusComponent:   component.Name,
 						// TODO get the component revision here...
-						"app.kubernetes.io/name":       component.Name,
-						"app.kubernetes.io/part-of":    w.Application,
-						"app.kubernetes.io/managed-by": "radius-rp",
+						keys.LabelKubernetesName:      component.Name,
+						keys.LabelKubernetesPartOf:    w.Application,
+						keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -140,12 +140,12 @@ func AllocateKubernetesBindings(ctx context.Context, workload workloads.Instanti
 		"redis": {
 			Component: workload.Name,
 			Binding:   "redis",
-			Kind:      "redislabs.com/Redis",
+			Kind:      BindingKind,
 			Properties: map[string]interface{}{
 				"connectionString": host + ":" + port,
 				"host":             host,
 				"port":             port,
-				"primaryKey":       "", // TODO do we need to fill something out for keys?
+				"primaryKey":       "",
 				"secondarykey":     "",
 			},
 		},

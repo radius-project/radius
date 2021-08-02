@@ -34,8 +34,6 @@ func GetAzureRedis(w workloads.InstantiatedWorkload, component RedisComponent) (
 		// TODO support managed redis workload
 		return nil, fmt.Errorf("only managed = true is support for azure redis workload")
 	}
-
-	return []outputresource.OutputResource{}, nil
 }
 
 func AllocateAzureBindings(arm armauth.ArmConfig, ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
@@ -59,7 +57,7 @@ func AllocateAzureBindings(arm armauth.ArmConfig, ctx context.Context, workload 
 		"redis": {
 			Component: workload.Name,
 			Binding:   "redis",
-			Kind:      "redislabs.com/Redis",
+			Kind:      BindingKind,
 			Properties: map[string]interface{}{
 				"connectionString": *resource.HostName + ":" + port,
 				"host":             *resource.HostName,
