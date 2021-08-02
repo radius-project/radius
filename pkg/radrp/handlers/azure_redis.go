@@ -10,18 +10,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/redis/mgmt/redis"
+	"github.com/Azure/azure-sdk-for-go/profiles/preview/redis/mgmt/redis"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
+	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/gofrs/uuid"
 )
 
 const (
-	RedisBaseName = "azureredis"
-	RedisNameKey  = "redisname"
+	RedisBaseName      = "azureredis"
+	RedisNameKey       = "redisname"
+	RedisResourceIdKey = "redisid"
 )
 
 func NewAzureRedisHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -36,17 +38,25 @@ type azureRedisHandler struct {
 
 func (handler *azureRedisHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
 	properties := mergeProperties(options.Resource, options.Existing)
-	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	redisName, err := generateRedisDBAccountName(ctx, properties, rc)
-	properties[RedisNameKey] = redisName
-	if err != nil {
-		return nil, err
-	}
+	if properties[RedisResourceIdKey] == "" {
+		// If we don't have an ID already, then we need to create a new Redis.
+		redisName, err := handler.generateRedisDBAccountName(ctx, properties)
+		properties[RedisNameKey] = redisName
+		if err != nil {
+			return nil, err
+		}
 
-	_, err = handler.CreateRedis(ctx, redisName)
-	if err != nil {
-		return nil, err
+		r, err := handler.CreateRedis(ctx, redisName)
+		if err != nil {
+			return nil, err
+		}
+		properties[RedisResourceIdKey] = *r.ID
+	} else {
+		_, err := handler.GetRedisByID(ctx, properties[RedisResourceIdKey])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return properties, nil
@@ -130,10 +140,27 @@ func (handler *azureRedisHandler) DeleteRedis(ctx context.Context, redisName str
 	return nil
 }
 
+func (handler *azureRedisHandler) GetRedisByID(ctx context.Context, id string) (*redis.ResourceType, error) {
+	parsed, err := radresources.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse redis resource id: %w", err)
+	}
+
+	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
+
+	redis, err := rc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get redis: %w", err)
+	}
+	return &redis, nil
+}
+
 // generateRedisDBAccountName generates account name with the specified database name as prefix appended with -<uuid>.
 // This is needed since CosmosDB account names are required to be unique across Azure.
-func generateRedisDBAccountName(ctx context.Context,
-	properties map[string]string, redisClient redis.Client) (string, error) {
+func (handler *azureRedisHandler) generateRedisDBAccountName(ctx context.Context,
+	properties map[string]string) (string, error) {
+	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
+
 	logger := radlogger.GetLogger(ctx)
 	retryAttempts := 10
 	name, ok := properties[CosmosDBAccountNameKey]
@@ -157,7 +184,7 @@ func generateRedisDBAccountName(ctx context.Context,
 				Type: &redisType,
 			}
 
-			checkNameResult, err := redisClient.CheckNameAvailability(ctx, checkNameParams)
+			checkNameResult, err := rc.CheckNameAvailability(ctx, checkNameParams)
 			if err != nil {
 				return "", err
 			}

@@ -621,7 +621,7 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 	parameters := map[string]interface{}{}
 	deploymentProperties := &resources.DeploymentProperties{
 		Parameters: parameters,
-		Mode:       resources.Incremental,
+		Mode:       resources.DeploymentModeIncremental,
 		Template:   template,
 	}
 	deploymentName := "create-secret-" + vaultName + "-" + secretName
