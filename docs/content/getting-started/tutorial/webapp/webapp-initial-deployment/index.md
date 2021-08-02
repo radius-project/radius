@@ -6,19 +6,13 @@ description: "Deploy the website tutorial frontend in a container"
 weight: 2000
 ---
 
-
 ## Define a Radius app as a .bicep file
 
 Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) as its file-format and structure. In this tutorial you will define an app named `webapp` that will contain the container and database components, all described in Bicep.
 
 Create a new file named `template.bicep` and paste the following:
 
-```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'webapp'
-
-}
-```
+{{< rad file="snippets/empty-app.bicep" embed=true >}}
 
 ## Add a container component 
 
@@ -29,44 +23,18 @@ Radius captures the relationships and intentions behind an application, which si
 Your `todoapp` component will specify:  
 - **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
 - **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives. 
-- **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).
-
-
-
+- **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).[]
 
 Update your template.bicep file to match the full application definition:
 
-```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'webapp'
-
-  resource todoapplication 'Components' = {
-    name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
-    properties: {
-      run: {
-        container: {
-          image: 'radiusteam/tutorial-todoapp'
-        }
-      }
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
-      }
-    }
-  }
-}
-```
-
-Note that you don't have to interact with multiple Resource Providers or manage details like connection string injection.   
+{{< rad file="snippets/container-app.bicep" embed=true >}}
 
 ## Deploy the application 
 
-Now you are ready to deploy the application for the first time. 
+Now you are ready to deploy the application for the first time.
 
-> **Reminder:** At this point, you should already be logged into the az CLI and already have an [environment initialized]({{< ref create-environment.md >}}). 
+1. Make sure you have an [Azure environment initialzed]({{< ref create-environment >}}).
+   - Run `az login` to make sure your token is refreshed.
 
 1. Deploy to your Radius environment via the rad CLI:
 
@@ -95,7 +63,7 @@ Now you are ready to deploy the application for the first time.
    ```
 
    {{% alert title="💡 rad expose" color="primary" %}}
-   The `rad expose` command provides the application name, followed by the component name, followed by a port. If you changed any of these names when deploying, update your command to match.
+   The [`rad expose`]({{< ref rad_component_expose >}}) command requires the component name, application name flag, and port flag. If you changed any of these names when deploying, update your command to match.
    {{% /alert %}}
 
 1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. For now you should see a page like:

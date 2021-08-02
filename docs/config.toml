@@ -5,6 +5,9 @@ theme =  "docsy"
 
 disableFastRender = true
 
+# Ignore sample code
+ignoreFiles = ["/code/*"]
+
 # GitHub Information
 github_repo = "https://github.com/Azure/radius"
 github_subdir = "docs"
@@ -73,3 +76,4 @@ version_menu = "Releases"
 # UI Customization
 [params.ui]
 sidebar_menu_compact = true
+
