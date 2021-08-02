@@ -47,7 +47,7 @@ export class RedisBinding implements Binding {
             console.log("Cache response : " + res);
         });
         if (!success) {
-            throw new Error("Could not ping to cache");
+            throw new Error("Could not ping redis cache");
         }
 
         // Simple get and put of integral data types into the cache
@@ -55,14 +55,14 @@ export class RedisBinding implements Binding {
         console.log("\nCache command: GET Message");
         console.log("Cache response : " + success);    
         if (!success) {
-            throw new Error("Could not get on cache");
+            throw new Error("Could not get on redis cache");
         }
 
         success = cacheConnection.set("Message", "Hello! The cache is working from Node.js!")
         console.log("\nCache command: SET Message");
         console.log("Cache response : " + success);    
         if (!success) {
-            throw new Error("Could not set on cache");
+            throw new Error("Could not set on redis cache");
         }
 
         // Demonstrate "SET Message" executed as expected...
@@ -75,7 +75,7 @@ export class RedisBinding implements Binding {
         console.log("\nCache command: GET Message");
         console.log("Cache response : " + cacheConnection.get("Message"));    
         if (!success) {
-            throw new Error("Could not get on cache");
+            throw new Error("Could not get on redis cache");
         }
 
         // Get the client list, useful to see if connection list is growing...
@@ -83,9 +83,9 @@ export class RedisBinding implements Binding {
         console.log("\nCache command: CLIENT LIST");
         console.log("Cache response : " + cacheConnection.client("LIST")); 
         if (!success) {
-            throw new Error("Could not list on cache");
+            throw new Error("Could not list on redis cache");
         }
-        
+
         return { ok: true, message: "connected"};
     }
 
