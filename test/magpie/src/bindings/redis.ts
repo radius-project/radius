@@ -28,8 +28,8 @@ export class RedisBinding implements Binding {
         // from https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-nodejs-get-started
         var cacheConnection = redis.createClient(+this.port, this.host, 
             {
-                auth_pass: this.password, 
-                tls: {servername: this.host}
+                auth_pass: this.password,
+                // tls: {servername: this.host}
             });
 
         cacheConnection.on("error", function(error) {

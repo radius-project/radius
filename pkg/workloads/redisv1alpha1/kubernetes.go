@@ -134,7 +134,7 @@ func AllocateKubernetesBindings(ctx context.Context, workload workloads.Instanti
 		namespace = "default"
 	}
 	// TODO confirm workload.Name == component.Name
-	host := fmt.Sprintf("%s.%s.svc.cluster.local:6379", workload.Name, namespace)
+	host := fmt.Sprintf("%s.%s.svc.cluster.local", workload.Name, namespace)
 	port := fmt.Sprint(6379)
 	bindings := map[string]components.BindingState{
 		"redis": {
