@@ -19,6 +19,24 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+type KubernetesRenderer struct {
+}
+
+func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	return AllocateKubernetesBindings(ctx, workload, resources)
+}
+
+// Render is the WorkloadRenderer implementation for redis workload.
+func (r KubernetesRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+	component := RedisComponent{}
+	err := w.Workload.AsRequired(Kind, &component)
+	if err != nil {
+		return []outputresource.OutputResource{}, err
+	}
+
+	return GetKubernetesRedis(w, component)
+}
+
 func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisComponent) ([]outputresource.OutputResource, error) {
 	// Require namespace for k8s components here.
 	// Should move this check to a more generalized place.
