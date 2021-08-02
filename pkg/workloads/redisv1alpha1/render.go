@@ -6,7 +6,6 @@ package redisv1alpha1
 
 import (
 	"context"
-	"sort"
 
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
@@ -49,17 +48,4 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	}
 
 	return GetKubernetesRedis(w, component)
-}
-
-func getAlphabeticallySortedKeys(store map[string]func(workloads.InstantiatedWorkload, RedisComponent) ([]outputresource.OutputResource, error)) []string {
-	keys := make([]string, len(store))
-
-	i := 0
-	for k := range store {
-		keys[i] = k
-		i++
-	}
-
-	sort.Strings(keys)
-	return keys
 }
