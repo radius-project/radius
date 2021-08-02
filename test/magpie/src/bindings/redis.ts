@@ -22,9 +22,6 @@ export class RedisBinding implements Binding {
         }
 
         this.password = map['PASSWORD'];
-        if (!this.password) {
-            throw new Error('PORT is required');
-        }
     }
 
     public async status(): Promise<BindingStatus> {
