@@ -15,7 +15,7 @@ import (
 
 func Test_Redis(t *testing.T) {
 	template := "testdata/kubernetes-resources-redis-managed.bicep"
-	application := "kubernetes-resources-container-httpbinding"
+	application := "kubernetes-resources-redis-managed"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
