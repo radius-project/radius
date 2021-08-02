@@ -25,24 +25,19 @@ A `redislabs.com/Redis` component can be Radius-managed. For more information re
 ### User managed
 
 {{% alert title="Warning" color="warning" %}}
-Currently user-managed MongoDB components are only supported in the Azure environment.
+Currently user-managed Radius components are not supported.
 {{% /alert %}}
-
-#### Radius component
-
-{{< rad file="snippets/user-managed.bicep" embed=true marker="//SAMPLE" >}}
-
-#### Bicep resource
-
-{{< rad file="snippets/user-managed.bicep" embed=true marker="//BICEP" >}}
 
 ## Bindings
 
-### mongo
+### redis
 
-The `mongo` Binding of kind `mongodb.com/Mongo` represents the Mongo API offered by the CosmosDB resource.
+The `redis` Binding of kind `redislabs.com/Redis` represents the Redis.
 
-| Property | Description |
-|----------|-------------|
-| `connectionString` | The MongoDB connection string used to connect to the database.
-| `database` | The name of the database to which you are connecting.
+| Property | Description | Example(s) |
+|----------|-------------|------------|
+| `connectionString` | The Redis connection string used to connect to the redis cache. | `myrediscache.redis.cache.windows.net:6380`, `redis.default.svc.cluster.local:6379`
+| `host` | The host name of the redis cache to which you are connecting. | `myrediscache.redis.cache.windows.net`,  `redis.default.svc.cluster.local`
+| `port` | The port value of the redis cache to which you are connecting.| `6380`, `6379`
+| `primaryKey` | The primary access key for connecting to the redis cache. Can be used for password and can be empty. | `d2Y2ba...`
+| `secondaryKey` | The secondary access key for connecting to the redis cache. | `d2Y2ba...`

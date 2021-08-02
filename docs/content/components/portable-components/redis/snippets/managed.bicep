@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'cosmos-container'
+  name: 'redis-container'
   
   //SAMPLE
   resource redis 'Components' = {
