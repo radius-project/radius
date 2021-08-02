@@ -23,12 +23,8 @@ func NewKubernetesModel(k8s *client.Client) ApplicationModel {
 	renderers := map[string]workloads.WorkloadRenderer{
 		containerv1alpha1.Kind:      &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: armauth.ArmConfig{}}}},
 		daprstatestorev1alpha1.Kind: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
-<<<<<<< HEAD
 		mongodbv1alpha1.Kind:        &mongodbv1alpha1.KubernetesRenderer{},
-		redisv1alpha1.Kind:          &redisv1alpha1.Renderer{RedisFunc: redisv1alpha1.GetKubernetesRedis},
-=======
 		redisv1alpha1.Kind:          &redisv1alpha1.Renderer{},
->>>>>>> 33e062d (Update az go sdk version and don't recreate redis)
 	}
 	handlers := map[string]handlers.ResourceHandler{
 		outputresource.KindKubernetes: handlers.NewKubernetesHandler(*k8s),
