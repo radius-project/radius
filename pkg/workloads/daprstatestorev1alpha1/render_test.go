@@ -261,6 +261,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 				"kind":    "any",
 			},
 		},
+		Namespace:     "default",
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 

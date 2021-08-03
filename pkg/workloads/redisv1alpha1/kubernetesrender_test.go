@@ -45,6 +45,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 				"managed": true,
 			},
 		},
+		Namespace:     "default",
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 

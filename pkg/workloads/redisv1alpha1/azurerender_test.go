@@ -83,5 +83,5 @@ func Test_Render_AzureRedis_Unmanaged_Failure(t *testing.T) {
 
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, "only Radius managed resources are supported for Dapr SQL Server", err.Error())
+	require.Equal(t, "only managed = true is support for azure redis workload", err.Error())
 }
