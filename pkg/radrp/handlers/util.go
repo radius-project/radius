@@ -99,7 +99,7 @@ func generateRandomAzureName(ctx context.Context, nameBase string, checkAvailabi
 		// 3-24 characters - all alphanumeric and '-'
 		uid, err := uuid.NewV4()
 		if err != nil {
-			return "", fmt.Errorf("failed to generate CosmosDB account name: %w", err)
+			return "", fmt.Errorf("failed to generate name: %w", err)
 		}
 		name := base + strings.ReplaceAll(uid.String(), "-", "")
 		name = name[0:24]
@@ -108,9 +108,8 @@ func generateRandomAzureName(ctx context.Context, nameBase string, checkAvailabi
 			return name, nil
 		}
 
-		logger.Info(fmt.Sprintf("cosmosDB account name generation failed after %d attempts", i))
+		logger.Info(fmt.Sprintf("name generation failed after %d attempts", i))
 	}
 
-	return "", fmt.Errorf("cosmosDB account name generation failed to create a unique name after %d attempts", retryAttempts)
-
+	return "", fmt.Errorf("name generation failed to create a unique name after %d attempts", retryAttempts)
 }

@@ -29,7 +29,7 @@ func (r AzureRenderer) AllocateBindings(ctx context.Context, workload workloads.
 
 	resource, err := rc.Get(ctx, r.Arm.ResourceGroup, redisName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to ge resource: %w", err)
+		return nil, fmt.Errorf("failed to get resource: %w", err)
 	}
 
 	accessKeys, err := rc.ListKeys(ctx, r.Arm.ResourceGroup, redisName)

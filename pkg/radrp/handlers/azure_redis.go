@@ -105,9 +105,6 @@ func (handler *azureRedisHandler) Delete(ctx context.Context, options DeleteOpti
 func (handler *azureRedisHandler) CreateRedis(ctx context.Context, redisName string) (*redis.ResourceType, error) {
 	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	// TODO https://github.com/Azure/radius/issues/795
-	// we want to be able to create a Redis 6 cluster.
-
 	// Basic redis SKU
 	redisSku := &redis.Sku{
 		Name:     redis.SkuName("Basic"),
@@ -123,7 +120,8 @@ func (handler *azureRedisHandler) CreateRedis(ctx context.Context, redisName str
 	createParams := redis.CreateParameters{
 		Location: location,
 		CreateProperties: &redis.CreateProperties{
-			Sku: redisSku,
+			Sku:          redisSku,
+			RedisVersion: to.StringPtr("6"),
 		},
 	}
 

@@ -28,7 +28,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 	// Should move this check to a more generalized place.
 	namespace := w.Namespace
 	if namespace == "" {
-		namespace = "default"
+		namespace = w.Application
 	}
 
 	resources := []outputresource.OutputResource{}

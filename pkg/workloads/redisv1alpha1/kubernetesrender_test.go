@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
-	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
@@ -30,39 +29,6 @@ func createContext(t *testing.T) context.Context {
 		return context.Background()
 	}
 	return logr.NewContext(context.Background(), logger)
-}
-
-func Test_Render_Managed_Azure_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := AzureRenderer{}
-
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": true,
-			},
-		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
-	}
-
-	resources, err := renderer.Render(ctx, workload)
-	require.NoError(t, err)
-
-	require.Len(t, resources, 1)
-	resource := resources[0]
-
-	require.Equal(t, outputresource.LocalIDAzureRedis, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureRedis, resource.Kind)
-
-	expected := map[string]string{
-		handlers.ManagedKey:    "true",
-		handlers.RedisBaseName: "test-component",
-	}
-	require.Equal(t, expected, resource.Resource)
 }
 
 func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
@@ -145,8 +111,8 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	})
 }
 
-func TestInvalidComponentKindFailure(t *testing.T) {
-	renderer := AzureRenderer{}
+func TestInvalidKubernetesComponentKindFailure(t *testing.T) {
+	renderer := KubernetesRenderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Workload: components.GenericComponent{

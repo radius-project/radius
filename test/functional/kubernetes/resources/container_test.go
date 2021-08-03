@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package container_test
+package resource_test
 
 import (
 	"testing"

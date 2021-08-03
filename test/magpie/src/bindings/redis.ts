@@ -26,35 +26,22 @@ export class RedisBinding implements Binding {
 
     public async status(): Promise<BindingStatus> {
         // from https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-nodejs-get-started
-        if (this.password) {
-            var cacheConnection = redis.createClient(+this.port, 
+        let cacheConnection = (this.password) ? redis.createClient(
+                +this.port, 
                 this.host, 
                 {
                     auth_pass: this.password,
                     tls: {servername: this.host}
-                });
-        } else {
-            var cacheConnection = redis.createClient(+this.port, this.host, {});
-        }
-
+                }) 
+                : redis.createClient(+this.port, this.host, {});
 
         cacheConnection.on("error", function(error) {
             console.error(error);
         });
+
         // Simple PING command
         console.log("\nCache command: PING");
         cacheConnection.ping(function(error, res) {
-            if (error) throw error;
-            console.log("Cache response : " + res);
-        });
-
-        cacheConnection.set("Message", "Hello! The cache is working from Node.js!", function(error, res) {
-            if (error) throw error;
-            console.log("Cache response : " + res);
-        });
-
-        // Demonstrate "SET Message" executed as expected...
-        cacheConnection.get("Message", function(error, res) {
             if (error) throw error;
             console.log("Cache response : " + res);
         });

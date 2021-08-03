@@ -12,7 +12,7 @@ This application showcases how Radius can use a portable Redis cache.
 
 | Property | Description | Example(s) |
 |----------|-------------|---------|
-| managed | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. | `true`, `false`
+| managed | Indicates if the resource is Radius-managed. If `false`, a `Resource` must be specified. | `true`, `false`
 
 ## Resource lifecycle
 
@@ -25,7 +25,7 @@ A `redislabs.com/Redis` component can be Radius-managed. For more information re
 ### User managed
 
 {{% alert title="Warning" color="warning" %}}
-Currently user-managed Radius components are not supported.
+Currently user-managed Redis components are not supported.
 {{% /alert %}}
 
 ## Bindings

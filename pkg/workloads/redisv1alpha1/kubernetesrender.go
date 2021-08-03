@@ -42,7 +42,7 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 	// Should move this check to a more generalized place.
 	namespace := w.Namespace
 	if namespace == "" {
-		namespace = "default"
+		namespace = w.Application
 	}
 
 	resources := []outputresource.OutputResource{}
@@ -149,7 +149,7 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 func AllocateKubernetesBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	namespace := workload.Namespace
 	if namespace == "" {
-		namespace = "default"
+		namespace = workload.Application
 	}
 	host := fmt.Sprintf("%s.%s.svc.cluster.local", workload.Name, namespace)
 	port := fmt.Sprint(6379)
