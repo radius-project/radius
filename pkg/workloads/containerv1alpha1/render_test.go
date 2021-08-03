@@ -164,18 +164,8 @@ func TestRender_Success_DefaultPort(t *testing.T) {
 	service := findService(resources)
 	require.NotNil(t, service)
 
-	labels := map[string]string{
-		keys.LabelRadiusApplication:   "test-app",
-		keys.LabelRadiusComponent:     "test-container",
-		keys.LabelKubernetesName:      "test-container",
-		keys.LabelKubernetesPartOf:    "test-app",
-		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-	}
-
-	matchLabels := map[string]string{
-		keys.LabelRadiusApplication: "test-app",
-		keys.LabelRadiusComponent:   "test-container",
-	}
+	labels := keys.MakeDescriptiveLabels("test-app", "test-container")
+	matchLabels := keys.MakeSelectorLabels("test-app", "test-container")
 
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-container", deployment.Name)
@@ -262,18 +252,8 @@ func TestRender_Success_NonDefaultPort(t *testing.T) {
 	service := findService(resources)
 	require.NotNil(t, service)
 
-	labels := map[string]string{
-		keys.LabelRadiusApplication:   "test-app",
-		keys.LabelRadiusComponent:     "test-container",
-		keys.LabelKubernetesName:      "test-container",
-		keys.LabelKubernetesPartOf:    "test-app",
-		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-	}
-
-	matchLabels := map[string]string{
-		keys.LabelRadiusApplication: "test-app",
-		keys.LabelRadiusComponent:   "test-container",
-	}
+	labels := keys.MakeDescriptiveLabels("test-app", "test-container")
+	matchLabels := keys.MakeSelectorLabels("test-app", "test-container")
 
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-container", deployment.Name)

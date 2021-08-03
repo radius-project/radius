@@ -177,6 +177,9 @@ jobs:
     env:
       GOVER: '^1.16.0'
       DOCKER_REGISTRY: radius.azurecr.io
+
+      # Timeout used for Azure functional tests
+      K8S_FUNCTIONALTEST_TIMEOUT: 60m
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -210,12 +213,19 @@ jobs:
         cat ~/.rad/config.yaml
     - name: Deploy Controller
       run: make controller-deploy-existing
+      env:
+        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
+    - name: Download Bicep
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        cd $GITHUB_WORKSPACE
+        which rad || { echo "cannot find rad"; exit 1; }
+        rad bicep download
     - name: Run Kubernetes tests (PR)
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
         make test-functional-kubernetes
-      env:
-        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]

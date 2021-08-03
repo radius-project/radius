@@ -73,13 +73,7 @@ func Test_Render_Simple(t *testing.T) {
 	require.Equal(t, outputresource.TypeKubernetes, resource.Type)
 	require.True(t, resource.Managed)
 
-	labels := map[string]string{
-		keys.LabelRadiusApplication:   "test-app",
-		keys.LabelRadiusComponent:     "test-container",
-		keys.LabelKubernetesName:      "test-container",
-		keys.LabelKubernetesPartOf:    "test-app",
-		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-	}
+	labels := keys.MakeDescriptiveLabels("test-app", "test-container")
 
 	require.Equal(t, "test-container", ingress.Name)
 	require.Equal(t, "test-app", ingress.Namespace)
@@ -131,13 +125,7 @@ func Test_Render_WithHostname(t *testing.T) {
 	require.Equal(t, outputresource.TypeKubernetes, resource.Type)
 	require.True(t, resource.Managed)
 
-	labels := map[string]string{
-		keys.LabelRadiusApplication:   "test-app",
-		keys.LabelRadiusComponent:     "test-container",
-		keys.LabelKubernetesName:      "test-container",
-		keys.LabelKubernetesPartOf:    "test-app",
-		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-	}
+	labels := keys.MakeDescriptiveLabels("test-app", "test-container")
 
 	require.Equal(t, "test-container", ingress.Name)
 	require.Equal(t, "test-app", ingress.Namespace)

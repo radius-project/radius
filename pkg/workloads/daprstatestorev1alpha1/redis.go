@@ -40,32 +40,15 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				keys.LabelRadiusApplication: w.Application,
-				keys.LabelRadiusComponent:   component.Name,
-				// TODO get the component revision here...
-				"app.kubernetes.io/name":       component.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
-			},
+			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					keys.LabelRadiusApplication: w.Application,
-					keys.LabelRadiusComponent:   component.Name,
-				},
+				MatchLabels: keys.MakeSelectorLabels(w.Application, w.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						keys.LabelRadiusApplication: w.Application,
-						keys.LabelRadiusComponent:   component.Name,
-						// TODO get the component revision here...
-						"app.kubernetes.io/name":       component.Name,
-						"app.kubernetes.io/part-of":    w.Application,
-						"app.kubernetes.io/managed-by": "radius-rp",
-					},
+					Labels: keys.MakeDescriptiveLabels(w.Application, w.Name),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -97,21 +80,11 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				keys.LabelRadiusApplication: w.Application,
-				keys.LabelRadiusComponent:   component.Name,
-				// TODO get the component revision here...
-				"app.kubernetes.io/name":       component.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
-			},
+			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				keys.LabelRadiusApplication: w.Application,
-				keys.LabelRadiusComponent:   component.Name,
-			},
-			Type: corev1.ServiceTypeClusterIP,
+			Selector: keys.MakeSelectorLabels(w.Application, w.Name),
+			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "redis",
@@ -134,14 +107,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			"metadata": map[string]interface{}{
 				"name":      component.Name,
 				"namespace": namespace,
-				"labels": map[string]string{
-					keys.LabelRadiusApplication: w.Application,
-					keys.LabelRadiusComponent:   component.Name,
-					// TODO get the component revision here...
-					"app.kubernetes.io/name":       component.Name,
-					"app.kubernetes.io/part-of":    w.Application,
-					"app.kubernetes.io/managed-by": "radius-rp",
-				},
+				"labels":    keys.MakeDescriptiveLabels(w.Application, w.Name),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.redis",

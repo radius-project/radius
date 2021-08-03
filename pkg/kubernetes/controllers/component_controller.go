@@ -50,8 +50,11 @@ type ComponentReconciler struct {
 	Model model.ApplicationModel
 }
 
+//+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="apps",resources=statefulsets,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="dapr.io",resources=components,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=components,verbs=get;list;watch;create;update;patch;delete

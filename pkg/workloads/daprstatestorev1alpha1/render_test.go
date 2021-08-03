@@ -284,18 +284,8 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 	require.Equal(t, outputresource.KindKubernetes, dapr.Kind)
 	resourceDapr := dapr.Resource.(*unstructured.Unstructured)
 
-	labels := map[string]string{
-		keys.LabelRadiusApplication:   "test-app",
-		keys.LabelRadiusComponent:     "test-component",
-		keys.LabelKubernetesName:      "test-component",
-		keys.LabelKubernetesPartOf:    "test-app",
-		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-	}
-
-	matchLabels := map[string]string{
-		keys.LabelRadiusApplication: "test-app",
-		keys.LabelRadiusComponent:   "test-component",
-	}
+	labels := keys.MakeDescriptiveLabels("test-app", "test-component")
+	matchLabels := keys.MakeSelectorLabels("test-app", "test-component")
 
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-component", resourceDeployment.Name)
@@ -343,13 +333,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 				"metadata": map[string]interface{}{
 					"name":      "test-component",
 					"namespace": "default",
-					"labels": map[string]string{
-						keys.LabelRadiusApplication:   "test-app",
-						keys.LabelRadiusComponent:     "test-component",
-						keys.LabelKubernetesName:      "test-component",
-						keys.LabelKubernetesPartOf:    "test-app",
-						keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-					},
+					"labels":    keys.MakeDescriptiveLabels("test-app", "test-component"),
 				},
 				"spec": map[string]interface{}{
 					"type":    "state.redis",

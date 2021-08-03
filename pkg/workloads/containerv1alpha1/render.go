@@ -475,30 +475,15 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cc.Name,
 			Namespace: w.Application,
-			Labels: map[string]string{
-				keys.LabelRadiusApplication:   w.Application,
-				keys.LabelRadiusComponent:     cc.Name,
-				keys.LabelKubernetesName:      cc.Name,
-				keys.LabelKubernetesPartOf:    w.Application,
-				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-			},
+			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{
-				MatchLabels: map[string]string{
-					keys.LabelRadiusApplication: w.Application,
-					keys.LabelRadiusComponent:   cc.Name,
-				},
+				MatchLabels: keys.MakeSelectorLabels(w.Application, w.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						keys.LabelRadiusApplication:   w.Application,
-						keys.LabelRadiusComponent:     cc.Name,
-						keys.LabelKubernetesName:      cc.Name,
-						keys.LabelKubernetesPartOf:    w.Application,
-						keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-					},
+					Labels: keys.MakeDescriptiveLabels(w.Application, w.Name),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{container},
@@ -690,21 +675,12 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cc.Name,
 			Namespace: w.Application, // TODO why is this a different namespace
-			Labels: map[string]string{
-				keys.LabelRadiusApplication:   w.Application,
-				keys.LabelRadiusComponent:     cc.Name,
-				keys.LabelKubernetesName:      cc.Name,
-				keys.LabelKubernetesPartOf:    w.Application,
-				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
-			},
+			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				keys.LabelRadiusApplication: w.Application,
-				keys.LabelRadiusComponent:   cc.Name,
-			},
-			Type:  corev1.ServiceTypeClusterIP,
-			Ports: []corev1.ServicePort{},
+			Selector: keys.MakeSelectorLabels(w.Application, w.Name),
+			Type:     corev1.ServiceTypeClusterIP,
+			Ports:    []corev1.ServicePort{},
 		},
 	}
 

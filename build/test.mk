@@ -16,8 +16,8 @@ test: ## Runs unit tests, excluding kubernetes controller tests
 test-functional-azure: ## Runs Azure functional tests
 	go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20
 	
-test-functional-kubernetes:
-	go test ./test/functional/kubernetes/...
+test-functional-kubernetes: ## Runs Kubernetes functional tests
+	go test ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 20
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.19.2

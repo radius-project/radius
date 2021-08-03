@@ -15,10 +15,22 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add db component
 A `db` database component is used to specify a few properties about the database: 
 
-- **kind:** `azure.com/CosmosDBMongo@v1alpha1` represents a Cosmos DB database
+- **kind:** `mongodb.com/Mongo@v1alpha1` represents a MongoDB compatible database.
 - **managed:** `true` tells Radius to manage the lifetime of the component for you ([more information]({{< ref "components-model#radius-managed" >}}))
 
-{{< rad file="snippets/app.bicep" embed=true marker="//COSMOS" >}}
+{{< rad file="snippets/app.bicep" embed=true marker="//MONGO" >}}
+
+{{< tabs Azure Kubernetes>}}
+
+{{% codetab %}}
+When deploying to an Azure environment a managed `mongodb.com/Mongo@v1alpha1` component will be bound to Azure CosmosDB. By declaring your dependency on a generic *MongoDB-compatible* database, your code is more portable. You can use the component kind `azure.com/CosmosDBMongo@v1alpha1` to explictly declare a component backed by Azure CosmosDB.
+{{% /codetab %}}
+
+{{% codetab %}}
+When deploying to a Kubernetes environment a managed `mongodb.com/Mongo@v1alpha1` component will be bound to the `mongo` docker image running a lightweight developer configuration. 
+{{% /codetab %}}
+
+{{< /tabs >}}
 
 ## Reference db from todoapp
 
@@ -26,7 +38,7 @@ Radius captures both logical relationships and related operational details. Exam
 
 Once the database is defined as a component, you can connect to it by referencing the `db` component from within the `todoapp` component via a `uses` section. 
 
-The `uses` section is used to configure relationships between a component and bindings provided by other components. The `db` is of kind `azure.com/CosmosDBMongo@v1alpha1`, which supports the MongoDB protocol. `db` automatically provides a binding of kind `mongodb.com/Mongo`. Configuring a dependency on a binding is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
+The `uses` section is used to configure relationships between a component and bindings provided by other components. The `db` is of kind `mongodb.com/Mongo@v1alpha1`, which supports the MongoDB protocol. `db` automatically provides a binding of kind `mongodb.com/Mongo`. Configuring a dependency on a binding is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
 
 Here's what the `todoapp` component will look like with the `uses` section added within its properties:
 
