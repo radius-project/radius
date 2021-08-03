@@ -24,10 +24,6 @@ For each PR we run the following set of steps:
 - Deploy the radius kubernetes controller to the cluster `make controller deploy existing`
 - Run deployment tests.
 
-Some notes about how/why we do this:
-
-- We want to ensure we're testing environment setup regularly but don't want to make PRs wait synchronously. If one of these async workflows fails, it will open an issue.
-
 ## Configuration
 
 These tests use your local Kubernetes context and cluster. In a GitHub workflow, our automation makes the CI environment resemble a local dev scenario.
@@ -52,17 +48,18 @@ When you're running locally with this configuration, the tests will use your loc
 
 You can also run/debug individual tests from VSCode.
 
-### Seeing log output
+### Running the controller as a process in VSCode
 
-Some of these tests take a few minutes to run since they interact with cloud resources. You should configure VSCode to output verbose output so you can see the progress.
+Instead of building and installing the Radius Kubernetes controller, you can run the controller locally as a standalone process and have it interact with the cluster accordingly.
 
-Open your VSCode `settings.json` with the command `Preferences: Open Settings (JSON)` and configure the following options:
-```
-{
-    ...
-    "go.testTimeout": "60m",
-    "go.testFlags": [
-        "-v"
-    ]
-}
-```
+1. Create a Kubernetes cluster (KinD, AKS, etc.)
+1. Add CRDs to the cluster with `make controller-install`
+1. Run the controller locally on command line or VSCode (cmd/k8s/main.go).
+1. Place `rad` on your path
+1. Make sure `rad-bicep` is downloaded (`rad bicep download`)
+1. Add the kubernetes configuration to your config.yaml file by running `rad env init kubernetes`.
+1. Run:
+
+    ```sh
+    make test-functional-kubernetes
+    ```
