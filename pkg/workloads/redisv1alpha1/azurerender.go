@@ -37,7 +37,7 @@ func (r AzureRenderer) AllocateBindings(ctx context.Context, workload workloads.
 		return nil, fmt.Errorf("failed to retrieve keys: %w", err)
 	}
 
-	port := fmt.Sprint(*resource.Port)
+	port := fmt.Sprint(*resource.SslPort)
 	bindings := map[string]components.BindingState{
 		"redis": {
 			Component: workload.Name,
