@@ -1,5 +1,10 @@
 import { Binding, BindingStatus} from '../binding'
-import redis from 'redis';
+var redis = require("redis");
+var bluebird = require("bluebird");
+
+// Convert Redis client API to use promises, to make it usable with async/await syntax
+bluebird.promisifyAll(redis.RedisClient.prototype);
+bluebird.promisifyAll(redis.Multi.prototype);
 
 // Use this with the three following values:
 // BINDING_REDIS_HOST: the host string
@@ -35,16 +40,9 @@ export class RedisBinding implements Binding {
                 }) 
                 : redis.createClient(+this.port, this.host, {});
 
-        cacheConnection.on("error", function(error) {
-            console.error(error);
-        });
-
         // Simple PING command
         console.log("\nCache command: PING");
-        cacheConnection.ping(function(error, res) {
-            if (error) throw error;
-            console.log("Cache response : " + res);
-        });
+        console.log("Cache response : " + await cacheConnection.pingAsync());
 
         return { ok: true, message: "connected"};
     }
