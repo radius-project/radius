@@ -213,8 +213,6 @@ jobs:
         cat ~/.rad/config.yaml
     - name: Deploy Controller
       run: make controller-deploy-existing
-      env:
-        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
     - name: Download Bicep
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
