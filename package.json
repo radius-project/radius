@@ -1,5 +1,0 @@
-{
-  "dependencies": {
-    "async-redis": "^2.0.0"
-  }
-}
