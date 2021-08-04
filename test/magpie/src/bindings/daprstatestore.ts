@@ -1,0 +1,34 @@
+import { Binding, BindingStatus} from '../binding'
+import { DaprClient } from '@roadwork/dapr-js-sdk/http'
+
+// // These ports are injected automatically into the container.
+// const daprPort = process.env.DAPR_HTTP_PORT; 
+// const daprGRPCPort = process.env.DAPR_GRPC_PORT;
+
+// Use this with a values like:
+// - BINDING_DAPRSTATESTORE_STATESTORENAME
+export class DaprStateStoreBinding implements Binding {
+    private name: string;
+    private client: DaprClient;
+
+    constructor(map: { [key: string]: string }) {
+        this.name = map['STATESTORENAME'];
+        if (!this.name) {
+            throw new Error('NAME is required');
+        }
+
+        // This is safe to construct. It doesn't hit the network until you use it.
+        this.client = new DaprClient('localhost', process.env.DAPR_HTTP_PORT)
+    }
+
+    public async status(): Promise<BindingStatus> {
+        await this.client.state.save(this.name, [{ key:"key", value: "value"}]);
+
+        const res = await this.client.state.get(this.name, "key");
+        return { ok: res == "value", message: "message sent"};
+    }
+
+    public toString = () : string => {
+        return 'Dapr StateStore';
+    }
+}

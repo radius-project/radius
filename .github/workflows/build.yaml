@@ -203,6 +203,8 @@ jobs:
         version:  v0.11.0
     - name: Apply CRDs
       run: make controller-crd-install
+    - name: Dapr tool installer
+      uses: dapr/setup-dapr@v1
     - name: Update rad env with Kubernetes
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
