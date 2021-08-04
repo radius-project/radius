@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
@@ -81,7 +82,7 @@ func TestAzureEnvironment(t *testing.T) {
 				},
 				// verify ingress-nginx
 				"radius-system": {
-					validation.K8sObject{Labels: map[string]string{keys.LabelKubernetesName: "ingress-nginx"}},
+					validation.K8sObject{Labels: map[string]string{kubernetes.LabelName: "ingress-nginx"}},
 				},
 			},
 		}
