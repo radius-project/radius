@@ -55,6 +55,7 @@ Instead of building and installing the Radius Kubernetes controller, you can run
 1. Place `rad` on your path.
 1. Make sure `rad-bicep` is downloaded (`rad bicep download`).
 1. Add the kubernetes configuration to your config.yaml file by running `rad env init kubernetes`.
+1. Install dapr into the cluster by running `dapr init -k --wait`.
 1. Run `make test-functional-kubernetes`
 
 ### Cleanup 
