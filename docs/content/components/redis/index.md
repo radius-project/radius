@@ -2,11 +2,17 @@
 type: docs
 title: "Redis"
 linkTitle: "Redis"
-description: "Documentation for the Redis component"
-weight: 100
+description: "Learn how to use a Redis component in your application"
 ---
 
-This application showcases how Radius can use a portable Redis cache.
+The `redislabs.com/Redis` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref environments >}}).
+
+## Resources
+
+| Platform | Resource |
+|----------|----------|
+| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Cache for Redis](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-overview)
+| [Kubernetes]({{< ref kubernetes-environments >}}) | Redis service
 
 ## Configuration
 
