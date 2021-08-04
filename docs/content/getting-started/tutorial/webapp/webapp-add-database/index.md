@@ -2,7 +2,7 @@
 type: docs
 title: "Add a database to the website tutorial app"
 linkTitle: "Add a database"
-description: "Connect a CosmosDB resource to the website tutorial application"
+description: "Connect a MongoDB resource to the website tutorial application"
 weight: 3000
 ---
 
@@ -20,14 +20,16 @@ A `db` database component is used to specify a few properties about the database
 
 {{< rad file="snippets/app.bicep" embed=true marker="//MONGO" >}}
 
-{{< tabs Azure Kubernetes>}}
+{{< tabs "Microsoft Azure" Kubernetes>}}
 
 {{% codetab %}}
-When deploying to an Azure environment a managed `mongodb.com/Mongo@v1alpha1` component will be bound to Azure CosmosDB. By declaring your dependency on a generic *MongoDB-compatible* database, your code is more portable. You can use the component kind `azure.com/CosmosDBMongo@v1alpha1` to explictly declare a component backed by Azure CosmosDB.
+When deploying to an Azure environment, a managed [`mongodb.com/Mongo@v1alpha1`]({{< ref mongodb >}}) component will be bound to an Azure CosmosDB API for MongoDB. By declaring your dependency on a generic *MongoDB-compatible* database, your code is more portable.
+
+You can alternately use the component kind [`azure.com/CosmosDBMongo@v1alpha1`]({{< ref cosmos-mongodb >}}) to explictly declare a component backed by Azure CosmosDB.
 {{% /codetab %}}
 
 {{% codetab %}}
-When deploying to a Kubernetes environment a managed `mongodb.com/Mongo@v1alpha1` component will be bound to the `mongo` docker image running a lightweight developer configuration. 
+When deploying to a Kubernetes environment, a managed [`mongodb.com/Mongo@v1alpha1`]({{< ref mongodb >}}) will be bound to the [`mongo` Docker image](https://hub.docker.com/_/mongo/) running a lightweight developer configuration. 
 {{% /codetab %}}
 
 {{< /tabs >}}
@@ -87,6 +89,15 @@ Update your `template.bicep` file to match the full application definition:
 
    If your page matches, then it means that the container is able to communicate with the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database.
 
+1. When you're done testing press CTRL+C to terminate the port-forward. 
+
+### Validate data
+
+After you have deployed the application, you can validate that the data is being stored in the database.
+
+{{< tabs "Microsoft Azure" >}}
+
+{{% codetab %}}
 1. Open the Azure resource group where your application is deployed. The URL was output during the `rad deploy` command.
 
 1. Open the CosmosDB resource prefixed with `db-`
@@ -96,8 +107,9 @@ Update your `template.bicep` file to match the full application definition:
 1. Open the Data Explorer to the `todos` collection. You can now see the entries you added in the todo app.
 
    <img src="db-entries.png" width="800" alt="Screenshot of the db CosmosDB Data Explorer with todo items">
+{{% /codetab %}}
 
-1. When you're done testing press CTRL+C to terminate the port-forward. 
+{{< /tabs >}}
 
 ## Next steps
 

@@ -1,10 +1,14 @@
 ---
 type: docs
-title: "Add a secret store to the website tutorial app"
+title: "Add a secret store to the tutorial application"
 linkTitle: "Add a secret store"
-description: "Connect an Azure Key Vault resource to the website tutorial application"
+description: "Connect an Azure Key Vault resource to your application"
 weight: 3000
 ---
+
+{{% alert title="Warning" color="warning" %}}
+This step is currently only available for Microsoft Azure environments.
+{{% /alert %}}
 
 In this step you will learn how to add a secret store and connect to it from the application and retrieve secrets.
 
