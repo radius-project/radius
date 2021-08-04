@@ -64,7 +64,7 @@ version_menu = "Releases"
   url = "https://edge.radapp.dev"
 
 [[params.versions]]
-  version = "v0.2 (latest)"
+  version = "latest"
   url = "https://radapp.dev"
 
 # Markdown Engine - Allow inline html
