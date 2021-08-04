@@ -29,15 +29,15 @@ ok  	github.com/Azure/radius/pkg/radrp	0.328s
 ok  	github.com/Azure/radius/pkg/radrp/resources	0.283s
 ?   	github.com/Azure/radius/pkg/radrp/rest	[no test files]
 ?   	github.com/Azure/radius/pkg/radrp/revision	[no test files]
-ok  	github.com/Azure/radius/pkg/rad	0.250s
-?   	github.com/Azure/radius/pkg/rad/azcli	[no test files]
-?   	github.com/Azure/radius/pkg/rad/azure	[no test files]
-?   	github.com/Azure/radius/pkg/rad/bicep	[no test files]
-?   	github.com/Azure/radius/pkg/rad/environments	[no test files]
-?   	github.com/Azure/radius/pkg/rad/logger	[no test files]
-?   	github.com/Azure/radius/pkg/rad/namegenerator	[no test files]
-?   	github.com/Azure/radius/pkg/rad/prompt	[no test files]
-?   	github.com/Azure/radius/pkg/rad/util	[no test files]
+ok  	github.com/Azure/radius/pkg/cli	0.250s
+?   	github.com/Azure/radius/pkg/cli/azcli	[no test files]
+?   	github.com/Azure/radius/pkg/cli/azure	[no test files]
+?   	github.com/Azure/radius/pkg/cli/bicep	[no test files]
+?   	github.com/Azure/radius/pkg/cli/environments	[no test files]
+?   	github.com/Azure/radius/pkg/cli/logger	[no test files]
+?   	github.com/Azure/radius/pkg/cli/namegenerator	[no test files]
+?   	github.com/Azure/radius/pkg/cli/prompt	[no test files]
+?   	github.com/Azure/radius/pkg/cli/util	[no test files]
 ?   	github.com/Azure/radius/pkg/radclient	[no test files]
 ?   	github.com/Azure/radius/pkg/workloads	[no test files]
 ok  	github.com/Azure/radius/pkg/workloads/containerv1alpha1	0.214s

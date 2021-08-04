@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/keys"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
-	"github.com/Azure/radius/pkg/rad/clients"
 	"github.com/Azure/radius/pkg/radclient"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

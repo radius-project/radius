@@ -8,9 +8,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/prompt"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
 )
 
@@ -34,17 +34,17 @@ func deleteDeployment(cmd *cobra.Command, args []string) error {
 	}
 
 	config := ConfigFromContext(cmd.Context())
-	env, err := rad.RequireEnvironment(cmd, config)
+	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := rad.RequireApplication(cmd, env)
+	applicationName, err := cli.RequireApplication(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	deploymentName, err := rad.RequireDeployment(cmd, args)
+	deploymentName, err := cli.RequireDeployment(cmd, args)
 	if err != nil {
 		return err
 	}

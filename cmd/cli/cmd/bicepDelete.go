@@ -6,8 +6,8 @@
 package cmd
 
 import (
-	"github.com/Azure/radius/pkg/rad/bicep"
-	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/logger"
 	"github.com/spf13/cobra"
 )
 

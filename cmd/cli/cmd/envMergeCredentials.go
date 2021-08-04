@@ -9,10 +9,10 @@ import (
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azcli"
-	"github.com/Azure/radius/pkg/rad/azure"
-	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/azcli"
+	"github.com/Azure/radius/pkg/cli/azure"
+	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +23,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 	Long:  "Merge Kubernetes credentials into your local user store. Currently only supports Azure environments",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
-		env, err := rad.RequireEnvironment(cmd, config)
+		env, err := cli.RequireEnvironment(cmd, config)
 		if err != nil {
 			return err
 		}

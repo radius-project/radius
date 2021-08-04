@@ -3,12 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package rad
+package cli
 
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

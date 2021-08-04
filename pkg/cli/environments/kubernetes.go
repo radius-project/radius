@@ -8,8 +8,8 @@ package environments
 import (
 	"context"
 
-	"github.com/Azure/radius/pkg/rad/clients"
-	"github.com/Azure/radius/pkg/rad/kubernetes"
+	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/Azure/radius/pkg/cli/kubernetes"
 )
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.

@@ -13,7 +13,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/gofrs/uuid"
 )

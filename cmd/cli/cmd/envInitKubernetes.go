@@ -10,12 +10,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/kubernetes"
+	"github.com/Azure/radius/pkg/cli/logger"
+	"github.com/Azure/radius/pkg/cli/prompt"
 	"github.com/Azure/radius/pkg/helm"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/kubernetes"
-	"github.com/Azure/radius/pkg/rad/logger"
-	"github.com/Azure/radius/pkg/rad/prompt"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -87,7 +87,7 @@ var envInitKubernetesCmd = &cobra.Command{
 
 		config := ConfigFromContext(cmd.Context())
 
-		env, err := rad.ReadEnvironmentSection(config)
+		env, err := cli.ReadEnvironmentSection(config)
 		if err != nil {
 			return err
 		}
@@ -104,9 +104,9 @@ var envInitKubernetesCmd = &cobra.Command{
 
 		logger.LogInfo("using environment %v", environmentName)
 		env.Default = environmentName
-		rad.UpdateEnvironmentSection(config, env)
+		cli.UpdateEnvironmentSection(config, env)
 
-		err = rad.SaveConfig(config)
+		err = cli.SaveConfig(config)
 		if err != nil {
 			return err
 		}

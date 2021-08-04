@@ -12,11 +12,11 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/logger"
-	"github.com/Azure/radius/pkg/rad/prompt"
-	"github.com/Azure/radius/pkg/rad/util"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/logger"
+	"github.com/Azure/radius/pkg/cli/prompt"
+	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -43,7 +43,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 
 	// Validate environment exists, retrieve associated resource group and subscription id
-	env, err := rad.RequireEnvironmentArgs(cmd, config, args)
+	env, err := cli.RequireEnvironmentArgs(cmd, config, args)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 
 func deleteEnvFromConfig(config *viper.Viper, envName string) error {
 	logger.LogInfo("Updating config")
-	env, err := rad.ReadEnvironmentSection(config)
+	env, err := cli.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -135,8 +135,8 @@ func deleteEnvFromConfig(config *viper.Viper, envName string) error {
 			break
 		}
 	}
-	rad.UpdateEnvironmentSection(config, env)
-	if err = rad.SaveConfig(config); err != nil {
+	cli.UpdateEnvironmentSection(config, env)
+	if err = cli.SaveConfig(config); err != nil {
 		return err
 	}
 

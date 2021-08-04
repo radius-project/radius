@@ -14,8 +14,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/rad/clients"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

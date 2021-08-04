@@ -9,9 +9,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/logger"
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
 )
@@ -51,7 +51,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	}
 
 	config := ConfigFromContext(cmd.Context())
-	env, err := rad.ReadEnvironmentSection(config)
+	env, err := cli.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 
 	env.Items[cases.Fold().String(environmentName)][environments.EnvironmentKeyDefaultApplication] = applicationName
 
-	rad.UpdateEnvironmentSection(config, env)
-	err = rad.SaveConfig(config)
+	cli.UpdateEnvironmentSection(config, env)
+	err = cli.SaveConfig(config)
 	return err
 }

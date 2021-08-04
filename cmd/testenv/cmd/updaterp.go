@@ -15,9 +15,9 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azcli"
-	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/azcli"
+	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
@@ -48,12 +48,12 @@ var updateRPCmd = &cobra.Command{
 			return err
 		}
 
-		v, err := rad.LoadConfig(configpath)
+		v, err := cli.LoadConfig(configpath)
 		if err != nil {
 			return err
 		}
 
-		env, err := rad.ReadEnvironmentSection(v)
+		env, err := cli.ReadEnvironmentSection(v)
 		if err != nil {
 			return err
 		}

@@ -8,8 +8,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +26,7 @@ func init() {
 
 func switchEnv(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	section, err := rad.ReadEnvironmentSection(config)
+	section, err := cli.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	envName, err := rad.RequireEnvironmentNameArgs(cmd, args)
+	envName, err := cli.RequireEnvironmentNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	// Retrieve associated resource group and subscription id
-	env, err := rad.ValidateNamedEnvironment(config, envName)
+	env, err := cli.ValidateNamedEnvironment(config, envName)
 	if err != nil {
 		return err
 	}
@@ -65,8 +65,8 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	logger.LogInfo(text)
 
 	section.Default = envName
-	rad.UpdateEnvironmentSection(config, section)
-	err = rad.SaveConfig(config)
+	cli.UpdateEnvironmentSection(config, section)
+	err = cli.SaveConfig(config)
 	if err != nil {
 		return err
 	}

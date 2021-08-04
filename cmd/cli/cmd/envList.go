@@ -8,7 +8,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/cli"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -20,7 +20,7 @@ var envListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		config := ConfigFromContext(cmd.Context())
-		env, err := rad.ReadEnvironmentSection(config)
+		env, err := cli.ReadEnvironmentSection(config)
 		if err != nil {
 			return err
 		}

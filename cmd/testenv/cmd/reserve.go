@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azure"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/spf13/cobra"
 )
 
@@ -65,12 +65,12 @@ var reserveCmd = &cobra.Command{
 			return err
 		}
 
-		v, err := rad.LoadConfig(configpath)
+		v, err := cli.LoadConfig(configpath)
 		if err != nil {
 			return err
 		}
 
-		env, err := rad.ReadEnvironmentSection(v)
+		env, err := cli.ReadEnvironmentSection(v)
 		if err != nil {
 			return err
 		}
@@ -87,8 +87,8 @@ var reserveCmd = &cobra.Command{
 			"clusterName":               testenv.ClusterName,
 		}
 
-		rad.UpdateEnvironmentSection(v, env)
-		err = rad.SaveConfig(v)
+		cli.UpdateEnvironmentSection(v, env)
+		err = cli.SaveConfig(v)
 		if err != nil {
 			return err
 		}

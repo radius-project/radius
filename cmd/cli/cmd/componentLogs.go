@@ -12,9 +12,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/clients"
-	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
 )
 
@@ -42,17 +42,17 @@ rad component logs orders --application icecream-store --follow
 rad component logs orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
-		env, err := rad.RequireEnvironment(cmd, config)
+		env, err := cli.RequireEnvironment(cmd, config)
 		if err != nil {
 			return err
 		}
 
-		application, err := rad.RequireApplication(cmd, env)
+		application, err := cli.RequireApplication(cmd, env)
 		if err != nil {
 			return err
 		}
 
-		component, err := rad.RequireComponent(cmd, args)
+		component, err := cli.RequireComponent(cmd, args)
 		if err != nil {
 			return err
 		}

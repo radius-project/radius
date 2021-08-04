@@ -12,9 +12,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/cli/namegenerator"
+	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/rad/namegenerator"
-	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )

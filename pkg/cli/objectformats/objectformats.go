@@ -5,7 +5,7 @@
 
 package objectformats
 
-import "github.com/Azure/radius/pkg/rad/output"
+import "github.com/Azure/radius/pkg/cli/output"
 
 func GetApplicationTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{

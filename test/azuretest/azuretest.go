@@ -11,16 +11,16 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/azure"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/kubernetes"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/azure"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/stretchr/testify/require"
 	k8s "k8s.io/client-go/kubernetes"
 )
 
 func NewTestOptions(t *testing.T) TestOptions {
-	config, err := rad.LoadConfig("")
+	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
 	auth, err := azure.GetResourceManagerEndpointAuthorizer()
@@ -30,7 +30,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 	require.NoErrorf(t, err, "failed to obtain Azure credentials")
 	con := armcore.NewDefaultConnection(azcred, nil)
 
-	env, err := rad.GetEnvironment(config, "")
+	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
 
 	az, err := environments.RequireAzureCloud(env)

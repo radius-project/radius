@@ -24,12 +24,12 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/cli"
+	radazure "github.com/Azure/radius/pkg/cli/azure"
+	"github.com/Azure/radius/pkg/cli/logger"
+	"github.com/Azure/radius/pkg/cli/prompt"
+	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/rad"
-	radazure "github.com/Azure/radius/pkg/rad/azure"
-	"github.com/Azure/radius/pkg/rad/logger"
-	"github.com/Azure/radius/pkg/rad/prompt"
-	"github.com/Azure/radius/pkg/rad/util"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -638,7 +638,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	step := logger.BeginStep("Updating Config...")
 
 	config := ConfigFromContext(ctx)
-	env, err := rad.ReadEnvironmentSection(config)
+	env, err := cli.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -653,9 +653,9 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	if len(env.Items) == 1 {
 		env.Default = name
 	}
-	rad.UpdateEnvironmentSection(config, env)
+	cli.UpdateEnvironmentSection(config, env)
 
-	err = rad.SaveConfig(config)
+	err = cli.SaveConfig(config)
 	if err != nil {
 		return err
 	}

@@ -8,8 +8,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad/bicep"
-	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/logger"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 )

@@ -11,10 +11,10 @@ import (
 	"os"
 	"path"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/bicep"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/logger"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -44,7 +44,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 
 	config := ConfigFromContext(cmd.Context())
-	env, err := rad.RequireEnvironment(cmd, config)
+	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}
