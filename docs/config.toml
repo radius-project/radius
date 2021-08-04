@@ -1,4 +1,4 @@
-baseURL = "https://edge.radapp.dev/"
+baseURL = "https://radapp.dev/"
 languageCode = "en-us"
 title = "Project Radius"
 theme =  "docsy"
@@ -59,13 +59,15 @@ copyright = "Project Radius"
 
 # Versioning
 version_menu = "Releases"
+version = "v0.4"
+archived_version = false
 [[params.versions]]
   version = "edge (preview)"
   url = "https://edge.radapp.dev"
 
 [[params.versions]]
-  version = "v0.2 (latest)"
-  url = "https://radapp.dev"
+  version = "v0.4 (latest)"
+  url = "#"
 
 # Markdown Engine - Allow inline html
 [markup]
