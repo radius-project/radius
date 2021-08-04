@@ -60,11 +60,11 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	require.NotNil(t, service)
 
 	labels := map[string]string{
-		kubernetes.LabelRadiusApplication:   "test-app",
-		kubernetes.LabelRadiusComponent:     "test-component",
-		kubernetes.LabelKubernetesName:      "test-component",
-		kubernetes.LabelKubernetesPartOf:    "test-app",
-		kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
+		kubernetes.LabelRadiusApplication: "test-app",
+		kubernetes.LabelRadiusComponent:   "test-component",
+		kubernetes.LabelName:              "test-component",
+		kubernetes.LabelPartOf:            "test-app",
+		kubernetes.LabelManagedBy:         kubernetes.LabelManagedByRadiusRP,
 	}
 
 	matchLabels := map[string]string{

@@ -74,7 +74,7 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 			"metadata": map[string]interface{}{
 				"name": namespace,
 				"labels": map[string]interface{}{
-					kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
+					kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 				},
 			},
 		},

@@ -58,9 +58,9 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 				kubernetes.LabelRadiusApplication: w.Application,
 				kubernetes.LabelRadiusComponent:   component.Name,
 				// TODO get the component revision here...
-				kubernetes.LabelKubernetesName:      component.Name,
-				kubernetes.LabelKubernetesPartOf:    w.Application,
-				kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
+				kubernetes.LabelName:      component.Name,
+				kubernetes.LabelPartOf:    w.Application,
+				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -76,9 +76,9 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 						kubernetes.LabelRadiusApplication: w.Application,
 						kubernetes.LabelRadiusComponent:   component.Name,
 						// TODO get the component revision here...
-						kubernetes.LabelKubernetesName:      component.Name,
-						kubernetes.LabelKubernetesPartOf:    w.Application,
-						kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
+						kubernetes.LabelName:      component.Name,
+						kubernetes.LabelPartOf:    w.Application,
+						kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -116,9 +116,9 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 				kubernetes.LabelRadiusApplication: w.Application,
 				kubernetes.LabelRadiusComponent:   component.Name,
 				// TODO get the component revision here...
-				kubernetes.LabelKubernetesName:      component.Name,
-				kubernetes.LabelKubernetesPartOf:    w.Application,
-				kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
+				kubernetes.LabelName:      component.Name,
+				kubernetes.LabelPartOf:    w.Application,
+				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 			},
 		},
 		Spec: corev1.ServiceSpec{
