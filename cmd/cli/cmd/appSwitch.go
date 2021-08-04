@@ -11,7 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/cli/logger"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
 )
@@ -70,14 +70,14 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	}
 
 	if e.GetDefaultApplication() == applicationName {
-		logger.LogInfo("Default application is already set to %v", applicationName)
+		output.LogInfo("Default application is already set to %v", applicationName)
 		return nil
 	}
 
 	if e.GetDefaultApplication() != "" {
-		logger.LogInfo("Switching default application from %v to %v", e.GetDefaultApplication(), applicationName)
+		output.LogInfo("Switching default application from %v to %v", e.GetDefaultApplication(), applicationName)
 	} else {
-		logger.LogInfo("Switching default application to %v", applicationName)
+		output.LogInfo("Switching default application to %v", applicationName)
 	}
 
 	env.Items[cases.Fold().String(environmentName)][environments.EnvironmentKeyDefaultApplication] = applicationName

@@ -26,7 +26,7 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/cli"
 	radazure "github.com/Azure/radius/pkg/cli/azure"
-	"github.com/Azure/radius/pkg/cli/logger"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
 	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
@@ -259,7 +259,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 		return name, nil
 	}
 
-	logger.LogInfo("Resource Group '%v' will be created...", name)
+	output.LogInfo("Resource Group '%v' will be created...", name)
 
 	subc := azclients.NewSubscriptionClient(authorizer)
 
@@ -320,7 +320,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 
 	if exists {
 		// We already have a provider in this resource group
-		logger.LogInfo("Found existing environment...\n\n"+
+		output.LogInfo("Found existing environment...\n\n"+
 			"Environment '%v' available at:\n%v\n", name, envUrl)
 		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, radazure.GetControlPlaneResourceGroup(resourceGroup), clusterName)
 		if err != nil {
@@ -428,7 +428,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 }
 
 func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (*resources.Group, error) {
-	step := logger.BeginStep("Validating Subscription...")
+	step := output.BeginStep("Validating Subscription...")
 
 	sc := azclients.NewSubscriptionClient(authorizer)
 
@@ -447,12 +447,12 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 		return nil, err
 	}
 
-	logger.CompleteStep(step)
+	output.CompleteStep(step)
 	return &group, nil
 }
 
 func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string) error {
-	step := logger.BeginStep("Registering Subscription for required features...")
+	step := output.BeginStep("Registering Subscription for required features...")
 	fc := azclients.NewFeaturesClient(subscriptionID, authorizer)
 
 	providerClient := azclients.NewProvidersClient(subscriptionID, authorizer)
@@ -473,15 +473,15 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 			return fmt.Errorf("failed to register subscription: %v for provider %v: %w", subscriptionID, namespace, err)
 		}
 
-		logger.LogInfo("Sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
+		output.LogInfo("Sucessfully registered subscriptionid: %v for feature: %v/%v", subscriptionID, namespace, feature)
 	}
 
-	logger.CompleteStep(step)
+	output.CompleteStep(step)
 	return nil
 }
 
 func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, registryName string) (string, error) {
-	step := logger.BeginStep("Validating Container Registry for %s...", registryName)
+	step := output.BeginStep("Validating Container Registry for %s...", registryName)
 	crc := azclients.NewRegistriesClient(subscriptionID, authorizer)
 
 	for list, err := crc.ListComplete(ctx); list.NotDone(); err = list.NextWithContext(ctx) {
@@ -490,7 +490,7 @@ func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subsc
 		}
 
 		if *list.Value().Name == registryName {
-			logger.CompleteStep(step)
+			output.CompleteStep(step)
 			return *list.Value().ID, nil
 		}
 	}
@@ -499,7 +499,7 @@ func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subsc
 }
 
 func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, logAnalyticsWorkspaceID string) (string, error) {
-	step := logger.BeginStep("Validating Log Analytics Workspace ID for %s...", logAnalyticsWorkspaceID)
+	step := output.BeginStep("Validating Log Analytics Workspace ID for %s...", logAnalyticsWorkspaceID)
 	resource, err := azure.ParseResourceID(logAnalyticsWorkspaceID)
 	if err != nil {
 		return "", fmt.Errorf("invalid log analytics workspace id: %w", err)
@@ -509,7 +509,7 @@ func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Auth
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve log analytics workspace: %w", err)
 	}
-	logger.CompleteStep(step)
+	output.CompleteStep(step)
 	return resource.ResourceName, nil
 }
 
@@ -519,7 +519,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 		return resources.DeploymentExtended{}, err
 	}
 
-	step := logger.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...\n\n"+
+	step := output.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...\n\n"+
 		"New Environment '%v' with Resource Group '%v' will be available at:\n%v\n\n"+
 		"Deployment In Progress...", version.Channel(), name, params.ResourceGroup, envUrl))
 	dc := azclients.NewDeploymentsClient(subscriptionID, authorizer)
@@ -567,7 +567,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 			URI: to.StringPtr(fmt.Sprintf(armTemplateURIFormat, version.Channel())),
 		}
 	} else {
-		logger.LogInfo("overriding deployment template: %v", params.DeploymentTemplate)
+		output.LogInfo("overriding deployment template: %v", params.DeploymentTemplate)
 		templateContent, err := ioutil.ReadFile(params.DeploymentTemplate)
 		if err != nil {
 			return resources.DeploymentExtended{}, fmt.Errorf("could not read deployment template: %w", err)
@@ -600,7 +600,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 		return resources.DeploymentExtended{}, err
 	}
 
-	logger.CompleteStep(step)
+	output.CompleteStep(step)
 	return dep, nil
 }
 
@@ -635,7 +635,7 @@ func findClusterInDeployment(ctx context.Context, deployment resources.Deploymen
 }
 
 func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, controlPlaneResourceGroup string, clusterName string) error {
-	step := logger.BeginStep("Updating Config...")
+	step := output.BeginStep("Updating Config...")
 
 	config := ConfigFromContext(ctx)
 	env, err := cli.ReadEnvironmentSection(config)
@@ -660,7 +660,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		return err
 	}
 
-	logger.CompleteStep(step)
+	output.CompleteStep(step)
 	return nil
 }
 

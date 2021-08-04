@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/cli/logger"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
 	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/spf13/cobra"
@@ -58,7 +58,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			}
 
 			if !confirmed {
-				logger.LogInfo("Delete cancelled.")
+				output.LogInfo("Delete cancelled.")
 				return nil
 			}
 		}
@@ -78,7 +78,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	logger.LogInfo("Environment deleted")
+	output.LogInfo("Environment deleted")
 
 	// Delete env from the config, update default env if needed
 	if err = deleteEnvFromConfig(config, env.GetName()); err != nil {
@@ -92,7 +92,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string) error {
 	rgc := azclients.NewGroupsClient(subscriptionID, authorizer)
 
-	logger.LogInfo("Deleting resource group %v", resourceGroup)
+	output.LogInfo("Deleting resource group %v", resourceGroup)
 
 	_, err := rgc.Get(ctx, resourceGroup)
 	if err != nil && util.IsAutorest404Error(err) {
@@ -106,7 +106,7 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 		return fmt.Errorf("failed to delete the resource group: %w", err)
 	}
 
-	logger.LogInfo("Waiting for delete to complete...")
+	output.LogInfo("Waiting for delete to complete...")
 	if err = future.WaitForCompletionRef(ctx, rgc.Client); err != nil {
 		return fmt.Errorf("failed to delete the resource group: %w", err)
 	}
@@ -120,7 +120,7 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 }
 
 func deleteEnvFromConfig(config *viper.Viper, envName string) error {
-	logger.LogInfo("Updating config")
+	output.LogInfo("Updating config")
 	env, err := cli.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
@@ -131,7 +131,7 @@ func deleteEnvFromConfig(config *viper.Viper, envName string) error {
 	if env.Default == envName && len(env.Items) > 0 {
 		for key := range env.Items {
 			env.Default = key
-			logger.LogInfo("%v is now the default environment", key)
+			output.LogInfo("%v is now the default environment", key)
 			break
 		}
 	}

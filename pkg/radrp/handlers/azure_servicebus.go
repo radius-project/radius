@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/cli/namegenerator"
 	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -172,7 +171,7 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 	}
 
 	// Generate a random namespace name
-	namespaceName := namegenerator.GenerateName("radius-ns")
+	namespaceName := GenerateName("radius-ns")
 
 	future, err := sbc.CreateOrUpdate(ctx, handler.arm.ResourceGroup, namespaceName, servicebus.SBNamespace{
 		Sku: &servicebus.SBSku{

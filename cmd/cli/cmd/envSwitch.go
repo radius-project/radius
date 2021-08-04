@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/logger"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +62,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 			"%v environment is available at:\n%v\n", envName, envName, status)
 	}
 
-	logger.LogInfo(text)
+	output.LogInfo(text)
 
 	section.Default = envName
 	cli.UpdateEnvironmentSection(config, section)

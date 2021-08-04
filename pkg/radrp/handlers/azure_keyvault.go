@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
-	"github.com/Azure/radius/pkg/cli/namegenerator"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -46,7 +45,7 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions
 
 	if properties[KeyVaultIDKey] == "" {
 		// If we have already created this resource we would have stored the name and ID.
-		vaultName := namegenerator.GenerateName("kv")
+		vaultName := GenerateName("kv")
 
 		kv, err := handler.CreateKeyVault(ctx, vaultName, options)
 		if err != nil {

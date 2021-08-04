@@ -12,10 +12,10 @@ import (
 
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/helm"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
-	"github.com/Azure/radius/pkg/cli/logger"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
-	"github.com/Azure/radius/pkg/helm"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -61,7 +61,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return fmt.Errorf("kubernetes context '%s' could not be found", k8sconfig.CurrentContext)
 		}
 
-		step := logger.BeginStep("Installing Radius...")
+		step := output.BeginStep("Installing Radius...")
 
 		client, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 		if err != nil {
@@ -83,7 +83,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		logger.CompleteStep(step)
+		output.CompleteStep(step)
 
 		config := ConfigFromContext(cmd.Context())
 
@@ -102,7 +102,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			"namespace": namespace,
 		}
 
-		logger.LogInfo("using environment %v", environmentName)
+		output.LogInfo("using environment %v", environmentName)
 		env.Default = environmentName
 		cli.UpdateEnvironmentSection(config, env)
 
