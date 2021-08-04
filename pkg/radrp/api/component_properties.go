@@ -9,9 +9,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strconv"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // ComponentProperties Properties of a component.
@@ -20,25 +23,28 @@ import (
 type ComponentProperties struct {
 
 	// Bindings spec of the component
-	Bindings interface{} `json:"bindings,omitempty"`
+	Bindings map[string]ComponentBinding `json:"bindings,omitempty"`
+
+	// Bindings spec of the component
+	Build map[string]interface{} `json:"build,omitempty"`
 
 	// Config of the component
-	Config interface{} `json:"config,omitempty"`
+	Config map[string]interface{} `json:"config,omitempty"`
 
 	// output resources
-	OutputResources []ComponentOutputResource `json:"outputResources"`
+	OutputResources []*ComponentOutputResource `json:"outputResources"`
 
 	// Revision of the component
 	Revision string `json:"revision,omitempty"`
 
 	// Run spec of the component
-	Run interface{} `json:"run,omitempty"`
+	Run map[string]interface{} `json:"run,omitempty"`
 
 	// Traits spec of the component
-	Traits []interface{} `json:"traits"`
+	Traits []*ComponentTrait `json:"traits"`
 
 	// Uses spec of the component
-	Uses []interface{} `json:"uses"`
+	Uses []*ComponentDependency `json:"uses"`
 }
 
 // UnmarshalJSON unmarshals this object while disallowing additional properties from JSON
@@ -46,25 +52,28 @@ func (m *ComponentProperties) UnmarshalJSON(data []byte) error {
 	var props struct {
 
 		// Bindings spec of the component
-		Bindings interface{} `json:"bindings,omitempty"`
+		Bindings map[string]ComponentBinding `json:"bindings,omitempty"`
+
+		// Bindings spec of the component
+		Build map[string]interface{} `json:"build,omitempty"`
 
 		// Config of the component
-		Config interface{} `json:"config,omitempty"`
+		Config map[string]interface{} `json:"config,omitempty"`
 
 		// output resources
-		OutputResources []ComponentOutputResource `json:"outputResources"`
+		OutputResources []*ComponentOutputResource `json:"outputResources"`
 
 		// Revision of the component
 		Revision string `json:"revision,omitempty"`
 
 		// Run spec of the component
-		Run interface{} `json:"run,omitempty"`
+		Run map[string]interface{} `json:"run,omitempty"`
 
 		// Traits spec of the component
-		Traits []interface{} `json:"traits"`
+		Traits []*ComponentTrait `json:"traits"`
 
 		// Uses spec of the component
-		Uses []interface{} `json:"uses"`
+		Uses []*ComponentDependency `json:"uses"`
 	}
 
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -74,6 +83,7 @@ func (m *ComponentProperties) UnmarshalJSON(data []byte) error {
 	}
 
 	m.Bindings = props.Bindings
+	m.Build = props.Build
 	m.Config = props.Config
 	m.OutputResources = props.OutputResources
 	m.Revision = props.Revision
@@ -85,11 +95,215 @@ func (m *ComponentProperties) UnmarshalJSON(data []byte) error {
 
 // Validate validates this component properties
 func (m *ComponentProperties) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateBindings(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOutputResources(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTraits(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUses(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 
-// ContextValidate validates this component properties based on context it is used
+func (m *ComponentProperties) validateBindings(formats strfmt.Registry) error {
+	if swag.IsZero(m.Bindings) { // not required
+		return nil
+	}
+
+	for k := range m.Bindings {
+
+		if err := validate.Required("bindings"+"."+k, "body", m.Bindings[k]); err != nil {
+			return err
+		}
+		if val, ok := m.Bindings[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *ComponentProperties) validateOutputResources(formats strfmt.Registry) error {
+	if swag.IsZero(m.OutputResources) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.OutputResources); i++ {
+		if swag.IsZero(m.OutputResources[i]) { // not required
+			continue
+		}
+
+		if m.OutputResources[i] != nil {
+			if err := m.OutputResources[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("outputResources" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *ComponentProperties) validateTraits(formats strfmt.Registry) error {
+	if swag.IsZero(m.Traits) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Traits); i++ {
+		if swag.IsZero(m.Traits[i]) { // not required
+			continue
+		}
+
+		if m.Traits[i] != nil {
+			if err := m.Traits[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("traits" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *ComponentProperties) validateUses(formats strfmt.Registry) error {
+	if swag.IsZero(m.Uses) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Uses); i++ {
+		if swag.IsZero(m.Uses[i]) { // not required
+			continue
+		}
+
+		if m.Uses[i] != nil {
+			if err := m.Uses[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("uses" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// ContextValidate validate this component properties based on the context it is used
 func (m *ComponentProperties) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateBindings(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateOutputResources(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTraits(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateUses(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *ComponentProperties) contextValidateBindings(ctx context.Context, formats strfmt.Registry) error {
+
+	for k := range m.Bindings {
+
+		if val, ok := m.Bindings[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *ComponentProperties) contextValidateOutputResources(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.OutputResources); i++ {
+
+		if m.OutputResources[i] != nil {
+			if err := m.OutputResources[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("outputResources" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *ComponentProperties) contextValidateTraits(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Traits); i++ {
+
+		if m.Traits[i] != nil {
+			if err := m.Traits[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("traits" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *ComponentProperties) contextValidateUses(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Uses); i++ {
+
+		if m.Uses[i] != nil {
+			if err := m.Uses[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("uses" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 

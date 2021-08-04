@@ -24,7 +24,10 @@ type DeploymentProperties struct {
 
 	// List of components in the deployment.
 	// Required: true
-	Components []*DeploymentPropertiesComponentsItems0 `json:"components"`
+	Components []*DeploymentComponent `json:"components"`
+
+	// provisioning state
+	ProvisioningState string `json:"provisioningState,omitempty"`
 }
 
 // UnmarshalJSON unmarshals this object while disallowing additional properties from JSON
@@ -33,7 +36,10 @@ func (m *DeploymentProperties) UnmarshalJSON(data []byte) error {
 
 		// List of components in the deployment.
 		// Required: true
-		Components []*DeploymentPropertiesComponentsItems0 `json:"components"`
+		Components []*DeploymentComponent `json:"components"`
+
+		// provisioning state
+		ProvisioningState string `json:"provisioningState,omitempty"`
 	}
 
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -43,6 +49,7 @@ func (m *DeploymentProperties) UnmarshalJSON(data []byte) error {
 	}
 
 	m.Components = props.Components
+	m.ProvisioningState = props.ProvisioningState
 	return nil
 }
 
@@ -128,81 +135,6 @@ func (m *DeploymentProperties) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary interface implementation
 func (m *DeploymentProperties) UnmarshalBinary(b []byte) error {
 	var res DeploymentProperties
-	if err := swag.ReadJSON(b, &res); err != nil {
-		return err
-	}
-	*m = res
-	return nil
-}
-
-// DeploymentPropertiesComponentsItems0 deployment properties components items0
-//
-// swagger:model DeploymentPropertiesComponentsItems0
-type DeploymentPropertiesComponentsItems0 struct {
-
-	// Name of the component
-	// Required: true
-	ComponentName *string `json:"componentName"`
-}
-
-// UnmarshalJSON unmarshals this object while disallowing additional properties from JSON
-func (m *DeploymentPropertiesComponentsItems0) UnmarshalJSON(data []byte) error {
-	var props struct {
-
-		// Name of the component
-		// Required: true
-		ComponentName *string `json:"componentName"`
-	}
-
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&props); err != nil {
-		return err
-	}
-
-	m.ComponentName = props.ComponentName
-	return nil
-}
-
-// Validate validates this deployment properties components items0
-func (m *DeploymentPropertiesComponentsItems0) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.validateComponentName(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *DeploymentPropertiesComponentsItems0) validateComponentName(formats strfmt.Registry) error {
-
-	if err := validate.Required("componentName", "body", m.ComponentName); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ContextValidate validates this deployment properties components items0 based on context it is used
-func (m *DeploymentPropertiesComponentsItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	return nil
-}
-
-// MarshalBinary interface implementation
-func (m *DeploymentPropertiesComponentsItems0) MarshalBinary() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	return swag.WriteJSON(m)
-}
-
-// UnmarshalBinary interface implementation
-func (m *DeploymentPropertiesComponentsItems0) UnmarshalBinary(b []byte) error {
-	var res DeploymentPropertiesComponentsItems0
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

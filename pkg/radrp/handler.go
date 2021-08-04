@@ -12,9 +12,11 @@ import (
 	"net/http"
 
 	"github.com/Azure/radius/pkg/radlogger"
+	restapi "github.com/Azure/radius/pkg/radrp/api"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/resources"
-	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/strfmt"
 )
 
 // A brief not on error handling... The handler is responsible for all of the direct actions
@@ -67,7 +69,7 @@ func (h *handler) getApplication(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) updateApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	input := &rest.Application{}
+	input := &restapi.ApplicationResource{}
 	err := readJSONResource(req, input, resourceID(req))
 	if err != nil {
 		badRequest(ctx, w, err)
@@ -135,7 +137,7 @@ func (h *handler) getComponent(w http.ResponseWriter, req *http.Request) {
 func (h *handler) updateComponent(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	// Treat invalid input as a bad request
-	input := &rest.Component{}
+	input := &restapi.ComponentResource{}
 	err := readJSONResource(req, input, resourceID(req))
 	if err != nil {
 		badRequest(ctx, w, err)
@@ -202,7 +204,7 @@ func (h *handler) getDeployment(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) updateDeployment(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	input := &rest.Deployment{}
+	input := &restapi.DeploymentResource{}
 	err := readJSONResource(req, input, resourceID(req))
 	if err != nil {
 		badRequest(ctx, w, err)
@@ -269,7 +271,7 @@ func (h *handler) getScope(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) updateScope(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	input := &rest.Scope{}
+	input := &restapi.ScopeResource{}
 	err := readJSONResource(req, input, resourceID(req))
 	if err != nil {
 		badRequest(ctx, w, err)
@@ -396,15 +398,17 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, err error) 
 	}
 }
 
-func readJSONResource(req *http.Request, obj rest.Resource, id resources.ResourceID) error {
+func readJSONResource(req *http.Request, obj runtime.Validatable, id resources.ResourceID) error {
 	defer req.Body.Close()
-	err := json.NewDecoder(req.Body).Decode(obj)
-	if err != nil {
+	if err := json.NewDecoder(req.Body).Decode(obj); err != nil {
+		return fmt.Errorf("error reading %T: %w", obj, err)
+	}
+	if err := obj.Validate(strfmt.Default); err != nil {
 		return fmt.Errorf("error reading %T: %w", obj, err)
 	}
 
 	// Set Resource properties on the resource based on the URL
-	obj.SetID(id)
+	// obj.SetID(id)
 
 	return nil
 }

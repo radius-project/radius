@@ -11,6 +11,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // ScopeResource Scope resource.
@@ -90,8 +91,17 @@ func (m *ScopeResource) Validate(formats strfmt.Registry) error {
 
 func (m *ScopeResource) validateProperties(formats strfmt.Registry) error {
 
-	if m.Properties == nil {
-		return errors.Required("properties", "body", nil)
+	if err := validate.Required("properties", "body", m.Properties); err != nil {
+		return err
+	}
+
+	if m.Properties != nil {
+		if err := m.Properties.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("properties")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -106,9 +116,25 @@ func (m *ScopeResource) ContextValidate(ctx context.Context, formats strfmt.Regi
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateProperties(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *ScopeResource) contextValidateProperties(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Properties.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("properties")
+		}
+		return err
+	}
+
 	return nil
 }
 

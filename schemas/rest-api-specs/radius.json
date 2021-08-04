@@ -583,6 +583,9 @@
       "description": "Properties of a scope.",
       "type": "object",
       "properties": {
+      },
+      "additionalProperties": {
+	"type": "object"
       }
     },
     "ApplicationList": {
@@ -660,6 +663,24 @@
         }
       }
     },
+    "DeploymentComponent": {
+      "description": "A component of a deployment.",
+      "type": "object",
+      "required": [
+        "revision"
+      ],
+      "properties": {
+        "componentName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+	  "type": "string"
+	}
+      }
+    },
     "DeploymentResource": {
       "description": "Deployment resource.",
       "type": "object",
@@ -692,20 +713,15 @@
         "components"
       ],
       "properties": {
+        "provisioningState": {
+	  "type": "string"
+	},
         "components": {
           "type": "array",
           "description": "List of components in the deployment.",
           "items": {
             "type": "object",
-            "required": [
-              "componentName"
-            ],
-            "properties": {
-              "componentName": {
-                "type": "string",
-                "description": "Name of the component"
-              }
-            }
+	    "$ref": "#/definitions/DeploymentComponent"
           }
         }
       }
@@ -769,6 +785,82 @@
         }
       }
     },
+    "ComponentBindingExpression": {
+      "description": "Binding expression of a component.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Kind of the component binding"
+        },
+        "value": {
+          "type": "object",
+	  "description": "Value of the component binding"
+        }
+      }
+    },
+    "ComponentBinding": {
+      "description": "Binding of a component.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Kind of the component binding"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ComponentTrait": {
+      "description": "Trait of a component.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Kind of the component trait"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ComponentDependencySecrets": {
+      "description": "Secrets of a component binding.",
+      "type": "object",
+      "properties": {
+        "store": {
+          "type": "object",
+	  "$ref": "#/definitions/ComponentBindingExpression",
+          "description": "Kind of the component binding"
+        },
+        "keys": {
+          "type": "object",
+	  "additionalProperties": {
+	    "type": "object",
+  	    "$ref": "#/definitions/ComponentBindingExpression"
+	  }
+        }
+      }
+    },
+    "ComponentDependency": {
+      "description": "Dependency of a component.",
+      "type": "object",
+      "properties": {
+        "binding": {
+          "type": "object",
+          "$ref": "#/definitions/ComponentBindingExpression",
+          "description": "Binding of the component dependency"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+	    "type": "object",
+            "$ref": "#/definitions/ComponentBindingExpression"
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "$ref": "#/definitions/ComponentDependencySecrets"
+        }
+      }
+    },
     "ComponentProperties": {
       "description": "Properties of a component.",
       "type": "object",
@@ -779,28 +871,47 @@
         },
         "config": {
           "type": "object",
-          "description": "Config of the component"
+          "description": "Config of the component",
+	  "additionalProperties": {
+	    "type": "object"
+	  }
         },
         "run": {
           "type": "object",
-          "description": "Run spec of the component"
+          "description": "Run spec of the component",
+	  "additionalProperties": {
+	    "type": "object"
+	  }
         },
         "bindings": {
           "type": "object",
-          "description": "Bindings spec of the component"
+          "description": "Bindings spec of the component",
+	  "additionalProperties": {
+	    "type": "object",
+	    "$ref": "#/definitions/ComponentBinding"
+	  }
+        },
+        "build": {
+          "type": "object",
+          "description": "Bindings spec of the component",
+	  "additionalProperties": {
+	    "type": "object"
+	  }
         },
         "uses": {
           "type": "array",
           "description": "Uses spec of the component",
           "items": {
-	      "type": "object"
+	    "type": "object",
+	    "$ref": "#/definitions/ComponentDependency"
           }
         },
         "traits": {
           "type": "array",
           "description": "Traits spec of the component",
           "items": {
-	      "type": "object"
+	    "type": "object",
+	    "$ref": "#/definitions/ComponentTrait"
           }
         },
         "outputResources": {
@@ -812,9 +923,24 @@
       }
     },
     "ComponentOutputResource": {
-      "description": "Properties of a component.",
+      "description": "Output resource of a component.",
       "type": "object",
       "properties": {
+	"localId": {
+	  "type": "string"
+	},
+	"managed": {
+	  "type": "boolean"
+	},
+	"resourceKind": {
+	  "type": "string"
+	},
+	"outputResourceType": {
+	  "type": "string"
+	},
+	"outputResourceInfo": {
+	  "type": "object"
+	}
       }
     },
     "ComponentCreateParameters": {

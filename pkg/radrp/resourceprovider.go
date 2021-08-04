@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/radlogger"
+	restapi "github.com/Azure/radius/pkg/radrp/api"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/db"
@@ -26,22 +27,22 @@ import (
 type ResourceProvider interface {
 	ListApplications(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 	GetApplication(ctx context.Context, id resources.ResourceID) (rest.Response, error)
-	UpdateApplication(ctx context.Context, app *rest.Application) (rest.Response, error)
+	UpdateApplication(ctx context.Context, app *restapi.ApplicationResource) (rest.Response, error)
 	DeleteApplication(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 
 	ListComponents(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 	GetComponent(ctx context.Context, id resources.ResourceID) (rest.Response, error)
-	UpdateComponent(ctx context.Context, app *rest.Component) (rest.Response, error)
+	UpdateComponent(ctx context.Context, component *restapi.ComponentResource) (rest.Response, error)
 	DeleteComponent(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 
 	ListDeployments(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 	GetDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error)
-	UpdateDeployment(ctx context.Context, app *rest.Deployment) (rest.Response, error)
+	UpdateDeployment(ctx context.Context, deploy *restapi.DeploymentResource) (rest.Response, error)
 	DeleteDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 
 	ListScopes(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 	GetScope(ctx context.Context, id resources.ResourceID) (rest.Response, error)
-	UpdateScope(ctx context.Context, app *rest.Scope) (rest.Response, error)
+	UpdateScope(ctx context.Context, app *restapi.ScopeResource) (rest.Response, error)
 	DeleteScope(ctx context.Context, id resources.ResourceID) (rest.Response, error)
 
 	GetDeploymentOperationByID(ctx context.Context, id resources.ResourceID) (rest.Response, error)
@@ -100,7 +101,7 @@ func (r *rp) GetApplication(ctx context.Context, id resources.ResourceID) (rest.
 	return rest.NewOKResponse(item), nil
 }
 
-func (r *rp) UpdateApplication(ctx context.Context, a *rest.Application) (rest.Response, error) {
+func (r *rp) UpdateApplication(ctx context.Context, a *restapi.ApplicationResource) (rest.Response, error) {
 	ctx = radlogger.WrapLogContext(ctx,
 		radlogger.LogFieldAppName, a.Name,
 		radlogger.LogFieldAppID, a.ID,
@@ -200,7 +201,7 @@ func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (rest.Re
 	return rest.NewOKResponse(item), nil
 }
 
-func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Response, error) {
+func (r *rp) UpdateComponent(ctx context.Context, c *restapi.ComponentResource) (rest.Response, error) {
 	id, err := c.GetComponentID()
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -324,7 +325,7 @@ func (r *rp) GetDeployment(ctx context.Context, id resources.ResourceID) (rest.R
 	return rest.NewOKResponse(item), nil
 }
 
-func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Response, error) {
+func (r *rp) UpdateDeployment(ctx context.Context, d *restapi.DeploymentResource) (rest.Response, error) {
 	id, err := d.GetDeploymentID()
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -350,7 +351,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	// - the new deployment
 	// - the old deployment (maybe null)
 	// - all of the component revisions referenced by the new deployment
-	newdbitem := newDBDeploymentFromREST(d)
+	newdbitem := newDBDeploymentFromDeploymentResource(d)
 	app, err := r.db.GetApplicationByID(ctx, id.App)
 	if err == db.ErrNotFound {
 		return rest.NewNotFoundResponse(id.App.ResourceID), nil
@@ -692,7 +693,7 @@ func (r *rp) GetScope(ctx context.Context, id resources.ResourceID) (rest.Respon
 	return rest.NewOKResponse(item), nil
 }
 
-func (r *rp) UpdateScope(ctx context.Context, s *rest.Scope) (rest.Response, error) {
+func (r *rp) UpdateScope(ctx context.Context, s *restapi.ScopeResource) (rest.Response, error) {
 	id, err := s.GetScopeID()
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -705,7 +706,7 @@ func (r *rp) UpdateScope(ctx context.Context, s *rest.Scope) (rest.Response, err
 		return response, nil
 	}
 
-	dbitem := newDBScopeFromREST(s)
+	dbitem := newDBScopeFromScopeResource(s)
 	created, err := r.db.PatchScopeByApplicationID(ctx, id.App, id.Resource.Name(), dbitem)
 	if err == db.ErrNotFound {
 		return rest.NewNotFoundResponse(id.App.ResourceID), nil
