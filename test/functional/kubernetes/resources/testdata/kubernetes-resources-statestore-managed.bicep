@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'dapr-hello'
+  name: 'kubernetes-resources-statestore-managed'
 
   resource receiverapplication 'Components' = {
     name: 'sender'
