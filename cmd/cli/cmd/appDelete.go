@@ -74,14 +74,14 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		deploymentName := *deploymentResource.Name
 		err = client.DeleteDeployment(cmd.Context(), applicationName, deploymentName)
 		if err != nil {
-			return err
+			return fmt.Errorf("delete deployment error: %w", err)
 		}
 		fmt.Printf("Deployment '%s' deleted.\n", deploymentName)
 	}
 
 	err = client.DeleteApplication(cmd.Context(), applicationName)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete application error: %w", err)
 	}
 
 	err = updateApplicationConfig(config, env, applicationName)
