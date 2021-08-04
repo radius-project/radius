@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
@@ -204,7 +205,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      properties[ComponentNameKey],
-				"labels":    keys.MakeDescriptiveLabels(options.Application, options.Component),
+				"labels":    kubernetes.MakeDescriptiveLabels(options.Application, options.Component),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.azure.tablestorage",
@@ -227,7 +228,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 		},
 	}
 
-	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: keys.FieldManager})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return fmt.Errorf("failed to create/update Dapr Component: %w", err)
 	}

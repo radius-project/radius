@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
@@ -285,8 +285,8 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 	require.Equal(t, outputresource.KindKubernetes, dapr.Kind)
 	resourceDapr := dapr.Resource.(*unstructured.Unstructured)
 
-	labels := keys.MakeDescriptiveLabels("test-app", "test-component")
-	matchLabels := keys.MakeSelectorLabels("test-app", "test-component")
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-component")
+	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-component")
 
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-component", resourceDeployment.Name)
@@ -334,7 +334,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 				"metadata": map[string]interface{}{
 					"name":      "test-component",
 					"namespace": "default",
-					"labels":    keys.MakeDescriptiveLabels("test-app", "test-component"),
+					"labels":    kubernetes.MakeDescriptiveLabels("test-app", "test-component"),
 				},
 				"spec": map[string]interface{}{
 					"type":    "state.redis",

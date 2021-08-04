@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package keys
+package kubernetes
 
 // Commonly-used and Radius-Specific labels for Kubernetes
 const (

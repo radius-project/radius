@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/gofrs/uuid"
@@ -91,7 +92,7 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 			"metadata": map[string]interface{}{
 				"name":      properties[KubernetesNameKey],
 				"namespace": properties[KubernetesNamespaceKey],
-				"labels":    keys.MakeDescriptiveLabels(options.Application, options.Component),
+				"labels":    kubernetes.MakeDescriptiveLabels(options.Application, options.Component),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.sqlserver",
@@ -110,7 +111,7 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 		},
 	}
 
-	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: keys.FieldManager})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return nil, err
 	}

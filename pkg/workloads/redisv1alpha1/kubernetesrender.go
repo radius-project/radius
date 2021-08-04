@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
@@ -55,30 +55,30 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 			Name:      component.Name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				keys.LabelRadiusApplication: w.Application,
-				keys.LabelRadiusComponent:   component.Name,
+				kubernetes.LabelRadiusApplication: w.Application,
+				kubernetes.LabelRadiusComponent:   component.Name,
 				// TODO get the component revision here...
-				keys.LabelKubernetesName:      component.Name,
-				keys.LabelKubernetesPartOf:    w.Application,
-				keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
+				kubernetes.LabelKubernetesName:      component.Name,
+				kubernetes.LabelKubernetesPartOf:    w.Application,
+				kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					keys.LabelRadiusApplication: w.Application,
-					keys.LabelRadiusComponent:   component.Name,
+					kubernetes.LabelRadiusApplication: w.Application,
+					kubernetes.LabelRadiusComponent:   component.Name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						keys.LabelRadiusApplication: w.Application,
-						keys.LabelRadiusComponent:   component.Name,
+						kubernetes.LabelRadiusApplication: w.Application,
+						kubernetes.LabelRadiusComponent:   component.Name,
 						// TODO get the component revision here...
-						keys.LabelKubernetesName:      component.Name,
-						keys.LabelKubernetesPartOf:    w.Application,
-						keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
+						kubernetes.LabelKubernetesName:      component.Name,
+						kubernetes.LabelKubernetesPartOf:    w.Application,
+						kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -113,18 +113,18 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 			Name:      component.Name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				keys.LabelRadiusApplication: w.Application,
-				keys.LabelRadiusComponent:   component.Name,
+				kubernetes.LabelRadiusApplication: w.Application,
+				kubernetes.LabelRadiusComponent:   component.Name,
 				// TODO get the component revision here...
-				"app.kubernetes.io/name":       component.Name,
-				"app.kubernetes.io/part-of":    w.Application,
-				"app.kubernetes.io/managed-by": "radius-rp",
+				kubernetes.LabelKubernetesName:      component.Name,
+				kubernetes.LabelKubernetesPartOf:    w.Application,
+				kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				keys.LabelRadiusApplication: w.Application,
-				keys.LabelRadiusComponent:   component.Name,
+				kubernetes.LabelRadiusApplication: w.Application,
+				kubernetes.LabelRadiusComponent:   component.Name,
 			},
 			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{

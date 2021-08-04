@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
@@ -79,7 +79,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      w.Name,
 			Namespace: w.Application,
-			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 	}
 

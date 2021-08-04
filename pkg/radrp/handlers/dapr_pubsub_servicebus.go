@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,7 +137,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      properties[ComponentNameKey],
-				"labels":    keys.MakeDescriptiveLabels(options.Application, options.Component),
+				"labels":    kubernetes.MakeDescriptiveLabels(options.Application, options.Component),
 			},
 			"spec": map[string]interface{}{
 				"type":    "pubsub.azure.servicebus",
@@ -152,7 +152,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 		},
 	}
 
-	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: keys.FieldManager})
+	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return fmt.Errorf("failed to patch Dapr PubSub: %w", err)
 	}

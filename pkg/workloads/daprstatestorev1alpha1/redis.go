@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,15 +40,15 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: namespace,
-			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: keys.MakeSelectorLabels(w.Application, w.Name),
+				MatchLabels: kubernetes.MakeSelectorLabels(w.Application, w.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: keys.MakeDescriptiveLabels(w.Application, w.Name),
+					Labels: kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -80,10 +80,10 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: namespace,
-			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: keys.MakeSelectorLabels(w.Application, w.Name),
+			Selector: kubernetes.MakeSelectorLabels(w.Application, w.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
@@ -107,7 +107,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			"metadata": map[string]interface{}{
 				"name":      component.Name,
 				"namespace": namespace,
-				"labels":    keys.MakeDescriptiveLabels(w.Application, w.Name),
+				"labels":    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.redis",

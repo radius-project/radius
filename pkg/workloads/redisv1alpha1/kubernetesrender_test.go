@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -60,16 +60,16 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	require.NotNil(t, service)
 
 	labels := map[string]string{
-		keys.LabelRadiusApplication:   "test-app",
-		keys.LabelRadiusComponent:     "test-component",
-		keys.LabelKubernetesName:      "test-component",
-		keys.LabelKubernetesPartOf:    "test-app",
-		keys.LabelKubernetesManagedBy: keys.LabelKubernetesManagedByRadiusRP,
+		kubernetes.LabelRadiusApplication:   "test-app",
+		kubernetes.LabelRadiusComponent:     "test-component",
+		kubernetes.LabelKubernetesName:      "test-component",
+		kubernetes.LabelKubernetesPartOf:    "test-app",
+		kubernetes.LabelKubernetesManagedBy: kubernetes.LabelKubernetesManagedByRadiusRP,
 	}
 
 	matchLabels := map[string]string{
-		keys.LabelRadiusApplication: "test-app",
-		keys.LabelRadiusComponent:   "test-component",
+		kubernetes.LabelRadiusApplication: "test-app",
+		kubernetes.LabelRadiusComponent:   "test-component",
 	}
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-component", deployment.Name)

@@ -3,12 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package controllers
+package converters
 
 import (
 	"encoding/json"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"k8s.io/apimachinery/pkg/conversion"
@@ -17,7 +17,7 @@ import (
 func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.Scope) error {
 	original := a.(*radiusv1alpha1.Component)
 	result := b.(*components.GenericComponent)
-	result.Name = original.Annotations[keys.AnnotationsComponent]
+	result.Name = original.Annotations[kubernetes.AnnotationsComponent]
 	result.Kind = original.Spec.Kind
 
 	if original.Spec.Config != nil {

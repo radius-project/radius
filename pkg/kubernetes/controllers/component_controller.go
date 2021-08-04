@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/components"
@@ -73,8 +73,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Error(err, "failed to retrieve component")
 		return ctrl.Result{}, err
 	}
-	applicationName := component.Annotations[keys.AnnotationsApplication]
-	componentName := component.Annotations[keys.AnnotationsComponent]
+	applicationName := component.Annotations[kubernetes.AnnotationsApplication]
+	componentName := component.Annotations[kubernetes.AnnotationsComponent]
 
 	log = log.WithValues(
 		"application", applicationName,
@@ -259,11 +259,11 @@ func GetMissingBindings(generic *components.GenericComponent, r *ComponentReconc
 
 		found := false
 		for _, pp := range providers.Items {
-			if pp.Annotations[keys.AnnotationsApplication] != applicationName {
+			if pp.Annotations[kubernetes.AnnotationsApplication] != applicationName {
 				continue
 			}
 
-			if pp.Annotations[keys.AnnotationsComponent] != key.Component {
+			if pp.Annotations[kubernetes.AnnotationsComponent] != key.Component {
 				continue
 			}
 
@@ -465,7 +465,7 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func extractApplicationKey(obj client.Object) []string {
 	component := obj.(*radiusv1alpha1.Component)
-	return []string{component.Annotations[keys.AnnotationsApplication]}
+	return []string{component.Annotations[kubernetes.AnnotationsApplication]}
 }
 
 func extractOwnerKey(obj client.Object) []string {

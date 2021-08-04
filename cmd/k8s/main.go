@@ -21,6 +21,7 @@ import (
 
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
+	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/radrp/components"
 	//+kubebuilder:scaffold:imports
 )
@@ -35,7 +36,7 @@ func init() {
 
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
-	_ = scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, controllers.ConvertComponentToInternal)
+	_ = scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, converters.ConvertComponentToInternal)
 }
 
 func main() {
