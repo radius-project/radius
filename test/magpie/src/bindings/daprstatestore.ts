@@ -1,10 +1,6 @@
 import { Binding, BindingStatus} from '../binding'
 import { DaprClient } from '@roadwork/dapr-js-sdk/http'
 
-// // These ports are injected automatically into the container.
-// const daprPort = process.env.DAPR_HTTP_PORT; 
-// const daprGRPCPort = process.env.DAPR_GRPC_PORT;
-
 // Use this with a values like:
 // - BINDING_DAPRSTATESTORE_STATESTORENAME
 export class DaprStateStoreBinding implements Binding {
@@ -22,6 +18,7 @@ export class DaprStateStoreBinding implements Binding {
     }
 
     public async status(): Promise<BindingStatus> {
+        // Do a round-trip save get.
         await this.client.state.save(this.name, [{ key:"key", value: "value"}]);
 
         const res = await this.client.state.get(this.name, "key");
