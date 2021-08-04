@@ -15,8 +15,10 @@ import (
 func Test_ComponentAction_GetDependencies_Null(t *testing.T) {
 	// action.Component will be null for a delete action
 	action := ComponentAction{}
+	dependencies, err := action.GetDependencies()
+	require.NoError(t, err)
 
-	require.Empty(t, action.GetDependencies())
+	require.Empty(t, dependencies)
 }
 
 func Test_ComponentAction_GetDependencies_None(t *testing.T) {
@@ -24,7 +26,10 @@ func Test_ComponentAction_GetDependencies_None(t *testing.T) {
 		Component: &components.GenericComponent{},
 	}
 
-	require.Empty(t, action.GetDependencies())
+	dependencies, err := action.GetDependencies()
+	require.NoError(t, err)
+
+	require.Empty(t, dependencies)
 }
 
 func Test_ComponentAction_GetDependencies_Some(t *testing.T) {
@@ -47,5 +52,8 @@ func Test_ComponentAction_GetDependencies_Some(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, []string{"A", "C"}, action.GetDependencies())
+	dependencies, err := action.GetDependencies()
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"A", "C"}, dependencies)
 }

@@ -58,9 +58,9 @@ func (action ComponentAction) Key() string {
 	return action.ComponentName
 }
 
-func (action ComponentAction) GetDependencies() []string {
+func (action ComponentAction) GetDependencies() ([]string, error) {
 	if action.Component == nil {
-		return []string{}
+		return []string{}, nil
 	}
 
 	dependencies := []string{}
@@ -73,7 +73,7 @@ func (action ComponentAction) GetDependencies() []string {
 		dependencies = append(dependencies, expr.Component)
 	}
 
-	return dependencies
+	return dependencies, nil
 }
 
 //go:generate mockgen -destination=../../../mocks/mock_deployment_processor.go -package=mocks github.com/Azure/radius/pkg/radrp/deployment DeploymentProcessor
