@@ -1,12 +1,18 @@
 ---
 type: docs
-title: "MongoDB"
+title: "MongoDB component"
 linkTitle: "MongoDB"
-description: "Documentation for the MongoDB component"
-weight: 100
+description: "Learn how to use a MongoDB component in your application"
 ---
 
-This application showcases how Radius can use a portable MongoDB compatible database.
+The `mongodb.com/MongoDB` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref environments >}}).
+
+## Resources
+
+| Platform | Resource |
+|----------|----------|
+| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure CosmosDB API for MongoDB](https://docs.microsoft.com/en-us/azure/cosmos-db/mongodb-introduction)
+| [Kubernetes]({{< ref kubernetes-environments >}}) | [MongoDB Docker image](https://hub.docker.com/_/mongo/)
 
 ## Configuration
 
@@ -17,17 +23,17 @@ This application showcases how Radius can use a portable MongoDB compatible data
 
 ## Resource lifecycle
 
-A `mongodb.com/MongoDB` component can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
+A `mongodb.com/MongoDB` component can be Radius-managed and user-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
+
+{{% alert title="Warning" color="warning" %}}
+At this time user-managed MongoDB components are only supported in Azure environments.
+{{% /alert %}}
 
 ### Radius managed
 
 {{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
 
 ### User managed
-
-{{% alert title="Warning" color="warning" %}}
-Currently user-managed MongoDB components are only supported in the Azure environment.
-{{% /alert %}}
 
 #### Radius component
 

@@ -20,6 +20,12 @@ Resources like databases and message queues can be described via non-runnable Co
 
 {{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
 
+## Portable components
+
+Radius offers components that can work across any hosting model and will be satisfied using the best means available by the host. These are called *portable components* because application descriptions that use them can be *portable* across hosts without any configuration changes. Portable components are generally OSS services that are not tied to any particular SaaS or hosting platform and usually have multiple implementations.
+
+For example the kind [`mongodb.com/Mongo@v1alpha1`]({{< ref mongodb >}}) specifies a generic MongoDB-compatible database. From the point-of-view of application code, it does not matter if the database is hosted using Kubernetes primitives like a `StatefulSet`, or a MongoDB operator, or a cloud-provider hosted offering like Azure CosmosDB. Radius will provision (or connect to) the appropriate implementation depending on the environment where the application is deployed.
+
 ## Bindings
 
 The `bindings` configuration defines the [Bindings]({{< ref bindings-model.md >}}) which the Component offers. These Bindings can range from HTTP ports being opened on a container to an API that a database resource offers. For more information on Bindings visit the [Bindings documentation]({{< ref bindings-model.md >}}).

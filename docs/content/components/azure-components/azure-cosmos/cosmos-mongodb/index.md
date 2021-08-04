@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Azure CosmosDB Mongo"
-linkTitle: "Azure CosmosDB Mongo"
+linkTitle: "MongoDB API"
 description: "Sample application running MongoDB through Azure CosmosDB API"
 weight: 200
 ---

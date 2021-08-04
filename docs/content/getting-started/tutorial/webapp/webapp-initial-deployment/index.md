@@ -33,10 +33,11 @@ Update your template.bicep file to match the full application definition:
 
 Now you are ready to deploy the application for the first time.
 
-1. Make sure you have an [Azure environment initialzed]({{< ref create-environment >}}).
-   - Run `az login` to make sure your token is refreshed.
+1. Make sure you have an [Radius environment initialzed]({{< ref create-environment >}}).
+   - For Azure environments run `az login` to make sure your token is refreshed.
+   - For Kubernetes environments make sure your `kubectl`  context is set to your cluster.
 
-1. Deploy to your Radius environment via the rad CLI:
+2. Deploy to your Radius environment via the rad CLI:
 
    ```sh
    rad deploy template.bicep
@@ -44,7 +45,7 @@ Now you are ready to deploy the application for the first time.
 
    This will deploy the application into your environment and launch the container resource for the frontend website. 
 
-1. Confirm that your Radius application was deployed:
+3. Confirm that your Radius application was deployed:
 
    ```sh
    rad component list --application webapp
@@ -56,7 +57,7 @@ Now you are ready to deploy the application for the first time.
    todoapp    radius.dev/Container@v1alpha1 
    ```
 
-1. To test your `webapp` application, open a local tunnel to your application:
+4. To test your `webapp` application, open a local tunnel to your application:
 
    ```sh
    rad component expose todoapp --application webapp --port 3000
@@ -66,7 +67,7 @@ Now you are ready to deploy the application for the first time.
    The [`rad expose`]({{< ref rad_component_expose >}}) command requires the component name, application name flag, and port flag. If you changed any of these names when deploying, update your command to match.
    {{% /alert %}}
 
-1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. For now you should see a page like:
+5. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. For now you should see a page like:
 
    <img src="todoapp-nodb.png" width="400" alt="screenshot of the todo application with no database">
 
@@ -77,6 +78,6 @@ Now you are ready to deploy the application for the first time.
    - Mark a todo item as complete
    - Delete a todo item
 
-1. When you're done testing press CTRL+C to terminate the port-forward.
+6. When you're done testing press CTRL+C to terminate the port-forward.
 
 <br>{{< button text="Next: Add a database to the app" page="webapp-add-database.md" >}}

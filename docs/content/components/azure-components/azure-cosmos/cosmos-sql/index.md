@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Azure CosmosDB SQL"
-linkTitle: "Azure CosmosDB SQL"
+linkTitle: "SQL API"
 description: "Sample application running on an Azure CosmosDB with SQL"
 weight: 100
 ---
