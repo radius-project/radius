@@ -559,7 +559,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 
 	deploymentProperties := &resources.DeploymentProperties{
 		Parameters: parameters,
-		Mode:       resources.Incremental,
+		Mode:       resources.DeploymentModeIncremental,
 	}
 
 	if params.DeploymentTemplate == "" {

@@ -65,12 +65,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	stateStoreFunc := r.StateStores[component.Config.Kind]
 	if stateStoreFunc == nil {
-		return nil, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, getSortedKeys(r.StateStores))
+		return nil, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, getAlphabeticallySortedKeys(r.StateStores))
 	}
 	return stateStoreFunc(w, component)
 }
 
-func getSortedKeys(store map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error)) []string {
+func getAlphabeticallySortedKeys(store map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error)) []string {
 	keys := make([]string, len(store))
 
 	i := 0

@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads/inboundroute"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/mongodbv1alpha1"
+	"github.com/Azure/radius/pkg/workloads/redisv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -33,6 +34,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
 		containerv1alpha1.Kind:       &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
 		servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
+		redisv1alpha1.Kind:           &redisv1alpha1.AzureRenderer{Arm: arm},
 	}
 	handlers := map[string]handlers.ResourceHandler{
 		outputresource.KindKubernetes:                       handlers.NewKubernetesHandler(*k8s),
@@ -47,6 +49,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
 		outputresource.KindAzureUserAssignedManagedIdentity: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 		outputresource.KindAzureRoleAssignment:              handlers.NewAzureRoleAssignmentHandler(arm),
 		outputresource.KindAzureKeyVaultSecret:              handlers.NewAzureKeyVaultSecretHandler(arm),
+		outputresource.KindAzureRedis:                       handlers.NewAzureRedisHandler(arm),
 	}
 	return NewModel(renderers, handlers)
 }

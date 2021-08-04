@@ -13,6 +13,7 @@ const (
 	KindDaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
 	KindAzureCosmosDBMongo               = "azure.cosmosdb.mongo"
 	KindAzureCosmosDBSQL                 = "azure.cosmosdb.sql"
+	KindAzureRedis                       = "azure.redis"
 	KindAzureServiceBusQueue             = "azure.servicebus.queue"
 	KindAzureKeyVault                    = "azure.keyvault"
 	KindAzureKeyVaultSecret              = "azure.keyvault.secret"

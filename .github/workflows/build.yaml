@@ -177,8 +177,7 @@ jobs:
     env:
       GOVER: '^1.16.0'
       DOCKER_REGISTRY: radius.azurecr.io
-
-      # Timeout used for Azure functional tests
+      # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 60m
     steps:
     - name: Checkout

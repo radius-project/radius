@@ -27,13 +27,13 @@ var TopicResourceType = resources.KnownType{
 
 // DaprPubSubComponent is the definition of the container component
 type DaprPubSubComponent struct {
-	Name      string                   `json:"name"`
-	Kind      string                   `json:"kind"`
-	Config    DaprPubSubConfig         `json:"config,omitempty"`
-	Run       map[string]interface{}   `json:"run,omitempty"`
-	DependsOn []map[string]interface{} `json:"dependson,omitempty"`
-	Provides  []map[string]interface{} `json:"provides,omitempty"`
-	Traits    []map[string]interface{} `json:"traits,omitempty"`
+	Name     string                   `json:"name"`
+	Kind     string                   `json:"kind"`
+	Config   DaprPubSubConfig         `json:"config,omitempty"`
+	Run      map[string]interface{}   `json:"run,omitempty"`
+	Uses     []map[string]interface{} `json:"uses,omitempty"`
+	Bindings []map[string]interface{} `json:"bindings,omitempty"`
+	Traits   []map[string]interface{} `json:"traits,omitempty"`
 }
 
 // DaprPubSubConfig is the defintion of the config section

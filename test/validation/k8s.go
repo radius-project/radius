@@ -117,6 +117,7 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 					// validate that this matches one of our expected pods
 					index := matchesExpectedLabels(remaining, actualPod.Labels)
 					if index == nil {
+						// this is not a match
 						t.Log(t,
 							"unrecognized pod, could not find a match for Pod with namespace: %v name: %v labels: %v",
 							actualPod.Namespace,

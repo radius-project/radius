@@ -35,7 +35,7 @@ func (dc *ARMDeploymentClient) Deploy(ctx context.Context, content string) error
 		Properties: &resources.DeploymentProperties{
 			Template:   template,
 			Parameters: map[string]interface{}{},
-			Mode:       resources.Incremental,
+			Mode:       resources.DeploymentModeIncremental,
 		},
 	})
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/2017-03-09/resources/mgmt/features"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerregistry/mgmt/containerregistry"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/operationalinsights/mgmt/operationalinsights"
@@ -20,7 +21,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/customproviders/mgmt/customproviders"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
-	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2021-03-15/documentdb"
+	"github.com/Azure/azure-sdk-for-go/profiles/preview/redis/mgmt/redis"
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 	"github.com/Azure/go-autorest/autorest"
 )
@@ -133,6 +134,13 @@ func NewSQLResourcesClient(subscriptionID string, authorizer autorest.Authorizer
 	sqlc.Authorizer = authorizer
 	sqlc.PollingDuration = 0
 	return sqlc
+}
+
+func NewRedisClient(subscriptionID string, authorizer autorest.Authorizer) redis.Client {
+	rc := redis.NewClient(subscriptionID)
+	rc.Authorizer = authorizer
+	rc.PollingDuration = 0
+	return rc
 }
 
 func NewVaultsClient(subscriptionID string, authorizer autorest.Authorizer) keyvault.VaultsClient {

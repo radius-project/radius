@@ -5,6 +5,7 @@ import { DaprPubSubBinding } from './bindings/daprpubsub';
 import { KeyVaultBinding } from './bindings/keyvault'
 import { MongoBinding } from './bindings/mongo'
 import { ServiceBusBinding } from './bindings/servicebus'
+import { RedisBinding } from './bindings/redis'
 
 const app: express.Application = express();
 const server: http.Server = http.createServer(app);
@@ -15,6 +16,7 @@ const providers: {[key: string]: BindingProvider }= {
     'KEYVAULT': (map) => new KeyVaultBinding(map),
     'MONGODB': (map) => new MongoBinding(map),
     'SERVICEBUS': (map) => new ServiceBusBinding(map),
+    'REDIS': (map) => new RedisBinding(map),
 };
 
 let bindings = loadBindings(process.env, providers)

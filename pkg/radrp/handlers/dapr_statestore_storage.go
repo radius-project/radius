@@ -168,9 +168,9 @@ func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx conte
 	future, err := sc.Create(ctx, handler.arm.ResourceGroup, accountName, storage.AccountCreateParameters{
 		Location: location,
 		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
-		Kind:     storage.StorageV2,
+		Kind:     storage.KindStorageV2,
 		Sku: &storage.Sku{
-			Name: storage.StandardLRS,
+			Name: storage.SkuNameStandardLRS,
 		},
 		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{},
 	})
@@ -250,7 +250,7 @@ func (handler *daprStateStoreAzureStorageHandler) FindStorageKey(ctx context.Con
 
 	// Don't rely on the order the keys are in, we need Full access
 	for _, k := range *keys.Keys {
-		if strings.EqualFold(string(k.Permissions), string(storage.Full)) {
+		if strings.EqualFold(string(k.Permissions), string(storage.KeyPermissionFull)) {
 			key := k
 			return &key, nil
 		}

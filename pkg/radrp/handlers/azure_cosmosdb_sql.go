@@ -46,7 +46,7 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 		// There is no clear documentation on this mapping of GlobalDocumentDB to SQL.
 		// Used this ARM template example as a reference to verify that this is the right option:
 		//   https://docs.microsoft.com/en-us/azure/cosmos-db/how-to-manage-database-account
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.GlobalDocumentDB, options)
+		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindGlobalDocumentDB, options)
 		if err != nil {
 			return nil, err
 		}

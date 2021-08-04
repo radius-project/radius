@@ -132,7 +132,7 @@ func createRemote() (*rest.Config, error) {
 	defer cancel()
 
 	log.Println("Listing cluster credentials")
-	res, err := aks.ListClusterAdminCredentials(ctx, resourceGroup, clusterName)
+	res, err := aks.ListClusterAdminCredentials(ctx, resourceGroup, clusterName, "")
 	if err != nil {
 		return nil, err
 	}

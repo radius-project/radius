@@ -8,17 +8,14 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/rad/util"
-	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
-	"github.com/gofrs/uuid"
 )
 
 type azureCosmosDBBaseHandler struct {
@@ -65,10 +62,23 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 // CreateCosmosDBAccount creates CosmosDB account. Account name is randomly generated with specified database name as prefix.
 func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Context, properties map[string]string, databaseKind documentdb.DatabaseAccountKind, options PutOptions) (*documentdb.DatabaseAccountGetResults, error) {
 	cosmosDBClient := azclients.NewDatabaseAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	accountName, ok := properties[CosmosDBAccountNameKey]
+	if !ok {
+		var err error
+		accountName, err = generateRandomAzureName(ctx, properties[CosmosDBAccountBaseName], func(name string) error {
+			result, err := cosmosDBClient.CheckNameExists(ctx, name)
+			if err != nil {
+				return fmt.Errorf("failed to query cosmos account name: %w", err)
+			}
 
-	accountName, err := generateCosmosDBAccountName(ctx, properties, cosmosDBClient)
-	if err != nil {
-		return nil, err
+			if result.StatusCode != 404 {
+				return fmt.Errorf("name not available with status code: %v", result.StatusCode)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	location, err := getResourceGroupLocation(ctx, handler.arm)
@@ -126,43 +136,4 @@ func (handler *azureCosmosDBBaseHandler) DeleteCosmosDBAccount(ctx context.Conte
 	}
 
 	return nil
-}
-
-// generateCosmosDBAccountName generates account name with the specified database name as prefix appended with -<uuid>.
-// This is needed since CosmosDB account names are required to be unique across Azure.
-func generateCosmosDBAccountName(ctx context.Context,
-	properties map[string]string, cosmosDBClient documentdb.DatabaseAccountsClient) (string, error) {
-	logger := radlogger.GetLogger(ctx)
-	retryAttempts := 10
-	name, ok := properties[CosmosDBAccountNameKey]
-	if !ok {
-		// properties[CosmosDBAccountBaseName] is the component (database) name passed through the template, this is used as a prefix for the account name
-		base := properties[CosmosDBAccountBaseName] + "-"
-		name = ""
-
-		for i := 0; i < retryAttempts; i++ {
-			// 3-24 characters - all alphanumeric and '-'
-			uid, err := uuid.NewV4()
-			if err != nil {
-				return "", fmt.Errorf("failed to generate CosmosDB account name: %w", err)
-			}
-			name = base + strings.ReplaceAll(uid.String(), "-", "")
-			name = name[0:24]
-
-			result, err := cosmosDBClient.CheckNameExists(ctx, name)
-			if err != nil {
-				return "", fmt.Errorf("failed to query cosmos account name: %w", err)
-			}
-
-			if result.StatusCode == 404 {
-				return name, nil
-			}
-
-			logger.Info(fmt.Sprintf("cosmosDB account name generation failed after %d attempts", i))
-		}
-
-		return "", fmt.Errorf("cosmosDB account name generation failed to create a unique name after %d attempts", retryAttempts)
-	}
-
-	return name, nil
 }

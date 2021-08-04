@@ -13,9 +13,9 @@ import (
 	"github.com/Azure/radius/test/validation"
 )
 
-func Test_ContainerHttpBinding(t *testing.T) {
-	template := "testdata/kubernetes-resources-container-httpbinding.bicep"
-	application := "kubernetes-resources-container-httpbinding"
+func Test_Redis(t *testing.T) {
+	template := "testdata/kubernetes-resources-redis-managed.bicep"
+	application := "kubernetes-resources-redis-managed"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
@@ -23,7 +23,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
-						ComponentName:   "frontend",
+						ComponentName:   "redis",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
@@ -31,7 +31,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "backend",
+						ComponentName:   "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
@@ -42,8 +42,8 @@ func Test_ContainerHttpBinding(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForComponent(application, "frontend"),
-						validation.NewK8sObjectForComponent(application, "backend"),
+						validation.NewK8sObjectForComponent(application, "redis"),
+						validation.NewK8sObjectForComponent(application, "todoapp"),
 					},
 				},
 			},

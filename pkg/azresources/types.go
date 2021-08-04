@@ -10,6 +10,7 @@ const (
 	ContainerServiceManagedClusters             = "Microsoft.ContainerService/managedClusters"
 	CustomProvidersResourceProviders            = "Microsoft.CustomProviders/resourceProviders"
 	DocumentDBDatabaseAccounts                  = "Microsoft.DocumentDB/databaseAccounts"
+	CacheRedis                                  = "Microsoft.Cache/redis"
 	DocumentDBDatabaseAccountsMongodDBDatabases = "mongodbDatabases"
 	DocumentDBDatabaseAccountsSQLDatabases      = "sqlDatabases"
 	KeyVaultVaults                              = "Microsoft.KeyVault/vaults"

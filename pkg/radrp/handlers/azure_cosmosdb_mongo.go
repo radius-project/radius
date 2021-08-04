@@ -42,7 +42,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 	var account *documentdb.DatabaseAccountGetResults
 	if properties[CosmosDBAccountIDKey] == "" {
 		// If we don't have an ID already then we will need to create a new one.
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.MongoDB, options)
+		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindMongoDB, options)
 		if err != nil {
 			return nil, err
 		}

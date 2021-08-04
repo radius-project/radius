@@ -220,7 +220,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getSortedKeys(SupportedAzureStateStoreKindValues)), err.Error())
+	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedAzureStateStoreKindValues)), err.Error())
 }
 
 func Test_Render_SQL_Unmanaged_Failure(t *testing.T) {
@@ -261,6 +261,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 				"kind":    "any",
 			},
 		},
+		Namespace:     "default",
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
@@ -398,5 +399,5 @@ func Test_Render_NonAny_Failure(t *testing.T) {
 
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("state.sqlserver is not supported. Supported kind values: %s", getSortedKeys(SupportedKubernetesStateStoreKindValues)), err.Error())
+	require.Equal(t, fmt.Sprintf("state.sqlserver is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedKubernetesStateStoreKindValues)), err.Error())
 }
