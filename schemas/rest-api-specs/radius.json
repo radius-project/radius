@@ -543,6 +543,48 @@
     }
   },
   "definitions": {
+    "ScopeList": {
+      "description": "Scope list.",
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "List of scopes.",
+          "items": {
+            "$ref": "#/definitions/ScopeResource"
+          }
+        }
+      }
+    },
+    "ScopeResource": {
+      "description": "Scope resource.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ScopeProperties",
+          "description": "Properties of the scope."
+        }
+      }
+    },
+    "ScopeProperties": {
+      "description": "Properties of a scope.",
+      "type": "object",
+      "properties": {
+      }
+    },
     "ApplicationList": {
       "description": "Application list.",
       "type": "object",

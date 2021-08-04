@@ -41,7 +41,7 @@
       },
       "allOf": [
         {
-          "$ref": "#/definitions/Resource"
+          "$ref": "common-types.json#/definitions/Resource"
         }
       ]
     },
@@ -75,7 +75,7 @@
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/Resource"
+          "$ref": "common-types.json#/definitions/Resource"
         }
       ]
     },
@@ -84,7 +84,7 @@
       "description": "The resource model definition for a Azure Resource Manager proxy resource. It will not have tags and a location",
       "allOf": [
         {
-          "$ref": "#/definitions/Resource"
+          "$ref": "common-types.json#/definitions/Resource"
         }
       ]
     },
@@ -158,21 +158,21 @@
         "identity": {
           "allOf": [
             {
-              "$ref": "#/definitions/Identity"
+              "$ref": "common-types.json#/definitions/Identity"
             }
           ]
         },
         "sku": {
           "allOf": [
             {
-              "$ref": "#/definitions/Sku"
+              "$ref": "common-types.json#/definitions/Sku"
             }
           ]
         },
         "plan": {
           "allOf": [
             {
-              "$ref": "#/definitions/Plan"
+              "$ref": "common-types.json#/definitions/Plan"
             }
           ]
         }
@@ -296,7 +296,7 @@
           "readOnly": true,
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ErrorDetail"
+            "$ref": "common-types.json#/definitions/ErrorDetail"
           },
           "description": "The error details."
         },
@@ -304,7 +304,7 @@
           "readOnly": true,
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ErrorAdditionalInfo"
+            "$ref": "common-types.json#/definitions/ErrorAdditionalInfo"
           },
           "description": "The error additional info."
         }
@@ -316,7 +316,7 @@
       "properties": {
         "error": {
           "description": "The error object.",
-          "$ref": "#/definitions/ErrorDetail"
+          "$ref": "common-types.json#/definitions/ErrorDetail"
         }
       }
     },
@@ -409,7 +409,7 @@
         "value": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Operation"
+            "$ref": "common-types.json#/definitions/Operation"
           },
           "description": "List of operations supported by the resource provider",
           "readOnly": true
@@ -460,12 +460,12 @@
           "description": "The operations list.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/OperationStatusResult"
+            "$ref": "common-types.json#/definitions/OperationStatusResult"
           }
         },
         "error": {
           "description": "If present, details of the operation error.",
-          "$ref": "#/definitions/ErrorDetail"
+          "$ref": "common-types.json#/definitions/ErrorDetail"
         }
       }
     },
@@ -565,7 +565,7 @@
           }
         },
         "keyVaultProperties": {
-          "$ref": "#/definitions/KeyVaultProperties",
+          "$ref": "common-types.json#/definitions/KeyVaultProperties",
           "description": "Key vault properties."
         }
       }
