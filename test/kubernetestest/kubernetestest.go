@@ -139,12 +139,12 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
 
-	// Only start capturing controller logs once.
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
 	if logPrefix == "" {
 		logPrefix = "./container_logs"
 	}
 
+	// Only start capturing controller logs once.
 	radiusControllerLogSync.Do(func() {
 		err := validation.SaveContainerLogs(ctx, at.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
