@@ -146,10 +146,16 @@ func (at ApplicationTest) Test(t *testing.T) {
 	}
 
 	radiusControllerLogSync.Do(func() {
-		validation.StreamContainerLogs(ctx, at.Options.K8sClient, "radius-system", logPrefix)
+		err := validation.StreamContainerLogs(ctx, at.Options.K8sClient, "radius-system", logPrefix)
+		if err != nil {
+			t.Errorf("failed to capture logs from radius controller: %w", err)
+		}
 	})
 
-	validation.StreamAndWatchContainerLogs(ctx, at.Options.K8sClient, "default", logPrefix+at.Application, at.Application)
+	err := validation.StreamAndWatchContainerLogs(ctx, at.Options.K8sClient, "default", logPrefix+at.Application, at.Application)
+	if err != nil {
+		t.Errorf("failed to capture logs from radius pods %w", err)
+	}
 
 	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
@@ -210,7 +216,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	t.Logf("deleting %s", at.Description)
-	err := cli.ApplicationDelete(ctx, at.Application)
+	err = cli.ApplicationDelete(ctx, at.Application)
 	require.NoErrorf(t, err, "failed to delete %s", at.Description)
 	t.Logf("finished deleting %s", at.Description)
 
