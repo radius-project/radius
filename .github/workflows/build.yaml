@@ -227,6 +227,11 @@ jobs:
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
         make test-functional-kubernetes
+    - name: Upload container logs
+      uses: actions/upload-artifact@master
+      with:
+        name: container_logs
+        path: ${{ env.RADIUS_CONTAINER_LOG_PATH }}
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
