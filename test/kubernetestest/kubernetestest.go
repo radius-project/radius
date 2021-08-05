@@ -146,13 +146,13 @@ func (at ApplicationTest) Test(t *testing.T) {
 	}
 
 	radiusControllerLogSync.Do(func() {
-		err := validation.StreamContainerLogs(ctx, at.Options.K8sClient, "radius-system", logPrefix)
+		err := validation.SaveContainerLogs(ctx, at.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
 			t.Errorf("failed to capture logs from radius controller: %w", err)
 		}
 	})
 
-	err := validation.StreamAndWatchContainerLogs(ctx, at.Options.K8sClient, "default", logPrefix+at.Application, at.Application)
+	err := validation.SaveAndWatchContainerLogsForApp(ctx, at.Options.K8sClient, "default", logPrefix+at.Application, at.Application)
 	if err != nil {
 		t.Errorf("failed to capture logs from radius pods %w", err)
 	}

@@ -95,8 +95,8 @@ func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernet
 	}
 }
 
-// SaveContainerLogs get container logs for all containers in the pod and saves them to disk.
-func StreamContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) error {
+// SaveContainerLogs get container logs for all containers in a namespace and saves them to disk.
+func SaveContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) error {
 	if err := os.MkdirAll(logPrefix, os.ModePerm); err != nil {
 		log.Printf("Failed to create output log directory '%s' Error was: '%s'. Container logs will be discarded", logPrefix, err)
 		return nil
@@ -119,8 +119,8 @@ func StreamContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespa
 	return nil
 }
 
-// SaveContainerLogs get container logs for all containers in the pod and saves them to disk.
-func StreamAndWatchContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) error {
+// SaveAndWatchContainerLogsForApp watches for all containers in a namespace and saves them to disk.
+func SaveAndWatchContainerLogsForApp(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) error {
 	if err := os.MkdirAll(logPrefix, os.ModePerm); err != nil {
 		log.Printf("Failed to create output log directory '%s' Error was: '%s'. Container logs will be discarded", logPrefix, err)
 		return nil
@@ -162,6 +162,7 @@ func StreamAndWatchContainerLogs(ctx context.Context, k8s *kubernetes.Clientset,
 	return nil
 }
 
+// See https://github.com/dapr/dapr/blob/22bb68bc89a86fc64c2c27dfd219ba68a38fb2ad/tests/platforms/kubernetes/appmanager.go#L706 for reference.
 func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Pod, container corev1.Container, logPrefix string) {
 	filename := fmt.Sprintf("%s/%s.%s.log", logPrefix, pod.Name, container.Name)
 	log.Printf("Streaming Kubernetes logs to %s", filename)
@@ -234,8 +235,6 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 
 				for _, actualPod := range actualPods.Items {
 					// validate that this matches one of our expected pods
-					// Log all output of the pod
-
 					index := matchesExpectedLabels(remaining, actualPod.Labels)
 					if index == nil {
 						// this is not a match
