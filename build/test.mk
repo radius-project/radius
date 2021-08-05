@@ -7,6 +7,7 @@
 
 # Will be set by our build workflow, this is just a default
 TEST_TIMEOUT ?=1h
+RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 
 .PHONY: test
 test: ## Runs unit tests, excluding kubernetes controller tests

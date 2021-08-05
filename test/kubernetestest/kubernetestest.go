@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/Azure/radius/pkg/cli"
@@ -19,6 +20,12 @@ import (
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	k8s "k8s.io/client-go/kubernetes"
+)
+
+var radiusControllerLogSync sync.Once
+
+const (
+	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 )
 
 type Step struct {
@@ -125,11 +132,24 @@ func (at ApplicationTest) Test(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
+	// Capture all logs from all pods (only run one of these as it will monitor everything)
 	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
 	// This way we can catch deletion failures and report them as test failures.
 
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
+
+	// Only start capturing controller logs once.
+	logPrefix := os.Getenv(ContainerLogPathEnvVar)
+	if logPrefix == "" {
+		logPrefix = "./container_logs"
+	}
+
+	radiusControllerLogSync.Do(func() {
+		validation.StreamContainerLogs(ctx, at.Options.K8sClient, "radius-system", logPrefix)
+	})
+
+	validation.StreamAndWatchContainerLogs(ctx, at.Options.K8sClient, "default", logPrefix+at.Application, at.Application)
 
 	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
@@ -149,6 +169,8 @@ func (at ApplicationTest) Test(t *testing.T) {
 			t.Logf("running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 			step.Executor.Execute(ctx, t, at.Options)
 			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
+
+			// after deployment is done, start watching all pods logs.
 
 			if step.Components == nil && step.SkipComponents {
 				t.Logf("skipping validation of components...")
