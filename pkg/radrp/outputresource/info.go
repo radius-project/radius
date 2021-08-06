@@ -13,14 +13,14 @@ import (
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	LocalID   string `validate:"required"`
-	Type      string
-	Kind      string
-	Deployed  bool
-	Managed   bool
-	Info      interface{}
-	Resource  interface{}
-	DependsOn []OutputResource // resources that are required to be deployed before this resource can be deployed
+	LocalID      string
+	Type         string
+	Kind         string
+	Deployed     bool
+	Managed      bool
+	Info         interface{}
+	Resource     interface{}
+	Dependencies []OutputResource // resources that are required to be deployed before this resource can be deployed
 }
 
 // ARMInfo info required to identify an ARM resource
@@ -53,7 +53,7 @@ func (resource OutputResource) Key() string {
 // GetDependencies returns list of localId of output resources the resource depends on.
 func (resource OutputResource) GetDependencies() ([]string, error) {
 	dependencies := []string{}
-	for _, dependency := range resource.DependsOn {
+	for _, dependency := range resource.Dependencies {
 		if dependency.LocalID == "" {
 			return dependencies, fmt.Errorf("missing localID for outputresource kind: %s", dependency.Kind)
 		}
@@ -64,7 +64,7 @@ func (resource OutputResource) GetDependencies() ([]string, error) {
 }
 
 // OrderOutputResources returns output resources ordered based on deployment order
-func (resource OutputResource) OrderOutputResources(outputResources []OutputResource) ([]OutputResource, error) {
+func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, error) {
 	unorderedItems := []graph.DependencyItem{}
 	for _, outputResource := range outputResources {
 		unorderedItems = append(unorderedItems, outputResource)
