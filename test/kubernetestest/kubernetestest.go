@@ -152,7 +152,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 		}
 	})
 
-	err := validation.SaveAndWatchContainerLogsForApp(ctx, at.Options.K8sClient, "default", logPrefix+at.Application, at.Application)
+	err := validation.SaveAndWatchContainerLogsForApp(ctx, at.Options.K8sClient, "default", logPrefix+"/"+at.Application, at.Application)
 	if err != nil {
 		t.Errorf("failed to capture logs from radius pods %w", err)
 	}
