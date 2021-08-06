@@ -19,7 +19,7 @@ The Kubernetes functional tests leverage KinD to create a kubernetes cluster for
 For each PR we run the following set of steps:
 
 - Create a KinD Cluster.
-- Add CRDs (Custom Resource Definitions) to the kubernetes cluster via `make controller-install`.
+- Add CRDs (Custom Resource Definitions) to the kubernetes cluster via `make controller-crd-install`.
 - Run `rad env init kubernetes` to initialize the kubernetes environment in `config.yaml`.
 - Deploy the radius kubernetes controller to the cluster via `make controller deploy existing`.
 - Run deployment tests.
@@ -33,7 +33,7 @@ The tests use our product functionality (the Radius config file) to configure th
 ## Running the tests locally
 
 1. Create a Kubernetes cluster (KinD, AKS, etc.).
-1. Add CRDs to the cluster via `make controller-install`.
+1. Add CRDs to the cluster via `make controller-crd-install`.
 1. Build and install the controller to the cluster by running `make controller-deploy`. 
 1. Place `rad` on your path.
 1. Make sure `rad-bicep` is downloaded (`rad bicep download`).
