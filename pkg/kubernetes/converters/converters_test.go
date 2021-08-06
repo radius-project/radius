@@ -3,13 +3,13 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package controllers
+package converters
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/radrp/components"
@@ -77,8 +77,8 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 			Name:      "frontend",
 			Namespace: "default",
 			Annotations: map[string]string{
-				keys.AnnotationsApplication: "frontend-backend",
-				keys.AnnotationsComponent:   "frontend",
+				kubernetes.AnnotationsApplication: "frontend-backend",
+				kubernetes.AnnotationsComponent:   "frontend",
 			},
 		},
 		Spec: v1alpha1.ComponentSpec{

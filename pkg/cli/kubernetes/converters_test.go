@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/radclient"
@@ -30,7 +30,7 @@ func Test_ConvertK8sApplicationToARM(t *testing.T) {
 			Name:      "frontend-backend",
 			Namespace: "default",
 			Annotations: map[string]string{
-				keys.AnnotationsApplication: "frontend-backend",
+				kubernetes.AnnotationsApplication: "frontend-backend",
 			},
 		},
 		Spec: v1alpha1.ApplicationSpec{},
@@ -109,8 +109,8 @@ func Test_ConvertK8sComponentToARM(t *testing.T) {
 			Name:      "frontend",
 			Namespace: "default",
 			Annotations: map[string]string{
-				keys.AnnotationsApplication: "frontend-backend",
-				keys.AnnotationsComponent:   "frontend",
+				kubernetes.AnnotationsApplication: "frontend-backend",
+				kubernetes.AnnotationsComponent:   "frontend",
 			},
 		},
 		Spec: v1alpha1.ComponentSpec{
@@ -192,8 +192,8 @@ func Test_ConvertK8sDeploymentToARM(t *testing.T) {
 			Name:      "frontend-backend-default",
 			Namespace: "default",
 			Annotations: map[string]string{
-				keys.AnnotationsApplication: "frontend-backend",
-				keys.AnnotationsDeployment:  "default",
+				kubernetes.AnnotationsApplication: "frontend-backend",
+				kubernetes.AnnotationsDeployment:  "default",
 			},
 		},
 		Spec: radiusv1alpha1.DeploymentSpec{

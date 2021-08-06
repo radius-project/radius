@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package keys
+package kubernetes
 
 // Commonly-used and Radius-Specific labels for Kubernetes
 const (
@@ -11,10 +11,10 @@ const (
 	LabelRadiusComponent   = "radius.dev/component"
 	LabelRadiusRevision    = "radius.dev/revision"
 
-	LabelKubernetesPartOf            = "app.kubernetes.io/part-of"
-	LabelKubernetesName              = "app.kubernetes.io/name"
-	LabelKubernetesManagedBy         = "app.kubernetes.io/managed-by"
-	LabelKubernetesManagedByRadiusRP = "radius-rp"
+	LabelPartOf            = "app.kubernetes.io/part-of"
+	LabelName              = "app.kubernetes.io/name"
+	LabelManagedBy         = "app.kubernetes.io/managed-by"
+	LabelManagedByRadiusRP = "radius-rp"
 
 	FieldManager = "radius-rp"
 )
@@ -39,11 +39,11 @@ const (
 // The descriptive labels are a superset of the selector labels.
 func MakeDescriptiveLabels(application string, component string) map[string]string {
 	return map[string]string{
-		LabelRadiusApplication:   application,
-		LabelRadiusComponent:     component,
-		LabelKubernetesName:      component,
-		LabelKubernetesPartOf:    application,
-		LabelKubernetesManagedBy: LabelKubernetesManagedByRadiusRP,
+		LabelRadiusApplication: application,
+		LabelRadiusComponent:   component,
+		LabelName:              component,
+		LabelPartOf:            application,
+		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
 }
 

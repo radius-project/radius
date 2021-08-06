@@ -15,7 +15,7 @@ import (
 	"os/signal"
 
 	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -94,7 +94,7 @@ func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace str
 	// Right now this connects to a pod related to a component. We can find the pods with the labels
 	// and then choose one that's in the running state.
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
-		LabelSelector: labels.FormatLabels(keys.MakeSelectorLabels(application, component)),
+		LabelSelector: labels.FormatLabels(kubernetes.MakeSelectorLabels(application, component)),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list running replicas for component %v: %w", component, err)
@@ -142,7 +142,7 @@ func runPortforward(restconfig *rest.Config, client *k8s.Clientset, replica *cor
 
 func getAppContainerName(replica *corev1.Pod) string {
 	// The container name will be the component name
-	component := replica.Labels[keys.LabelRadiusComponent]
+	component := replica.Labels[kubernetes.LabelRadiusComponent]
 	return component
 }
 

@@ -30,6 +30,7 @@ import (
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/components"
@@ -475,15 +476,15 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cc.Name,
 			Namespace: w.Application,
-			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{
-				MatchLabels: keys.MakeSelectorLabels(w.Application, w.Name),
+				MatchLabels: kubernetes.MakeSelectorLabels(w.Application, w.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: keys.MakeDescriptiveLabels(w.Application, w.Name),
+					Labels: kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{container},
@@ -675,10 +676,10 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cc.Name,
 			Namespace: w.Application, // TODO why is this a different namespace
-			Labels:    keys.MakeDescriptiveLabels(w.Application, w.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: keys.MakeSelectorLabels(w.Application, w.Name),
+			Selector: kubernetes.MakeSelectorLabels(w.Application, w.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports:    []corev1.ServicePort{},
 		},

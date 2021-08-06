@@ -11,13 +11,13 @@ import (
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radclient"
 )
 
 func ConvertK8sApplicationToARM(input radiusv1alpha1.Application) (*radclient.ApplicationResource, error) {
 	result := radclient.ApplicationResource{}
-	result.Name = to.StringPtr(input.Annotations[keys.AnnotationsApplication])
+	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsApplication])
 
 	// There's nothing in properties for an application
 	result.Properties = map[string]interface{}{}
@@ -27,7 +27,7 @@ func ConvertK8sApplicationToARM(input radiusv1alpha1.Application) (*radclient.Ap
 
 func ConvertK8sComponentToARM(input radiusv1alpha1.Component) (*radclient.ComponentResource, error) {
 	result := radclient.ComponentResource{}
-	result.Name = to.StringPtr(input.Annotations[keys.AnnotationsComponent])
+	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsComponent])
 	result.Kind = &input.Spec.Kind
 	result.Properties = &radclient.ComponentProperties{}
 
@@ -107,7 +107,7 @@ func ConvertK8sComponentToARM(input radiusv1alpha1.Component) (*radclient.Compon
 
 func ConvertK8sDeploymentToARM(input radiusv1alpha1.Deployment) (*radclient.DeploymentResource, error) {
 	result := radclient.DeploymentResource{}
-	result.Name = to.StringPtr(input.Annotations[keys.AnnotationsDeployment])
+	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsDeployment])
 	result.Properties = &radclient.DeploymentProperties{}
 
 	for _, dc := range input.Spec.Components {

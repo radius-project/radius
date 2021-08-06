@@ -21,10 +21,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"github.com/Azure/radius/pkg/cli/kubernetes"
-	"github.com/Azure/radius/pkg/keys"
+	kuberneteskeys "github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
+	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
@@ -61,7 +62,7 @@ func TestK8sController(t *testing.T) {
 
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
 
-	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, controllers.ConvertComponentToInternal)
+	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, converters.ConvertComponentToInternal)
 	require.NoError(t, err, "failed to add conversion func")
 
 	cfg, err := testEnv.Start()
@@ -135,7 +136,7 @@ func TestK8sController(t *testing.T) {
 					Name:      "radius-frontend-backend",
 					Namespace: "frontend-backend",
 					Annotations: map[string]string{
-						keys.AnnotationsApplication: "frontend-backend",
+						kuberneteskeys.AnnotationsApplication: "frontend-backend",
 					},
 				},
 				Spec: radiusv1alpha1.ApplicationSpec{
@@ -152,8 +153,8 @@ func TestK8sController(t *testing.T) {
 						Name:      "frontend",
 						Namespace: "frontend-backend",
 						Annotations: map[string]string{
-							keys.AnnotationsApplication: "frontend-backend",
-							keys.AnnotationsComponent:   "frontend",
+							kuberneteskeys.AnnotationsApplication: "frontend-backend",
+							kuberneteskeys.AnnotationsComponent:   "frontend",
 						},
 					},
 					Spec: TestComponentSpec{
@@ -189,8 +190,8 @@ func TestK8sController(t *testing.T) {
 						Name:      "backend",
 						Namespace: "frontend-backend",
 						Annotations: map[string]string{
-							keys.AnnotationsApplication: "frontend-backend",
-							keys.AnnotationsComponent:   "backend",
+							kuberneteskeys.AnnotationsApplication: "frontend-backend",
+							kuberneteskeys.AnnotationsComponent:   "backend",
 						},
 					},
 					Spec: TestComponentSpec{

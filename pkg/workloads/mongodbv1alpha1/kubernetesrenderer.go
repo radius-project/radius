@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
@@ -91,8 +91,8 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	}
 
 	options := KubernetesOptions{
-		DescriptiveLabels: keys.MakeDescriptiveLabels(w.Application, w.Name),
-		SelectorLabels:    keys.MakeSelectorLabels(w.Application, w.Name),
+		DescriptiveLabels: kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
+		SelectorLabels:    kubernetes.MakeSelectorLabels(w.Application, w.Name),
 
 		// For now use the component name as the Kubernetes resource name.
 		Name:      w.Name,

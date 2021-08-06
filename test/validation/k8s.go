@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/pkg/keys"
+	kuberneteskeys "github.com/Azure/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -39,7 +39,7 @@ func NewK8sObjectForComponent(application string, name string) K8sObject {
 	return K8sObject{
 		// NOTE: we use the selector labels here because the selector labels are intended
 		// to be determininistic. We might add things to the descriptive labels that are NON deterministic.
-		Labels: keys.MakeSelectorLabels(application, name),
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }
 

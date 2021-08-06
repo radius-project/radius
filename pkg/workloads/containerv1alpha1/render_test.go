@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -164,8 +164,8 @@ func TestRender_Success_DefaultPort(t *testing.T) {
 	service := findService(resources)
 	require.NotNil(t, service)
 
-	labels := keys.MakeDescriptiveLabels("test-app", "test-container")
-	matchLabels := keys.MakeSelectorLabels("test-app", "test-container")
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
+	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-container")
 
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-container", deployment.Name)
@@ -252,8 +252,8 @@ func TestRender_Success_NonDefaultPort(t *testing.T) {
 	service := findService(resources)
 	require.NotNil(t, service)
 
-	labels := keys.MakeDescriptiveLabels("test-app", "test-container")
-	matchLabels := keys.MakeSelectorLabels("test-app", "test-container")
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
+	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-container")
 
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-container", deployment.Name)
