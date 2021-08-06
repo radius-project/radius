@@ -23,7 +23,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 	Long:  "Merge Kubernetes credentials into your local user store. Currently only supports Azure environments",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
-		env, err := cli.RequireEnvironment(cmd, config)
+		env, err := cli.RequireEnvironmentArgs(cmd, config, args)
 		if err != nil {
 			return err
 		}
@@ -58,6 +58,4 @@ var envMergeCredentialsCmd = &cobra.Command{
 
 func init() {
 	envCmd.AddCommand(envMergeCredentialsCmd)
-
-	envMergeCredentialsCmd.Flags().StringP("name", "n", "", "The environment name")
 }
