@@ -1,0 +1,823 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "2018-09-01-preview",
+    "title": "RadiusClient",
+    "description": "APIs for deploying and managing applications with Radius.",
+    "x-ms-code-generation-settings": {
+      "name": "radiusClient"
+    }
+  },
+  "host": "management.azure.com",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "security": [
+    {
+      "azure_auth": ["user_impersonation"]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "flow": "implicit",
+      "description": "Azure Active Directory OAuth2 Flow",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "paths": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications": {
+      "get": {
+        "operationId": "Application_ListByResourceGroup",
+        "tags": [
+          "Application"
+        ],
+        "description": "List applications in the resource group.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of applications was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}": {
+      "get": {
+        "operationId": "Application_Get",
+        "tags": [
+          "Application"
+        ],
+        "description": "Gets an application by name.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The application was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "Application_CreateOrUpdate",
+        "tags": [
+          "Application"
+        ],
+        "description": "Creates or updates an application.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationCreateParameters"
+            },
+            "description": "Parameters supplied to the Create Application operation."
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing application was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "201": {
+            "description": "The new application was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "202": {
+            "description": "The existing application was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Application_Delete",
+        "tags": [
+          "Application"
+        ],
+        "description": "Deletes an application.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The application was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Deployments": {
+      "get": {
+        "operationId": "Deployment_ListByApplication",
+        "tags": [
+          "Deployment"
+        ],
+        "description": "List all the deployments for an application in the resource group.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of deployments was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DeploymentList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Deployments/{deploymentName}": {
+      "get": {
+        "operationId": "Deployment_Get",
+        "tags": [
+          "Deployment"
+        ],
+        "description": "Gets a deployment by name.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DeploymentNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deployment was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DeploymentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "Deployment_CreateOrUpdate",
+        "tags": [
+          "Deployment"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+            "final-state-via" : "original-uri"
+        },
+        "description": "Creates or updates a deployment.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DeploymentNameParameter"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DeploymentCreateParameters"
+            },
+            "description": "Parameters supplied to the Create Deployment operation."
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing deployment was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DeploymentResource"
+            }
+          },
+          "201": {
+            "description": "The new deployment was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DeploymentResource"
+            }
+          },
+          "202": {
+            "description": "The existing deployment was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DeploymentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Deployment_Delete",
+        "tags": [
+          "Deployment"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+            "final-state-via" : "location"
+        },
+        "description": "Deletes a deployment.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DeploymentNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the deployment will complete asynchronously."
+          },
+          "204": {
+            "description": "The deployment was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Components": {
+      "get": {
+        "operationId": "Component_ListByApplication",
+        "tags": [
+          "Component"
+        ],
+        "description": "List components deployed in the application.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of applications was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ComponentList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/{applicationName}/Components/{componentName}": {
+      "get": {
+        "operationId": "Component_Get",
+        "tags": [
+          "Component"
+        ],
+        "description": "Gets a component by name.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ComponentNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The application was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ComponentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "Component_CreateOrUpdate",
+        "tags": [
+          "Component"
+        ],
+        "description": "Creates or updates a component.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ComponentNameParameter"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ComponentCreateParameters"
+            },
+            "description": "Parameters supplied to the Create Component operation."
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing component was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ComponentResource"
+            }
+          },
+          "201": {
+            "description": "The new component was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/ComponentResource"
+            }
+          },
+          "202": {
+            "description": "The existing component was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ComponentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Component_Delete",
+        "tags": [
+          "Component"
+        ],
+        "description": "Deletes a component.",
+        "parameters": [
+          {
+            "$ref": "common-types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ComponentNameParameter"
+          },
+          {
+            "$ref": "common-types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The component was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "common-types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ApplicationList": {
+      "description": "Application list.",
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "List of applications.",
+          "items": {
+            "$ref": "#/definitions/ApplicationResource"
+          }
+        }
+      }
+    },
+    "ApplicationResource": {
+      "description": "Application resource.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ApplicationProperties",
+          "description": "Properties of the application."
+        }
+      }
+    },
+    "ApplicationProperties": {
+      "description": "Properties of an application.",
+      "type": "object",
+      "properties": {
+      }
+    },
+    "ApplicationCreateParameters": {
+      "description": "Parameters used to create an application.",
+      "type": "object",
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ApplicationCreateProperties"
+        }
+      }
+    },
+    "ApplicationCreateProperties": {
+      "description": "Properties used to create an application.",
+      "type": "object"
+    },
+    "DeploymentList": {
+      "description": "Deployment list.",
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "List of deployments.",
+          "items": {
+            "$ref": "#/definitions/DeploymentResource"
+          }
+        }
+      }
+    },
+    "DeploymentResource": {
+      "description": "Deployment resource.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "name",
+        "properties"
+      ],
+      "properties": {
+        "name": {
+          "description": "Defines the name of the deployment.",
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/DeploymentProperties",
+          "description": "Properties of the deployment."
+        }
+      }
+    },
+    "DeploymentProperties": {
+      "description": "Properties of a deployment.",
+      "type": "object",
+      "required": [
+        "components"
+      ],
+      "properties": {
+        "components": {
+          "type": "array",
+          "description": "List of components in the deployment.",
+          "items": {
+            "type": "object",
+            "required": [
+              "componentName"
+            ],
+            "properties": {
+              "componentName": {
+                "type": "string",
+                "description": "Name of the component"
+              }
+            }
+          }
+        }
+      }
+    },
+    "DeploymentCreateParameters": {
+      "description": "Parameters used to create a deployment.",
+      "type": "object",
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/DeploymentProperties"
+        }
+      }
+    },
+    "ComponentList": {
+      "description": "Component list.",
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "List of components.",
+          "items": {
+            "$ref": "#/definitions/ComponentResource"
+          }
+        }
+      }
+    },
+    "ComponentResource": {
+      "description": "Component resource.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "name",
+        "kind",
+        "properties"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the component."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Resource type of the component"
+        },
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ComponentProperties",
+          "description": "Properties of the component."
+        }
+      }
+    },
+    "ComponentProperties": {
+      "description": "Properties of a component.",
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string",
+          "description": "Revision of the component"
+        },
+        "config": {
+          "type": "object",
+          "description": "Config of the component"
+        },
+        "run": {
+          "type": "object",
+          "description": "Run spec of the component"
+        },
+        "bindings": {
+          "type": "object",
+          "description": "Bindings spec of the component"
+        },
+        "uses": {
+          "type": "array",
+          "description": "Uses spec of the component",
+          "items": {
+	      "type": "object"
+          }
+        },
+        "traits": {
+          "type": "array",
+          "description": "Traits spec of the component",
+          "items": {
+	      "type": "object"
+          }
+        },
+        "outputResources": {
+          "type": "array",
+          "items": {
+          "$ref": "#/definitions/ComponentOutputResource"
+          }
+        }
+      }
+    },
+    "ComponentOutputResource": {
+      "description": "Properties of a component.",
+      "type": "object",
+      "properties": {
+      }
+    },
+    "ComponentCreateParameters": {
+      "description": "Parameters used to create a component.",
+      "type": "object",
+      "required": [
+        "kind",
+        "properties"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Resource type of the component"
+        },
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ComponentProperties"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "ApplicationNameParameter": {
+      "name": "applicationName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The application name.",
+      "x-ms-parameter-location": "method"
+    },
+    "DeploymentNameParameter": {
+      "name": "deploymentName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The deployment name.",
+      "x-ms-parameter-location": "method"
+    },
+    "ComponentNameParameter": {
+      "name": "componentName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The component name.",
+      "x-ms-parameter-location": "method"
+    }
+  }
+}
