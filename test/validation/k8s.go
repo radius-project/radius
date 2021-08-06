@@ -177,14 +177,14 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 		if err == io.EOF {
 			break
 		}
-
-		if numBytes == 0 {
-			continue
-		}
-
+		
 		if err != nil {
 			log.Printf("Error reading log stream for %s. Error was %s", filename, err)
 			return
+		}
+
+		if numBytes == 0 {
+			continue
 		}
 
 		_, err = fh.Write(buf[:numBytes])
