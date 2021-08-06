@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/radius/pkg/rad/clients"
+	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/google/uuid"
 )
 

@@ -6,10 +6,10 @@
 package cmd
 
 import (
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/objectformats"
-	"github.com/Azure/radius/pkg/rad/output"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/objectformats"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 
@@ -27,17 +27,17 @@ func init() {
 
 func showDeployment(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := rad.RequireEnvironment(cmd, config)
+	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := rad.RequireApplication(cmd, env)
+	applicationName, err := cli.RequireApplication(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	deploymentName, err := rad.RequireDeployment(cmd, args)
+	deploymentName, err := cli.RequireDeployment(cmd, args)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func showDeployment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	format, err := rad.RequireOutput(cmd)
+	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
 	}

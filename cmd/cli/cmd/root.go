@@ -11,9 +11,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/bicep"
-	"github.com/Azure/radius/pkg/rad/output"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -40,7 +40,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(func() {
-		v, err := rad.LoadConfig(configHolder.ConfigFilePath)
+		v, err := cli.LoadConfig(configHolder.ConfigFilePath)
 		if err != nil {
 			fmt.Printf("Error: failed to load config: %v\n", err)
 			os.Exit(1)

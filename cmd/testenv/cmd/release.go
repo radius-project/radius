@@ -11,8 +11,8 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
 )
 
@@ -99,12 +99,12 @@ func init() {
 }
 
 func readEnvironmentFromConfigfile(configpath string, name string) (*environments.AzureCloudEnvironment, error) {
-	v, err := rad.LoadConfig(configpath)
+	v, err := cli.LoadConfig(configpath)
 	if err != nil {
 		return nil, err
 	}
 
-	env, err := rad.ReadEnvironmentSection(v)
+	env, err := cli.ReadEnvironmentSection(v)
 	if err != nil {
 		return nil, err
 	}

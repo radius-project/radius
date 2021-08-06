@@ -9,9 +9,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
 )
@@ -51,7 +51,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	}
 
 	config := ConfigFromContext(cmd.Context())
-	env, err := rad.ReadEnvironmentSection(config)
+	env, err := cli.ReadEnvironmentSection(config)
 	if err != nil {
 		return err
 	}
@@ -70,19 +70,19 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	}
 
 	if e.GetDefaultApplication() == applicationName {
-		logger.LogInfo("Default application is already set to %v", applicationName)
+		output.LogInfo("Default application is already set to %v", applicationName)
 		return nil
 	}
 
 	if e.GetDefaultApplication() != "" {
-		logger.LogInfo("Switching default application from %v to %v", e.GetDefaultApplication(), applicationName)
+		output.LogInfo("Switching default application from %v to %v", e.GetDefaultApplication(), applicationName)
 	} else {
-		logger.LogInfo("Switching default application to %v", applicationName)
+		output.LogInfo("Switching default application to %v", applicationName)
 	}
 
 	env.Items[cases.Fold().String(environmentName)][environments.EnvironmentKeyDefaultApplication] = applicationName
 
-	rad.UpdateEnvironmentSection(config, env)
-	err = rad.SaveConfig(config)
+	cli.UpdateEnvironmentSection(config, env)
+	err = cli.SaveConfig(config)
 	return err
 }

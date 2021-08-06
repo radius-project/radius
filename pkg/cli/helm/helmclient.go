@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -58,14 +58,14 @@ func ApplyRadiusHelmChart(version string) error {
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
 	if err == driver.ErrReleaseNotFound {
-		logger.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", RadiusSystemNamespace)
+		output.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", RadiusSystemNamespace)
 
 		err = runRadiusHelmInstall(helmConf, radiusChart)
 		if err != nil {
 			return fmt.Errorf("failed to run helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	} else if err == nil {
-		logger.LogInfo("Found existing Radius Kubernetes environment")
+		output.LogInfo("Found existing Radius Kubernetes environment")
 	}
 
 	return err

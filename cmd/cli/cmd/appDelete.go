@@ -8,9 +8,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/prompt"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
@@ -37,12 +37,12 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	}
 
 	config := ConfigFromContext(cmd.Context())
-	env, err := rad.RequireEnvironment(cmd, config)
+	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := rad.RequireApplicationArgs(cmd, args, env)
+	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 func updateApplicationConfig(config *viper.Viper, env environments.Environment, applicationName string) error {
 	// If the application we are deleting is the default application, remove it
 	if env.GetDefaultApplication() == applicationName {
-		envSection, err := rad.ReadEnvironmentSection(config)
+		envSection, err := cli.ReadEnvironmentSection(config)
 		if err != nil {
 			return err
 		}
@@ -105,9 +105,9 @@ func updateApplicationConfig(config *viper.Viper, env environments.Environment, 
 
 		envSection.Items[cases.Fold().String(env.GetName())][environments.EnvironmentKeyDefaultApplication] = ""
 
-		rad.UpdateEnvironmentSection(config, envSection)
+		cli.UpdateEnvironmentSection(config, envSection)
 
-		err = rad.SaveConfig(config)
+		err = cli.SaveConfig(config)
 		if err != nil {
 			return err
 		}

@@ -11,10 +11,10 @@ import (
 	"os"
 	"path"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/bicep"
-	"github.com/Azure/radius/pkg/rad/environments"
-	"github.com/Azure/radius/pkg/rad/logger"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -44,7 +44,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 
 	config := ConfigFromContext(cmd.Context())
-	env, err := rad.RequireEnvironment(cmd, config)
+	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}
@@ -55,19 +55,19 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 
 	if !ok {
-		logger.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
+		output.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
 		err = bicep.DownloadBicep()
 		if err != nil {
 			return fmt.Errorf("failed to download rad-bicep: %w", err)
 		}
 	}
 
-	step := logger.BeginStep("Building Application...")
+	step := output.BeginStep("Building Application...")
 	template, err := bicep.Build(filePath)
 	if err != nil {
 		return err
 	}
-	logger.CompleteStep(step)
+	output.CompleteStep(step)
 
 	client, err := environments.CreateDeploymentClient(cmd.Context(), env)
 	if err != nil {
@@ -87,14 +87,14 @@ func deploy(cmd *cobra.Command, args []string) error {
 				"Deployment In Progress...", env.GetName(), env.GetName(), status)
 	}
 
-	step = logger.BeginStep(progressText)
+	step = output.BeginStep(progressText)
 	err = client.Deploy(cmd.Context(), template)
 	if err != nil {
 		return err
 	}
-	logger.CompleteStep(step)
+	output.CompleteStep(step)
 
-	logger.LogInfo("Deployment Complete")
+	output.LogInfo("Deployment Complete")
 
 	return nil
 }

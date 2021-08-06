@@ -13,9 +13,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/rad/azure"
-	"github.com/Azure/radius/pkg/rad/clients"
-	"github.com/Azure/radius/pkg/rad/kubernetes"
+	"github.com/Azure/radius/pkg/cli/azure"
+	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/Azure/radius/pkg/cli/kubernetes"
 	k8s "k8s.io/client-go/kubernetes"
 )
 

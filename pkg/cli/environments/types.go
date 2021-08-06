@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/rad/clients"
+	"github.com/Azure/radius/pkg/cli/clients"
 )
 
 const (

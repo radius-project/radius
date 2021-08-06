@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/rad/output"
+	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/radclient"
 	"github.com/stretchr/testify/require"
 )

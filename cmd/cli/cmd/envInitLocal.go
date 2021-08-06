@@ -6,7 +6,7 @@
 package cmd
 
 import (
-	"github.com/Azure/radius/pkg/rad"
+	"github.com/Azure/radius/pkg/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +16,7 @@ var envInitLocalCmd = &cobra.Command{
 	Long:  `Initializes a local environment`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
-		env, err := rad.ReadEnvironmentSection(config)
+		env, err := cli.ReadEnvironmentSection(config)
 		if err != nil {
 			return err
 		}
@@ -27,9 +27,9 @@ var envInitLocalCmd = &cobra.Command{
 		if len(env.Items) == 1 {
 			env.Default = "local"
 		}
-		rad.UpdateEnvironmentSection(config, env)
+		cli.UpdateEnvironmentSection(config, env)
 
-		err = rad.SaveConfig(config)
+		err = cli.SaveConfig(config)
 		if err != nil {
 			return err
 		}

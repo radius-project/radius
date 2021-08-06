@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/radius/pkg/rad"
-	"github.com/Azure/radius/pkg/rad/kubernetes"
+	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/Azure/radius/test/radcli"
 	"github.com/Azure/radius/test/utils"
 	"github.com/Azure/radius/test/validation"
@@ -49,7 +49,7 @@ type TestOptions struct {
 }
 
 func NewTestOptions(t *testing.T) TestOptions {
-	config, err := rad.LoadConfig("")
+	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
 	k8sconfig, err := kubernetes.ReadKubeConfig()

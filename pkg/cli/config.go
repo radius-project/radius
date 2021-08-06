@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package rad
+package cli
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"

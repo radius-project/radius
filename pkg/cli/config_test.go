@@ -3,13 +3,13 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package rad
+package cli
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/Azure/radius/pkg/rad/environments"
+	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
