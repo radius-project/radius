@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/Azure/radius/pkg/cli"
@@ -19,6 +20,12 @@ import (
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	k8s "k8s.io/client-go/kubernetes"
+)
+
+var radiusControllerLogSync sync.Once
+
+const (
+	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 )
 
 type Step struct {
@@ -125,11 +132,30 @@ func (at ApplicationTest) Test(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
+	// Capture all logs from all pods (only run one of these as it will monitor everything)
 	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
 	// This way we can catch deletion failures and report them as test failures.
 
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
+
+	logPrefix := os.Getenv(ContainerLogPathEnvVar)
+	if logPrefix == "" {
+		logPrefix = "./container_logs"
+	}
+
+	// Only start capturing controller logs once.
+	radiusControllerLogSync.Do(func() {
+		err := validation.SaveLogsForController(ctx, at.Options.K8sClient, "radius-system", logPrefix)
+		if err != nil {
+			t.Errorf("failed to capture logs from radius controller: %w", err)
+		}
+	})
+
+	err := validation.SaveLogsForApplication(ctx, at.Options.K8sClient, "default", logPrefix+"/"+at.Application, at.Application)
+	if err != nil {
+		t.Errorf("failed to capture logs from radius pods %w", err)
+	}
 
 	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
@@ -188,7 +214,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	t.Logf("deleting %s", at.Description)
-	err := cli.ApplicationDelete(ctx, at.Application)
+	err = cli.ApplicationDelete(ctx, at.Application)
 	require.NoErrorf(t, err, "failed to delete %s", at.Description)
 	t.Logf("finished deleting %s", at.Description)
 

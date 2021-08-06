@@ -6,6 +6,10 @@ package validation
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -15,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 const (
@@ -88,6 +93,108 @@ func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernet
 			}
 		}
 	}
+}
+
+// SaveContainerLogs get container logs for all containers in a namespace and saves them to disk.
+func SaveLogsForController(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) error {
+	return watchForPods(ctx, k8s, namespace, logPrefix, "")
+}
+
+// SaveAndWatchContainerLogsForApp watches for all containers in a namespace and saves them to disk.
+func SaveLogsForApplication(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) error {
+	return watchForPods(ctx, k8s, namespace, logPrefix, fmt.Sprintf("%s=%s", kuberneteskeys.LabelRadiusApplication, appName))
+}
+
+func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, labelSelector string) error {
+	if err := os.MkdirAll(logPrefix, os.ModePerm); err != nil {
+		log.Printf("Failed to create output log directory '%s' Error was: '%q'. Container logs will be discarded", logPrefix, err)
+		return nil
+	}
+
+	podClient := k8s.CoreV1().Pods(namespace)
+
+	// Filter only radius applications for a pod
+	podList, err := podClient.Watch(ctx, metav1.ListOptions{
+		Watch:         true,
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		pods := map[string]bool{}
+		for event := range podList.ResultChan() {
+			pod, ok := event.Object.(*corev1.Pod)
+			if !ok {
+				log.Printf("Could not convert object to pod.")
+				continue
+			}
+
+			// Only start one log capture per pod
+			_, ok = pods[pod.Name]
+			if pod.Status.Phase != corev1.PodRunning || ok {
+				continue
+			}
+			pods[pod.Name] = true
+
+			for _, container := range pod.Spec.Containers {
+				go streamLogFile(ctx, podClient, *pod, container, logPrefix)
+			}
+		}
+	}()
+
+	return nil
+}
+
+// See https://github.com/dapr/dapr/blob/22bb68bc89a86fc64c2c27dfd219ba68a38fb2ad/tests/platforms/kubernetes/appmanager.go#L706 for reference.
+func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Pod, container corev1.Container, logPrefix string) {
+	filename := fmt.Sprintf("%s/%s.%s.log", logPrefix, pod.Name, container.Name)
+	log.Printf("Streaming Kubernetes logs to %s", filename)
+	req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{
+		Container: container.Name,
+		Follow:    true,
+	})
+	stream, err := req.Stream(ctx)
+	if err != nil {
+		log.Printf("Error reading log stream for %s. Error was %q", filename, err)
+		return
+	}
+	defer stream.Close()
+
+	fh, err := os.Create(filename)
+	if err != nil {
+		log.Printf("Error creating %s. Error was %s", filename, err)
+		return
+	}
+	defer fh.Close()
+
+	buf := make([]byte, 2000)
+
+	for {
+		numBytes, err := stream.Read(buf)
+
+		if err == io.EOF {
+			break
+		}
+		
+		if err != nil {
+			log.Printf("Error reading log stream for %s. Error was %s", filename, err)
+			return
+		}
+
+		if numBytes == 0 {
+			continue
+		}
+
+		_, err = fh.Write(buf[:numBytes])
+		if err != nil {
+			log.Printf("Error writing to %s. Error was %s", filename, err)
+			return
+		}
+	}
+
+	log.Printf("Saved container logs to %s", filename)
 }
 
 // ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
