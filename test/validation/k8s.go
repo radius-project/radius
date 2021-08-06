@@ -102,7 +102,7 @@ func SaveLogsForController(ctx context.Context, k8s *kubernetes.Clientset, names
 
 // SaveAndWatchContainerLogsForApp watches for all containers in a namespace and saves them to disk.
 func SaveLogsForApplication(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) error {
-	return watchForPods(ctx, k8s, namespace, logPrefix, fmt.Sprintf("%s=%s", keys.LabelRadiusApplication, appName))
+	return watchForPods(ctx, k8s, namespace, logPrefix, fmt.Sprintf("%s=%s", kuberneteskeys.LabelRadiusApplication, appName))
 }
 
 func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, labelSelector string) error {
