@@ -179,8 +179,7 @@ jobs:
       DOCKER_REGISTRY: radius.azurecr.io
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 60m
-      # Used for container output paths
-      RADIUS_CONTAINER_LOG_PATH: $GITHUB_WORKSPACE/dist/container_logs
+      RADIUS_CONTAINER_LOG_BASE: dist/container_logs
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -226,12 +225,13 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
+        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-kubernetes
     - name: Upload container logs
       uses: actions/upload-artifact@master
       with:
         name: container_logs
-        path: ${{ env.RADIUS_CONTAINER_LOG_PATH }}
+        path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
   deploy_tests: 
     name: Run deployment tests
     needs: [ 'build', 'images' ]
