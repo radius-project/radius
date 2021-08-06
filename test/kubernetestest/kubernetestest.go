@@ -146,13 +146,13 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	// Only start capturing controller logs once.
 	radiusControllerLogSync.Do(func() {
-		err := validation.SaveContainerLogs(ctx, at.Options.K8sClient, "radius-system", logPrefix)
+		err := validation.SaveLogsForController(ctx, at.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
 			t.Errorf("failed to capture logs from radius controller: %w", err)
 		}
 	})
 
-	err := validation.SaveAndWatchContainerLogsForApp(ctx, at.Options.K8sClient, "default", logPrefix+"/"+at.Application, at.Application)
+	err := validation.SaveLogsForApplication(ctx, at.Options.K8sClient, "default", logPrefix+"/"+at.Application, at.Application)
 	if err != nil {
 		t.Errorf("failed to capture logs from radius pods %w", err)
 	}
@@ -175,8 +175,6 @@ func (at ApplicationTest) Test(t *testing.T) {
 			t.Logf("running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 			step.Executor.Execute(ctx, t, at.Options)
 			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
-
-			// after deployment is done, start watching all pods logs.
 
 			if step.Components == nil && step.SkipComponents {
 				t.Logf("skipping validation of components...")

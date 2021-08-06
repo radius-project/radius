@@ -96,33 +96,18 @@ func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernet
 }
 
 // SaveContainerLogs get container logs for all containers in a namespace and saves them to disk.
-func SaveContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) error {
-	if err := os.MkdirAll(logPrefix, os.ModePerm); err != nil {
-		log.Printf("Failed to create output log directory '%s' Error was: '%s'. Container logs will be discarded", logPrefix, err)
-		return nil
-	}
-
-	podClient := k8s.CoreV1().Pods(namespace)
-
-	// Filter only radius applications for a pod
-	podList, err := podClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, pod := range podList.Items {
-		for _, container := range pod.Spec.Containers {
-			go streamLogFile(ctx, podClient, pod, container, logPrefix)
-		}
-	}
-
-	return nil
+func SaveLogsForController(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) error {
+	return watchForPods(ctx, k8s, namespace, logPrefix, "")
 }
 
 // SaveAndWatchContainerLogsForApp watches for all containers in a namespace and saves them to disk.
-func SaveAndWatchContainerLogsForApp(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) error {
+func SaveLogsForApplication(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) error {
+	return watchForPods(ctx, k8s, namespace, logPrefix, fmt.Sprintf("%s=%s", keys.LabelRadiusApplication, appName))
+}
+
+func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, labelSelector string) error {
 	if err := os.MkdirAll(logPrefix, os.ModePerm); err != nil {
-		log.Printf("Failed to create output log directory '%s' Error was: '%s'. Container logs will be discarded", logPrefix, err)
+		log.Printf("Failed to create output log directory '%s' Error was: '%q'. Container logs will be discarded", logPrefix, err)
 		return nil
 	}
 
@@ -131,7 +116,7 @@ func SaveAndWatchContainerLogsForApp(ctx context.Context, k8s *kubernetes.Client
 	// Filter only radius applications for a pod
 	podList, err := podClient.Watch(ctx, metav1.ListOptions{
 		Watch:         true,
-		LabelSelector: fmt.Sprintf("%s=%s", keys.LabelRadiusApplication, appName),
+		LabelSelector: labelSelector,
 	})
 	if err != nil {
 		return err
@@ -172,7 +157,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 	})
 	stream, err := req.Stream(ctx)
 	if err != nil {
-		log.Printf("Error reading log stream for %s. Error was %s", filename, err)
+		log.Printf("Error reading log stream for %s. Error was %q", filename, err)
 		return
 	}
 	defer stream.Close()
@@ -184,15 +169,17 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 	}
 	defer fh.Close()
 
+	buf := make([]byte, 2000)
+
 	for {
-		buf := make([]byte, 2000)
 		numBytes, err := stream.Read(buf)
-		if numBytes == 0 {
-			continue
-		}
 
 		if err == io.EOF {
 			break
+		}
+
+		if numBytes == 0 {
+			continue
 		}
 
 		if err != nil {
