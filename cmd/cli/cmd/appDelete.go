@@ -6,9 +6,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/cli"
+	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
@@ -63,30 +65,39 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	deploymentList, err := client.ListDeployments(cmd.Context(), applicationName)
+	err = appDeleteInner(cmd.Context(), client, applicationName, env)
 	if err != nil {
 		return err
 	}
 
-	// Delete the deployments
+	err = updateApplicationConfig(config, env, applicationName)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+func appDeleteInner(ctx context.Context, client clients.ManagementClient, applicationName string, env environments.Environment) error {
+	deploymentList, err := client.ListDeployments(ctx, applicationName)
+	if err != nil {
+		return err
+	}
+
 	for _, deploymentResource := range deploymentList.Value {
+		// Delete the deployments
 		// This is needed until server side implementation is fixed https://github.com/Azure/radius/issues/159
 		deploymentName := *deploymentResource.Name
-		err = client.DeleteDeployment(cmd.Context(), applicationName, deploymentName)
+		err = client.DeleteDeployment(ctx, applicationName, deploymentName)
 		if err != nil {
 			return fmt.Errorf("delete deployment error: %w", err)
 		}
 		fmt.Printf("Deployment '%s' deleted.\n", deploymentName)
 	}
 
-	err = client.DeleteApplication(cmd.Context(), applicationName)
+	err = client.DeleteApplication(ctx, applicationName)
 	if err != nil {
 		return fmt.Errorf("delete application error: %w", err)
-	}
-
-	err = updateApplicationConfig(config, env, applicationName)
-	if err != nil {
-		return err
 	}
 
 	fmt.Printf("Application '%s' has been deleted\n", applicationName)
