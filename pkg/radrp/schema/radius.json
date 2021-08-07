@@ -568,9 +568,6 @@
           "$ref": "common-types.json#/definitions/TrackedResource"
         }
       ],
-      "required": [
-        "properties"
-      ],
       "properties": {
         "properties": {
           "type": "object",
@@ -628,7 +625,6 @@
         }
       ],
       "required": [
-        "name",
         "properties"
       ],
       "properties": {
@@ -681,7 +677,7 @@
         }
       }
     },
-    "ComponentList": {
+    "ComponentList":  {
       "description": "Component list.",
       "type": "object",
       "required": [
@@ -707,7 +703,6 @@
         }
       ],
       "required": [
-        "name",
         "kind",
         "properties"
       ],
@@ -791,6 +786,45 @@
           "type": "object",
           "$ref": "#/definitions/ComponentProperties"
         }
+      }
+    },
+    "ScopeList": {
+      "description": "Scope list.",
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "List of scopes.",
+          "items": {
+            "$ref": "#/definitions/ScopeResource"
+          }
+        }
+      }
+    },
+    "ScopeResource": {
+      "description": "Scope resource.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "type": "object",
+          "$ref": "#/definitions/ScopeProperties",
+          "description": "Properties of the scope."
+        }
+      }
+    },
+    "ScopeProperties": {
+      "description": "Properties of a scope.",
+      "type": "object",
+      "properties": {
       }
     }
   },

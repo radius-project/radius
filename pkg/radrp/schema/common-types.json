@@ -70,9 +70,6 @@
           "description": "The geo-location where the resource lives"
         }
       },
-      "required": [
-        "location"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/Resource"

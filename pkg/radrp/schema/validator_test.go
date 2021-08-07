@@ -1,0 +1,389 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package schema
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+)
+
+func TestComponentValidator(t *testing.T) {
+	v := componentValidator
+
+	for _, tc := range []struct {
+		name  string
+		input string
+		wants []ValidationError
+	}{{
+		name: "valid",
+		input: `{
+		  "id":         "an ID",
+		  "name":       "a name",
+		  "kind":       "a kind",
+		  "location":   "a location",
+		  "properties": {}
+		}`,
+	}, {
+		name:  "invalid json",
+		input: "{{}",
+		wants: invalidJSONError(nil),
+	}, {
+		name: "missing required top-level fields",
+		input: `{
+		}`,
+		wants: requiredFieldErrs("(root)", "kind", "properties"),
+	}, {
+		name: "wrong types for top-level fields",
+		input: `{
+		  "location":   42,
+		  "tags":       42,
+		  "id":         42,
+		  "name":       42,
+		  "kind":       42,
+		  "properties": 42
+		}`,
+		wants: append(
+			invalidTypeErrs("(root)", "string", "integer",
+				"id", "name", "kind", "location"),
+			invalidTypeErrs("(root)", "object", "integer",
+				"tags", "properties")...),
+	}, {
+		name: "wrong types for tags values",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location", "properties": {},
+		  "tags": {
+		    "key": 42
+		  }
+		}`,
+		wants: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+	}, {
+		name: "wrong types for properties.* fields",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "revision":        42,
+		    "config":          42,
+		    "run":             42,
+		    "bindings":        42,
+		    "uses":            42,
+		    "traits":          42,
+		    "outputResources": 42
+		  }
+		}`,
+		wants: append(append(
+			invalidTypeErrs("(root).properties", "object", "integer",
+				"config", "run", "bindings"),
+			invalidTypeErrs("(root).properties", "array", "integer",
+				"uses", "traits", "outputResources")...),
+			invalidTypeErr("(root).properties.revision", "string", "integer")),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			errs := v.ValidateJSON([]byte(tc.input))
+			compareErrors(t, tc.wants, stripInnerJSONError(errs))
+		})
+	}
+}
+
+func TestApplicationValidator(t *testing.T) {
+	v := applicationValidator
+
+	for _, tc := range []struct {
+		name  string
+		input string
+		wants []ValidationError
+	}{{
+		name: "valid",
+		input: `{
+		  "id":         "an ID",
+		  "name":       "a name",
+		  "kind":       "a kind",
+		  "location":   "a location"
+		}`,
+	}, {
+		name:  "invalid json",
+		input: "{{}",
+		wants: invalidJSONError(nil),
+	}, {
+		name: "wrong types for top level fields",
+		input: `{
+		  "location":   false,
+		  "tags":       false,
+		  "properties": false
+		}`,
+		wants: append(
+			invalidTypeErrs("(root)", "object", "boolean",
+				"tags", "properties"),
+			invalidTypeErr("(root).location", "string", "boolean")),
+	}, {
+		name: "wrong types for tags values",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "tags": {
+		    "key": 42
+		  }
+		}`,
+		wants: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			errs := v.ValidateJSON([]byte(tc.input))
+			compareErrors(t, tc.wants, stripInnerJSONError(errs))
+		})
+	}
+}
+
+func TestDeploymentValidator(t *testing.T) {
+	v := deploymentValidator
+
+	for _, tc := range []struct {
+		name  string
+		input string
+		wants []ValidationError
+	}{{
+		name: "valid",
+		input: `{
+		  "id":         "id",
+		  "name":       "name",
+		  "kind":       "kind",
+		  "location":   "location",
+		  "properties": {
+		    "components": []
+		  }
+		}`,
+	}, {
+		name:  "invalid json",
+		input: "{{}",
+		wants: invalidJSONError(nil),
+	}, {
+		name: "missing required fields at root",
+		input: `{
+		}`,
+		wants: requiredFieldErrs("(root)", "properties"),
+	}, {
+		name: "wrong types for top level fields",
+		input: `{
+		  "name":       false,
+		  "location":   false,
+		  "tags":       false,
+		  "properties": false
+		}`,
+		wants: append(
+			invalidTypeErrs("(root)", "object", "boolean",
+				"tags", "properties"),
+			invalidTypeErrs("(root)", "string", "boolean",
+				"location", "name")...),
+	}, {
+		name: "wrong types for tags values",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "components": []
+		  },
+		  "tags": {
+		    "key": 42
+		  }
+		}`,
+		wants: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+	}, {
+		name: "wrong types for components values",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "components": ["wrong", "type"]
+		  }
+
+		}`,
+		wants: invalidTypeErrs("(root).properties.components", "object", "string", "0", "1"),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			errs := v.ValidateJSON([]byte(tc.input))
+			compareErrors(t, tc.wants, stripInnerJSONError(errs))
+		})
+	}
+}
+
+func TestScopeValidator(t *testing.T) {
+	v := scopeValidator
+
+	for _, tc := range []struct {
+		name  string
+		input string
+		wants []ValidationError
+	}{{
+		name: "valid",
+		input: `{
+		  "id":         "id",
+		  "name":       "name",
+		  "kind":       "kind",
+		  "location":   "location"
+		}`,
+	}, {
+		name:  "invalid json",
+		input: "{{}",
+		wants: invalidJSONError(nil),
+	}, {
+		name: "wrong types for top level fields",
+		input: `{
+		  "name": false,
+		  "location":   false,
+		  "tags":       false
+		}`,
+		wants: append(
+			invalidTypeErrs("(root)", "object", "boolean", "tags"),
+			invalidTypeErrs("(root)", "string", "boolean",
+				"location", "name")...),
+	}, {
+		name: "wrong types for tags values",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "tags": {
+		    "key": 42
+		  }
+		}`,
+		wants: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			errs := v.ValidateJSON([]byte(tc.input))
+			compareErrors(t, tc.wants, stripInnerJSONError(errs))
+		})
+	}
+}
+
+func TestValidatorFactory(t *testing.T) {
+	type Application struct{}
+	type Component struct{}
+	type Deployment struct{}
+	type Scope struct{}
+	type Foo struct{}
+
+	for _, tc := range []struct {
+		name  string
+		input interface{}
+		want  *validator
+	}{{
+		name:  "Application",
+		input: Application{},
+		want:  applicationValidator,
+	}, {
+		name:  "&Application",
+		input: &Application{},
+		want:  applicationValidator,
+	}, {
+		name:  "Component",
+		input: Component{},
+		want:  componentValidator,
+	}, {
+		name:  "Component",
+		input: &Component{},
+		want:  componentValidator,
+	}, {
+		name:  "Deployment",
+		input: Deployment{},
+		want:  deploymentValidator,
+	}, {
+		name:  "&Deployment",
+		input: &Deployment{},
+		want:  deploymentValidator,
+	}, {
+		name:  "Scope",
+		input: Scope{},
+		want:  scopeValidator,
+	}, {
+		name:  "&SCope",
+		input: &Scope{},
+		want:  scopeValidator,
+	}, {
+		name:  "Unknown",
+		input: Foo{},
+		want:  nil,
+	}, {
+		name:  "nil",
+		input: nil,
+		want:  nil,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ValidatorFor(tc.input)
+			if tc.want == nil {
+				if err == nil {
+					t.Error("Expected error, saw nil")
+				}
+				return
+			}
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreUnexported(validator{})); diff != "" {
+				t.Errorf("ValidatorFor() mismatch (-want +got):\n%s", diff)
+			}
+			if tc.want != nil && err != nil {
+				t.Errorf("Expected no error, saw %v", err)
+			}
+		})
+	}
+}
+
+func compareErrors(t *testing.T, wants []ValidationError, gots []ValidationError) {
+	wantSet := asErrSet(wants)
+	gotSet := asErrSet(gots)
+
+	for want := range wantSet {
+		if _, got := gotSet[want]; !got {
+			t.Errorf("Missing expected validation error: %#v", want)
+		}
+	}
+	for got := range gotSet {
+		if _, want := wantSet[got]; !want {
+			t.Errorf("Unexpected validation error: %#v", got)
+		}
+	}
+}
+
+func asErrSet(errs []ValidationError) map[ValidationError]struct{} {
+	set := make(map[ValidationError]struct{}, len(errs))
+	yes := struct{}{}
+	for _, err := range errs {
+		set[err] = yes
+	}
+	return set
+}
+
+func stripInnerJSONError(errs []ValidationError) []ValidationError {
+	r := make([]ValidationError, len(errs))
+	for i, err := range errs {
+		r[i] = err
+		r[i].JSONError = nil
+	}
+	return r
+}
+
+func requiredFieldErrs(position string, fields ...string) []ValidationError {
+	errs := make([]ValidationError, len(fields))
+	for i, f := range fields {
+		errs[i] = requiredFieldErr(position, f)
+	}
+	return errs
+}
+
+func requiredFieldErr(position string, field string) ValidationError {
+	return ValidationError{
+		Position: position,
+		Message:  fmt.Sprintf("%s is required", field),
+	}
+}
+
+func invalidTypeErr(position string, want string, got string) ValidationError {
+	return ValidationError{
+		Position: position,
+		Message:  fmt.Sprintf("Invalid type. Expected: %s, given: %s", want, got),
+	}
+}
+
+func invalidTypeErrs(position string, want string, got string, fields ...string) []ValidationError {
+	errs := make([]ValidationError, len(fields))
+	for i, f := range fields {
+		errs[i] = invalidTypeErr(fmt.Sprintf("%s.%s", position, f), want, got)
+	}
+	return errs
+}
