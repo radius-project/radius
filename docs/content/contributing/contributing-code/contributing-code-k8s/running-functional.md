@@ -21,7 +21,7 @@ For each PR we run the following set of steps:
 - Create a KinD Cluster.
 - Add CRDs (Custom Resource Definitions) to the kubernetes cluster via `make controller-crd-install`.
 - Run `rad env init kubernetes` to initialize the kubernetes environment in `config.yaml`.
-- Deploy the radius kubernetes controller to the cluster via `make controller deploy existing`.
+- Deploy the radius kubernetes controller to the cluster via `make controller-deploy-existing`.
 - Run deployment tests.
 
 ## Configuration
@@ -38,6 +38,7 @@ The tests use our product functionality (the Radius config file) to configure th
 1. Place `rad` on your path.
 1. Make sure `rad-bicep` is downloaded (`rad bicep download`).
 1. Add the kubernetes configuration to your config.yaml file by running `rad env init kubernetes`.
+1. Install dapr into the cluster by running `dapr init -k --wait`.
 1. Run: `make test-functional-kubernetes`
 
 When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`.
@@ -54,6 +55,7 @@ Instead of building and installing the Radius Kubernetes controller, you can run
 1. Place `rad` on your path.
 1. Make sure `rad-bicep` is downloaded (`rad bicep download`).
 1. Add the kubernetes configuration to your config.yaml file by running `rad env init kubernetes`.
+1. Install dapr into the cluster by running `dapr init -k --wait`.
 1. Run `make test-functional-kubernetes`
 
 ### Cleanup 

@@ -2,6 +2,7 @@ import express, { json } from 'express';
 import * as http from 'http';
 import { loadBindings, BindingStatus, BindingProvider } from './binding'
 import { DaprPubSubBinding } from './bindings/daprpubsub';
+import { DaprStateStoreBinding } from './bindings/daprstatestore';
 import { KeyVaultBinding } from './bindings/keyvault'
 import { MongoBinding } from './bindings/mongo'
 import { ServiceBusBinding } from './bindings/servicebus'
@@ -17,6 +18,7 @@ const providers: {[key: string]: BindingProvider }= {
     'MONGODB': (map) => new MongoBinding(map),
     'SERVICEBUS': (map) => new ServiceBusBinding(map),
     'REDIS': (map) => new RedisBinding(map),
+    'DAPRSTATESTORE': (map) => new DaprStateStoreBinding(map),
 };
 
 let bindings = loadBindings(process.env, providers)
