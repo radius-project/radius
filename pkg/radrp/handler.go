@@ -428,7 +428,8 @@ func validationError(obj rest.Resource, errs []schema.ValidationError) error {
 	var message strings.Builder
 	fmt.Fprintf(&message, "failed validation(s) while parsing %T:\n", obj)
 	for _, err := range errs {
-		if err.Position == "" {
+		if err.JSONError != nil {
+			// The given document isn't even JSON.
 			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
 		} else {
 			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
