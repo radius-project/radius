@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"

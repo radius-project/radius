@@ -8,7 +8,7 @@ package deployment
 import (
 	"testing"
 
-	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/model/components"
 	"github.com/stretchr/testify/require"
 )
 

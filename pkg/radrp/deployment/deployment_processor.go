@@ -12,12 +12,12 @@ import (
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
 	"github.com/Azure/radius/pkg/model"
+	"github.com/Azure/radius/pkg/model/components"
+	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/revision"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
