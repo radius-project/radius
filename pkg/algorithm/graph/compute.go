@@ -20,17 +20,28 @@ func ComputeDependencyGraph(items []DependencyItem) (DependencyGraph, error) {
 		key := item.Key()
 
 		keys = append(keys, key)
+
+		dependencies, err := item.GetDependencies()
+		if err != nil {
+			return DependencyGraph{}, err
+		}
+
 		setsByKey[key] = set{
 			setsByKey:    setsByKey,
 			item:         item,
-			dependencies: item.GetDependencies(),
+			dependencies: dependencies,
 		}
 	}
 
 	// Now validate by walking all dependencies and ensure they exist in the graph
 	missing := map[string]bool{}
 	for _, item := range items {
-		for _, d := range item.GetDependencies() {
+		dependencies, err := item.GetDependencies()
+		if err != nil {
+			return DependencyGraph{}, err
+		}
+
+		for _, d := range dependencies {
 			_, ok := setsByKey[d]
 			if !ok {
 				missing[d] = true

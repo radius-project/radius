@@ -18,7 +18,7 @@ func (dg DependencyGraph) Lookup(key string) (DependencySet, bool) {
 
 type DependencyItem interface {
 	Key() string
-	GetDependencies() []string
+	GetDependencies() ([]string, error)
 }
 
 type DependencySet interface {
