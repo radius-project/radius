@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -14,7 +15,9 @@ import (
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/bicep"
 	"github.com/Azure/radius/pkg/cli/output"
+	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/pkg/version"
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -28,12 +31,45 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:  true,
 }
 
+// prettyPrintRPError prints an error that wraps a
+// *radclient.ErrorResponse as YAML.
+//
+// YAML is a good format for this purpose because of the `|` string
+// quoting syntax that allows nested YAML strings to have good
+// readability.
+//
+// In case we don't understand the error format we are dealing with,
+// we will just return "".
+func prettyPrintRPError(err error) string {
+	inner, ok := errors.Unwrap(err).(*radclient.ErrorResponse)
+	if inner == nil && !ok {
+		return ""
+	}
+	// Now, attempt to reformat the message too
+	for i := range inner.InnerError.Details {
+		y, err := yaml.JSONToYAML([]byte(*inner.InnerError.Details[i].Message))
+		if err != nil {
+			continue
+		}
+		s := string(y)
+		inner.InnerError.Details[i].Message = &s
+	}
+	if b, err := yaml.Marshal(inner.InnerError); err == nil {
+		return string(b)
+	}
+	return ""
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	ctx := context.WithValue(context.Background(), configHolderKey, configHolder)
 	if err := RootCmd.ExecuteContext(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		if yaml := prettyPrintRPError(err); yaml != "" {
+			fmt.Printf("Error from Radius resource provider:\n%s\n", yaml)
+		} else {
+			fmt.Println("Error:", err)
+		}
 		os.Exit(1)
 	}
 }
