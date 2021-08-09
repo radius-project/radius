@@ -17,9 +17,9 @@ func TestComponentValidator(t *testing.T) {
 	v := componentValidator
 
 	for _, tc := range []struct {
-		name  string
-		input string
-		wants []ValidationError
+		name    string
+		input   string
+		expects []ValidationError
 	}{{
 		name: "valid",
 		input: `{
@@ -30,14 +30,14 @@ func TestComponentValidator(t *testing.T) {
 		  "properties": {}
 		}`,
 	}, {
-		name:  "invalid json",
-		input: "{{}",
-		wants: invalidJSONError(nil),
+		name:    "invalid json",
+		input:   "{{}",
+		expects: invalidJSONError(nil),
 	}, {
 		name: "missing required top-level fields",
 		input: `{
 		}`,
-		wants: requiredFieldErrs("(root)", "kind", "properties"),
+		expects: requiredFieldErrs("(root)", "kind", "properties"),
 	}, {
 		name: "wrong types for top-level fields",
 		input: `{
@@ -48,7 +48,7 @@ func TestComponentValidator(t *testing.T) {
 		  "kind":       42,
 		  "properties": 42
 		}`,
-		wants: append(
+		expects: append(
 			invalidTypeErrs("(root)", "string", "integer",
 				"id", "name", "kind", "location"),
 			invalidTypeErrs("(root)", "object", "integer",
@@ -61,7 +61,7 @@ func TestComponentValidator(t *testing.T) {
 		    "key": 42
 		  }
 		}`,
-		wants: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}, {
 		name: "wrong types for properties.* fields",
 		input: `{
@@ -76,7 +76,7 @@ func TestComponentValidator(t *testing.T) {
 		    "outputResources": 42
 		  }
 		}`,
-		wants: append(append(
+		expects: append(append(
 			invalidTypeErrs("(root).properties", "object", "integer",
 				"config", "run", "bindings"),
 			invalidTypeErrs("(root).properties", "array", "integer",
@@ -85,7 +85,7 @@ func TestComponentValidator(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
-			compareErrors(t, tc.wants, stripInnerJSONError(errs))
+			compareErrors(t, tc.expects, stripInnerJSONError(errs))
 		})
 	}
 }
@@ -94,9 +94,9 @@ func TestApplicationValidator(t *testing.T) {
 	v := applicationValidator
 
 	for _, tc := range []struct {
-		name  string
-		input string
-		wants []ValidationError
+		name    string
+		input   string
+		expects []ValidationError
 	}{{
 		name: "valid",
 		input: `{
@@ -106,9 +106,9 @@ func TestApplicationValidator(t *testing.T) {
 		  "location":   "a location"
 		}`,
 	}, {
-		name:  "invalid json",
-		input: "{{}",
-		wants: invalidJSONError(nil),
+		name:    "invalid json",
+		input:   "{{}",
+		expects: invalidJSONError(nil),
 	}, {
 		name: "wrong types for top level fields",
 		input: `{
@@ -116,7 +116,7 @@ func TestApplicationValidator(t *testing.T) {
 		  "tags":       false,
 		  "properties": false
 		}`,
-		wants: append(
+		expects: append(
 			invalidTypeErrs("(root)", "object", "boolean",
 				"tags", "properties"),
 			invalidTypeErr("(root).location", "string", "boolean")),
@@ -128,11 +128,11 @@ func TestApplicationValidator(t *testing.T) {
 		    "key": 42
 		  }
 		}`,
-		wants: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
-			compareErrors(t, tc.wants, stripInnerJSONError(errs))
+			compareErrors(t, tc.expects, stripInnerJSONError(errs))
 		})
 	}
 }
@@ -141,9 +141,9 @@ func TestDeploymentValidator(t *testing.T) {
 	v := deploymentValidator
 
 	for _, tc := range []struct {
-		name  string
-		input string
-		wants []ValidationError
+		name    string
+		input   string
+		expects []ValidationError
 	}{{
 		name: "valid",
 		input: `{
@@ -156,14 +156,14 @@ func TestDeploymentValidator(t *testing.T) {
 		  }
 		}`,
 	}, {
-		name:  "invalid json",
-		input: "{{}",
-		wants: invalidJSONError(nil),
+		name:    "invalid json",
+		input:   "{{}",
+		expects: invalidJSONError(nil),
 	}, {
 		name: "missing required fields at root",
 		input: `{
 		}`,
-		wants: requiredFieldErrs("(root)", "properties"),
+		expects: requiredFieldErrs("(root)", "properties"),
 	}, {
 		name: "wrong types for top level fields",
 		input: `{
@@ -172,7 +172,7 @@ func TestDeploymentValidator(t *testing.T) {
 		  "tags":       false,
 		  "properties": false
 		}`,
-		wants: append(
+		expects: append(
 			invalidTypeErrs("(root)", "object", "boolean",
 				"tags", "properties"),
 			invalidTypeErrs("(root)", "string", "boolean",
@@ -188,7 +188,7 @@ func TestDeploymentValidator(t *testing.T) {
 		    "key": 42
 		  }
 		}`,
-		wants: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}, {
 		name: "wrong types for components values",
 		input: `{
@@ -198,11 +198,11 @@ func TestDeploymentValidator(t *testing.T) {
 		  }
 
 		}`,
-		wants: invalidTypeErrs("(root).properties.components", "object", "string", "0", "1"),
+		expects: invalidTypeErrs("(root).properties.components", "object", "string", "0", "1"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
-			compareErrors(t, tc.wants, stripInnerJSONError(errs))
+			compareErrors(t, tc.expects, stripInnerJSONError(errs))
 		})
 	}
 }
@@ -211,9 +211,9 @@ func TestScopeValidator(t *testing.T) {
 	v := scopeValidator
 
 	for _, tc := range []struct {
-		name  string
-		input string
-		wants []ValidationError
+		name    string
+		input   string
+		expects []ValidationError
 	}{{
 		name: "valid",
 		input: `{
@@ -223,9 +223,9 @@ func TestScopeValidator(t *testing.T) {
 		  "location":   "location"
 		}`,
 	}, {
-		name:  "invalid json",
-		input: "{{}",
-		wants: invalidJSONError(nil),
+		name:    "invalid json",
+		input:   "{{}",
+		expects: invalidJSONError(nil),
 	}, {
 		name: "wrong types for top level fields",
 		input: `{
@@ -233,7 +233,7 @@ func TestScopeValidator(t *testing.T) {
 		  "location":   false,
 		  "tags":       false
 		}`,
-		wants: append(
+		expects: append(
 			invalidTypeErrs("(root)", "object", "boolean", "tags"),
 			invalidTypeErrs("(root)", "string", "boolean",
 				"location", "name")...),
@@ -245,11 +245,11 @@ func TestScopeValidator(t *testing.T) {
 		    "key": 42
 		  }
 		}`,
-		wants: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
-			compareErrors(t, tc.wants, stripInnerJSONError(errs))
+			compareErrors(t, tc.expects, stripInnerJSONError(errs))
 		})
 	}
 }
@@ -294,7 +294,7 @@ func TestValidatorFactory(t *testing.T) {
 		input: Scope{},
 		want:  scopeValidator,
 	}, {
-		name:  "&SCope",
+		name:  "&Scope",
 		input: &Scope{},
 		want:  scopeValidator,
 	}, {
