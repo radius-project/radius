@@ -124,6 +124,9 @@ func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autore
 	}
 
 	for ; page.NotDone(); err = page.NextWithContext(ctx) {
+		if err != nil {
+			return err
+		}
 		for _, r := range page.Values() {
 			defaultApiVersion, err := azclients.GetDefaultAPIVersion(ctx, subscriptionID, authorizer, *r.Type)
 			if err != nil {
