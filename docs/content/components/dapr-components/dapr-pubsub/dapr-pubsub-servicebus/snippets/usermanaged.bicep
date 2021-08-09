@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'dapr-pubsub-managed'
+  name: 'dapr-pubsub'
 
   resource nodesubscriber 'Components' = {
     name: 'nodesubscriber'
@@ -62,9 +62,17 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     properties: {
       config: {
         kind: 'pubsub.azure.servicebus'
-        topic: 'TOPIC_A'
-        managed: true
+        resource: namespace::topic.id
       }
     }
+  }
+}
+
+resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
+  name: 'ns-${guid(resourceGroup().name)}'
+  location: resourceGroup().location
+
+  resource topic 'topics' = {
+    name: 'TOPIC_A'
   }
 }
