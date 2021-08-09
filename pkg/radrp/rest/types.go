@@ -6,10 +6,10 @@
 package rest
 
 import (
+	"github.com/Azure/radius/pkg/model/components"
+	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/components"
 	"github.com/Azure/radius/pkg/radrp/resources"
-	"github.com/Azure/radius/pkg/radrp/revision"
 )
 
 // This package defines the data types that we serialize over the wire - these are different from

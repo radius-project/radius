@@ -22,7 +22,7 @@ import (
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
-	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/model/components"
 	//+kubebuilder:scaffold:imports
 )
 
