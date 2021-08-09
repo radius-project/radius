@@ -13,8 +13,8 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 )
 
-func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer autorest.Authorizer, entireType string) (string, error) {
-	parts := strings.Split(entireType, "/")
+func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer autorest.Authorizer, t string /* type */) (string, error) {
+	parts := strings.Split(t, "/")
 	provider := parts[0]
 	resourceType := parts[1]
 
@@ -25,6 +25,8 @@ func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer
 		return "", err
 	}
 
+	// For preview API versions, the DefaultAPIVersion isn't set,
+	// so get the first from the list of APIVersions instead.
 	for _, rt := range *p.ResourceTypes {
 		if strings.EqualFold(*rt.ResourceType, resourceType) {
 			if rt.DefaultAPIVersion != nil {
@@ -32,7 +34,7 @@ func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer
 			} else if rt.APIVersions != nil && len(*rt.APIVersions) > 0 {
 				return (*rt.APIVersions)[0], nil
 			} else {
-				return "", fmt.Errorf("no valid api version for type %s", entireType)
+				return "", fmt.Errorf("no valid api version for type %s", t)
 			}
 		}
 	}
