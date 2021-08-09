@@ -55,7 +55,7 @@ type ApplicationListByResourceGroupOptions struct {
 // ApplicationResource - Application resource.
 type ApplicationResource struct {
 	TrackedResource
-	// REQUIRED; Properties of the application.
+	// Properties of the application.
 	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 
@@ -311,10 +311,37 @@ func (r Resource) marshalInternal() map[string]interface{} {
 	return objectMap
 }
 
+// ScopeList - Scope list.
+type ScopeList struct {
+	// REQUIRED; List of scopes.
+	Value []*ScopeResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ScopeList.
+func (s ScopeList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", s.Value)
+	return json.Marshal(objectMap)
+}
+
+// ScopeResource - Scope resource.
+type ScopeResource struct {
+	TrackedResource
+	// Properties of the scope.
+	Properties map[string]interface{} `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ScopeResource.
+func (s ScopeResource) MarshalJSON() ([]byte, error) {
+	objectMap := s.TrackedResource.marshalInternal()
+	populate(objectMap, "properties", s.Properties)
+	return json.Marshal(objectMap)
+}
+
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'
 type TrackedResource struct {
 	Resource
-	// REQUIRED; The geo-location where the resource lives
+	// The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// Resource tags.

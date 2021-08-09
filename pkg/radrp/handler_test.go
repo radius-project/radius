@@ -1015,7 +1015,9 @@ func Test_UpdateDeployment_NoApplication(t *testing.T) {
 	test := start(t)
 
 	body := map[string]interface{}{
-		"properties": map[string]interface{}{},
+		"properties": map[string]interface{}{
+			"components": []interface{}{},
+		},
 	}
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -1060,7 +1062,9 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
-		"properties": map[string]interface{}{},
+		"properties": map[string]interface{}{
+			"components": []interface{}{},
+		},
 	}
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -1122,7 +1126,9 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
-		"properties": map[string]interface{}{},
+		"properties": map[string]interface{}{
+			"components": []interface{}{},
+		},
 	}
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -1185,7 +1191,9 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
-		"properties": map[string]interface{}{},
+		"properties": map[string]interface{}{
+			"components": []interface{}{},
+		},
 	}
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -1414,7 +1422,9 @@ func Test_UpdateDeployment_UpdateNoOp(t *testing.T) {
 	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
 
 	body := map[string]interface{}{
-		"properties": map[string]interface{}{},
+		"properties": map[string]interface{}{
+			"components": []interface{}{},
+		},
 	}
 	b, err := json.Marshal(body)
 	require.NoError(t, err)

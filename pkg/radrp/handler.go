@@ -8,13 +8,17 @@ package radrp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/radrp/schema"
 )
 
 // A brief not on error handling... The handler is responsible for all of the direct actions
@@ -398,7 +402,18 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, err error) 
 
 func readJSONResource(req *http.Request, obj rest.Resource, id resources.ResourceID) error {
 	defer req.Body.Close()
-	err := json.NewDecoder(req.Body).Decode(obj)
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return fmt.Errorf("error reading request body: %w", err)
+	}
+	validator, err := schema.ValidatorFor(obj)
+	if err != nil {
+		return fmt.Errorf("cannot find validator for %T: %w", obj, err)
+	}
+	if errs := validator.ValidateJSON(data); len(errs) != 0 {
+		return validationError(obj, errs)
+	}
+	err = json.Unmarshal(data, obj)
 	if err != nil {
 		return fmt.Errorf("error reading %T: %w", obj, err)
 	}
@@ -407,4 +422,18 @@ func readJSONResource(req *http.Request, obj rest.Resource, id resources.Resourc
 	obj.SetID(id)
 
 	return nil
+}
+
+func validationError(obj rest.Resource, errs []schema.ValidationError) error {
+	var message strings.Builder
+	fmt.Fprintf(&message, "failed validation(s) while parsing %T:\n", obj)
+	for _, err := range errs {
+		if err.JSONError != nil {
+			// The given document isn't even JSON.
+			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
+		} else {
+			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
+		}
+	}
+	return errors.New(message.String())
 }
