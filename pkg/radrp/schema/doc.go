@@ -11,7 +11,7 @@ of the types defined in Radius Resource Provider's OpenAPI spec.
 
 The JSON schema version used is Draft 4, and the OpenAPI version used
 is 2.0. There are incompatiblities between the two specifications,
-therefore we will want to contraints our object schema to be within
+therefore we will want to constraint our object schema to be within
 the intersection of the two specs.
 
 Since our OpenAPI spec should be top-level documents, we want to keep
