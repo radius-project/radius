@@ -139,12 +139,9 @@ func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autore
 			if err = future.WaitForCompletionRef(ctx, resourceClient.Client); err != nil {
 				return err
 			}
-			res, err := future.Result(resourceClient)
+			_, err = future.Result(resourceClient)
 			if err != nil {
 				return err
-			}
-			if res.StatusCode != 204 {
-				return fmt.Errorf("Failed to delete resource: %v", res.StatusCode)
 			}
 		}
 	}

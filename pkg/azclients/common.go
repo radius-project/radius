@@ -29,7 +29,7 @@ func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer
 		if strings.EqualFold(*rt.ResourceType, resourceType) {
 			if rt.DefaultAPIVersion != nil {
 				return *rt.DefaultAPIVersion, nil
-			} else if rt.APIProfiles != nil && len(*rt.APIVersions) > 0 {
+			} else if rt.APIVersions != nil && len(*rt.APIVersions) > 0 {
 				return (*rt.APIVersions)[0], nil
 			} else {
 				return "", fmt.Errorf("no valid api version for type %s", entireType)
