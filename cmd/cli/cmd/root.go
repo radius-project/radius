@@ -42,11 +42,14 @@ var RootCmd = &cobra.Command{
 // we will just return "".
 func prettyPrintRPError(err error) string {
 	inner, ok := errors.Unwrap(err).(*radclient.ErrorResponse)
-	if inner == nil && !ok {
+	if inner == nil || !ok {
 		return ""
 	}
 	// Now, attempt to reformat the message too
 	for i := range inner.InnerError.Details {
+		if inner.InnerError.Details[i] == nil || inner.InnerError.Details[i].Message == nil {
+			continue
+		}
 		y, err := yaml.JSONToYAML([]byte(*inner.InnerError.Details[i].Message))
 		if err != nil {
 			continue
