@@ -658,10 +658,19 @@
               "componentName": {
                 "type": "string",
                 "description": "Name of the component"
-              }
+              },
+	      "id": {
+		"type": "string"
+	      },
+	      "revision": {
+		"type": "string"
+	      }
             }
           }
-        }
+        },
+	"provisioningState": {
+	  "type": "string"
+	}
       }
     },
     "DeploymentCreateParameters": {
@@ -753,7 +762,9 @@
           "type": "array",
           "description": "Traits spec of the component",
           "items": {
-	      "type": "object"
+	    "type": "object",
+	    "$ref": "#/definitions/ComponentTrait",
+	    "description": "Traits of the component."
           }
         },
         "outputResources": {
@@ -761,6 +772,16 @@
           "items": {
           "$ref": "#/definitions/ComponentOutputResource"
           }
+        }
+      }
+    },
+    "ComponentTrait": {
+      "description": "Trait of a component.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Kind of the component trait"
         }
       }
     },

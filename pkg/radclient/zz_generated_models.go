@@ -124,7 +124,7 @@ type ComponentProperties struct {
 	Run map[string]interface{} `json:"run,omitempty"`
 
 	// Traits spec of the component
-	Traits []map[string]interface{} `json:"traits,omitempty"`
+	Traits []*ComponentTrait `json:"traits,omitempty"`
 
 	// Uses spec of the component
 	Uses []map[string]interface{} `json:"uses,omitempty"`
@@ -159,6 +159,12 @@ func (c ComponentResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "kind", c.Kind)
 	populate(objectMap, "properties", c.Properties)
 	return json.Marshal(objectMap)
+}
+
+// ComponentTrait - Trait of a component.
+type ComponentTrait struct {
+	// Kind of the component trait
+	Kind *string `json:"kind,omitempty"`
 }
 
 // DeploymentBeginCreateOrUpdateOptions contains the optional parameters for the Deployment.BeginCreateOrUpdate method.
@@ -204,18 +210,22 @@ type DeploymentListByApplicationOptions struct {
 type DeploymentProperties struct {
 	// REQUIRED; List of components in the deployment.
 	Components []*DeploymentPropertiesComponentsItem `json:"components,omitempty"`
+	ProvisioningState *string `json:"provisioningState,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DeploymentProperties.
 func (d DeploymentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "components", d.Components)
+	populate(objectMap, "provisioningState", d.ProvisioningState)
 	return json.Marshal(objectMap)
 }
 
 type DeploymentPropertiesComponentsItem struct {
 	// REQUIRED; Name of the component
 	ComponentName *string `json:"componentName,omitempty"`
+	ID *string `json:"id,omitempty"`
+	Revision *string `json:"revision,omitempty"`
 }
 
 // DeploymentResource - Deployment resource.

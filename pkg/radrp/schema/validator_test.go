@@ -82,6 +82,17 @@ func TestComponentValidator(t *testing.T) {
 			invalidTypeErrs("(root).properties", "array", "integer",
 				"uses", "traits", "outputResources")...),
 			invalidTypeErr("(root).properties.revision", "string", "integer")),
+	}, {
+		name: "wrong types for properties.traits[].* fields",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "traits": [{
+              "kind": 42
+            }]
+		  }
+		}`,
+		expects: invalidTypeErrs("(root).properties.traits.0", "string", "integer", "kind"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
@@ -190,15 +201,51 @@ func TestDeploymentValidator(t *testing.T) {
 		}`,
 		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}, {
-		name: "wrong types for components values",
+		name: "wrong types for (root).properties values",
 		input: `{
 		  "id": "id", "name": "name", "kind": "kind", "location": "location",
 		  "properties": {
-		    "components": ["wrong", "type"]
+		    "components": ["wrong", "type"],
+            "provisioningState": 42
 		  }
 
 		}`,
-		expects: invalidTypeErrs("(root).properties.components", "object", "string", "0", "1"),
+		expects: append(invalidTypeErrs("(root).properties.components", "object", "string", "0", "1"),
+			invalidTypeErrs("(root).properties", "string", "integer", "provisioningState")...),
+	}, {
+		name: "missing required 'components[].*' fields",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "components": [{}]
+		  }
+		}`,
+		expects: requiredFieldErrs("(root).properties.components.0", "componentName"),
+	}, {
+		name: "wrong type for 'components[].*' fields",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "components": [{
+              "componentName": 42
+            }]
+		  }
+		}`,
+		expects: invalidTypeErrs("(root).properties.components.0", "string", "integer", "componentName"),
+	}, {
+		name: "wrong type for 'components[].properties.*' fields",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "components": [{
+              "componentName": 42,
+              "id": 42,
+              "revision": 42
+            }]
+		  }
+		}`,
+		expects: invalidTypeErrs("(root).properties.components.0", "string", "integer",
+			"componentName", "id", "revision"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
