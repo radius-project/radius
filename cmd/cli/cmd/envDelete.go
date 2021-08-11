@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
 	"github.com/Azure/radius/pkg/cli/util"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -52,7 +53,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	if ok {
 
 		if !yes {
-			confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and %s with all their resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup, az.ControlPlaneResourceGroup))
+			confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and all radius-created resources in %s will be deleted. Continue deleting? [y/n]?", az.ControlPlaneResourceGroup, az.ResourceGroup))
 			if err != nil {
 				return err
 			}
@@ -68,8 +69,15 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		// Delete environment, this will delete the resource group and all the resources in it
-		if err = deleteResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
+		// Delete the environment will consist of:
+		// 1. Delete all applications
+		// 2. Delete all radius resources in the customer/user resource group (ex custom resource provider)
+		// 3. Delete control plane resource group
+		if err = deleteAllApplications(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID, az); err != nil {
+			return err
+		}
+
+		if err = deleteRadiusResourcesInResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 			return err
 		}
 
@@ -85,6 +93,66 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	return nil
+}
+
+// deleteAllApplications deletes all applications from a resource group.
+func deleteAllApplications(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string, env *environments.AzureCloudEnvironment) error {
+	client, err := environments.CreateManagementClient(ctx, env)
+	if err != nil {
+		return err
+	}
+
+	applicationList, err := client.ListApplications(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, application := range applicationList.Value {
+		err = appDeleteInner(ctx, client, *application.Name, env)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteRadiusResourcesInResourceGroup deletes all radius resources from the customer/user resource group.
+// Currently the custom resource provider is the only resource in the user's environment that has this tag.
+func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string) error {
+	resourceClient := azclients.NewResourcesClient(subscriptionID, authorizer)
+
+	// Filter for all resources by rad-environment=True.
+	page, err := resourceClient.ListByResourceGroup(ctx, resourceGroup, "tagName eq '"+keys.TagRadiusEnvironment+"' and tagValue eq 'True'", "", nil)
+	if err != nil {
+		return err
+	}
+
+	for ; page.NotDone(); err = page.NextWithContext(ctx) {
+		if err != nil {
+			return err
+		}
+		for _, r := range page.Values() {
+			defaultApiVersion, err := azclients.GetDefaultAPIVersion(ctx, subscriptionID, authorizer, *r.Type)
+			if err != nil {
+				return err
+			}
+
+			output.LogInfo("Deleting radius resource %s", *r.Name)
+
+			future, err := resourceClient.DeleteByID(ctx, *r.ID, defaultApiVersion)
+			if err != nil {
+				return err
+			}
+			if err = future.WaitForCompletionRef(ctx, resourceClient.Client); err != nil {
+				return err
+			}
+			_, err = future.Result(resourceClient)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
