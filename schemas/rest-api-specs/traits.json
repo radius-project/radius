@@ -1,0 +1,36 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "2.0",
+    "title": "Common types"
+  },
+  "paths": {},
+  "definitions": {
+    "ComponentTrait": {
+      "description": "Trait of a component.",
+      "type": "object",
+      "properties": {
+	"kind": {
+	  "description": "Component kind.",
+	  "type": "string"
+	},
+	"appPort": {
+	  "description": "Dapr appPort (Dapr trait).",
+	  "type": "string"
+	},
+	"appId": {
+	  "description": "Dapr appId (Dapr trait).",
+	  "type": "string"
+	},
+	"hostName": {
+	  "description": "Host name (InBoundRoute trait).",
+	  "type": "string"
+	},
+	"binding": {
+	  "description": "Binding (InboundRoute trait).",
+	  "type": "string"
+	}
+      }
+    }
+  }
+}

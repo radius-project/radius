@@ -92,13 +92,13 @@ func ConvertK8sComponentToARM(input radiusv1alpha1.Component) (*radclient.Compon
 				return nil, err
 			}
 
-			t := map[string]interface{}{}
+			t := radclient.ComponentTrait{}
 			err = json.Unmarshal(bytes, &t)
 			if err != nil {
 				return nil, err
 			}
 
-			result.Properties.Traits = append(result.Properties.Traits, t)
+			result.Properties.Traits = append(result.Properties.Traits, &t)
 		}
 	}
 

@@ -40,6 +40,7 @@ type Validator interface {
 
 var (
 	//go:embed common-types.json
+	//go:embed traits.json
 	//go:embed radius.json
 	jsonFiles embed.FS
 

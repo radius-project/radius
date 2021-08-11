@@ -124,7 +124,7 @@ type ComponentProperties struct {
 	Run map[string]interface{} `json:"run,omitempty"`
 
 	// Traits spec of the component
-	Traits []map[string]interface{} `json:"traits,omitempty"`
+	Traits []*ComponentTrait `json:"traits,omitempty"`
 
 	// Uses spec of the component
 	Uses []map[string]interface{} `json:"uses,omitempty"`
@@ -159,6 +159,24 @@ func (c ComponentResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "kind", c.Kind)
 	populate(objectMap, "properties", c.Properties)
 	return json.Marshal(objectMap)
+}
+
+// ComponentTrait - Trait of a component.
+type ComponentTrait struct {
+	// Dapr appId (Dapr trait).
+	AppID *string `json:"appId,omitempty"`
+
+	// Dapr appPort (Dapr trait).
+	AppPort *string `json:"appPort,omitempty"`
+
+	// Binding (InboundRoute trait).
+	Binding *string `json:"binding,omitempty"`
+
+	// Host name (InBoundRoute trait).
+	HostName *string `json:"hostName,omitempty"`
+
+	// Component kind.
+	Kind *string `json:"kind,omitempty"`
 }
 
 // DeploymentBeginCreateOrUpdateOptions contains the optional parameters for the Deployment.BeginCreateOrUpdate method.
