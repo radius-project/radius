@@ -3,9 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package model
+package kubernetes
 
 import (
+	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -19,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewKubernetesModel(k8s *client.Client) ApplicationModel {
+func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 	renderers := map[string]workloads.WorkloadRenderer{
 		containerv1alpha1.Kind:      &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: armauth.ArmConfig{}}}},
 		daprstatestorev1alpha1.Kind: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
@@ -29,5 +30,5 @@ func NewKubernetesModel(k8s *client.Client) ApplicationModel {
 	handlers := map[string]handlers.ResourceHandler{
 		outputresource.KindKubernetes: handlers.NewKubernetesHandler(*k8s),
 	}
-	return NewModel(renderers, handlers)
+	return model.NewModel(renderers, handlers)
 }

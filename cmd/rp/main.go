@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/model"
+	azmodel "github.com/Azure/radius/pkg/model/azure"
+	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp"
 	"github.com/Azure/radius/pkg/radrp/armauth"
@@ -76,9 +78,9 @@ func main() {
 
 	var appmodel model.ApplicationModel
 	if os.Getenv("RADIUS_MODEL") == "" || strings.EqualFold(os.Getenv("RADIUS_MODEL"), "azure") {
-		appmodel = model.NewAzureModel(arm, k8s)
+		appmodel = azmodel.NewAzureModel(arm, k8s)
 	} else if strings.EqualFold(os.Getenv("RADIUS_MODEL"), "k8s") {
-		appmodel = model.NewKubernetesModel(k8s)
+		appmodel = k8smodel.NewKubernetesModel(k8s)
 	} else {
 		log.Fatal(fmt.Errorf("unknown value for RADIUS_MODEL '%s'", os.Getenv("RADIUS_MODEL")))
 	}
