@@ -101,7 +101,7 @@ func appDeleteInner(ctx context.Context, client clients.ManagementClient, applic
 		return fmt.Errorf("delete application error: %w", err)
 	}
 
-	fmt.Printf("Application '%s' has been deleted. Updating config file\n", applicationName)
+	fmt.Printf("Application '%s' has been deleted.\n", applicationName)
 	return nil
 }
 
