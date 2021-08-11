@@ -73,7 +73,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		// Delete environment, this will delete the resource group and all the resources in it
+		// Delete environment, this will delete all the resources in the resource group
 		if err = deleteRadiusResourcesInResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 			return err
 		}
