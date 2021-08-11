@@ -107,9 +107,9 @@ type ComponentTrait struct {
 type OutputResource struct {
 	LocalID            string      `bson:"id"`
 	ResourceKind       string      `bson:"resourceKind"`
-	OutputResourceInfo interface{} `bson:"outputResourceInfo"`
 	Managed            bool        `bson:"managed"`
 	OutputResourceType string      `bson:"outputResourceType"`
+	OutputResourceInfo interface{} `bson:"outputResourceInfo"`
 	Resource           interface{} `bson:"resource"`
 }
 
