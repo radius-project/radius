@@ -24,7 +24,7 @@ func (n *noop) AllocateBindings(ctx context.Context, workload workloads.Instanti
 }
 
 func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	// Return a deployment so the Dapr trait can modify it
+	// Return a deployment so the manualscale trait can modify it
 	deployment := appsv1.Deployment{}
 
 	deploymentResource := outputresource.OutputResource{

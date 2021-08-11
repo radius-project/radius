@@ -130,8 +130,8 @@ func Test_ContainerInboundRoute(t *testing.T) {
 }
 
 func Test_ContainerManualScale(t *testing.T) {
-	application := "azure-resources-container-inboundroute"
-	template := "testdata/azure-resources-container-inboundroute.bicep"
+	application := "azure-resources-container-manualscale"
+	template := "testdata/azure-resources-container-manualscale.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
