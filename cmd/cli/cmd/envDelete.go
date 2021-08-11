@@ -53,7 +53,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	if ok {
 
 		if !yes {
-			confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and %s with all their resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup, az.ControlPlaneResourceGroup))
+			confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and all radius-created resources in %s will be deleted. Continue deleting? [y/n]?", az.ControlPlaneResourceGroup, az.ResourceGroup))
 			if err != nil {
 				return err
 			}
@@ -69,11 +69,14 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		// Delete the environment will consist of:
+		// 1. Delete all applications
+		// 2. Delete all radius resources in the customer/user resource group (ex custom resource provider)
+		// 3. Delete control plane resource group
 		if err = deleteAllApplications(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID, az); err != nil {
 			return err
 		}
 
-		// Delete environment, this will delete all the resources in the resource group
 		if err = deleteRadiusResourcesInResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 			return err
 		}
@@ -134,7 +137,7 @@ func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autore
 			if err != nil {
 				return err
 			}
-			future, err := resourceClient.Delete(ctx, resourceGroup, "" /* resourceProviderNamespace */, "" /* parentResourcePath */, *r.Type, *r.Name, defaultApiVersion)
+			future, err := resourceClient.DeleteByID(ctx, *r.ID, defaultApiVersion)
 			if err != nil {
 				return err
 			}
