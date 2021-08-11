@@ -6,7 +6,6 @@
 package outputresource
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,11 +30,11 @@ func TestGetDependencies_MissingLocalID(t *testing.T) {
 		LocalID:      LocalIDRoleAssignmentKVKeys,
 		Type:         TypeARM,
 		Kind:         KindAzureRoleAssignment,
-		Dependencies: []OutputResource{testResource1},
+		Dependencies: []Dependency{{LocalID: testResource1.LocalID}},
 	}
 
 	_, err := testResource2.GetDependencies()
-	expectedErrorMsg := fmt.Sprintf("missing localID for outputresource kind: %s", KindAzureRoleAssignment)
+	expectedErrorMsg := "missing localID for outputresource"
 	require.EqualError(t, err, expectedErrorMsg)
 }
 
@@ -77,14 +76,17 @@ func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputR
 		LocalID:      LocalIDRoleAssignmentKVKeys,
 		Type:         TypeARM,
 		Kind:         KindAzureRoleAssignment,
-		Dependencies: []OutputResource{managedIdentity},
+		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
 	aadPodIdentity := OutputResource{
-		LocalID:      LocalIDAADPodIdentity,
-		Type:         TypeAADPodIdentity,
-		Kind:         KindAzurePodIdentity,
-		Dependencies: []OutputResource{managedIdentity, roleAssignmentKeys},
+		LocalID: LocalIDAADPodIdentity,
+		Type:    TypeAADPodIdentity,
+		Kind:    KindAzurePodIdentity,
+		Dependencies: []Dependency{
+			{LocalID: managedIdentity.LocalID},
+			{LocalID: roleAssignmentKeys.LocalID},
+		},
 	}
 
 	outputResources := map[string]OutputResource{

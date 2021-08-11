@@ -6,21 +6,31 @@
 package outputresource
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
 )
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	LocalID      string
-	Type         string
-	Kind         string
-	Deployed     bool
-	Managed      bool
-	Info         interface{}
-	Resource     interface{}
-	Dependencies []OutputResource // resources that are required to be deployed before this resource can be deployed
+	LocalID  string
+	Type     string
+	Kind     string
+	Deployed bool
+	Managed  bool
+	Info     interface{}
+	Resource interface{}
+
+	// Dependencies on OutputResources that are required to be deployed before this resource can be deployed
+	Dependencies []Dependency
+}
+
+// Dependency respresents a dependency on another OutputResource.
+type Dependency struct {
+	// LocalID is the LocalID of the dependency.
+	LocalID string
+	// Placeholder is a slice of optional placeholder values that can copy values from the dependency.
+	Placeholder []Placeholder
 }
 
 // ARMInfo info required to identify an ARM resource
@@ -55,7 +65,7 @@ func (resource OutputResource) GetDependencies() ([]string, error) {
 	dependencies := []string{}
 	for _, dependency := range resource.Dependencies {
 		if dependency.LocalID == "" {
-			return dependencies, fmt.Errorf("missing localID for outputresource kind: %s", dependency.Kind)
+			return dependencies, errors.New("missing localID for outputresource")
 		}
 		dependencies = append(dependencies, dependency.LocalID)
 	}
