@@ -12,36 +12,36 @@
     "DaprTrait": {
       "description": "Dapr ComponentTrait",
       "properties": {
-	"kind": {
-	  "description": "Component kind.",
-	  "type": "string"
-	},
-	"appPort": {
-	  "description": "Dapr appPort.",
-	  "type": "string"
-	},
-	"appId": {
-	  "description": "Dapr appId.",
-	  "type": "string"
-	}
+        "kind": {
+          "description": "Component kind.",
+          "type": "string"
+        },
+        "appPort": {
+          "description": "Dapr appPort.",
+          "type": "string"
+        },
+        "appId": {
+          "description": "Dapr appId.",
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
     "InboundRouteTrait": {
       "description": "InboundRoute ComponentTrait",
       "properties": {
-	"kind": {
-	  "description": "Component kind.",
-	  "type": "string"
-	},
-	"hostName": {
-	  "description": "Host name.",
-	  "type": "string"
-	},
-	"binding": {
-	  "description": "Binding name.",
-	  "type": "string"
-	}
+        "kind": {
+          "description": "Component kind.",
+          "type": "string"
+        },
+        "hostName": {
+          "description": "Host name.",
+          "type": "string"
+        },
+        "binding": {
+          "description": "Binding name.",
+          "type": "string"
+        }
       },
       "additionalProperties": false
     }

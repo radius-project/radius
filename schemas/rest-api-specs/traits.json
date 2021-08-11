@@ -10,26 +10,26 @@
       "description": "Trait of a component.",
       "type": "object",
       "properties": {
-	"kind": {
-	  "description": "Component kind.",
-	  "type": "string"
-	},
-	"appPort": {
-	  "description": "Dapr appPort (Dapr trait).",
-	  "type": "string"
-	},
-	"appId": {
-	  "description": "Dapr appId (Dapr trait).",
-	  "type": "string"
-	},
-	"hostName": {
-	  "description": "Host name (InBoundRoute trait).",
-	  "type": "string"
-	},
-	"binding": {
-	  "description": "Binding (InboundRoute trait).",
-	  "type": "string"
-	}
+        "kind": {
+          "description": "Component kind.",
+          "type": "string"
+        },
+        "appPort": {
+          "description": "Dapr appPort (Dapr trait).",
+          "type": "string"
+        },
+        "appId": {
+          "description": "Dapr appId (Dapr trait).",
+          "type": "string"
+        },
+        "hostName": {
+          "description": "Host name (InboundRoute trait).",
+          "type": "string"
+        },
+        "binding": {
+          "description": "Binding (InboundRoute trait).",
+          "type": "string"
+        }
       }
     }
   }
