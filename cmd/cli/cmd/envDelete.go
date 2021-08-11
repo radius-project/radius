@@ -137,6 +137,9 @@ func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autore
 			if err != nil {
 				return err
 			}
+
+			output.LogInfo("Deleting radius resource %s", r.Name)
+
 			future, err := resourceClient.DeleteByID(ctx, *r.ID, defaultApiVersion)
 			if err != nil {
 				return err
