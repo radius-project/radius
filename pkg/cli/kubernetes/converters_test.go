@@ -167,9 +167,11 @@ func Test_ConvertK8sComponentToARM(t *testing.T) {
 					},
 				},
 			},
-			Traits: []*radclient.ComponentTrait{
-				{
-					Kind:    to.StringPtr("radius.dev/InboundRoute@v1alpha1"),
+			Traits: []radclient.ComponentTraitClassification{
+				&radclient.InboundRouteTrait{
+					ComponentTrait: radclient.ComponentTrait{
+						Kind: to.StringPtr("radius.dev/InboundRoute@v1alpha1"),
+					},
 					Binding: to.StringPtr("web"),
 				},
 			},

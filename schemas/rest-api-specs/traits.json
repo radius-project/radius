@@ -13,24 +13,48 @@
         "kind": {
           "description": "Component kind.",
           "type": "string"
-        },
+        }
+      },
+      "required": [
+	"kind"
+      ],
+      "discriminator": "kind"
+    },
+    "DaprTrait": {
+      "description": "Dapr ComponentTrait",
+      "allOf": [{
+	"$ref": "#/definitions/ComponentTrait"
+      }],
+      "x-ms-discriminator-value": "dapr.io/App@v1alpha1",
+      "properties": {
         "appPort": {
-          "description": "Dapr appPort (Dapr trait).",
-          "type": "string"
+          "description": "Dapr appPort.",
+          "type": "integer"
         },
         "appId": {
-          "description": "Dapr appId (Dapr trait).",
+          "description": "Dapr appId.",
           "type": "string"
-        },
+        }
+      },
+      "additionalProperties": false
+    },
+    "InboundRouteTrait": {
+      "description": "InboundRoute ComponentTrait",
+      "allOf": [{
+	"$ref": "#/definitions/ComponentTrait"
+      }],
+      "x-ms-discriminator-value": "radius.dev/InboundRoute@v1alpha1",
+      "properties": {
         "hostName": {
-          "description": "Host name (InboundRoute trait).",
+          "description": "Host name.",
           "type": "string"
         },
         "binding": {
-          "description": "Binding (InboundRoute trait).",
+          "description": "Binding name.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     }
   }
 }
