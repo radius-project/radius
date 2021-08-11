@@ -8,12 +8,10 @@ package deployment
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/model/components"
-	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/handlers"
@@ -21,84 +19,12 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-// DeploymentOperation represents an operation performed on a workload.
-type DeploymentOperation string
-
-const (
-	// None represents a workload that's unchanged in a deployment.
-	None DeploymentOperation = "none"
-
-	// DeleteWorkload represents deleting a workload from deployment.
-	DeleteWorkload DeploymentOperation = "delete"
-
-	// CreateWorkload represents creating a workload in deployment.
-	CreateWorkload DeploymentOperation = "create"
-
-	// UpdateWorkload represents updating a workload in deployment.
-	UpdateWorkload DeploymentOperation = "update"
-)
-
-// ComponentAction represents a set of deployment actions to take for a component instance.
-type ComponentAction struct {
-	ApplicationName string
-	ComponentName   string
-	Operation       DeploymentOperation
-
-	NewRevision revision.Revision
-	OldRevision revision.Revision
-
-	// Will be `nil` for a delete
-	Definition *db.Component
-	// Will be `nil` for a delete
-	Component *components.GenericComponent
-}
-
-// DependencyItem implementation
-func (action ComponentAction) Key() string {
-	return action.ComponentName
-}
-
-func (action ComponentAction) GetDependencies() ([]string, error) {
-	if action.Component == nil {
-		return []string{}, nil
-	}
-
-	dependencies := []string{}
-	for _, dependency := range action.Component.Uses {
-		if dependency.Binding.Kind == components.KindStatic {
-			continue
-		}
-
-		expr := dependency.Binding.Value.(*components.ComponentBindingValue)
-		dependencies = append(dependencies, expr.Component)
-	}
-
-	return dependencies, nil
-}
-
 //go:generate mockgen -destination=../../../mocks/mock_deployment_processor.go -package=mocks github.com/Azure/radius/pkg/radrp/deployment DeploymentProcessor
 
 // DeploymentProcessor implements functionality for updating and deleting deployments.
 type DeploymentProcessor interface {
 	UpdateDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus, actions map[string]ComponentAction) error
 	DeleteDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus) error
-}
-
-// CompositeError represents an error containing multiple failures.
-type CompositeError struct {
-	Errors []error
-}
-
-func (ce *CompositeError) Error() string {
-	if len(ce.Errors) == 1 {
-		return ce.Errors[0].Error()
-	}
-
-	ss := make([]string, len(ce.Errors))
-	for i, e := range ce.Errors {
-		ss[i] = e.Error()
-	}
-	return "multiple errors: " + strings.Join(ss, ",")
 }
 
 type deploymentProcessor struct {
@@ -112,7 +38,7 @@ func NewDeploymentProcessor(appmodel model.ApplicationModel) DeploymentProcessor
 	}
 }
 
-func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus, actions map[string]ComponentAction) error {
+func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName string, name string, deploymentStatus *db.DeploymentStatus, actions map[string]ComponentAction) error {
 	// TODO - any sort of rollback - we'll leave things in a partially-created state
 	// for now if we encounter a failure at any point.
 	//
@@ -127,19 +53,15 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 		return err
 	}
 
-	for i, action := range ordered {
-		logger.Info(fmt.Sprintf("actions order: %v - %v", i, action.ComponentName))
-	}
-
 	bindingValues := map[components.BindingKey]components.BindingState{}
 
 	// Process each action and update the deployment status as we go ...
-	for _, action := range ordered {
+	for i, action := range ordered {
 		logger = logger.WithValues(
 			radlogger.LogFieldAction, action.Operation,
 			radlogger.LogFieldComponentName, action.ComponentName,
 		)
-		logger.Info("executing action")
+		logger.Info(fmt.Sprintf("Executing actions in order: %v - %v", i, action.ComponentName))
 
 		// while we do bookkeeping, also update the deployment record
 		switch action.Operation {
@@ -154,7 +76,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			// in order to do this.
 
 			resources := []workloads.WorkloadResourceProperties{}
-			for _, status := range d.Workloads {
+			for _, status := range deploymentStatus.Workloads {
 				if status.ComponentName != action.Component.Name {
 					continue
 				}
@@ -169,14 +91,14 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 			}
 
-			inst := workloads.InstantiatedWorkload{
+			workload := workloads.InstantiatedWorkload{
 				Application:   appName,
 				Name:          action.ComponentName,
 				Workload:      *action.Component,
 				BindingValues: bindingValues,
 			}
 
-			err = dp.processBindings(ctx, inst, resources, bindingValues)
+			err = dp.processBindings(ctx, workload, resources, bindingValues)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("error applying bindings for component %v : %w", action.ComponentName, err))
 				continue
@@ -184,24 +106,26 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 		case CreateWorkload, UpdateWorkload:
 			// For an update, just blow away the existing workload record
-			dw := db.DeploymentWorkload{
+			dbDeploymentWorkload := db.DeploymentWorkload{
 				ComponentName: action.ComponentName,
 				Kind:          action.Definition.Kind,
 			}
 
-			inst := workloads.InstantiatedWorkload{
+			workload := workloads.InstantiatedWorkload{
 				Application:   appName,
 				Name:          action.ComponentName,
 				Workload:      *action.Component,
 				BindingValues: bindingValues,
 			}
 
-			logger.Info("Rendering workload")
-			outputResources, err := dp.renderWorkload(ctx, inst)
+			logger.Info("Rendering workload. Application: %s, Component: %s", workload.Application, workload.Name)
+			dbOutputResources := []db.OutputResource{}
+			outputResources, err := dp.renderWorkload(ctx, workload)
 			if err != nil {
 				errs = append(errs, err)
-				dbOutputResources := []db.OutputResource{}
 				for _, resource := range outputResources {
+					logger.WithValues(radlogger.LogFieldLocalID, resource.LocalID).Info(fmt.Sprintf("Rendered output resource - LocalID: %s, type: %s\n", resource.LocalID, resource.Type))
+
 					// Even if the operation fails, return the output resources created so far
 					// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 					// we no longer need to track the output resources on error
@@ -211,22 +135,17 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				continue
 			}
 
-			var existingStatus *db.DeploymentWorkload
-			for _, existing := range d.Workloads {
-				if existing.ComponentName == action.ComponentName {
-					existingStatus = &existing
-					break
-				}
-			}
-
-			dbOutputResources := []db.OutputResource{}
+			// Deploy output resources rendered for the workload
 			for _, resource := range outputResources {
-				var existingResource *db.DeploymentResource
-				if existingStatus != nil {
-					for _, existing := range existingStatus.Resources {
-						if existing.LocalID == resource.LocalID {
-							existingResource = &existing
-							break
+				var existingResourceState *db.DeploymentResource
+			workloadsloop:
+				for _, existing := range deploymentStatus.Workloads {
+					if existing.ComponentName == action.ComponentName {
+						for _, currentResource := range existing.Resources {
+							if currentResource.LocalID == resource.LocalID {
+								existingResourceState = &currentResource
+								break workloadsloop
+							}
 						}
 					}
 				}
@@ -241,55 +160,53 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					Application: appName,
 					Component:   action.ComponentName,
 					Resource:    resource,
-					Existing:    existingResource,
+					Existing:    existingResourceState,
 				})
-				// Record the output resources created so far
+				// Persist output resource state in the database.
+				// This step is needed before error handling until https://github.com/Azure/radius/issues/614 is resolved
 				addDBOutputResource(resource, &dbOutputResources)
-
+				action.Definition.Properties.OutputResources = dbOutputResources
 				if err != nil {
-					errs = append(errs, fmt.Errorf("error applying workload resource %v %v: %w", properties, action.ComponentName, err))
+					errs = append(errs, fmt.Errorf("error applying workload for component %s: %w", action.ComponentName, err))
 					continue
 				}
 
-				dr := db.DeploymentResource{
+				dbDeploymentResource := db.DeploymentResource{
 					LocalID:    resource.LocalID,
 					Type:       resource.Kind,
 					Properties: properties,
 				}
-				dw.Resources = append(dw.Resources, dr)
+				dbDeploymentWorkload.Resources = append(dbDeploymentWorkload.Resources, dbDeploymentResource)
 			}
 
-			// Add the output resources to the DB component definition
-			action.Definition.Properties.OutputResources = dbOutputResources
-
-			wrps := []workloads.WorkloadResourceProperties{}
-			for _, resource := range dw.Resources {
-				wr := workloads.WorkloadResourceProperties{
+			deployedResources := []workloads.WorkloadResourceProperties{}
+			for _, resource := range dbDeploymentWorkload.Resources {
+				resourceProperties := workloads.WorkloadResourceProperties{
 					LocalID:    resource.LocalID,
 					Type:       resource.Type,
 					Properties: resource.Properties,
 				}
-				wrps = append(wrps, wr)
+				deployedResources = append(deployedResources, resourceProperties)
 			}
 
 			// Populate data for the bindings that this component provides
-			err = dp.processBindings(ctx, inst, wrps, bindingValues)
+			err = dp.processBindings(ctx, workload, deployedResources, bindingValues)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("error applying workload bindings %v: %w", action.ComponentName, err))
 				continue
 			}
 
 			updated := false
-			for i, existing := range d.Workloads {
-				if existing.ComponentName == dw.ComponentName {
-					d.Workloads[i] = dw
+			for i, existing := range deploymentStatus.Workloads {
+				if existing.ComponentName == dbDeploymentWorkload.ComponentName {
+					deploymentStatus.Workloads[i] = dbDeploymentWorkload
 					updated = true
 					break
 				}
 			}
 
 			if !updated {
-				d.Workloads = append(d.Workloads, dw)
+				deploymentStatus.Workloads = append(deploymentStatus.Workloads, dbDeploymentWorkload)
 			}
 
 			logger.WithValues(radlogger.LogFieldComponentKind, action.Component.Kind).Info("successfully applied workload")
@@ -297,10 +214,10 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 		case DeleteWorkload:
 			// Remove the deployment record
 			var match db.DeploymentWorkload
-			for i, existing := range d.Workloads {
+			for i, existing := range deploymentStatus.Workloads {
 				if existing.ComponentName == action.ComponentName {
 					match = existing
-					d.Workloads = append(d.Workloads[:i], d.Workloads[i+1:]...)
+					deploymentStatus.Workloads = append(deploymentStatus.Workloads[:i], deploymentStatus.Workloads[i+1:]...)
 					break
 				}
 			}
@@ -333,7 +250,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 	}
 
 	names := map[string]bool{}
-	for _, dw := range d.Workloads {
+	for _, dw := range deploymentStatus.Workloads {
 		if _, ok := names[dw.ComponentName]; ok {
 			errs = append(errs, fmt.Errorf("duplicate component name %v", dw.ComponentName))
 		}
@@ -351,11 +268,11 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 func addDBOutputResource(resource outputresource.OutputResource, dbOutputResources *[]db.OutputResource) {
 	// Save the output resource to DB
 	dbr := db.OutputResource{
-		Managed:            resource.Managed,
 		LocalID:            resource.LocalID,
 		ResourceKind:       resource.Kind,
-		OutputResourceInfo: resource.Info,
+		Managed:            resource.Managed,
 		OutputResourceType: resource.Type,
+		OutputResourceInfo: resource.Info,
 		Resource:           resource.Resource,
 	}
 	*dbOutputResources = append(*dbOutputResources, dbr)
@@ -431,20 +348,14 @@ func (dp *deploymentProcessor) renderWorkload(ctx context.Context, w workloads.I
 	ctx = radlogger.WrapLogContext(ctx,
 		radlogger.LogFieldWorkLoadKind, w.Workload.Kind,
 		radlogger.LogFieldWorkLoadName, w.Name)
-	logger := radlogger.GetLogger(ctx)
+
 	componentKind, err := dp.appmodel.LookupComponent(w.Workload.Kind)
 	if err != nil {
 		return []outputresource.OutputResource{}, err
 	}
 
 	resources, err := componentKind.Renderer().Render(ctx, w)
-	for _, o := range resources {
-		logger.WithValues(radlogger.LogFieldLocalID, o.LocalID).Info(fmt.Sprintf("Created output resource for workload - LocalID: %s, output resource type: %s\n", o.LocalID, o.Type))
-	}
 	if err != nil {
-		// Even if the operation fails, return the output resources created so far
-		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
-		// we no longer need to track the output resources on error
 		return resources, fmt.Errorf("could not render workload of kind %v: %v", w.Workload.Kind, err)
 	}
 
