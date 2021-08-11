@@ -99,7 +99,7 @@ func TestComponentValidator(t *testing.T) {
 		  "id": "id", "name": "name", "kind": "kind", "location": "location",
 		  "properties": {
 		    "traits": [{
-              "kind":   "dapr",
+              "kind":   "dapr.io/App@v1alpha1",
               "appId":   "appId",
               "appPort": "appPort"
             }]
@@ -111,7 +111,7 @@ func TestComponentValidator(t *testing.T) {
 		  "id": "id", "name": "name", "kind": "kind", "location": "location",
 		  "properties": {
 		    "traits": [{
-              "kind":     "dapr",
+              "kind":     "radius.dev/InboundRoute@v1alpha1",
               "hostName": "localhost",
               "binding":  "foo"
             }]
@@ -123,7 +123,7 @@ func TestComponentValidator(t *testing.T) {
 		  "id": "id", "name": "name", "kind": "kind", "location": "location",
 		  "properties": {
 		    "traits": [{
-              "kind":     "dapr",
+              "kind":     "radius.dev/InboundRoute@v1alpha1",
               "hostName": "localhost",
               "binding":  "foo",
               "appId":    "wrong, cannot combine traits"

@@ -14,7 +14,8 @@
       "properties": {
         "kind": {
           "description": "Component kind.",
-          "type": "string"
+          "type": "string",
+          "enum": ["dapr.io/App@v1alpha1"]
         },
         "appPort": {
           "description": "Dapr appPort.",
@@ -32,7 +33,8 @@
       "properties": {
         "kind": {
           "description": "Component kind.",
-          "type": "string"
+          "type": "string",
+          "enum": ["radius.dev/InboundRoute@v1alpha1"]
         },
         "hostName": {
           "description": "Host name.",
