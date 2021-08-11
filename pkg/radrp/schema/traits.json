@@ -35,11 +35,11 @@
 	  "type": "string"
 	},
 	"hostName": {
-	  "description": "Host name (InBoundRoute trait).",
+	  "description": "Host name.",
 	  "type": "string"
 	},
 	"binding": {
-	  "description": "Binding (InboundRoute trait).",
+	  "description": "Binding name.",
 	  "type": "string"
 	}
       },
