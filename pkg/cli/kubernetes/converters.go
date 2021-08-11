@@ -7,7 +7,6 @@ package kubernetes
 
 import (
 	"encoding/json"
-	"fmt"
 
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 
@@ -92,21 +91,11 @@ func ConvertK8sComponentToARM(input radiusv1alpha1.Component) (*radclient.Compon
 			if err != nil {
 				return nil, err
 			}
-			// azure/autorest's polymorphic type parser does not expose a public
-			// method to unmarshal polymorphically.
-			//
-			// We work around to parse the outer layer instead, to avoid duplicating
-			// the discrinator checks here.
-			c := radclient.ComponentProperties{}
-			inComponent := fmt.Sprintf(`{"traits": [%s]}`, string(bytes))
-			err = json.Unmarshal([]byte(inComponent), &c)
+			t, err := radclient.UnmarshalComponentTraitClassification(json.RawMessage(bytes))
 			if err != nil {
 				return nil, err
 			}
-			if len(c.Traits) < 1 {
-				return nil, fmt.Errorf("fail to convert trait: %s", string(bytes))
-			}
-			result.Properties.Traits = append(result.Properties.Traits, c.Traits[0])
+			result.Properties.Traits = append(result.Properties.Traits, t)
 		}
 	}
 
