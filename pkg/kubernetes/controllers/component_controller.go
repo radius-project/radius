@@ -16,6 +16,7 @@ import (
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/model/components"
+	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
@@ -415,7 +416,7 @@ func (r *ComponentReconciler) ApplyState(
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.Model = model.NewKubernetesModel(&r.Client)
+	r.Model = k8smodel.NewKubernetesModel(&r.Client)
 	r.recorder = mgr.GetEventRecorderFor("radius")
 
 	// Index components by application

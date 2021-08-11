@@ -3,9 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package model
+package azure
 
 import (
+	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -24,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
+func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) model.ApplicationModel {
 	renderers := map[string]workloads.WorkloadRenderer{
 		daprstatestorev1alpha1.Kind:  &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues},
 		daprpubsubv1alpha1.Kind:      &daprpubsubv1alpha1.Renderer{},
@@ -51,5 +52,5 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) ApplicationModel {
 		outputresource.KindAzureKeyVaultSecret:              handlers.NewAzureKeyVaultSecretHandler(arm),
 		outputresource.KindAzureRedis:                       handlers.NewAzureRedisHandler(arm),
 	}
-	return NewModel(renderers, handlers)
+	return model.NewModel(renderers, handlers)
 }
