@@ -101,7 +101,7 @@ func TestComponentValidator(t *testing.T) {
 		    "traits": [{
               "kind":   "dapr.io/App@v1alpha1",
               "appId":   "appId",
-              "appPort": "appPort"
+              "appPort": 9090
             }]
 		  }
 		}`,

@@ -19,7 +19,7 @@
         },
         "appPort": {
           "description": "Dapr appPort.",
-          "type": "string"
+          "type": "integer"
         },
         "appId": {
           "description": "Dapr appId.",
