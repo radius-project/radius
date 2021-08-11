@@ -10,6 +10,7 @@
       }]
     },
     "DaprTrait": {
+      "type": "object",
       "description": "Dapr ComponentTrait",
       "properties": {
         "kind": {
@@ -29,6 +30,7 @@
       "additionalProperties": false
     },
     "InboundRouteTrait": {
+      "type": "object",
       "description": "InboundRoute ComponentTrait",
       "properties": {
         "kind": {

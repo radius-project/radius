@@ -626,10 +626,6 @@
         "properties"
       ],
       "properties": {
-        "name": {
-          "description": "Defines the name of the deployment.",
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/DeploymentProperties",
           "description": "Properties of the deployment."
@@ -703,10 +699,6 @@
         "properties"
       ],
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "Name of the component."
-        },
         "kind": {
           "type": "string",
           "description": "Resource type of the component"
