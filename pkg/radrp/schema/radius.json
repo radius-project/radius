@@ -746,14 +746,15 @@
           "type": "array",
           "description": "Uses spec of the component",
           "items": {
-	      "type": "object"
+	     "type": "object"
           }
         },
         "traits": {
           "type": "array",
           "description": "Traits spec of the component",
           "items": {
-	      "type": "object"
+	    "type": "object",
+	    "$ref": "traits.json#/definitions/ComponentTrait"
           }
         },
         "outputResources": {

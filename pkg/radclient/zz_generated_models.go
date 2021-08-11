@@ -124,7 +124,7 @@ type ComponentProperties struct {
 	Run map[string]interface{} `json:"run,omitempty"`
 
 	// Traits spec of the component
-	Traits []map[string]interface{} `json:"traits,omitempty"`
+	Traits []ComponentTraitClassification `json:"traits,omitempty"`
 
 	// Uses spec of the component
 	Uses []map[string]interface{} `json:"uses,omitempty"`
@@ -143,6 +143,44 @@ func (c ComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type ComponentProperties.
+func (c *ComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "bindings":
+				err = unpopulate(val, &c.Bindings)
+				delete(rawMsg, key)
+		case "config":
+				err = unpopulate(val, &c.Config)
+				delete(rawMsg, key)
+		case "outputResources":
+				err = unpopulate(val, &c.OutputResources)
+				delete(rawMsg, key)
+		case "revision":
+				err = unpopulate(val, &c.Revision)
+				delete(rawMsg, key)
+		case "run":
+				err = unpopulate(val, &c.Run)
+				delete(rawMsg, key)
+		case "traits":
+				c.Traits, err = unmarshalComponentTraitClassificationArray(val)
+				delete(rawMsg, key)
+		case "uses":
+				err = unpopulate(val, &c.Uses)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ComponentResource - Component resource.
 type ComponentResource struct {
 	TrackedResource
@@ -159,6 +197,96 @@ func (c ComponentResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "kind", c.Kind)
 	populate(objectMap, "properties", c.Properties)
 	return json.Marshal(objectMap)
+}
+
+// ComponentTraitClassification provides polymorphic access to related types.
+// Call the interface's GetComponentTrait() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *ComponentTrait, *DaprTrait, *InboundRouteTrait
+type ComponentTraitClassification interface {
+	// GetComponentTrait returns the ComponentTrait content of the underlying type.
+	GetComponentTrait() *ComponentTrait
+}
+
+// ComponentTrait - Trait of a component.
+type ComponentTrait struct {
+	// REQUIRED; Component kind.
+	Kind *string `json:"kind,omitempty"`
+}
+
+// GetComponentTrait implements the ComponentTraitClassification interface for type ComponentTrait.
+func (c *ComponentTrait) GetComponentTrait() *ComponentTrait { return c }
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ComponentTrait.
+func (c *ComponentTrait) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return c.unmarshalInternal(rawMsg)
+}
+
+func (c ComponentTrait) marshalInternal(discValue string) map[string]interface{} {
+	objectMap := make(map[string]interface{})
+	c.Kind = &discValue
+	objectMap["kind"] = c.Kind
+	return objectMap
+}
+
+func (c *ComponentTrait) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, &c.Kind)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DaprTrait - Dapr ComponentTrait
+type DaprTrait struct {
+	ComponentTrait
+	// Dapr appId.
+	AppID *string `json:"appId,omitempty"`
+
+	// Dapr appPort.
+	AppPort *int32 `json:"appPort,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprTrait.
+func (d DaprTrait) MarshalJSON() ([]byte, error) {
+	objectMap := d.ComponentTrait.marshalInternal("dapr.io/App@v1alpha1")
+	populate(objectMap, "appId", d.AppID)
+	populate(objectMap, "appPort", d.AppPort)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprTrait.
+func (d *DaprTrait) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "appId":
+				err = unpopulate(val, &d.AppID)
+				delete(rawMsg, key)
+		case "appPort":
+				err = unpopulate(val, &d.AppPort)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return d.ComponentTrait.unmarshalInternal(rawMsg)
 }
 
 // DeploymentBeginCreateOrUpdateOptions contains the optional parameters for the Deployment.BeginCreateOrUpdate method.
@@ -285,6 +413,47 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
+// InboundRouteTrait - InboundRoute ComponentTrait
+type InboundRouteTrait struct {
+	ComponentTrait
+	// Binding name.
+	Binding *string `json:"binding,omitempty"`
+
+	// Host name.
+	HostName *string `json:"hostName,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type InboundRouteTrait.
+func (i InboundRouteTrait) MarshalJSON() ([]byte, error) {
+	objectMap := i.ComponentTrait.marshalInternal("radius.dev/InboundRoute@v1alpha1")
+	populate(objectMap, "binding", i.Binding)
+	populate(objectMap, "hostName", i.HostName)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type InboundRouteTrait.
+func (i *InboundRouteTrait) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "binding":
+				err = unpopulate(val, &i.Binding)
+				delete(rawMsg, key)
+		case "hostName":
+				err = unpopulate(val, &i.HostName)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return i.ComponentTrait.unmarshalInternal(rawMsg)
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -369,5 +538,12 @@ func populate(m map[string]interface{}, k string, v interface{}) {
 	} else if !reflect.ValueOf(v).IsNil() {
 		m[k] = v
 	}
+}
+
+func unpopulate(data json.RawMessage, v interface{}) error {
+	if data == nil {
+		return nil
+	}
+	return json.Unmarshal(data, v)
 }
 

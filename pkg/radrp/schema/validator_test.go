@@ -82,6 +82,55 @@ func TestComponentValidator(t *testing.T) {
 			invalidTypeErrs("(root).properties", "array", "integer",
 				"uses", "traits", "outputResources")...),
 			invalidTypeErr("(root).properties.revision", "string", "integer")),
+	}, {
+		name: "unrecognized trait.* fields",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "traits": [{
+              "huh": "invalid"
+            }]
+		  }
+		}`,
+		expects: additionalFieldErrs("(root).properties.traits.0", "huh"),
+	}, {
+		name: "valid DaprTrait",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "traits": [{
+              "kind":   "dapr.io/App@v1alpha1",
+              "appId":   "appId",
+              "appPort": 9090
+            }]
+		  }
+		}`,
+	}, {
+		name: "valid InboundRouteTrait",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "traits": [{
+              "kind":     "radius.dev/InboundRoute@v1alpha1",
+              "hostName": "localhost",
+              "binding":  "foo"
+            }]
+		  }
+		}`,
+	}, {
+		name: "cannot combine InboundRouteTrait and DaprTrait",
+		input: `{
+		  "id": "id", "name": "name", "kind": "kind", "location": "location",
+		  "properties": {
+		    "traits": [{
+              "kind":     "radius.dev/InboundRoute@v1alpha1",
+              "hostName": "localhost",
+              "binding":  "foo",
+              "appId":    "wrong, cannot combine traits"
+            }]
+		  }
+		}`,
+		expects: additionalFieldErrs("(root).properties.traits.0", "appId"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
@@ -370,6 +419,21 @@ func requiredFieldErr(position string, field string) ValidationError {
 	return ValidationError{
 		Position: position,
 		Message:  fmt.Sprintf("%s is required", field),
+	}
+}
+
+func additionalFieldErrs(position string, fields ...string) []ValidationError {
+	errs := make([]ValidationError, len(fields))
+	for i, f := range fields {
+		errs[i] = additionalFieldErr(position, f)
+	}
+	return errs
+}
+
+func additionalFieldErr(position string, field string) ValidationError {
+	return ValidationError{
+		Position: position,
+		Message:  fmt.Sprintf("Additional property %s is not allowed", field),
 	}
 }
 

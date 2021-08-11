@@ -1,0 +1,51 @@
+{
+  "definitions": {
+    "ComponentTrait": {
+      "description": "Trait of a component.",
+      "type": "object",
+      "oneOf": [{
+        "$ref": "#/definitions/DaprTrait"
+      }, {
+        "$ref": "#/definitions/InboundRouteTrait"
+      }]
+    },
+    "DaprTrait": {
+      "description": "Dapr ComponentTrait",
+      "properties": {
+        "kind": {
+          "description": "Component kind.",
+          "type": "string",
+          "enum": ["dapr.io/App@v1alpha1"]
+        },
+        "appPort": {
+          "description": "Dapr appPort.",
+          "type": "integer"
+        },
+        "appId": {
+          "description": "Dapr appId.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InboundRouteTrait": {
+      "description": "InboundRoute ComponentTrait",
+      "properties": {
+        "kind": {
+          "description": "Component kind.",
+          "type": "string",
+          "enum": ["radius.dev/InboundRoute@v1alpha1"]
+        },
+        "hostName": {
+          "description": "Host name.",
+          "type": "string"
+        },
+        "binding": {
+          "description": "Binding name.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
