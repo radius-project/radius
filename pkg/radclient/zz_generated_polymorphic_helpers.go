@@ -7,9 +7,7 @@
 
 package radclient
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
 func unmarshalComponentTraitClassification(rawMsg json.RawMessage) (ComponentTraitClassification, error) {
 	if rawMsg == nil {
@@ -49,3 +47,4 @@ func unmarshalComponentTraitClassificationArray(rawMsg json.RawMessage) ([]Compo
 	}
 	return fArray, nil
 }
+

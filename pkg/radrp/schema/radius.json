@@ -570,7 +570,6 @@
       ],
       "properties": {
         "properties": {
-          "type": "object",
           "$ref": "#/definitions/ApplicationProperties",
           "description": "Properties of the application."
         }
@@ -590,7 +589,6 @@
       ],
       "properties": {
         "properties": {
-          "type": "object",
           "$ref": "#/definitions/ApplicationCreateProperties"
         }
       }
@@ -633,7 +631,6 @@
           "type": "string"
         },
         "properties": {
-          "type": "object",
           "$ref": "#/definitions/DeploymentProperties",
           "description": "Properties of the deployment."
         }
@@ -672,7 +669,6 @@
       ],
       "properties": {
         "properties": {
-          "type": "object",
           "$ref": "#/definitions/DeploymentProperties"
         }
       }
@@ -716,7 +712,6 @@
           "description": "Resource type of the component"
         },
         "properties": {
-          "type": "object",
           "$ref": "#/definitions/ComponentProperties",
           "description": "Properties of the component."
         }
@@ -753,7 +748,6 @@
           "type": "array",
           "description": "Traits spec of the component",
           "items": {
-	    "type": "object",
 	    "$ref": "traits.json#/definitions/ComponentTrait"
           }
         },
@@ -784,7 +778,6 @@
           "description": "Resource type of the component"
         },
         "properties": {
-          "type": "object",
           "$ref": "#/definitions/ComponentProperties"
         }
       }
@@ -816,7 +809,6 @@
       ],
       "properties": {
         "properties": {
-          "type": "object",
           "$ref": "#/definitions/ScopeProperties",
           "description": "Properties of the scope."
         }
