@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package container
+package manualscale
 
 import (
 	"context"
@@ -16,21 +16,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// Renderer is the WorkloadRenderer implementation for the dapr trait decorator.
+// Renderer is the WorkloadRenderer implementation for the manualscale trait decorator.
 type Renderer struct {
 	Inner workloads.WorkloadRenderer
 }
 
-// Allocate is the WorkloadRenderer implementation for the dapr trait decorator.
+// Allocate is the WorkloadRenderer implementation for the manualscale trait decorator.
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	bindings, err := r.Inner.AllocateBindings(ctx, workload, resources)
-	if err != nil {
-		return nil, err
-	}
-
+	// ManualScale doesn't affect bindings today as the binding returned by the container
+	// workload references the k8s hostname, which will do round-robin load balancing by default.
+	return r.Inner.AllocateBindings(ctx, workload, resources)
 }
 
-// Render is the WorkloadRenderer implementation for the dapr deployment decorator.
+// Render is the WorkloadRenderer implementation for the manualscale deployment decorator.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	// Let the inner renderer do its work
 	resources, err := r.Inner.Render(ctx, w)
@@ -71,11 +69,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				continue
 			}
 		}
-
 	}
 
 	return resources, err
 }
+
 func (r Renderer) setReplicas(o runtime.Object, replicas *int32) {
 	dep, ok := o.(*appsv1.Deployment)
 	if ok {

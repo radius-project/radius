@@ -3,9 +3,9 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package container
+package manualscale
 
-const Kind = "radius.dev/ContainerWorkload@v1alpha1"
+const Kind = "radius.dev/ManualScaling@v1alpha1"
 
 type Trait struct {
 	Kind     string `json:"kind"`

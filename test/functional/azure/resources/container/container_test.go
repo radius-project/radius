@@ -128,3 +128,58 @@ func Test_ContainerInboundRoute(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_ContainerManualScale(t *testing.T) {
+	application := "azure-resources-container-inboundroute"
+	template := "testdata/azure-resources-container-inboundroute.bicep"
+	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+		{
+			Executor: azuretest.NewDeployStepExecutor(template),
+			AzureResources: &validation.AzureResourceSet{
+				Resources: []validation.ExpectedResource{
+					// Intentionally Empty
+				},
+			},
+			Pods: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					application: {
+						validation.NewK8sObjectForComponent(application, "frontend"),
+						validation.NewK8sObjectForComponent(application, "backend"),
+					},
+				},
+			},
+			Components: &validation.ComponentSet{
+				Components: []validation.Component{
+					{
+						ApplicationName: application,
+						ComponentName:   "frontend",
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+						},
+					},
+					{
+						ApplicationName: application,
+						ComponentName:   "backend",
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+						},
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
+				// Verify there are two pods created for backend.
+				labelset := kubernetes.MakeSelectorLabels(application, "backend")
+
+				matches, err := at.Options.K8sClient.CoreV1().Pods(application).List(context.Background(), metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(labelset).String(),
+				})
+				require.NoError(t, err, "failed to list pods")
+				require.Lenf(t, matches.Items, 2, "items should contain two match, instead it had: %+v", matches.Items)
+			},
+		},
+	})
+
+	test.Test(t)
+}
