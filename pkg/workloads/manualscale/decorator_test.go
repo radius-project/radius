@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
@@ -50,10 +50,7 @@ func Test_Render_Success(t *testing.T) {
 				{
 					Kind: Kind,
 					AdditionalProperties: map[string]interface{}{
-						"appId":    "testappId",
-						"appPort":  5000,
-						"config":   "test-config",
-						"protocol": "grpc",
+						"replicas": 2,
 					},
 				},
 			},
@@ -67,14 +64,7 @@ func Test_Render_Success(t *testing.T) {
 	deployment := findDeployment(resources)
 	require.NotNil(t, deployment)
 
-	expected := map[string]string{
-		"dapr.io/enabled":  "true",
-		"dapr.io/app-id":   "testappId",
-		"dapr.io/app-port": "5000",
-		"dapr.io/protocol": "grpc",
-		"dapr.io/config":   "test-config",
-	}
-	require.Equal(t, expected, deployment.Spec.Template.Annotations)
+	require.Equal(t, int32(2), *deployment.Spec.Replicas)
 }
 
 func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {

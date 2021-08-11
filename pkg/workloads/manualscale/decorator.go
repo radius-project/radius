@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Azure/radius/pkg/radrp/components"
+	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
