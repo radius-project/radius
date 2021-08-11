@@ -9,7 +9,6 @@ package radclient
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 func unmarshalComponentTraitClassification(rawMsg json.RawMessage) (ComponentTraitClassification, error) {
@@ -25,7 +24,6 @@ func unmarshalComponentTraitClassification(rawMsg json.RawMessage) (ComponentTra
 	case "dapr.io/App@v1alpha1":
 		b = &DaprTrait{}
 	case "radius.dev/InboundRoute@v1alpha1":
-		fmt.Println("HERE")
 		b = &InboundRouteTrait{}
 	default:
 		b = &ComponentTrait{}
