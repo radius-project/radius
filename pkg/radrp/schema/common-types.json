@@ -7,6 +7,7 @@
   "paths": {},
   "definitions": {
     "Resource": {
+      "type": "object",
       "title": "Resource",
       "description": "Common fields that are returned in the response for all Azure Resource Manager resources",
       "properties": {
@@ -46,6 +47,7 @@
       ]
     },
     "TrackedResource": {
+      "type": "object",
       "title": "Tracked Resource",
       "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
       "properties": {
@@ -77,6 +79,7 @@
       ]
     },
     "ProxyResource": {
+      "type": "object",
       "title": "Proxy Resource",
       "description": "The resource model definition for a Azure Resource Manager proxy resource. It will not have tags and a location",
       "allOf": [
@@ -272,6 +275,7 @@
       ]
     },
     "ErrorDetail": {
+      "type": "object",
       "description": "The error detail.",
       "properties": {
         "code": {
@@ -308,6 +312,7 @@
       }
     },
     "ErrorResponse": {
+      "type": "object",
       "title": "Error response",
       "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations. (This also follows the OData error response format.).",
       "properties": {
@@ -318,6 +323,7 @@
       }
     },
     "ErrorAdditionalInfo": {
+      "type": "object",
       "properties": {
         "type": {
           "readOnly": true,

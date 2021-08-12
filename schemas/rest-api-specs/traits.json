@@ -7,8 +7,8 @@
   "paths": {},
   "definitions": {
     "ComponentTrait": {
-      "description": "Trait of a component.",
       "type": "object",
+      "description": "Trait of a component.",
       "properties": {
         "kind": {
           "description": "Component kind.",
@@ -21,6 +21,7 @@
       "discriminator": "kind"
     },
     "DaprTrait": {
+      "type": "object",
       "description": "Dapr ComponentTrait",
       "allOf": [{
 	"$ref": "#/definitions/ComponentTrait"
@@ -39,6 +40,7 @@
       "additionalProperties": false
     },
     "InboundRouteTrait": {
+      "type": "object",
       "description": "InboundRoute ComponentTrait",
       "allOf": [{
 	"$ref": "#/definitions/ComponentTrait"
