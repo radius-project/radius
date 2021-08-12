@@ -217,7 +217,7 @@ func Test_ConvertK8sDeploymentToARM(t *testing.T) {
 			},
 		},
 		Properties: &radclient.DeploymentProperties{
-			Components: []*radclient.DeploymentPropertiesComponentsItem{
+			Components: []*radclient.DeploymentComponent{
 				{
 					ComponentName: to.StringPtr("frontend"),
 				},

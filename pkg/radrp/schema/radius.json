@@ -639,23 +639,36 @@
         "components"
       ],
       "properties": {
+	"provisioningState": {
+	  "type": "string",
+	  "description": "The provisioning state of the Deployment",
+	  "readOnly": true
+	},
         "components": {
           "type": "array",
           "description": "List of components in the deployment.",
           "items": {
-            "type": "object",
-            "required": [
-              "componentName"
-            ],
-            "properties": {
-              "componentName": {
-                "type": "string",
-                "description": "Name of the component"
-              }
-            }
+	    "$ref": "#/definitions/DeploymentComponent"
           }
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "DeploymentComponent": {
+      "description": "An entry of a component in a deployment",
+      "type": "object",
+      "properties": {
+	"componentName": {
+	  "type": "string"
+	},
+	"revision": {
+	  "type": "string"
+	}
+      },
+      "required": [
+	"componentName"
+      ],
+      "additionalProperties": false
     },
     "DeploymentCreateParameters": {
       "description": "Parameters used to create a deployment.",

@@ -64,7 +64,7 @@ func Test_FormatDeploymentTable(t *testing.T) {
 	options := GetDeploymentTableFormat()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	components := []*radclient.DeploymentPropertiesComponentsItem{
+	components := []*radclient.DeploymentComponent{
 		{
 			ComponentName: to.StringPtr("frontend"),
 		},

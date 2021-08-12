@@ -299,6 +299,13 @@ type DeploymentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
+// DeploymentComponent - An entry of a component in a deployment
+type DeploymentComponent struct {
+	// REQUIRED
+	ComponentName *string `json:"componentName,omitempty"`
+	Revision *string `json:"revision,omitempty"`
+}
+
 // DeploymentCreateParameters - Parameters used to create a deployment.
 type DeploymentCreateParameters struct {
 	// REQUIRED; Properties of a deployment.
@@ -331,19 +338,18 @@ type DeploymentListByApplicationOptions struct {
 // DeploymentProperties - Properties of a deployment.
 type DeploymentProperties struct {
 	// REQUIRED; List of components in the deployment.
-	Components []*DeploymentPropertiesComponentsItem `json:"components,omitempty"`
+	Components []*DeploymentComponent `json:"components,omitempty"`
+
+	// READ-ONLY; The provisioning state of the Deployment
+	ProvisioningState *string `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DeploymentProperties.
 func (d DeploymentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "components", d.Components)
+	populate(objectMap, "provisioningState", d.ProvisioningState)
 	return json.Marshal(objectMap)
-}
-
-type DeploymentPropertiesComponentsItem struct {
-	// REQUIRED; Name of the component
-	ComponentName *string `json:"componentName,omitempty"`
 }
 
 // DeploymentResource - Deployment resource.
