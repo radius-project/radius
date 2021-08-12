@@ -23,12 +23,12 @@ func TestComponentValidator(t *testing.T) {
 	}{{
 		name: "valid",
 		input: `{
-		  "id":         "an ID",
-		  "name":       "a name",
-		  "kind":       "a kind",
-		  "location":   "a location",
-		  "properties": {}
-		}`,
+                  "id":         "an ID",
+                  "name":       "a name",
+                  "kind":       "a kind",
+                  "location":   "a location",
+                  "properties": {}
+                }`,
 	}, {
 		name:    "invalid json",
 		input:   "{{}",
@@ -36,18 +36,18 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "missing required top-level fields",
 		input: `{
-		}`,
+                }`,
 		expects: requiredFieldErrs("(root)", "kind", "properties"),
 	}, {
 		name: "wrong types for top-level fields",
 		input: `{
-		  "location":   42,
-		  "tags":       42,
-		  "id":         42,
-		  "name":       42,
-		  "kind":       42,
-		  "properties": 42
-		}`,
+                  "location":   42,
+                  "tags":       42,
+                  "id":         42,
+                  "name":       42,
+                  "kind":       42,
+                  "properties": 42
+                }`,
 		expects: append(
 			invalidTypeErrs("(root)", "string", "integer",
 				"id", "name", "kind", "location"),
@@ -56,26 +56,26 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "wrong types for tags values",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location", "properties": {},
-		  "tags": {
-		    "key": 42
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location", "properties": {},
+                  "tags": {
+                    "key": 42
+                  }
+                }`,
 		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}, {
 		name: "wrong types for properties.* fields",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "properties": {
-		    "revision":        42,
-		    "config":          42,
-		    "run":             42,
-		    "bindings":        42,
-		    "uses":            42,
-		    "traits":          42,
-		    "outputResources": 42
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "revision":        42,
+                    "config":          42,
+                    "run":             42,
+                    "bindings":        42,
+                    "uses":            42,
+                    "traits":          42,
+                    "outputResources": 42
+                  }
+                }`,
 		expects: append(append(
 			invalidTypeErrs("(root).properties", "object", "integer",
 				"config", "run", "bindings"),
@@ -85,51 +85,51 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "unrecognized trait.* fields",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "properties": {
-		    "traits": [{
-              "huh": "invalid"
-            }]
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "traits": [{
+                      "huh": "invalid"
+                    }]
+                  }
+                }`,
 		expects: additionalFieldErrs("(root).properties.traits.0", "huh"),
 	}, {
 		name: "valid DaprTrait",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "properties": {
-		    "traits": [{
-              "kind":   "dapr.io/App@v1alpha1",
-              "appId":   "appId",
-              "appPort": 9090
-            }]
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "traits": [{
+                      "kind":   "dapr.io/App@v1alpha1",
+                      "appId":   "appId",
+                      "appPort": 9090
+                    }]
+                  }
+                }`,
 	}, {
 		name: "valid InboundRouteTrait",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "properties": {
-		    "traits": [{
-              "kind":     "radius.dev/InboundRoute@v1alpha1",
-              "hostName": "localhost",
-              "binding":  "foo"
-            }]
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "traits": [{
+                      "kind":     "radius.dev/InboundRoute@v1alpha1",
+                      "hostName": "localhost",
+                      "binding":  "foo"
+                    }]
+                  }
+                }`,
 	}, {
 		name: "cannot combine InboundRouteTrait and DaprTrait",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "properties": {
-		    "traits": [{
-              "kind":     "radius.dev/InboundRoute@v1alpha1",
-              "hostName": "localhost",
-              "binding":  "foo",
-              "appId":    "wrong, cannot combine traits"
-            }]
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "traits": [{
+                      "kind":     "radius.dev/InboundRoute@v1alpha1",
+                      "hostName": "localhost",
+                      "binding":  "foo",
+                      "appId":    "wrong, cannot combine traits"
+                    }]
+                  }
+                }`,
 		expects: additionalFieldErrs("(root).properties.traits.0", "appId"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -149,11 +149,11 @@ func TestApplicationValidator(t *testing.T) {
 	}{{
 		name: "valid",
 		input: `{
-		  "id":         "an ID",
-		  "name":       "a name",
-		  "kind":       "a kind",
-		  "location":   "a location"
-		}`,
+                  "id":         "an ID",
+                  "name":       "a name",
+                  "kind":       "a kind",
+                  "location":   "a location"
+                }`,
 	}, {
 		name:    "invalid json",
 		input:   "{{}",
@@ -161,10 +161,10 @@ func TestApplicationValidator(t *testing.T) {
 	}, {
 		name: "wrong types for top level fields",
 		input: `{
-		  "location":   false,
-		  "tags":       false,
-		  "properties": false
-		}`,
+                  "location":   false,
+                  "tags":       false,
+                  "properties": false
+                }`,
 		expects: append(
 			invalidTypeErrs("(root)", "object", "boolean",
 				"tags", "properties"),
@@ -172,11 +172,11 @@ func TestApplicationValidator(t *testing.T) {
 	}, {
 		name: "wrong types for tags values",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "tags": {
-		    "key": 42
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "tags": {
+                    "key": 42
+                  }
+                }`,
 		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -196,14 +196,19 @@ func TestDeploymentValidator(t *testing.T) {
 	}{{
 		name: "valid",
 		input: `{
-		  "id":         "id",
-		  "name":       "name",
-		  "kind":       "kind",
-		  "location":   "location",
-		  "properties": {
-		    "components": []
-		  }
-		}`,
+                  "id":         "id",
+                  "name":       "name",
+                  "kind":       "kind",
+                  "location":   "location",
+                  "properties": {
+                    "provisioningState": "READY",
+                    "components": [{
+                      "componentName": "component-name",
+                      "id":            "id",
+                      "revision":      "revision"
+                    }]
+                  }
+                }`,
 	}, {
 		name:    "invalid json",
 		input:   "{{}",
@@ -211,16 +216,16 @@ func TestDeploymentValidator(t *testing.T) {
 	}, {
 		name: "missing required fields at root",
 		input: `{
-		}`,
+                }`,
 		expects: requiredFieldErrs("(root)", "properties"),
 	}, {
 		name: "wrong types for top level fields",
 		input: `{
-		  "name":       false,
-		  "location":   false,
-		  "tags":       false,
-		  "properties": false
-		}`,
+                  "name":       false,
+                  "location":   false,
+                  "tags":       false,
+                  "properties": false
+                }`,
 		expects: append(
 			invalidTypeErrs("(root)", "object", "boolean",
 				"tags", "properties"),
@@ -229,25 +234,48 @@ func TestDeploymentValidator(t *testing.T) {
 	}, {
 		name: "wrong types for tags values",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "properties": {
-		    "components": []
-		  },
-		  "tags": {
-		    "key": 42
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "components": []
+                  },
+                  "tags": {
+                    "key": 42
+                  }
+                }`,
 		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
+	}, {
+		name: "unexpected properties.foo field",
+		input: `{
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "foo": "additionalProperty not allowed",
+                    "components": []
+                  }
+                }`,
+		expects: additionalFieldErrs("(root).properties", "foo"),
 	}, {
 		name: "wrong types for components values",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "properties": {
-		    "components": ["wrong", "type"]
-		  }
-
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "components": ["wrong", "type"]
+                  }
+                }`,
 		expects: invalidTypeErrs("(root).properties.components", "object", "string", "0", "1"),
+	}, {
+		name: "wrong types for components[].* fields",
+		input: `{
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "components": [{
+                      "componentName": 42,
+                      "id":            42,
+                      "revision":      42
+                    }]
+                  }
+                }`,
+		expects: invalidTypeErrs("(root).properties.components.0", "string", "integer",
+			"componentName", "id", "revision"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
@@ -266,11 +294,11 @@ func TestScopeValidator(t *testing.T) {
 	}{{
 		name: "valid",
 		input: `{
-		  "id":         "id",
-		  "name":       "name",
-		  "kind":       "kind",
-		  "location":   "location"
-		}`,
+                  "id":         "id",
+                  "name":       "name",
+                  "kind":       "kind",
+                  "location":   "location"
+                }`,
 	}, {
 		name:    "invalid json",
 		input:   "{{}",
@@ -278,10 +306,10 @@ func TestScopeValidator(t *testing.T) {
 	}, {
 		name: "wrong types for top level fields",
 		input: `{
-		  "name": false,
-		  "location":   false,
-		  "tags":       false
-		}`,
+                  "name": false,
+                  "location":   false,
+                  "tags":       false
+                }`,
 		expects: append(
 			invalidTypeErrs("(root)", "object", "boolean", "tags"),
 			invalidTypeErrs("(root)", "string", "boolean",
@@ -289,11 +317,11 @@ func TestScopeValidator(t *testing.T) {
 	}, {
 		name: "wrong types for tags values",
 		input: `{
-		  "id": "id", "name": "name", "kind": "kind", "location": "location",
-		  "tags": {
-		    "key": 42
-		  }
-		}`,
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "tags": {
+                    "key": 42
+                  }
+                }`,
 		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -108,7 +108,7 @@ func ConvertK8sDeploymentToARM(input radiusv1alpha1.Deployment) (*radclient.Depl
 	result.Properties = &radclient.DeploymentProperties{}
 
 	for _, dc := range input.Spec.Components {
-		converted := radclient.DeploymentPropertiesComponentsItem{
+		converted := radclient.DeploymentComponent{
 			ComponentName: to.StringPtr(dc.ComponentName),
 		}
 		result.Properties.Components = append(result.Properties.Components, &converted)
