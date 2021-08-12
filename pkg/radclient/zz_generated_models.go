@@ -202,7 +202,7 @@ func (c ComponentResource) MarshalJSON() ([]byte, error) {
 // ComponentTraitClassification provides polymorphic access to related types.
 // Call the interface's GetComponentTrait() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *ComponentTrait, *DaprTrait, *InboundRouteTrait
+// - *ComponentTrait, *DaprTrait, *InboundRouteTrait, *ManualScalingTrait
 type ComponentTraitClassification interface {
 	// GetComponentTrait returns the ComponentTrait content of the underlying type.
 	GetComponentTrait() *ComponentTrait
@@ -452,6 +452,40 @@ func (i *InboundRouteTrait) UnmarshalJSON(data []byte) error {
 		}
 	}
 	return i.ComponentTrait.unmarshalInternal(rawMsg)
+}
+
+// ManualScalingTrait - ManualScaling ComponentTrait
+type ManualScalingTrait struct {
+	ComponentTrait
+	// Replica count.
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ManualScalingTrait.
+func (m ManualScalingTrait) MarshalJSON() ([]byte, error) {
+	objectMap := m.ComponentTrait.marshalInternal("manualscaling.dev/ManualScaling@v1alpha1")
+	populate(objectMap, "replicas", m.Replicas)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ManualScalingTrait.
+func (m *ManualScalingTrait) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "replicas":
+				err = unpopulate(val, &m.Replicas)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return m.ComponentTrait.unmarshalInternal(rawMsg)
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources

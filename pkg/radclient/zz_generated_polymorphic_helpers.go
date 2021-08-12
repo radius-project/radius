@@ -21,6 +21,8 @@ func unmarshalComponentTraitClassification(rawMsg json.RawMessage) (ComponentTra
 	switch m["kind"] {
 	case "dapr.io/App@v1alpha1":
 		b = &DaprTrait{}
+	case "manualscaling.dev/ManualScaling@v1alpha1":
+		b = &ManualScalingTrait{}
 	case "radius.dev/InboundRoute@v1alpha1":
 		b = &InboundRouteTrait{}
 	default:
