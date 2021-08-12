@@ -10,8 +10,9 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/armauth"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,8 +31,8 @@ type daprPubSubServiceBusHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// topic name must be specified by the user
 	topicName, ok := properties[ServiceBusTopicNameKey]
@@ -89,7 +90,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options Put
 		return nil, err
 	}
 
-	err = handler.PatchDaprPubSub(ctx, properties, *cs, options)
+	err = handler.PatchDaprPubSub(ctx, properties, *cs, *options)
 	if err != nil {
 		return nil, err
 	}
@@ -178,4 +179,22 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 	}
 
 	return nil
+}
+
+func NewDaprPubSubServiceBusHealthHandler(arm armauth.ArmConfig, k8s client.Client) HealthHandler {
+	return &daprPubSubServiceBusHealthHandler{
+		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
+		kubernetesHandler:          kubernetesHandler{k8s: k8s},
+		k8s:                        k8s,
+	}
+}
+
+type daprPubSubServiceBusHealthHandler struct {
+	azureServiceBusBaseHandler
+	kubernetesHandler
+	k8s client.Client
+}
+
+func (handler *daprPubSubServiceBusHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

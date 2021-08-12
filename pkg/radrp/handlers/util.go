@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 )

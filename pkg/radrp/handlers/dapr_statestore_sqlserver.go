@@ -15,11 +15,12 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/cli/util"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,8 +49,8 @@ type daprStateStoreSQLServerHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	location, err := getResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
@@ -63,14 +64,14 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 	password := generatePassword(passwordConditions)
 
 	// Generate server name and create server
-	serverName, err := handler.createServer(ctx, location, dbName, password, options)
+	serverName, err := handler.createServer(ctx, location, dbName, password, *options)
 	if err != nil {
 		return nil, err
 	}
 	properties[serverNameKey] = serverName
 
 	// Create database
-	err = handler.createSQLDB(ctx, location, serverName, dbName, options)
+	err = handler.createSQLDB(ctx, location, serverName, dbName, *options)
 	if err != nil {
 		return nil, err
 	}
@@ -252,4 +253,20 @@ func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, 
 	}
 
 	return nil
+}
+
+func NewDaprStateStoreSQLServerHealthHandler(arm armauth.ArmConfig, k8s client.Client) HealthHandler {
+	return &daprStateStoreSQLServerHealthHandler{
+		arm: arm,
+		k8s: k8s,
+	}
+}
+
+type daprStateStoreSQLServerHealthHandler struct {
+	arm armauth.ArmConfig
+	k8s client.Client
+}
+
+func (handler *daprStateStoreSQLServerHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

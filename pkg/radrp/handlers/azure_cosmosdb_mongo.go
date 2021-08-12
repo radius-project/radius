@@ -12,26 +12,29 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/cli/util"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/armauth"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )
 
 func NewAzureCosmosDBMongoHandler(arm armauth.ArmConfig) ResourceHandler {
-	return &azureCosmosDBMongoHandler{
+	handler := &azureCosmosDBMongoHandler{
 		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
 			arm: arm,
 		},
 	}
+
+	return handler
 }
 
 type azureCosmosDBMongoHandler struct {
 	azureCosmosDBBaseHandler
 }
 
-func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
@@ -42,7 +45,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 	var account *documentdb.DatabaseAccountGetResults
 	if properties[CosmosDBAccountIDKey] == "" {
 		// If we don't have an ID already then we will need to create a new one.
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindMongoDB, options)
+		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindMongoDB, *options)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +62,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options PutOp
 	}
 
 	if properties[CosmosDBDatabaseIDKey] == "" {
-		account, err := handler.CreateDatabase(ctx, *account.Name, properties[CosmosDBDatabaseNameKey], options)
+		account, err := handler.CreateDatabase(ctx, *account.Name, properties[CosmosDBDatabaseNameKey], *options)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +106,7 @@ func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options De
 }
 
 func (handler *azureCosmosDBMongoHandler) GetDatabaseByID(ctx context.Context, databaseID string) (*documentdb.MongoDBDatabaseGetResults, error) {
-	parsed, err := radresources.Parse(databaseID)
+	parsed, err := azresources.Parse(databaseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CosmosDB Mongo Database resource id: %w", err)
 	}
@@ -173,4 +176,22 @@ func (handler *azureCosmosDBMongoHandler) DeleteDatabase(ctx context.Context, ac
 	}
 
 	return nil
+}
+
+func NewAzureCosmosDBMongoHealthHandler(arm armauth.ArmConfig) HealthHandler {
+	handler := &azureCosmosDBMongoHealthHandler{
+		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
+			arm: arm,
+		},
+	}
+
+	return handler
+}
+
+type azureCosmosDBMongoHealthHandler struct {
+	azureCosmosDBBaseHandler
+}
+
+func (handler *azureCosmosDBMongoHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

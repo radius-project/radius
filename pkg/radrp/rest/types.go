@@ -6,6 +6,7 @@
 package rest
 
 import (
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
@@ -40,10 +41,38 @@ type ResourceBase struct {
 	Location       string            `json:"location,omitempty"`
 }
 
+// Represents the possible ProvisioningState values
+const (
+	NotProvisioned = "NotProvisioned"
+	Provisioning   = "Provisioning"
+	Provisioned    = "Provisioned"
+	Failed         = "Failed"
+)
+
+// Represents the possible HealthState values
+const (
+	Healthy   = "Healthy"
+	Unhealthy = "Unhealthy"
+	Degraded  = "Degraded"
+)
+
+// ApplicationStatus represents the status of the overall Radius Application
+type ApplicationStatus struct {
+	ProvisioningState        string `json:"provisioningState"`
+	ProvisioningErrorDetails string `json:"provisioningErrorDetails"`
+	HealthState              string `json:"healthState"`
+	HealthErrorDetails       string `json:"healthErrorDetails"`
+}
+
 // Application represents an Radius Application.
 type Application struct {
 	ResourceBase `json:",inline"`
-	Properties   map[string]interface{} `json:"properties"`
+	Properties   ApplicationProperties `json:"properties"`
+}
+
+// ApplicationProperties represents the properties of an application
+type ApplicationProperties struct {
+	Status ApplicationStatus `json:"status"`
 }
 
 // Component represents an Radius Component.
@@ -55,23 +84,43 @@ type Component struct {
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	LocalID            string      `json:"localId"`
-	Managed            bool        `json:"managed"`
-	ResourceKind       string      `json:"resourceKind"`
-	OutputResourceType string      `json:"outputResourceType"`
-	OutputResourceInfo interface{} `json:"outputResourceInfo"`
+	LocalID            string               `json:"localID"`
+	Managed            bool                 `json:"managed"`
+	ResourceKind       string               `json:"resourceKind"`
+	OutputResourceType string               `json:"outputResourceType"`
+	OutputResourceInfo interface{}          `json:"outputResourceInfo"`
+	Status             OutputResourceStatus `json:"status"`
+	HealthID           string               `json:"healthID"`
+}
+
+// OutputResourceStatus represents the status of the Output Resource
+type OutputResourceStatus struct {
+	ProvisioningState        string    `json:"provisioningState"`
+	ProvisioningErrorDetails string    `json:"provisioningErrorDetails"`
+	HealthState              string    `json:"healthState"`
+	HealthErrorDetails       string    `json:"healthErrorDetails"`
+	Replicas                 []Replica `json:"replicas,omitempty"`
 }
 
 // ComponentProperties represents the properties element of an Radius component.
 type ComponentProperties struct {
-	Revision        revision.Revision           `json:"revision"`
-	Build           map[string]interface{}      `json:"build,omitempty"`
-	Config          map[string]interface{}      `json:"config,omitempty"`
-	Run             map[string]interface{}      `json:"run,omitempty"`
-	Bindings        map[string]ComponentBinding `json:"bindings,omitempty"`
-	Uses            []ComponentDependency       `json:"uses,omitempty"`
-	Traits          []ComponentTrait            `json:"traits,omitempty"`
-	OutputResources []OutputResource            `json:"outputResources,omitempty"`
+	Revision revision.Revision           `json:"revision"`
+	Build    map[string]interface{}      `json:"build,omitempty"`
+	Config   map[string]interface{}      `json:"config,omitempty"`
+	Run      map[string]interface{}      `json:"run,omitempty"`
+	Bindings map[string]ComponentBinding `json:"bindings,omitempty"`
+	Uses     []ComponentDependency       `json:"uses,omitempty"`
+	Traits   []ComponentTrait            `json:"traits,omitempty"`
+	Status   ComponentStatus             `json:"status"`
+}
+
+// ComponentStatus represents the status of the Radius Component
+type ComponentStatus struct {
+	ProvisioningState        string           `json:"provisioningState"`
+	ProvisioningErrorDetails string           `json:"provisioningErrorDetails"`
+	HealthState              string           `json:"healthState"`
+	HealthErrorDetails       string           `json:"healthErrorDetails"`
+	OutputResources          []OutputResource `json:"outputResources,omitempty"`
 }
 
 // ComponentBinding represents a binding provided by an Radius Component.
@@ -99,6 +148,20 @@ type ComponentDependencySecrets struct {
 type ComponentTrait struct {
 	Kind                 string
 	AdditionalProperties map[string]interface{}
+}
+
+// Replica represents an individual instance of a resource (Azure/K8s)
+type Replica struct {
+	ID     string        `json:"id"`
+	Status ReplicaStatus `json:"status"`
+}
+
+// ReplicaStatus represents the status of a replica
+type ReplicaStatus struct {
+	ProvisioningState        string `json:"provisioningState"`
+	ProvisioningErrorDetails string `json:"provisioningErrorDetails"`
+	HealthState              string `json:"healthState"`
+	HealthErrorDetails       string `json:"healthErrorDetails"`
 }
 
 // Scope represents an Radius Scope.
@@ -161,7 +224,8 @@ func IsTeminalStatus(status OperationStatus) bool {
 
 // GetID produces a ResourceID from a resource.
 func (app *Application) GetID() (resources.ResourceID, error) {
-	return resources.Parse(app.ID)
+	resourceID, err := azresources.Parse(app.ID)
+	return resources.ResourceID{ResourceID: resourceID}, err
 }
 
 // GetApplicationID produces a ApplicationID from a resource.
@@ -185,7 +249,8 @@ func (app *Application) SetID(resource resources.ResourceID) {
 
 // GetID produces a ResourceID from a resource.
 func (c *Component) GetID() (resources.ResourceID, error) {
-	return resources.Parse(c.ID)
+	resourceID, err := azresources.Parse(c.ID)
+	return resources.ResourceID{ResourceID: resourceID}, err
 }
 
 // GetComponentID produces a ComponentID from a resource.
@@ -209,7 +274,8 @@ func (c *Component) SetID(resource resources.ResourceID) {
 
 // GetID produces a ResourceID from a resource.
 func (d *Deployment) GetID() (resources.ResourceID, error) {
-	return resources.Parse(d.ID)
+	resourceID, err := azresources.Parse(d.ID)
+	return resources.ResourceID{ResourceID: resourceID}, err
 }
 
 // GetDeploymentID produces a DeploymentID from a resource.
@@ -233,7 +299,8 @@ func (d *Deployment) SetID(resource resources.ResourceID) {
 
 // GetID produces a ResourceID from a resource.
 func (s *Scope) GetID() (resources.ResourceID, error) {
-	return resources.Parse(s.ID)
+	resourceID, err := azresources.Parse(s.ID)
+	return resources.ResourceID{ResourceID: resourceID}, err
 }
 
 // GetScopeID produces a ScopeID from a resource.

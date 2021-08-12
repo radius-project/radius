@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"

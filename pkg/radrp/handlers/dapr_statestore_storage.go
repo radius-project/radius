@@ -14,11 +14,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armauth"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,8 +43,8 @@ type daprStateStoreAzureStorageHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, StorageAccountIDKey)
@@ -61,7 +61,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 
 		name := *generated
 
-		account, err = handler.CreateStorageAccount(ctx, name, options)
+		account, err = handler.CreateStorageAccount(ctx, name, *options)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +81,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 		return nil, err
 	}
 
-	err = handler.CreateDaprStateStore(ctx, *account.Name, *key.Value, properties, options)
+	err = handler.CreateDaprStateStore(ctx, *account.Name, *key.Value, properties, *options)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (handler *daprStateStoreAzureStorageHandler) GenerateStorageAccountName(ctx
 }
 
 func (handler *daprStateStoreAzureStorageHandler) GetStorageAccountByID(ctx context.Context, accountID string) (*storage.Account, error) {
-	parsed, err := radresources.Parse(accountID)
+	parsed, err := azresources.Parse(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
@@ -289,4 +289,22 @@ func (handler *daprStateStoreAzureStorageHandler) DeleteDaprStateStore(ctx conte
 	}
 
 	return nil
+}
+
+func NewDaprStateStoreAzureStorageHealthHandler(arm armauth.ArmConfig, k8s client.Client) HealthHandler {
+	return &daprStateStoreAzureStorageHealthHandler{
+		kubernetesHandler: kubernetesHandler{k8s: k8s},
+		arm:               arm,
+		k8s:               k8s,
+	}
+}
+
+type daprStateStoreAzureStorageHealthHandler struct {
+	kubernetesHandler
+	arm armauth.ArmConfig
+	k8s client.Client
+}
+
+func (handler *daprStateStoreAzureStorageHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

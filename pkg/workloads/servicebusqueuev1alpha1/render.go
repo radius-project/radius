@@ -11,11 +11,11 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/model/components"
-	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -109,6 +109,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
+		// TODO : Need to create an output resource for service bus namespace
+
 		resource := outputresource.OutputResource{
 			LocalID: outputresource.LocalIDAzureServiceBusQueue,
 			Kind:    outputresource.KindAzureServiceBusQueue,
@@ -118,7 +120,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.ManagedKey: "false",
 
 				// Truncate the queue part of the ID to make an ID for the namespace
-				handlers.ServiceBusNamespaceIDKey:   resources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),
+				handlers.ServiceBusNamespaceIDKey:   azresources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),
 				handlers.ServiceBusQueueIDKey:       queueID.ID,
 				handlers.ServiceBusNamespaceNameKey: queueID.Types[0].Name,
 				handlers.ServiceBusQueueNameKey:     queueID.Types[1].Name,

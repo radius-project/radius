@@ -44,19 +44,40 @@ type ResourceBase struct {
 	Location       string            `bson:"location"`
 }
 
+// Represents the possible ProvisioningState values
+const (
+	NotProvisioned = "NotProvisioned"
+	Provisioning   = "Provisioning"
+	Provisioned    = "Provisioned"
+	Failed         = "Failed"
+)
+
+// ApplicationStatus represents the status of the overall Radius Application
+type ApplicationStatus struct {
+	ProvisioningState        string `bson:"provisioningState"`
+	ProvisioningErrorDetails string `bson:"provisioningErrorDetails"`
+	HealthState              string `bson:"healthState"`
+	HealthErrorDetails       string `bson:"healthErrorDetails"`
+}
+
 // Application represents an Radius Application with its nested resources.
 type Application struct {
 	ResourceBase `bson:",inline"`
-	Properties   map[string]interface{} `bson:"properties,omitempty"`
-	Components   map[string]Component   `bson:"components,omitempty"`
-	Scopes       map[string]Scope       `bson:"scopes,omitempty"`
-	Deployments  map[string]Deployment  `bson:"deployments,omitempty"`
+	Properties   ApplicationProperties `bson:"properties,omitempty"`
+	Components   map[string]Component  `bson:"components,omitempty"`
+	Scopes       map[string]Scope      `bson:"scopes,omitempty"`
+	Deployments  map[string]Deployment `bson:"deployments,omitempty"`
+}
+
+// ApplicationProperties represents properties of a Radius Application.
+type ApplicationProperties struct {
+	Status ApplicationStatus `bson:"status"`
 }
 
 // ApplicationPatch represents an Radius application without its nested resources.
 type ApplicationPatch struct {
 	ResourceBase `bson:",inline"`
-	Properties   map[string]interface{} `bson:"properties,omitempty"`
+	Properties   ApplicationProperties `bson:"properties,omitempty"`
 }
 
 // Component represents an Radius Component.
@@ -69,13 +90,20 @@ type Component struct {
 
 // ComponentProperties represents the properties of an Radius Component.
 type ComponentProperties struct {
-	Build           map[string]interface{}      `bson:"build,omitempty"`
-	Config          map[string]interface{}      `bson:"config,omitempty"`
-	Run             map[string]interface{}      `bson:"run,omitempty"`
-	Bindings        map[string]ComponentBinding `bson:"provides,omitempty"`
-	Uses            []ComponentDependency       `bson:"dependsOn,omitempty"`
-	Traits          []ComponentTrait            `bson:"traits,omitempty"`
-	OutputResources []OutputResource            `bson:"outputResources,omitempty" structs:"-"` // Ignore stateful property during serialization
+	Build    map[string]interface{}      `bson:"build,omitempty"`
+	Config   map[string]interface{}      `bson:"config,omitempty"`
+	Run      map[string]interface{}      `bson:"run,omitempty"`
+	Bindings map[string]ComponentBinding `bson:"provides,omitempty"`
+	Uses     []ComponentDependency       `bson:"dependsOn,omitempty"`
+	Traits   []ComponentTrait            `bson:"traits,omitempty"`
+	Status   ComponentStatus             `bson:"status"`
+}
+
+// ComponentStatus represents the status of the Radius Component
+type ComponentStatus struct {
+	ProvisioningState string           `bson:"provisioningState"`
+	HealthState       string           `bson:"healthState"`
+	OutputResources   []OutputResource `bson:"outputResources,omitempty" structs:"-"` // Ignore stateful property during serialization
 }
 
 // ComponentBinding represents a binding provided by an Radius Component.
@@ -105,12 +133,34 @@ type ComponentTrait struct {
 
 // OutputResource represents an output resource comprising a Radius component.
 type OutputResource struct {
-	LocalID            string      `bson:"id"`
-	ResourceKind       string      `bson:"resourceKind"`
-	Managed            bool        `bson:"managed"`
-	OutputResourceType string      `bson:"outputResourceType"`
-	OutputResourceInfo interface{} `bson:"outputResourceInfo"`
-	Resource           interface{} `bson:"resource"`
+	LocalID            string               `bson:"id"`
+	HealthID           string               `bson:"healthId"`
+	ResourceKind       string               `bson:"resourceKind"`
+	OutputResourceInfo interface{}          `bson:"outputResourceInfo"`
+	Managed            bool                 `bson:"managed"`
+	OutputResourceType string               `bson:"outputResourceType"`
+	Resource           interface{}          `bson:"resource"`
+	Status             OutputResourceStatus `bson:"status"`
+}
+
+// OutputResourceStatus represents the status of the Output Resource
+type OutputResourceStatus struct {
+	ProvisioningState       string    `bson:"provisioningState"`
+	HealthState             string    `bson:"healthState"`
+	HealthStateErrorDetails string    `bson:"healthStateErrorDetails"`
+	Replicas                []Replica `bson:"replicas,omitempty" structs:"-"` // Ignore stateful property during serialization
+}
+
+// Replica represents an individual instance of a resource (Azure/K8s)
+type Replica struct {
+	ID     string
+	Status ReplicaStatus `bson:"status"`
+}
+
+// ReplicaStatus represents the status of a replica
+type ReplicaStatus struct {
+	ProvisioningState string `bson:"provisioningState"`
+	HealthState       string `bson:"healthState"`
 }
 
 // Scope represents an Radius Scope.
@@ -194,7 +244,7 @@ func (d *Deployment) Marshal() interface{} {
 // NewApplication returns a new Application.
 func NewApplication() *Application {
 	return &Application{
-		Properties:  map[string]interface{}{},
+		Properties:  ApplicationProperties{},
 		Components:  map[string]Component{},
 		Scopes:      map[string]Scope{},
 		Deployments: map[string]Deployment{},

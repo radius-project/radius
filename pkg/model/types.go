@@ -30,6 +30,7 @@ type ComponentKind interface {
 type ResourceType interface {
 	Type() string
 	Handler() handlers.ResourceHandler
+	HealthHandler() handlers.HealthHandler
 }
 
 type applicationModel struct {
@@ -75,8 +76,9 @@ func (kind *componentKind) Renderer() workloads.WorkloadRenderer {
 }
 
 type resourceType struct {
-	resourceType string
-	handler      handlers.ResourceHandler
+	resourceType  string
+	handler       handlers.ResourceHandler
+	healthHandler handlers.HealthHandler
 }
 
 func (rt *resourceType) Type() string {
@@ -87,11 +89,20 @@ func (rt *resourceType) Handler() handlers.ResourceHandler {
 	return rt.handler
 }
 
+func (rt *resourceType) HealthHandler() handlers.HealthHandler {
+	return rt.healthHandler
+}
+
 func (model *applicationModel) GetResources() []ResourceType {
 	return model.resourcelist
 }
 
-func NewModel(renderers map[string]workloads.WorkloadRenderer, handlers map[string]handlers.ResourceHandler) ApplicationModel {
+type Handlers struct {
+	ResourceHandler handlers.ResourceHandler
+	HealthHandler   handlers.HealthHandler
+}
+
+func NewModel(renderers map[string]workloads.WorkloadRenderer, handlers map[string]Handlers) ApplicationModel {
 	componentlist := []ComponentKind{}
 	componentlookup := map[string]ComponentKind{}
 	for kind, renderer := range renderers {
@@ -106,10 +117,13 @@ func NewModel(renderers map[string]workloads.WorkloadRenderer, handlers map[stri
 
 	resourcelist := []ResourceType{}
 	resourcelookup := map[string]ResourceType{}
+
+	// Initialize the resource and health handlers
 	for t, handler := range handlers {
 		resourceType := resourceType{
-			resourceType: t,
-			handler:      handler,
+			resourceType:  t,
+			handler:       handler.ResourceHandler,
+			healthHandler: handler.HealthHandler,
 		}
 
 		resourcelist = append(resourcelist, &resourceType)

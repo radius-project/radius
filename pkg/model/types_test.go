@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -19,8 +20,8 @@ import (
 var rs = map[string]workloads.WorkloadRenderer{
 	"radius.dev/Test@v1alpha1": &NoOpRenderer{},
 }
-var hs = map[string]handlers.ResourceHandler{
-	"testresourcetype": &NoOpHandler{},
+var hs = map[string]Handlers{
+	"testresourcetype": {&NoOpHandler{}, &NoOpHandler{}},
 }
 
 func Test_GetResources(t *testing.T) {
@@ -101,10 +102,14 @@ func (*NoOpRenderer) Render(ctx context.Context, workload workloads.Instantiated
 type NoOpHandler struct {
 }
 
-func (*NoOpHandler) Put(ctx context.Context, options handlers.PutOptions) (map[string]string, error) {
+func (*NoOpHandler) Put(ctx context.Context, options *handlers.PutOptions) (map[string]string, error) {
 	return nil, nil
 }
 
 func (*NoOpHandler) Delete(ctx context.Context, options handlers.DeleteOptions) error {
 	return nil
+}
+
+func (*NoOpHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

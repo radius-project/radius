@@ -12,10 +12,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/cli/util"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/armauth"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )
 
 func NewAzureCosmosDBSQLHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -30,8 +31,8 @@ type azureCosmosDBSQLDBHandler struct {
 	azureCosmosDBBaseHandler
 }
 
-func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
@@ -46,7 +47,7 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 		// There is no clear documentation on this mapping of GlobalDocumentDB to SQL.
 		// Used this ARM template example as a reference to verify that this is the right option:
 		//   https://docs.microsoft.com/en-us/azure/cosmos-db/how-to-manage-database-account
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindGlobalDocumentDB, options)
+		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindGlobalDocumentDB, *options)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +64,7 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options PutOp
 	}
 
 	if properties[CosmosDBDatabaseIDKey] == "" {
-		account, err := handler.CreateDatabase(ctx, *account.Name, properties[CosmosDBDatabaseNameKey], options)
+		account, err := handler.CreateDatabase(ctx, *account.Name, properties[CosmosDBDatabaseNameKey], *options)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +108,7 @@ func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options De
 }
 
 func (handler *azureCosmosDBSQLDBHandler) GetDatabaseByID(ctx context.Context, databaseID string) (*documentdb.SQLDatabaseGetResults, error) {
-	parsed, err := radresources.Parse(databaseID)
+	parsed, err := azresources.Parse(databaseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CosmosDB SQL Database resource id: %w", err)
 	}
@@ -174,4 +175,20 @@ func (handler *azureCosmosDBSQLDBHandler) DeleteDatabase(ctx context.Context, ac
 	}
 
 	return nil
+}
+
+func NewAzureCosmosDBSQLHealthHandler(arm armauth.ArmConfig) HealthHandler {
+	return &azureCosmosDBSQLDBHealthHandler{
+		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
+			arm: arm,
+		},
+	}
+}
+
+type azureCosmosDBSQLDBHealthHandler struct {
+	azureCosmosDBBaseHandler
+}
+
+func (handler *azureCosmosDBSQLDBHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

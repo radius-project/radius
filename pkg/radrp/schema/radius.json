@@ -579,6 +579,33 @@
       "description": "Properties of an application.",
       "type": "object",
       "properties": {
+        "status": {
+          "type": "object",
+          "$ref": "#/definitions/ApplicationStatus",
+          "description": "Status of the application"
+        }
+      }
+    },
+    "ApplicationStatus": {
+      "description": "Status of an application.",
+      "type": "object",
+      "properties": {
+        "provisioningState": {
+          "type": "string",
+          "description": "Provisioning state of the application"
+        },
+        "provisioningErrorDetails": {
+          "type": "string",
+          "description": "Provisioning errors for the application"
+        },
+        "healthState": {
+          "type": "string",
+          "description": "Health state of the application"
+        },
+        "healthErrorDetails": {
+          "type": "string",
+          "description": "Health errors for the application"
+        }
       }
     },
     "ApplicationCreateParameters": {
@@ -753,8 +780,27 @@
           "type": "array",
           "description": "Traits spec of the component",
           "items": {
-	    "$ref": "traits.json#/definitions/ComponentTrait"
+          "$ref": "traits.json#/definitions/ComponentTrait"
           }
+        },
+        "status": {
+          "type": "object",
+          "$ref": "#/definitions/ComponentStatus",
+          "description": "Status of the component"
+        }
+      }
+    },
+    "ComponentStatus": {
+      "description": "Status of a component.",
+      "type": "object",
+      "properties": {
+        "provisioningState": {
+          "type": "string",
+          "description": "Provisioning state of the component"
+        },
+        "healthState": {
+          "type": "string",
+          "description": "Health state of the component"
         },
         "outputResources": {
           "type": "array",

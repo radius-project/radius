@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resources
+package azresources
 
 import (
 	"fmt"

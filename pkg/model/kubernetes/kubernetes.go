@@ -6,8 +6,8 @@
 package kubernetes
 
 import (
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
@@ -28,8 +28,8 @@ func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 		mongodbv1alpha1.Kind:        &mongodbv1alpha1.KubernetesRenderer{},
 		redisv1alpha1.Kind:          &redisv1alpha1.KubernetesRenderer{},
 	}
-	handlers := map[string]handlers.ResourceHandler{
-		outputresource.KindKubernetes: handlers.NewKubernetesHandler(*k8s),
+	handlers := map[string]model.Handlers{
+		outputresource.KindKubernetes: {ResourceHandler: handlers.NewKubernetesHandler(*k8s), HealthHandler: nil},
 	}
 	return model.NewModel(renderers, handlers)
 }

@@ -16,8 +16,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/radrp/armexpr"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )
 
 // DeploymentTemplate represents an ARM template.
@@ -316,20 +316,20 @@ func (eva *evaluator) EvaluateResourceID(resourceType string, names []string) (s
 		return "", errors.New("invalid arguments: wrong number of names")
 	}
 
-	head := radresources.ResourceType{
+	head := azresources.ResourceType{
 		Type: typeSegments[0] + "/" + typeSegments[1],
 		Name: names[0],
 	}
 
-	tail := []radresources.ResourceType{}
+	tail := []azresources.ResourceType{}
 	for i := 1; i < len(names); i++ {
-		tail = append(tail, radresources.ResourceType{
+		tail = append(tail, azresources.ResourceType{
 			Type: typeSegments[i+1],
 			Name: names[i],
 		})
 	}
 
-	id := radresources.MakeID(
+	id := azresources.MakeID(
 		eva.Options.SubscriptionID,
 		eva.Options.ResourceGroup,
 		head,

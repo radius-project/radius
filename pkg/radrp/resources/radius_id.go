@@ -33,24 +33,24 @@ const operationResourceType = "OperationResults"
 const scopeResourceType = "Scopes"
 
 // ApplicationCollectionType can be used to validate resource IDs with ValidateResourceType.
-var ApplicationCollectionType = KnownType{
-	[]ResourceType{
+var ApplicationCollectionType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType},
 	},
 }
 
 // ApplicationResourceType can be used to validate resource IDs with ValidateResourceType.
-var ApplicationResourceType = KnownType{
-	[]ResourceType{
+var ApplicationResourceType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType, Name: "*"},
 	},
 }
 
 // ComponentCollectionType can be used to validate resource IDs with ValidateResourceType.
-var ComponentCollectionType = KnownType{
-	[]ResourceType{
+var ComponentCollectionType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: componentResourceType},
@@ -58,8 +58,8 @@ var ComponentCollectionType = KnownType{
 }
 
 // ComponentResourceType can be used to validate resource IDs with ValidateResourceType.
-var ComponentResourceType = KnownType{
-	[]ResourceType{
+var ComponentResourceType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: componentResourceType, Name: "*"},
@@ -67,8 +67,8 @@ var ComponentResourceType = KnownType{
 }
 
 // DeploymentCollectionType can be used to validate resource IDs with ValidateResourceType.
-var DeploymentCollectionType = KnownType{
-	[]ResourceType{
+var DeploymentCollectionType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: deploymentResourceType},
@@ -76,8 +76,8 @@ var DeploymentCollectionType = KnownType{
 }
 
 // DeploymentResourceType can be used to validate resource IDs with ValidateResourceType.
-var DeploymentResourceType = KnownType{
-	[]ResourceType{
+var DeploymentResourceType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: deploymentResourceType, Name: "*"},
@@ -85,8 +85,8 @@ var DeploymentResourceType = KnownType{
 }
 
 // DeploymentResourceType can be used to validate resource IDs with ValidateResourceType.
-var DeploymentOperationResourceType = KnownType{
-	[]ResourceType{
+var DeploymentOperationResourceType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: deploymentResourceType, Name: "*"},
@@ -95,8 +95,8 @@ var DeploymentOperationResourceType = KnownType{
 }
 
 // ScopeCollectionType can be used to validate resource IDs with ValidateResourceType.
-var ScopeCollectionType = KnownType{
-	[]ResourceType{
+var ScopeCollectionType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: scopeResourceType},
@@ -104,12 +104,17 @@ var ScopeCollectionType = KnownType{
 }
 
 // ScopeResourceType can be used to validate resource IDs with ValidateResourceType.
-var ScopeResourceType = KnownType{
-	[]ResourceType{
+var ScopeResourceType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{Type: baseResourceType, Name: "*"},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: scopeResourceType, Name: "*"},
 	},
+}
+
+// ResourceID represents the ID for a Radius resource.
+type ResourceID struct {
+	azresources.ResourceID
 }
 
 // ApplicationID represents the ResourceID for an application.
@@ -155,13 +160,16 @@ func (ri ResourceID) Application() (ApplicationID, error) {
 	}
 
 	// This is a Radius nested resource type, we need to make a new ID for the application.
-	return ApplicationID{
-		ResourceID: ResourceID{
-			ID:             MakeID(ri.SubscriptionID, ri.ResourceGroup, ri.Types[0], ri.Types[1]),
+	resourceID := ResourceID{
+		ResourceID: azresources.ResourceID{
+			ID:             azresources.MakeID(ri.SubscriptionID, ri.ResourceGroup, ri.Types[0], ri.Types[1]),
 			SubscriptionID: ri.SubscriptionID,
 			ResourceGroup:  ri.ResourceGroup,
 			Types:          ri.Types[:2],
 		},
+	}
+	return ApplicationID{
+		ResourceID: resourceID,
 	}, nil
 }
 
@@ -217,31 +225,31 @@ func (ri ResourceID) DeploymentOperation() (DeploymentOperationID, error) {
 		return DeploymentOperationID{}, fmt.Errorf("not a valid Deployment Operation resource: %w", err)
 	}
 
-	return DeploymentOperationID{ri}, nil
+	return DeploymentOperationID{Resource: ri}, nil
 }
 
 // Deployment gets a DeploymentID for the DeploymentOperationID resource.
 func (d DeploymentOperationID) Deployment() (DeploymentID, error) {
-	text := MakeID(
+	text := azresources.MakeID(
 		d.Resource.SubscriptionID,
 		d.Resource.ResourceGroup,
 		d.Resource.Types[0],
 		d.Resource.Types[1:3]...)
-	ri, err := Parse(text)
+	id, err := azresources.Parse(text)
 	if err != nil {
 		return DeploymentID{}, fmt.Errorf("not a valid Deployment Operation resource: %w", err)
 	}
-
+	ri := ResourceID{id}
 	return ri.Deployment()
 }
 
 // NewOperation creates a new (random) ID for an operation related to a deployment
 func (di DeploymentID) NewOperation() DeploymentOperationID {
 	name := uuid.New().String()
-	id, err := Parse(di.Resource.ID + "/OperationResults/" + name)
+	id, err := azresources.Parse(di.Resource.ID + "/OperationResults/" + name)
 	if err != nil {
 		panic(err)
 	}
-
-	return DeploymentOperationID{Resource: id}
+	ri := ResourceID{id}
+	return DeploymentOperationID{Resource: ri}
 }

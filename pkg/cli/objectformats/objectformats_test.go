@@ -27,14 +27,20 @@ func Test_FormatApplicationTable(t *testing.T) {
 				Name: to.StringPtr("test-app"),
 			},
 		},
+		Properties: &radclient.ApplicationProperties{
+			Status: &radclient.ApplicationStatus{
+				HealthState:       to.StringPtr("Healthy"),
+				ProvisioningState: to.StringPtr("Provisioned"),
+			},
+		},
 	}
 
 	buffer := bytes.Buffer{}
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `APPLICATION
-test-app  ` + "\n"
+	expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
+test-app     Provisioned         Healthy   ` + "\n"
 	require.Equal(t, expected, buffer.String())
 }
 
@@ -49,14 +55,20 @@ func Test_FormatComponentTable(t *testing.T) {
 			},
 		},
 		Kind: to.StringPtr("radius.dev/TestComponent@v1alpha1"),
+		Properties: &radclient.ComponentProperties{
+			Status: &radclient.ComponentStatus{
+				HealthState:       to.StringPtr("Healthy"),
+				ProvisioningState: to.StringPtr("Provisioned"),
+			},
+		},
 	}
 
 	buffer := bytes.Buffer{}
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `COMPONENT       KIND
-test-component  radius.dev/TestComponent@v1alpha1  ` + "\n"
+	expected := `COMPONENT       KIND                               PROVISIONING_STATE  HEALTH_STATE
+test-component  radius.dev/TestComponent@v1alpha1  Provisioned         Healthy   ` + "\n"
 	require.Equal(t, expected, buffer.String())
 }
 

@@ -3,12 +3,15 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resources
+package azresources
 
 import (
 	"fmt"
 	"strings"
 )
+
+// baseResourceType declares the base resource type for the Radius RP - all of the Radius resource types are children.
+const baseResourceType = CustomProvidersResourceProviders
 
 // ResourceID represents an Azure resource id.
 type ResourceID struct {

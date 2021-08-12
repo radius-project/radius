@@ -10,16 +10,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/stretchr/testify/require"
 )
 
 func parseOrPanic(id string) ResourceID {
-	p, err := Parse(id)
+	p, err := azresources.Parse(id)
 	if err != nil {
 		panic(err)
 	}
 
-	return p
+	rid := ResourceID{p}
+	return rid
 }
 
 func Test_Application_Invalid(t *testing.T) {

@@ -225,7 +225,7 @@ func (d radrpDB) PatchComponentByApplicationID(ctx context.Context, id resources
 
 	logger.Info("Updated component in DB")
 
-	return result.UpsertedCount > 1, nil
+	return result.UpsertedCount > 1 || result.ModifiedCount > 1, nil
 }
 
 func (d radrpDB) DeleteComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {

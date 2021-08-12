@@ -52,11 +52,17 @@ type ApplicationListByResourceGroupOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ApplicationProperties - Properties of an application.
+type ApplicationProperties struct {
+	// Status of the application
+	Status *ApplicationStatus `json:"status,omitempty"`
+}
+
 // ApplicationResource - Application resource.
 type ApplicationResource struct {
 	TrackedResource
 	// Properties of the application.
-	Properties map[string]interface{} `json:"properties,omitempty"`
+	Properties *ApplicationProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ApplicationResource.
@@ -64,6 +70,21 @@ func (a ApplicationResource) MarshalJSON() ([]byte, error) {
 	objectMap := a.TrackedResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
+}
+
+// ApplicationStatus - Status of an application.
+type ApplicationStatus struct {
+	// Health errors for the application
+	HealthErrorDetails *string `json:"healthErrorDetails,omitempty"`
+
+	// Health state of the application
+	HealthState *string `json:"healthState,omitempty"`
+
+	// Provisioning errors for the application
+	ProvisioningErrorDetails *string `json:"provisioningErrorDetails,omitempty"`
+
+	// Provisioning state of the application
+	ProvisioningState *string `json:"provisioningState,omitempty"`
 }
 
 // ComponentCreateOrUpdateOptions contains the optional parameters for the Component.CreateOrUpdate method.
@@ -115,13 +136,15 @@ type ComponentProperties struct {
 
 	// Config of the component
 	Config map[string]interface{} `json:"config,omitempty"`
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 
 	// Revision of the component
 	Revision *string `json:"revision,omitempty"`
 
 	// Run spec of the component
 	Run map[string]interface{} `json:"run,omitempty"`
+
+	// Status of the component
+	Status *ComponentStatus `json:"status,omitempty"`
 
 	// Traits spec of the component
 	Traits []ComponentTraitClassification `json:"traits,omitempty"`
@@ -135,9 +158,9 @@ func (c ComponentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "bindings", c.Bindings)
 	populate(objectMap, "config", c.Config)
-	populate(objectMap, "outputResources", c.OutputResources)
 	populate(objectMap, "revision", c.Revision)
 	populate(objectMap, "run", c.Run)
+	populate(objectMap, "status", c.Status)
 	populate(objectMap, "traits", c.Traits)
 	populate(objectMap, "uses", c.Uses)
 	return json.Marshal(objectMap)
@@ -158,14 +181,14 @@ func (c *ComponentProperties) UnmarshalJSON(data []byte) error {
 		case "config":
 				err = unpopulate(val, &c.Config)
 				delete(rawMsg, key)
-		case "outputResources":
-				err = unpopulate(val, &c.OutputResources)
-				delete(rawMsg, key)
 		case "revision":
 				err = unpopulate(val, &c.Revision)
 				delete(rawMsg, key)
 		case "run":
 				err = unpopulate(val, &c.Run)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, &c.Status)
 				delete(rawMsg, key)
 		case "traits":
 				c.Traits, err = unmarshalComponentTraitClassificationArray(val)
@@ -196,6 +219,25 @@ func (c ComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := c.TrackedResource.marshalInternal()
 	populate(objectMap, "kind", c.Kind)
 	populate(objectMap, "properties", c.Properties)
+	return json.Marshal(objectMap)
+}
+
+// ComponentStatus - Status of a component.
+type ComponentStatus struct {
+	// Health state of the component
+	HealthState *string `json:"healthState,omitempty"`
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+
+	// Provisioning state of the component
+	ProvisioningState *string `json:"provisioningState,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ComponentStatus.
+func (c ComponentStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "healthState", c.HealthState)
+	populate(objectMap, "outputResources", c.OutputResources)
+	populate(objectMap, "provisioningState", c.ProvisioningState)
 	return json.Marshal(objectMap)
 }
 

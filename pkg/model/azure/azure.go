@@ -6,8 +6,8 @@
 package azure
 
 import (
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
@@ -38,20 +38,21 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) model.ApplicationM
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
 		redisv1alpha1.Kind:           &redisv1alpha1.AzureRenderer{Arm: arm},
 	}
-	handlers := map[string]handlers.ResourceHandler{
-		outputresource.KindKubernetes:                       handlers.NewKubernetesHandler(*k8s),
-		outputresource.KindDaprStateStoreAzureStorage:       handlers.NewDaprStateStoreAzureStorageHandler(arm, *k8s),
-		outputresource.KindDaprStateStoreSQLServer:          handlers.NewDaprStateStoreSQLServerHandler(arm, *k8s),
-		outputresource.KindDaprPubSubTopicAzureServiceBus:   handlers.NewDaprPubSubServiceBusHandler(arm, *k8s),
-		outputresource.KindAzureCosmosDBMongo:               handlers.NewAzureCosmosDBMongoHandler(arm),
-		outputresource.KindAzureCosmosDBSQL:                 handlers.NewAzureCosmosDBSQLHandler(arm),
-		outputresource.KindAzureServiceBusQueue:             handlers.NewAzureServiceBusQueueHandler(arm),
-		outputresource.KindAzureKeyVault:                    handlers.NewAzureKeyVaultHandler(arm),
-		outputresource.KindAzurePodIdentity:                 handlers.NewAzurePodIdentityHandler(arm),
-		outputresource.KindAzureUserAssignedManagedIdentity: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
-		outputresource.KindAzureRoleAssignment:              handlers.NewAzureRoleAssignmentHandler(arm),
-		outputresource.KindAzureKeyVaultSecret:              handlers.NewAzureKeyVaultSecretHandler(arm),
-		outputresource.KindAzureRedis:                       handlers.NewAzureRedisHandler(arm),
+
+	handlers := map[string]model.Handlers{
+		outputresource.KindKubernetes:                       {ResourceHandler: handlers.NewKubernetesHandler(*k8s), HealthHandler: handlers.NewKubernetesHealthHandler(*k8s)},
+		outputresource.KindDaprStateStoreAzureStorage:       {ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, *k8s), HealthHandler: handlers.NewDaprStateStoreAzureStorageHealthHandler(arm, *k8s)},
+		outputresource.KindDaprStateStoreSQLServer:          {ResourceHandler: handlers.NewDaprStateStoreSQLServerHandler(arm, *k8s), HealthHandler: handlers.NewDaprStateStoreSQLServerHealthHandler(arm, *k8s)},
+		outputresource.KindDaprPubSubTopicAzureServiceBus:   {ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, *k8s), HealthHandler: handlers.NewDaprPubSubServiceBusHealthHandler(arm, *k8s)},
+		outputresource.KindAzureCosmosDBMongo:               {ResourceHandler: handlers.NewAzureCosmosDBMongoHandler(arm), HealthHandler: handlers.NewAzureCosmosDBMongoHealthHandler(arm)},
+		outputresource.KindAzureCosmosDBSQL:                 {ResourceHandler: handlers.NewAzureCosmosDBSQLHandler(arm), HealthHandler: handlers.NewAzureCosmosDBSQLHealthHandler(arm)},
+		outputresource.KindAzureServiceBusQueue:             {ResourceHandler: handlers.NewAzureServiceBusQueueHandler(arm), HealthHandler: handlers.NewAzureServiceBusQueueHealthHandler(arm)},
+		outputresource.KindAzureKeyVault:                    {ResourceHandler: handlers.NewAzureKeyVaultHandler(arm), HealthHandler: handlers.NewAzureKeyVaultHealthHandler(arm)},
+		outputresource.KindAzurePodIdentity:                 {ResourceHandler: handlers.NewAzurePodIdentityHandler(arm), HealthHandler: handlers.NewAzurePodIdentityHealthHandler(arm)},
+		outputresource.KindAzureUserAssignedManagedIdentity: {ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm), HealthHandler: handlers.NewAzureUserAssignedManagedIdentityHealthHandler(arm)},
+		outputresource.KindAzureRoleAssignment:              {ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm), HealthHandler: handlers.NewAzureRoleAssignmentHealthHandler(arm)},
+		outputresource.KindAzureKeyVaultSecret:              {ResourceHandler: handlers.NewAzureKeyVaultSecretHandler(arm), HealthHandler: handlers.NewAzureKeyVaultSecretHealthHandler(arm)},
+		outputresource.KindAzureRedis:                       {ResourceHandler: handlers.NewAzureRedisHandler(arm), HealthHandler: handlers.NewAzureRedisHealthHandler(arm)},
 	}
 	return model.NewModel(renderers, handlers)
 }

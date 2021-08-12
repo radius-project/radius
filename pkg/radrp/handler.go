@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/resources"
@@ -324,12 +325,12 @@ func (h *handler) getDeploymentOperation(w http.ResponseWriter, req *http.Reques
 
 func resourceID(req *http.Request) resources.ResourceID {
 	logger := radlogger.GetLogger(req.Context())
-	id, err := resources.Parse(req.URL.Path)
+	id, err := azresources.Parse(req.URL.Path)
 	if err != nil {
 		logger.Info("URL was not a valid resource id: %v", req.URL.Path)
 		// just log the error - it will be handled in the RP layer.
 	}
-	return id
+	return resources.ResourceID{ResourceID: id}
 }
 
 func badRequest(ctx context.Context, w http.ResponseWriter, err error) {

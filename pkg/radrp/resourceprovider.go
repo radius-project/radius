@@ -197,6 +197,7 @@ func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (rest.Re
 	}
 
 	item := newRESTComponentFromDB(dbitem)
+
 	return rest.NewOKResponse(item), nil
 }
 
@@ -501,11 +502,11 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			if action.Operation == deployment.DeleteWorkload {
 				// clear out deployment resources since the component was undeployed
 				definition := a.Components[c]
-				definition.Properties.OutputResources = nil
+				definition.Properties.Status.OutputResources = nil
 				a.Components[c] = definition
 			} else if action.Operation != deployment.None {
 				// if the component was updated or created add its resources
-				logger.Info(fmt.Sprintf("Updating component with %v output resources", len(action.Definition.Properties.OutputResources)))
+				logger.Info(fmt.Sprintf("Updating component with %v output resources", len(action.Definition.Properties.Status.OutputResources)))
 				a.Components[c] = *action.Definition
 			}
 

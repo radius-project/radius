@@ -13,7 +13,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/healthcontract"
 )
 
 const (
@@ -29,8 +30,8 @@ type azurePodIdentityHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (handler *azurePodIdentityHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// if !options.Resource.Deployed {
 	// TODO: right now this resource is already deployed during the rendering process :(
@@ -117,4 +118,16 @@ func (handler *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Contex
 	}
 
 	return nil
+}
+
+func NewAzurePodIdentityHealthHandler(arm armauth.ArmConfig) HealthHandler {
+	return &azurePodIdentityHealthHandler{arm: arm}
+}
+
+type azurePodIdentityHealthHandler struct {
+	arm armauth.ArmConfig
+}
+
+func (handler *azurePodIdentityHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

@@ -6,6 +6,7 @@
 package radrp
 
 import (
+	radhealthdb "github.com/Azure/radius/pkg/health/db"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/rest"
 )
@@ -37,21 +38,46 @@ func newRESTResourceBaseFromDB(original db.ResourceBase) rest.ResourceBase {
 func newRESTApplicationFromDB(original *db.Application) *rest.Application {
 	return &rest.Application{
 		ResourceBase: newRESTResourceBaseFromDB(original.ResourceBase),
-		Properties:   original.Properties,
+		Properties: rest.ApplicationProperties{
+			Status: newRESTApplicationStatusFromDB(original),
+		},
+	}
+}
+
+func newRESTApplicationStatusFromDB(original *db.Application) rest.ApplicationStatus {
+	return rest.ApplicationStatus{
+		ProvisioningState:        original.Properties.Status.ProvisioningState,
+		ProvisioningErrorDetails: original.Properties.Status.ProvisioningErrorDetails,
+		HealthState:              original.Properties.Status.HealthState,
+		HealthErrorDetails:       original.Properties.Status.HealthErrorDetails,
 	}
 }
 
 func newRESTApplicationFromDBPatch(original *db.ApplicationPatch) *rest.Application {
 	return &rest.Application{
 		ResourceBase: newRESTResourceBaseFromDB(original.ResourceBase),
-		Properties:   original.Properties,
+		Properties: rest.ApplicationProperties{
+			Status: rest.ApplicationStatus{
+				ProvisioningState:        original.Properties.Status.ProvisioningState,
+				ProvisioningErrorDetails: original.Properties.Status.ProvisioningErrorDetails,
+				HealthState:              original.Properties.Status.HealthState,
+				HealthErrorDetails:       original.Properties.Status.HealthErrorDetails,
+			},
+		},
 	}
 }
 
 func newDBApplicationPatchFromREST(original *rest.Application) *db.ApplicationPatch {
 	return &db.ApplicationPatch{
 		ResourceBase: newDBResourceBaseFromREST(original.ResourceBase),
-		Properties:   original.Properties,
+		Properties: db.ApplicationProperties{
+			Status: db.ApplicationStatus{
+				ProvisioningState:        original.Properties.Status.ProvisioningState,
+				ProvisioningErrorDetails: original.Properties.Status.ProvisioningErrorDetails,
+				HealthState:              original.Properties.Status.HealthState,
+				HealthErrorDetails:       original.Properties.Status.HealthErrorDetails,
+			},
+		},
 	}
 }
 
@@ -64,8 +90,12 @@ func newDBComponentFromREST(original *rest.Component) *db.Component {
 			Build:  original.Properties.Build,
 			Config: original.Properties.Config,
 			Run:    original.Properties.Run,
-			// OutputResources are intentionally not copied over since they are read-only
-			OutputResources: []db.OutputResource{},
+			// Status is intentionally not copied over since it is read-only
+			Status: db.ComponentStatus{
+				ProvisioningState: db.NotProvisioned,
+				HealthState:       radhealthdb.Unhealthy,
+				OutputResources:   []db.OutputResource{},
+			},
 		},
 	}
 
@@ -153,7 +183,7 @@ func newRESTComponentFromDB(original *db.Component) *rest.Component {
 		c.Properties.Traits = append(c.Properties.Traits, tt)
 	}
 
-	c.Properties.OutputResources = newRESTOutputResourcesFromDB(original.Properties.OutputResources)
+	c.Properties.Status = newRESTComponentStatusFromDB(original)
 	return c
 }
 
@@ -226,10 +256,24 @@ func newRESTOutputResourcesFromDB(original []db.OutputResource) []rest.OutputRes
 			OutputResourceInfo: r.OutputResourceInfo,
 			OutputResourceType: r.OutputResourceType,
 			Managed:            r.Managed,
+			HealthID:           r.HealthID,
+			Status: rest.OutputResourceStatus{
+				HealthState:        r.Status.HealthState,
+				HealthErrorDetails: r.Status.HealthStateErrorDetails,
+			},
 			// Resource includes the body of the resource which would make the REST
 			// response too verbose. Hence excluded
 		}
 		rrs = append(rrs, rr)
 	}
 	return rrs
+}
+
+func newRESTComponentStatusFromDB(original *db.Component) rest.ComponentStatus {
+	status := rest.ComponentStatus{
+		ProvisioningState: original.Properties.Status.ProvisioningState,
+		HealthState:       original.Properties.Status.HealthState,
+		OutputResources:   newRESTOutputResourcesFromDB(original.Properties.Status.OutputResources),
+	}
+	return status
 }

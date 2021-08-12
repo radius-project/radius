@@ -10,10 +10,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -118,7 +118,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.KubernetesKindKey:       "Component",
 
 				// Truncate the topic part of the ID to make an ID for the namespace
-				handlers.ServiceBusNamespaceIDKey:   resources.MakeID(topicID.SubscriptionID, topicID.ResourceGroup, topicID.Types[0]),
+				handlers.ServiceBusNamespaceIDKey:   azresources.MakeID(topicID.SubscriptionID, topicID.ResourceGroup, topicID.Types[0]),
 				handlers.ServiceBusTopicIDKey:       topicID.ID,
 				handlers.ServiceBusNamespaceNameKey: topicID.Types[0].Name,
 				handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,
