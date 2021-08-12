@@ -83,7 +83,7 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, env environments.
 		applicationName = env.GetDefaultApplication()
 		if applicationName == "" {
 			return "", fmt.Errorf("no application name provided and no default application set, " +
-				"either pass in an application name or set a default application by using `rad appplication switch`")
+				"either pass in an application name or set a default application by using `rad application switch`")
 		}
 	}
 
