@@ -64,3 +64,12 @@ The `dapr.io/App` trait adds a [Dapr](https://dapr.io) sidecar to the container,
 | appPort | y | The port that Dapr proxy will use to expose the service to clients | `3000`
 
 {{< rad file="snippets/dapr.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
+
+### Manual scaling
+
+The `radius.dev/ManualScaling` trait adds the ability to manually scale the number of instances of a container component.
+
+| Key | Required | Description | Example |
+|-----|:--------:|-------------|---------|
+| kind | y | Defines the trait type. | `'radius.dev/ManualScaling@v1alpha1'`
+| replicas | n | The number of replicas to run for a container. | `2`

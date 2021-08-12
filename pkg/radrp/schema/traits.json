@@ -48,6 +48,22 @@
         }
       },
       "additionalProperties": false
+    },
+    "ManualScalingTrait": {
+      "type": "object",
+      "description": "ManualScaling ComponentTrait",
+      "properties": {
+        "kind": {
+          "description": "Component kind.",
+          "type": "string",
+          "enum": ["dapr.io/ManualScaling@v1alpha1"]
+        },
+        "replicas": {
+          "description": "Replica count.",
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
