@@ -302,7 +302,6 @@ type DeploymentBeginDeleteOptions struct {
 // DeploymentComponent - An entry of a component in a deployment
 type DeploymentComponent struct {
 	ComponentName *string `json:"componentName,omitempty"`
-	ID *string `json:"id,omitempty"`
 	Revision *string `json:"revision,omitempty"`
 }
 

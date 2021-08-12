@@ -204,7 +204,6 @@ func TestDeploymentValidator(t *testing.T) {
                     "provisioningState": "READY",
                     "components": [{
                       "componentName": "component-name",
-                      "id":            "id",
                       "revision":      "revision"
                     }]
                   }
@@ -269,13 +268,12 @@ func TestDeploymentValidator(t *testing.T) {
                   "properties": {
                     "components": [{
                       "componentName": 42,
-                      "id":            42,
                       "revision":      42
                     }]
                   }
                 }`,
 		expects: invalidTypeErrs("(root).properties.components.0", "string", "integer",
-			"componentName", "id", "revision"),
+			"componentName", "revision"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))

@@ -661,9 +661,6 @@
 	"componentName": {
 	  "type": "string"
 	},
-	"id": {
-	  "type": "string"
-	},
 	"revision": {
 	  "type": "string"
 	}
