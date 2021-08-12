@@ -10,21 +10,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azresources"
-	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/model/components"
+	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
 // Renderer is the WorkloadRenderer implementation for the service bus workload.
-type Renderer struct {
+type KubernetesRenderer struct {
 	Arm armauth.ArmConfig
 }
 
 // Allocate is the WorkloadRenderer implementation for servicebus workload.
-func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	if len(workload.Workload.Bindings) > 0 {
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
@@ -36,8 +37,19 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	properties := resources[0].Properties
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
 	queueName := properties[handlers.ServiceBusQueueNameKey]
-	namespaceConnectionString := properties[handlers.ServiceBusNamespaceConnectionStringKey]
-	queueConnectionString := properties[handlers.ServiceBusQueueConnectionStringKey]
+
+	sbClient := azclients.NewServiceBusNamespacesClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
+	}
+
+	if accessKeys.PrimaryConnectionString == nil && accessKeys.SecondaryConnectionString == nil {
+		return nil, fmt.Errorf("failed to retrieve connection strings")
+	}
+
+	cs := accessKeys.PrimaryConnectionString
 
 	bindings := map[string]components.BindingState{
 		"default": {
@@ -45,11 +57,9 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 			Binding:   "default",
 			Kind:      "azure.com/ServiceBusQueue",
 			Properties: map[string]interface{}{
-				"connectionString":          namespaceConnectionString,
-				"namespaceConnectionString": namespaceConnectionString,
-				"queueConnectionString":     queueConnectionString,
-				"namespace":                 namespaceName,
-				"queue":                     queueName,
+				"connectionString": *cs,
+				"namespace":        namespaceName,
+				"queue":            queueName,
 			},
 		},
 	}
@@ -58,7 +68,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 }
 
 // Render is the WorkloadRenderer implementation for servicebus workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+func (r KubernetesRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	component := ServiceBusQueueComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
@@ -99,8 +109,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, err
 		}
 
-		// TODO : Need to create an output resource for service bus namespace
-
 		resource := outputresource.OutputResource{
 			LocalID: outputresource.LocalIDAzureServiceBusQueue,
 			Kind:    outputresource.KindAzureServiceBusQueue,
@@ -110,7 +118,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.ManagedKey: "false",
 
 				// Truncate the queue part of the ID to make an ID for the namespace
-				handlers.ServiceBusNamespaceIDKey:   azresources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),
+				handlers.ServiceBusNamespaceIDKey:   resources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),
 				handlers.ServiceBusQueueIDKey:       queueID.ID,
 				handlers.ServiceBusNamespaceNameKey: queueID.Types[0].Name,
 				handlers.ServiceBusQueueNameKey:     queueID.Types[1].Name,
