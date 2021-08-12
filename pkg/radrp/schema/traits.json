@@ -7,6 +7,8 @@
         "$ref": "#/definitions/DaprTrait"
       }, {
         "$ref": "#/definitions/InboundRouteTrait"
+      }, {
+        "$ref": "#/definitions/ManualScalingTrait"
       }]
     },
     "DaprTrait": {
@@ -56,7 +58,7 @@
         "kind": {
           "description": "Component kind.",
           "type": "string",
-          "enum": ["dapr.io/ManualScaling@v1alpha1"]
+          "enum": ["radius.dev/ManualScaling@v1alpha1"]
         },
         "replicas": {
           "description": "Replica count.",
