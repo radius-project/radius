@@ -83,6 +83,7 @@ func Test_ContainerManualScale(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sObjectForComponent(application, "frontend"),
+						// Verify two backend pods are created.
 						validation.NewK8sObjectForComponent(application, "backend"),
 						validation.NewK8sObjectForComponent(application, "backend"),
 					},

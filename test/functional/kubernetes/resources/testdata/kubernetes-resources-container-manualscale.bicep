@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'azure-resources-container-manualscale'
+  name: 'kubernetes-resources-container-manualscale'
 
   resource frontend 'Components' = {
     name: 'frontend'
