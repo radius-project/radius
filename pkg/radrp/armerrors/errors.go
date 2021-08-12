@@ -14,6 +14,12 @@ const (
 
 	// Used for internal/unclassified failures.
 	CodeInternal = "Internal"
+
+	// Used for NotFound error.
+	CodeNotFound = "NotFound"
+
+	// Used for Conflict error.
+	CodeConflict = "Conflict"
 )
 
 // see : https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#error-response-content

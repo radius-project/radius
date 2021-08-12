@@ -345,6 +345,7 @@ func Test_GetApplication_NotFound(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -542,6 +543,7 @@ func Test_GetComponent_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -564,6 +566,7 @@ func Test_GetComponent_NotFound(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -617,6 +620,7 @@ func Test_ListComponents_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -696,6 +700,7 @@ func Test_UpdateComponent_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -886,6 +891,7 @@ func Test_GetDeployment_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -908,6 +914,7 @@ func Test_GetDeployment_NotFound(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -958,6 +965,7 @@ func Test_ListDeployments_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -1035,6 +1043,7 @@ func Test_UpdateDeployment_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -1661,6 +1670,7 @@ func Test_GetScope_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -1683,6 +1693,7 @@ func Test_GetScope_NotFound(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -1732,6 +1743,7 @@ func Test_ListScopes_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -1807,6 +1819,7 @@ func Test_UpdateScopes_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeNotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},

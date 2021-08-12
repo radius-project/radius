@@ -197,6 +197,7 @@ func NewBadRequestResponse(message string) Response {
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
+				Code:    armerrors.CodeInvalid,
 				Message: message,
 			},
 		},
@@ -233,6 +234,7 @@ type ValidationErrorResponse struct {
 func NewValidationErrorResponse(errors validator.ValidationErrors) Response {
 	body := armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.CodeInvalid,
 			Message: errors.Error(),
 		},
 	}
@@ -277,6 +279,7 @@ func NewNotFoundResponse(id resources.ResourceID) Response {
 	return &NotFoundResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
+				Code:    armerrors.CodeNotFound,
 				Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 				Target:  id.ID,
 			},
@@ -311,6 +314,7 @@ func NewConflictResponse(message string) Response {
 	return &ConflictResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
+				Code:    armerrors.CodeConflict,
 				Message: message,
 			},
 		},
