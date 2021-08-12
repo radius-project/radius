@@ -70,7 +70,7 @@
           "$ref": "#/definitions/ComponentTrait"
         }
       ],
-      "x-ms-discriminator-value": "manualscaling.dev/ManualScaling@v1alpha1",
+      "x-ms-discriminator-value": "radius.dev/ManualScaling@v1alpha1",
       "properties": {
         "replicas": {
           "description": "Replica count.",
