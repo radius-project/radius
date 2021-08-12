@@ -274,6 +274,15 @@ func TestDeploymentValidator(t *testing.T) {
                 }`,
 		expects: invalidTypeErrs("(root).properties.components.0", "string", "integer",
 			"componentName", "revision"),
+	}, {
+		name: "missing required fields for components[]",
+		input: `{
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "components": [{}]
+                  }
+                }`,
+		expects: requiredFieldErrs("(root).properties.components.0", "componentName"),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))

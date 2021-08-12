@@ -665,6 +665,9 @@
 	  "type": "string"
 	}
       },
+      "required": [
+	"componentName"
+      ],
       "additionalProperties": false
     },
     "DeploymentCreateParameters": {
