@@ -77,8 +77,6 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 func (r Renderer) setReplicas(o runtime.Object, replicas *int32) {
 	dep, ok := o.(*appsv1.Deployment)
 	if ok {
-		if dep.Spec.Replicas == nil {
-			dep.Spec.Replicas = replicas
-		}
+		dep.Spec.Replicas = replicas
 	}
 }
