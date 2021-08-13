@@ -8,7 +8,6 @@ package radrp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -335,11 +334,27 @@ func resourceID(req *http.Request) resources.ResourceID {
 
 func badRequest(ctx context.Context, w http.ResponseWriter, err error) {
 	logger := radlogger.GetLogger(ctx)
-	// Try to use the ARM format to send back the error info
-	body := &armerrors.ErrorResponse{
-		Error: armerrors.ErrorDetails{
-			Message: err.Error(),
-		},
+	validationErr, ok := err.(*validationError)
+	var body *armerrors.ErrorResponse
+	if !ok {
+		// Try to use the ARM format to send back the error info
+		body = &armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: err.Error(),
+			},
+		}
+	} else {
+		body = &armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: "Validation error",
+				Details: make([]armerrors.ErrorDetails, len(validationErr.details)),
+			},
+		}
+		for i, err := range validationErr.details {
+			body.Error.Details[i].Message = fmt.Sprintf("%s: %s", err.Position, err.Message)
+		}
 	}
 
 	// If we fail to serialize the error, log it and just reply with a 'plain' 500
@@ -411,7 +426,9 @@ func readJSONResource(req *http.Request, obj rest.Resource, id resources.Resourc
 		return fmt.Errorf("cannot find validator for %T: %w", obj, err)
 	}
 	if errs := validator.ValidateJSON(data); len(errs) != 0 {
-		return validationError(obj, errs)
+		return &validationError{
+			details: errs,
+		}
 	}
 	err = json.Unmarshal(data, obj)
 	if err != nil {
@@ -424,10 +441,14 @@ func readJSONResource(req *http.Request, obj rest.Resource, id resources.Resourc
 	return nil
 }
 
-func validationError(obj rest.Resource, errs []schema.ValidationError) error {
+type validationError struct {
+	details []schema.ValidationError
+}
+
+func (v *validationError) Error() string {
 	var message strings.Builder
-	fmt.Fprintf(&message, "failed validation(s) while parsing %T:\n", obj)
-	for _, err := range errs {
+	fmt.Fprintln(&message, "failed validation(s):")
+	for _, err := range v.details {
 		if err.JSONError != nil {
 			// The given document isn't even JSON.
 			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
@@ -435,5 +456,5 @@ func validationError(obj rest.Resource, errs []schema.ValidationError) error {
 			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
 		}
 	}
-	return errors.New(message.String())
+	return message.String()
 }
