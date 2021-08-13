@@ -3,13 +3,13 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package servicebusqueuev1alpha1
+package messagequeuev1alpha1
 
 import (
 	"github.com/Azure/radius/pkg/azresources"
 )
 
-const Kind = "azure.com/ServiceBusQueue@v1alpha1"
+const Kind = "amqp.org/MessageQueue@v1alpha1"
 
 var QueueResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
@@ -24,19 +24,19 @@ var QueueResourceType = azresources.KnownType{
 	},
 }
 
-// ServiceBusQueueComponent is the definition of the service bus queue component
-type ServiceBusQueueComponent struct {
+// MessageQueueComponent is the definition of the service bus queue component
+type MessageQueueComponent struct {
 	Name     string                   `json:"name"`
 	Kind     string                   `json:"kind"`
-	Config   ServiceBusQueueConfig    `json:"config,omitempty"`
+	Config   MessageQueueConfig       `json:"config,omitempty"`
 	Run      map[string]interface{}   `json:"run,omitempty"`
 	Uses     []map[string]interface{} `json:"uses,omitempty"`
 	Bindings []map[string]interface{} `json:"bindings,omitempty"`
 	Traits   []map[string]interface{} `json:"traits,omitempty"`
 }
 
-// ServiceBusQueueConfig is the defintion of the config section
-type ServiceBusQueueConfig struct {
+// MessageQueueConfig is the defintion of the config section
+type MessageQueueConfig struct {
 	Managed  bool   `json:"managed"`
 	Queue    string `json:"queue"`
 	Resource string `json:"resource"`

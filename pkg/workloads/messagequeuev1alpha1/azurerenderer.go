@@ -3,29 +3,28 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package servicebusqueuev1alpha1
+package messagequeuev1alpha1
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/model/components"
-	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-// Renderer is the WorkloadRenderer implementation for the service bus workload.
-type KubernetesRenderer struct {
+// AzureRenderer is the WorkloadRenderer implementation for the service bus workload.
+type AzureRenderer struct {
 	Arm armauth.ArmConfig
 }
 
 // Allocate is the WorkloadRenderer implementation for servicebus workload.
-func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+func (r AzureRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	if len(workload.Workload.Bindings) > 0 {
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
@@ -37,19 +36,8 @@ func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workl
 	properties := resources[0].Properties
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
 	queueName := properties[handlers.ServiceBusQueueNameKey]
-
-	sbClient := azclients.NewServiceBusNamespacesClient(r.Arm.SubscriptionID, r.Arm.Auth)
-	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
-	}
-
-	if accessKeys.PrimaryConnectionString == nil && accessKeys.SecondaryConnectionString == nil {
-		return nil, fmt.Errorf("failed to retrieve connection strings")
-	}
-
-	cs := accessKeys.PrimaryConnectionString
+	namespaceConnectionString := properties[handlers.ServiceBusNamespaceConnectionStringKey]
+	queueConnectionString := properties[handlers.ServiceBusQueueConnectionStringKey]
 
 	bindings := map[string]components.BindingState{
 		"default": {
@@ -57,9 +45,11 @@ func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workl
 			Binding:   "default",
 			Kind:      "azure.com/ServiceBusQueue",
 			Properties: map[string]interface{}{
-				"connectionString": *cs,
-				"namespace":        namespaceName,
-				"queue":            queueName,
+				"connectionString":          namespaceConnectionString,
+				"namespaceConnectionString": namespaceConnectionString,
+				"queueConnectionString":     queueConnectionString,
+				"namespace":                 namespaceName,
+				"queue":                     queueName,
 			},
 		},
 	}
@@ -68,8 +58,8 @@ func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workl
 }
 
 // Render is the WorkloadRenderer implementation for servicebus workload.
-func (r KubernetesRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := ServiceBusQueueComponent{}
+func (r AzureRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+	component := MessageQueueComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return nil, err
@@ -109,6 +99,8 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 			return nil, err
 		}
 
+		// TODO : Need to create an output resource for service bus namespace
+
 		resource := outputresource.OutputResource{
 			LocalID: outputresource.LocalIDAzureServiceBusQueue,
 			Kind:    outputresource.KindAzureServiceBusQueue,
@@ -118,7 +110,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 				handlers.ManagedKey: "false",
 
 				// Truncate the queue part of the ID to make an ID for the namespace
-				handlers.ServiceBusNamespaceIDKey:   resources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),
+				handlers.ServiceBusNamespaceIDKey:   azresources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),
 				handlers.ServiceBusQueueIDKey:       queueID.ID,
 				handlers.ServiceBusNamespaceNameKey: queueID.Types[0].Name,
 				handlers.ServiceBusQueueNameKey:     queueID.Types[1].Name,
