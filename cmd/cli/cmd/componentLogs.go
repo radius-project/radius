@@ -72,7 +72,7 @@ rad component logs orders --application icecream-store --container daprd`,
 			return err
 		}
 
-		stream, err := client.Logs(cmd.Context(), clients.LogsOptions{
+		streams, err := client.Logs(cmd.Context(), clients.LogsOptions{
 			Application: application,
 			Component:   component,
 			Follow:      follow,
@@ -81,46 +81,74 @@ rad component logs orders --application icecream-store --container daprd`,
 			return err
 		}
 
-		defer stream.Close()
+		logErrors := make(chan error, len(streams))
+		for _, logInfo := range streams {
 
-		// We can keep reading this until cancellation occurs.
-		if follow {
-			// Sending to stderr so it doesn't interfere with parsing
-			fmt.Fprintf(os.Stderr, "Streaming logs from component %s. Press CTRL+C to exit...\n", component)
-		}
+			// We can keep reading this until cancellation occurs.
+			if follow {
+				// Sending to stderr so it doesn't interfere with parsing
+				fmt.Fprintf(os.Stderr, "Streaming logs from replica %s for component %s. Press CTRL+C to exit...\n", logInfo.Name, component)
+			}
 
-		hasLogs := false
-		reader := bufio.NewReader(stream)
-		for {
-			line, prefix, err := reader.ReadLine()
-			if err == context.Canceled {
-				// CTRL+C => done
-				return nil
-			} else if err == io.EOF {
-				// End of stream
-				//
-				// Output a status message to stderr if there were no logs for non-streaming
-				// so an interactive user gets *some* feedback.
-				if !follow && !hasLogs {
-					fmt.Fprintln(os.Stderr, "Component's log is currently empty.")
+			go func(info clients.LogStream) {
+				stream := info.Stream
+				defer stream.Close()
+
+				name := info.Name
+				hasLogs := false
+				reader := bufio.NewReader(stream)
+				startLine := true
+				for {
+					line, prefix, err := reader.ReadLine()
+					if err == context.Canceled {
+						// CTRL+C => done
+						logErrors <- nil
+						return
+					} else if err == io.EOF {
+						// End of stream
+						//
+						// Output a status message to stderr if there were no logs for non-streaming
+						// so an interactive user gets *some* feedback.
+						if !follow && !hasLogs {
+							fmt.Fprintln(os.Stderr, "Component's log is currently empty.")
+						}
+						logErrors <- nil
+						return
+					} else if err != nil {
+						logErrors <- err
+						return
+					}
+
+					hasLogs = true
+
+					// Handle the case where a partial line is returned
+					if prefix {
+						if startLine {
+							fmt.Print("[" + name + "] " + string(line))
+						} else {
+							fmt.Print(string(line))
+						}
+						startLine = false
+						continue
+					}
+
+					if startLine {
+						fmt.Println("[" + name + "] " + string(line))
+					} else {
+						fmt.Println(string(line))
+					}
+					startLine = true
 				}
-
-				return nil
-			} else if err != nil {
-				return fmt.Errorf("failed to read log stream %T: %w", err, err)
-			}
-
-			hasLogs = true
-
-			// Handle the case where a partial line is returned
-			if prefix {
-				fmt.Print(string(line))
-				continue
-			}
-
-			fmt.Println(string(line))
+			}(logInfo)
 		}
-
+		for i := 0; i < len(streams); i++ {
+			err := <-logErrors
+			if err != nil {
+				// TODO format
+				fmt.Fprintln(os.Stderr, err)
+			}
+		}
+		return nil
 	},
 }
 
@@ -129,4 +157,5 @@ func init() {
 
 	logsCmd.Flags().String("container", "", "specify the container from which logs should be streamed")
 	logsCmd.Flags().BoolP("follow", "f", false, "specify that logs should be stream until the command is canceled")
+	logsCmd.Flags().String("replica", "", "specify the replica to collect logs from")
 }
