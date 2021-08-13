@@ -11,14 +11,14 @@ RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 
 .PHONY: test
 test: ## Runs unit tests, excluding kubernetes controller tests
-	go test -race ./pkg/...
+	CGO_ENABLED=1 go test -race ./pkg/...
 
 .PHONY: test-functional-azure
 test-functional-azure: ## Runs Azure functional tests
-	go test -race ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20
+	CGO_ENABLED=1 go test -race ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20
 
 test-functional-kubernetes: ## Runs Kubernetes functional tests
-	go test -race ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 20
+	CGO_ENABLED=1 go test -race ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 20
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.19.2
@@ -28,7 +28,7 @@ test-get-envtools:
 	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 test-controller: generate-k8s-manifests generate-controller test-get-envtools ## Runs controller tests, note arm64 version not available.
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" go -race test ./test/integration/kubernetes/...
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go -race test ./test/integration/kubernetes/...
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
