@@ -512,8 +512,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		}
 
 		logger.Info("Updating application")
-		ok, err := r.db.UpdateApplication(ctx, a)
-		if err != nil || !ok {
+		if _, err = r.db.UpdateApplication(ctx, a); err != nil {
 			logger.Error(err, "failed to update application")
 			return
 		}
