@@ -212,7 +212,7 @@ func (app Application) FriendlyName() string {
 	return app.Name
 }
 
-// FriendlyName gets the short name of the application.
+// DeepCopy returns a deep copy of the Application object.
 func (app *Application) DeepCopy() *Application {
 	copy := &Application{
 		ResourceBase: app.ResourceBase,
