@@ -746,7 +746,7 @@
           "type": "array",
           "description": "Uses spec of the component",
           "items": {
-	     "type": "object"
+	     "$ref": "#/definitions/ComponentDependency"
           }
         },
         "traits": {
@@ -762,6 +762,39 @@
           "$ref": "#/definitions/ComponentOutputResource"
           }
         }
+      }
+    },
+    "ComponentDependency": {
+      "description": "A binding used by an Radius Component",
+      "type": "object",
+      "properties": {
+	"binding": {
+	  "type": "string"
+	},
+	"env": {
+	  "type": "object",
+	  "additionalProperties": {
+	    "type": "string"
+	  }
+	},
+	"secrets": {
+	  "$ref": "#/definitions/ComponentDependencySecrets"
+	}
+      }
+    },
+    "ComponentDependencySecrets": {
+      "description": "Actions to take on a secret store as part of a binding",
+      "type": "object",
+      "properties": {
+	"store": {
+	  "type": "string"
+	},
+	"keys": {
+	  "type": "object",
+	  "additionalProperties": {
+	    "type": "string"
+	  }
+	}
       }
     },
     "ComponentOutputResource": {

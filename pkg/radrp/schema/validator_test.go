@@ -142,6 +142,27 @@ func TestComponentValidator(t *testing.T) {
 			  }]
 			}
 		  }`,
+	}, {
+		name: "valid binding expressions",
+		input: `{
+                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "properties": {
+                    "uses": [
+                      {
+                        "binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
+                        "env": {
+                          "SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.host]"
+                        },
+                        "secrets": {
+                          "store": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
+                          "keys": {
+                            "secret": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }`,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))

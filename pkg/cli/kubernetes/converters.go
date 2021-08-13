@@ -75,13 +75,13 @@ func ConvertK8sComponentToARM(input radiusv1alpha1.Component) (*radclient.Compon
 				return nil, err
 			}
 
-			dependency := map[string]interface{}{}
+			dependency := radclient.ComponentDependency{}
 			err = json.Unmarshal(bytes, &dependency)
 			if err != nil {
 				return nil, err
 			}
 
-			result.Properties.Uses = append(result.Properties.Uses, dependency)
+			result.Properties.Uses = append(result.Properties.Uses, &dependency)
 		}
 	}
 

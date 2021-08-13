@@ -85,6 +85,41 @@ type ComponentDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ComponentDependency - A binding used by an Radius Component
+type ComponentDependency struct {
+	Binding *string `json:"binding,omitempty"`
+
+	// Dictionary of
+	Env map[string]*string `json:"env,omitempty"`
+
+	// Actions to take on a secret store as part of a binding
+	Secrets *ComponentDependencySecrets `json:"secrets,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ComponentDependency.
+func (c ComponentDependency) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "binding", c.Binding)
+	populate(objectMap, "env", c.Env)
+	populate(objectMap, "secrets", c.Secrets)
+	return json.Marshal(objectMap)
+}
+
+// ComponentDependencySecrets - Actions to take on a secret store as part of a binding
+type ComponentDependencySecrets struct {
+	// Dictionary of
+	Keys map[string]*string `json:"keys,omitempty"`
+	Store *string `json:"store,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ComponentDependencySecrets.
+func (c ComponentDependencySecrets) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "keys", c.Keys)
+	populate(objectMap, "store", c.Store)
+	return json.Marshal(objectMap)
+}
+
 // ComponentGetOptions contains the optional parameters for the Component.Get method.
 type ComponentGetOptions struct {
 	// placeholder for future optional parameters
@@ -127,7 +162,7 @@ type ComponentProperties struct {
 	Traits []ComponentTraitClassification `json:"traits,omitempty"`
 
 	// Uses spec of the component
-	Uses []map[string]interface{} `json:"uses,omitempty"`
+	Uses []*ComponentDependency `json:"uses,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ComponentProperties.
