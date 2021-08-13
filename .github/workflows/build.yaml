@@ -54,10 +54,10 @@ jobs:
         run: make build
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm'
-        run: make test
         env:
-          CGO_ENABLED: 1
           GOTEST_OPTS: '-race'
+        run: |
+          make test
       - name: Run make test-controller (controller tests)
         if: matrix.target_arch != 'arm' && matrix.target_os != 'windows'
         run: make test-controller
