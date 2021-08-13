@@ -345,6 +345,7 @@ func Test_GetApplication_NotFound(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -542,6 +543,7 @@ func Test_GetComponent_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -564,6 +566,7 @@ func Test_GetComponent_NotFound(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -617,6 +620,7 @@ func Test_ListComponents_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -696,6 +700,7 @@ func Test_UpdateComponent_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -886,6 +891,7 @@ func Test_GetDeployment_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -908,6 +914,7 @@ func Test_GetDeployment_NotFound(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -958,6 +965,7 @@ func Test_ListDeployments_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -1035,6 +1043,7 @@ func Test_UpdateDeployment_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -1167,7 +1176,7 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 
 	require.Equal(t, 400, code)
 	require.NotNil(t, armerr)
-	require.Equal(t, armerrors.CodeInvalid, armerr.Error.Code)
+	require.Equal(t, armerrors.Invalid, armerr.Error.Code)
 	require.Equal(t, "deployment was invalid :(", armerr.Error.Message)
 }
 
@@ -1232,7 +1241,7 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 
 	require.Equal(t, 500, code)
 	require.NotNil(t, armerr)
-	require.Equal(t, armerrors.CodeInternal, armerr.Error.Code)
+	require.Equal(t, armerrors.Internal, armerr.Error.Code)
 	require.Equal(t, "deployment failed :(", armerr.Error.Message)
 }
 
@@ -1316,7 +1325,7 @@ func Test_UpdateDeployment_FailureCanBeRetried(t *testing.T) {
 
 	require.Equal(t, 500, code)
 	require.NotNil(t, armerr)
-	require.Equal(t, armerrors.CodeInternal, armerr.Error.Code)
+	require.Equal(t, armerrors.Internal, armerr.Error.Code)
 	require.Equal(t, "deployment failed :(", armerr.Error.Message)
 
 	// Now retry and it should succeed
@@ -1586,7 +1595,7 @@ func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
 
 	require.Equal(t, 400, code)
 	require.NotNil(t, armerr)
-	require.Equal(t, armerrors.CodeInvalid, armerr.Error.Code)
+	require.Equal(t, armerrors.Invalid, armerr.Error.Code)
 	require.Equal(t, "deletion was invalid :(", armerr.Error.Message)
 }
 
@@ -1644,7 +1653,7 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 
 	require.Equal(t, 500, code)
 	require.NotNil(t, armerr)
-	require.Equal(t, armerrors.CodeInternal, armerr.Error.Code)
+	require.Equal(t, armerrors.Internal, armerr.Error.Code)
 	require.Equal(t, "deletion failed :(", armerr.Error.Message)
 }
 
@@ -1661,6 +1670,7 @@ func Test_GetScope_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -1683,6 +1693,7 @@ func Test_GetScope_NotFound(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  id.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 		},
@@ -1732,6 +1743,7 @@ func Test_ListScopes_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
@@ -1807,6 +1819,7 @@ func Test_UpdateScopes_NoApplication(t *testing.T) {
 
 	expected := &armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    armerrors.NotFound,
 			Target:  a.ID,
 			Message: fmt.Sprintf("the resource with id '%s' was not found", a.ID),
 		},
