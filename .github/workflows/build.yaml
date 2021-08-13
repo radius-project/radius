@@ -55,6 +55,9 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm'
         run: make test
+        env:
+          CGO_ENABLED: 1
+          GOTEST_OPTS: '-race'
       - name: Run make test-controller (controller tests)
         if: matrix.target_arch != 'arm' && matrix.target_os != 'windows'
         run: make test-controller
@@ -172,7 +175,7 @@ jobs:
   kubernetes_tests:
     name: Run Kubernetes tests
     needs: [ 'build', 'images' ]
-    if: startsWith(github.ref, 'refs/pull/') # run on PR 
+    if: startsWith(github.ref, 'refs/pull/') # run on PR
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
@@ -236,10 +239,10 @@ jobs:
       with:
         name: container_logs
         path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
-  deploy_tests: 
+  deploy_tests:
     name: Run deployment tests
     needs: [ 'build', 'images' ]
-    if: startsWith(github.ref, 'refs/pull/') # run on PR 
+    if: startsWith(github.ref, 'refs/pull/') # run on PR
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.16.0'
@@ -303,7 +306,7 @@ jobs:
             client_payload: { },
           });
 
-      # We select a test environment here and load it into the default 
+      # We select a test environment here and load it into the default
       # radius config so that it will be used by tests
     - name: Reserve test environment
       id: reserve
@@ -378,7 +381,7 @@ jobs:
             owner: context.issue.owner,
             repo: context.issue.repo,
             event_type: "delete-environment",
-            client_payload: { 
+            client_payload: {
               environment: "${{ steps.reserve.outputs.environment }}"
             }
           });
@@ -451,8 +454,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
-          username: '${{ secrets.RADIUSTEAM_DOCKERHUB_USERNAME }}' 
-          password: '${{ secrets.RADIUSTEAM_DOCKERHUB_PASSWORD }}' 
+          username: '${{ secrets.RADIUSTEAM_DOCKERHUB_USERNAME }}'
+          password: '${{ secrets.RADIUSTEAM_DOCKERHUB_PASSWORD }}'
       - name: Build and push - Codespaces (latest)
         if: (github.ref == 'refs/heads/main') # push image on push to main
         uses: docker/build-push-action@v2
