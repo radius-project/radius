@@ -131,6 +131,17 @@ func TestComponentValidator(t *testing.T) {
 		  }
 		}`,
 		expects: additionalFieldErrs("(root).properties.traits.0", "appId"),
+	}, {
+		name: "valid ManualScalingTrait",
+		input: `{
+			"id": "id", "name": "name", "kind": "kind", "location": "location",
+			"properties": {
+			  "traits": [{
+				"kind":     "radius.dev/ManualScaling@v1alpha1",
+				"replicas":    2
+			  }]
+			}
+		  }`,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			errs := v.ValidateJSON([]byte(tc.input))
