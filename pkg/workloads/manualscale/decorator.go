@@ -36,22 +36,23 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 		// we no longer need to track the output resources on error
+		// See: https://github.com/Azure/radius/issues/499
 		return resources, err
 	}
 
 	trait := Trait{}
-	found, err := w.Workload.FindTrait(Kind, &trait)
-	if !found || err != nil {
+	if found, err := w.Workload.FindTrait(Kind, &trait); !found || err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 		// we no longer need to track the output resources on error
+		// See: https://github.com/Azure/radius/issues/499
 		return resources, err
 	}
 
-	// ContainerWorkload detected! update the deployment
+	// ManualScaling detected, update deployment
 	for _, resource := range resources {
 		if resource.Kind != outputresource.KindKubernetes {
-			// Not a kubernetes resource
+			// Not a Kubernetes resource
 			continue
 		}
 
@@ -60,14 +61,12 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			// Even if the operation fails, return the output resources created so far
 			// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 			// we no longer need to track the output resources on error
-			return resources, errors.New("found kubernetes resource with non-Kubernetes paylod")
+			// See: https://github.com/Azure/radius/issues/499
+			return resources, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}
 
 		if trait.Replicas != nil {
 			r.setReplicas(o, trait.Replicas)
-			if !ok {
-				continue
-			}
 		}
 	}
 
@@ -75,8 +74,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 }
 
 func (r Renderer) setReplicas(o runtime.Object, replicas *int32) {
-	dep, ok := o.(*appsv1.Deployment)
-	if ok {
+	if dep, ok := o.(*appsv1.Deployment); ok {
 		dep.Spec.Replicas = replicas
 	}
 }

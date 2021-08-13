@@ -71,6 +71,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 		// we no longer need to track the output resources on error
+		// See: https://github.com/Azure/radius/issues/499
 		return resources, err
 	}
 
@@ -80,13 +81,14 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 		// we no longer need to track the output resources on error
+		// See: https://github.com/Azure/radius/issues/499
 		return resources, err
 	}
 
-	// dapr detected! update the deployment
+	// dapr detected! Update the deployment
 	for _, resource := range resources {
 		if resource.Kind != outputresource.KindKubernetes {
-			// Not a kubernetes resource
+			// Not a Kubernetes resource
 			continue
 		}
 
@@ -95,7 +97,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			// Even if the operation fails, return the output resources created so far
 			// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 			// we no longer need to track the output resources on error
-			return resources, errors.New("Found kubernetes resource with non-Kubernetes paylod")
+			// See: https://github.com/Azure/radius/issues/499
+			return resources, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}
 
 		annotations, ok := r.getAnnotations(o)
