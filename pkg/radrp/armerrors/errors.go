@@ -10,16 +10,16 @@ package armerrors
 // We get to define our own codes and document them, these are just examples, but consistency doesn't hurt.
 const (
 	// Used for generic validation errors.
-	CodeInvalid = "BadRequest"
+	Invalid = "BadRequest"
 
 	// Used for internal/unclassified failures.
-	CodeInternal = "Internal"
+	Internal = "Internal"
 
 	// Used for NotFound error.
-	CodeNotFound = "NotFound"
+	NotFound = "NotFound"
 
 	// Used for Conflict error.
-	CodeConflict = "Conflict"
+	Conflict = "Conflict"
 )
 
 // see : https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#error-response-content
