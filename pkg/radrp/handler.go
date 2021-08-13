@@ -353,7 +353,12 @@ func badRequest(ctx context.Context, w http.ResponseWriter, err error) {
 			},
 		}
 		for i, err := range validationErr.details {
-			body.Error.Details[i].Message = fmt.Sprintf("%s: %s", err.Position, err.Message)
+			if err.JSONError != nil {
+				// The given document isn't even JSON.
+				body.Error.Details[i].Message = fmt.Sprintf("%s: %v", err.Message, err.JSONError)
+			} else {
+				body.Error.Details[i].Message = fmt.Sprintf("%s: %s", err.Position, err.Message)
+			}
 		}
 	}
 
