@@ -1114,29 +1114,12 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 	test := start(t)
 
-	// This test will call through to the deployment processor to create a deployment. For now we don't validate any
-	// of the data, and just simulate invalid data.
-	complete := make(chan struct{})
-	test.deploy.EXPECT().
-		UpdateDeployment(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(a, b, c, d, e interface{}) error {
-			select {
-			case <-complete:
-				return &deployment.CompositeError{
-					Errors: []error{
-						errors.New("deployment was invalid :("),
-					},
-				}
-			case <-time.After(10 * time.Second):
-				return errors.New("timed out")
-			}
-		})
-
 	test.DBCreateApplication(TestApplicationName, nil)
 
 	body := map[string]interface{}{
+		"name": 42,
 		"properties": map[string]interface{}{
-			"components": []interface{}{},
+			"components": 42,
 		},
 	}
 	b, err := json.Marshal(body)
@@ -1148,36 +1131,19 @@ func Test_UpdateDeployment_Create_ValidationFailure(t *testing.T) {
 
 	test.handler.ServeHTTP(w, req)
 
-	require.Equal(t, 202, w.Code)
-	location := w.Result().Header.Get(textproto.CanonicalMIMEHeaderKey("Location"))
-	require.NotEmpty(t, location)
-
-	expected := &rest.Deployment{
-		ResourceBase: rest.ResourceBase{
-			ID:             deploymentID.ID,
-			SubscriptionID: deploymentID.SubscriptionID,
-			ResourceGroup:  deploymentID.ResourceGroup,
-			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
-		},
-		Properties: rest.DeploymentProperties{
-			ProvisioningState: rest.DeployingStatus,
+	require.Equal(t, 400, w.Code)
+	expected := &armerrors.ErrorResponse{
+		Error: armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: "Validation error",
+			Details: []armerrors.ErrorDetails{{
+				Message: "(root).name: Invalid type. Expected: string, given: integer",
+			}, {
+				Message: "(root).properties.components: Invalid type. Expected: array, given: integer",
+			}},
 		},
 	}
 	requireJSON(t, expected, w)
-
-	test.ValidateDeploymentOperationInProgress(location)
-
-	// Now unblock the completion of the deployment
-	complete <- struct{}{}
-
-	code, actual, armerr := test.PollForFailedOperation(deploymentID, location)
-	require.Equal(t, rest.FailedStatus, actual.Properties.ProvisioningState)
-
-	require.Equal(t, 400, code)
-	require.NotNil(t, armerr)
-	require.Equal(t, armerrors.Invalid, armerr.Error.Code)
-	require.Equal(t, "deployment was invalid :(", armerr.Error.Message)
 }
 
 func Test_UpdateDeployment_Create_Failure(t *testing.T) {
