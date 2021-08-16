@@ -90,7 +90,7 @@ rad component logs orders --application icecream-store --container daprd`,
 				fmt.Fprintf(os.Stderr, "Streaming logs from replica %s for component %s. Press CTRL+C to exit...\n", logInfo.Name, component)
 			}
 
-			// Kind of go routine to read the logs from each stream.
+			// Kick off go routine to read the logs from each stream.
 			go func(info clients.LogStream) {
 				stream := info.Stream
 				defer stream.Close()
