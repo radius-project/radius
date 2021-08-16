@@ -31,7 +31,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := KubernetesRenderer{}
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -83,13 +83,17 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		require.Len(t, template.Spec.Containers, 1)
 
 		container := template.Spec.Containers[0]
-		require.Equal(t, "redis", container.Name)
-		require.Equal(t, "redis", container.Image)
-		require.Len(t, container.Ports, 1)
+		require.Equal(t, "rabbitmq", container.Name)
+		require.Equal(t, "rabbitmq", container.Image)
+		require.Len(t, container.Ports, 2)
 
-		port := container.Ports[0]
-		require.Equal(t, v1.ProtocolTCP, port.Protocol)
-		require.Equal(t, int32(6379), port.ContainerPort)
+		port1 := container.Ports[0]
+		require.Equal(t, v1.ProtocolTCP, port1.Protocol)
+		require.Equal(t, int32(5672), port1.ContainerPort)
+
+		port2 := container.Ports[1]
+		require.Equal(t, v1.ProtocolTCP, port2.Protocol)
+		require.Equal(t, int32(15672), port2.ContainerPort)
 	})
 
 	t.Run("verify service", func(t *testing.T) {
@@ -103,10 +107,10 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		require.Len(t, spec.Ports, 1)
 
 		port := spec.Ports[0]
-		require.Equal(t, "redis", port.Name)
+		require.Equal(t, "rabbitmq", port.Name)
 		require.Equal(t, v1.ProtocolTCP, port.Protocol)
-		require.Equal(t, int32(6379), port.Port)
-		require.Equal(t, intstr.FromInt(6379), port.TargetPort)
+		require.Equal(t, int32(5672), port.Port)
+		require.Equal(t, intstr.FromInt(5672), port.TargetPort)
 	})
 }
 
