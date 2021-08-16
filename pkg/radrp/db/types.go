@@ -74,6 +74,13 @@ type ApplicationProperties struct {
 	Status ApplicationStatus `bson:"status"`
 }
 
+func (p ApplicationProperties) DeepCopy(original ApplicationProperties) {
+	p.Status.HealthState = original.Status.HealthState
+	p.Status.HealthErrorDetails = original.Status.HealthErrorDetails
+	p.Status.ProvisioningState = original.Status.ProvisioningState
+	p.Status.ProvisioningErrorDetails = original.Status.ProvisioningErrorDetails
+}
+
 // ApplicationPatch represents an Radius application without its nested resources.
 type ApplicationPatch struct {
 	ResourceBase `bson:",inline"`
@@ -273,12 +280,9 @@ func (app *Application) DeepCopy() *Application {
 	// Ideally that should not have made a difference, but this way
 	// the resulted copy are more exact than otherwise and would help
 	// in case exact map equality checks were used (like in tests).
-	if app.Properties != nil {
-		copy.Properties = make(map[string]interface{}, len(app.Properties))
-		for k, v := range app.Properties {
-			copy.Properties[k] = v
-		}
-	}
+
+	copy.Properties.DeepCopy(app.Properties)
+
 	if app.Components != nil {
 		copy.Components = make(map[string]Component, len(app.Components))
 		for k, v := range app.Components {
