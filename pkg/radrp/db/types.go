@@ -212,6 +212,44 @@ func (app Application) FriendlyName() string {
 	return app.Name
 }
 
+// DeepCopy returns a deep copy of the Application object.
+func (app *Application) DeepCopy() *Application {
+	copy := &Application{
+		ResourceBase: app.ResourceBase,
+	}
+	// These `nil` checks are to make sure we copy `nil` maps as
+	// `nil` maps and not as empty maps.
+	//
+	// Ideally that should not have made a difference, but this way
+	// the resulted copy are more exact than otherwise and would help
+	// in case exact map equality checks were used (like in tests).
+	if app.Properties != nil {
+		copy.Properties = make(map[string]interface{}, len(app.Properties))
+		for k, v := range app.Properties {
+			copy.Properties[k] = v
+		}
+	}
+	if app.Components != nil {
+		copy.Components = make(map[string]Component, len(app.Components))
+		for k, v := range app.Components {
+			copy.Components[k] = v
+		}
+	}
+	if app.Scopes != nil {
+		copy.Scopes = make(map[string]Scope, len(app.Scopes))
+		for k, v := range app.Scopes {
+			copy.Scopes[k] = v
+		}
+	}
+	if app.Deployments != nil {
+		copy.Deployments = make(map[string]Deployment, len(app.Deployments))
+		for k, v := range app.Deployments {
+			copy.Deployments[k] = v
+		}
+	}
+	return copy
+}
+
 // FriendlyName gets the short name of the application.
 func (app ApplicationPatch) FriendlyName() string {
 	// use the last segment of the name

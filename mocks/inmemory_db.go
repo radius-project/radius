@@ -169,7 +169,7 @@ func (s *store) GetApplicationByID(ctx context.Context, id resources.Application
 		return nil, db.ErrNotFound
 	}
 
-	return app, nil
+	return app.DeepCopy(), nil
 }
 
 func (s *store) PatchApplication(ctx context.Context, patch *db.ApplicationPatch) (bool, error) {
@@ -213,24 +213,8 @@ func (s *store) UpdateApplication(ctx context.Context, app *db.Application) (boo
 		list = &map[string]*db.Application{}
 		s.applications[k] = list
 	}
-
 	old := (*list)[app.FriendlyName()]
-	new := &db.Application{}
-
-	if old == nil {
-		new.Components = map[string]db.Component{}
-		new.Deployments = map[string]db.Deployment{}
-		new.Scopes = map[string]db.Scope{}
-	} else {
-		new.Components = old.Components
-		new.Deployments = old.Deployments
-		new.Scopes = old.Scopes
-	}
-
-	new.ResourceBase = app.ResourceBase
-	new.Properties = app.Properties
-
-	(*list)[app.FriendlyName()] = new
+	(*list)[app.FriendlyName()] = app.DeepCopy()
 	return old == nil, nil
 }
 
