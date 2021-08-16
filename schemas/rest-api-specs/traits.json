@@ -11,7 +11,7 @@
       "description": "Trait of a component.",
       "properties": {
         "kind": {
-          "description": "Component kind.",
+          "description": "Trait kind.",
           "type": "string"
         }
       },

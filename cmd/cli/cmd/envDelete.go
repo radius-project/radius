@@ -53,7 +53,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	if ok {
 
 		if !yes {
-			confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and %s with all their resources will be deleted. Continue deleting? [y/n]?", az.ResourceGroup, az.ControlPlaneResourceGroup))
+			confirmed, err := prompt.Confirm(fmt.Sprintf("Resource groups %s and all radius-created resources in %s will be deleted. Continue deleting? [y/n]?", az.ControlPlaneResourceGroup, az.ResourceGroup))
 			if err != nil {
 				return err
 			}

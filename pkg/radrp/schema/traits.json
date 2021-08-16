@@ -16,7 +16,7 @@
       "description": "Dapr ComponentTrait",
       "properties": {
         "kind": {
-          "description": "Component kind.",
+          "description": "Trait kind.",
           "type": "string",
           "enum": ["dapr.io/App@v1alpha1"]
         },
@@ -36,7 +36,7 @@
       "description": "InboundRoute ComponentTrait",
       "properties": {
         "kind": {
-          "description": "Component kind.",
+          "description": "Trait kind.",
           "type": "string",
           "enum": ["radius.dev/InboundRoute@v1alpha1"]
         },
@@ -56,7 +56,7 @@
       "description": "ManualScaling ComponentTrait",
       "properties": {
         "kind": {
-          "description": "Component kind.",
+          "description": "Trait kind.",
           "type": "string",
           "enum": ["radius.dev/ManualScaling@v1alpha1"]
         },
