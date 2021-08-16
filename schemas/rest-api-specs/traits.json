@@ -11,21 +11,23 @@
       "description": "Trait of a component.",
       "properties": {
         "kind": {
-          "description": "Component kind.",
+          "description": "Trait kind.",
           "type": "string"
         }
       },
       "required": [
-	"kind"
+        "kind"
       ],
       "discriminator": "kind"
     },
     "DaprTrait": {
       "type": "object",
       "description": "Dapr ComponentTrait",
-      "allOf": [{
-	"$ref": "#/definitions/ComponentTrait"
-      }],
+      "allOf": [
+        {
+          "$ref": "#/definitions/ComponentTrait"
+        }
+      ],
       "x-ms-discriminator-value": "dapr.io/App@v1alpha1",
       "properties": {
         "appPort": {
@@ -42,9 +44,11 @@
     "InboundRouteTrait": {
       "type": "object",
       "description": "InboundRoute ComponentTrait",
-      "allOf": [{
-	"$ref": "#/definitions/ComponentTrait"
-      }],
+      "allOf": [
+        {
+          "$ref": "#/definitions/ComponentTrait"
+        }
+      ],
       "x-ms-discriminator-value": "radius.dev/InboundRoute@v1alpha1",
       "properties": {
         "hostName": {
@@ -54,6 +58,23 @@
         "binding": {
           "description": "Binding name.",
           "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ManualScalingTrait": {
+      "type": "object",
+      "description": "ManualScaling ComponentTrait",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ComponentTrait"
+        }
+      ],
+      "x-ms-discriminator-value": "radius.dev/ManualScaling@v1alpha1",
+      "properties": {
+        "replicas": {
+          "description": "Replica count.",
+          "type": "integer"
         }
       },
       "additionalProperties": false

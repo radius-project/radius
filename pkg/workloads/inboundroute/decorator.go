@@ -38,6 +38,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 		// we no longer need to track the output resources on error
+		// See: https://github.com/Azure/radius/issues/499
 		return resources, err
 	}
 
@@ -47,6 +48,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 		// we no longer need to track the output resources on error
+		// See: https://github.com/Azure/radius/issues/499
 		return resources, err
 	}
 
@@ -62,6 +64,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
 		// we no longer need to track the output resources on error
+		// See: https://github.com/Azure/radius/issues/499
 		return resources, fmt.Errorf("cannot find the binding '%s' referenced by '%s' trait", trait.Binding, Kind)
 	}
 
