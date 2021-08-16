@@ -783,7 +783,7 @@
       }
     },
     "ComponentDependencySecrets": {
-      "description": "Actions to take on a secret store as part of a binding",
+      "description": "Binding values that are stored in and read from a given secret store",
       "type": "object",
       "properties": {
 	"store": {
