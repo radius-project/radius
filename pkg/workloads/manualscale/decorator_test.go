@@ -67,6 +67,37 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, int32(2), *deployment.Spec.Replicas)
 }
 
+func Test_Render_CanSpecifyZero(t *testing.T) {
+	renderer := &Renderer{Inner: &noop{}}
+
+	w := workloads.InstantiatedWorkload{
+		Application: "test-app",
+		Name:        "test-component",
+		Workload: components.GenericComponent{
+			Name: "test-component",
+			Kind: "radius.dev/Test@v1alpha1",
+			Run:  map[string]interface{}{},
+			Traits: []components.GenericTrait{
+				{
+					Kind: Kind,
+					AdditionalProperties: map[string]interface{}{
+						"replicas": 0,
+					},
+				},
+			},
+		},
+	}
+
+	resources, err := renderer.Render(context.Background(), w)
+	require.NoError(t, err)
+	require.Len(t, resources, 1)
+
+	deployment := findDeployment(resources)
+	require.NotNil(t, deployment)
+
+	require.Equal(t, int32(0), *deployment.Spec.Replicas)
+}
+
 func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
 	for _, r := range resources {
 		if r.Kind != outputresource.KindKubernetes {
