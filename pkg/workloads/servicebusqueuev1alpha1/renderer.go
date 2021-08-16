@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package messagequeuev1alpha1
+package servicebusqueuev1alpha1
 
 import (
 	"context"
@@ -18,13 +18,13 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-// AzureRenderer is the WorkloadRenderer implementation for the service bus workload.
-type AzureRenderer struct {
+// Renderer is the WorkloadRenderer implementation for the service bus workload.
+type Renderer struct {
 	Arm armauth.ArmConfig
 }
 
 // Allocate is the WorkloadRenderer implementation for servicebus workload.
-func (r AzureRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	if len(workload.Workload.Bindings) > 0 {
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
@@ -58,8 +58,8 @@ func (r AzureRenderer) AllocateBindings(ctx context.Context, workload workloads.
 }
 
 // Render is the WorkloadRenderer implementation for servicebus workload.
-func (r AzureRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := MessageQueueComponent{}
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+	component := ServiceBusQueueComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return nil, err

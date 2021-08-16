@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package messagequeuev1alpha1
+package rabbitmqv1alpha1
 
 import (
 	"context"
@@ -19,25 +19,51 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type KubernetesRenderer struct {
+type Renderer struct {
 }
 
-func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	return AllocateKubernetesBindings(ctx, workload, resources)
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
+	namespace := workload.Namespace
+	if namespace == "" {
+		namespace = workload.Application
+	}
+
+	properties := resources[0].Properties
+	// queue name must be specified by the user
+	queueName, ok := properties[QueueNameKey]
+	if !ok {
+		return nil, fmt.Errorf("missing required property '%s'", QueueNameKey)
+	}
+
+	host := fmt.Sprintf("amqp://%s.%s.svc.cluster.local", workload.Name, namespace)
+	port := fmt.Sprint(6379)
+
+	// connection string looks like amqp://NAME.NAMESPACE.svc.cluster.local:PORT
+	bindings := map[string]components.BindingState{
+		"rabbitmq": {
+			Component: workload.Name,
+			Binding:   "rabbitmq",
+			Properties: map[string]interface{}{
+				"connectionString": host + ":" + port,
+				"queue":            queueName,
+			},
+		},
+	}
+	return bindings, nil
 }
 
 // Render is the WorkloadRenderer implementation for redis workload.
-func (r KubernetesRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := MessageQueueComponent{}
+func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+	component := RabbitMQComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return []outputresource.OutputResource{}, err
 	}
 
-	return GetKubernetesRedis(w, component)
+	return GetRabbitMQ(w, component)
 }
 
-func GetKubernetesRedis(w workloads.InstantiatedWorkload, component MessageQueueComponent) ([]outputresource.OutputResource, error) {
+func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) ([]outputresource.OutputResource, error) {
 	// Require namespace for k8s components here.
 	// Should move this check to a more generalized place.
 	namespace := w.Namespace
@@ -85,7 +111,7 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component MessageQueue
 					Containers: []corev1.Container{
 						{
 							Name:  "rabbitmq",
-							Image: "rabbitmq:3-management",
+							Image: "rabbitmq:3-management", // TODO confirm which image to use
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 5672,
@@ -148,28 +174,4 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component MessageQueue
 		Resource: &service})
 
 	return resources, nil
-}
-
-func AllocateKubernetesBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	namespace := workload.Namespace
-	if namespace == "" {
-		namespace = workload.Application
-	}
-	host := fmt.Sprintf("%s.%s.svc.cluster.local", workload.Name, namespace)
-	port := fmt.Sprint(6379)
-	bindings := map[string]components.BindingState{
-		"redis": {
-			Component: workload.Name,
-			Binding:   "redis",
-			Kind:      BindingKind,
-			Properties: map[string]interface{}{
-				"connectionString": host + ":" + port,
-				"host":             host,
-				"port":             port,
-				"primaryKey":       "",
-				"secondarykey":     "",
-			},
-		},
-	}
-	return bindings, nil
 }

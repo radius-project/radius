@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package redisv1alpha1
+package rabbitmqv1alpha1
 
 import (
 	"context"
@@ -111,7 +111,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 }
 
 func TestInvalidKubernetesComponentKindFailure(t *testing.T) {
-	renderer := KubernetesRenderer{}
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Workload: components.GenericComponent{

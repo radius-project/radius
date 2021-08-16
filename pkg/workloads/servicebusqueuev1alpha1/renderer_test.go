@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package messagequeuev1alpha1
+package servicebusqueuev1alpha1
 
 import (
 	"context"
@@ -29,7 +29,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -65,7 +65,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -103,7 +103,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -126,7 +126,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",

@@ -20,7 +20,6 @@ import (
 	"github.com/Azure/radius/pkg/workloads/inboundroute"
 	"github.com/Azure/radius/pkg/workloads/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/manualscale"
-	"github.com/Azure/radius/pkg/workloads/messagequeuev1alpha1"
 	"github.com/Azure/radius/pkg/workloads/mongodbv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/redisv1alpha1"
 	"github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1"
@@ -36,7 +35,6 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) model.ApplicationM
 		mongodbv1alpha1.Kind:         &mongodbv1alpha1.AzureRenderer{Arm: arm},
 		containerv1alpha1.Kind:       &manualscale.Renderer{Inner: &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}}},
 		servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
-		messagequeuev1alpha1.Kind:    &messagequeuev1alpha1.AzureRenderer{Arm: arm},
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
 		redisv1alpha1.Kind:           &redisv1alpha1.AzureRenderer{Arm: arm},
 	}
