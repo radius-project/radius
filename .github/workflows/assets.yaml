@@ -37,6 +37,24 @@ jobs:
           sync: true
           extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern initialize-cluster.sh'
       
+      # The install scripts are not versioned. They go to tools/rad/install.{sh,ps1}
+      - name: Upload install.sh
+        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        with:
+          source_dir: 'deploy'
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: true
+          extra_args: '--destination-path rad --pattern install.sh'
+      - name: Upload install.ps1
+        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        with:
+          source_dir: 'deploy'
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: true
+          extra_args: '--destination-path rad --pattern install.ps1'
+      
       # Logic: If this is a real release (tagged, non-rc) then compare to our existing full
       # release and see if it's newer. This prevents a patch release of an older vintage from overwriting
       # a newer release
