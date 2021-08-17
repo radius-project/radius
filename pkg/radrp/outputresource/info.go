@@ -95,6 +95,10 @@ func (resource OutputResource) GetDependencies() ([]string, error) {
 
 // GetResourceID returns the identifier of the entity/resource to be queried by the health service
 func (resource OutputResource) GetResourceID() string {
+	if resource.Info == nil {
+		return ""
+	}
+
 	if resource.Type == TypeARM {
 		return resource.Info.(ARMInfo).ID
 	} else if resource.Type == TypeAADPodIdentity {
