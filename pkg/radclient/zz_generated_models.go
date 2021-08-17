@@ -245,7 +245,7 @@ type ComponentTraitClassification interface {
 
 // ComponentTrait - Trait of a component.
 type ComponentTrait struct {
-	// REQUIRED; Component kind.
+	// REQUIRED; Trait kind.
 	Kind *string `json:"kind,omitempty"`
 }
 
@@ -504,7 +504,7 @@ type ManualScalingTrait struct {
 
 // MarshalJSON implements the json.Marshaller interface for type ManualScalingTrait.
 func (m ManualScalingTrait) MarshalJSON() ([]byte, error) {
-	objectMap := m.ComponentTrait.marshalInternal("manualscaling.dev/ManualScaling@v1alpha1")
+	objectMap := m.ComponentTrait.marshalInternal("radius.dev/ManualScaling@v1alpha1")
 	populate(objectMap, "replicas", m.Replicas)
 	return json.Marshal(objectMap)
 }
