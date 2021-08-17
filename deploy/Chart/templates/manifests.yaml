@@ -1,0 +1,74 @@
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-radius-radius-dev-v1alpha1-application
+  failurePolicy: Fail
+  name: vapplication.radius.dev
+  rules:
+  - apiGroups:
+    - radius.dev
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - applications
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-radius-radius-dev-v1alpha1-component
+  failurePolicy: Fail
+  name: vcomponent.radius.dev
+  rules:
+  - apiGroups:
+    - radius.dev
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - components
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-radius-radius-dev-v1alpha1-deployment
+  failurePolicy: Fail
+  name: vdeployment.radius.dev
+  rules:
+  - apiGroups:
+    - radius.dev
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - deployments
+  sideEffects: None
