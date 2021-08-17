@@ -1,3 +1,27 @@
+{{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "radius-controller-cert"}}
+{{- $existingWebHookConfig := lookup "admissionregistration.k8s.io/v1" "ValidatingWebhookConfiguration" .Release.Namespace "radius-controller"}}
+{{- $ca := genCA "radius-controller-ca" 3650 }}
+{{- $cn := printf "radius-controller" }}
+{{- $altName1 := printf "radius-controller.%s" .Release.Namespace }}
+{{- $altName2 := printf "radius-controller.%s.svc" .Release.Namespace }}
+{{- $altName3 := printf "radius-controller.%s.svc.cluster" .Release.Namespace }}
+{{- $altName4 := printf "radius-controller.%s.svc.cluster.local" .Release.Namespace }}
+{{- $cert := genSignedCert $cn nil (list $altName1 $altName2 $altName3 $altName4) 3650 $ca }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radius-controller-cert
+  labels:
+    app: radius-controller
+data:
+  {{ if $existingSecret }}tls.crt: {{ index $existingSecret.data "tls.crt" }}
+  {{ else }}tls.crt: {{ b64enc $cert.Cert }}
+  {{ end }}
+
+  {{ if $existingSecret }}tls.key: {{ index $existingSecret.data "tls.key" }}
+  {{ else }}tls.key: {{ b64enc $cert.Key }}
+  {{ end }}
+---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -12,6 +36,7 @@ webhooks:
       name: webhook-service
       namespace: radius-system
       path: /validate-radius-radius-dev-v1alpha1-application
+    caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
   name: vapplication.radius.dev
   rules:
@@ -33,6 +58,7 @@ webhooks:
       name: webhook-service
       namespace: radius-system
       path: /validate-radius-radius-dev-v1alpha1-component
+    caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
   name: vcomponent.radius.dev
   rules:
@@ -54,6 +80,7 @@ webhooks:
       name: webhook-service
       namespace: radius-system
       path: /validate-radius-radius-dev-v1alpha1-deployment
+    caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
   name: vdeployment.radius.dev
   rules:

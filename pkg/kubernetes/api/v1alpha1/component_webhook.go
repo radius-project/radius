@@ -41,7 +41,7 @@ var _ webhook.Validator = &Component{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Component) ValidateCreate() error {
-	componentlog.Info("validate create", "name", r.Name)
+	componentlog.Info("IN COMPONENT CREATE validate create", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object creation.
 	return nil

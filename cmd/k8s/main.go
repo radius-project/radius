@@ -56,6 +56,8 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	certDir := os.Getenv("TLS_CERT_DIR")
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -63,6 +65,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "4fe3568c.radius.dev",
+		CertDir:                certDir,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

@@ -34,10 +34,8 @@ spec:
         command:
         - /radius-controller
         env:
-        - name: TLS_CERT_FILE
-          value: /radius/cert/tls.crt
-        - name: TLS_KEY_FILE
-          value: /radius/cert/tls.key
+        - name: TLS_CERT_DIR
+          value: /radius/cert
         image: {{ .Values.container }}:{{ .Values.tag }}
         livenessProbe:
           httpGet:

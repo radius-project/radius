@@ -76,5 +76,8 @@ You can also debug the controller in VSCode by running the cmd/k8s/main.go file.
     "request": "launch",
     "mode": "debug",
     "program": "${workspaceFolder}/cmd/k8s/main.go",
+    "env": {
+        "SKIP_WEBHOOKS": "true" // Don't enable webhooks when running locally as they require a cert.
+    }
 },
 ```
