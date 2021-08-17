@@ -91,56 +91,7 @@ rad component logs orders --application icecream-store --container daprd`,
 			}
 
 			// Kick off go routine to read the logs from each stream.
-			go func(info clients.LogStream) {
-				stream := info.Stream
-				defer stream.Close()
-
-				name := info.Name
-				hasLogs := false
-				reader := bufio.NewReader(stream)
-				startLine := true
-				for {
-					line, prefix, err := reader.ReadLine()
-					if err == context.Canceled {
-						// CTRL+C => done
-						logErrors <- nil
-						return
-					} else if err == io.EOF {
-						// End of stream
-						//
-						// Output a status message to stderr if there were no logs for non-streaming
-						// so an interactive user gets *some* feedback.
-						if !follow && !hasLogs {
-							fmt.Fprintln(os.Stderr, "Component's log is currently empty.")
-						}
-						logErrors <- nil
-						return
-					} else if err != nil {
-						logErrors <- err
-						return
-					}
-
-					hasLogs = true
-
-					// Handle the case where a partial line is returned
-					if prefix {
-						if startLine {
-							fmt.Print("[" + name + "] " + string(line))
-						} else {
-							fmt.Print(string(line))
-						}
-						startLine = false
-						continue
-					}
-
-					if startLine {
-						fmt.Println("[" + name + "] " + string(line))
-					} else {
-						fmt.Println(string(line))
-					}
-					startLine = true
-				}
-			}(logInfo)
+			go captureLogs(logInfo, logErrors, follow)
 		}
 
 		for i := 0; i < len(streams); i++ {
@@ -152,6 +103,57 @@ rad component logs orders --application icecream-store --container daprd`,
 		}
 		return nil
 	},
+}
+
+func captureLogs(info clients.LogStream, logErrors chan<- error, follow bool) {
+	stream := info.Stream
+	defer stream.Close()
+
+	name := info.Name
+	hasLogs := false
+	reader := bufio.NewReader(stream)
+	startLine := true
+	for {
+		line, prefix, err := reader.ReadLine()
+		if err == context.Canceled {
+			// CTRL+C => done
+			logErrors <- nil
+			return
+		} else if err == io.EOF {
+			// End of stream
+			//
+			// Output a status message to stderr if there were no logs for non-streaming
+			// so an interactive user gets *some* feedback.
+			if !follow && !hasLogs {
+				fmt.Fprintln(os.Stderr, "Component's log is currently empty.")
+			}
+			logErrors <- nil
+			return
+		} else if err != nil {
+			logErrors <- err
+			return
+		}
+
+		hasLogs = true
+
+		// Handle the case where a partial line is returned
+		if prefix {
+			if startLine {
+				fmt.Print("[" + name + "] " + string(line))
+			} else {
+				fmt.Print(string(line))
+			}
+			startLine = false
+			continue
+		}
+
+		if startLine {
+			fmt.Println("[" + name + "] " + string(line))
+		} else {
+			fmt.Println(string(line))
+		}
+		startLine = true
+	}
 }
 
 func init() {

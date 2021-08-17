@@ -62,7 +62,7 @@ func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clien
 	ready := make(chan struct{})
 	stop = make(chan struct{}, 1)
 	go func() {
-		err = runPortforward(dc.RestConfig, dc.Client, replica, ready, stop, options.Port, options.RemotePort)
+		err := runPortforward(dc.RestConfig, dc.Client, replica, ready, stop, options.Port, options.RemotePort)
 		failed <- err
 	}()
 
@@ -90,26 +90,41 @@ func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients
 		}
 	}
 
-	follow := options.Follow
+	streams, err := createLogStreams(ctx, options, dc, replicas)
+	if err != nil {
+		// If there was an error, try to close all streams that were created
+		// ignore errors from stream close
+		for _, stream := range streams {
+			_ = stream.Stream.Close()
+		}
+		return nil, err
+	}
+
+	return streams, err
+}
+
+func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *KubernetesDiagnosticsClient, replicas []corev1.Pod) ([]clients.LogStream, error) {
 	container := options.Container
+	follow := options.Follow
+
 	var streams []clients.LogStream
 	for _, replica := range replicas {
 		if container == "" {
 			// We don't really expect this to fail, but let's do something reasonable if it does...
 			container = getAppContainerName(&replica)
 			if container == "" {
-				return nil, fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", options.Component)
+				return streams, fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", options.Component)
 			}
 		}
 
 		stream, err := streamLogs(ctx, dc.RestConfig, dc.Client, &replica, container, follow)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open log stream to %s: %w", options.Component, err)
+			return streams, fmt.Errorf("failed to open log stream to %s: %w", options.Component, err)
 		}
 		streams = append(streams, clients.LogStream{Name: replica.Name, Stream: stream})
 	}
 
-	return streams, err
+	return streams, nil
 }
 
 func getSpecificReplica(ctx context.Context, client *k8s.Clientset, namespace string, component string, replica string) (*corev1.Pod, error) {
