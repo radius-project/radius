@@ -36,3 +36,12 @@ jobs:
           version: 'latest'
           skip-go-installation: true
           args: --timeout=10m
+  generate:
+    name: Check generated code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run make generate
+        run: make generate
+      - name: Check if generated code is up to date
+        run: git diff --exit-code
+
