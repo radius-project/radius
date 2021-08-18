@@ -67,11 +67,9 @@ CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes deployment manifests
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) \
 		rbac:roleName=radius-manager-role \
-		webhook \
 		paths="./..." \
 		output:crd:artifacts:config=deploy/Chart/crds/ \
 		output:rbac:artifacts:config=deploy/Chart/templates/ \
-		output:webhook:artifacts:config=deploy/Chart/templates/ \
 
 generate-controller: generate-controller-gen-installed ## Generate controller code
 	$(CONTROLLER_GEN) object:headerFile="boilerplate.go.txt" paths="./..."
