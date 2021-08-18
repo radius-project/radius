@@ -40,6 +40,12 @@ jobs:
     name: Check generated code
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
       - name: Run make generate
         run: make generate
       - name: Check if generated code is up to date
