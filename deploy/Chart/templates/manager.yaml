@@ -3,18 +3,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    control-plane: radius-controller-manager
+    control-plane: controller-manager
   name: radius-controller-manager
   namespace: radius-system
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: radius-controller-manager
+      control-plane: controller-manager
   template:
     metadata:
       labels:
-        control-plane: radius-controller-manager
+        control-plane: controller-manager
     spec:
       containers:
       - args:
@@ -86,4 +86,4 @@ spec:
     - port: 443
       targetPort: 9443
   selector:
-    control-plane: radius-controller-manager
+    control-plane: controller-manager
