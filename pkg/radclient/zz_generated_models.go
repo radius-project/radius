@@ -113,7 +113,7 @@ type ComponentDependency struct {
 	// Dictionary of
 	Env map[string]*string `json:"env,omitempty"`
 
-	// Actions to take on a secret store as part of a binding
+	// Binding values that are stored in and read from a given secret store
 	Secrets *ComponentDependencySecrets `json:"secrets,omitempty"`
 }
 
@@ -126,7 +126,7 @@ func (c ComponentDependency) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// ComponentDependencySecrets - Actions to take on a secret store as part of a binding
+// ComponentDependencySecrets - Binding values that are stored in and read from a given secret store
 type ComponentDependencySecrets struct {
 	// Dictionary of
 	Keys map[string]*string `json:"keys,omitempty"`
