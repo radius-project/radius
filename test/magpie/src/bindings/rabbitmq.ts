@@ -1,10 +1,10 @@
 import { Binding, BindingStatus} from '../binding'
-import { amqp } from 'amqplib/callback_api'
+const amqp = require('amqplib');
 
 // Use this with a values like:
 // - BINDING_AMQP_CONNECTIONSTRING
 // - BINDING_AMQP_QUEUE
-export class AMQPBinding implements Binding {
+export class RabbitMQBinding implements Binding {
     private connectionString: string;
     private queue: string;
 
@@ -32,12 +32,15 @@ export class AMQPBinding implements Binding {
         
         await channel.sendToQueue(this.queue, Buffer.from(msg));
 
-        console.log(" [x] Sent %s", msg);
+        console.log("sent %s", msg);
+
+        await channel.close()
+        await conn.close()
 
         return { ok: true, message: "message sent"};
     }
 
     public toString = () : string => {
-        return 'AMQP';
+        return 'RabbitMQ';
     }
 }
