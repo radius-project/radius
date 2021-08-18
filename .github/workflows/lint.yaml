@@ -57,7 +57,10 @@ jobs:
         run: make generate
       - name: Check if generated code is up to date
         run: |
-          $exitCode = git diff --exit-code
+          git diff --exit-code
+          exitCode=$?
           if [[ $exitCode != 0 ]]; then
             echo "Generated code is not up to date, run 'make generate' to update generated assets"
+            exit 1
+          fi
 
