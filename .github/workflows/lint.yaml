@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-name: lint
+name: Check code is up-to-date
 
 on:
   push:
@@ -46,6 +46,8 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GOVER }}
+      - name: Install autorest
+        run: npm install -g autorest
       - name: Run make generate
         run: make generate
       - name: Check if generated code is up to date
