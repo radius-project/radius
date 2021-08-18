@@ -22,7 +22,6 @@ docker-build-$(1):
 		--build-arg LDFLAGS=$(LDFLAGS) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
-		--build-arg ARCH=amd64 \
 		--platform amd64
 
 .PHONY: docker-push-$(1)

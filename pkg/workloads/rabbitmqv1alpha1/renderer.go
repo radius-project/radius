@@ -101,14 +101,10 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 					Containers: []corev1.Container{
 						{
 							Name:  "rabbitmq",
-							Image: "rabbitmq:3-management", // TODO confirm which image to use
+							Image: "rabbitmq:latest",
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 5672,
-									Protocol:      corev1.ProtocolTCP,
-								},
-								{
-									ContainerPort: 15672,
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
