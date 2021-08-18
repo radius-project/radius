@@ -57,6 +57,12 @@ The [`statestore` component]({{< ref dapr-statestore.md >}}) implicitly declares
 
 ## Deploy application with Dapr
 
+{{% alert title="Make sure Dapr is initialized" color="warning" %}}
+For Kubernetes environments, make sure to [initialize Dapr](https://docs.dapr.io/operations/hosting/kubernetes/kubernetes-deploy/) on your cluster so your application can leverage the Dapr control-plane and sidecar.
+
+For Azure environments, Dapr is managed for you and you do not need to manually initialize it.
+{{% /alert %}}
+
 1. Make sure your `template.json` file matches the full tutorial file:
 
    {{< rad file="snippets/app.bicep" download=true >}}
