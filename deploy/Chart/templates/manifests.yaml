@@ -2,10 +2,10 @@
 {{- $existingWebHookConfig := lookup "admissionregistration.k8s.io/v1" "ValidatingWebhookConfiguration" .Release.Namespace "radius-controller"}}
 {{- $ca := genCA "radius-controller-ca" 3650 }}
 {{- $cn := printf "radius-controller" }}
-{{- $altName1 := printf "radius-controller.%s" .Release.Namespace }}
-{{- $altName2 := printf "radius-controller.%s.svc" .Release.Namespace }}
-{{- $altName3 := printf "radius-controller.%s.svc.cluster" .Release.Namespace }}
-{{- $altName4 := printf "radius-controller.%s.svc.cluster.local" .Release.Namespace }}
+{{- $altName1 := printf "webhook-service.%s" .Release.Namespace }}
+{{- $altName2 := printf "webhook-service.%s.svc" .Release.Namespace }}
+{{- $altName3 := printf "webhook-service.%s.svc.cluster" .Release.Namespace }}
+{{- $altName4 := printf "webhook-service.%s.svc.cluster.local" .Release.Namespace }}
 {{- $cert := genSignedCert $cn nil (list $altName1 $altName2 $altName3 $altName4) 3650 $ca }}
 apiVersion: v1
 kind: Secret

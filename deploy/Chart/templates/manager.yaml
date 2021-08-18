@@ -3,18 +3,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    control-plane: controller-manager
+    control-plane: radius-controller-manager
   name: radius-controller-manager
   namespace: radius-system
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: radius-controller-manager
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        control-plane: radius-controller-manager
     spec:
       containers:
       - args:
