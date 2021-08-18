@@ -14,10 +14,10 @@ The OpenAPI Specification (OAS) defines a standard, language-agnostic interface 
 ### How do we use it?
 
 Take a look at `/schemas/rest-api-spec`. Our plan is:
-[x] To generate `pkg/radclient` using Azure Autorest (aka `make generate-radclient`)
-[ ] To generate model objects to deserialized JSON from the Resource Provider side
-[ ] To generate model objects to be persisted in our Database
-[ ] To generate documentation for our Resource Provider
+* To generate `pkg/radclient` using Azure Autorest (aka `make generate-radclient`)
+* [#890](https://github.com/Azure/radius/issues/890) To generate model objects to deserialized JSON from the Resource Provider side
+* [#888](https://github.com/Azure/radius/issues/888) To generate model objects to be persisted in our Database]
+* [#891](https://github.com/Azure/radius/issues/891) To generate documentation for our Resource Provider
 
 ## JSON Schema
 
@@ -27,9 +27,9 @@ JSON Schema is a vocabulary that allows you to annotate and validate JSON docume
 ### How do we use it?
 
 Take a look at `/pkg/radrp/schemas`. Our plan is:
-[x] To validate JSON seen by the RP
-[ ] To validate JSON in the K8s webhook
-[ ] To validate JSON in the rad-bicep compiler
+* To validate JSON seen by the RP
+* [#597](https://github.com/Azure/radius/issues/597) To validate JSON in the K8s webhook
+* [#886](https://github.com/Azure/radius/issues/886) To validate JSON in the rad-bicep compiler
 
 # Similarity between Open API v2 and JSON Schema Draft 4
 
