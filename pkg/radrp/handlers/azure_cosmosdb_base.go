@@ -23,7 +23,7 @@ type azureCosmosDBBaseHandler struct {
 
 // CosmosDB metadata is stored in a properties map, the 'key' constants below track keys for different properties in the map
 const (
-	// CosmosDBAccountBaseName is used as the base for computing a unique account name
+	// CosmosDBAccountBaseName is used as the prefix for generated unique account name
 	CosmosDBAccountBaseName = "cosmosaccountbasename"
 
 	// CosmosDBAccountNameKey properties map key for CosmosDB account created for the workload
@@ -64,7 +64,9 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 	accountName, ok := properties[CosmosDBAccountNameKey]
 	if !ok {
 		var err error
-		accountName, err = generateRandomAzureName(ctx, properties[CosmosDBAccountBaseName], func(name string) error {
+		// Generates account name with the specified database name as prefix appended with -<uuid>.
+		// This is needed since CosmosDB account names are required to be unique across Azure.
+		accountName, err = generateUniqueAzureResourceName(ctx, properties[CosmosDBAccountBaseName], func(name string) error {
 			result, err := cosmosDBClient.CheckNameExists(ctx, name)
 			if err != nil {
 				return fmt.Errorf("failed to query cosmos account name: %w", err)

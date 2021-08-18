@@ -208,7 +208,7 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 	}
 
 	// Generate a random namespace name
-	namespaceName := GenerateName("radius-ns")
+	namespaceName := GenerateRandomName("radius-ns")
 
 	future, err := sbc.CreateOrUpdate(ctx, handler.arm.ResourceGroup, namespaceName, servicebus.SBNamespace{
 		Sku: &servicebus.SBSku{
