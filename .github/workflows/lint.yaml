@@ -39,6 +39,9 @@ jobs:
   generate:
     name: Check generated code
     runs-on: ubuntu-latest
+    env:
+      GOVER: '^1.16.0'
+      GOPROXY: https://proxy.golang.org
     steps:
       - name: Check out repo
         uses: actions/checkout@v2
