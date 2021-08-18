@@ -69,13 +69,14 @@ func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clien
 	return
 }
 
-func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) (readCloser []clients.LogStream, err error) {
+func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) ([]clients.LogStream, error) {
 	namespace := dc.Namespace
 	if namespace == "" {
 		namespace = options.Application
 	}
 
 	var replicas []corev1.Pod
+	var err error
 
 	if options.Replica != "" {
 		replica, err := getSpecificReplica(ctx, dc.Client, namespace, options.Component, options.Replica)
@@ -103,6 +104,8 @@ func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients
 	return streams, err
 }
 
+// Note: If an error is returned, any streams that were created before the error will also be returned.
+// Caller is responsible for closing streams even when there is an error.
 func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *KubernetesDiagnosticsClient, replicas []corev1.Pod) ([]clients.LogStream, error) {
 	container := options.Container
 	follow := options.Follow
