@@ -7,13 +7,12 @@ package servicebusqueuev1alpha1
 
 import (
 	"github.com/Azure/radius/pkg/azresources"
-	"github.com/Azure/radius/pkg/radrp/resources"
 )
 
 const Kind = "azure.com/ServiceBusQueue@v1alpha1"
 
-var QueueResourceType = resources.KnownType{
-	Types: []resources.ResourceType{
+var QueueResourceType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{
 			Type: azresources.ServiceBusNamespaces,
 			Name: "*",

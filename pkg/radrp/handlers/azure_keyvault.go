@@ -13,10 +13,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/gofrs/uuid"
 )
 
@@ -34,8 +34,8 @@ type azureKeyVaultHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, KeyVaultIDKey)
@@ -47,7 +47,7 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options PutOptions
 		// If we have already created this resource we would have stored the name and ID.
 		vaultName := GenerateName("kv")
 
-		kv, err := handler.CreateKeyVault(ctx, vaultName, options)
+		kv, err := handler.CreateKeyVault(ctx, vaultName, *options)
 		if err != nil {
 			return nil, err
 		}
@@ -94,7 +94,7 @@ func (handler *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteO
 }
 
 func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id string) (*keyvault.Vault, error) {
-	parsed, err := radresources.Parse(id)
+	parsed, err := azresources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse KeyVault resource id: %w", err)
 	}
@@ -172,4 +172,16 @@ func (handler *azureKeyVaultHandler) DeleteKeyVault(ctx context.Context, vaultNa
 	}
 
 	return nil
+}
+
+func NewAzureKeyVaultHealthHandler(arm armauth.ArmConfig) HealthHandler {
+	return &azureKeyVaultHealthHandler{arm: arm}
+}
+
+type azureKeyVaultHealthHandler struct {
+	arm armauth.ArmConfig
+}
+
+func (handler *azureKeyVaultHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

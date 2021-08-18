@@ -12,10 +12,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/armauth"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )
 
 type azureCosmosDBBaseHandler struct {
@@ -44,7 +44,7 @@ const (
 )
 
 func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Context, accountID string) (*documentdb.DatabaseAccountGetResults, error) {
-	parsed, err := radresources.Parse(accountID)
+	parsed, err := azresources.Parse(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CosmosDB Account resource id: %w", err)
 	}

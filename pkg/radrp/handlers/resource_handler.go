@@ -15,7 +15,7 @@ import (
 type PutOptions struct {
 	Application string
 	Component   string
-	Resource    outputresource.OutputResource
+	Resource    *outputresource.OutputResource
 	Existing    *db.DeploymentResource
 }
 
@@ -25,7 +25,8 @@ type DeleteOptions struct {
 	Existing    db.DeploymentResource
 }
 
+// ResourceHandler interface defines the methods that every output resource will implement
 type ResourceHandler interface {
-	Put(ctx context.Context, options PutOptions) (map[string]string, error)
+	Put(ctx context.Context, options *PutOptions) (map[string]string, error)
 	Delete(ctx context.Context, options DeleteOptions) error
 }

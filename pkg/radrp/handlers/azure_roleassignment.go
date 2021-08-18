@@ -8,7 +8,8 @@ package handlers
 import (
 	"context"
 
-	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/healthcontract"
 )
 
 // NewAzureRoleAssignmentHandler initializes a new handler for resources of kind RoleAssignment
@@ -20,7 +21,7 @@ type azureRoleAssignmentHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 
 	// if !options.Resource.Deployed {
 	// 	// TODO: right now this resource is already deployed during the rendering process :(
@@ -35,4 +36,16 @@ func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, options D
 	// this should be done here instead when we have built a more mature system.
 
 	return nil
+}
+
+func NewAzureRoleAssignmentHealthHandler(arm armauth.ArmConfig) HealthHandler {
+	return &azureRoleAssignmentHealthHandler{arm: arm}
+}
+
+type azureRoleAssignmentHealthHandler struct {
+	arm armauth.ArmConfig
+}
+
+func (handler *azureRoleAssignmentHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resources
+package azresources
 
 const (
 	// SubscriptionIDKey is the route parameter key for the subscription ID segment of the URL.

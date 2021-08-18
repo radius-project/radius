@@ -8,17 +8,17 @@ package deployment
 import (
 	"testing"
 
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/model/components"
-	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_DeploymentProcessor_OrderActions(t *testing.T) {
 	// We're not going to render or deploy anything, so an empty model works
-	model := model.NewModel(map[string]workloads.WorkloadRenderer{}, map[string]handlers.ResourceHandler{})
-	dp := deploymentProcessor{model}
+	model := model.NewModel(map[string]workloads.WorkloadRenderer{}, map[string]model.Handlers{})
+	dp := deploymentProcessor{model, &healthcontract.HealthChannels{}}
 
 	actions := map[string]ComponentAction{
 		"A": {

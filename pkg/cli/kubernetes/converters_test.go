@@ -42,7 +42,7 @@ func Test_ConvertK8sApplicationToARM(t *testing.T) {
 				Name: to.StringPtr("frontend-backend"),
 			},
 		},
-		Properties: map[string]interface{}{},
+		Properties: &radclient.ApplicationProperties{},
 	}
 
 	actual, err := ConvertK8sApplicationToARM(original)

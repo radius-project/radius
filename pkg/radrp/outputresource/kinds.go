@@ -5,7 +5,8 @@
 
 package outputresource
 
-// Resource kind
+// ResourceKinds supported. The RP determines how these are created/deleted and the HealthService determines how
+// health checks are handled for these
 const (
 	KindKubernetes                       = "kubernetes"
 	KindDaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
@@ -13,11 +14,11 @@ const (
 	KindDaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
 	KindAzureCosmosDBMongo               = "azure.cosmosdb.mongo"
 	KindAzureCosmosDBSQL                 = "azure.cosmosdb.sql"
-	KindAzureRedis                       = "azure.redis"
 	KindAzureServiceBusQueue             = "azure.servicebus.queue"
 	KindAzureKeyVault                    = "azure.keyvault"
 	KindAzureKeyVaultSecret              = "azure.keyvault.secret"
 	KindAzurePodIdentity                 = "azure.aadpodidentity"
 	KindAzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
 	KindAzureRoleAssignment              = "azure.roleassignment"
+	KindAzureRedis                       = "azure.redis"
 )

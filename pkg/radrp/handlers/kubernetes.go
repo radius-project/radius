@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -25,8 +26,8 @@ type kubernetesHandler struct {
 	k8s client.Client
 }
 
-func (handler *kubernetesHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	item, err := convertToUnstructured(options.Resource)
+func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	item, err := convertToUnstructured(*options.Resource)
 	if err != nil {
 		return nil, err
 	}
@@ -121,4 +122,16 @@ func convertToUnstructured(resource outputresource.OutputResource) (unstructured
 	}
 
 	return unstructured.Unstructured{Object: c}, nil
+}
+
+func NewKubernetesHealthHandler(k8s client.Client) HealthHandler {
+	return &kubernetesHealthHandler{k8s: k8s}
+}
+
+type kubernetesHealthHandler struct {
+	k8s client.Client
+}
+
+func (handler *kubernetesHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

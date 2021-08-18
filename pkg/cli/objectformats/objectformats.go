@@ -14,6 +14,14 @@ func GetApplicationTableFormat() output.FormatterOptions {
 				Heading:  "APPLICATION",
 				JSONPath: "{ .name }",
 			},
+			{
+				Heading:  "PROVISIONING_STATE",
+				JSONPath: "{ .properties.status.provisioningState }",
+			},
+			{
+				Heading:  "HEALTH_STATE",
+				JSONPath: "{ .properties.status.healthState }",
+			},
 		},
 	}
 }
@@ -28,6 +36,14 @@ func GetComponentTableFormat() output.FormatterOptions {
 			{
 				Heading:  "KIND",
 				JSONPath: "{ .kind }",
+			},
+			{
+				Heading:  "PROVISIONING_STATE",
+				JSONPath: "{ .properties.status.provisioningState }",
+			},
+			{
+				Heading:  "HEALTH_STATE",
+				JSONPath: "{ .properties.status.healthState }",
 			},
 		},
 	}

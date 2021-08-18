@@ -7,15 +7,14 @@ package cosmosdbsqlv1alpha1
 
 import (
 	"github.com/Azure/radius/pkg/azresources"
-	"github.com/Azure/radius/pkg/radrp/resources"
 )
 
 const (
 	Kind = "azure.com/CosmosDBSQL@v1alpha1"
 )
 
-var SQLResourceType = resources.KnownType{
-	Types: []resources.ResourceType{
+var SQLResourceType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{
 			Type: azresources.DocumentDBDatabaseAccounts,
 			Name: "*",

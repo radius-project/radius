@@ -9,28 +9,49 @@ import (
 	"errors"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
+	"github.com/Azure/radius/pkg/health"
 )
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	LocalID  string
-	Type     string
-	Kind     string
-	Deployed bool
-	Managed  bool
-	Info     interface{}
-	Resource interface{}
-
-	// Dependencies on OutputResources that are required to be deployed before this resource can be deployed
-	Dependencies []Dependency
+	LocalID      string
+	HealthID     string
+	Type         string
+	Kind         string
+	Deployed     bool
+	Managed      bool
+	Info         interface{}
+	Resource     interface{}
+	Dependencies []Dependency // resources that are required to be deployed before this resource can be deployed
+	Status       OutputResourceStatus
 }
 
-// Dependency respresents a dependency on another OutputResource.
 type Dependency struct {
 	// LocalID is the LocalID of the dependency.
 	LocalID string
 	// Placeholder is a slice of optional placeholder values that can copy values from the dependency.
 	Placeholder []Placeholder
+}
+
+// OutputResourceStatus represents the status of the Output Resource
+type OutputResourceStatus struct {
+	ProvisioningState        string    `bson:"provisioningState"`
+	ProvisioningErrorDetails string    `bson:"provisioningErrorDetails"`
+	HealthState              string    `bson:"healthState"`
+	HealthErrorDetails       string    `bson:"healthErrorDetails"`
+	Replicas                 []Replica `bson:"replicas,omitempty" structs:"-"` // Ignore stateful property during serialization
+}
+
+// Replica represents an individual instance of a resource (Azure/K8s)
+type Replica struct {
+	ID     string
+	Status ReplicaStatus `bson:"status"`
+}
+
+// ReplicaStatus represents the status of a replica
+type ReplicaStatus struct {
+	ProvisioningState string `bson:"provisioningState"`
+	HealthState       string `bson:"healthState"`
 }
 
 // ARMInfo info required to identify an ARM resource
@@ -69,8 +90,23 @@ func (resource OutputResource) GetDependencies() ([]string, error) {
 		}
 		dependencies = append(dependencies, dependency.LocalID)
 	}
-
 	return dependencies, nil
+}
+
+// GetResourceID returns the identifier of the entity/resource to be queried by the health service
+func (resource OutputResource) GetResourceID() string {
+	if resource.Info == nil {
+		return ""
+	}
+
+	if resource.Type == TypeARM {
+		return resource.Info.(ARMInfo).ID
+	} else if resource.Type == TypeAADPodIdentity {
+		return resource.Info.(AADPodIdentity).AKSClusterName + "-" + resource.Info.(AADPodIdentity).Name
+	} else if resource.Type == TypeKubernetes {
+		return resource.Info.(K8sInfo).Namespace + "-" + resource.Info.(K8sInfo).Name
+	}
+	return ""
 }
 
 // OrderOutputResources returns output resources ordered based on deployment order
@@ -96,4 +132,28 @@ func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, e
 	}
 
 	return orderedOutput, nil
+}
+
+func NewOutputResource(
+	resource interface{},
+	deployed bool,
+	localID string,
+	managed bool,
+	resourceKind string,
+	outputResourceType string,
+	outputResourceInfo interface{},
+	healthProbe health.Monitor,
+	healthOpts ...health.HealthCheckOption,
+) OutputResource {
+	or := OutputResource{
+		Resource: resource,
+		Deployed: deployed,
+		LocalID:  localID,
+		Managed:  managed,
+		Kind:     resourceKind,
+		Type:     outputResourceType,
+		Info:     outputResourceInfo,
+	}
+
+	return or
 }

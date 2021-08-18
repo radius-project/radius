@@ -20,7 +20,7 @@ func ConvertK8sApplicationToARM(input radiusv1alpha1.Application) (*radclient.Ap
 	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsApplication])
 
 	// There's nothing in properties for an application
-	result.Properties = map[string]interface{}{}
+	result.Properties = &radclient.ApplicationProperties{}
 
 	return &result, nil
 }

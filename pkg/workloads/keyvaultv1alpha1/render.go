@@ -11,8 +11,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/model/components"
-	"github.com/Azure/radius/pkg/radrp/armauth"
 	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
@@ -69,16 +69,19 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			return nil, workloads.ErrResourceSpecifiedForManagedResource
 		}
 
-		resource = outputresource.OutputResource{
-			LocalID:  outputresource.LocalIDKeyVault,
-			Kind:     outputresource.KindAzureKeyVault,
-			Type:     outputresource.TypeARM,
-			Managed:  true,
-			Deployed: false,
+		resource := outputresource.OutputResource{
 			Resource: map[string]string{
 				handlers.ManagedKey: "true",
 			},
+			Deployed: false,
+			LocalID:  outputresource.LocalIDKeyVault,
+			Managed:  true,
+			Kind:     outputresource.KindAzureKeyVault,
+			Type:     outputresource.TypeARM,
 		}
+
+		// It's already in the correct format
+		return []outputresource.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
 			return nil, workloads.ErrResourceMissingForUnmanagedResource
@@ -107,7 +110,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.KeyVaultNameKey: vaultID.Types[0].Name,
 			},
 		}
+		// It's already in the correct format
+		return []outputresource.OutputResource{resource}, nil
 	}
-
-	return []outputresource.OutputResource{resource}, nil
 }

@@ -12,9 +12,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/redis/mgmt/redis"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/cli/util"
-	"github.com/Azure/radius/pkg/radrp/armauth"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/Azure/radius/pkg/healthcontract"
 )
 
 const (
@@ -33,8 +34,8 @@ type azureRedisHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (handler *azureRedisHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	if properties[RedisResourceIdKey] == "" {
 		// If we don't have an ID already, then we need to create a new Redis.
@@ -164,7 +165,7 @@ func (handler *azureRedisHandler) DeleteRedis(ctx context.Context, redisName str
 }
 
 func (handler *azureRedisHandler) GetRedisByID(ctx context.Context, id string) (*redis.ResourceType, error) {
-	parsed, err := radresources.Parse(id)
+	parsed, err := azresources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse redis resource id: %w", err)
 	}
@@ -176,4 +177,18 @@ func (handler *azureRedisHandler) GetRedisByID(ctx context.Context, id string) (
 		return nil, fmt.Errorf("failed to get redis: %w", err)
 	}
 	return &redis, nil
+}
+
+func NewAzureRedisHealthHandler(arm armauth.ArmConfig) HealthHandler {
+	return &azureRedisHealthHandler{
+		arm: arm,
+	}
+}
+
+type azureRedisHealthHandler struct {
+	arm armauth.ArmConfig
+}
+
+func (handler *azureRedisHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

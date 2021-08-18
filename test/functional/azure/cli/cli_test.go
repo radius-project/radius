@@ -59,8 +59,8 @@ func Test_CLI(t *testing.T) {
 	t.Run("Validate rad application show", func(t *testing.T) {
 		output, err := cli.ApplicationShow(ctx, application)
 		require.NoError(t, err)
-		expected := `APPLICATION
-azure-cli  
+		expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
+azure-cli                                  
 `
 		require.Equal(t, expected, output)
 	})
@@ -77,8 +77,8 @@ azure-cli
 	t.Run("Validate rad component show", func(t *testing.T) {
 		output, err := cli.ComponentShow(ctx, application, "a")
 		require.NoError(t, err)
-		expected := `COMPONENT  KIND
-a          radius.dev/Container@v1alpha1  
+		expected := `COMPONENT  KIND                           PROVISIONING_STATE  HEALTH_STATE
+a          radius.dev/Container@v1alpha1  NotProvisioned      Unhealthy  
 `
 		require.Equal(t, expected, output)
 	})

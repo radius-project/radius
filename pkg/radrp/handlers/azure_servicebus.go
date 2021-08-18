@@ -8,14 +8,17 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/cli/util"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/armauth"
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
 
 const (
@@ -28,9 +31,10 @@ const (
 )
 
 func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) ResourceHandler {
-	return &azureServiceBusQueueHandler{
+	handler := &azureServiceBusQueueHandler{
 		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
 	}
+	return handler
 }
 
 type azureServiceBusBaseHandler struct {
@@ -41,8 +45,8 @@ type azureServiceBusQueueHandler struct {
 	azureServiceBusBaseHandler
 }
 
-func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
-	properties := mergeProperties(options.Resource, options.Existing)
+func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// queue name must be specified by the user
 	queueName, ok := properties[ServiceBusQueueNameKey]
@@ -81,21 +85,36 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options Put
 		}
 	}
 
+	var queueID string
 	if properties[ServiceBusQueueIDKey] == "" {
 		queue, err := handler.CreateQueue(ctx, *namespace.Name, queueName)
 		if err != nil {
 			return nil, err
 		}
 		properties[ServiceBusQueueIDKey] = *queue.ID
+		queueID = *queue.ID
 	} else {
 		// This is mostly called for the side-effect of verifying that the servicebus queue exists.
-		_, err := handler.GetQueueByID(ctx, properties[ServiceBusQueueIDKey])
+		queue, err := handler.getQueueByID(ctx, properties[ServiceBusQueueIDKey])
 		if err != nil {
 			return nil, err
 		}
+		queueID = *queue.ID
+
+	}
+
+	// Update the output resource with the info from the deployed Azure resource
+	options.Resource.Info = outputresource.ARMInfo{
+		ID:           queueID,
+		ResourceType: outputresource.KindAzureServiceBusQueue,
+		APIVersion:   handler.GetAPIVersion(),
 	}
 
 	return properties, nil
+}
+
+func (handler *azureServiceBusQueueHandler) GetAPIVersion() string {
+	return strings.Split(strings.Split(servicebus.UserAgent(), "servicebus/")[1], " profiles")[0]
 }
 
 func (handler *azureServiceBusQueueHandler) Delete(ctx context.Context, options DeleteOptions) error {
@@ -125,7 +144,7 @@ func (handler *azureServiceBusQueueHandler) Delete(ctx context.Context, options 
 }
 
 func (handler *azureServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
-	parsed, err := radresources.Parse(id)
+	parsed, err := azresources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: %w", err)
 	}
@@ -224,7 +243,7 @@ func (handler *azureServiceBusBaseHandler) CreateTopic(ctx context.Context, name
 }
 
 func (handler *azureServiceBusBaseHandler) GetTopicByID(ctx context.Context, id string) (*servicebus.SBTopic, error) {
-	parsed, err := radresources.Parse(id)
+	parsed, err := azresources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
 	}
@@ -256,8 +275,8 @@ func (handler *azureServiceBusBaseHandler) CreateQueue(ctx context.Context, name
 	return &queue, nil
 }
 
-func (handler *azureServiceBusBaseHandler) GetQueueByID(ctx context.Context, id string) (*servicebus.SBQueue, error) {
-	parsed, err := radresources.Parse(id)
+func (handler *azureServiceBusBaseHandler) getQueueByID(ctx context.Context, id string) (*servicebus.SBQueue, error) {
+	parsed, err := azresources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
 	}
@@ -302,7 +321,7 @@ func (handler *azureServiceBusBaseHandler) DeleteNamespace(ctx context.Context, 
 	}
 
 	response, err := sbNamespaceFuture.Result(sbc)
-	if err != nil && response.StatusCode != 404 {
+	if (err != nil && response.Response == nil) || (err != nil && response.StatusCode != 404) {
 		return fmt.Errorf("failed to delete servicebus namespace: %w", err)
 	}
 
@@ -357,4 +376,19 @@ func (handler *azureServiceBusBaseHandler) DeleteQueue(ctx context.Context, name
 
 	// Namespace is empty, it can be deleted if it is unused
 	return true, nil
+}
+
+func NewAzureServiceBusQueueHealthHandler(arm armauth.ArmConfig) HealthHandler {
+	handler := &azureServiceBusQueueHealthHandler{
+		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
+	}
+	return handler
+}
+
+type azureServiceBusQueueHealthHandler struct {
+	azureServiceBusBaseHandler
+}
+
+func (handler *azureServiceBusQueueHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

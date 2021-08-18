@@ -59,7 +59,8 @@ type CreatedResponse struct {
 }
 
 func NewCreatedResponse(body interface{}) Response {
-	return &CreatedResponse{Body: body}
+	response := &CreatedResponse{Body: body}
+	return response
 }
 
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {

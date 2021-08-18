@@ -73,14 +73,14 @@ func TestComponentValidator(t *testing.T) {
                     "bindings":        42,
                     "uses":            42,
                     "traits":          42,
-                    "outputResources": 42
+                    "status":          42
                   }
                 }`,
 		expects: append(append(
 			invalidTypeErrs("(root).properties", "object", "integer",
-				"config", "run", "bindings"),
+				"config", "run", "bindings", "status"),
 			invalidTypeErrs("(root).properties", "array", "integer",
-				"uses", "traits", "outputResources")...),
+				"uses", "traits")...),
 			invalidTypeErr("(root).properties.revision", "string", "integer")),
 	}, {
 		name: "unrecognized trait.* fields",

@@ -7,7 +7,6 @@ package cosmosdbmongov1alpha1
 
 import (
 	"github.com/Azure/radius/pkg/azresources"
-	"github.com/Azure/radius/pkg/radrp/resources"
 )
 
 const (
@@ -16,8 +15,8 @@ const (
 	BindingMongo  = "mongo"
 )
 
-var MongoResourceType = resources.KnownType{
-	Types: []resources.ResourceType{
+var MongoResourceType = azresources.KnownType{
+	Types: []azresources.ResourceType{
 		{
 			Type: azresources.DocumentDBDatabaseAccounts,
 			Name: "*",

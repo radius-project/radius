@@ -8,7 +8,8 @@ package handlers
 import (
 	"context"
 
-	"github.com/Azure/radius/pkg/radrp/armauth"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/healthcontract"
 )
 
 // NewAzureKeyVaultSecretHandler initializes a new handler for resources of kind Azure KeyVault Secret
@@ -20,7 +21,7 @@ type azureKeyVaultSecretHandler struct {
 	arm armauth.ArmConfig
 }
 
-func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options PutOptions) (map[string]string, error) {
+func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 
 	// if !options.Resource.Deployed {
 	// 	// TODO: right now this resource is already deployed during the rendering process :(
@@ -35,4 +36,16 @@ func (handler *azureKeyVaultSecretHandler) Delete(ctx context.Context, options D
 	// this should be done here instead when we have built a more mature system.
 
 	return nil
+}
+
+func NewAzureKeyVaultSecretHealthHandler(arm armauth.ArmConfig) HealthHandler {
+	return &azureKeyVaultSecretHealthHandler{arm: arm}
+}
+
+type azureKeyVaultSecretHealthHandler struct {
+	arm armauth.ArmConfig
+}
+
+func (handler *azureKeyVaultSecretHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+	return healthcontract.HealthCheckOptions{}
 }

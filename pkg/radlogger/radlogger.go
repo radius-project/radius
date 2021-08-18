@@ -98,7 +98,7 @@ func NewLogger(name string) (logr.Logger, func(), error) {
 	flushLogs := func() {
 		err := zapLogger.Sync()
 		if err != nil {
-			panic(err)
+			logger.Error(err, "Unable to flush logs...")
 		}
 	}
 	return logger, flushLogs, nil

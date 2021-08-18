@@ -71,7 +71,7 @@ func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, su
 
 		all := []ActualOutputResource{}
 		t.Logf("Actual resources: ")
-		for _, v := range component.ComponentResource.Properties.OutputResources {
+		for _, v := range component.ComponentResource.Properties.Status.OutputResources {
 			actual, err := convertToActualOutputResource(v)
 			require.NoError(t, err, "failed to convert output resource")
 			all = append(all, actual)

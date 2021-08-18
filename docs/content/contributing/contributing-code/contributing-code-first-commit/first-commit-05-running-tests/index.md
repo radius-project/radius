@@ -19,10 +19,8 @@ After tests run, you should see a big list of all of the project's packages:
 ```txt
 go test ./pkg/...
 ok  	github.com/Azure/radius/pkg/radrp	0.328s
-?   	github.com/Azure/radius/pkg/radrp/armauth	[no test files]
 ?   	github.com/Azure/radius/pkg/radrp/armerrors	[no test files]
 ?   	github.com/Azure/radius/pkg/radrp/certs	[no test files]
-?   	github.com/Azure/radius/pkg/radrp/components	[no test files]
 ?   	github.com/Azure/radius/pkg/radrp/db	[no test files]
 ?   	github.com/Azure/radius/pkg/radrp/k8sauth	[no test files]
 ?   	github.com/Azure/radius/pkg/radrp/metadata	[no test files]
