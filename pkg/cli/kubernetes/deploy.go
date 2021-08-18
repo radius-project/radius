@@ -7,7 +7,6 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,8 +40,7 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 		if err != nil {
 			return err
 		}
-		str := string(data)
-		fmt.Println(str)
+
 		_, err = c.Client.Resource(k8sInfo.GVR).Namespace(c.Namespace).Patch(ctx, k8sInfo.Name, types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
 		if err != nil {
 			return err

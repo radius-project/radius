@@ -6,12 +6,14 @@
 package v1alpha1
 
 import (
-	"fmt"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
+
+// log is for logging in this package.
+var applicationlog = logf.Log.WithName("application-resource")
 
 func (r *Application) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
@@ -28,7 +30,7 @@ var _ webhook.Validator = &Application{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Application) ValidateCreate() error {
-	fmt.Println("IN APPLICATION CREATE validate create")
+	applicationlog.Info("validate create", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object creation.
 	return nil
@@ -36,7 +38,7 @@ func (r *Application) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Application) ValidateUpdate(old runtime.Object) error {
-	fmt.Println("IN APPLICATION UPDATE validate create")
+	applicationlog.Info("validate update", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object update.
 	return nil
@@ -44,7 +46,7 @@ func (r *Application) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *Application) ValidateDelete() error {
-	fmt.Println("IN APPLICATION DELETE validate create")
+	applicationlog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil

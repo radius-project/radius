@@ -56,6 +56,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// Get certificate from volume mounted environment variable
 	certDir := os.Getenv("TLS_CERT_DIR")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
