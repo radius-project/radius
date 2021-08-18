@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/healthcontract"
 )
 
@@ -147,18 +146,18 @@ func (handler *azureRedisHandler) CreateRedis(ctx context.Context, redisName str
 func (handler *azureRedisHandler) DeleteRedis(ctx context.Context, redisName string) error {
 	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	deletefuture, err := rc.Delete(ctx, handler.arm.ResourceGroup, redisName)
-	if err != nil && deletefuture.Response().StatusCode != 404 {
-		return fmt.Errorf("failed to delete Redis: %w", err)
-	}
-	err = deletefuture.WaitForCompletionRef(ctx, rc.Client)
-	if err != nil && !util.IsAutorest404Error(err) {
-		return fmt.Errorf("failed to delete Redis: %w", err)
+	future, err := rc.Delete(ctx, handler.arm.ResourceGroup, redisName)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "redis", err)
 	}
 
-	response, err := deletefuture.Result(rc)
-	if err != nil && response.StatusCode != 404 {
-		return fmt.Errorf("failed to delete Redis: %w", err)
+	err = future.WaitForCompletionRef(ctx, rc.Client)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "redis", err)
 	}
 
 	return nil

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package util
+package azclients
 
 import (
 	"github.com/Azure/go-autorest/autorest"
@@ -52,12 +52,22 @@ func ExtractDetailedError(err error) (autorest.DetailedError, bool) {
 	return autorest.DetailedError{}, false
 }
 
-// IsAutorest404Error returns true if the error is a 404 payload from an autorest operation.
-func IsAutorest404Error(err error) bool {
-	detailed, ok := ExtractDetailedError(err)
-	if !ok {
-		return false
+// Is404Error returns true if the error is a 404 payload from an autorest operation.
+func Is404Error(err error) bool {
+	if detailed, ok := ExtractDetailedError(err); ok && detailed.Response != nil && detailed.Response.StatusCode == 404 {
+		return true
+	} else if serviceErr, ok := ExtractServiceError(detailed.Original); ok && (serviceErr.Code == "ResourceNotFound" || serviceErr.Code == "NotFound") {
+		return true
 	}
 
-	return detailed.Response != nil && detailed.Response.StatusCode == 404
+	return false
+}
+
+func IsLongRunning404(err error, future azure.FutureAPI) bool {
+	if Is404Error(err) {
+		return true
+	}
+
+	response := future.Response()
+	return response != nil && response.StatusCode == 404
 }

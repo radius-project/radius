@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
 )
 
@@ -120,19 +119,18 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 func (handler *azureCosmosDBBaseHandler) DeleteCosmosDBAccount(ctx context.Context, accountName string) error {
 	cosmosDBClient := azclients.NewDatabaseAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	accountFuture, err := cosmosDBClient.Delete(ctx, handler.arm.ResourceGroup, accountName)
-	if err != nil {
-		return fmt.Errorf("failed to delete cosmosdb account: %w", err)
+	future, err := cosmosDBClient.Delete(ctx, handler.arm.ResourceGroup, accountName)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "cosmosdb account", err)
 	}
 
-	err = accountFuture.WaitForCompletionRef(ctx, cosmosDBClient.Client)
-	if err != nil && !util.IsAutorest404Error(err) {
-		return fmt.Errorf("failed to delete cosmosdb account: %w", err)
-	}
-
-	_, err = accountFuture.Result(cosmosDBClient)
-	if err != nil {
-		return fmt.Errorf("failed to delete cosmosdb account: %w", err)
+	err = future.WaitForCompletionRef(ctx, cosmosDBClient.Client)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "cosmosdb account", err)
 	}
 
 	return nil

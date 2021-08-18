@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/gofrs/uuid"
 )
@@ -57,7 +56,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 		}
 
 		// Check the error and determine if it is ignorable/retryable
-		detailed, ok := util.ExtractDetailedError(err)
+		detailed, ok := azclients.ExtractDetailedError(err)
 		if !ok {
 			return nil, err
 		}

@@ -28,7 +28,6 @@ import (
 	radazure "github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
@@ -397,7 +396,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	cpc := azclients.NewCustomResourceProviderClient(subscriptionID, authorizer)
 
 	_, err := cpc.Get(ctx, resourceGroup, "radius")
-	if detail, ok := util.ExtractDetailedError(err); ok && detail.StatusCode == 404 {
+	if azclients.Is404Error(err) {
 		// not found - will need to be created
 		return false, "", nil
 	} else if err != nil {
