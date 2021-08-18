@@ -35,8 +35,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("missing required property '%s'", QueueNameKey)
 	}
 
-	host := fmt.Sprintf("amqp://%s.%s.svc.cluster.local", workload.Name, namespace)
-	port := fmt.Sprint(6379)
+	uri := fmt.Sprintf("amqp://%s.%s.svc.cluster.local:%s", workload.Name, namespace, fmt.Sprint(5672))
 
 	// connection string looks like amqp://NAME.NAMESPACE.svc.cluster.local:PORT
 	bindings := map[string]components.BindingState{
@@ -44,7 +43,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 			Component: workload.Name,
 			Binding:   "rabbitmq",
 			Properties: map[string]interface{}{
-				"connectionString": host + ":" + port,
+				"connectionString": uri,
 				"queue":            queueName,
 			},
 		},
@@ -52,7 +51,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	return bindings, nil
 }
 
-// Render is the WorkloadRenderer implementation for redis workload.
+// Render is the WorkloadRenderer implementation for rabbitmq workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	component := RabbitMQComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
@@ -80,32 +79,15 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				kubernetes.LabelRadiusApplication: w.Application,
-				kubernetes.LabelRadiusComponent:   component.Name,
-				// TODO get the component revision here...
-				kubernetes.LabelName:      component.Name,
-				kubernetes.LabelPartOf:    w.Application,
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-			},
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					kubernetes.LabelRadiusApplication: w.Application,
-					kubernetes.LabelRadiusComponent:   component.Name,
-				},
+				MatchLabels: kubernetes.MakeSelectorLabels(w.Application, component.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						kubernetes.LabelRadiusApplication: w.Application,
-						kubernetes.LabelRadiusComponent:   component.Name,
-						// TODO get the component revision here...
-						kubernetes.LabelName:      component.Name,
-						kubernetes.LabelPartOf:    w.Application,
-						kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-					},
+					Labels: kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -131,7 +113,7 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 
 	resources = append(resources, outputresource.OutputResource{
 		Kind:     outputresource.KindKubernetes,
-		LocalID:  outputresource.LocalIDRedisDeployment,
+		LocalID:  outputresource.LocalIDRabbitMQDeployment,
 		Resource: &deployment})
 
 	service := corev1.Service{
@@ -142,21 +124,11 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				kubernetes.LabelRadiusApplication: w.Application,
-				kubernetes.LabelRadiusComponent:   component.Name,
-				// TODO get the component revision here...
-				kubernetes.LabelName:      component.Name,
-				kubernetes.LabelPartOf:    w.Application,
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-			},
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				kubernetes.LabelRadiusApplication: w.Application,
-				kubernetes.LabelRadiusComponent:   component.Name,
-			},
-			Type: corev1.ServiceTypeClusterIP,
+			Selector: kubernetes.MakeSelectorLabels(w.Application, component.Name),
+			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "rabbitmq",
@@ -170,7 +142,7 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 
 	resources = append(resources, outputresource.OutputResource{
 		Kind:     outputresource.KindKubernetes,
-		LocalID:  outputresource.LocalIDRedisService,
+		LocalID:  outputresource.LocalIDRabbitMQService,
 		Resource: &service})
 
 	return resources, nil

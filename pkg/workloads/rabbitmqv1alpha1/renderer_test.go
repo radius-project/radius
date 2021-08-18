@@ -57,18 +57,10 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	service := kubernetestest.FindService(resources)
 	require.NotNil(t, service)
 
-	labels := map[string]string{
-		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusComponent:   "test-component",
-		kubernetes.LabelName:              "test-component",
-		kubernetes.LabelPartOf:            "test-app",
-		kubernetes.LabelManagedBy:         kubernetes.LabelManagedByRadiusRP,
-	}
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-component")
 
-	matchLabels := map[string]string{
-		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusComponent:   "test-component",
-	}
+	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-component")
+
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-component", deployment.Name)
 		require.Equal(t, "default", deployment.Namespace)
@@ -126,5 +118,5 @@ func TestInvalidKubernetesComponentKindFailure(t *testing.T) {
 
 	_, err := renderer.Render(context.Background(), workload)
 	require.Error(t, err)
-	require.Equal(t, "the component was expected to have kind 'redislabs.com/Redis@v1alpha1', instead it is 'foo'", err.Error())
+	require.Equal(t, "the component was expected to have kind 'rabbitmq.com/MessageQueue@v1alpha1', instead it is 'foo'", err.Error())
 }

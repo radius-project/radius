@@ -22,24 +22,18 @@ export class AMQPBinding implements Binding {
 
     public async status(): Promise<BindingStatus> {
         // From https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/javascript-nodejs/src/send.js
-        amqp.connect(this.connectionString, {}, (err, conn) => {
-            if (err) {
-                throw err;
-            }
-            conn.createChannel((err, ch) => {
-                if (err) {
-                    throw err;
-                }
-                var msg = 'Hello World!';
+        let conn = await amqp.connect(this.connectionString);
+        let channel = await conn.createChannel();
+        var msg = 'Hello World!';
 
-                ch.assertQueue(this.queue, {
-                    durable: false
-                });
-                ch.sendToQueue(this.queue, Buffer.from(msg));
-        
-                console.log(" [x] Sent %s", msg);
-            });
+        await channel.assertQueue(this.queue, {
+            durable: false
         });
+        
+        await channel.sendToQueue(this.queue, Buffer.from(msg));
+
+        console.log(" [x] Sent %s", msg);
+
         return { ok: true, message: "message sent"};
     }
 
