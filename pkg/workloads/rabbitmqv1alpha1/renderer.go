@@ -28,11 +28,19 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		namespace = workload.Application
 	}
 
-	properties := resources[0].Properties
+	// TODO currently we pass in an empty array of resource properties.
+	// Remove once we fix component controller.
+	component := RabbitMQComponent{}
+	err := workload.Workload.AsRequired(Kind, &component)
+
+	if err != nil {
+		return nil, err
+	}
+
+	queueName := component.Config.Queue
 	// queue name must be specified by the user
-	queueName, ok := properties[QueueNameKey]
-	if !ok {
-		return nil, fmt.Errorf("missing required property '%s'", QueueNameKey)
+	if queueName == "" {
+		return nil, fmt.Errorf("queue name must be specified")
 	}
 
 	uri := fmt.Sprintf("amqp://%s.%s.svc.cluster.local:%s", workload.Name, namespace, fmt.Sprint(5672))
