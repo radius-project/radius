@@ -6,6 +6,9 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,6 +34,15 @@ var _ webhook.Validator = &Component{}
 func (r *Component) ValidateCreate() error {
 	componentlog.Info("validate create", "name", r.Name)
 
+	data, err := json.Marshal(r.Spec)
+	if err != nil {
+		return err
+	}
+	validator := schema.ComponentValidator()
+	if errs := validator.ValidateJSON(data); len(errs) != 0 {
+		return errs[0].JSONError
+	}
+
 	return nil
 }
 
@@ -49,3 +61,29 @@ func (r *Component) ValidateDelete() error {
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
 }
+
+// func readJSONResource(req *http.Request, obj rest.Resource, id resources.ResourceID) error {
+// 	defer req.Body.Close()
+// 	data, err := ioutil.ReadAll(req.Body)
+// 	if err != nil {
+// 		return fmt.Errorf("error reading request body: %w", err)
+// 	}
+// 	validator, err := schema.ValidatorFor(obj)
+// 	if err != nil {
+// 		return fmt.Errorf("cannot find validator for %T: %w", obj, err)
+// 	}
+// 	if errs := validator.ValidateJSON(data); len(errs) != 0 {
+// 		return &validationError{
+// 			details: errs,
+// 		}
+// 	}
+// 	err = json.Unmarshal(data, obj)
+// 	if err != nil {
+// 		return fmt.Errorf("error reading %T: %w", obj, err)
+// 	}
+
+// 	// Set Resource properties on the resource based on the URL
+// 	obj.SetID(id)
+
+// 	return nil
+// }

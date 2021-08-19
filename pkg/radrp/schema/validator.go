@@ -120,6 +120,10 @@ func ValidatorFor(obj interface{}) (Validator, error) {
 	return nil, fmt.Errorf("Can't find a JSON validator for type %s", objT)
 }
 
+func ComponentValidator() Validator {
+	return componentValidator
+}
+
 func newValidator(typeName string) *validator {
 	loader := gojsonschema.NewSchemaLoader()
 	files, _ := jsonFiles.ReadDir(".")
