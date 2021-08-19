@@ -70,6 +70,32 @@ spec:
               traits:
                 items:
                   type: object
+                  oneOf:
+                  - type: object
+                    properties:
+                      kind: 
+                        type: string
+                        enum: ["dapr.io/App@v1alpha1"]
+                      appPort:
+                        type: integer
+                      appId:
+                        type: string
+                  - type: object
+                    properties:
+                      kind: 
+                        type: string
+                        enum: ["radius.dev/InboundRoute@v1alpha1"]
+                      hostName:
+                        type: string
+                      binding:
+                        type: string
+                  - type: object
+                    properties:
+                      kind: 
+                        type: string
+                        enum: ["radius.dev/ManualScaling@v1alpha1"]
+                      replicas:
+                        type: integer
                 type: array
                 x-kubernetes-preserve-unknown-fields: true
               uses:

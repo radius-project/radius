@@ -44,8 +44,8 @@ type GenericDependencySecrets struct {
 
 // GenericTrait represents a trait for an Radius component.
 type GenericTrait struct {
-	Kind                 string
-	AdditionalProperties map[string]interface{}
+	Kind                 string                 `json:"kind"`
+	AdditionalProperties map[string]interface{} `json:"additionalProperties,omitempty"`
 
 	// GenericTrait has custom marshaling code
 }
