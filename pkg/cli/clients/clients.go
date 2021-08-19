@@ -21,7 +21,7 @@ type DeploymentClient interface {
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
 type DiagnosticsClient interface {
 	Expose(ctx context.Context, options ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error)
-	Logs(ctx context.Context, options LogsOptions) (io.ReadCloser, error)
+	Logs(ctx context.Context, options LogsOptions) ([]LogStream, error)
 }
 
 type ExposeOptions struct {
@@ -29,6 +29,7 @@ type ExposeOptions struct {
 	Component   string
 	Port        int
 	RemotePort  int
+	Replica     string
 }
 
 type LogsOptions struct {
@@ -36,6 +37,12 @@ type LogsOptions struct {
 	Component   string
 	Follow      bool
 	Container   string
+	Replica     string
+}
+
+type LogStream struct {
+	Name   string
+	Stream io.ReadCloser
 }
 
 // ManagementClient is used to interface with management features like listing applications and components.

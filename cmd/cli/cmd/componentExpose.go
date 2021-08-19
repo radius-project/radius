@@ -52,6 +52,11 @@ rad component expose --application icecream-store orders --port 5000 --remote-po
 			return err
 		}
 
+		replica, err := cmd.Flags().GetString("replica")
+		if err != nil {
+			return err
+		}
+
 		if remotePort == -1 {
 			remotePort = localPort
 		}
@@ -66,7 +71,8 @@ rad component expose --application icecream-store orders --port 5000 --remote-po
 			Application: application,
 			Component:   component,
 			Port:        localPort,
-			RemotePort:  remotePort})
+			RemotePort:  remotePort,
+			Replica:     replica})
 
 		if err != nil {
 			return err
@@ -101,4 +107,5 @@ func init() {
 	}
 
 	exposeCmd.Flags().IntP("remote-port", "r", -1, "specify the remote port")
+	exposeCmd.Flags().String("replica", "", "specify the replica to expose")
 }

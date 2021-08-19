@@ -41,10 +41,19 @@ func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clien
 		namespace = options.Application
 	}
 
-	replica, err := getRunningReplica(ctx, dc.Client, namespace, options.Application, options.Component)
+	var replica *corev1.Pod
+
+	if options.Replica != "" {
+		replica, err = getSpecificReplica(ctx, dc.Client, namespace, options.Component, options.Replica)
+	} else {
+		replica, err = getRunningReplica(ctx, dc.Client, namespace, options.Application, options.Component)
+	}
+
 	if err != nil {
 		return
 	}
+
+	fmt.Printf("Exposing replica %s\n", replica.Name)
 
 	signals = make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
@@ -60,34 +69,80 @@ func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clien
 	return
 }
 
-func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) (io.ReadCloser, error) {
+func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) ([]clients.LogStream, error) {
 	namespace := dc.Namespace
 	if namespace == "" {
 		namespace = options.Application
 	}
 
-	replica, err := getRunningReplica(ctx, dc.Client, namespace, options.Application, options.Component)
+	var replicas []corev1.Pod
+	var err error
 
-	if err != nil {
-		return nil, err
-	}
-
-	follow := options.Follow
-	container := options.Container
-	if container == "" {
-		// We don't really expect this to fail, but let's do something reasonable if it does...
-		container = getAppContainerName(replica)
-		if container == "" {
-			return nil, fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", options.Component)
+	if options.Replica != "" {
+		replica, err := getSpecificReplica(ctx, dc.Client, namespace, options.Component, options.Replica)
+		if err != nil {
+			return nil, err
+		}
+		replicas = append(replicas, *replica)
+	} else {
+		replicas, err = getRunningReplicas(ctx, dc.Client, namespace, options.Application, options.Component)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	stream, err := streamLogs(ctx, dc.RestConfig, dc.Client, replica, container, follow)
+	streams, err := createLogStreams(ctx, options, dc, replicas)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open log stream to %s: %w", options.Component, err)
+		// If there was an error, try to close all streams that were created
+		// ignore errors from stream close
+		for _, stream := range streams {
+			_ = stream.Stream.Close()
+		}
+		return nil, err
 	}
 
-	return stream, err
+	return streams, err
+}
+
+// Note: If an error is returned, any streams that were created before the error will also be returned.
+// Caller is responsible for closing streams even when there is an error.
+func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *KubernetesDiagnosticsClient, replicas []corev1.Pod) ([]clients.LogStream, error) {
+	container := options.Container
+	follow := options.Follow
+
+	var streams []clients.LogStream
+	for _, replica := range replicas {
+		if container == "" {
+			// We don't really expect this to fail, but let's do something reasonable if it does...
+			container = getAppContainerName(&replica)
+			if container == "" {
+				return streams, fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", options.Component)
+			}
+		}
+
+		stream, err := streamLogs(ctx, dc.RestConfig, dc.Client, &replica, container, follow)
+		if err != nil {
+			return streams, fmt.Errorf("failed to open log stream to %s: %w", options.Component, err)
+		}
+		streams = append(streams, clients.LogStream{Name: replica.Name, Stream: stream})
+	}
+
+	return streams, nil
+}
+
+func getSpecificReplica(ctx context.Context, client *k8s.Clientset, namespace string, component string, replica string) (*corev1.Pod, error) {
+	// Right now this connects to a pod related to a component. We can find the pods with the labels
+	// and then choose one that's in the running state.
+	pod, err := client.CoreV1().Pods(namespace).Get(ctx, replica, v1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get replica %v for component %v: %w", replica, component, err)
+	}
+
+	if pod.Status.Phase != corev1.PodRunning {
+		return nil, fmt.Errorf("replica %v for component %v is not running", replica, component)
+	}
+
+	return pod, nil
 }
 
 func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace string, application string, component string) (*corev1.Pod, error) {
@@ -107,6 +162,28 @@ func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace str
 	}
 
 	return nil, fmt.Errorf("failed to find a running replica for component %v", component)
+}
+
+func getRunningReplicas(ctx context.Context, client *k8s.Clientset, namespace string, application string, component string) ([]corev1.Pod, error) {
+	// Right now this connects to a pod related to a component. We can find the pods with the labels
+	// and then choose one that's in the running state.
+	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
+		LabelSelector: labels.FormatLabels(kubernetes.MakeSelectorLabels(application, component)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list running replicas for component %v: %w", component, err)
+	}
+	var running []corev1.Pod
+	for _, p := range pods.Items {
+		if p.Status.Phase == corev1.PodRunning {
+			running = append(running, p)
+		}
+	}
+	if len(running) == 0 {
+		return nil, fmt.Errorf("failed to find a running replica for component %v", component)
+	}
+
+	return running, nil
 }
 
 func runPortforward(restconfig *rest.Config, client *k8s.Clientset, replica *corev1.Pod, ready chan struct{}, stop <-chan struct{}, localPort int, remotePort int) error {
