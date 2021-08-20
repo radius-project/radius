@@ -6,6 +6,7 @@
 package controllers
 
 import (
+	"os"
 	"testing"
 
 	"github.com/Azure/radius/test/kubernetestest"
@@ -25,6 +26,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+
+	os.Exit(0)
 }
 
 func TestFrontendBackend(t *testing.T) {
