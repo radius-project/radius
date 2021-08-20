@@ -1,0 +1,84 @@
+apiVersion: radius.dev/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    radius.dev/applications: kubernetes-resources-container-httpbinding
+    radius.dev/resourceproviders: radius
+  name: radius-kubernetes-resources-container-httpbinding
+  namespace: default
+spec:
+  hierarchy:
+  - radius
+  - kubernetes-resources-container-httpbinding
+---
+apiVersion: radius.dev/v1alpha1
+kind: Component
+metadata:
+  annotations:
+    radius.dev/applications: kubernetes-resources-container-httpbinding
+    radius.dev/components: backend
+    radius.dev/resourceproviders: radius
+  name: radius-kubernetes-resources-container-httpbinding-backend
+  namespace: default
+spec:
+  bindings:
+    web:
+      kind: http
+      targetPort: 80
+  hierarchy:
+  - radius
+  - kubernetes-resources-container-httpbinding
+  - backend
+  kind: radius.dev/Container@v1alpha1
+  run:
+    container:
+      image: rynowak/backend:0.5.0-dev
+---
+apiVersion: radius.dev/v1alpha1
+kind: Component
+metadata:
+  annotations:
+    radius.dev/applications: kubernetes-resources-container-httpbinding
+    radius.dev/components: frontend
+    radius.dev/resourceproviders: radius
+  name: radius-kubernetes-resources-container-httpbinding-frontend
+  namespace: default
+spec:
+  bindings:
+    web:
+      kind: http
+      targetPort: 80
+  hierarchy:
+  - radius
+  - kubernetes-resources-container-httpbinding
+  - frontend
+  kind: radius.dev/Container@v1alpha1
+  run:
+    container:
+      image: rynowak/frontend:0.5.0-dev
+  uses:
+  - binding: '[[reference(resourceId(''Microsoft.CustomProviders/resourceProviders/Applications/Components'',
+      ''radius'', ''kubernetes-resources-container-httpbinding'', ''backend'')).bindings.web]'
+    env:
+      SERVICE__BACKEND__HOST: '[[reference(resourceId(''Microsoft.CustomProviders/resourceProviders/Applications/Components'',
+        ''radius'', ''kubernetes-resources-container-httpbinding'', ''backend'')).bindings.web.host]'
+      SERVICE__BACKEND__PORT: '[[reference(resourceId(''Microsoft.CustomProviders/resourceProviders/Applications/Components'',
+        ''radius'', ''kubernetes-resources-container-httpbinding'', ''backend'')).bindings.web.port]'
+apiVersion: radius.dev/v1alpha1
+---
+kind: Deployment
+metadata:
+  annotations:
+    radius.dev/applications: kubernetes-resources-container-httpbinding
+    radius.dev/deployments: default
+    radius.dev/resourceproviders: radius
+  name: radius-kubernetes-resources-container-httpbinding-default
+  namespace: default
+spec:
+  components:
+  - componentName: backend
+  - componentName: frontend
+  hierarchy:
+  - radius
+  - kubernetes-resources-container-httpbinding
+  - default

@@ -8,11 +8,15 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,10 +54,12 @@ func TestK8sController(t *testing.T) {
 	}
 
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "..", "deploy", "Chart", "crds")},
-		ErrorIfCRDPathMissing:    true,
-		AttachControlPlaneOutput: true,
-		BinaryAssetsDirectory:    assetsDirectory,
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "deploy", "Chart", "crds")},
+		ErrorIfCRDPathMissing: true,
+		BinaryAssetsDirectory: assetsDirectory,
+		WebhookInstallOptions: envtest.WebhookInstallOptions{
+			Paths: []string{filepath.Join("..", "..", "..", "deploy", "Chart", "templates", "webhook")},
+		},
 	}
 
 	scheme := runtime.NewScheme()
@@ -86,8 +92,15 @@ func TestK8sController(t *testing.T) {
 	k8s, err := k8s.NewForConfig(cfg)
 	require.NoError(t, err, "failed to create kubernetes client")
 
+	webhookInstallOptions := &testEnv.WebhookInstallOptions
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme,
+		Scheme:             scheme,
+		Host:               webhookInstallOptions.LocalServingHost,
+		Port:               webhookInstallOptions.LocalServingPort,
+		CertDir:            webhookInstallOptions.LocalServingCertDir,
+		LeaderElection:     false,
+		MetricsBindAddress: "0",
 	})
 	require.NoError(t, err, "failed to initialize manager")
 
@@ -112,10 +125,35 @@ func TestK8sController(t *testing.T) {
 	}).SetupWithManager(mgr)
 	require.NoError(t, err, "failed to initialize deployment reconciler")
 
+	err = (&radiusv1alpha1.Application{}).SetupWebhookWithManager(mgr)
+	require.NoError(t, err, "failed to initialize application webhook")
+
+	err = (&radiusv1alpha1.Component{}).SetupWebhookWithManager(mgr)
+	require.NoError(t, err, "failed to initialize component webhook")
+
+	err = (&radiusv1alpha1.Deployment{}).SetupWebhookWithManager(mgr)
+	require.NoError(t, err, "failed to initialize deployment webhook")
+
 	go func() {
 		err = mgr.Start(ctrl.SetupSignalHandler())
 		require.NoError(t, err, "failed to start manager")
 	}()
+
+	dialer := &net.Dialer{Timeout: time.Second}
+	addrPort := fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort)
+	for i := 0; i < 10; i++ {
+		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true})
+		if err != nil {
+			if i == 9 {
+				// if we can't connect after 10 attempts, fail
+				require.NoError(t, err, "failed to connect to webhook")
+			}
+			time.Sleep(time.Second)
+			continue
+		}
+		conn.Close()
+		break
+	}
 
 	options := Options{
 		Context: ctx,

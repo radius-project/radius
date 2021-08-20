@@ -7,8 +7,10 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
@@ -41,6 +43,8 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 			return err
 		}
 
+		d, err := yaml.Marshal(k8sInfo.Unstructured)
+		fmt.Println(string(d))
 		_, err = c.Client.Resource(k8sInfo.GVR).Namespace(c.Namespace).Patch(ctx, k8sInfo.Name, types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
 		if err != nil {
 			return err
