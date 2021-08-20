@@ -14,6 +14,8 @@ import (
 )
 
 func TestInvalid(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
