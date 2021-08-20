@@ -54,10 +54,12 @@ func ExtractDetailedError(err error) (autorest.DetailedError, bool) {
 
 // IsAutorest404Error returns true if the error is a 404 payload from an autorest operation.
 func IsAutorest404Error(err error) bool {
-	detailed, ok := ExtractDetailedError(err)
-	if !ok {
-		return false
+	if detailed, ok := ExtractDetailedError(err); ok && detailed.Response != nil && detailed.Response.StatusCode == 404 {
+		return true
+	} else if serviceErr, ok := ExtractServiceError(detailed.Original); ok &&
+		(serviceErr.Code == "ResourceNotFound" || serviceErr.Code == "NotFound") {
+		return true
 	}
 
-	return detailed.Response != nil && detailed.Response.StatusCode == 404
+	return false
 }

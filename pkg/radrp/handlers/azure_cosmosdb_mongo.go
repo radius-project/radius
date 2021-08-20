@@ -161,17 +161,16 @@ func (handler *azureCosmosDBMongoHandler) DeleteDatabase(ctx context.Context, ac
 	// When that happens a delete for the database (a nested resource) can fail with a 404, but it's
 	// benign.
 	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
-	if err != nil && dbfuture.Response().StatusCode != 404 {
+	if util.IsAutorest404Error(err) || (dbfuture.Response() != nil && dbfuture.Response().StatusCode == 404) {
+		return nil
+	} else if err != nil {
 		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
 	}
 
 	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
-	if err != nil && !util.IsAutorest404Error(err) {
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
-	}
-
-	response, err := dbfuture.Result(mrc)
-	if err != nil && response.StatusCode != 404 { // See comment on DeleteMongoDBDatabase
+	if util.IsAutorest404Error(err) || (dbfuture.Response() != nil && dbfuture.Response().StatusCode == 404) {
+		return nil
+	} else if err != nil {
 		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
 	}
 
