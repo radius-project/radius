@@ -1,0 +1,15 @@
+{
+    "apiVersion": "radius.dev/v1alpha1",
+    "kind": "Application",
+    "metadata": {
+        "annotations": {
+            "radius.dev/applications": "frontend-backend",
+            "radius.dev/resourceproviders": "radius"
+        },
+        "name": "radius-frontend-backend",
+        "namespace": "frontend-backend"
+    },
+    "spec": {
+        "hierarchy": "bar"
+    }
+}

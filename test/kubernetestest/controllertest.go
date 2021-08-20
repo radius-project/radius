@@ -178,7 +178,6 @@ func StopController() error {
 
 func (ct ControllerTest) Test(t *testing.T) error {
 	// Make sure namespace exists
-
 	err := kubernetes.CreateNamespace(ct.Context, ct.Options.K8s, ct.ControllerStep.Namespace)
 	require.NoError(t, err, "failed to create namespace")
 

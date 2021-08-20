@@ -32,7 +32,6 @@ var _ webhook.Validator = &Application{}
 func (r *Application) ValidateCreate() error {
 	applicationlog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
 	return nil
 }
 
@@ -40,7 +39,6 @@ func (r *Application) ValidateCreate() error {
 func (r *Application) ValidateUpdate(old runtime.Object) error {
 	applicationlog.Info("validate update", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object update.
 	return nil
 }
 
@@ -48,6 +46,5 @@ func (r *Application) ValidateUpdate(old runtime.Object) error {
 func (r *Application) ValidateDelete() error {
 	applicationlog.Info("validate delete", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
 }
