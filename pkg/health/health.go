@@ -16,6 +16,8 @@ import (
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/health/db"
 	"github.com/Azure/radius/pkg/health/handlers"
+	"github.com/Azure/radius/pkg/health/model"
+	"github.com/Azure/radius/pkg/health/model/azure"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/go-logr/logr"
@@ -30,6 +32,7 @@ type HealthInfo struct {
 	HealthState             string
 	HealthStateErrorDetails string
 	Resource                healthcontract.ResourceInfo
+	Options                 healthcontract.HealthCheckOptions
 }
 
 // Monitor is the controller for health checks for all output resources
@@ -39,7 +42,7 @@ type Monitor struct {
 	healthToRPNotificationChannel chan<- healthcontract.ResourceHealthDataMessage
 	activeHealthProbes            map[string]HealthInfo
 	activeHealthProbesMutex       *sync.RWMutex
-	handlers                      map[string]handlers.HealthHandler
+	model                         model.HealthModel
 }
 
 // Run starts the HealthService
@@ -74,8 +77,9 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 
 	logger.Info("Registering resource with health service")
 
-	if h.handlers[registerMsg.ResourceInfo.ResourceKind] == nil {
-		logger.Error(errors.New("NotImplemented"), fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %s not monitored by HealthService", registerMsg.ResourceInfo.ResourceKind, registerMsg.ResourceInfo.ResourceID))
+	if h.model.LookupHandler(registerMsg.ResourceInfo.ResourceKind) == nil {
+		// TODO: Convert this log to error once health checks are implemented for all resource kinds
+		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %s not monitored by HealthService", registerMsg.ResourceInfo.ResourceKind, registerMsg.ResourceInfo.ResourceID))
 		return
 	}
 
@@ -94,11 +98,12 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		stopProbeForResource: make(chan os.Signal, 1),
 		// Create a new ticker for the resource which will start the health check at the specified interval
 		// TODO: Optimize and not create a ticker per resource
-		ticker:      time.NewTicker(ho.Interval),
-		handler:     h.handlers[registerMsg.ResourceInfo.ResourceKind],
+		handler:     h.model.LookupHandler(registerMsg.ResourceInfo.ResourceKind),
 		HealthState: healthcontract.HealthStateUnhealthy,
 		Resource:    registerMsg.ResourceInfo,
+		Options:     ho,
 	}
+	healthInfo.ticker = time.NewTicker(healthInfo.Options.Interval)
 	// Create a new health handler for the resource
 	h.activeHealthProbesMutex.Lock()
 	h.activeHealthProbes[registerMsg.ResourceInfo.HealthID] = healthInfo
@@ -122,7 +127,6 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 				}
 				if currentHealthInfo.HealthState != newHealthInfo.HealthState {
 					logger.Info(fmt.Sprintf("HealthState changed from :%s to %s. Sending notification...", currentHealthInfo.HealthState, newHealthInfo.HealthState))
-					h.SendHealthStateChangeNotification(ctx, registerMsg.ResourceInfo, newHealthInfo)
 
 					// Save the new state as current state
 					currentHealthInfo.HealthState = newHealthInfo.HealthState
@@ -130,6 +134,9 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 					h.activeHealthProbesMutex.Lock()
 					h.activeHealthProbes[registerMsg.ResourceInfo.HealthID] = currentHealthInfo
 					h.activeHealthProbesMutex.Unlock()
+
+					h.SendHealthStateChangeNotification(ctx, registerMsg.ResourceInfo, newHealthInfo)
+
 					logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthInfo.HealthState))
 				}
 			case <-stopProbeForResource:
@@ -205,15 +212,10 @@ func NewMonitor(options MonitorOptions, arm armauth.ArmConfig) Monitor {
 		db:                            options.DB,
 		resourceRegistrationChannel:   options.ResourceRegistrationChannel,
 		healthToRPNotificationChannel: options.HealthProbeChannel,
+		model:                         options.HealthModel,
 	}
 	m.activeHealthProbes = make(map[string]HealthInfo)
 	m.activeHealthProbesMutex = &sync.RWMutex{}
-
-	// Add health check handlers for the resource types
-	m.handlers = map[string]handlers.HealthHandler{
-		// TODO: Add health check handler for all resource kinds
-		ResourceKindAzureServiceBusQueue: handlers.NewAzureServiceBusQueueHandler(arm),
-	}
 	return m
 }
 
@@ -233,11 +235,14 @@ func StartRadHealth(ctx context.Context, arm armauth.ArmConfig, dbClient *mongo.
 	// Create a DB to store health events
 	db := db.NewRadHealthDB(dbClient.Database(dbName))
 
+	model := azure.NewAzureModel(arm)
+
 	options := MonitorOptions{
 		Logger:                      logger,
 		DB:                          db,
 		ResourceRegistrationChannel: healthChannels.ResourceRegistrationWithHealthChannel,
 		HealthProbeChannel:          healthChannels.HealthToRPNotificationChannel,
+		HealthModel:                 model,
 	}
 
 	ctx = logr.NewContext(ctx, logger)

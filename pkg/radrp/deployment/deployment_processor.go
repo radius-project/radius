@@ -121,7 +121,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				BindingValues: bindingValues,
 			}
 
-			logger.Info("Rendering workload. Application: %s, Component: %s", workload.Application, workload.Name)
+			logger.Info(fmt.Sprintf("Rendering workload. Application: %s, Component: %s", workload.Application, workload.Name))
 			dbOutputResources := []db.OutputResource{}
 			outputResources, err := dp.renderWorkload(ctx, workload)
 			if err != nil {

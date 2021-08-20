@@ -3,10 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package healthcontract
+package azure
 
-// ResourceKinds supported. The RP determines how these are created/deleted and the HealthService determines how
-// health checks are handled for these
+// ResourceKinds supported.
+// TODO: Duplicated from RP for now. Needs to be refactored to share this with RP without adding a dependency on RP
 const (
 	ResourceKindKubernetes                       = "kubernetes"
 	ResourceKindDaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
