@@ -164,18 +164,23 @@ func TestK8sController(t *testing.T) {
 	}
 
 	table := []Row{
+		// {
+		// 	// Testing applications
+		// 	Namespace:      "frontend-backend",
+		// 	TemplateFolder: "testdata/frontend-backend/",
+		// 	Pods: validation.K8sObjectSet{
+		// 		Namespaces: map[string][]validation.K8sObject{
+		// 			"frontend-backend": {
+		// 				validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
+		// 				validation.NewK8sObjectForComponent("frontend-backend", "backend"),
+		// 			},
+		// 		},
+		// 	},
+		// },
 		{
-			// Testing applications
-			Namespace:      "frontend-backend",
-			TemplateFolder: "testdata/frontend-backend/",
-			Pods: validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"frontend-backend": {
-						validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
-						validation.NewK8sObjectForComponent("frontend-backend", "backend"),
-					},
-				},
-			},
+			Namespace:      "invalidcomponent",
+			TemplateFolder: "testdata/invalidcomponent/",
+			// TODO write func that verifies error here.
 		},
 	}
 
@@ -191,9 +196,10 @@ func TestK8sController(t *testing.T) {
 }
 
 type Row struct {
-	TemplateFolder string
-	Namespace      string
-	Pods           validation.K8sObjectSet
+	TemplateFolder  string
+	Namespace       string
+	Pods            validation.K8sObjectSet
+	ExpectedFailure string
 }
 
 type ControllerTest struct {
@@ -248,7 +254,6 @@ func (ct ControllerTest) Test(t *testing.T) {
 			data,
 			v1.PatchOptions{FieldManager: "rad"})
 		require.NoError(t, err, "failed to patch")
-
 	}
 
 	// ValidatePodsRunning triggers its own assertions, no need to handle errors

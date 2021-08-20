@@ -7,6 +7,8 @@ package v1alpha1
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/Azure/radius/pkg/radrp/schema"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,7 +35,9 @@ var _ webhook.Validator = &Component{}
 func (r *Component) ValidateCreate() error {
 	componentlog.Info("validate create", "name", r.Name)
 
-	return validate(r)
+	err := validate(r)
+
+	return err
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
@@ -61,7 +65,27 @@ func validate(r *Component) error {
 	// except kind and hierarchy, which we validate separately.
 	validator := schema.NewValidator("ComponentProperties")
 	if errs := validator.ValidateJSON(data); len(errs) != 0 {
-		return errs[0].JSONError
+		return &validationError{
+			details: errs,
+		}
 	}
 	return nil
+}
+
+type validationError struct {
+	details []schema.ValidationError
+}
+
+func (v *validationError) Error() string {
+	var message strings.Builder
+	fmt.Fprintln(&message, "failed validation(s):")
+	for _, err := range v.details {
+		if err.JSONError != nil {
+			// The given document isn't even JSON.
+			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
+		} else {
+			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
+		}
+	}
+	return message.String()
 }
