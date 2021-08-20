@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import * as routes from "./routes";
 import { SecretClient } from "@azure/keyvault-secrets";
-import { ManagedIdentityCredential } from "@azure/identity";
+import { DefaultAzureCredential } from "@azure/identity";
 
 export async function main(): Promise<void> {
   const app = express();
@@ -18,7 +18,7 @@ export async function main(): Promise<void> {
     console.log("Secret name: ", secretName)
 
     // Access the key vault to fetch the DB connection string
-    const credential = new ManagedIdentityCredential();
+    const credential = new DefaultAzureCredential();
     const client = new SecretClient(kvURI, credential);
     connectionString = (await client.getSecret(secretName)).value || '';
     console.log("Retrieved DB connection string from Key Vault")
