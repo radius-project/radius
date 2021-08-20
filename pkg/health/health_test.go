@@ -46,6 +46,10 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 			ResourceKind: azure.ResourceKindAzureServiceBusQueue,
 		},
 	}
+	t.Cleanup(func() {
+		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+	})
+
 	monitor.RegisterResource(ctx, registrationMsg)
 	require.Equal(t, 1, len(monitor.activeHealthProbes))
 	healthInfo, found := monitor.activeHealthProbes["abc"]
@@ -153,6 +157,9 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 			Interval: optionsInterval,
 		},
 	}
+	t.Cleanup(func() {
+		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+	})
 	ctx := logr.NewContext(context.Background(), logger)
 	monitor.RegisterResource(ctx, registrationMsg)
 
@@ -186,6 +193,11 @@ func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
 		ResourceID:   "xyz",
 		ResourceKind: "dummy",
 	}
+
+	t.Cleanup(func() {
+		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+	})
+
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:       healthcontract.ActionRegister,
 		ResourceInfo: ri,
@@ -227,6 +239,11 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		ResourceID:   "xyz",
 		ResourceKind: "dummy",
 	}
+
+	t.Cleanup(func() {
+		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+	})
+
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:       healthcontract.ActionRegister,
 		ResourceInfo: ri,
@@ -276,6 +293,10 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 		ResourceID:   "xyz",
 		ResourceKind: "dummy",
 	}
+	t.Cleanup(func() {
+		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+	})
+
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:       healthcontract.ActionRegister,
 		ResourceInfo: ri,
