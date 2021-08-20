@@ -35,9 +35,7 @@ var _ webhook.Validator = &Component{}
 func (r *Component) ValidateCreate() error {
 	componentlog.Info("validate create", "name", r.Name)
 
-	err := validate(r)
-
-	return err
+	return validate(r)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
