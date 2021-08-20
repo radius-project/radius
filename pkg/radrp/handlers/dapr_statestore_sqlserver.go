@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -151,18 +150,17 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 	// Delete the server
 	sqlServerClient := azclients.NewServersClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	future, err := sqlServerClient.Delete(ctx, handler.arm.ResourceGroup, serverName)
-	if err != nil && future.Response().StatusCode != 404 {
-		return fmt.Errorf("failed to delete sql server `%s`: %w", serverName, err)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "sql server", err)
 	}
 
 	err = future.WaitForCompletionRef(ctx, sqlServerClient.Client)
-	if err != nil && !util.IsAutorest404Error(err) {
-		return fmt.Errorf("failed to delete sql server `%s`: %w", serverName, err)
-	}
-
-	serverDeleteResponse, err := future.Result(sqlServerClient)
-	if err != nil && serverDeleteResponse.StatusCode != 404 {
-		return fmt.Errorf("failed to delete sql server `%s`: %w", serverName, err)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "sql server", err)
 	}
 
 	return nil

@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 )
@@ -160,18 +159,18 @@ func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, ac
 func (handler *azureCosmosDBSQLDBHandler) DeleteDatabase(ctx context.Context, accountName string, dbName string) error {
 	sqlClient := azclients.NewSQLResourcesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	dbfuture, err := sqlClient.DeleteSQLDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
-	if err != nil && dbfuture.Response().StatusCode != 404 {
-		return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
-	}
-	err = dbfuture.WaitForCompletionRef(ctx, sqlClient.Client)
-	if err != nil && !util.IsAutorest404Error(err) {
-		return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
+	future, err := sqlClient.DeleteSQLDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "sql database", err)
 	}
 
-	response, err := dbfuture.Result(sqlClient)
-	if err != nil && response.StatusCode != 404 {
-		return fmt.Errorf("failed to delete CosmosDB SQL database: %w", err)
+	err = future.WaitForCompletionRef(ctx, sqlClient.Client)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "sql database", err)
 	}
 
 	return nil

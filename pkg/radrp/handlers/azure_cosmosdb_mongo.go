@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 )
@@ -160,19 +159,18 @@ func (handler *azureCosmosDBMongoHandler) DeleteDatabase(ctx context.Context, ac
 	// It's possible that this is a retry and we already deleted the account on a previous attempt.
 	// When that happens a delete for the database (a nested resource) can fail with a 404, but it's
 	// benign.
-	dbfuture, err := mrc.DeleteMongoDBDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
-	if err != nil && dbfuture.Response().StatusCode != 404 {
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+	future, err := mrc.DeleteMongoDBDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "mongodb database", err)
 	}
 
-	err = dbfuture.WaitForCompletionRef(ctx, mrc.Client)
-	if err != nil && !util.IsAutorest404Error(err) {
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
-	}
-
-	response, err := dbfuture.Result(mrc)
-	if err != nil && response.StatusCode != 404 { // See comment on DeleteMongoDBDatabase
-		return fmt.Errorf("failed to DELETE cosmosdb database: %w", err)
+	err = future.WaitForCompletionRef(ctx, mrc.Client)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "mongodb database", err)
 	}
 
 	return nil

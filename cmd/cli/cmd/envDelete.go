@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -161,27 +160,19 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 	rgc := azclients.NewGroupsClient(subscriptionID, authorizer)
 
 	output.LogInfo("Deleting resource group %v", resourceGroup)
-
-	_, err := rgc.Get(ctx, resourceGroup)
-	if err != nil && util.IsAutorest404Error(err) {
+	future, err := rgc.Delete(ctx, resourceGroup)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
-		return err
-	}
-
-	future, err := rgc.Delete(ctx, resourceGroup)
-	if err != nil {
-		return fmt.Errorf("failed to delete the resource group: %w", err)
+		return fmt.Errorf("failed to delete %s: %w", "the resource group", err)
 	}
 
 	output.LogInfo("Waiting for delete to complete...")
-	if err = future.WaitForCompletionRef(ctx, rgc.Client); err != nil {
-		return fmt.Errorf("failed to delete the resource group: %w", err)
-	}
-
-	_, err = future.Result(rgc)
-	if err != nil {
-		return fmt.Errorf("failed to delete the resource group: %w", err)
+	err = future.WaitForCompletionRef(ctx, rgc.Client)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "the resource group", err)
 	}
 
 	return nil

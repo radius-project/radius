@@ -29,7 +29,6 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
@@ -558,7 +557,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 		}
 
 		// Check the error and determine if it is retryable
-		detailed, ok := util.ExtractDetailedError(err)
+		detailed, ok := azclients.ExtractDetailedError(err)
 		if !ok {
 			return podIdentity, err
 		}

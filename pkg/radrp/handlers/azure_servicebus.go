@@ -15,7 +15,6 @@ import (
 	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/cli/util"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -310,19 +309,18 @@ func (handler *azureServiceBusBaseHandler) DeleteNamespace(ctx context.Context, 
 	// The last queue in the service bus namespace was deleted. Now delete the namespace as well
 	sbc := azclients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	sbNamespaceFuture, err := sbc.Delete(ctx, handler.arm.ResourceGroup, namespaceName)
-	if err != nil && sbNamespaceFuture.Response().StatusCode != 404 {
-		return fmt.Errorf("failed to delete servicebus namespace: %w", err)
+	future, err := sbc.Delete(ctx, handler.arm.ResourceGroup, namespaceName)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "servicebus namespace", err)
 	}
 
-	err = sbNamespaceFuture.WaitForCompletionRef(ctx, sbc.Client)
-	if err != nil && !util.IsAutorest404Error(err) {
-		return fmt.Errorf("failed to delete servicebus namespace: %w", err)
-	}
-
-	response, err := sbNamespaceFuture.Result(sbc)
-	if (err != nil && response.Response == nil) || (err != nil && response.StatusCode != 404) {
-		return fmt.Errorf("failed to delete servicebus namespace: %w", err)
+	err = future.WaitForCompletionRef(ctx, sbc.Client)
+	if azclients.IsLongRunning404(err, future.FutureAPI) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to delete %s: %w", "servicebus namespace", err)
 	}
 
 	return nil
