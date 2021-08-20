@@ -11,22 +11,24 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"testing"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"github.com/Azure/radius/pkg/cli/kubernetes"
-	kuberneteskeys "github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 	"github.com/Azure/radius/pkg/kubernetes/controllers"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
@@ -35,6 +37,7 @@ import (
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	//+kubebuilder:scaffold:imports
@@ -85,9 +88,8 @@ func TestK8sController(t *testing.T) {
 
 	//+kubebuilder:scaffold:scheme
 
-	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
-	require.NoError(t, err, "failed to initialize k8s client")
-	require.NotNil(t, k8sClient, "failed to initialize k8s client")
+	dynamicClient, err := dynamic.NewForConfig(cfg)
+	require.NoError(t, err, "failed to create dynamic kubernetes client")
 
 	k8s, err := k8s.NewForConfig(cfg)
 	require.NoError(t, err, "failed to create kubernetes client")
@@ -157,97 +159,15 @@ func TestK8sController(t *testing.T) {
 
 	options := Options{
 		Context: ctx,
-		Client:  k8sClient,
 		K8s:     k8s,
+		Dynamic: dynamicClient,
 	}
 
 	table := []Row{
 		{
 			// Testing applications
-			Description: "frontend-backend",
-			Application: &v1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "radius.dev/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "radius-frontend-backend",
-					Namespace: "frontend-backend",
-					Annotations: map[string]string{
-						kuberneteskeys.AnnotationsApplication: "frontend-backend",
-					},
-				},
-				Spec: radiusv1alpha1.ApplicationSpec{
-					Hierarchy: []string{"radius", "frontend-backend"},
-				},
-			},
-			Components: &[]TestComponent{
-				{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "radius.dev/v1alpha1",
-						Kind:       "Component",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "frontend",
-						Namespace: "frontend-backend",
-						Annotations: map[string]string{
-							kuberneteskeys.AnnotationsApplication: "frontend-backend",
-							kuberneteskeys.AnnotationsComponent:   "frontend",
-						},
-					},
-					Spec: TestComponentSpec{
-						Kind: "radius.dev/Container@v1alpha1",
-						Run: map[string]interface{}{
-							"container": map[string]interface{}{
-								"image": "rynowak/frontend:0.5.0-dev",
-							},
-						},
-						Bindings: map[string]interface{}{
-							"default": map[string]interface{}{
-								"kind": "http",
-							},
-						},
-						Hierarchy: []string{"radius", "frontend-backend", "frontend"},
-						Uses: []map[string]interface{}{
-							{
-								"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
-								"env": map[string]interface{}{
-									"SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.host]",
-									"SERVICE__BACKEND__PORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.port]",
-								},
-							},
-						},
-					},
-				},
-				{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "radius.dev/v1alpha1",
-						Kind:       "Component",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "backend",
-						Namespace: "frontend-backend",
-						Annotations: map[string]string{
-							kuberneteskeys.AnnotationsApplication: "frontend-backend",
-							kuberneteskeys.AnnotationsComponent:   "backend",
-						},
-					},
-					Spec: TestComponentSpec{
-						Kind: "radius.dev/Container@v1alpha1",
-						Run: map[string]interface{}{
-							"container": map[string]interface{}{
-								"image": "rynowak/backend:0.5.0-dev",
-							},
-						},
-						Bindings: map[string]interface{}{
-							"default": map[string]interface{}{
-								"kind": "http",
-							},
-						},
-						Hierarchy: []string{"radius", "frontend-backend", "backend"},
-					},
-				},
-			},
+			Namespace:      "frontend-backend",
+			TemplateFolder: "testdata/frontend-backend/",
 			Pods: validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"frontend-backend": {
@@ -265,111 +185,15 @@ func TestK8sController(t *testing.T) {
 	t.Run("deploytests", func(t *testing.T) {
 		for _, row := range table {
 			test := NewControllerTest(options, row)
-			t.Run(row.Description, test.Test)
+			t.Run(row.Namespace, test.Test)
 		}
 	})
 }
 
 type Row struct {
-	Application *radiusv1alpha1.Application
-	Components  *[]TestComponent
-	Description string
-	Pods        validation.K8sObjectSet
-}
-
-func (r Row) GetComponents() (*[]radiusv1alpha1.Component, error) {
-	var components []radiusv1alpha1.Component
-
-	for _, testComponent := range *r.Components {
-		component, err := testComponent.GetComponent()
-		if err != nil {
-			return nil, err
-		}
-		components = append(components, component)
-	}
-
-	return &components, nil
-}
-
-// A test only representation of a component, making it easier
-// to write input for (don't need to muck with RawExtension for json)
-type TestComponent struct {
-	TypeMeta   metav1.TypeMeta
-	ObjectMeta metav1.ObjectMeta
-	Spec       TestComponentSpec
-}
-
-type TestComponentSpec struct {
-	Kind      string
-	Hierarchy []string
-	Run       map[string]interface{}
-	Bindings  map[string]interface{}
-	Config    map[string]interface{}
-	Uses      []map[string]interface{}
-	Traits    []map[string]interface{}
-}
-
-func (tc TestComponent) GetComponent() (radiusv1alpha1.Component, error) {
-	// handle defaults
-	if tc.Spec.Run == nil {
-		tc.Spec.Run = map[string]interface{}{}
-	}
-	if tc.Spec.Bindings == nil {
-		tc.Spec.Bindings = map[string]interface{}{}
-	}
-	if tc.Spec.Config == nil {
-		tc.Spec.Config = map[string]interface{}{}
-	}
-	if tc.Spec.Uses == nil {
-		tc.Spec.Uses = []map[string]interface{}{}
-	}
-
-	bindingJson, err := json.Marshal(tc.Spec.Bindings)
-	if err != nil {
-		return radiusv1alpha1.Component{}, err
-	}
-	runJson, err := json.Marshal(tc.Spec.Run)
-	if err != nil {
-		return radiusv1alpha1.Component{}, err
-	}
-
-	uses := []runtime.RawExtension{}
-
-	for _, use := range tc.Spec.Uses {
-		useJson, err := json.Marshal(use)
-		if err != nil {
-			return radiusv1alpha1.Component{}, err
-		}
-		uses = append(uses, runtime.RawExtension{Raw: useJson})
-	}
-
-	traits := []runtime.RawExtension{}
-	for _, trait := range tc.Spec.Traits {
-		traitJson, err := json.Marshal(trait)
-		if err != nil {
-			return radiusv1alpha1.Component{}, err
-		}
-		traits = append(traits, runtime.RawExtension{Raw: traitJson})
-	}
-
-	configJson, err := json.Marshal(tc.Spec.Config)
-	if err != nil {
-		return radiusv1alpha1.Component{}, err
-	}
-	return v1alpha1.Component{
-		TypeMeta:   tc.TypeMeta,
-		ObjectMeta: tc.ObjectMeta,
-		Spec: v1alpha1.ComponentSpec{
-			Kind:      tc.Spec.Kind,
-			Run:       &runtime.RawExtension{Raw: runJson},
-			Bindings:  runtime.RawExtension{Raw: bindingJson},
-			Hierarchy: tc.Spec.Hierarchy,
-			Uses:      &uses,
-			Traits:    &traits,
-			Config:    &runtime.RawExtension{Raw: configJson},
-		},
-	}, nil
-
+	TemplateFolder string
+	Namespace      string
+	Pods           validation.K8sObjectSet
 }
 
 type ControllerTest struct {
@@ -378,9 +202,9 @@ type ControllerTest struct {
 }
 
 type Options struct {
-	Client  client.Client
 	Context context.Context
 	K8s     *k8s.Clientset
+	Dynamic dynamic.Interface
 }
 
 func NewControllerTest(options Options, row Row) ControllerTest {
@@ -398,21 +222,35 @@ func (ct ControllerTest) Test(t *testing.T) {
 	t.Parallel()
 
 	// Make sure namespace exists
-	err := kubernetes.CreateNamespace(ct.Options.Context, ct.Options.K8s, ct.Row.Application.Namespace)
+
+	err := kubernetes.CreateNamespace(ct.Options.Context, ct.Options.K8s, ct.Row.Namespace)
 	require.NoError(t, err, "failed to create namespace")
 
-	// Create Application
-	err = ct.Options.Client.Create(ct.Options.Context, ct.Row.Application)
-	require.NoError(t, err, "failed to create application")
+	items, err := ioutil.ReadDir(ct.Row.TemplateFolder)
+	require.NoError(t, err, "failed to read directory")
 
-	// Create Components
-	components, err := ct.Row.GetComponents()
-	require.NoError(t, err, "failed to get component list")
+	for _, item := range items {
+		unst, err := GetUnstructured(path.Join(ct.Row.TemplateFolder, item.Name()))
+		require.NoError(t, err, "failed to get unstructured")
 
-	for _, component := range *components {
-		err := ct.Options.Client.Create(ct.Options.Context, &component)
-		require.NoError(t, err, "failed to create component")
+		gvr, err := gvr(unst)
+		require.NoError(t, err, "failed to get gvr")
+
+		data, err := unst.MarshalJSON()
+		require.NoError(t, err, "failed to marshal json")
+
+		name := unst.GetName()
+
+		_, err = ct.Options.Dynamic.Resource(gvr).Namespace(ct.Row.Namespace).Patch(
+			ct.Options.Context,
+			name,
+			types.ApplyPatchType,
+			data,
+			v1.PatchOptions{FieldManager: "rad"})
+		require.NoError(t, err, "failed to patch")
+
 	}
+
 	// ValidatePodsRunning triggers its own assertions, no need to handle errors
 	validation.ValidateDeploymentsRunning(ct.Options.Context, t, ct.Options.K8s, ct.Row.Pods)
 }
@@ -425,4 +263,38 @@ func getEnvTestBinaryPath() (string, error) {
 	err := cmd.Run()
 
 	return out.String(), err
+}
+
+func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	uns := &unstructured.Unstructured{}
+	err = json.Unmarshal(content, uns)
+	return uns, err
+}
+
+func gvr(unst *unstructured.Unstructured) (schema.GroupVersionResource, error) {
+	if unst.GroupVersionKind().Kind == "Application" {
+		return schema.GroupVersionResource{
+			Group:    "radius.dev",
+			Version:  "v1alpha1",
+			Resource: "applications",
+		}, nil
+	} else if unst.GroupVersionKind().Kind == "Component" {
+		return schema.GroupVersionResource{
+			Group:    "radius.dev",
+			Version:  "v1alpha1",
+			Resource: "components",
+		}, nil
+	} else if unst.GroupVersionKind().Kind == "Deployment" {
+		return schema.GroupVersionResource{
+			Group:    "radius.dev",
+			Version:  "v1alpha1",
+			Resource: "deployments",
+		}, nil
+	}
+
+	return schema.GroupVersionResource{}, fmt.Errorf("unsupported resource  '%s'", unst.GroupVersionKind().Kind)
 }
