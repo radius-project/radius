@@ -8,7 +8,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 

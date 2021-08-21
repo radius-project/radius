@@ -7,8 +7,8 @@ package kubernetes
 
 import (
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
