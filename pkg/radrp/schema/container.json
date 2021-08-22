@@ -30,22 +30,28 @@
 	  "$ref": "#/definitions/ContainerComponentBinding"
         },
         "run": {
-	  "$ref": "#/definitions/ContainerComponentRunSpec"
-        }
-      }
-    },
-    "ContainerComponentRunSpec": {
-      "type": "object",
-      "required": [
-	"image"
-      ],
-      "properties": {
-	"image": {
-	  "description": "The registry and image to download and run in your container",
-	  "type": "string"
+	  "type": "object",
+	  "required": [
+	    "container"
+	  ],
+	  "properties": {
+	    "container": {
+	      "type": "object",
+	      "required": [
+		"image"
+	      ],
+	      "properties": {
+		"image": {
+		  "description": "The registry and image to download and run in your container",
+		  "type": "string"
+		}
+	      },
+	      "additionalProperties": false
+	    }
+	  },
+	  "additionalProperties": false
 	}
-      },
-      "additionalProperties": false
+      }
     },
     "ContainerComponentBinding": {
       "type": "object",

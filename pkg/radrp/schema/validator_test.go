@@ -28,7 +28,9 @@ func TestComponentValidator(t *testing.T) {
                   "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
                     "run": {
-                      "image": "busybox"
+                      "container": {
+                        "image": "busybox"
+                      }
                     }
                   }
                 }`,
@@ -199,7 +201,9 @@ func TestComponentValidator(t *testing.T) {
                   "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
                     "run": {
-                      "image": "busybox"
+                      "container": {
+                        "image": "busybox"
+                      }
                     }
                   },
                   "tags": {
@@ -214,7 +218,9 @@ func TestComponentValidator(t *testing.T) {
                   "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
                     "run": {
-                      "image": "busybox"
+                      "container": {
+                        "image": "busybox"
+                      }
                     },
                     "traits": [{
                       "huh": "invalid"
@@ -229,7 +235,9 @@ func TestComponentValidator(t *testing.T) {
                   "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
                     "run": {
-                      "image": "busybox"
+                      "container": {
+                        "image": "busybox"
+                      }
                     },
                     "traits": [{
                       "kind":   "dapr.io/App@v1alpha1",
@@ -245,7 +253,9 @@ func TestComponentValidator(t *testing.T) {
                   "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
                     "run": {
-                      "image": "busybox"
+                      "container": {
+                        "image": "busybox"
+                      }
                     },
                     "traits": [{
                       "kind":     "radius.dev/InboundRoute@v1alpha1",
@@ -261,7 +271,9 @@ func TestComponentValidator(t *testing.T) {
                   "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
                     "run": {
-                      "image": "busybox"
+                      "container": {
+                        "image": "busybox"
+                      }
                     },
                     "traits": [{
                       "kind":     "radius.dev/InboundRoute@v1alpha1",
@@ -279,7 +291,9 @@ func TestComponentValidator(t *testing.T) {
                         "kind": "radius.dev/Container@v1alpha1",
                         "properties": {
                           "run": {
-                            "image": "busybox"
+                            "container": {
+                              "image": "busybox"
+                            }
                           },
 			  "traits": [{
                             "kind":     "radius.dev/ManualScaling@v1alpha1",
@@ -294,7 +308,9 @@ func TestComponentValidator(t *testing.T) {
                   "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
                     "run": {
-                      "image": "busybox"
+                      "container": {
+                        "image": "busybox"
+                      }
                     },
                     "uses": [
                       {
