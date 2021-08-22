@@ -11,6 +11,7 @@ import (
 
 // ArmSpec defines the desired state of Arm
 type ArmSpec struct {
+	Arm string `json:"arm,omitempty"`
 }
 
 // ArmStatus defines the observed state of Arm

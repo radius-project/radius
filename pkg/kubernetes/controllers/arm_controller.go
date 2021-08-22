@@ -9,10 +9,14 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/Azure/radius/pkg/cli/armtemplate"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 )
 
@@ -39,7 +43,39 @@ type ArmReconciler struct {
 func (r *ArmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("arm", req.NamespacedName)
 
+	dynamicClient, err := dynamic.NewForConfig()
+
 	// your logic here
+
+	arm := &radiusv1alpha1.Arm{}
+	err = r.Get(ctx, req.NamespacedName, arm)
+
+	template, err := armtemplate.Parse(arm.Spec.Arm)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	for _, resource := range resources {
+		k8sInfo, err := armtemplate.ConvertToK8s(resource, req.NamespacedName.Namespace)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		data, err := k8sInfo.Unstructured.MarshalJSON()
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		_, err = r.Client.Resource(k8sInfo.GVR).Namespace(req.NamespacedName.Namespace).Patch(ctx, k8sInfo.Name, types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
