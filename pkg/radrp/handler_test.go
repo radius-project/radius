@@ -683,8 +683,12 @@ func Test_UpdateComponent_NoApplication(t *testing.T) {
 	test := start(t)
 
 	body := map[string]interface{}{
-		"kind":       "radius.dev/Test@v1alpha1",
-		"properties": map[string]interface{}{},
+		"kind": "radius.dev/Container@v1alpha1",
+		"properties": map[string]interface{}{
+			"run": map[string]string{
+				"image": "busybox",
+			},
+		},
 	}
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -716,15 +720,22 @@ func Test_UpdateComponent_Create(t *testing.T) {
 	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
 
 	// simulate the operation to get the revision
-	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{
+		Run: map[string]interface{}{
+			"image": "busybox",
+		},
 		Status: db.ComponentStatus{
 			ProvisioningState: "NotProvisioned",
 			HealthState:       "Unhealthy"}})
 	test.DBDeleteComponent(TestApplicationName, "A")
 
 	body := map[string]interface{}{
-		"kind":       "radius.dev/Test@v1alpha1",
-		"properties": map[string]interface{}{},
+		"kind": "radius.dev/Container@v1alpha1",
+		"properties": map[string]interface{}{
+			"run": map[string]string{
+				"image": "busybox",
+			},
+		},
 	}
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -745,9 +756,12 @@ func Test_UpdateComponent_Create(t *testing.T) {
 			Name:           componentID.Name(),
 			Type:           componentID.Kind(),
 		},
-		Kind: "radius.dev/Test@v1alpha1",
+		Kind: "radius.dev/Container@v1alpha1",
 		Properties: rest.ComponentProperties{
 			Revision: rev,
+			Run: map[string]interface{}{
+				"image": "busybox",
+			},
 			Status: rest.ComponentStatus{
 				ProvisioningState: "NotProvisioned",
 				HealthState:       "Unhealthy",
@@ -761,14 +775,21 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 	test := start(t)
 
 	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
-	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{
+		Run: map[string]interface{}{
+			"image": "busybox",
+		},
 		Status: db.ComponentStatus{
 			ProvisioningState: "NotProvisioned",
 			HealthState:       "Unhealthy"}})
 
 	body := map[string]interface{}{
-		"kind":       "radius.dev/Test@v1alpha1",
-		"properties": map[string]interface{}{},
+		"kind": "radius.dev/Container@v1alpha1",
+		"properties": map[string]interface{}{
+			"run": map[string]string{
+				"image": "busybox",
+			},
+		},
 	}
 	b, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -789,9 +810,12 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 			Name:           componentID.Name(),
 			Type:           componentID.Kind(),
 		},
-		Kind: "radius.dev/Test@v1alpha1",
+		Kind: "radius.dev/Container@v1alpha1",
 		Properties: rest.ComponentProperties{
 			Revision: rev,
+			Run: map[string]interface{}{
+				"image": "busybox",
+			},
 			Status: rest.ComponentStatus{
 				ProvisioningState: "NotProvisioned",
 				HealthState:       "Unhealthy",
@@ -806,10 +830,10 @@ func Test_UpdateComponent_Update(t *testing.T) {
 
 	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
 	// Simulate the operation to get the revision
-	test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
-	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
+	test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{})
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{
 		Run: map[string]interface{}{
-			"cool": true,
+			"image": "busybox",
 		},
 		Status: db.ComponentStatus{
 			ProvisioningState: "NotProvisioned",
@@ -817,13 +841,13 @@ func Test_UpdateComponent_Update(t *testing.T) {
 		},
 	})
 	test.DBDeleteComponent(TestApplicationName, "A")
-	test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
+	test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{})
 
 	body := map[string]interface{}{
-		"kind": "radius.dev/Test@v1alpha1",
+		"kind": "radius.dev/Container@v1alpha1",
 		"properties": map[string]interface{}{
-			"run": map[string]interface{}{
-				"cool": true,
+			"run": map[string]string{
+				"image": "busybox",
 			},
 		},
 	}
@@ -846,11 +870,11 @@ func Test_UpdateComponent_Update(t *testing.T) {
 			Name:           componentID.Name(),
 			Type:           componentID.Kind(),
 		},
-		Kind: "radius.dev/Test@v1alpha1",
+		Kind: "radius.dev/Container@v1alpha1",
 		Properties: rest.ComponentProperties{
 			Revision: rev,
 			Run: map[string]interface{}{
-				"cool": true,
+				"image": "busybox",
 			},
 			Status: rest.ComponentStatus{
 				ProvisioningState: "NotProvisioned",

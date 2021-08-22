@@ -1,0 +1,58 @@
+{
+  "definitions": {
+    "DaprPubSubComponentResource": {
+      "description": "Component for Dapr Pub/Sub",
+      "required": [
+        "kind",
+        "properties"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+	  "enum": ["dapr.io/PubSubTopic@v1alpha1"]
+        },
+	"properties": {
+	  "$ref": "#/definitions/DaprPubSubComponentProperties"
+	}
+      }
+    },
+    "DaprPubSubComponentProperties": {
+      "allOf": [
+        {
+          "$ref": "basic-component.json#/definitions/BasicComponentProperties"
+        }
+      ],
+      "required": [
+	"config"
+      ],
+      "properties": {
+	"config": {
+	  "type": "object",
+	  "required": [
+	    "managed",
+	    "kind",
+	    "topic"
+	  ],
+	  "properties": {
+	    "managed": {
+	      "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
+	      "type": "boolean",
+	      "enum": [ true ],
+	      "examples": [ true ]
+	    },
+	    "kind": {
+	      "description": "Dapr Pub/Sub kind",
+	      "type": "string"
+	    },
+	    "topic": {
+	      "description": "PubSub topic",
+	      "type": "string"
+	    }
+	  },
+	  "additionalProperties": false
+	}
+      },
+      "additionalProperties": false
+    }
+  }
+}

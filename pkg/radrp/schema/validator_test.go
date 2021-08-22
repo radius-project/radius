@@ -21,13 +21,152 @@ func TestComponentValidator(t *testing.T) {
 		input   string
 		expects []ValidationError
 	}{{
-		name: "valid",
+		name: "valid container",
 		input: `{
-                  "id":         "an ID",
-                  "name":       "a name",
-                  "kind":       "a kind",
-                  "location":   "a location",
-                  "properties": {}
+                  "id":   "id",
+                  "name": "name",
+                  "kind": "radius.dev/Container@v1alpha1",
+                  "properties": {
+                    "run": {
+                      "image": "busybox"
+                    }
+                  }
+                }`,
+	}, {
+		name: "valid azure cosmodb sql",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "azure.com/CosmosDBSQL@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "resource": "foo"
+                    }
+                  }
+                }`,
+	}, {
+		name: "valid keyvault",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "azure.com/KeyVault@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true
+                    }
+                  }
+                }`,
+	}, {
+		name: "valid cosmos sql",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "azure.com/CosmosDBSQL@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true
+                    }
+                  }
+                }`,
+	}, {
+		name: "valid cosmos mongo",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "azure.com/CosmosDBMongo@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "resource": "foo"
+                    }
+                  }
+                }`,
+	}, {
+		name: "valid azure keyvault",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "azure.com/KeyVault@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true
+                    }
+                  }
+                }`,
+	}, {
+		name: "valid azure servicebus",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "azure.com/ServiceBus@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "queue": "service bus queue"
+                    }
+                  }
+                }`,
+	}, {
+		name: "valid dapr statestore",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "dapr.io/State@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "kind": "dapr.io/RedisState"
+                    }
+                  }
+                }`,
+	}, {
+		name: "valid dapr pubsub",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "dapr.io/PubSubTopic@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "kind": "dapr.io/pubsub/AzureServiceBus",
+                      "topic": "fun coding"
+                    }
+                  }
+                }`,
+	}, {
+		name: "invalid dapr pubsub",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "dapr.io/PubSubTopic@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "kind": "dapr.io/pubsub/AzureServiceBus",
+                      "topic": "fun coding",
+                      "extra": "foo"
+                    }
+                  }
+                }`,
+		expects: additionalFieldErrs("(root).properties.config", "extra"),
+	}, {
+		name: "valid mongo",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "mongodb.com/Mongo@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "resource": "foo"
+                    }
+                  }
+                }`,
+	}, {
+		name: "invalid mongo",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "mongodb.com/Mongo@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "extra": "foo"
+                    }
+                  }
+                }`,
+		expects: additionalFieldErrs("(root).properties.config", "extra"),
+	}, {
+		name: "valid redis",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "redislabs.com/Redis@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "managed": true,
+                      "connectionString": "connection-string",
+                      "host": "localhost",
+                      "port": 6380
+                    }
+                  }
                 }`,
 	}, {
 		name:    "invalid json",
@@ -56,37 +195,27 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "wrong types for tags values",
 		input: `{
-                  "id": "id", "name": "name", "kind": "kind", "location": "location", "properties": {},
+                  "id": "id", "name": "name",
+                  "kind": "radius.dev/Container@v1alpha1",
+                  "properties": {
+                    "run": {
+                      "image": "busybox"
+                    }
+                  },
                   "tags": {
                     "key": 42
                   }
                 }`,
 		expects: invalidTypeErrs("(root).tags", "string", "integer", "key"),
 	}, {
-		name: "wrong types for properties.* fields",
-		input: `{
-                  "id": "id", "name": "name", "kind": "kind", "location": "location",
-                  "properties": {
-                    "revision":        42,
-                    "config":          42,
-                    "run":             42,
-                    "bindings":        42,
-                    "uses":            42,
-                    "traits":          42,
-                    "status":          42
-                  }
-                }`,
-		expects: append(append(
-			invalidTypeErrs("(root).properties", "object", "integer",
-				"config", "run", "bindings", "status"),
-			invalidTypeErrs("(root).properties", "array", "integer",
-				"uses", "traits")...),
-			invalidTypeErr("(root).properties.revision", "string", "integer")),
-	}, {
 		name: "unrecognized trait.* fields",
 		input: `{
-                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "id": "id", "name": "name", "location": "location",
+                  "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
+                    "run": {
+                      "image": "busybox"
+                    },
                     "traits": [{
                       "huh": "invalid"
                     }]
@@ -96,8 +225,12 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "valid DaprTrait",
 		input: `{
-                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "id": "id", "name": "name", "location": "location",
+                  "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
+                    "run": {
+                      "image": "busybox"
+                    },
                     "traits": [{
                       "kind":   "dapr.io/App@v1alpha1",
                       "appId":   "appId",
@@ -108,8 +241,12 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "valid InboundRouteTrait",
 		input: `{
-                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "id": "id", "name": "name", "location": "location",
+                  "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
+                    "run": {
+                      "image": "busybox"
+                    },
                     "traits": [{
                       "kind":     "radius.dev/InboundRoute@v1alpha1",
                       "hostName": "localhost",
@@ -120,8 +257,12 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "cannot combine InboundRouteTrait and DaprTrait",
 		input: `{
-                  "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "id": "id", "name": "name", "location": "location",
+                  "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
+                    "run": {
+                      "image": "busybox"
+                    },
                     "traits": [{
                       "kind":     "radius.dev/InboundRoute@v1alpha1",
                       "hostName": "localhost",
@@ -135,10 +276,14 @@ func TestComponentValidator(t *testing.T) {
 		name: "valid ManualScalingTrait",
 		input: `{
 			"id": "id", "name": "name", "kind": "kind", "location": "location",
-			"properties": {
+                        "kind": "radius.dev/Container@v1alpha1",
+                        "properties": {
+                          "run": {
+                            "image": "busybox"
+                          },
 			  "traits": [{
-				"kind":     "radius.dev/ManualScaling@v1alpha1",
-				"replicas":    2
+                            "kind":     "radius.dev/ManualScaling@v1alpha1",
+			    "replicas": 2
 			  }]
 			}
 		  }`,
@@ -146,7 +291,11 @@ func TestComponentValidator(t *testing.T) {
 		name: "valid binding expressions",
 		input: `{
                   "id": "id", "name": "name", "kind": "kind", "location": "location",
+                  "kind": "radius.dev/Container@v1alpha1",
                   "properties": {
+                    "run": {
+                      "image": "busybox"
+                    },
                     "uses": [
                       {
                         "binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",

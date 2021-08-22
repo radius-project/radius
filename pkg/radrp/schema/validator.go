@@ -41,11 +41,22 @@ type Validator interface {
 var (
 	//go:embed common-types.json
 	//go:embed traits.json
+	//go:embed basic-component.json
+	//go:embed azure-cosmosdb-sql.json
+	//go:embed azure-cosmosdb-mongo.json
+	//go:embed azure-keyvault.json
+	//go:embed azure-servicebus.json
+	//go:embed container.json
+	//go:embed dapr-pubsub.json
+	//go:embed dapr-state.json
+	//go:embed mongodb.json
+	//go:embed redis.json
+	//go:embed components.json
 	//go:embed radius.json
 	jsonFiles embed.FS
 
 	applicationValidator = newValidator("ApplicationResource")
-	componentValidator   = newValidator("ComponentResource")
+	componentValidator   = newValidator("/components.json#/definitions/ComponentResource")
 	deploymentValidator  = newValidator("DeploymentResource")
 	scopeValidator       = newValidator("ScopeResource")
 )
@@ -119,11 +130,15 @@ func newValidator(typeName string) *validator {
 			log.Fatalf("Failed to parse JSON Schema from %s: %s", f.Name(), err)
 		}
 	}
+	ref := fmt.Sprintf("/radius.json#/definitions/%s", typeName)
+	if strings.HasPrefix(typeName, "/") { // Allowing absolute path.
+		ref = typeName
+	}
 	schema, err := loader.Compile(gojsonschema.NewStringLoader(fmt.Sprintf(`{
 	  "$schema": "http://json-schema.org/draft-04/schema#",
 	  "type":    "object",
-	  "$ref":    "/radius.json#/definitions/%s"
-	}`, typeName)))
+	  "$ref":    "%s"
+	}`, ref)))
 	if err != nil {
 		log.Fatalf("Failed to parse JSON Schema %s", err)
 	}

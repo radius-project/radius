@@ -1,0 +1,94 @@
+{
+  "definitions": {
+    "ContainerComponentResource": {
+      "description": "The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform",
+      "required": [
+        "kind",
+        "properties"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+	  "enum": ["radius.dev/Container@v1alpha1"]
+        },
+	"properties": {
+	  "$ref": "#/definitions/ContainerComponentProperties"
+	}
+      }
+    },
+    "ContainerComponentProperties": {
+      "allOf": [
+        {
+          "$ref": "basic-component.json#/definitions/BasicComponentProperties"
+        }
+      ],
+      "required": [
+	"run"
+      ],
+      "properties": {
+        "bindings": {
+	  "$ref": "#/definitions/ContainerComponentBinding"
+        },
+        "run": {
+	  "$ref": "#/definitions/ContainerComponentRunSpec"
+        }
+      }
+    },
+    "ContainerComponentRunSpec": {
+      "type": "object",
+      "required": [
+	"image"
+      ],
+      "properties": {
+	"image": {
+	  "description": "The registry and image to download and run in your container",
+	  "type": "string"
+	}
+      },
+      "additionalProperties": false
+    },
+    "ContainerComponentBinding": {
+      "type": "object",
+      "oneOf": [
+	{
+	  "$ref": "#/definitions/ContainerComponentHTTPBinding"
+	},
+	{
+	  "$ref": "#/definitions/ContainerComponentDaprInvokeBinding"
+	}
+      ]
+    },
+    "ContainerComponentHTTPBinding": {
+      "type": "object",
+      "required": [
+	"kind", "targetPort"
+      ],
+      "properties": {
+	"kind": {
+	  "type": "string",
+	  "enum": ["http"]
+	},
+	"targetPort": {
+	  "type": "integer"
+	},
+	"port": {
+	  "type": "integer"
+	}
+      },
+      "additionalProperties": false
+    },
+    "ContainerComponentDaprInvokeBinding": {
+      "type": "object",
+      "required": [
+	"kind"
+      ],
+      "properties": {
+	"kind": {
+	  "type": "string",
+	  "enum": ["dapr.io/Invoke"]
+	}
+      },
+      "additionalProperties": false
+    }
+  }
+}
