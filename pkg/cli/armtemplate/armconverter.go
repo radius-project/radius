@@ -57,7 +57,7 @@ func ConvertToK8s(resource Resource, namespace string) (K8sInfo, error) {
 	// as required by json schema
 	if kind == "Component" {
 		if spec["bindings"] == nil {
-			spec["bindings"] = []map[string]interface{}{}
+			spec["bindings"] = map[string]interface{}{}
 		}
 	}
 
