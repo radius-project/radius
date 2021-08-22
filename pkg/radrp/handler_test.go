@@ -685,8 +685,10 @@ func Test_UpdateComponent_NoApplication(t *testing.T) {
 	body := map[string]interface{}{
 		"kind": "radius.dev/Container@v1alpha1",
 		"properties": map[string]interface{}{
-			"run": map[string]string{
-				"image": "busybox",
+			"run": map[string]interface{}{
+				"container": map[string]string{
+					"image": "busybox",
+				},
 			},
 		},
 	}
@@ -722,7 +724,9 @@ func Test_UpdateComponent_Create(t *testing.T) {
 	// simulate the operation to get the revision
 	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{
 		Run: map[string]interface{}{
-			"image": "busybox",
+			"container": map[string]string{
+				"image": "busybox",
+			},
 		},
 		Status: db.ComponentStatus{
 			ProvisioningState: "NotProvisioned",
@@ -732,8 +736,10 @@ func Test_UpdateComponent_Create(t *testing.T) {
 	body := map[string]interface{}{
 		"kind": "radius.dev/Container@v1alpha1",
 		"properties": map[string]interface{}{
-			"run": map[string]string{
-				"image": "busybox",
+			"run": map[string]interface{}{
+				"container": map[string]string{
+					"image": "busybox",
+				},
 			},
 		},
 	}
@@ -760,7 +766,9 @@ func Test_UpdateComponent_Create(t *testing.T) {
 		Properties: rest.ComponentProperties{
 			Revision: rev,
 			Run: map[string]interface{}{
-				"image": "busybox",
+				"container": map[string]string{
+					"image": "busybox",
+				},
 			},
 			Status: rest.ComponentStatus{
 				ProvisioningState: "NotProvisioned",
@@ -777,7 +785,9 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
 	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{
 		Run: map[string]interface{}{
-			"image": "busybox",
+			"container": map[string]string{
+				"image": "busybox",
+			},
 		},
 		Status: db.ComponentStatus{
 			ProvisioningState: "NotProvisioned",
@@ -786,8 +796,10 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 	body := map[string]interface{}{
 		"kind": "radius.dev/Container@v1alpha1",
 		"properties": map[string]interface{}{
-			"run": map[string]string{
-				"image": "busybox",
+			"run": map[string]interface{}{
+				"container": map[string]string{
+					"image": "busybox",
+				},
 			},
 		},
 	}
@@ -814,7 +826,9 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 		Properties: rest.ComponentProperties{
 			Revision: rev,
 			Run: map[string]interface{}{
-				"image": "busybox",
+				"container": map[string]string{
+					"image": "busybox",
+				},
 			},
 			Status: rest.ComponentStatus{
 				ProvisioningState: "NotProvisioned",
@@ -833,7 +847,9 @@ func Test_UpdateComponent_Update(t *testing.T) {
 	test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{})
 	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Container@v1alpha1", db.ComponentProperties{
 		Run: map[string]interface{}{
-			"image": "busybox",
+			"container": map[string]string{
+				"image": "busybox",
+			},
 		},
 		Status: db.ComponentStatus{
 			ProvisioningState: "NotProvisioned",
@@ -846,8 +862,10 @@ func Test_UpdateComponent_Update(t *testing.T) {
 	body := map[string]interface{}{
 		"kind": "radius.dev/Container@v1alpha1",
 		"properties": map[string]interface{}{
-			"run": map[string]string{
-				"image": "busybox",
+			"run": map[string]interface{}{
+				"container": map[string]string{
+					"image": "busybox",
+				},
 			},
 		},
 	}
@@ -874,7 +892,9 @@ func Test_UpdateComponent_Update(t *testing.T) {
 		Properties: rest.ComponentProperties{
 			Revision: rev,
 			Run: map[string]interface{}{
-				"image": "busybox",
+				"container": map[string]string{
+					"image": "busybox",
+				},
 			},
 			Status: rest.ComponentStatus{
 				ProvisioningState: "NotProvisioned",
