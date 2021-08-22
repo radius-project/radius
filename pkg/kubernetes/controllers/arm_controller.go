@@ -23,8 +23,9 @@ import (
 // ArmReconciler reconciles a Arm object
 type ArmReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log           logr.Logger
+	Scheme        *runtime.Scheme
+	DynamicClient dynamic.Interface
 }
 
 //+kubebuilder:rbac:groups=radius.dev,resources=arms,verbs=get;list;watch;create;update;patch;delete
@@ -43,12 +44,11 @@ type ArmReconciler struct {
 func (r *ArmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("arm", req.NamespacedName)
 
-	dynamicClient, err := dynamic.NewForConfig()
-
-	// your logic here
-
 	arm := &radiusv1alpha1.Arm{}
-	err = r.Get(ctx, req.NamespacedName, arm)
+	err := r.Get(ctx, req.NamespacedName, arm)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	template, err := armtemplate.Parse(arm.Spec.Arm)
 	if err != nil {
@@ -71,7 +71,7 @@ func (r *ArmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return ctrl.Result{}, err
 		}
 
-		_, err = r.Client.Resource(k8sInfo.GVR).Namespace(req.NamespacedName.Namespace).Patch(ctx, k8sInfo.Name, types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
+		_, err = r.DynamicClient.Resource(k8sInfo.GVR).Namespace(req.NamespacedName.Namespace).Patch(ctx, k8sInfo.Name, types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
 		if err != nil {
 			return ctrl.Result{}, err
 		}

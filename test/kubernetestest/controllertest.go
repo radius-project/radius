@@ -138,6 +138,16 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize deployment reconciler: %w", err)
 	}
+
+	if err = (&controllers.ArmReconciler{
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("Arm"),
+		Scheme:        mgr.GetScheme(),
+		DynamicClient: dynamicClient,
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("failed to initialize arm reconciler: %w", err)
+	}
+
 	err = (&radiusv1alpha1.Application{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application webhook: %w", err)
