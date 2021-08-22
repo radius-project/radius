@@ -53,6 +53,10 @@ func ConvertToK8s(resource Resource, namespace string) (K8sInfo, error) {
 		}
 	}
 
+	if spec["bindings"] == nil {
+		spec["bindings"] = []map[string]interface{}{}
+	}
+
 	hierarchy := []string{}
 	for i, tp := range typeParts[1:] {
 		annotations[fmt.Sprintf("radius.dev/%s", strings.ToLower(tp))] = strings.ToLower(nameParts[i])
