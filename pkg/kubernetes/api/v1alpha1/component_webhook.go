@@ -60,6 +60,8 @@ func validate(r *Component) error {
 	// k8s model mirrors the component properties in the schema,
 	// except kind and hierarchy, which we validate separately.
 	validator := schema.NewValidator("ComponentProperties")
+	componentlog.Info("json payload", "json", string(data))
+
 	if errs := validator.ValidateJSON(data); len(errs) != 0 {
 		return &schema.ValidationErrors{
 			Details: errs,
