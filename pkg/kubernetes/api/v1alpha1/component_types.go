@@ -13,7 +13,7 @@ import (
 
 // ComponentSpec defines the desired state of Component
 type ComponentSpec struct {
-	Kind string `json:"kind"`
+	Kind string `json:"kind,omitempty"`
 
 	Hierarchy []string `json:"hierarchy,omitempty"`
 

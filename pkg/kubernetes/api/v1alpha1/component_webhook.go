@@ -52,12 +52,18 @@ func (r *Component) ValidateDelete() error {
 }
 
 func validate(r *Component) error {
-	j := map[string]interface{}{
+
+	// HACK: currently we expect kind and hierarchy to be empty
+	// when doing json schema validation as the model doesn't quite fit
+	specCopy := r.Spec.DeepCopy()
+	specCopy.Hierarchy = nil
+	specCopy.Kind = ""
+	hackedJson := map[string]interface{}{
 		"kind":       r.Spec.Kind,
 		"properties": r.Spec,
 	}
 
-	data, err := json.Marshal(j)
+	data, err := json.Marshal(hackedJson)
 	if err != nil {
 		return err
 	}
