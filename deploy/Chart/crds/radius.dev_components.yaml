@@ -77,8 +77,6 @@ spec:
                   type: object
                 type: array
                 x-kubernetes-preserve-unknown-fields: true
-            required:
-            - kind
             type: object
           status:
             description: ComponentStatus defines the observed state of Component
