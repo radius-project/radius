@@ -139,13 +139,15 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 
 					logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthInfo.HealthState))
 				}
-			case <-stopProbeForResource:
+			case _, ok := <-stopProbeForResource:
+				if !ok {
+					return
+				}
 				logger.Info("Health Probe stopped.")
 				return
 			}
 		}
 	}(healthInfo.ticker, healthInfo.handler, healthInfo.stopProbeForResource)
-
 	logger.Info("Registered resource with health service successfully")
 }
 

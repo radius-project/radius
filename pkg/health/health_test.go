@@ -47,7 +47,10 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 		},
 	}
 	t.Cleanup(func() {
+		monitor.activeHealthProbesMutex.Lock()
+		monitor.activeHealthProbes["abc"].ticker.Stop()
 		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+		monitor.activeHealthProbesMutex.Unlock()
 	})
 
 	monitor.RegisterResource(ctx, registrationMsg)
@@ -158,7 +161,10 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 		},
 	}
 	t.Cleanup(func() {
+		monitor.activeHealthProbesMutex.Lock()
+		monitor.activeHealthProbes["abc"].ticker.Stop()
 		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+		monitor.activeHealthProbesMutex.Unlock()
 	})
 	ctx := logr.NewContext(context.Background(), logger)
 	monitor.RegisterResource(ctx, registrationMsg)
@@ -195,7 +201,10 @@ func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
+		monitor.activeHealthProbesMutex.Lock()
+		monitor.activeHealthProbes["abc"].ticker.Stop()
 		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+		monitor.activeHealthProbesMutex.Unlock()
 	})
 
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
@@ -241,7 +250,10 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
+		monitor.activeHealthProbesMutex.Lock()
+		monitor.activeHealthProbes["abc"].ticker.Stop()
 		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+		monitor.activeHealthProbesMutex.Unlock()
 	})
 
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
@@ -293,9 +305,6 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 		ResourceID:   "xyz",
 		ResourceKind: "dummy",
 	}
-	t.Cleanup(func() {
-		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
-	})
 
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:       healthcontract.ActionRegister,
@@ -309,6 +318,13 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 		Resource:                ri,
 		HealthState:             "Healthy",
 		HealthStateErrorDetails: "None",
+	})
+
+	t.Cleanup(func() {
+		monitor.activeHealthProbesMutex.Lock()
+		monitor.activeHealthProbes["abc"].ticker.Stop()
+		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
+		monitor.activeHealthProbesMutex.Unlock()
 	})
 	monitor.RegisterResource(ctx, registrationMsg)
 
