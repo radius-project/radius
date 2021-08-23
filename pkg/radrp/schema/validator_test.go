@@ -123,7 +123,7 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "valid dapr statestore",
 		input: `{ "id": "id", "name": "name",
-                  "kind": "dapr.io/State@v1alpha1",
+                  "kind": "dapr.io/StateStore@v1alpha1",
                   "properties": {
                     "config": {
                       "managed": true,

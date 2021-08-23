@@ -9,7 +9,7 @@
       "properties": {
         "kind": {
           "type": "string",
-	  "enum": ["dapr.io/State@v1alpha1"]
+	  "enum": ["dapr.io/StateStore@v1alpha1"]
         },
 	"properties": {
 	  "$ref": "#/definitions/DaprStateStoreComponentProperties"
