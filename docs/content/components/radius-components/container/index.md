@@ -8,13 +8,14 @@ weight: 1000
 
 The `radius.dev/Container` component provides an abstraction for a container workload that can be run on any [Radius platform]({{< ref environments >}}).
 
-## Configuraiton
+## Configuration
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | name | y | The name of your component. Used to provide status and visualize the component. | `frontend`
 | kind | y |The component kind and version. | `radius.dev/Container@v1alpha1`
 | properties.run.container.image | y | The registry and image to download and run in your container. | `radiusteam/frontend`
+| properties.run.container.env | n | The environment variables to be set for the container. | `"ENV_VAR": "value"`
 | properties.bindings |  | Bindings that your container provides to other components. See [bindings](#bindings) for more  information | -
 
 ## Bindings
