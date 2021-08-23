@@ -31,7 +31,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureModel(armauth.ArmConfig{}),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -68,7 +68,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureModel(armauth.ArmConfig{}),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -92,7 +92,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureModel(armauth.ArmConfig{}),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	monitor.activeHealthProbes = make(map[string]HealthInfo)
@@ -131,7 +131,7 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureModel(armauth.ArmConfig{}),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	optionsInterval := time.Microsecond * 5
@@ -171,7 +171,7 @@ func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 model.NewModel(handlers),
+		HealthModel:                 model.NewHealthModel(handlers),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -214,7 +214,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hpc,
-		HealthModel:                 model.NewModel(handlers),
+		HealthModel:                 model.NewHealthModel(handlers),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -265,7 +265,7 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hpc,
-		HealthModel:                 model.NewModel(handlers),
+		HealthModel:                 model.NewHealthModel(handlers),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)

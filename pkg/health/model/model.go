@@ -21,7 +21,7 @@ func (hm *healthModel) LookupHandler(resourceType string) handlers.HealthHandler
 	return hm.handlersList[resourceType]
 }
 
-func NewModel(handlers map[string]handlers.HealthHandler) HealthModel {
+func NewHealthModel(handlers map[string]handlers.HealthHandler) HealthModel {
 	return &healthModel{
 		handlersList: handlers,
 	}

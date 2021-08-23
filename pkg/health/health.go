@@ -103,6 +103,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		Resource:    registerMsg.ResourceInfo,
 		Options:     ho,
 	}
+	// Create a ticker with a period as specified in the health options by the resource
 	healthInfo.ticker = time.NewTicker(healthInfo.Options.Interval)
 	// Create a new health handler for the resource
 	h.activeHealthProbesMutex.Lock()
@@ -237,7 +238,7 @@ func StartRadHealth(ctx context.Context, arm armauth.ArmConfig, dbClient *mongo.
 	// Create a DB to store health events
 	db := db.NewRadHealthDB(dbClient.Database(dbName))
 
-	model := azure.NewAzureModel(arm)
+	model := azure.NewAzureHealthModel(arm)
 
 	options := MonitorOptions{
 		Logger:                      logger,

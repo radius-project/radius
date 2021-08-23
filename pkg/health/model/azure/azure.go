@@ -11,11 +11,11 @@ import (
 	"github.com/Azure/radius/pkg/health/model"
 )
 
-func NewAzureModel(arm armauth.ArmConfig) model.HealthModel {
+func NewAzureHealthModel(arm armauth.ArmConfig) model.HealthModel {
 	// Add health check handlers for the resource types
 	handlers := map[string]handlers.HealthHandler{
 		// TODO: Add health check handler for all resource kinds
 		ResourceKindAzureServiceBusQueue: handlers.NewAzureServiceBusQueueHandler(arm),
 	}
-	return model.NewModel(handlers)
+	return model.NewHealthModel(handlers)
 }
