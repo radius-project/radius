@@ -508,32 +508,8 @@
                               "workspaceId": "[parameters('logAnalyticsWorkspaceID')]",
                               "logs": [
                                 {
-                                  "category": "AppServiceHTTPLogs",
-                                  "enabled": false
-                                },
-                                {
                                   "category": "AppServiceConsoleLogs",
                                   "enabled": true
-                                },
-                                {
-                                  "category": "AppServiceAppLogs",
-                                  "enabled": false
-                                },
-                                {
-                                  "category": "AppServiceFileAuditLogs",
-                                  "enabled": false
-                                },
-                                {
-                                  "category": "AppServiceAuditLogs",
-                                  "enabled": false
-                                },
-                                {
-                                  "category": "AppServiceIPSecAuditLogs",
-                                  "enabled": false
-                                },
-                                {
-                                  "category": "AppServicePlatformLogs",
-                                  "enabled": false
                                 }
                               ],
                               "metrics": [
