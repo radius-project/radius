@@ -27,7 +27,10 @@
       ],
       "properties": {
         "bindings": {
-	  "$ref": "#/definitions/ContainerComponentBinding"
+	  "type": "object",
+	  "additionalProperties": {
+	    "$ref": "#/definitions/ContainerComponentBinding"
+	  }
         },
         "run": {
 	  "type": "object",

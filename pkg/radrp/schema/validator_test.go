@@ -35,6 +35,29 @@ func TestComponentValidator(t *testing.T) {
                   }
                 }`,
 	}, {
+		name: "valid container with binding",
+		input: `{
+                  "id":   "id",
+                  "name": "name",
+                  "kind": "radius.dev/Container@v1alpha1",
+                  "properties": {
+                    "run": {
+                      "container": {
+                        "image": "busybox"
+                      }
+                    },
+                    "bindings": {
+                      "web": {
+                        "kind": "http",
+                        "targetPort": 3000
+                      },
+                      "invoke": {
+                        "kind": "dapr.io/Invoke"
+                      }
+                    }
+                  }
+                }`,
+	}, {
 		name: "valid azure cosmodb sql",
 		input: `{ "id": "id", "name": "name",
                   "kind": "azure.com/CosmosDBSQL@v1alpha1",
@@ -89,7 +112,7 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "valid azure servicebus",
 		input: `{ "id": "id", "name": "name",
-                  "kind": "azure.com/ServiceBus@v1alpha1",
+                  "kind": "azure.com/AzureServiceBus@v1alpha1",
                   "properties": {
                     "config": {
                       "managed": true,
