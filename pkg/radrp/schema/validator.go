@@ -39,6 +39,9 @@ type Validator interface {
 }
 
 var (
+	// The listing of files below has an ordering to them, because
+	// each file may depend on one or more files on the preceding
+	// lines.
 	//go:embed common-types.json
 	//go:embed traits.json
 	//go:embed basic-component.json
