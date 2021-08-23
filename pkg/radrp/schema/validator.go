@@ -58,10 +58,10 @@ var (
 	//go:embed radius.json
 	jsonFiles embed.FS
 
-	applicationValidator = NewValidator("ApplicationResource")
-	componentValidator   = NewValidator("/components.json#/definitions/ComponentResource")
-	deploymentValidator  = NewValidator("DeploymentResource")
-	scopeValidator       = NewValidator("ScopeResource")
+	applicationValidator = newValidator("ApplicationResource")
+	componentValidator   = newValidator("/components.json#/definitions/ComponentResource")
+	deploymentValidator  = newValidator("DeploymentResource")
+	scopeValidator       = newValidator("ScopeResource")
 )
 
 type validator struct {
@@ -120,7 +120,11 @@ func ValidatorFor(obj interface{}) (Validator, error) {
 	return nil, fmt.Errorf("Can't find a JSON validator for type %s", objT)
 }
 
-func NewValidator(typeName string) *validator {
+func GetComponentValidator() Validator {
+	return componentValidator
+}
+
+func newValidator(typeName string) *validator {
 	loader := gojsonschema.NewSchemaLoader()
 	files, _ := jsonFiles.ReadDir(".")
 	for _, f := range files {
@@ -166,11 +170,11 @@ func invalidJSONError(err error) []ValidationError {
 	}}
 }
 
-type ValidationErrors struct {
+type AggregateValidationError struct {
 	Details []ValidationError
 }
 
-func (v *ValidationErrors) Error() string {
+func (v *AggregateValidationError) Error() string {
 	var message strings.Builder
 	fmt.Fprintln(&message, "failed validation(s):")
 	for _, err := range v.Details {

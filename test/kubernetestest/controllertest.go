@@ -219,8 +219,8 @@ func (ct ControllerTest) Test(t *testing.T) error {
 
 func (ct ControllerTest) ValidateDeploymentsRunning(t *testing.T) {
 
-	// ValidatePodsRunning triggers its own assertions, no need to handle errors
-	validation.ValidateDeploymentsRunning(ct.Context, t, ct.Options.K8s, ct.ControllerStep.Pods)
+	// ValidateDeploymentsRunning triggers its own assertions, no need to handle errors
+	validation.ValidateDeploymentsRunning(ct.Context, t, ct.Options.K8s, ct.ControllerStep.Deployments)
 }
 
 func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
@@ -270,7 +270,7 @@ func getEnvTestBinaryPath() (string, error) {
 type ControllerStep struct {
 	TemplateFolder string
 	Namespace      string
-	Pods           validation.K8sObjectSet
+	Deployments    validation.K8sObjectSet
 }
 
 type ControllerTest struct {
