@@ -9,11 +9,13 @@
       "properties": {
         "kind": {
           "type": "string",
-	  "enum": ["radius.dev/Container@v1alpha1"]
+          "enum": [
+            "radius.dev/Container@v1alpha1"
+          ]
         },
-	"properties": {
-	  "$ref": "#/definitions/ContainerComponentProperties"
-	}
+        "properties": {
+          "$ref": "#/definitions/ContainerComponentProperties"
+        }
       }
     },
     "ContainerComponentProperties": {
@@ -23,79 +25,84 @@
         }
       ],
       "required": [
-	"run"
+        "run"
       ],
       "properties": {
         "bindings": {
-	  "type": "object",
-	  "additionalProperties": {
-	    "$ref": "#/definitions/ContainerComponentBinding"
-	  }
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerComponentBinding"
+          }
         },
         "run": {
-	  "type": "object",
-	  "required": [
-	    "container"
-	  ],
-	  "properties": {
-	    "container": {
-	      "type": "object",
-	      "required": [
-		"image"
-	      ],
-	      "properties": {
-		"image": {
-		  "description": "The registry and image to download and run in your container",
-		  "type": "string"
-		}
-	      },
-	      "additionalProperties": false
-	    }
-	  },
-	  "additionalProperties": false
-	}
+          "type": "object",
+          "required": [
+            "container"
+          ],
+          "properties": {
+            "container": {
+              "type": "object",
+              "required": [
+                "image"
+              ],
+              "properties": {
+                "image": {
+                  "description": "The registry and image to download and run in your container",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
       }
     },
     "ContainerComponentBinding": {
       "type": "object",
       "oneOf": [
-	{
-	  "$ref": "#/definitions/ContainerComponentHTTPBinding"
-	},
-	{
-	  "$ref": "#/definitions/ContainerComponentDaprInvokeBinding"
-	}
+        {
+          "$ref": "#/definitions/ContainerComponentHTTPBinding"
+        },
+        {
+          "$ref": "#/definitions/ContainerComponentDaprInvokeBinding"
+        }
       ]
     },
     "ContainerComponentHTTPBinding": {
       "type": "object",
       "required": [
-	"kind", "targetPort"
+        "kind",
+        "targetPort"
       ],
       "properties": {
-	"kind": {
-	  "type": "string",
-	  "enum": ["http"]
-	},
-	"targetPort": {
-	  "type": "integer"
-	},
-	"port": {
-	  "type": "integer"
-	}
+        "kind": {
+          "type": "string",
+          "enum": [
+            "http"
+          ]
+        },
+        "targetPort": {
+          "type": "integer"
+        },
+        "port": {
+          "type": "integer"
+        }
       },
       "additionalProperties": false
     },
     "ContainerComponentDaprInvokeBinding": {
       "type": "object",
       "required": [
-	"kind"
+        "kind"
       ],
       "properties": {
-	"kind": {
-	  "type": "string",
-	  "enum": ["dapr.io/Invoke"]
-	}
+        "kind": {
+          "type": "string",
+          "enum": [
+            "dapr.io/Invoke"
+          ]
+        }
       },
       "additionalProperties": false
     }

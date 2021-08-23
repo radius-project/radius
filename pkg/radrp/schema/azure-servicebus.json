@@ -9,11 +9,13 @@
       "properties": {
         "kind": {
           "type": "string",
-	  "enum": ["azure.com/ServiceBusQueue@v1alpha1"]
+          "enum": [
+            "azure.com/ServiceBusQueue@v1alpha1"
+          ]
         },
-	"properties": {
-	  "$ref": "#/definitions/AzureServiceBusComponentProperties"
-	}
+        "properties": {
+          "$ref": "#/definitions/AzureServiceBusComponentProperties"
+        }
       }
     },
     "AzureServiceBusComponentProperties": {
@@ -23,29 +25,33 @@
         }
       ],
       "required": [
-	"config"
+        "config"
       ],
       "properties": {
-	"config": {
-	  "type": "object",
-	  "required": [
-	    "managed",
-	    "queue"
-	  ],
-	  "properties": {
-	    "managed": {
-	      "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
-	      "type": "boolean",
-	      "enum": [ true ],
-	      "examples": [ true ]
-	    },
-	    "queue": {
-	      "description": "The name of the queue",
-	      "type": "string"
-	    }
-	  },
-	  "additionalProperties": false
-	}
+        "config": {
+          "type": "object",
+          "required": [
+            "managed",
+            "queue"
+          ],
+          "properties": {
+            "managed": {
+              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
+              "type": "boolean",
+              "enum": [
+                true
+              ],
+              "examples": [
+                true
+              ]
+            },
+            "queue": {
+              "description": "The name of the queue",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     }

@@ -9,11 +9,13 @@
       "properties": {
         "kind": {
           "type": "string",
-	  "enum": ["azure.com/KeyVault@v1alpha1"]
+          "enum": [
+            "azure.com/KeyVault@v1alpha1"
+          ]
         },
-	"properties": {
-	  "$ref": "#/definitions/AzureKeyVaultComponentProperties"
-	}
+        "properties": {
+          "$ref": "#/definitions/AzureKeyVaultComponentProperties"
+        }
       }
     },
     "AzureKeyVaultComponentProperties": {
@@ -23,21 +25,25 @@
         }
       ],
       "required": [
-	"config"
+        "config"
       ],
       "properties": {
-	"config": {
-	  "type": "object",
-	  "properties": {
-	    "managed": {
-	      "description": "Indicates if the resource is Radius-managed. If no, a Resource must be specified. (KeyVault currently only supports true)",
-	      "type": "boolean",
-	      "enum": [ true ],
-	      "examples": [ true ]
-	    }
-	  },
-	  "additionalProperties": false
-	}
+        "config": {
+          "type": "object",
+          "properties": {
+            "managed": {
+              "description": "Indicates if the resource is Radius-managed. If no, a Resource must be specified. (KeyVault currently only supports true)",
+              "type": "boolean",
+              "enum": [
+                true
+              ],
+              "examples": [
+                true
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     }

@@ -12,14 +12,14 @@
           "type": "array",
           "description": "Uses spec of the component",
           "items": {
-	     "$ref": "#/definitions/ComponentDependency"
+            "$ref": "#/definitions/ComponentDependency"
           }
         },
         "traits": {
           "type": "array",
           "description": "Traits spec of the component",
           "items": {
-          "$ref": "traits.json#/definitions/ComponentTrait"
+            "$ref": "traits.json#/definitions/ComponentTrait"
           }
         },
         "status": {
@@ -44,7 +44,7 @@
         "outputResources": {
           "type": "array",
           "items": {
-          "$ref": "#/definitions/ComponentOutputResource"
+            "$ref": "#/definitions/ComponentOutputResource"
           }
         }
       }
@@ -52,40 +52,39 @@
     "ComponentOutputResource": {
       "description": "Properties of a component.",
       "type": "object",
-      "properties": {
-      }
+      "properties": {}
     },
     "ComponentDependency": {
       "description": "A binding used by an Radius Component",
       "type": "object",
       "properties": {
-	"binding": {
-	  "type": "string"
-	},
-	"env": {
-	  "type": "object",
-	  "additionalProperties": {
-	    "type": "string"
-	  }
-	},
-	"secrets": {
-	  "$ref": "#/definitions/ComponentDependencySecrets"
-	}
+        "binding": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "$ref": "#/definitions/ComponentDependencySecrets"
+        }
       }
     },
     "ComponentDependencySecrets": {
       "description": "Binding values that are stored in and read from a given secret store",
       "type": "object",
       "properties": {
-	"store": {
-	  "type": "string"
-	},
-	"keys": {
-	  "type": "object",
-	  "additionalProperties": {
-	    "type": "string"
-	  }
-	}
+        "store": {
+          "type": "string"
+        },
+        "keys": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
       }
     }
   }

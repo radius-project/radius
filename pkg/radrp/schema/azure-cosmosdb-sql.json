@@ -9,11 +9,13 @@
       "properties": {
         "kind": {
           "type": "string",
-	  "enum": ["azure.com/CosmosDBSQL@v1alpha1"]
+          "enum": [
+            "azure.com/CosmosDBSQL@v1alpha1"
+          ]
         },
-	"properties": {
-	  "$ref": "#/definitions/AzureCosmosDBSQLComponentProperties"
-	}
+        "properties": {
+          "$ref": "#/definitions/AzureCosmosDBSQLComponentProperties"
+        }
       }
     },
     "AzureCosmosDBSQLComponentProperties": {
@@ -23,23 +25,23 @@
         }
       ],
       "required": [
-	"config"
+        "config"
       ],
       "properties": {
-	"config": {
-	  "type": "object",
-	  "properties": {
-	    "managed": {
-	      "description": "Indicates if the resource is Radius-managed. If no, a Resource must be specified",
-	      "type": "boolean"
-	    },
-	    "resource": {
-	      "description": "The ID of the user-managed CosmosDB with SQL API to use for this Component",
-	      "type": "string"
-	    }
-	  },
-	  "additionalProperties": false
-	}
+        "config": {
+          "type": "object",
+          "properties": {
+            "managed": {
+              "description": "Indicates if the resource is Radius-managed. If no, a Resource must be specified",
+              "type": "boolean"
+            },
+            "resource": {
+              "description": "The ID of the user-managed CosmosDB with SQL API to use for this Component",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     }

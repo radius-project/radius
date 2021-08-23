@@ -9,11 +9,13 @@
       "properties": {
         "kind": {
           "type": "string",
-	  "enum": ["dapr.io/PubSubTopic@v1alpha1"]
+          "enum": [
+            "dapr.io/PubSubTopic@v1alpha1"
+          ]
         },
-	"properties": {
-	  "$ref": "#/definitions/DaprPubSubComponentProperties"
-	}
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubComponentProperties"
+        }
       }
     },
     "DaprPubSubComponentProperties": {
@@ -23,34 +25,34 @@
         }
       ],
       "required": [
-	"config"
+        "config"
       ],
       "properties": {
-	"config": {
-	  "type": "object",
-	  "required": [
-	    "kind"
-	  ],
-	  "properties": {
-	    "managed": {
-	      "description": "Indicates if the resource is Radius-managed. If not, a resource is required",
-	      "type": "boolean"
-	    },
-	    "kind": {
-	      "description": "Dapr Pub/Sub kind",
-	      "type": "string"
-	    },
-	    "topic": {
-	      "description": "PubSub topic",
-	      "type": "string"
-	    },
-	    "resource": {
-	      "description": "PubSub resource, for unmanaged",
-	      "type": "string"
-	    }
-	  },
-	  "additionalProperties": false
-	}
+        "config": {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "managed": {
+              "description": "Indicates if the resource is Radius-managed. If not, a resource is required",
+              "type": "boolean"
+            },
+            "kind": {
+              "description": "Dapr Pub/Sub kind",
+              "type": "string"
+            },
+            "topic": {
+              "description": "PubSub topic",
+              "type": "string"
+            },
+            "resource": {
+              "description": "PubSub resource, for unmanaged",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     }

@@ -39,7 +39,7 @@
         }
       ],
       "required": [
-	"kind"
+        "kind"
       ],
       "properties": {
         "kind": {
