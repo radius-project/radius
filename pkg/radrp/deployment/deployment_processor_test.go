@@ -128,8 +128,9 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 	if err != nil {
 		t.Log("Unable to initialize logger")
 		ctx = context.Background()
+	} else {
+		ctx = logr.NewContext(context.Background(), logger)
 	}
-	ctx = logr.NewContext(context.Background(), logger)
 	err = dp.UpdateDeployment(ctx, "A", "A", &deployStatus, actions)
 	require.NoError(t, err, "Update Deployment failed")
 
@@ -248,8 +249,9 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 	if err != nil {
 		t.Log("Unable to initialize logger")
 		ctx = context.Background()
+	} else {
+		ctx = logr.NewContext(context.Background(), logger)
 	}
-	ctx = logr.NewContext(context.Background(), logger)
 	err = dp.DeleteDeployment(ctx, "A", "A", &deployStatus)
 	require.NoError(t, err, "Delete Deployment failed")
 
