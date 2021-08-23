@@ -508,10 +508,6 @@
                               "workspaceId": "[parameters('logAnalyticsWorkspaceID')]",
                               "logs": [
                                 {
-                                  "category": "AppServiceAntivirusScanAuditLogs",
-                                  "enabled": false
-                                },
-                                {
                                   "category": "AppServiceHTTPLogs",
                                   "enabled": false
                                 },
