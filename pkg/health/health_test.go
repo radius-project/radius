@@ -25,10 +25,7 @@ import (
 
 func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return
-	}
+	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	options := MonitorOptions{
@@ -47,10 +44,8 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 		},
 	}
 	t.Cleanup(func() {
-		monitor.activeHealthProbesMutex.Lock()
-		monitor.activeHealthProbes["abc"].ticker.Stop()
-		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
-		monitor.activeHealthProbesMutex.Unlock()
+		registrationMsg.Action = healthcontract.ActionUnregister
+		monitor.UnregisterResource(ctx, registrationMsg)
 	})
 
 	monitor.RegisterResource(ctx, registrationMsg)
@@ -67,10 +62,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 // When a resource kind is not implemented in the health service, it should still be handled with no errors
 func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return
-	}
+	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	options := MonitorOptions{
@@ -94,10 +86,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 
 func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return
-	}
+	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	options := MonitorOptions{
@@ -136,10 +125,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 
 func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return
-	}
+	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	options := MonitorOptions{
@@ -160,13 +146,11 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 			Interval: optionsInterval,
 		},
 	}
-	t.Cleanup(func() {
-		monitor.activeHealthProbesMutex.Lock()
-		monitor.activeHealthProbes["abc"].ticker.Stop()
-		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
-		monitor.activeHealthProbesMutex.Unlock()
-	})
 	ctx := logr.NewContext(context.Background(), logger)
+	t.Cleanup(func() {
+		registrationMsg.Action = healthcontract.ActionUnregister
+		monitor.UnregisterResource(ctx, registrationMsg)
+	})
 	monitor.RegisterResource(ctx, registrationMsg)
 
 	hi := monitor.activeHealthProbes["abc"]
@@ -175,10 +159,7 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 
 func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return
-	}
+	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	ctrl := gomock.NewController(t)
@@ -200,13 +181,6 @@ func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
 		ResourceKind: "dummy",
 	}
 
-	t.Cleanup(func() {
-		monitor.activeHealthProbesMutex.Lock()
-		monitor.activeHealthProbes["abc"].ticker.Stop()
-		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
-		monitor.activeHealthProbesMutex.Unlock()
-	})
-
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:       healthcontract.ActionRegister,
 		ResourceInfo: ri,
@@ -214,6 +188,10 @@ func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
 			Interval: time.Nanosecond * 1,
 		},
 	}
+	t.Cleanup(func() {
+		registrationMsg.Action = healthcontract.ActionUnregister
+		monitor.UnregisterResource(ctx, registrationMsg)
+	})
 	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
 		AnyTimes().Return(healthcontract.ResourceHealthDataMessage{})
 
@@ -222,10 +200,7 @@ func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
 
 func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return
-	}
+	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	hpc := make(chan healthcontract.ResourceHealthDataMessage)
@@ -248,14 +223,6 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		ResourceID:   "xyz",
 		ResourceKind: "dummy",
 	}
-
-	t.Cleanup(func() {
-		monitor.activeHealthProbesMutex.Lock()
-		monitor.activeHealthProbes["abc"].ticker.Stop()
-		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
-		monitor.activeHealthProbesMutex.Unlock()
-	})
-
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:       healthcontract.ActionRegister,
 		ResourceInfo: ri,
@@ -263,6 +230,11 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 			Interval: time.Nanosecond * 1,
 		},
 	}
+	t.Cleanup(func() {
+		registrationMsg.Action = healthcontract.ActionUnregister
+		monitor.UnregisterResource(ctx, registrationMsg)
+	})
+
 	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
 		AnyTimes().Return(healthcontract.ResourceHealthDataMessage{
 		Resource:                ri,
@@ -279,10 +251,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 
 func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return
-	}
+	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	hpc := make(chan healthcontract.ResourceHealthDataMessage)
@@ -321,10 +290,8 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 	})
 
 	t.Cleanup(func() {
-		monitor.activeHealthProbesMutex.Lock()
-		monitor.activeHealthProbes["abc"].ticker.Stop()
-		monitor.activeHealthProbes["abc"].stopProbeForResource <- os.Interrupt
-		monitor.activeHealthProbesMutex.Unlock()
+		registrationMsg.Action = healthcontract.ActionUnregister
+		monitor.UnregisterResource(ctx, registrationMsg)
 	})
 	monitor.RegisterResource(ctx, registrationMsg)
 
