@@ -116,7 +116,7 @@ func Test_ConvertK8sComponentToARM(t *testing.T) {
 		Spec: v1alpha1.ComponentSpec{
 			Kind:      "Component",
 			Run:       &runtime.RawExtension{Raw: runJson},
-			Bindings:  runtime.RawExtension{Raw: bindingJson},
+			Bindings:  &runtime.RawExtension{Raw: bindingJson},
 			Hierarchy: []string{"frontend-backend", "frontend"},
 			Uses: &[]runtime.RawExtension{
 				{
