@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/model/components"
@@ -37,19 +36,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	properties := resources[0].Properties
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
 	queueName := properties[handlers.ServiceBusQueueNameKey]
-
-	sbClient := azclients.NewServiceBusNamespacesClient(r.Arm.SubscriptionID, r.Arm.Auth)
-	accessKeys, err := sbClient.ListKeys(ctx, r.Arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
-	}
-
-	if accessKeys.PrimaryConnectionString == nil && accessKeys.SecondaryConnectionString == nil {
-		return nil, fmt.Errorf("failed to retrieve connection strings")
-	}
-
-	cs := accessKeys.PrimaryConnectionString
+	namespaceConnectionString := properties[handlers.ServiceBusNamespaceConnectionStringKey]
+	queueConnectionString := properties[handlers.ServiceBusQueueConnectionStringKey]
 
 	bindings := map[string]components.BindingState{
 		"default": {
@@ -57,9 +45,11 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 			Binding:   "default",
 			Kind:      "azure.com/ServiceBusQueue",
 			Properties: map[string]interface{}{
-				"connectionString": *cs,
-				"namespace":        namespaceName,
-				"queue":            queueName,
+				"connectionString":          namespaceConnectionString,
+				"namespaceConnectionString": namespaceConnectionString,
+				"queueConnectionString":     queueConnectionString,
+				"namespace":                 namespaceName,
+				"queue":                     queueName,
 			},
 		},
 	}

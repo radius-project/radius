@@ -21,12 +21,15 @@ import (
 )
 
 const (
-	ServiceBusNamespaceIDKey   = "servicebusid"
-	ServiceBusNamespaceNameKey = "servicebusnamespace"
-	ServiceBusQueueNameKey     = "servicebusqueue"
-	ServiceBusQueueIDKey       = "servicebusqueueid"
-	ServiceBusTopicNameKey     = "servicebustopic"
-	ServiceBusTopicIDKey       = "servicebustopicid"
+	ServiceBusNamespaceIDKey               = "servicebusid"
+	ServiceBusNamespaceNameKey             = "servicebusnamespace"
+	ServiceBusQueueNameKey                 = "servicebusqueue"
+	ServiceBusQueueIDKey                   = "servicebusqueueid"
+	ServiceBusTopicNameKey                 = "servicebustopic"
+	ServiceBusTopicIDKey                   = "servicebustopicid"
+	ServiceBusNamespaceConnectionStringKey = "servicebusnamespaceconnectionstring"
+	ServiceBusQueueConnectionStringKey     = "servicebusqueueconnectionstring"
+	RootManageSharedAccessKey              = "RootManageSharedAccessKey"
 )
 
 func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -99,8 +102,19 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 			return nil, err
 		}
 		queueID = *queue.ID
-
 	}
+
+	namespaceConnectionString, err := handler.GetConnectionString(ctx, *namespace.Name)
+	if err != nil {
+		return nil, err
+	}
+	properties[ServiceBusNamespaceConnectionStringKey] = *namespaceConnectionString
+
+	queueConnectionString, err := handler.GetQueueConnectionString(ctx, *namespace.Name, queueName)
+	if err != nil {
+		return nil, err
+	}
+	properties[ServiceBusQueueConnectionStringKey] = *queueConnectionString
 
 	// Update the output resource with the info from the deployed Azure resource
 	options.Resource.Info = outputresource.ARMInfo{
@@ -293,13 +307,41 @@ func (handler *azureServiceBusBaseHandler) getQueueByID(ctx context.Context, id 
 func (handler *azureServiceBusBaseHandler) GetConnectionString(ctx context.Context, namespaceName string) (*string, error) {
 	sbc := azclients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	accessKeys, err := sbc.ListKeys(ctx, handler.arm.ResourceGroup, namespaceName, "RootManageSharedAccessKey")
+	accessKeys, err := sbc.ListKeys(ctx, handler.arm.ResourceGroup, namespaceName, RootManageSharedAccessKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
 	}
 
 	if accessKeys.PrimaryConnectionString == nil {
 		return nil, fmt.Errorf("failed to retrieve connection strings")
+	}
+
+	return accessKeys.PrimaryConnectionString, nil
+}
+
+func (handler *azureServiceBusBaseHandler) GetQueueConnectionString(ctx context.Context, namespaceName string, queueName string) (*string, error) {
+	sbc := azclients.NewQueuesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+
+	// Full access
+	accessRights := []servicebus.AccessRights{"Listen", "Manage", "Send"}
+	parameters := servicebus.SBAuthorizationRule{
+		SBAuthorizationRuleProperties: &servicebus.SBAuthorizationRuleProperties{
+			Rights: &accessRights,
+		},
+	}
+
+	_, err := sbc.CreateOrUpdateAuthorizationRule(ctx, handler.arm.ResourceGroup, namespaceName, queueName, RootManageSharedAccessKey, parameters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create queue authorization rule: %w", err)
+	}
+
+	accessKeys, err := sbc.ListKeys(ctx, handler.arm.ResourceGroup, namespaceName, queueName, RootManageSharedAccessKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve queue connection strings: %w", err)
+	}
+
+	if accessKeys.PrimaryConnectionString == nil {
+		return nil, fmt.Errorf("failed to retrieve queue connection strings")
 	}
 
 	return accessKeys.PrimaryConnectionString, nil
