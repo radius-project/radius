@@ -43,12 +43,14 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 			ResourceKind: azure.ResourceKindAzureServiceBusQueue,
 		},
 	}
+
+	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	stopCh := make(chan os.Signal)
 	t.Cleanup(func() {
-		registrationMsg.Action = healthcontract.ActionUnregister
-		monitor.UnregisterResource(ctx, registrationMsg)
+		stopCh <- os.Interrupt
 	})
 
-	monitor.RegisterResource(ctx, registrationMsg)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 	require.Equal(t, 1, len(monitor.activeHealthProbes))
 	healthInfo, found := monitor.activeHealthProbes["abc"]
 	require.Equal(t, true, found)
@@ -80,7 +82,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 			ResourceKind: "NotImplementedType",
 		},
 	}
-	monitor.RegisterResource(ctx, registrationMsg)
+	monitor.RegisterResource(ctx, registrationMsg, make(chan os.Signal, 1))
 	require.Equal(t, 0, len(monitor.activeHealthProbes))
 }
 
@@ -146,12 +148,15 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 			Interval: optionsInterval,
 		},
 	}
-	ctx := logr.NewContext(context.Background(), logger)
+
+	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	stopCh := make(chan os.Signal)
 	t.Cleanup(func() {
-		registrationMsg.Action = healthcontract.ActionUnregister
-		monitor.UnregisterResource(ctx, registrationMsg)
+		stopCh <- os.Interrupt
 	})
-	monitor.RegisterResource(ctx, registrationMsg)
+
+	ctx := logr.NewContext(context.Background(), logger)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 
 	hi := monitor.activeHealthProbes["abc"]
 	require.Equal(t, optionsInterval, hi.Options.Interval)
@@ -185,17 +190,19 @@ func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
 		Action:       healthcontract.ActionRegister,
 		ResourceInfo: ri,
 		Options: healthcontract.HealthCheckOptions{
-			Interval: time.Nanosecond * 1,
+			Interval: time.Second * 10,
 		},
 	}
+	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	stopCh := make(chan os.Signal)
 	t.Cleanup(func() {
-		registrationMsg.Action = healthcontract.ActionUnregister
-		monitor.UnregisterResource(ctx, registrationMsg)
+		stopCh <- os.Interrupt
 	})
+
 	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
 		AnyTimes().Return(healthcontract.ResourceHealthDataMessage{})
 
-	monitor.RegisterResource(ctx, registrationMsg)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 }
 
 func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
@@ -230,9 +237,10 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 			Interval: time.Nanosecond * 1,
 		},
 	}
+	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	stopCh := make(chan os.Signal)
 	t.Cleanup(func() {
-		registrationMsg.Action = healthcontract.ActionUnregister
-		monitor.UnregisterResource(ctx, registrationMsg)
+		stopCh <- os.Interrupt
 	})
 
 	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
@@ -241,7 +249,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		HealthState:             "Healthy",
 		HealthStateErrorDetails: "None",
 	})
-	monitor.RegisterResource(ctx, registrationMsg)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 	// Wait till health state change notification is received
 	notification := <-hpc
 
@@ -289,11 +297,12 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 		HealthStateErrorDetails: "None",
 	})
 
+	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	stopCh := make(chan os.Signal)
 	t.Cleanup(func() {
-		registrationMsg.Action = healthcontract.ActionUnregister
-		monitor.UnregisterResource(ctx, registrationMsg)
+		stopCh <- os.Interrupt
 	})
-	monitor.RegisterResource(ctx, registrationMsg)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 
 	// Wait till health state change notification is received
 	<-hpc

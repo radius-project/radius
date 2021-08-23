@@ -54,7 +54,7 @@ func (h Monitor) Run(ctx context.Context) {
 		case msg := <-h.resourceRegistrationChannel:
 			// Received a registration/de-registration message
 			if msg.Action == healthcontract.ActionRegister {
-				h.RegisterResource(ctx, msg)
+				h.RegisterResource(ctx, msg, make(chan os.Signal, 1))
 			} else if msg.Action == healthcontract.ActionUnregister {
 				h.UnregisterResource(ctx, msg)
 			}
@@ -67,7 +67,7 @@ func (h Monitor) Run(ctx context.Context) {
 
 // RegisterResource is called to register an output resource with the health checker
 // It should be called at the time of creation of the output resource
-func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage) {
+func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan os.Signal) {
 	ctx = radlogger.WrapLogContext(
 		ctx,
 		radlogger.LogFieldResourceID, registerMsg.ResourceInfo.ResourceID,
@@ -95,7 +95,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	}
 
 	healthInfo := HealthInfo{
-		stopProbeForResource: make(chan os.Signal, 1),
+		stopProbeForResource: stopCh,
 		// Create a new ticker for the resource which will start the health check at the specified interval
 		// TODO: Optimize and not create a ticker per resource
 		handler:     h.model.LookupHandler(registerMsg.ResourceInfo.ResourceKind),
@@ -140,11 +140,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 
 					logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthInfo.HealthState))
 				}
-			case _, ok := <-stopProbeForResource:
-				if !ok {
-					return
-				}
-				logger.Info("Health Probe stopped.")
+			case <-stopProbeForResource:
 				return
 			}
 		}
