@@ -31,21 +31,30 @@ var RootCmd = &cobra.Command{
 }
 
 func prettyPrintRPError(err error) string {
+	raw := err.Error()
 	if new := azclients.TryUnfoldErrorResponse(err); new != nil {
-		return prettyPrintJSON(new)
+		m, err := prettyPrintJSON(new)
+		if err == nil {
+			return m
+		}
+		return raw
 	}
 	if new := azclients.TryUnfoldServiceError(err); new != nil {
-		return prettyPrintJSON(new)
+		m, err := prettyPrintJSON(new)
+		if err == nil {
+			return m
+		}
+		return raw
 	}
-	return ""
+	return raw
 }
 
-func prettyPrintJSON(o interface{}) string {
+func prettyPrintJSON(o interface{}) (string, error) {
 	b, err := json.MarshalIndent(o, "", "  ")
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return string(b)
+	return string(b), nil
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -53,11 +62,7 @@ func prettyPrintJSON(o interface{}) string {
 func Execute() {
 	ctx := context.WithValue(context.Background(), configHolderKey, configHolder)
 	if err := RootCmd.ExecuteContext(ctx); err != nil {
-		msg := err.Error()
-		if pretty := prettyPrintRPError(err); pretty != "" {
-			msg = pretty
-		}
-		fmt.Println("Error:", msg)
+		fmt.Println("Error:", prettyPrintRPError(err))
 		os.Exit(1)
 	}
 }

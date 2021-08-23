@@ -18,6 +18,10 @@ import (
 
 // ServiceError conforms to the OData v4 error format.
 // See http://docs.oasis-open.org/odata/odata-json-format/v4.0/os/odata-json-format-v4.0-os.html
+//
+// Note that this type is almost the same to that of azure.ServiceError, with the difference
+// being the Details field having more structure.  We need that structure to unfold the
+// error messages.
 type ServiceError struct {
 	Code           string                   `json:"code,omitempty" yaml:"code,omitempty"`
 	Message        string                   `json:"message,omitempty" yaml:"message,omitempty"`
