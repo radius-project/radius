@@ -38,7 +38,7 @@ webhooks:
       path: /validate-radius-dev-v1alpha1-application
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
-  name: vapplication.radius.dev
+  name: application-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev
@@ -61,7 +61,7 @@ webhooks:
       path: /validate-radius-dev-v1alpha1-component
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
-  name: vcomponent.radius.dev
+  name: component-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev
@@ -84,7 +84,7 @@ webhooks:
       path: /validate-radius-dev-v1alpha1-deployment
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
-  name: vdeployment.radius.dev
+  name: deployment-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev

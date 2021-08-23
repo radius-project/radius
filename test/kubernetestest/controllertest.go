@@ -42,8 +42,10 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-var Options EnvOptions
+var options EnvOptions
 var testEnv *envtest.Environment
+
+const retries = 10
 
 func StartController() error {
 	assetsDirectory := os.Getenv("KUBEBUILDER_ASSETS")
@@ -153,12 +155,13 @@ func StartController() error {
 		_ = mgr.Start(ctrl.SetupSignalHandler())
 	}()
 
+	// Make sure the webhook is started
 	dialer := &net.Dialer{Timeout: time.Second}
 	addrPort := fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < retries; i++ {
 		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true})
 		if err != nil {
-			if i == 9 {
+			if i == retries-1 {
 				// if we can't connect after 10 attempts, fail
 				return fmt.Errorf("failed to connect to webhook: %w", err)
 			}
@@ -169,7 +172,7 @@ func StartController() error {
 		break
 	}
 
-	Options = EnvOptions{
+	options = EnvOptions{
 		K8s:     k8s,
 		Dynamic: dynamicClient,
 	}
@@ -282,5 +285,5 @@ type EnvOptions struct {
 }
 
 func NewControllerTest(ctx context.Context, row ControllerStep) ControllerTest {
-	return ControllerTest{Options, ctx, row}
+	return ControllerTest{options, ctx, row}
 }

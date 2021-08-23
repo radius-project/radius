@@ -28,7 +28,7 @@ func TestInvalidTraitDefinition(t *testing.T) {
 	err := test.Test(t)
 
 	require.Error(t, err)
-	require.Equal(t, "admission webhook \"vcomponent.radius.dev\" denied the request: failed validation(s):\n- (root).traits.0: Additional property appId is not allowed\n", err.Error())
+	require.Equal(t, "admission webhook \"component-validation.radius.dev\" denied the request: failed validation(s):\n- (root).traits.0: Additional property appId is not allowed\n", err.Error())
 }
 
 func TestInvalidApplication(t *testing.T) {

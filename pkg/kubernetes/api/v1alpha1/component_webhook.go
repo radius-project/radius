@@ -7,8 +7,6 @@ package v1alpha1
 
 import (
 	"encoding/json"
-	"fmt"
-	"strings"
 
 	"github.com/Azure/radius/pkg/radrp/schema"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,7 +25,7 @@ func (r *Component) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/validate-radius-radius-dev-v1alpha1-component,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=components,verbs=create;update;delete,versions=v1alpha1,name=vcomponent.radius.dev,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/validate-radius-dev-v1alpha1-component,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=components,verbs=create;update;delete,versions=v1alpha1,name=component-validation.radius.dev,admissionReviewVersions={v1,v1beta1}
 
 var _ webhook.Validator = &Component{}
 
@@ -63,27 +61,9 @@ func validate(r *Component) error {
 	// except kind and hierarchy, which we validate separately.
 	validator := schema.NewValidator("ComponentProperties")
 	if errs := validator.ValidateJSON(data); len(errs) != 0 {
-		return &validationError{
-			details: errs,
+		return &schema.ValidationErrors{
+			Details: errs,
 		}
 	}
 	return nil
-}
-
-type validationError struct {
-	details []schema.ValidationError
-}
-
-func (v *validationError) Error() string {
-	var message strings.Builder
-	fmt.Fprintln(&message, "failed validation(s):")
-	for _, err := range v.details {
-		if err.JSONError != nil {
-			// The given document isn't even JSON.
-			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
-		} else {
-			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
-		}
-	}
-	return message.String()
 }

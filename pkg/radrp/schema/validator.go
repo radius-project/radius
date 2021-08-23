@@ -165,3 +165,21 @@ func invalidJSONError(err error) []ValidationError {
 		JSONError: err,
 	}}
 }
+
+type ValidationErrors struct {
+	Details []ValidationError
+}
+
+func (v *ValidationErrors) Error() string {
+	var message strings.Builder
+	fmt.Fprintln(&message, "failed validation(s):")
+	for _, err := range v.Details {
+		if err.JSONError != nil {
+			// The given document isn't even JSON.
+			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
+		} else {
+			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
+		}
+	}
+	return message.String()
+}

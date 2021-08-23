@@ -14,7 +14,7 @@ webhooks:
       namespace: radius-system
       path: /validate-radius-dev-v1alpha1-application
   failurePolicy: Fail
-  name: vapplication.radius.dev
+  name: application-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev
@@ -36,7 +36,7 @@ webhooks:
       namespace: radius-system
       path: /validate-radius-dev-v1alpha1-component
   failurePolicy: Fail
-  name: vcomponent.radius.dev
+  name: component-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev
@@ -58,7 +58,7 @@ webhooks:
       namespace: radius-system
       path: /validate-radius-dev-v1alpha1-deployment
   failurePolicy: Fail
-  name: vdeployment.radius.dev
+  name: deployment-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev
