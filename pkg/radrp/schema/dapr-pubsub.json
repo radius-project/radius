@@ -29,16 +29,12 @@
 	"config": {
 	  "type": "object",
 	  "required": [
-	    "managed",
-	    "kind",
-	    "topic"
+	    "kind"
 	  ],
 	  "properties": {
 	    "managed": {
-	      "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
-	      "type": "boolean",
-	      "enum": [ true ],
-	      "examples": [ true ]
+	      "description": "Indicates if the resource is Radius-managed. If not, a resource is required",
+	      "type": "boolean"
 	    },
 	    "kind": {
 	      "description": "Dapr Pub/Sub kind",
@@ -46,6 +42,10 @@
 	    },
 	    "topic": {
 	      "description": "PubSub topic",
+	      "type": "string"
+	    },
+	    "resource": {
+	      "description": "PubSub resource, for unmanaged",
 	      "type": "string"
 	    }
 	  },

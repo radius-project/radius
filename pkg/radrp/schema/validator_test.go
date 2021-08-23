@@ -144,6 +144,17 @@ func TestComponentValidator(t *testing.T) {
                   }
                 }`,
 	}, {
+		name: "valid dapr pubsub unmanaged",
+		input: `{ "id": "id", "name": "name",
+                  "kind": "dapr.io/PubSubTopic@v1alpha1",
+                  "properties": {
+                    "config": {
+                      "kind": "dapr.io/pubsub/ServiceBusQueue",
+                      "resource": "fun::coding"
+                    }
+                  }
+                }`,
+	}, {
 		name: "invalid dapr pubsub",
 		input: `{ "id": "id", "name": "name",
                   "kind": "dapr.io/PubSubTopic@v1alpha1",
