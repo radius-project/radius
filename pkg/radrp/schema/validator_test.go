@@ -321,7 +321,7 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "valid ManualScalingTrait",
 		input: `{
-			"id": "id", "name": "name", "kind": "kind", "location": "location",
+                        "id": "id", "name": "name", "kind": "kind", "location": "location",
                         "kind": "radius.dev/Container@v1alpha1",
                         "properties": {
                           "run": {
@@ -329,12 +329,12 @@ func TestComponentValidator(t *testing.T) {
                               "image": "busybox"
                             }
                           },
-			  "traits": [{
+                          "traits": [{
                             "kind":     "radius.dev/ManualScaling@v1alpha1",
-			    "replicas": 2
-			  }]
-			}
-		  }`,
+                            "replicas": 2
+                          }]
+                        }
+                  }`,
 	}, {
 		name: "valid binding expressions",
 		input: `{
