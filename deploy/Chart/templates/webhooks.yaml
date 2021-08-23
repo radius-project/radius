@@ -97,3 +97,26 @@ webhooks:
     resources:
     - deployments
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: radius-system
+      path: /validate-radius-dev-v1alpha1-arm
+    caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
+  failurePolicy: Fail
+  name: varm.radius.dev
+  rules:
+  - apiGroups:
+    - radius.dev
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - arms
+  sideEffects: None

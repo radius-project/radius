@@ -50,7 +50,7 @@ func (r *ArmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	template, err := armtemplate.Parse(arm.Spec.Arm)
+	template, err := armtemplate.Parse(arm.Spec.Content)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -125,6 +125,10 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
 			os.Exit(1)
 		}
+		if err = (&radiusv1alpha1.Arm{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

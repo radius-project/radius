@@ -35,9 +35,12 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 			"apiVersion": gvr.Group + "/" + gvr.Version,
 			"kind":       kind,
 			"metadata": map[string]interface{}{
+				"name":      "arm",
 				"namespace": c.Namespace,
 			},
-			"content": content,
+			"spec": map[string]interface{}{
+				"content": content,
+			},
 		},
 	}
 

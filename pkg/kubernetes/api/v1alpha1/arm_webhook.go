@@ -23,7 +23,7 @@ func (r *Arm) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-radius-radius-dev-v1alpha1-arm,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=arms,verbs=create;update;delete,versions=v1alpha1,name=varm.radius.dev,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/validate-radius-dev-v1alpha1-arm,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=arms,verbs=create;update;delete,versions=v1alpha1,name=varm.radius.dev,admissionReviewVersions={v1,v1beta1}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Arm) ValidateCreate() error {
