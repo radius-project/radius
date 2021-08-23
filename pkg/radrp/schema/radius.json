@@ -435,7 +435,7 @@
           "200": {
             "description": "The application was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/ComponentResource"
+              "$ref": "components.json#/definitions/ComponentResource"
             }
           },
           "default": {
@@ -482,19 +482,19 @@
           "200": {
             "description": "The existing component was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/ComponentResource"
+              "$ref": "components.json#/definitions/ComponentResource"
             }
           },
           "201": {
             "description": "The new component was successfully created.",
             "schema": {
-              "$ref": "#/definitions/ComponentResource"
+              "$ref": "components.json#/definitions/ComponentResource"
             }
           },
           "202": {
             "description": "The existing component was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/ComponentResource"
+              "$ref": "components.json#/definitions/ComponentResource"
             }
           },
           "default": {
@@ -720,133 +720,9 @@
           "type": "array",
           "description": "List of components.",
           "items": {
-            "$ref": "#/definitions/ComponentResource"
+            "$ref": "components.json#/definitions/ComponentResource"
           }
         }
-      }
-    },
-    "ComponentResource": {
-      "description": "Component resource.",
-      "type": "object",
-      "x-ms-azure-resource": true,
-      "allOf": [
-        {
-          "$ref": "common-types.json#/definitions/TrackedResource"
-        }
-      ],
-      "required": [
-        "kind",
-        "properties"
-      ],
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Resource type of the component"
-        },
-        "properties": {
-          "$ref": "#/definitions/ComponentProperties",
-          "description": "Properties of the component."
-        }
-      }
-    },
-    "ComponentProperties": {
-      "description": "Properties of a component.",
-      "type": "object",
-      "properties": {
-        "revision": {
-          "type": "string",
-          "description": "Revision of the component"
-        },
-        "config": {
-          "type": "object",
-          "description": "Config of the component"
-        },
-        "run": {
-          "type": "object",
-          "description": "Run spec of the component"
-        },
-        "bindings": {
-          "type": "object",
-          "description": "Bindings spec of the component"
-        },
-        "uses": {
-          "type": "array",
-          "description": "Uses spec of the component",
-          "items": {
-	     "$ref": "#/definitions/ComponentDependency"
-          }
-        },
-        "traits": {
-          "type": "array",
-          "description": "Traits spec of the component",
-          "items": {
-          "$ref": "traits.json#/definitions/ComponentTrait"
-          }
-        },
-        "status": {
-          "type": "object",
-          "$ref": "#/definitions/ComponentStatus",
-          "description": "Status of the component"
-        }
-      }
-    },
-    "ComponentStatus": {
-      "description": "Status of a component.",
-      "type": "object",
-      "properties": {
-        "provisioningState": {
-          "type": "string",
-          "description": "Provisioning state of the component"
-        },
-        "healthState": {
-          "type": "string",
-          "description": "Health state of the component"
-        },
-        "outputResources": {
-          "type": "array",
-          "items": {
-          "$ref": "#/definitions/ComponentOutputResource"
-          }
-        }
-      }
-    },
-    "ComponentDependency": {
-      "description": "A binding used by an Radius Component",
-      "type": "object",
-      "properties": {
-	"binding": {
-	  "type": "string"
-	},
-	"env": {
-	  "type": "object",
-	  "additionalProperties": {
-	    "type": "string"
-	  }
-	},
-	"secrets": {
-	  "$ref": "#/definitions/ComponentDependencySecrets"
-	}
-      }
-    },
-    "ComponentDependencySecrets": {
-      "description": "Binding values that are stored in and read from a given secret store",
-      "type": "object",
-      "properties": {
-	"store": {
-	  "type": "string"
-	},
-	"keys": {
-	  "type": "object",
-	  "additionalProperties": {
-	    "type": "string"
-	  }
-	}
-      }
-    },
-    "ComponentOutputResource": {
-      "description": "Properties of a component.",
-      "type": "object",
-      "properties": {
       }
     },
     "ComponentCreateParameters": {
@@ -862,7 +738,7 @@
           "description": "Resource type of the component"
         },
         "properties": {
-          "$ref": "#/definitions/ComponentProperties"
+          "$ref": "components.json#/definitions/ComponentProperties"
         }
       }
     },

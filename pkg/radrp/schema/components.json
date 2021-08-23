@@ -1,0 +1,52 @@
+{
+  "definitions": {
+    "ComponentResource": {
+      "description": "Component resource.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "oneOf": [
+        {
+          "$ref": "container.json#/definitions/ContainerComponentResource"
+        },
+        {
+          "$ref": "azure-cosmosdb-sql.json#/definitions/AzureCosmosDBSQLComponentResource"
+        },
+        {
+          "$ref": "azure-cosmosdb-mongo.json#/definitions/AzureCosmosDBMongoComponentResource"
+        },
+        {
+          "$ref": "azure-keyvault.json#/definitions/AzureKeyVaultComponentResource"
+        },
+        {
+          "$ref": "azure-servicebus.json#/definitions/AzureServiceBusComponentResource"
+        },
+        {
+          "$ref": "dapr-state.json#/definitions/DaprStateStoreComponentResource"
+        },
+        {
+          "$ref": "dapr-pubsub.json#/definitions/DaprPubSubComponentResource"
+        },
+        {
+          "$ref": "mongodb.json#/definitions/MongoDBComponentResource"
+        },
+        {
+          "$ref": "redis.json#/definitions/RedisComponentResource"
+        }
+      ],
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The component kind and version"
+        }
+      }
+    }
+  }
+}
