@@ -12,6 +12,7 @@ import (
 )
 
 // HealthHandler interface defines the methods that every output resource will implement for registering/unregistering with health service
+//go:generate mockgen -destination=../../../mocks/mockhandlers/mock_health_handler.go -package=mockhandlers github.com/Azure/radius/pkg/radrp/handlers HealthHandler
 type HealthHandler interface {
 	GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions
 }
