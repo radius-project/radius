@@ -112,7 +112,7 @@ func TestComponentValidator(t *testing.T) {
 	}, {
 		name: "valid azure servicebus",
 		input: `{ "id": "id", "name": "name",
-                  "kind": "azure.com/AzureServiceBus@v1alpha1",
+                  "kind": "azure.com/ServiceBusQueue@v1alpha1",
                   "properties": {
                     "config": {
                       "managed": true,
@@ -138,7 +138,7 @@ func TestComponentValidator(t *testing.T) {
                   "properties": {
                     "config": {
                       "managed": true,
-                      "kind": "dapr.io/pubsub/AzureServiceBus",
+                      "kind": "dapr.io/pubsub/ServiceBusQueue",
                       "topic": "fun coding"
                     }
                   }
@@ -150,7 +150,7 @@ func TestComponentValidator(t *testing.T) {
                   "properties": {
                     "config": {
                       "managed": true,
-                      "kind": "dapr.io/pubsub/AzureServiceBus",
+                      "kind": "dapr.io/pubsub/ServiceBusQueue",
                       "topic": "fun coding",
                       "extra": "foo"
                     }

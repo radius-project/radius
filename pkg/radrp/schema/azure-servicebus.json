@@ -9,7 +9,7 @@
       "properties": {
         "kind": {
           "type": "string",
-	  "enum": ["azure.com/AzureServiceBus@v1alpha1"]
+	  "enum": ["azure.com/ServiceBusQueue@v1alpha1"]
         },
 	"properties": {
 	  "$ref": "#/definitions/AzureServiceBusComponentProperties"
