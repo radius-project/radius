@@ -48,13 +48,16 @@ func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.S
 
 	result.Bindings = map[string]components.GenericBinding{}
 
-	j, err := original.Spec.Bindings.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(j, &result.Bindings)
-	if err != nil {
-		return err
+	if original.Spec.Bindings != nil {
+
+		j, err := original.Spec.Bindings.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(j, &result.Bindings)
+		if err != nil {
+			return err
+		}
 	}
 
 	if original.Spec.Uses != nil {
