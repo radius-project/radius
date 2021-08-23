@@ -130,7 +130,8 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 		ctx = context.Background()
 	}
 	ctx = logr.NewContext(context.Background(), logger)
-	dp.UpdateDeployment(ctx, "A", "A", &deployStatus, actions)
+	err = dp.UpdateDeployment(ctx, "A", "A", &deployStatus, actions)
+	require.NoError(t, err, "Update Deployment failed")
 
 	// Registration for first output resource
 	msg1 := <-registrationChannel
@@ -249,7 +250,8 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 		ctx = context.Background()
 	}
 	ctx = logr.NewContext(context.Background(), logger)
-	dp.DeleteDeployment(ctx, "A", "A", &deployStatus)
+	err = dp.DeleteDeployment(ctx, "A", "A", &deployStatus)
+	require.NoError(t, err, "Delete Deployment failed")
 
 	// Unregistration for first output resource
 	msg1 := <-registrationChannel
