@@ -52,14 +52,20 @@ func (r *Component) ValidateDelete() error {
 }
 
 func validate(r *Component) error {
-	data, err := json.Marshal(r.Spec)
+	j := map[string]interface{}{
+		"kind":       r.Spec.Kind,
+		"properties": r.Spec,
+	}
+
+	data, err := json.Marshal(j)
 	if err != nil {
 		return err
 	}
 
 	// k8s model mirrors the component properties in the schema,
 	// except kind and hierarchy, which we validate separately.
-	validator := schema.NewValidator("/components.json#/definitions/ComponentProperties")
+
+	validator := schema.NewValidator("/components.json#/definitions/ComponentResource")
 	componentlog.Info("json payload", "json", string(data))
 
 	if errs := validator.ValidateJSON(data); len(errs) != 0 {
