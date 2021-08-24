@@ -25,31 +25,47 @@ type Component struct {
 	OutputResources map[string]ExpectedOutputResource
 }
 
+type ExpectedOutputResourceStatus struct {
+	HealthState              string
+	HealthStateErrorDetails  string
+	ProvisioningState        string
+	ProvisioningErrorDetails string
+}
+
 type ExpectedOutputResource struct {
 	LocalID            string
 	OutputResourceType string
 	ResourceKind       string
 	Managed            bool
+	Status             ExpectedOutputResourceStatus
 }
 
+type ActualOutputResourceStatus struct {
+	HealthState              string
+	HealthStateErrorDetails  string
+	ProvisioningState        string
+	ProvisioningErrorDetails string
+}
 type ActualOutputResource struct {
-	LocalID            string      `json:"localId"`
-	Managed            bool        `json:"managed"`
-	ResourceKind       string      `json:"resourceKind"`
-	OutputResourceType string      `json:"outputResourceType"`
-	OutputResourceInfo interface{} `json:"outputResourceInfo"`
+	LocalID            string                     `json:"localId"`
+	Managed            bool                       `json:"managed"`
+	ResourceKind       string                     `json:"resourceKind"`
+	OutputResourceType string                     `json:"outputResourceType"`
+	OutputResourceInfo interface{}                `json:"outputResourceInfo"`
+	Status             ActualOutputResourceStatus `json:"status"`
 }
 
-func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool) ExpectedOutputResource {
+func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, status ExpectedOutputResourceStatus) ExpectedOutputResource {
 	return ExpectedOutputResource{
 		LocalID:            localID,
 		OutputResourceType: outputResourceType,
 		ResourceKind:       resourceKind,
 		Managed:            managed,
+		Status:             status,
 	}
 }
 
-func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, expected ComponentSet) {
+func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, expected ComponentSet, skipVerifyStatus bool) {
 	componentsClient := radclient.NewComponentClient(armConnection, subscriptionID)
 	failed := false
 
@@ -92,6 +108,12 @@ func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, su
 
 				if !expectedResource.IsMatch(actualResource) {
 					continue // not a match, skip
+				}
+
+				if !skipVerifyStatus {
+					if !expectedResource.IsMatchStatus(actualResource) {
+						continue // not a match, skip
+					}
 				}
 
 				t.Logf("found a match for expected resource %+v", expectedResource)
@@ -149,4 +171,12 @@ func (e ExpectedOutputResource) IsMatch(a ActualOutputResource) bool {
 		e.OutputResourceType == a.OutputResourceType &&
 		e.ResourceKind == a.ResourceKind &&
 		e.Managed == a.Managed
+}
+
+func (e ExpectedOutputResource) IsMatchStatus(a ActualOutputResource) bool {
+	return e.LocalID == a.LocalID &&
+		e.Status.HealthState == a.Status.HealthState &&
+		e.Status.HealthStateErrorDetails == a.Status.HealthStateErrorDetails &&
+		e.Status.ProvisioningState == a.Status.ProvisioningState &&
+		e.Status.ProvisioningErrorDetails == a.Status.ProvisioningErrorDetails
 }
