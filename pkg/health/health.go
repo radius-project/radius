@@ -9,13 +9,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/health/db"
 	"github.com/Azure/radius/pkg/health/handlers"
+	"github.com/Azure/radius/pkg/health/model"
+	"github.com/Azure/radius/pkg/health/model/azure"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/go-logr/logr"
@@ -24,12 +25,13 @@ import (
 
 // HealthInfo represents the data maintained per resource being tracked by the HealthService
 type HealthInfo struct {
-	stopProbeForResource    chan os.Signal
+	stopProbeForResource    chan struct{}
 	ticker                  *time.Ticker
 	handler                 handlers.HealthHandler
 	HealthState             string
 	HealthStateErrorDetails string
 	Resource                healthcontract.ResourceInfo
+	Options                 healthcontract.HealthCheckOptions
 }
 
 // Monitor is the controller for health checks for all output resources
@@ -39,7 +41,7 @@ type Monitor struct {
 	healthToRPNotificationChannel chan<- healthcontract.ResourceHealthDataMessage
 	activeHealthProbes            map[string]HealthInfo
 	activeHealthProbesMutex       *sync.RWMutex
-	handlers                      map[string]handlers.HealthHandler
+	model                         model.HealthModel
 }
 
 // Run starts the HealthService
@@ -51,7 +53,7 @@ func (h Monitor) Run(ctx context.Context) {
 		case msg := <-h.resourceRegistrationChannel:
 			// Received a registration/de-registration message
 			if msg.Action == healthcontract.ActionRegister {
-				h.RegisterResource(ctx, msg)
+				h.RegisterResource(ctx, msg, make(chan struct{}, 1))
 			} else if msg.Action == healthcontract.ActionUnregister {
 				h.UnregisterResource(ctx, msg)
 			}
@@ -64,7 +66,7 @@ func (h Monitor) Run(ctx context.Context) {
 
 // RegisterResource is called to register an output resource with the health checker
 // It should be called at the time of creation of the output resource
-func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage) {
+func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}) {
 	ctx = radlogger.WrapLogContext(
 		ctx,
 		radlogger.LogFieldResourceID, registerMsg.ResourceInfo.ResourceID,
@@ -74,8 +76,9 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 
 	logger.Info("Registering resource with health service")
 
-	if h.handlers[registerMsg.ResourceInfo.ResourceKind] == nil {
-		logger.Error(errors.New("NotImplemented"), fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %s not monitored by HealthService", registerMsg.ResourceInfo.ResourceKind, registerMsg.ResourceInfo.ResourceID))
+	if h.model.LookupHandler(registerMsg.ResourceInfo.ResourceKind) == nil {
+		// TODO: Convert this log to error once health checks are implemented for all resource kinds
+		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %s not monitored by HealthService", registerMsg.ResourceInfo.ResourceKind, registerMsg.ResourceInfo.ResourceID))
 		return
 	}
 
@@ -91,20 +94,22 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	}
 
 	healthInfo := HealthInfo{
-		stopProbeForResource: make(chan os.Signal, 1),
+		stopProbeForResource: stopCh,
 		// Create a new ticker for the resource which will start the health check at the specified interval
 		// TODO: Optimize and not create a ticker per resource
-		ticker:      time.NewTicker(ho.Interval),
-		handler:     h.handlers[registerMsg.ResourceInfo.ResourceKind],
+		handler:     h.model.LookupHandler(registerMsg.ResourceInfo.ResourceKind),
 		HealthState: healthcontract.HealthStateUnhealthy,
 		Resource:    registerMsg.ResourceInfo,
+		Options:     ho,
 	}
+	// Create a ticker with a period as specified in the health options by the resource
+	healthInfo.ticker = time.NewTicker(healthInfo.Options.Interval)
 	// Create a new health handler for the resource
 	h.activeHealthProbesMutex.Lock()
 	h.activeHealthProbes[registerMsg.ResourceInfo.HealthID] = healthInfo
 	h.activeHealthProbesMutex.Unlock()
 
-	go func(ticker *time.Ticker, healthHandler handlers.HealthHandler, stopProbeForResource chan os.Signal) {
+	go func(ticker *time.Ticker, healthHandler handlers.HealthHandler, stopProbeForResource <-chan struct{}) {
 		for {
 			select {
 			case <-ticker.C:
@@ -122,7 +127,6 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 				}
 				if currentHealthInfo.HealthState != newHealthInfo.HealthState {
 					logger.Info(fmt.Sprintf("HealthState changed from :%s to %s. Sending notification...", currentHealthInfo.HealthState, newHealthInfo.HealthState))
-					h.SendHealthStateChangeNotification(ctx, registerMsg.ResourceInfo, newHealthInfo)
 
 					// Save the new state as current state
 					currentHealthInfo.HealthState = newHealthInfo.HealthState
@@ -130,15 +134,16 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 					h.activeHealthProbesMutex.Lock()
 					h.activeHealthProbes[registerMsg.ResourceInfo.HealthID] = currentHealthInfo
 					h.activeHealthProbesMutex.Unlock()
+
+					h.SendHealthStateChangeNotification(ctx, registerMsg.ResourceInfo, newHealthInfo)
+
 					logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthInfo.HealthState))
 				}
 			case <-stopProbeForResource:
-				logger.Info("Health Probe stopped.")
 				return
 			}
 		}
 	}(healthInfo.ticker, healthInfo.handler, healthInfo.stopProbeForResource)
-
 	logger.Info("Registered resource with health service successfully")
 }
 
@@ -154,7 +159,7 @@ func (h Monitor) UnregisterResource(ctx context.Context, unregisterMsg healthcon
 	healthProbe, ok := h.activeHealthProbes[unregisterMsg.ResourceInfo.HealthID]
 	if ok {
 		healthProbe.ticker.Stop()
-		healthProbe.stopProbeForResource <- os.Interrupt
+		healthProbe.stopProbeForResource <- struct{}{}
 		// Remove entry from active health probe map
 		delete(h.activeHealthProbes, unregisterMsg.ResourceInfo.HealthID)
 		logger.Info("Unregistered resource with health service successfully")
@@ -205,15 +210,10 @@ func NewMonitor(options MonitorOptions, arm armauth.ArmConfig) Monitor {
 		db:                            options.DB,
 		resourceRegistrationChannel:   options.ResourceRegistrationChannel,
 		healthToRPNotificationChannel: options.HealthProbeChannel,
+		model:                         options.HealthModel,
 	}
 	m.activeHealthProbes = make(map[string]HealthInfo)
 	m.activeHealthProbesMutex = &sync.RWMutex{}
-
-	// Add health check handlers for the resource types
-	m.handlers = map[string]handlers.HealthHandler{
-		// TODO: Add health check handler for all resource kinds
-		ResourceKindAzureServiceBusQueue: handlers.NewAzureServiceBusQueueHandler(arm),
-	}
 	return m
 }
 
@@ -233,11 +233,14 @@ func StartRadHealth(ctx context.Context, arm armauth.ArmConfig, dbClient *mongo.
 	// Create a DB to store health events
 	db := db.NewRadHealthDB(dbClient.Database(dbName))
 
+	model := azure.NewAzureHealthModel(arm)
+
 	options := MonitorOptions{
 		Logger:                      logger,
 		DB:                          db,
 		ResourceRegistrationChannel: healthChannels.ResourceRegistrationWithHealthChannel,
 		HealthProbeChannel:          healthChannels.HealthToRPNotificationChannel,
+		HealthModel:                 model,
 	}
 
 	ctx = logr.NewContext(ctx, logger)

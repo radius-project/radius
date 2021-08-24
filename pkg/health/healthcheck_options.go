@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/health/db"
+	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/go-logr/logr"
 )
@@ -43,4 +44,5 @@ type MonitorOptions struct {
 	DB                          db.RadHealthDB
 	ResourceRegistrationChannel chan healthcontract.ResourceHealthRegistrationMessage
 	HealthProbeChannel          chan healthcontract.ResourceHealthDataMessage
+	HealthModel                 model.HealthModel
 }

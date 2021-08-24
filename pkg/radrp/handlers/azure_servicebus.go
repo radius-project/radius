@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
 
@@ -48,6 +49,8 @@ type azureServiceBusQueueHandler struct {
 }
 
 func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("Inside Put for Kind: %s", options.Resource.Kind))
 	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// queue name must be specified by the user
@@ -62,6 +65,7 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 		return nil, err
 	}
 
+	logger.Info(fmt.Sprintf("Validated unmanaged resource IDs - Namespace: %s, Queue: %s", ServiceBusNamespaceIDKey, ServiceBusQueueIDKey))
 	var namespace *servicebus.SBNamespace
 	if properties[ServiceBusNamespaceIDKey] == "" {
 		// If we don't have an ID already then we will need to create a new one.
@@ -71,6 +75,7 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 		}
 
 		if namespace == nil {
+			logger.Info(fmt.Sprintf("Creating namespace: %s", options.Application))
 			namespace, err = handler.CreateNamespace(ctx, options.Application)
 			if err != nil {
 				return nil, err
