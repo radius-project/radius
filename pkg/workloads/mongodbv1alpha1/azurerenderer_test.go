@@ -47,18 +47,27 @@ func Test_AzureRenderer_Render_Managed_Success(t *testing.T) {
 	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
 
-	require.Len(t, resources, 1)
-	resource := resources[0]
+	require.Len(t, resources, 2)
+	accountResource := resources[0]
+	databaseResource := resources[1]
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBMongo, resource.Kind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosMongoAccount, accountResource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosAccountMongo, accountResource.Kind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosDBMongo, databaseResource.Kind)
 
-	expected := map[string]string{
+	expectedAccount := map[string]string{
+		handlers.ManagedKey:              "true",
+		handlers.CosmosDBAccountBaseName: "test-component",
+	}
+	require.Equal(t, expectedAccount, accountResource.Resource)
+
+	expectedDatabase := map[string]string{
 		handlers.ManagedKey:              "true",
 		handlers.CosmosDBAccountBaseName: "test-component",
 		handlers.CosmosDBDatabaseNameKey: "test-component",
 	}
-	require.Equal(t, expected, resource.Resource)
+	require.Equal(t, expectedDatabase, databaseResource.Resource)
 }
 
 func Test_AzureRenderer_Render_Unmanaged_Success(t *testing.T) {
@@ -81,20 +90,30 @@ func Test_AzureRenderer_Render_Unmanaged_Success(t *testing.T) {
 	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
 
-	require.Len(t, resources, 1)
-	resource := resources[0]
+	require.Len(t, resources, 2)
+	accountResource := resources[0]
+	databaseResource := resources[1]
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBMongo, resource.Kind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosMongoAccount, accountResource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosAccountMongo, accountResource.Kind)
+	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
+	require.Equal(t, outputresource.KindAzureCosmosDBMongo, databaseResource.Kind)
 
-	expected := map[string]string{
+	expectedAccount := map[string]string{
+		handlers.ManagedKey:             "false",
+		handlers.CosmosDBAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+		handlers.CosmosDBAccountNameKey: "test-account",
+	}
+	require.Equal(t, expectedAccount, accountResource.Resource)
+
+	expectedDatabase := map[string]string{
 		handlers.ManagedKey:              "false",
 		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
 		handlers.CosmosDBAccountNameKey:  "test-account",
 		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 		handlers.CosmosDBDatabaseNameKey: "test-database",
 	}
-	require.Equal(t, expected, resource.Resource)
+	require.Equal(t, expectedDatabase, databaseResource.Resource)
 }
 
 func Test_AzureRenderer_Render_Unmanaged_MissingResource(t *testing.T) {

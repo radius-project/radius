@@ -13,10 +13,11 @@ import (
 )
 
 type PutOptions struct {
-	Application string
-	Component   string
-	Resource    *outputresource.OutputResource
-	Existing    *db.DeploymentResource
+	Application  string
+	Component    string
+	Resource     *outputresource.OutputResource
+	Existing     *db.DeploymentResource
+	Dependencies []db.DeploymentResource
 }
 
 type DeleteOptions struct {

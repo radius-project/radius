@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
 
 func NewAzureCosmosDBMongoHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -36,39 +37,29 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 	properties := mergeProperties(*options.Resource, options.Existing)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
+	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBDatabaseIDKey)
 	if err != nil {
 		return nil, err
 	}
 
-	var account *documentdb.DatabaseAccountGetResults
-	if properties[CosmosDBAccountIDKey] == "" {
-		// If we don't have an ID already then we will need to create a new one.
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindMongoDB, *options)
-		if err != nil {
-			return nil, err
-		}
-
-		// store account so we can delete later
-		properties[CosmosDBAccountIDKey] = *account.ID
-		properties[CosmosDBAccountNameKey] = *account.Name
-	} else {
-		// This is mostly called for the side-effect of verifying that the account exists.
-		account, err = handler.GetCosmosDBAccountByID(ctx, properties[CosmosDBAccountIDKey])
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if properties[CosmosDBDatabaseIDKey] == "" {
-		account, err := handler.CreateDatabase(ctx, *account.Name, properties[CosmosDBDatabaseNameKey], *options)
+		var cosmosDBAccountName string
+		for _, resource := range options.Dependencies {
+			if resource.LocalID == outputresource.LocalIDAzureCosmosMongoAccount {
+				cosmosDBAccountName = resource.Properties[CosmosDBAccountNameKey]
+			}
+		}
+
+		database, err := handler.CreateDatabase(ctx, cosmosDBAccountName, properties[CosmosDBDatabaseNameKey], *options)
 		if err != nil {
 			return nil, err
 		}
 
 		// store db so we can delete later
-		properties[CosmosDBDatabaseIDKey] = *account.ID
+		properties[CosmosDBDatabaseIDKey] = *database.ID
+		properties[CosmosDBAccountNameKey] = cosmosDBAccountName
 	} else {
+		// User managed resource
 		// This is mostly called for the side-effect of verifying that the database exists.
 		_, err := handler.GetDatabaseByID(ctx, properties[CosmosDBDatabaseIDKey])
 		if err != nil {
@@ -82,21 +73,12 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.Existing.Properties
 	if properties[ManagedKey] != "true" {
-		// For an 'unmanaged' resource we don't need to do anything, just forget it.
+		// User managed resources aren't deleted by radius, skip this step.
 		return nil
 	}
 
-	accountName := properties[CosmosDBAccountNameKey]
-	dbName := properties[CosmosDBDatabaseNameKey]
-
 	// Delete CosmosDB Mongo database
-	err := handler.DeleteDatabase(ctx, accountName, dbName)
-	if err != nil {
-		return err
-	}
-
-	// Delete CosmosDB account
-	err = handler.DeleteCosmosDBAccount(ctx, accountName)
+	err := handler.DeleteDatabase(ctx, properties[CosmosDBAccountNameKey], properties[CosmosDBDatabaseNameKey])
 	if err != nil {
 		return err
 	}
@@ -112,12 +94,12 @@ func (handler *azureCosmosDBMongoHandler) GetDatabaseByID(ctx context.Context, d
 
 	mongoClient := azclients.NewMongoDBResourcesClient(parsed.SubscriptionID, handler.arm.Auth)
 
-	account, err := mongoClient.GetMongoDBDatabase(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
+	database, err := mongoClient.GetMongoDBDatabase(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CosmosDB Mongo Database: %w", err)
 	}
 
-	return &account, nil
+	return &database, nil
 }
 
 func (handler *azureCosmosDBMongoHandler) CreateDatabase(ctx context.Context, accountName string, dbName string, options PutOptions) (*documentdb.MongoDBDatabaseGetResults, error) {

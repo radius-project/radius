@@ -45,6 +45,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) model.ApplicationM
 		outputresource.KindDaprStateStoreSQLServer:          {ResourceHandler: handlers.NewDaprStateStoreSQLServerHandler(arm, *k8s), HealthHandler: handlers.NewDaprStateStoreSQLServerHealthHandler(arm, *k8s)},
 		outputresource.KindDaprPubSubTopicAzureServiceBus:   {ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, *k8s), HealthHandler: handlers.NewDaprPubSubServiceBusHealthHandler(arm, *k8s)},
 		outputresource.KindAzureCosmosDBMongo:               {ResourceHandler: handlers.NewAzureCosmosDBMongoHandler(arm), HealthHandler: handlers.NewAzureCosmosDBMongoHealthHandler(arm)},
+		outputresource.KindAzureCosmosAccountMongo:          {ResourceHandler: handlers.NewAzureCosmosAccountMongoHandler(arm), HealthHandler: handlers.NewAzureCosmosAccountMongoHealthHandler(arm)},
 		outputresource.KindAzureCosmosDBSQL:                 {ResourceHandler: handlers.NewAzureCosmosDBSQLHandler(arm), HealthHandler: handlers.NewAzureCosmosDBSQLHealthHandler(arm)},
 		outputresource.KindAzureServiceBusQueue:             {ResourceHandler: handlers.NewAzureServiceBusQueueHandler(arm), HealthHandler: handlers.NewAzureServiceBusQueueHealthHandler(arm)},
 		outputresource.KindAzureKeyVault:                    {ResourceHandler: handlers.NewAzureKeyVaultHandler(arm), HealthHandler: handlers.NewAzureKeyVaultHealthHandler(arm)},

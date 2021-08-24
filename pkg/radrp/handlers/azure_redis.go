@@ -41,7 +41,7 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 		redisName, ok := properties[RedisNameKey]
 		var err error
 		if !ok {
-			redisName, err = generateRandomAzureName(ctx,
+			redisName, err = generateUniqueAzureResourceName(ctx,
 				properties[RedisBaseName],
 				func(name string) error {
 					rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)

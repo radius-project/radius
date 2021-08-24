@@ -12,6 +12,7 @@ const (
 	ResourceKindDaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
 	ResourceKindDaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
 	ResourceKindDaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
+	ResourceKindAzureCosmosAccountMongo          = "azure.cosmosdb.account.mongo"
 	ResourceKindAzureCosmosDBMongo               = "azure.cosmosdb.mongo"
 	ResourceKindAzureCosmosDBSQL                 = "azure.cosmosdb.sql"
 	ResourceKindAzureServiceBusQueue             = "azure.servicebus.queue"

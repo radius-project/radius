@@ -138,13 +138,18 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				continue
 			}
 
-			// Deploy output resources rendered for the workload
-			for _, resource := range outputResources {
+			orderedResources, err := outputresource.OrderOutputResources(outputResources)
+			if err != nil {
+				errs = append(errs, err)
+			}
+
+			// Deploy output resources rendered for the workload in order of dependencies
+			for _, resource := range orderedResources {
 				var existingResourceState *db.DeploymentResource
 			workloadsloop:
-				for _, existing := range deploymentStatus.Workloads {
-					if existing.ComponentName == action.ComponentName {
-						for _, currentResource := range existing.Resources {
+				for _, existingState := range deploymentStatus.Workloads {
+					if existingState.ComponentName == action.ComponentName {
+						for _, currentResource := range existingState.Resources {
 							if currentResource.LocalID == resource.LocalID {
 								existingResourceState = &currentResource
 								break workloadsloop
@@ -159,11 +164,24 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					continue
 				}
 
+				dependencies := []db.DeploymentResource{}
+				// Dependencies that the output resource being deployed depends on are passed to the handler to consume
+				for _, dependency := range resource.Dependencies {
+					for _, deployedResource := range dbDeploymentWorkload.Resources {
+						if deployedResource.LocalID == dependency.LocalID {
+							dependencies = append(dependencies, deployedResource)
+							// break out of the inner loop once a deployed resource for the dependency is found
+							break
+						}
+					}
+				}
+
 				properties, err := resourceType.Handler().Put(ctx, &handlers.PutOptions{
-					Application: appName,
-					Component:   action.ComponentName,
-					Resource:    &resource,
-					Existing:    existingResourceState,
+					Application:  appName,
+					Component:    action.ComponentName,
+					Resource:     &resource,
+					Existing:     existingResourceState,
+					Dependencies: dependencies,
 				})
 
 				// Register the output resource with HealthService
@@ -241,21 +259,21 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 
 		case DeleteWorkload:
 			// Remove the deployment record
-			var match db.DeploymentWorkload
-			for i, existing := range deploymentStatus.Workloads {
-				if existing.ComponentName == action.ComponentName {
-					match = existing
+			var workload db.DeploymentWorkload
+			for i, existingState := range deploymentStatus.Workloads {
+				if existingState.ComponentName == action.ComponentName {
+					workload = existingState
 					deploymentStatus.Workloads = append(deploymentStatus.Workloads[:i], deploymentStatus.Workloads[i+1:]...)
 					break
 				}
 			}
 
-			if match.ComponentName == "" {
+			if workload.ComponentName == "" {
 				errs = append(errs, fmt.Errorf("cannot find deployment record for %v", action.ComponentName))
 				continue
 			}
 
-			for _, resource := range match.Resources {
+			for _, resource := range workload.Resources {
 				resourceType, err := dp.appmodel.LookupResource(resource.Type)
 				if err != nil {
 					errs = append(errs, err)

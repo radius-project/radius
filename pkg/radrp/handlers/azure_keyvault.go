@@ -45,7 +45,7 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOption
 
 	if properties[KeyVaultIDKey] == "" {
 		// If we have already created this resource we would have stored the name and ID.
-		vaultName := GenerateName("kv")
+		vaultName := GenerateRandomName("kv")
 
 		kv, err := handler.CreateKeyVault(ctx, vaultName, *options)
 		if err != nil {
