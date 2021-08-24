@@ -70,3 +70,22 @@ func TestBasicInvalid(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "failed to create typed patch object: .spec.kind: expected string, got &value.valueUnstructured{Value:[]interface {}{}}", err.Error())
 }
+
+// Arm controller can also reject components
+func TestInvalidArm(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := utils.GetContext(t)
+	defer cancel()
+
+	controllerStep := kubernetestest.ControllerStep{
+		Namespace:      "invalidarm",
+		TemplateFolder: "testdata/invalidarm/",
+	}
+
+	test := kubernetestest.NewControllerTest(ctx, controllerStep)
+	err := test.Test(t)
+
+	require.Error(t, err)
+	require.Equal(t, "admission webhook \"vcomponent.radius.dev\" denied the request: failed validation(s):\n- (root).traits.0: Additional property appId is not allowed\n", err.Error())
+}
