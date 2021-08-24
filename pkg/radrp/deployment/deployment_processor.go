@@ -170,6 +170,8 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					for _, deployedResource := range dbDeploymentWorkload.Resources {
 						if deployedResource.LocalID == dependency.LocalID {
 							dependencies = append(dependencies, deployedResource)
+							// break out of the inner loop once a deployed resource for the dependency is found
+							break
 						}
 					}
 				}
