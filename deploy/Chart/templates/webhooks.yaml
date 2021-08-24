@@ -107,7 +107,7 @@ webhooks:
       path: /validate-radius-dev-v1alpha1-arm
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
-  name: varm.radius.dev
+  name: arm-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev

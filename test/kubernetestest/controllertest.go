@@ -160,6 +160,10 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize deployment webhook: %w", err)
 	}
+	err = (&radiusv1alpha1.Arm{}).SetupWebhookWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to initialize deployment webhook: %w", err)
+	}
 
 	go func() {
 		_ = mgr.Start(ctrl.SetupSignalHandler())
@@ -261,6 +265,12 @@ func gvr(unst *unstructured.Unstructured) (schema.GroupVersionResource, error) {
 			Group:    "radius.dev",
 			Version:  "v1alpha1",
 			Resource: "deployments",
+		}, nil
+	} else if unst.GroupVersionKind().Kind == "Arm" {
+		return schema.GroupVersionResource{
+			Group:    "radius.dev",
+			Version:  "v1alpha1",
+			Resource: "arms",
 		}, nil
 	}
 

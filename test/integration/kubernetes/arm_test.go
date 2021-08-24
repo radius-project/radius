@@ -13,15 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInvalidTraitDefinition(t *testing.T) {
+func TestInvalidArm(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
 
 	controllerStep := kubernetestest.ControllerStep{
-		Namespace:      "invalidcomponent",
-		TemplateFolder: "testdata/invalidcomponent/",
+		Namespace:      "invalidarm",
+		TemplateFolder: "testdata/invalidarm/",
 	}
 
 	test := kubernetestest.NewControllerTest(ctx, controllerStep)

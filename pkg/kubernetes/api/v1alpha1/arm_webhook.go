@@ -34,6 +34,24 @@ func (r *Arm) SetupWebhookWithManager(mgr ctrl.Manager) error {
 func (r *Arm) ValidateCreate() error {
 	armlog.Info("validate create", "name", r.Name)
 
+	return validateArm(r)
+}
+
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+func (r *Arm) ValidateUpdate(old runtime.Object) error {
+	armlog.Info("validate update", "name", r.Name)
+
+	return validateArm(r)
+}
+
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+func (r *Arm) ValidateDelete() error {
+	armlog.Info("validate delete", "name", r.Name)
+
+	return validateArm(r)
+}
+
+func validateArm(r *Arm) error {
 	template, err := armtemplate.Parse(r.Spec.Content)
 	if err != nil {
 		return err
@@ -60,21 +78,6 @@ func (r *Arm) ValidateCreate() error {
 			}
 		}
 	}
-	return nil
-}
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Arm) ValidateUpdate(old runtime.Object) error {
-	armlog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
-	return nil
-}
-
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Arm) ValidateDelete() error {
-	armlog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
 }

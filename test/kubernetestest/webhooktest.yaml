@@ -69,5 +69,27 @@ webhooks:
     - UPDATE
     - DELETE
     resources:
-    - deployments
+    - arms
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: radius-system
+      path: /validate-radius-dev-v1alpha1-arm
+  failurePolicy: Fail
+  name: arm-validation.radius.dev
+  rules:
+  - apiGroups:
+    - radius.dev
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - arms
   sideEffects: None
