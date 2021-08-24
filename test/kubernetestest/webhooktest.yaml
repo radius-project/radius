@@ -69,7 +69,7 @@ webhooks:
     - UPDATE
     - DELETE
     resources:
-    - arms
+    - deployments
   sideEffects: None
 - admissionReviewVersions:
   - v1

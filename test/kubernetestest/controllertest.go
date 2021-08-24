@@ -162,7 +162,7 @@ func StartController() error {
 	}
 	err = (&radiusv1alpha1.Arm{}).SetupWebhookWithManager(mgr)
 	if err != nil {
-		return fmt.Errorf("failed to initialize deployment webhook: %w", err)
+		return fmt.Errorf("failed to initialize arm webhook: %w", err)
 	}
 
 	go func() {

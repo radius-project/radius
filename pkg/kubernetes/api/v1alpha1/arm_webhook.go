@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 // log is for logging in this package.
@@ -25,7 +26,7 @@ func (r *Arm) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+var _ webhook.Validator = &Arm{}
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //+kubebuilder:webhook:path=/validate-radius-dev-v1alpha1-arm,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=arms,verbs=create;update;delete,versions=v1alpha1,name=varm.radius.dev,admissionReviewVersions={v1,v1beta1}
