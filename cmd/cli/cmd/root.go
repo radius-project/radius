@@ -7,17 +7,16 @@ package cmd
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/bicep"
 	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/radclient"
 	"github.com/Azure/radius/pkg/version"
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -31,36 +30,31 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:  true,
 }
 
-// prettyPrintRPError prints an error that wraps a
-// *radclient.ErrorResponse as YAML.
-//
-// YAML is a good format for this purpose because of the `|` string
-// quoting syntax that allows nested YAML strings to have good
-// readability.
-//
-// In case we don't understand the error format we are dealing with,
-// we will just return "".
 func prettyPrintRPError(err error) string {
-	inner, ok := errors.Unwrap(err).(*radclient.ErrorResponse)
-	if inner == nil || !ok {
-		return ""
-	}
-	// Now, attempt to reformat the message too
-	for i := range inner.InnerError.Details {
-		if inner.InnerError.Details[i] == nil || inner.InnerError.Details[i].Message == nil {
-			continue
+	raw := err.Error()
+	if new := azclients.TryUnfoldErrorResponse(err); new != nil {
+		m, err := prettyPrintJSON(new)
+		if err == nil {
+			return m
 		}
-		y, err := yaml.JSONToYAML([]byte(*inner.InnerError.Details[i].Message))
-		if err != nil {
-			continue
+		return raw
+	}
+	if new := azclients.TryUnfoldServiceError(err); new != nil {
+		m, err := prettyPrintJSON(new)
+		if err == nil {
+			return m
 		}
-		s := string(y)
-		inner.InnerError.Details[i].Message = &s
+		return raw
 	}
-	if b, err := yaml.Marshal(inner.InnerError); err == nil {
-		return string(b)
+	return raw
+}
+
+func prettyPrintJSON(o interface{}) (string, error) {
+	b, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		return "", err
 	}
-	return ""
+	return string(b), nil
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -68,11 +62,7 @@ func prettyPrintRPError(err error) string {
 func Execute() {
 	ctx := context.WithValue(context.Background(), configHolderKey, configHolder)
 	if err := RootCmd.ExecuteContext(ctx); err != nil {
-		if yaml := prettyPrintRPError(err); yaml != "" {
-			fmt.Printf("Error from Radius resource provider:\n%s\n", yaml)
-		} else {
-			fmt.Println("Error:", err)
-		}
+		fmt.Println("Error:", prettyPrintRPError(err))
 		os.Exit(1)
 	}
 }

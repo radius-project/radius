@@ -18,7 +18,6 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
-	github.com/ghodss/yaml v1.0.0
 	github.com/gibson042/canonicaljson-go v1.0.3
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0
