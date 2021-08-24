@@ -23,6 +23,10 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	retries = 10
+)
+
 func Test_CLI(t *testing.T) {
 	ctx, cancel := utils.GetContext(t)
 	defer cancel()
@@ -104,11 +108,15 @@ a          radius.dev/Container@v1alpha1  NotProvisioned      Unhealthy
 			done <- err
 		}()
 
-		for i := 0; i < 10; i++ {
+		for i := 0; i < retries; i++ {
 			url := fmt.Sprintf("http://localhost:%d/healthz", port)
 			t.Logf("making request to %s", url)
 			response, err := http.Get(url)
-			if err != nil && i < 10-1 {
+			if err != nil {
+				if i == retries-1 {
+					// last retry failed, report failure
+					require.NoError(t, err, "failed to get connect to component after %d retries", retries)
+				}
 				t.Logf("got error %s", err.Error())
 				time.Sleep(1 * time.Second)
 				continue
@@ -118,6 +126,10 @@ a          radius.dev/Container@v1alpha1  NotProvisioned      Unhealthy
 			}
 
 			if response.StatusCode > 299 || response.StatusCode < 200 {
+				if i == retries-1 {
+					// last retry failed, report failure
+					require.NoError(t, err, "status code was a bad response after %d retries %d", retries, response.StatusCode)
+				}
 				t.Logf("got status %d", response.StatusCode)
 				time.Sleep(1 * time.Second)
 				continue
