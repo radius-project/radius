@@ -1,61 +1,59 @@
 {
-    "definitions": {
-      "RabbitMQComponentResource": {
-        "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
-        "required": [
-          "kind",
-          "properties"
-        ],
+  "definitions": {
+    "RabbitMQComponentResource": {
+      "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
+      "required": [
+        "kind",
+        "properties"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "rabbitmq.com/MessageQueue@v1alpha1"
+          ]
+        },
         "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "rabbitmq.com/MessageQueue@v1alpha1"
-            ]
-          },
-          "properties": {
-            "$ref": "#/definitions/RabbitMQComponentProperties"
-          }
+          "$ref": "#/definitions/RabbitMQComponentProperties"
         }
-      },
-      "RabbitMQComponentProperties": {
-        "allOf": [
-            {
-              "$ref": "basic-component.json#/definitions/BasicComponentProperties"
-            }
-          ],
+      }
+    },
+    "RabbitMQComponentProperties": {
+      "allOf": [
+        {
+          "$ref": "basic-component.json#/definitions/BasicComponentProperties"
+        }
+      ],
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
           "required": [
-            "config"
+            "managed",
+            "queue"
           ],
           "properties": {
-            "config": {
-              "type": "object",
-              "required": [
-                "managed",
-                "queue"
+            "managed": {
+              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component.",
+              "type": "boolean",
+              "enum": [
+                true
               ],
-              "properties": {
-                "managed": {
-                  "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component.",
-                  "type": "boolean",
-                  "enum": [
-                    true
-                  ],
-                  "examples": [
-                    true
-                  ]
-                },
-                "queue": {
-                  "description": "The name of the queue",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "examples": [
+                true
+              ]
+            },
+            "queue": {
+              "description": "The name of the queue",
+              "type": "string"
             }
           },
           "additionalProperties": false
-    
-      }
+        }
+      },
+      "additionalProperties": false
     }
   }
-  
+}

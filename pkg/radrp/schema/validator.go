@@ -54,6 +54,7 @@ var (
 	//go:embed dapr-state.json
 	//go:embed mongodb.json
 	//go:embed redis.json
+	//go:embed rabbitmq.json
 	//go:embed components.json
 	//go:embed radius.json
 	jsonFiles embed.FS
