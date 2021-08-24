@@ -6,6 +6,11 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/Azure/radius/pkg/cli/armtemplate"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,7 +34,32 @@ func (r *Arm) SetupWebhookWithManager(mgr ctrl.Manager) error {
 func (r *Arm) ValidateCreate() error {
 	armlog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
+	template, err := armtemplate.Parse(r.Spec.Content)
+	if err != nil {
+		return err
+	}
+
+	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, resource := range resources {
+		data, err := json.Marshal(resource)
+		if err != nil {
+			return err
+		}
+
+		validator, err := schema.ValidatorFor(resource)
+		if err != nil {
+			return fmt.Errorf("cannot find validator for %T: %w", resource, err)
+		}
+		if errs := validator.ValidateJSON(data); len(errs) != 0 {
+			return &schema.AggregateValidationError{
+				Details: errs,
+			}
+		}
+	}
 	return nil
 }
 
