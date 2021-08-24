@@ -113,6 +113,23 @@ func ValidatorFor(obj interface{}) (Validator, error) {
 	return nil, fmt.Errorf("Can't find a JSON validator for type %s", objT)
 }
 
+// ValidatorFor returns a Validator for the given type, based on the
+// type name.
+func ValidatorForArmTemplate(armType string) (Validator, error) {
+
+	for suffix, validator := range map[string]*validator{
+		"Applications": applicationValidator,
+		"Components":   componentValidator,
+		"Deployments":  deploymentValidator,
+		"Scopes":       scopeValidator,
+	} {
+		if strings.HasSuffix(armType, suffix) {
+			return validator, nil
+		}
+	}
+	return nil, fmt.Errorf("Can't find a JSON validator for type %s", armType)
+}
+
 func GetComponentValidator() Validator {
 	return componentValidator
 }

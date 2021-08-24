@@ -63,12 +63,12 @@ func validateArm(r *Arm) error {
 	}
 
 	for _, resource := range resources {
-		data, err := json.Marshal(resource)
+		data, err := json.Marshal(resource.Body)
 		if err != nil {
 			return err
 		}
 
-		validator, err := schema.ValidatorFor(resource)
+		validator, err := schema.ValidatorForArmTemplate(resource.Type)
 		if err != nil {
 			return fmt.Errorf("cannot find validator for %T: %w", resource, err)
 		}

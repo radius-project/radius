@@ -7,6 +7,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -48,6 +49,8 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(string(data))
 
 	_, err = c.Client.Resource(gvr).Namespace(c.Namespace).Patch(ctx, "arm", types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
 	return nil
