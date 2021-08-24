@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/Azure/radius/test/kubernetestest"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -244,10 +243,10 @@ func TestRender_Success_NonDefaultPort(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
 
-	deployment := kubernetestest.FindDeployment(resources)
+	deployment := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
-	service := kubernetestest.FindService(resources)
+	service := kubernetes.FindService(resources)
 	require.NotNil(t, service)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
