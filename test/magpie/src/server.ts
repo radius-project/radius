@@ -7,6 +7,7 @@ import { KeyVaultBinding } from './bindings/keyvault'
 import { MongoBinding } from './bindings/mongo'
 import { ServiceBusBinding } from './bindings/servicebus'
 import { RedisBinding } from './bindings/redis'
+import { RabbitMQBinding } from './bindings/rabbitmq'
 
 const app: express.Application = express();
 const server: http.Server = http.createServer(app);
@@ -19,6 +20,7 @@ const providers: {[key: string]: BindingProvider }= {
     'SERVICEBUS': (map) => new ServiceBusBinding(map),
     'REDIS': (map) => new RedisBinding(map),
     'DAPRSTATESTORE': (map) => new DaprStateStoreBinding(map),
+    'RABBITMQ' : (map) => new RabbitMQBinding(map),
 };
 
 let bindings = loadBindings(process.env, providers)

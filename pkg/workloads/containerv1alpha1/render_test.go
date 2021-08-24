@@ -12,12 +12,10 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/test/kubernetestest"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -158,10 +156,10 @@ func TestRender_Success_DefaultPort(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
 
-	deployment := findDeployment(resources)
+	deployment := kubernetestest.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
-	service := findService(resources)
+	service := kubernetestest.FindService(resources)
 	require.NotNil(t, service)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
@@ -246,10 +244,10 @@ func TestRender_Success_NonDefaultPort(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
 
-	deployment := findDeployment(resources)
+	deployment := kubernetestest.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
-	service := findService(resources)
+	service := kubernetestest.FindService(resources)
 	require.NotNil(t, service)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
@@ -296,38 +294,4 @@ func TestRender_Success_NonDefaultPort(t *testing.T) {
 		require.Equal(t, int32(2000), port.Port)
 		require.Equal(t, intstr.FromInt(3000), port.TargetPort)
 	})
-}
-
-func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
-	for _, r := range resources {
-		if r.Kind != outputresource.KindKubernetes {
-			continue
-		}
-
-		deployment, ok := r.Resource.(*appsv1.Deployment)
-		if !ok {
-			continue
-		}
-
-		return deployment
-	}
-
-	return nil
-}
-
-func findService(resources []outputresource.OutputResource) *corev1.Service {
-	for _, r := range resources {
-		if r.Kind != outputresource.KindKubernetes {
-			continue
-		}
-
-		service, ok := r.Resource.(*corev1.Service)
-		if !ok {
-			continue
-		}
-
-		return service
-	}
-
-	return nil
 }

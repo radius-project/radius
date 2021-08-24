@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/test/kubernetestest"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -64,7 +65,7 @@ func Test_Render_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	deployment := findDeployment(resources)
+	deployment := kubernetestest.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
 	expected := map[string]string{
@@ -75,21 +76,4 @@ func Test_Render_Success(t *testing.T) {
 		"dapr.io/config":   "test-config",
 	}
 	require.Equal(t, expected, deployment.Spec.Template.Annotations)
-}
-
-func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
-	for _, r := range resources {
-		if r.Kind != outputresource.KindKubernetes {
-			continue
-		}
-
-		deployment, ok := r.Resource.(*appsv1.Deployment)
-		if !ok {
-			continue
-		}
-
-		return deployment
-	}
-
-	return nil
 }

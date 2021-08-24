@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package redisv1alpha1
+package rabbitmqv1alpha1
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := KubernetesRenderer{}
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Application: "test-app",
@@ -57,18 +57,10 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	service := kubernetestest.FindService(resources)
 	require.NotNil(t, service)
 
-	labels := map[string]string{
-		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusComponent:   "test-component",
-		kubernetes.LabelName:              "test-component",
-		kubernetes.LabelPartOf:            "test-app",
-		kubernetes.LabelManagedBy:         kubernetes.LabelManagedByRadiusRP,
-	}
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-component")
 
-	matchLabels := map[string]string{
-		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusComponent:   "test-component",
-	}
+	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-component")
+
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-component", deployment.Name)
 		require.Equal(t, "default", deployment.Namespace)
@@ -83,13 +75,13 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		require.Len(t, template.Spec.Containers, 1)
 
 		container := template.Spec.Containers[0]
-		require.Equal(t, "redis", container.Name)
-		require.Equal(t, "redis", container.Image)
+		require.Equal(t, "rabbitmq", container.Name)
+		require.Equal(t, "rabbitmq:latest", container.Image)
 		require.Len(t, container.Ports, 1)
 
-		port := container.Ports[0]
-		require.Equal(t, v1.ProtocolTCP, port.Protocol)
-		require.Equal(t, int32(6379), port.ContainerPort)
+		port1 := container.Ports[0]
+		require.Equal(t, v1.ProtocolTCP, port1.Protocol)
+		require.Equal(t, int32(5672), port1.ContainerPort)
 	})
 
 	t.Run("verify service", func(t *testing.T) {
@@ -103,15 +95,15 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		require.Len(t, spec.Ports, 1)
 
 		port := spec.Ports[0]
-		require.Equal(t, "redis", port.Name)
+		require.Equal(t, "rabbitmq", port.Name)
 		require.Equal(t, v1.ProtocolTCP, port.Protocol)
-		require.Equal(t, int32(6379), port.Port)
-		require.Equal(t, intstr.FromInt(6379), port.TargetPort)
+		require.Equal(t, int32(5672), port.Port)
+		require.Equal(t, intstr.FromInt(5672), port.TargetPort)
 	})
 }
 
 func TestInvalidKubernetesComponentKindFailure(t *testing.T) {
-	renderer := KubernetesRenderer{}
+	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
 		Workload: components.GenericComponent{
@@ -122,5 +114,5 @@ func TestInvalidKubernetesComponentKindFailure(t *testing.T) {
 
 	_, err := renderer.Render(context.Background(), workload)
 	require.Error(t, err)
-	require.Equal(t, "the component was expected to have kind 'redislabs.com/Redis@v1alpha1', instead it is 'foo'", err.Error())
+	require.Equal(t, "the component was expected to have kind 'rabbitmq.com/MessageQueue@v1alpha1', instead it is 'foo'", err.Error())
 }

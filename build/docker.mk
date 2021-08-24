@@ -21,7 +21,8 @@ docker-build-$(1):
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
 		--build-arg LDFLAGS=$(LDFLAGS) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		--platform amd64
 
 .PHONY: docker-push-$(1)
 docker-push-$(1):
