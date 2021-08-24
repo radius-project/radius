@@ -65,9 +65,9 @@ func TestFrontendBackendArm(t *testing.T) {
 		TemplateFolder: "testdata/arm/",
 		Deployments: validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
-				"frontend-backend": {
-					validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
-					validation.NewK8sObjectForComponent("frontend-backend", "backend"),
+				"arm": {
+					validation.NewK8sObjectForComponent("kubernetes-resources-container-httpbinding", "frontend"),
+					validation.NewK8sObjectForComponent("kubernetes-resources-container-httpbinding", "backend"),
 				},
 			},
 		},

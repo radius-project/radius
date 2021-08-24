@@ -87,5 +87,5 @@ func TestInvalidArm(t *testing.T) {
 	err := test.Test(t)
 
 	require.Error(t, err)
-	require.Equal(t, "admission webhook \"vcomponent.radius.dev\" denied the request: failed validation(s):\n- (root).traits.0: Additional property appId is not allowed\n", err.Error())
+	require.Equal(t, "admission webhook \"arm-validation.radius.dev\" denied the request: failed validation(s):\n- (root).properties.run.container.image: Invalid type. Expected: string, given: integer\n", err.Error())
 }
