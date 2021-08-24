@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package kubernetestest
+package kubernetes
 
 import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"

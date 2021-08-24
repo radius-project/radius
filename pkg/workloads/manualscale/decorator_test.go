@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
@@ -61,7 +62,7 @@ func Test_Render_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	deployment := findDeployment(resources)
+	deployment := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
 	require.Equal(t, int32(2), *deployment.Spec.Replicas)
@@ -92,25 +93,8 @@ func Test_Render_CanSpecifyZero(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	deployment := findDeployment(resources)
+	deployment := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
 	require.Equal(t, int32(0), *deployment.Spec.Replicas)
-}
-
-func findDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
-	for _, r := range resources {
-		if r.Kind != outputresource.KindKubernetes {
-			continue
-		}
-
-		deployment, ok := r.Resource.(*appsv1.Deployment)
-		if !ok {
-			continue
-		}
-
-		return deployment
-	}
-
-	return nil
 }

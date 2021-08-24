@@ -156,10 +156,10 @@ func TestRender_Success_DefaultPort(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
 
-	deployment := kubernetestest.FindDeployment(resources)
+	deployment := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
-	service := kubernetestest.FindService(resources)
+	service := kubernetes.FindService(resources)
 	require.NotNil(t, service)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
