@@ -49,6 +49,12 @@
                 "image": {
                   "description": "The registry and image to download and run in your container",
                   "type": "string"
+                },
+                "env": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 }
               },
               "additionalProperties": false

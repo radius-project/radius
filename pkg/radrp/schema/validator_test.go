@@ -35,6 +35,23 @@ func TestComponentValidator(t *testing.T) {
                   }
                 }`,
 	}, {
+		name: "valid container with env",
+		input: `{
+                  "id":   "id",
+                  "name": "name",
+                  "kind": "radius.dev/Container@v1alpha1",
+                  "properties": {
+                    "run": {
+                      "container": {
+                        "image": "busybox",
+                        "env": {
+                          "HOST": "localhost"
+                        }
+                      }
+                    }
+                  }
+                }`,
+	}, {
 		name: "valid container with binding",
 		input: `{
                   "id":   "id",
