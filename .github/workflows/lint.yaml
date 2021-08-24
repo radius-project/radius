@@ -33,7 +33,7 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v2
         with:
-          version: 'latest'
+          version: 1.41.1
           skip-go-installation: true
           args: --timeout=10m
   generate:
