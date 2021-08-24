@@ -59,8 +59,8 @@ func validate(r *Component) error {
 	specCopy.Hierarchy = nil
 	specCopy.Kind = ""
 	hackedJson := map[string]interface{}{
-		"kind":       r.Spec.Kind,
-		"properties": r.Spec,
+		"kind":       specCopy.Kind,
+		"properties": specCopy,
 	}
 
 	data, err := json.Marshal(hackedJson)
