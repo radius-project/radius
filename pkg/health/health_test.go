@@ -7,7 +7,6 @@ package health
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -45,14 +44,19 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	}
 
 	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
-	stopCh := make(chan os.Signal)
+	stopCh := make(chan struct{})
 	t.Cleanup(func() {
-		stopCh <- os.Interrupt
+		stopCh <- struct{}{}
 	})
 
 	monitor.RegisterResource(ctx, registrationMsg, stopCh)
-	require.Equal(t, 1, len(monitor.activeHealthProbes))
+
+	monitor.activeHealthProbesMutex.RLock()
+	probesLen := len(monitor.activeHealthProbes)
 	healthInfo, found := monitor.activeHealthProbes["abc"]
+	monitor.activeHealthProbesMutex.RUnlock()
+
+	require.Equal(t, 1, probesLen)
 	require.Equal(t, true, found)
 	require.Equal(t, monitor.model.LookupHandler(azure.ResourceKindAzureServiceBusQueue), healthInfo.handler)
 	require.Equal(t, "abc", healthInfo.Resource.HealthID)
@@ -82,7 +86,9 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 			ResourceKind: "NotImplementedType",
 		},
 	}
-	monitor.RegisterResource(ctx, registrationMsg, make(chan os.Signal, 1))
+	monitor.RegisterResource(ctx, registrationMsg, make(chan struct{}, 1))
+	monitor.activeHealthProbesMutex.RLock()
+	defer monitor.activeHealthProbesMutex.RUnlock()
 	require.Equal(t, 0, len(monitor.activeHealthProbes))
 }
 
@@ -97,8 +103,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
-	monitor.activeHealthProbes = make(map[string]HealthInfo)
-	stopCh := make(chan os.Signal, 1)
+	stopCh := make(chan struct{}, 1)
 	resourceInfo := healthcontract.ResourceInfo{
 		HealthID:     "abc",
 		ResourceID:   "xyz",
@@ -121,6 +126,8 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	}
 	ctx := logr.NewContext(context.Background(), logger)
 	monitor.UnregisterResource(ctx, unregistrationMsg)
+	monitor.activeHealthProbesMutex.RLock()
+	defer monitor.activeHealthProbesMutex.RUnlock()
 	require.Equal(t, 0, len(monitor.activeHealthProbes))
 	require.NotZero(t, len(stopCh))
 }
@@ -150,59 +157,18 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 	}
 
 	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
-	stopCh := make(chan os.Signal)
+	stopCh := make(chan struct{})
 	t.Cleanup(func() {
-		stopCh <- os.Interrupt
+		stopCh <- struct{}{}
 	})
 
 	ctx := logr.NewContext(context.Background(), logger)
 	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 
+	monitor.activeHealthProbesMutex.RLock()
 	hi := monitor.activeHealthProbes["abc"]
+	monitor.activeHealthProbesMutex.RUnlock()
 	require.Equal(t, optionsInterval, hi.Options.Interval)
-}
-
-func Test_HealthServiceCallsHealthHandlerBasedOnResourceKind(t *testing.T) {
-	logger, err := radlogger.NewTestLogger(t)
-	require.NoError(t, err)
-
-	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockHandler := mocks.NewMockHealthHandler(ctrl)
-	handlers := map[string]handlers.HealthHandler{
-		"dummy": mockHandler,
-	}
-	options := MonitorOptions{
-		Logger:                      logger,
-		ResourceRegistrationChannel: rrc,
-		HealthModel:                 model.NewHealthModel(handlers),
-	}
-	monitor := NewMonitor(options, armauth.ArmConfig{})
-	ctx := logr.NewContext(context.Background(), logger)
-	ri := healthcontract.ResourceInfo{
-		HealthID:     "abc",
-		ResourceID:   "xyz",
-		ResourceKind: "dummy",
-	}
-
-	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
-		Action:       healthcontract.ActionRegister,
-		ResourceInfo: ri,
-		Options: healthcontract.HealthCheckOptions{
-			Interval: time.Second * 10,
-		},
-	}
-	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
-	stopCh := make(chan os.Signal)
-	t.Cleanup(func() {
-		stopCh <- os.Interrupt
-	})
-
-	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
-		AnyTimes().Return(healthcontract.ResourceHealthDataMessage{})
-
-	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 }
 
 func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
@@ -238,9 +204,9 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		},
 	}
 	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
-	stopCh := make(chan os.Signal)
+	stopCh := make(chan struct{})
 	t.Cleanup(func() {
-		stopCh <- os.Interrupt
+		stopCh <- struct{}{}
 	})
 
 	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
@@ -298,9 +264,9 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 	})
 
 	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
-	stopCh := make(chan os.Signal)
+	stopCh := make(chan struct{})
 	t.Cleanup(func() {
-		stopCh <- os.Interrupt
+		stopCh <- struct{}{}
 	})
 	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 

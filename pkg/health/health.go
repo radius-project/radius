@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -26,7 +25,7 @@ import (
 
 // HealthInfo represents the data maintained per resource being tracked by the HealthService
 type HealthInfo struct {
-	stopProbeForResource    chan os.Signal
+	stopProbeForResource    chan struct{}
 	ticker                  *time.Ticker
 	handler                 handlers.HealthHandler
 	HealthState             string
@@ -54,7 +53,7 @@ func (h Monitor) Run(ctx context.Context) {
 		case msg := <-h.resourceRegistrationChannel:
 			// Received a registration/de-registration message
 			if msg.Action == healthcontract.ActionRegister {
-				h.RegisterResource(ctx, msg, make(chan os.Signal, 1))
+				h.RegisterResource(ctx, msg, make(chan struct{}, 1))
 			} else if msg.Action == healthcontract.ActionUnregister {
 				h.UnregisterResource(ctx, msg)
 			}
@@ -67,7 +66,7 @@ func (h Monitor) Run(ctx context.Context) {
 
 // RegisterResource is called to register an output resource with the health checker
 // It should be called at the time of creation of the output resource
-func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan os.Signal) {
+func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}) {
 	ctx = radlogger.WrapLogContext(
 		ctx,
 		radlogger.LogFieldResourceID, registerMsg.ResourceInfo.ResourceID,
@@ -110,7 +109,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	h.activeHealthProbes[registerMsg.ResourceInfo.HealthID] = healthInfo
 	h.activeHealthProbesMutex.Unlock()
 
-	go func(ticker *time.Ticker, healthHandler handlers.HealthHandler, stopProbeForResource chan os.Signal) {
+	go func(ticker *time.Ticker, healthHandler handlers.HealthHandler, stopProbeForResource <-chan struct{}) {
 		for {
 			select {
 			case <-ticker.C:
@@ -160,7 +159,7 @@ func (h Monitor) UnregisterResource(ctx context.Context, unregisterMsg healthcon
 	healthProbe, ok := h.activeHealthProbes[unregisterMsg.ResourceInfo.HealthID]
 	if ok {
 		healthProbe.ticker.Stop()
-		healthProbe.stopProbeForResource <- os.Interrupt
+		healthProbe.stopProbeForResource <- struct{}{}
 		// Remove entry from active health probe map
 		delete(h.activeHealthProbes, unregisterMsg.ResourceInfo.HealthID)
 		logger.Info("Unregistered resource with health service successfully")
