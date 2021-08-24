@@ -152,10 +152,11 @@ type OutputResource struct {
 
 // OutputResourceStatus represents the status of the Output Resource
 type OutputResourceStatus struct {
-	ProvisioningState       string    `bson:"provisioningState"`
-	HealthState             string    `bson:"healthState"`
-	HealthStateErrorDetails string    `bson:"healthStateErrorDetails"`
-	Replicas                []Replica `bson:"replicas,omitempty" structs:"-"` // Ignore stateful property during serialization
+	ProvisioningState        string    `bson:"provisioningState"`
+	ProvisioningErrorDetails string    `bson:"provisioningErrorDetails"`
+	HealthState              string    `bson:"healthState"`
+	HealthStateErrorDetails  string    `bson:"healthStateErrorDetails"`
+	Replicas                 []Replica `bson:"replicas,omitempty" structs:"-"` // Ignore stateful property during serialization
 }
 
 // Replica represents an individual instance of a resource (Azure/K8s)

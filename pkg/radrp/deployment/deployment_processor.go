@@ -166,17 +166,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					Existing:    existingResourceState,
 				})
 
-				// Persist output resource state in the database.
-				// This step is needed before error handling until https://github.com/Azure/radius/issues/614 is resolved
-				addDBOutputResource(resource, &dbOutputResources)
-				action.Definition.Properties.Status.OutputResources = dbOutputResources
-
-				if err != nil {
-					resource.Status.ProvisioningState = db.Failed
-					errs = append(errs, fmt.Errorf("error applying workload for component %v %v: %w", properties, action.ComponentName, err))
-					continue
-				}
-
 				// Register the output resource with HealthService
 				outputResourceInfo := healthcontract.ResourceDetails{
 					ResourceID:     resource.GetResourceID(),
@@ -189,6 +178,25 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				healthID := outputResourceInfo.GetHealthID()
 				properties[healthcontract.HealthIDKey] = healthID
 				resource.HealthID = healthID
+
+				if err != nil {
+					// Until https://github.com/Azure/radius/issues/614 is resolved, add output resources created so far
+					// to the DB
+					resource.Status.ProvisioningState = db.Failed
+					resource.Status.ProvisioningErrorDetails = err.Error()
+					addDBOutputResource(resource, &dbOutputResources)
+					action.Definition.Properties.Status.OutputResources = dbOutputResources
+					errs = append(errs, fmt.Errorf("error applying workload for component %v %v: %w", properties, action.ComponentName, err))
+					continue
+				}
+
+				resource.Status.ProvisioningState = db.Provisioned
+				resource.Status.ProvisioningErrorDetails = ""
+
+				// Persist output resource state in the database.
+				addDBOutputResource(resource, &dbOutputResources)
+				action.Definition.Properties.Status.OutputResources = dbOutputResources
+
 				dp.RegisterForHealthChecks(ctx, outputResourceInfo, healthID, resourceType.HealthHandler().GetHealthOptions(ctx))
 
 				dbDeploymentResource := db.DeploymentResource{
@@ -300,7 +308,8 @@ func addDBOutputResource(resource outputresource.OutputResource, dbOutputResourc
 		OutputResourceInfo: resource.Info,
 		Resource:           resource.Resource,
 		Status: db.OutputResourceStatus{
-			ProvisioningState: resource.Status.ProvisioningState,
+			ProvisioningState:        resource.Status.ProvisioningState,
+			ProvisioningErrorDetails: resource.Status.ProvisioningErrorDetails,
 		},
 	}
 	*dbOutputResources = append(*dbOutputResources, dbr)

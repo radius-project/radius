@@ -7,6 +7,7 @@ package radrp
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/healthcontract"
@@ -46,7 +47,8 @@ func (cl *changeListener) ListenForChanges(ctx context.Context) {
 	for {
 		select {
 		case msg := <-cl.health.HealthToRPNotificationChannel:
-			cl.UpdateHealth(ctx, msg)
+			updated := cl.UpdateHealth(ctx, msg)
+			logger.Info(fmt.Sprintf("Updated application health state changes successfully: %v", updated))
 		case <-ctx.Done():
 			logger.Info("Stopping to listen for health state change notifications")
 			return
