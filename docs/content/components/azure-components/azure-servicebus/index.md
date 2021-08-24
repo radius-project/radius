@@ -2,7 +2,7 @@
 type: docs
 title: "Azure ServiceBus Component"
 linkTitle: "ServiceBus"
-description: "Deploy and orchestrate Azure KeyVault using Radius"
+description: "Deploy and orchestrate Azure ServiceBus using Radius"
 ---
 
 ## Overview
@@ -81,7 +81,7 @@ The sender application sends messages over an Azure ServiceBus queue named `radi
 
 {{< rad file="snippets/managed.bicep" download=true >}}
 
-Alternately, you can create a new file named `azure-servicebus-managed.bicep` and paste the above components into an `app` resource.  
+Alternately, you can create a new file named `azure-servicebus-managed.bicep` and paste the above components into an `app` resource.
 
 #### Deploy template file
 
@@ -98,11 +98,11 @@ This will deploy the application, create the ServiceBus queue, and launch the co
 To see the sender and receiver working, you can check the logs for those two components of the "radius-servicebus" application:
 
 ```sh
-rad component logs sender --application radius-servicebus 
+rad component logs sender --application radius-servicebus
 ```
 
 ```sh
-rad component logs receiver --application radius-servicebus 
+rad component logs receiver --application radius-servicebus
 ```
 
 You should see the sender sending messages and the receiver receiving them as below:
