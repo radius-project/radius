@@ -64,7 +64,7 @@ func StartController() error {
 		ErrorIfCRDPathMissing: true,
 		BinaryAssetsDirectory: assetsDirectory,
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join(".")},
+			Paths: []string{filepath.Join("testdata")},
 		},
 	}
 
