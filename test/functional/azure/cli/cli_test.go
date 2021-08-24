@@ -108,7 +108,11 @@ a          radius.dev/Container@v1alpha1  NotProvisioned      Unhealthy
 			url := fmt.Sprintf("http://localhost:%d/healthz", port)
 			t.Logf("making request to %s", url)
 			response, err := http.Get(url)
-			if err != nil && i < 10-1 {
+			if err != nil {
+				if i == 10-1 {
+					// last retry failed, report failure
+					require.NoError(t, err, "failed to get connect to component after 10 retries")
+				}
 				t.Logf("got error %s", err.Error())
 				time.Sleep(1 * time.Second)
 				continue
@@ -118,6 +122,10 @@ a          radius.dev/Container@v1alpha1  NotProvisioned      Unhealthy
 			}
 
 			if response.StatusCode > 299 || response.StatusCode < 200 {
+				if i == 10-1 {
+					// last retry failed, report failure
+					require.NoError(t, err, "status code was a bad response after 10 retries %d", response.StatusCode)
+				}
 				t.Logf("got status %d", response.StatusCode)
 				time.Sleep(1 * time.Second)
 				continue
