@@ -258,8 +258,10 @@ func newRESTOutputResourcesFromDB(original []db.OutputResource) []rest.OutputRes
 			Managed:            r.Managed,
 			HealthID:           r.HealthID,
 			Status: rest.OutputResourceStatus{
-				HealthState:        r.Status.HealthState,
-				HealthErrorDetails: r.Status.HealthStateErrorDetails,
+				HealthState:              r.Status.HealthState,
+				HealthErrorDetails:       r.Status.HealthStateErrorDetails,
+				ProvisioningState:        r.Status.ProvisioningState,
+				ProvisioningErrorDetails: r.Status.ProvisioningErrorDetails,
 			},
 			// Resource includes the body of the resource which would make the REST
 			// response too verbose. Hence excluded
