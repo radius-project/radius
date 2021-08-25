@@ -5,7 +5,7 @@
 
 package mongodbv1alpha1
 
-import "github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"
+import "github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha1"
 
 const (
 	Kind         = "mongodb.com/Mongo@v1alpha1"

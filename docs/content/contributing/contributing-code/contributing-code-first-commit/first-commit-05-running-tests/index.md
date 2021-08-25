@@ -37,17 +37,13 @@ ok  	github.com/Azure/radius/pkg/cli	0.250s
 ?   	github.com/Azure/radius/pkg/cli/prompt	[no test files]
 ?   	github.com/Azure/radius/pkg/cli/util	[no test files]
 ?   	github.com/Azure/radius/pkg/radclient	[no test files]
-?   	github.com/Azure/radius/pkg/workloads	[no test files]
-ok  	github.com/Azure/radius/pkg/workloads/containerv1alpha1	0.214s
-?   	github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1	[no test files]
-?   	github.com/Azure/radius/pkg/workloads/dapr	[no test files]
-?   	github.com/Azure/radius/pkg/workloads/daprcomponentv1alpha1	[no test files]
-?   	github.com/Azure/radius/pkg/workloads/daprpubsubv1alpha1	[no test files]
-?   	github.com/Azure/radius/pkg/workloads/daprstatestorev1alpha1	[no test files]
-?   	github.com/Azure/radius/pkg/workloads/functionv1alpha1	[no test files]
-?   	github.com/Azure/radius/pkg/workloads/ingress	[no test files]
-?   	github.com/Azure/radius/pkg/workloads/servicebusqueuev1alpha1	[no test files]
-?   	github.com/Azure/radius/pkg/workloads/webappv1alpha1	[no test files]
+?   	github.com/Azure/radius/pkg/renderers	[no test files]
+ok  	github.com/Azure/radius/pkg/renderers/containerv1alpha1
+ok   	github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha1
+ok   	github.com/Azure/radius/pkg/renderers/dapr
+ok   	github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1
+ok   	github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1
+ok   	github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha1
 ```
 
 The Go test tools do not make much fanfare when all the tests pass - it just says `ok` for every package that has tests.

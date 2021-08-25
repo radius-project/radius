@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package workloads
+package renderers
 
 import (
 	"errors"

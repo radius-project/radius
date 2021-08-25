@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package cosmosdbmongov1alpha1
+package keyvaultv1alpha1
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
@@ -47,28 +48,16 @@ func Test_Render_Managed_Success(t *testing.T) {
 	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
 
-	require.Len(t, resources, 2)
-	accountResource := resources[0]
-	databaseResource := resources[1]
+	require.Len(t, resources, 1)
+	resource := resources[0]
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosMongoAccount, accountResource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosAccountMongo, accountResource.Kind)
+	require.Equal(t, outputresource.LocalIDKeyVault, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureKeyVault, resource.Kind)
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBMongo, databaseResource.Kind)
-
-	expectedAccount := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.CosmosDBAccountBaseName: "test-component",
+	expected := map[string]string{
+		handlers.ManagedKey: "true",
 	}
-	require.Equal(t, expectedAccount, accountResource.Resource)
-
-	expectedDatabase := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.CosmosDBAccountBaseName: "test-component",
-		handlers.CosmosDBDatabaseNameKey: "test-component",
-	}
-	require.Equal(t, expectedDatabase, databaseResource.Resource)
+	require.Equal(t, expected, resource.Resource)
 }
 
 func Test_Render_Unmanaged_Success(t *testing.T) {
@@ -82,7 +71,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 			Kind: Kind,
 			Name: "test-component",
 			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.KeyVault/vaults/test-vault",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},
@@ -91,31 +80,18 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
 
-	require.Len(t, resources, 2)
-	accountResource := resources[0]
-	databaseResource := resources[1]
+	require.Len(t, resources, 1)
+	resource := resources[0]
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosMongoAccount, accountResource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosAccountMongo, accountResource.Kind)
+	require.Equal(t, outputresource.LocalIDKeyVault, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureKeyVault, resource.Kind)
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBMongo, databaseResource.Kind)
-
-	expectedAccount := map[string]string{
-		handlers.ManagedKey:             "false",
-		handlers.CosmosDBAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-		handlers.CosmosDBAccountNameKey: "test-account",
+	expected := map[string]string{
+		handlers.ManagedKey:      "false",
+		handlers.KeyVaultIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.KeyVault/vaults/test-vault",
+		handlers.KeyVaultNameKey: "test-vault",
 	}
-	require.Equal(t, expectedAccount, accountResource.Resource)
-
-	expectedDatabase := map[string]string{
-		handlers.ManagedKey:              "false",
-		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-		handlers.CosmosDBAccountNameKey:  "test-account",
-		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-		handlers.CosmosDBDatabaseNameKey: "test-database",
-	}
-	require.Equal(t, expectedDatabase, databaseResource.Resource)
+	require.Equal(t, expected, resource.Resource)
 }
 
 func Test_Render_Unmanaged_MissingResource(t *testing.T) {
@@ -138,7 +114,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, workloads.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
+	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }
 
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
@@ -152,7 +128,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 			Kind: Kind,
 			Name: "test-component",
 			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/mongodbDatabases/test-database",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/vaults/test-vault",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},
@@ -160,5 +136,5 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a CosmosDB Mongo Database", err.Error())
+	require.Equal(t, "the 'resource' field must refer to a KeyVault", err.Error())
 }

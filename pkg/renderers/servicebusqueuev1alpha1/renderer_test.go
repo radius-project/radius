@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package cosmosdbsqlv1alpha1
+package servicebusqueuev1alpha1
 
 import (
 	"context"
@@ -11,13 +11,25 @@ import (
 
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/Azure/radius/pkg/workloads/cosmosdbmongov1alpha1"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )
 
+func createContext(t *testing.T) context.Context {
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
+}
+
 func Test_Render_Managed_Success(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -28,44 +40,32 @@ func Test_Render_Managed_Success(t *testing.T) {
 			Name: "test-component",
 			Config: map[string]interface{}{
 				"managed": true,
+				"queue":   "cool-queue",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(context.Background(), workload)
+	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
+
 	require.Len(t, resources, 1)
+	resource := resources[0]
 
-	renderedResource := resources[0]
-
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBSQL, renderedResource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBSQL, renderedResource.Kind)
+	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureServiceBusQueue, resource.Kind)
+	require.Equal(t, outputresource.TypeARM, resource.Type)
+	require.True(t, resource.Managed)
 
 	expected := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.CosmosDBAccountBaseName: "test-component",
-		handlers.CosmosDBDatabaseNameKey: "test-component",
+		handlers.ManagedKey:             "true",
+		handlers.ServiceBusQueueNameKey: "cool-queue",
 	}
-	require.Equal(t, expected, renderedResource.Resource)
-}
-
-func TestInvalidComponentKindFailure(t *testing.T) {
-	renderer := Renderer{}
-
-	workload := workloads.InstantiatedWorkload{
-		Workload: components.GenericComponent{
-			Name: "test-component",
-			Kind: cosmosdbmongov1alpha1.Kind,
-		},
-	}
-
-	_, err := renderer.Render(context.Background(), workload)
-	require.Error(t, err)
-	require.Equal(t, "the component was expected to have kind 'azure.com/CosmosDBSQL@v1alpha1', instead it is 'azure.com/CosmosDBMongo@v1alpha1'", err.Error())
+	require.Equal(t, expected, resource.Resource)
 }
 
 func Test_Render_Unmanaged_Success(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -75,32 +75,35 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 			Kind: Kind,
 			Name: "test-component",
 			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/sqlDatabases/test-database",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(context.Background(), workload)
+	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
 
 	require.Len(t, resources, 1)
 	resource := resources[0]
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBSQL, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBSQL, resource.Kind)
+	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, resource.LocalID)
+	require.Equal(t, outputresource.KindAzureServiceBusQueue, resource.Kind)
+	require.Equal(t, outputresource.TypeARM, resource.Type)
+	require.False(t, resource.Managed)
 
 	expected := map[string]string{
-		handlers.ManagedKey:              "false",
-		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-		handlers.CosmosDBAccountNameKey:  "test-account",
-		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/sqlDatabases/test-database",
-		handlers.CosmosDBDatabaseNameKey: "test-database",
+		handlers.ManagedKey:                 "false",
+		handlers.ServiceBusNamespaceIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
+		handlers.ServiceBusNamespaceNameKey: "test-namespace",
+		handlers.ServiceBusQueueIDKey:       "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
+		handlers.ServiceBusQueueNameKey:     "test-queue",
 	}
 	require.Equal(t, expected, resource.Resource)
 }
 
 func Test_Render_Unmanaged_MissingResource(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -117,12 +120,13 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, workloads.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
+	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }
 
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+	ctx := createContext(t)
 	renderer := Renderer{}
 
 	workload := workloads.InstantiatedWorkload{
@@ -132,13 +136,13 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 			Kind: Kind,
 			Name: "test-component",
 			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/sqlDatabases/test-database",
+				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/queues/test-queue",
 			},
 		},
 		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(ctx, workload)
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a CosmosDB SQL Database", err.Error())
+	require.Equal(t, "the 'resource' field must refer to a ServiceBus Queue", err.Error())
 }
