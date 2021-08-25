@@ -3,6 +3,7 @@ layout:
 - go.kubebuilder.io/v3
 projectName: radius
 repo: github.com/Azure/radius
+multigroup: true
 resources:
 - api:
     crdVersion: v1
@@ -11,7 +12,7 @@ resources:
   domain: radius.dev
   group: applications
   kind: Application
-  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1
   version: v1alpha1
   webhooks:
     defaulting: true
@@ -24,7 +25,7 @@ resources:
   domain: radius.dev
   group: applications
   kind: Component
-  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1
   version: v1alpha1
   webhooks:
     defaulting: true
@@ -37,7 +38,7 @@ resources:
   domain: radius.dev
   group: applications
   kind: Deployment
-  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1
   version: v1alpha1
   webhooks:
     defaulting: true
@@ -48,9 +49,9 @@ resources:
     namespaced: true
   controller: true
   domain: bicep.dev
-  group: applications
+  group: bicep
   kind: DeploymentTemplate
-  path: github.com/Azure/radius/pkg/kubernetes/api/v1alpha1
+  path: github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1
   version: v1alpha1
   webhooks:
     defaulting: true

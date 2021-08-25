@@ -8,7 +8,7 @@ package kubernetes
 import (
 	"encoding/json"
 
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/kubernetes"

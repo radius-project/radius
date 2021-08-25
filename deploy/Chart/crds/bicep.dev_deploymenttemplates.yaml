@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: deploymenttemplates.radius.dev
+  name: deploymenttemplates.bicep.dev
 spec:
-  group: radius.dev
+  group: bicep.dev
   names:
     categories:
     - all

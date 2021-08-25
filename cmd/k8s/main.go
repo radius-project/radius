@@ -20,8 +20,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
-	"github.com/Azure/radius/pkg/kubernetes/controllers"
+	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
+	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/model/components"
 	//+kubebuilder:scaffold:imports
@@ -73,7 +75,7 @@ func main() {
 
 	}
 
-	if err = (&controllers.ApplicationReconciler{
+	if err = (&radcontroller.ApplicationReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
 		Scheme: mgr.GetScheme(),
@@ -81,7 +83,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
 	}
-	if err = (&controllers.ComponentReconciler{
+	if err = (&radcontroller.ComponentReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
 		Scheme: mgr.GetScheme(),
@@ -89,7 +91,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
-	if err = (&controllers.DeploymentReconciler{
+	if err = (&radcontroller.DeploymentReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Deployment"),
 		Scheme: mgr.GetScheme(),
@@ -98,7 +100,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.DeploymentTemplateReconciler{
+	if err = (&bicepcontroller.DeploymentTemplateReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Arm"),
 		Scheme: mgr.GetScheme(),
@@ -120,7 +122,7 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
 			os.Exit(1)
 		}
-		if err = (&radiusv1alpha1.Arm{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = (&bicepv1alpha1.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
 			os.Exit(1)
 		}

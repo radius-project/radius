@@ -20,7 +20,7 @@ type DeploymentTemplateStatus struct {
 }
 
 //+kubebuilder:object:root=true
-//+kubebuilder:resource:categories={"all","radius"}
+//+kubebuilder:resource:categories={"all","bicep"}
 //+kubebuilder:subresource:status
 
 // DeploymentTemplate is the Schema for the DeploymentTemplate API

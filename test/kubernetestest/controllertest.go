@@ -29,8 +29,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"github.com/Azure/radius/pkg/cli/kubernetes"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
-	"github.com/Azure/radius/pkg/kubernetes/controllers"
+	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
+	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/test/validation"
@@ -113,7 +115,7 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize manager: %w", err)
 	}
-	err = (&controllers.ApplicationReconciler{
+	err = (&radcontroller.ApplicationReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
 		Scheme: mgr.GetScheme(),
@@ -122,7 +124,7 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize application reconciler: %w", err)
 	}
 
-	err = (&controllers.ComponentReconciler{
+	err = (&radcontroller.ComponentReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
 		Scheme: mgr.GetScheme(),
@@ -130,7 +132,7 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize component reconciler: %w", err)
 	}
-	err = (&controllers.DeploymentReconciler{
+	err = (&radcontroller.DeploymentReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Deployment"),
 		Scheme: mgr.GetScheme(),
@@ -139,11 +141,10 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize deployment reconciler: %w", err)
 	}
 
-	if err = (&controllers.DeploymentTemplateReconciler{
-		Client:        mgr.GetClient(),
-		Log:           ctrl.Log.WithName("controllers").WithName("Arm"),
-		Scheme:        mgr.GetScheme(),
-		DynamicClient: dynamicClient,
+	if err = (&bicepcontroller.DeploymentTemplateReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Arm"),
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("failed to initialize arm reconciler: %w", err)
 	}
@@ -160,7 +161,7 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize deployment webhook: %w", err)
 	}
-	err = (&radiusv1alpha1.Arm{}).SetupWebhookWithManager(mgr)
+	err = (&bicepv1alpha1.DeploymentTemplate{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize arm webhook: %w", err)
 	}

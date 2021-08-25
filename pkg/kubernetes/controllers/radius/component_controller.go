@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/model/components"
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"

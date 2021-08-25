@@ -15,7 +15,7 @@ import (
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
+	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
 )
 
 // DeploymentTemplateReconciler reconciles a Arm object
@@ -41,7 +41,7 @@ type DeploymentTemplateReconciler struct {
 func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("arm", req.NamespacedName)
 
-	arm := &radiusv1alpha1.DeploymentTemplate{}
+	arm := &bicepv1alpha1.DeploymentTemplate{}
 	err := r.Get(ctx, req.NamespacedName, arm)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -76,6 +76,6 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 // SetupWithManager sets up the controller with the Manager.
 func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&radiusv1alpha1.DeploymentTemplate{}).
+		For(&bicepv1alpha1.DeploymentTemplate{}).
 		Complete(r)
 }
