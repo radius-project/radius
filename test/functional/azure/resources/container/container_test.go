@@ -31,26 +31,22 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					// Intentionally Empty
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "frontend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},
@@ -96,27 +92,23 @@ func Test_ContainerInboundRoute(t *testing.T) {
 					},
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "frontend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDIngress:    validation.NewOutputResource(outputresource.LocalIDIngress, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDIngress:    validation.NewOutputResource(outputresource.LocalIDIngress, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},
@@ -156,26 +148,22 @@ func Test_ContainerManualScale(t *testing.T) {
 					},
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "frontend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "backend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},

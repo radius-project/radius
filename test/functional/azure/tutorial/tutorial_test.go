@@ -35,32 +35,28 @@ func Test_TutorialDaprMicroservices(t *testing.T) {
 					},
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "nodeapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pythonapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "statestore",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprStateStoreAzureStorage: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreAzureStorage, outputresource.TypeARM, outputresource.KindDaprStateStoreAzureStorage, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDaprStateStoreAzureStorage: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreAzureStorage, outputresource.TypeARM, outputresource.KindDaprStateStoreAzureStorage, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},
@@ -126,38 +122,34 @@ func Test_TutorialWebApp(t *testing.T) {
 					},
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: applicationName,
 						ComponentName:   componentNameKV,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDKeyVault: validation.NewOutputResource(outputresource.LocalIDKeyVault, outputresource.TypeARM, outputresource.KindAzureKeyVault, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDKeyVault: validation.NewOutputResource(outputresource.LocalIDKeyVault, outputresource.TypeARM, outputresource.KindAzureKeyVault, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: applicationName,
 						ComponentName:   componentNameDB,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, outputresource.KindAzureCosmosAccountMongo, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, outputresource.KindAzureCosmosDBMongo, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, outputresource.KindAzureCosmosAccountMongo, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, outputresource.KindAzureCosmosDBMongo, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: applicationName,
 						ComponentName:   componentNameWebApp,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment:                    validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDService:                       validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDUserAssignedManagedIdentityKV: validation.NewOutputResource(outputresource.LocalIDUserAssignedManagedIdentityKV, outputresource.TypeARM, outputresource.KindAzureUserAssignedManagedIdentity, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDRoleAssignmentKVKeys:          validation.NewOutputResource(outputresource.LocalIDRoleAssignmentKVKeys, outputresource.TypeARM, outputresource.KindAzureRoleAssignment, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDRoleAssignmentKVSecretsCerts:  validation.NewOutputResource(outputresource.LocalIDRoleAssignmentKVSecretsCerts, outputresource.TypeARM, outputresource.KindAzureRoleAssignment, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDAADPodIdentity:                validation.NewOutputResource(outputresource.LocalIDAADPodIdentity, outputresource.TypeAADPodIdentity, outputresource.KindAzurePodIdentity, true, validation.ExpectedOutputResourceStatus{}),
-							outputresource.LocalIDKeyVaultSecret:                validation.NewOutputResource(outputresource.LocalIDKeyVaultSecret, outputresource.TypeARM, outputresource.KindAzureKeyVaultSecret, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment:                    validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDService:                       validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDUserAssignedManagedIdentityKV: validation.NewOutputResource(outputresource.LocalIDUserAssignedManagedIdentityKV, outputresource.TypeARM, outputresource.KindAzureUserAssignedManagedIdentity, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDRoleAssignmentKVKeys:          validation.NewOutputResource(outputresource.LocalIDRoleAssignmentKVKeys, outputresource.TypeARM, outputresource.KindAzureRoleAssignment, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDRoleAssignmentKVSecretsCerts:  validation.NewOutputResource(outputresource.LocalIDRoleAssignmentKVSecretsCerts, outputresource.TypeARM, outputresource.KindAzureRoleAssignment, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDAADPodIdentity:                validation.NewOutputResource(outputresource.LocalIDAADPodIdentity, outputresource.TypeAADPodIdentity, outputresource.KindAzurePodIdentity, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDKeyVaultSecret:                validation.NewOutputResource(outputresource.LocalIDKeyVaultSecret, outputresource.TypeARM, outputresource.KindAzureKeyVaultSecret, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},

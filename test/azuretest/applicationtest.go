@@ -16,15 +16,14 @@ import (
 )
 
 type Step struct {
-	Executor                 StepExecutor
-	AzureResources           *validation.AzureResourceSet
-	Components               *validation.ComponentSet
-	Pods                     *validation.K8sObjectSet
-	PostStepVerify           func(ctx context.Context, t *testing.T, at ApplicationTest)
-	SkipAzureResources       bool
-	SkipComponents           bool
-	SkipPods                 bool
-	SkipOutputResourceStatus bool
+	Executor           StepExecutor
+	AzureResources     *validation.AzureResourceSet
+	Components         *validation.ComponentSet
+	Pods               *validation.K8sObjectSet
+	PostStepVerify     func(ctx context.Context, t *testing.T, at ApplicationTest)
+	SkipAzureResources bool
+	SkipComponents     bool
+	SkipPods           bool
 }
 
 type StepExecutor interface {
@@ -114,7 +113,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.Components, step.SkipOutputResourceStatus)
+				validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.Components)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 

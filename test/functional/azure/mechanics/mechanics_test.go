@@ -27,17 +27,13 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 					// None
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "a",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},
@@ -57,24 +53,20 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 					// None
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "a",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "b",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},
@@ -106,24 +98,20 @@ func Test_RedeployWithoutComponent(t *testing.T) {
 					// None
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "a",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "b",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},
@@ -144,17 +132,13 @@ func Test_RedeployWithoutComponent(t *testing.T) {
 					// None
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "a",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},

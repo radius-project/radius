@@ -40,24 +40,20 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 
 			// This is currently flaky, tracked by #768
 			SkipAzureResources: true,
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},
@@ -99,24 +95,20 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 					},
 				},
 			},
-
-			// Health has not yet been implemented
-			SkipOutputResourceStatus: true,
-
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
 						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, false, false, validation.ExpectedOutputResourceStatus{}),
 						},
 					},
 				},

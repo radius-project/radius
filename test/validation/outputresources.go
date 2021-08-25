@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,10 +27,8 @@ type Component struct {
 }
 
 type ExpectedOutputResourceStatus struct {
-	HealthState              string
-	HealthStateErrorDetails  string
-	ProvisioningState        string
-	ProvisioningErrorDetails string
+	HealthState       string
+	ProvisioningState string
 }
 
 type ExpectedOutputResource struct {
@@ -38,34 +37,29 @@ type ExpectedOutputResource struct {
 	ResourceKind       string
 	Managed            bool
 	Status             ExpectedOutputResourceStatus
-}
-
-type ActualOutputResourceStatus struct {
-	HealthState              string
-	HealthStateErrorDetails  string
-	ProvisioningState        string
-	ProvisioningErrorDetails string
+	verifyStatus       bool
 }
 type ActualOutputResource struct {
-	LocalID            string                     `json:"localId"`
-	Managed            bool                       `json:"managed"`
-	ResourceKind       string                     `json:"resourceKind"`
-	OutputResourceType string                     `json:"outputResourceType"`
-	OutputResourceInfo interface{}                `json:"outputResourceInfo"`
-	Status             ActualOutputResourceStatus `json:"status"`
+	LocalID            string                    `json:"localId"`
+	Managed            bool                      `json:"managed"`
+	ResourceKind       string                    `json:"resourceKind"`
+	OutputResourceType string                    `json:"outputResourceType"`
+	OutputResourceInfo interface{}               `json:"outputResourceInfo"`
+	Status             rest.OutputResourceStatus `json:"status"`
 }
 
-func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, status ExpectedOutputResourceStatus) ExpectedOutputResource {
+func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, verifyStatus bool, status ExpectedOutputResourceStatus) ExpectedOutputResource {
 	return ExpectedOutputResource{
 		LocalID:            localID,
 		OutputResourceType: outputResourceType,
 		ResourceKind:       resourceKind,
 		Managed:            managed,
 		Status:             status,
+		verifyStatus:       verifyStatus,
 	}
 }
 
-func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, expected ComponentSet, skipVerifyStatus bool) {
+func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, expected ComponentSet) {
 	componentsClient := radclient.NewComponentClient(armConnection, subscriptionID)
 	failed := false
 
@@ -110,7 +104,11 @@ func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, su
 					continue // not a match, skip
 				}
 
-				if !skipVerifyStatus {
+				// TODO: Remove this check once health checks are implemented for all kinds of output resources
+				// https://github.com/Azure/radius/issues/827.
+				// Till then, we will selectively verify the health/provisioning state for output resources that
+				// have the functionality implemented.
+				if expectedResource.verifyStatus {
 					if !expectedResource.IsMatchStatus(actualResource) {
 						continue // not a match, skip
 					}
@@ -176,7 +174,5 @@ func (e ExpectedOutputResource) IsMatch(a ActualOutputResource) bool {
 func (e ExpectedOutputResource) IsMatchStatus(a ActualOutputResource) bool {
 	return e.LocalID == a.LocalID &&
 		e.Status.HealthState == a.Status.HealthState &&
-		e.Status.HealthStateErrorDetails == a.Status.HealthStateErrorDetails &&
-		e.Status.ProvisioningState == a.Status.ProvisioningState &&
-		e.Status.ProvisioningErrorDetails == a.Status.ProvisioningErrorDetails
+		e.Status.ProvisioningState == a.Status.ProvisioningState
 }
