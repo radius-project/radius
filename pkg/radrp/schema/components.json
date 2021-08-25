@@ -11,34 +11,34 @@
       ],
       "oneOf": [
         {
-          "$ref": "container.json#/definitions/ContainerComponentResource"
+          "$ref": "components/container.json#/definitions/ContainerComponentResource"
         },
         {
-          "$ref": "azure-cosmosdb-sql.json#/definitions/AzureCosmosDBSQLComponentResource"
+          "$ref": "components/azure-cosmosdb-sql.json#/definitions/AzureCosmosDBSQLComponentResource"
         },
         {
-          "$ref": "azure-cosmosdb-mongo.json#/definitions/AzureCosmosDBMongoComponentResource"
+          "$ref": "components/azure-cosmosdb-mongo.json#/definitions/AzureCosmosDBMongoComponentResource"
         },
         {
-          "$ref": "azure-keyvault.json#/definitions/AzureKeyVaultComponentResource"
+          "$ref": "components/azure-keyvault.json#/definitions/AzureKeyVaultComponentResource"
         },
         {
-          "$ref": "azure-servicebus.json#/definitions/AzureServiceBusComponentResource"
+          "$ref": "components/azure-servicebus.json#/definitions/AzureServiceBusComponentResource"
         },
         {
-          "$ref": "dapr-state.json#/definitions/DaprStateStoreComponentResource"
+          "$ref": "components/dapr-state.json#/definitions/DaprStateStoreComponentResource"
         },
         {
-          "$ref": "dapr-pubsub.json#/definitions/DaprPubSubComponentResource"
+          "$ref": "components/dapr-pubsub.json#/definitions/DaprPubSubComponentResource"
         },
         {
-          "$ref": "mongodb.json#/definitions/MongoDBComponentResource"
+          "$ref": "components/mongodb.json#/definitions/MongoDBComponentResource"
         },
         {
-          "$ref": "redis.json#/definitions/RedisComponentResource"
+          "$ref": "components/redis.json#/definitions/RedisComponentResource"
         },
         {
-          "$ref": "rabbitmq.json#/definitions/RabbitMQComponentResource"
+          "$ref": "components/rabbitmq.json#/definitions/RabbitMQComponentResource"
         }
       ],
       "required": [

@@ -8,6 +8,7 @@ package schema
 import (
 	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"strings"
 
@@ -44,17 +45,7 @@ var (
 	// lines.
 	//go:embed common-types.json
 	//go:embed traits.json
-	//go:embed basic-component.json
-	//go:embed azure-cosmosdb-sql.json
-	//go:embed azure-cosmosdb-mongo.json
-	//go:embed azure-keyvault.json
-	//go:embed azure-servicebus.json
-	//go:embed container.json
-	//go:embed dapr-pubsub.json
-	//go:embed dapr-state.json
-	//go:embed mongodb.json
-	//go:embed redis.json
-	//go:embed rabbitmq.json
+	//go:embed components/*.json
 	//go:embed components.json
 	//go:embed radius.json
 	jsonFiles embed.FS
@@ -127,16 +118,22 @@ func GetComponentValidator() Validator {
 
 func newValidator(typeName string) *validator {
 	loader := gojsonschema.NewSchemaLoader()
-	files, _ := jsonFiles.ReadDir(".")
-	for _, f := range files {
-		data, err := jsonFiles.ReadFile(f.Name())
+	err := fs.WalkDir(jsonFiles, ".", func(path string, d fs.DirEntry, _ error) error {
+		if d.IsDir() {
+			return nil
+		}
+		data, err := fs.ReadFile(jsonFiles, path)
 		if err != nil {
-			log.Fatalf("Cannot read embedded file %s: %v", f.Name(), err)
+			return fmt.Errorf("cannot read embedded file %s: %w", path, err)
 		}
 		fileLoader := gojsonschema.NewBytesLoader(data)
-		if err = loader.AddSchema( /* url */ "/"+f.Name(), fileLoader); err != nil {
-			log.Fatalf("Failed to parse JSON Schema from %s: %s", f.Name(), err)
+		if err = loader.AddSchema( /* url */ "/"+path, fileLoader); err != nil {
+			return fmt.Errorf("failed to parse JSON Schema from %s: %w", path, err)
 		}
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 	ref := fmt.Sprintf("/radius.json#/definitions/%s", typeName)
 	if strings.HasPrefix(typeName, "/") { // Allowing absolute path.
