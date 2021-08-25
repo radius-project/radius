@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
-	"github.com/Azure/radius/pkg/workloads/containerv1alpha1"
+	"github.com/Azure/radius/pkg/renderers/containerv1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )

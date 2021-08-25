@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -86,7 +87,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
-			return nil, workloads.ErrResourceSpecifiedForManagedResource
+			return nil, renderers.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a cosmosdb instance
@@ -105,10 +106,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	if component.Config.Resource == "" {
-		return nil, workloads.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
 
-	databaseID, err := workloads.ValidateResourceID(component.Config.Resource, SQLResourceType, "CosmosDB SQL Database")
+	databaseID, err := renderers.ValidateResourceID(component.Config.Resource, SQLResourceType, "CosmosDB SQL Database")
 	if err != nil {
 		return nil, err
 	}

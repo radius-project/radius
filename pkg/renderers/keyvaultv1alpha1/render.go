@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -66,7 +67,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	var resource outputresource.OutputResource
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
-			return nil, workloads.ErrResourceSpecifiedForManagedResource
+			return nil, renderers.ErrResourceSpecifiedForManagedResource
 		}
 
 		resource := outputresource.OutputResource{
@@ -84,10 +85,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return []outputresource.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
-			return nil, workloads.ErrResourceMissingForUnmanagedResource
+			return nil, renderers.ErrResourceMissingForUnmanagedResource
 		}
 
-		vaultID, err := workloads.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)
+		vaultID, err := renderers.ValidateResourceID(component.Config.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)
 		if err != nil {
 			return nil, err
 		}

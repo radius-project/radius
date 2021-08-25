@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -113,7 +114,7 @@ func GetConnectionString(ctx context.Context, arm armauth.ArmConfig, accountName
 
 func RenderManaged(component CosmosDBMongoComponent) ([]outputresource.OutputResource, error) {
 	if component.Config.Resource != "" {
-		return nil, workloads.ErrResourceSpecifiedForManagedResource
+		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
 
 	cosmosAccountResource := outputresource.OutputResource{
@@ -145,10 +146,10 @@ func RenderManaged(component CosmosDBMongoComponent) ([]outputresource.OutputRes
 
 func RenderUnmanaged(component CosmosDBMongoComponent) ([]outputresource.OutputResource, error) {
 	if component.Config.Resource == "" {
-		return nil, workloads.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
 
-	databaseID, err := workloads.ValidateResourceID(component.Config.Resource, MongoResourceType, "CosmosDB Mongo Database")
+	databaseID, err := renderers.ValidateResourceID(component.Config.Resource, MongoResourceType, "CosmosDB Mongo Database")
 	if err != nil {
 		return nil, err
 	}

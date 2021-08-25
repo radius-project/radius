@@ -8,6 +8,7 @@ package daprstatestorev1alpha1
 import (
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -17,7 +18,7 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 
 	if component.Config.Managed {
 		if component.Config.Resource != "" {
-			return nil, workloads.ErrResourceSpecifiedForManagedResource
+			return nil, renderers.ErrResourceSpecifiedForManagedResource
 		}
 		resource := outputresource.OutputResource{
 			LocalID: localID,
@@ -37,9 +38,9 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 		return []outputresource.OutputResource{resource}, nil
 	} else {
 		if component.Config.Resource == "" {
-			return nil, workloads.ErrResourceMissingForUnmanagedResource
+			return nil, renderers.ErrResourceMissingForUnmanagedResource
 		}
-		accountID, err := workloads.ValidateResourceID(component.Config.Resource, StorageAccountResourceType, "Storage Account")
+		accountID, err := renderers.ValidateResourceID(component.Config.Resource, StorageAccountResourceType, "Storage Account")
 		if err != nil {
 			return nil, err
 		}
