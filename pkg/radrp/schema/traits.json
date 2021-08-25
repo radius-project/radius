@@ -4,68 +4,12 @@
       "description": "Trait of a component.",
       "type": "object",
       "oneOf": [{
-        "$ref": "#/definitions/DaprTrait"
+        "$ref": "traits/dapr.json#/definitions/DaprTrait"
       }, {
-        "$ref": "#/definitions/InboundRouteTrait"
+        "$ref": "traits/inbound-route.json#/definitions/InboundRouteTrait"
       }, {
-        "$ref": "#/definitions/ManualScalingTrait"
+        "$ref": "traits/manual-scaling.json#/definitions/ManualScalingTrait"
       }]
-    },
-    "DaprTrait": {
-      "type": "object",
-      "description": "Dapr ComponentTrait",
-      "properties": {
-        "kind": {
-          "description": "Trait kind.",
-          "type": "string",
-          "enum": ["dapr.io/App@v1alpha1"]
-        },
-        "appPort": {
-          "description": "Dapr appPort.",
-          "type": "integer"
-        },
-        "appId": {
-          "description": "Dapr appId.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "InboundRouteTrait": {
-      "type": "object",
-      "description": "InboundRoute ComponentTrait",
-      "properties": {
-        "kind": {
-          "description": "Trait kind.",
-          "type": "string",
-          "enum": ["radius.dev/InboundRoute@v1alpha1"]
-        },
-        "hostName": {
-          "description": "Host name.",
-          "type": "string"
-        },
-        "binding": {
-          "description": "Binding name.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "ManualScalingTrait": {
-      "type": "object",
-      "description": "ManualScaling ComponentTrait",
-      "properties": {
-        "kind": {
-          "description": "Trait kind.",
-          "type": "string",
-          "enum": ["radius.dev/ManualScaling@v1alpha1"]
-        },
-        "replicas": {
-          "description": "Replica count.",
-          "type": "integer"
-        }
-      },
-      "additionalProperties": false
     }
   }
 }

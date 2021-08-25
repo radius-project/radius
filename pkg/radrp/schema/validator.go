@@ -44,6 +44,7 @@ var (
 	// each file may depend on one or more files on the preceding
 	// lines.
 	//go:embed common-types.json
+	//go:embed traits/*.json
 	//go:embed traits.json
 	//go:embed components/*.json
 	//go:embed components.json
@@ -133,7 +134,7 @@ func newValidator(typeName string) *validator {
 		return nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error:", err)
 	}
 	ref := fmt.Sprintf("/radius.json#/definitions/%s", typeName)
 	if strings.HasPrefix(typeName, "/") { // Allowing absolute path.
