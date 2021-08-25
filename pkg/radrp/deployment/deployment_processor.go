@@ -10,12 +10,12 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
+	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 )

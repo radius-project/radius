@@ -6,7 +6,7 @@
 package daprstatestorev1alpha1
 
 import (
-	"github.com/Azure/radius/pkg/radrp/handlers"
+	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 )

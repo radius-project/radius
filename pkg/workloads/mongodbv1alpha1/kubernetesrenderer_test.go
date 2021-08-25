@@ -9,9 +9,9 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
-	"github.com/Azure/radius/pkg/radrp/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
