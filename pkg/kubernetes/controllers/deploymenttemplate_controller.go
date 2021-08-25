@@ -9,28 +9,25 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
+	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
 )
 
-// ArmReconciler reconciles a Arm object
-type ArmReconciler struct {
+// DeploymentTemplateReconciler reconciles a Arm object
+type DeploymentTemplateReconciler struct {
 	client.Client
-	Log           logr.Logger
-	Scheme        *runtime.Scheme
-	DynamicClient dynamic.Interface
+	Log    logr.Logger
+	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=radius.dev,resources=arms,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=arms/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=arms/finalizers,verbs=update
+//+kubebuilder:rbac:groups=bicep.dev,resources=deploymenttemplates,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=bicep.dev,resources=deploymenttemplates/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=bicep.dev,resources=deploymenttemplates/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -41,16 +38,16 @@ type ArmReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.2/pkg/reconcile
-func (r *ArmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("arm", req.NamespacedName)
 
-	arm := &radiusv1alpha1.Arm{}
+	arm := &radiusv1alpha1.DeploymentTemplate{}
 	err := r.Get(ctx, req.NamespacedName, arm)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	template, err := armtemplate.Parse(arm.Spec.Content)
+	template, err := armtemplate.Parse(string(arm.Spec.Content.Raw))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -66,12 +63,8 @@ func (r *ArmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return ctrl.Result{}, err
 		}
 
-		data, err := k8sInfo.Unstructured.MarshalJSON()
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		r.Client.Patch(ctx, k8sInfo.Unstructured, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 
-		_, err = r.DynamicClient.Resource(k8sInfo.GVR).Namespace(req.NamespacedName.Namespace).Patch(ctx, k8sInfo.Name, types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -81,8 +74,8 @@ func (r *ArmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ArmReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&radiusv1alpha1.Arm{}).
+		For(&radiusv1alpha1.DeploymentTemplate{}).
 		Complete(r)
 }

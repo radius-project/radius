@@ -6,23 +6,23 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: arms.radius.dev
+  name: deploymenttemplates.radius.dev
 spec:
   group: radius.dev
   names:
     categories:
     - all
     - radius
-    kind: Arm
-    listKind: ArmList
-    plural: arms
-    singular: arm
+    kind: DeploymentTemplate
+    listKind: DeploymentTemplateList
+    plural: deploymenttemplates
+    singular: deploymenttemplate
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Arm is the Schema for the Arms API
+        description: DeploymentTemplate is the Schema for the DeploymentTemplate API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -37,13 +37,13 @@ spec:
           metadata:
             type: object
           spec:
-            description: ArmSpec defines the desired state of Arm
+            description: DeploymentTemplateSpec defines the desired state of Arm
             properties:
               content:
-                type: string
+                type: object
             type: object
           status:
-            description: ArmStatus defines the observed state of Arm
+            description: DeploymentTemplateStatus defines the observed state of Arm
             type: object
         type: object
     served: true

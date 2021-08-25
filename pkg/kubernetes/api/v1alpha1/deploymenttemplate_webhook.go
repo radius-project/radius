@@ -18,42 +18,42 @@ import (
 )
 
 // log is for logging in this package.
-var armlog = logf.Log.WithName("arm-resource")
+var armlog = logf.Log.WithName("deploymenttemplate-resource")
 
-func (r *Arm) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *DeploymentTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
 }
 
-var _ webhook.Validator = &Arm{}
+var _ webhook.Validator = &DeploymentTemplate{}
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-radius-dev-v1alpha1-arm,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=arms,verbs=create;update;delete,versions=v1alpha1,name=varm.radius.dev,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/validate-radius-dev-v1alpha1-deploymenttemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=bicep.dev,resources=deploymenttemplates,verbs=create;update;delete,versions=v1alpha1,name=deploymenttemplate-validator.bicep.dev,admissionReviewVersions={v1,v1beta1}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Arm) ValidateCreate() error {
+func (r *DeploymentTemplate) ValidateCreate() error {
 	armlog.Info("validate create", "name", r.Name)
 
 	return validateArm(r)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Arm) ValidateUpdate(old runtime.Object) error {
+func (r *DeploymentTemplate) ValidateUpdate(old runtime.Object) error {
 	armlog.Info("validate update", "name", r.Name)
 
 	return validateArm(r)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Arm) ValidateDelete() error {
+func (r *DeploymentTemplate) ValidateDelete() error {
 	armlog.Info("validate delete", "name", r.Name)
 
 	return validateArm(r)
 }
 
-func validateArm(r *Arm) error {
-	template, err := armtemplate.Parse(r.Spec.Content)
+func validateArm(r *DeploymentTemplate) error {
+	template, err := armtemplate.Parse(string(r.Spec.Content.Raw))
 	if err != nil {
 		return err
 	}

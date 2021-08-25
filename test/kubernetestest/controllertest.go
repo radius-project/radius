@@ -139,7 +139,7 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize deployment reconciler: %w", err)
 	}
 
-	if err = (&controllers.ArmReconciler{
+	if err = (&controllers.DeploymentTemplateReconciler{
 		Client:        mgr.GetClient(),
 		Log:           ctrl.Log.WithName("controllers").WithName("Arm"),
 		Scheme:        mgr.GetScheme(),
