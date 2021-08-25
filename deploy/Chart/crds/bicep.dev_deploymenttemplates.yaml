@@ -12,7 +12,7 @@ spec:
   names:
     categories:
     - all
-    - radius
+    - bicep
     kind: DeploymentTemplate
     listKind: DeploymentTemplateList
     plural: deploymenttemplates
