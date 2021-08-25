@@ -54,6 +54,7 @@ var (
 	//go:embed dapr-state.json
 	//go:embed mongodb.json
 	//go:embed redis.json
+	//go:embed rabbitmq.json
 	//go:embed components.json
 	//go:embed radius.json
 	jsonFiles embed.FS
@@ -120,6 +121,10 @@ func ValidatorFor(obj interface{}) (Validator, error) {
 	return nil, fmt.Errorf("Can't find a JSON validator for type %s", objT)
 }
 
+func GetComponentValidator() Validator {
+	return componentValidator
+}
+
 func newValidator(typeName string) *validator {
 	loader := gojsonschema.NewSchemaLoader()
 	files, _ := jsonFiles.ReadDir(".")
@@ -164,4 +169,22 @@ func invalidJSONError(err error) []ValidationError {
 		Message:   "invalid JSON error",
 		JSONError: err,
 	}}
+}
+
+type AggregateValidationError struct {
+	Details []ValidationError
+}
+
+func (v *AggregateValidationError) Error() string {
+	var message strings.Builder
+	fmt.Fprintln(&message, "failed validation(s):")
+	for _, err := range v.Details {
+		if err.JSONError != nil {
+			// The given document isn't even JSON.
+			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
+		} else {
+			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
+		}
+	}
+	return message.String()
 }

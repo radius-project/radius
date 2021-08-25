@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -335,7 +334,7 @@ func resourceID(req *http.Request) resources.ResourceID {
 
 func badRequest(ctx context.Context, w http.ResponseWriter, err error) {
 	logger := radlogger.GetLogger(ctx)
-	validationErr, ok := err.(*validationError)
+	validationErr, ok := err.(*schema.AggregateValidationError)
 	var body *armerrors.ErrorResponse
 	if !ok {
 		// Try to use the ARM format to send back the error info
@@ -350,10 +349,10 @@ func badRequest(ctx context.Context, w http.ResponseWriter, err error) {
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
 				Message: "Validation error",
-				Details: make([]armerrors.ErrorDetails, len(validationErr.details)),
+				Details: make([]armerrors.ErrorDetails, len(validationErr.Details)),
 			},
 		}
-		for i, err := range validationErr.details {
+		for i, err := range validationErr.Details {
 			if err.JSONError != nil {
 				// The given document isn't even JSON.
 				body.Error.Details[i].Message = fmt.Sprintf("%s: %v", err.Message, err.JSONError)
@@ -432,8 +431,8 @@ func readJSONResource(req *http.Request, obj rest.Resource, id resources.Resourc
 		return fmt.Errorf("cannot find validator for %T: %w", obj, err)
 	}
 	if errs := validator.ValidateJSON(data); len(errs) != 0 {
-		return &validationError{
-			details: errs,
+		return &schema.AggregateValidationError{
+			Details: errs,
 		}
 	}
 	err = json.Unmarshal(data, obj)
@@ -445,22 +444,4 @@ func readJSONResource(req *http.Request, obj rest.Resource, id resources.Resourc
 	obj.SetID(id)
 
 	return nil
-}
-
-type validationError struct {
-	details []schema.ValidationError
-}
-
-func (v *validationError) Error() string {
-	var message strings.Builder
-	fmt.Fprintln(&message, "failed validation(s):")
-	for _, err := range v.details {
-		if err.JSONError != nil {
-			// The given document isn't even JSON.
-			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
-		} else {
-			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
-		}
-	}
-	return message.String()
 }

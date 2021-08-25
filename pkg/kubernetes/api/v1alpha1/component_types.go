@@ -13,7 +13,7 @@ import (
 
 // ComponentSpec defines the desired state of Component
 type ComponentSpec struct {
-	Kind string `json:"kind"`
+	Kind string `json:"kind,omitempty"`
 
 	Hierarchy []string `json:"hierarchy,omitempty"`
 
@@ -31,7 +31,7 @@ type ComponentSpec struct {
 
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
-	Bindings runtime.RawExtension `json:"bindings,omitempty"`
+	Bindings *runtime.RawExtension `json:"bindings,omitempty"`
 
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields

@@ -9,10 +9,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/workloads"
-	"github.com/Azure/radius/test/kubernetestest"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -65,7 +65,7 @@ func Test_Render_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	deployment := kubernetestest.FindDeployment(resources)
+	deployment := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
 	expected := map[string]string{

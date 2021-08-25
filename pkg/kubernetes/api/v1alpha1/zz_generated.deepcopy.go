@@ -196,7 +196,11 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 			}
 		}
 	}
-	in.Bindings.DeepCopyInto(&out.Bindings)
+	if in.Bindings != nil {
+		in, out := &in.Bindings, &out.Bindings
+		*out = new(runtime.RawExtension)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Traits != nil {
 		in, out := &in.Traits, &out.Traits
 		*out = new([]runtime.RawExtension)

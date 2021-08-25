@@ -235,6 +235,7 @@ jobs:
         export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-kubernetes
     - name: Upload container logs
+      if: always()
       uses: actions/upload-artifact@master
       with:
         name: container_logs

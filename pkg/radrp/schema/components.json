@@ -36,6 +36,9 @@
         },
         {
           "$ref": "redis.json#/definitions/RedisComponentResource"
+        },
+        {
+          "$ref": "rabbitmq.json#/definitions/RabbitMQComponentResource"
         }
       ],
       "required": [
