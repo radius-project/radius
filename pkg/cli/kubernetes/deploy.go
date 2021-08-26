@@ -8,48 +8,35 @@ package kubernetes
 import (
 	"context"
 
+	"github.com/Azure/radius/pkg/kubernetes"
+	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/dynamic"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type KubernetesDeploymentClient struct {
-	Client    dynamic.Interface
+	Client    client.Client
 	Namespace string
 }
 
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) error {
-	gvr := schema.GroupVersionResource{
-		Group:    "bicep.dev",
-		Version:  "v1alpha1",
-		Resource: "deploymenttemplates",
-	}
-
 	kind := "DeploymentTemplate"
 
 	// TODO name and annotations
-	uns := unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": gvr.Group + "/" + gvr.Version,
-			"kind":       kind,
-			"metadata": map[string]interface{}{
-				"generateName": "arm-",
-				"namespace":    c.Namespace,
-			},
-			"spec": map[string]interface{}{
-				"content": content,
-			},
+	deployment := bicepv1alpha1.DeploymentTemplate{
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "bicep.dev/v1alpha1",
+			Kind:       kind,
+		},
+		ObjectMeta: v1.ObjectMeta{
+			GenerateName: "deploymenttemplate-",
+			Namespace:    c.Namespace,
+		},
+		Spec: bicepv1alpha1.DeploymentTemplateSpec{
+			Content: content,
 		},
 	}
 
-	data, err := uns.MarshalJSON()
-	if err != nil {
-		return err
-	}
-
-	// TODO remove name/ use controller runtime client to deploy
-	_, err = c.Client.Resource(gvr).Namespace(c.Namespace).Patch(ctx, "arm", types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
+	err := c.Client.Patch(ctx, &deployment, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	return err
 }
