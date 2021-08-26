@@ -38,6 +38,8 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
+
+	utilruntime.Must(bicepv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 	_ = scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, converters.ConvertComponentToInternal)
 }
