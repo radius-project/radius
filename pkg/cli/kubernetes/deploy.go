@@ -49,6 +49,7 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 		return err
 	}
 
+	// TODO remove name/ use controller runtime client to deploy
 	_, err = c.Client.Resource(gvr).Namespace(c.Namespace).Patch(ctx, "arm", types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
-	return nil
+	return err
 }

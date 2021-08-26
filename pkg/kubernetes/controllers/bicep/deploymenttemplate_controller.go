@@ -63,7 +63,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 
-		r.Client.Patch(ctx, k8sInfo.Unstructured, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+		err = r.Client.Patch(ctx, k8sInfo.Unstructured, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 
 		if err != nil {
 			return ctrl.Result{}, err

@@ -72,7 +72,8 @@ func main() {
 		CertDir:                certDir,
 	})
 	if err != nil {
-
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
 	}
 
 	if err = (&radcontroller.ApplicationReconciler{
