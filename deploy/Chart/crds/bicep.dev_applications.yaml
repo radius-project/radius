@@ -6,23 +6,23 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: deploymenttemplates.bicep.dev
+  name: applications.bicep.dev
 spec:
   group: bicep.dev
   names:
     categories:
     - all
-    - bicep
-    kind: DeploymentTemplate
-    listKind: DeploymentTemplateList
-    plural: deploymenttemplates
-    singular: deploymenttemplate
+    - radius
+    kind: Application
+    listKind: ApplicationList
+    plural: applications
+    singular: application
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: DeploymentTemplate is the Schema for the DeploymentTemplate API
+        description: Application is the Schema for the applications API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -37,13 +37,15 @@ spec:
           metadata:
             type: object
           spec:
-            description: DeploymentTemplateSpec defines the desired state of Arm
+            description: ApplicationSpec defines the desired state of Application
             properties:
-              content:
-                type: string
+              hierarchy:
+                items:
+                  type: string
+                type: array
             type: object
           status:
-            description: DeploymentTemplateStatus defines the observed state of Arm
+            description: ApplicationStatus defines the observed state of Application
             type: object
         type: object
     served: true

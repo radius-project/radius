@@ -104,13 +104,13 @@ webhooks:
     service:
       name: webhook-service
       namespace: radius-system
-      path: /validate-radius-dev-v1alpha1-arm
+      path: /validate-bicep-dev-v1alpha1-deploymenttemplate
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
-  name: arm-validation.radius.dev
+  name: deploymenttemplate-validation.bicep.dev
   rules:
   - apiGroups:
-    - radius.dev
+    - bicep.dev
     apiVersions:
     - v1alpha1
     operations:
@@ -118,5 +118,5 @@ webhooks:
     - UPDATE
     - DELETE
     resources:
-    - arms
+    - deploymenttemplates
   sideEffects: None

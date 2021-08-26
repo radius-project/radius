@@ -22,12 +22,12 @@ type KubernetesDeploymentClient struct {
 
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) error {
 	gvr := schema.GroupVersionResource{
-		Group:    "radius.dev",
+		Group:    "bicep.dev",
 		Version:  "v1alpha1",
-		Resource: "arms",
+		Resource: "deploymenttemplates",
 	}
 
-	kind := "Arm"
+	kind := "DeploymentTemplate"
 
 	// TODO name and annotations
 	uns := unstructured.Unstructured{
@@ -35,8 +35,8 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 			"apiVersion": gvr.Group + "/" + gvr.Version,
 			"kind":       kind,
 			"metadata": map[string]interface{}{
-				"name":      "arm",
-				"namespace": c.Namespace,
+				"generateName": "arm-",
+				"namespace":    c.Namespace,
 			},
 			"spec": map[string]interface{}{
 				"content": content,

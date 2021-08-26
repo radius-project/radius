@@ -53,7 +53,7 @@ func (r *DeploymentTemplate) ValidateDelete() error {
 }
 
 func validateArm(r *DeploymentTemplate) error {
-	template, err := armtemplate.Parse(string(r.Spec.Content.Raw))
+	template, err := armtemplate.Parse(r.Spec.Content)
 	if err != nil {
 		return err
 	}

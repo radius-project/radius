@@ -39,7 +39,7 @@ type DeploymentTemplateReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.2/pkg/reconcile
 func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = r.Log.WithValues("arm", req.NamespacedName)
+	_ = r.Log.WithValues("deploymenttemplate", req.NamespacedName)
 
 	arm := &bicepv1alpha1.DeploymentTemplate{}
 	err := r.Get(ctx, req.NamespacedName, arm)
@@ -47,7 +47,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	template, err := armtemplate.Parse(string(arm.Spec.Content.Raw))
+	template, err := armtemplate.Parse(arm.Spec.Content)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -73,8 +73,8 @@ func StartController() error {
 	scheme := runtime.NewScheme()
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(bicepv1alpha1.AddToScheme(scheme))
 
 	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, converters.ConvertComponentToInternal)
 	if err != nil {
@@ -84,11 +84,6 @@ func StartController() error {
 	cfg, err := testEnv.Start()
 	if err != nil {
 		return fmt.Errorf("failed to initialize environment: %w", err)
-	}
-
-	err = radiusv1alpha1.AddToScheme(scheme)
-	if err != nil {
-		return fmt.Errorf("could not add scheme: %w", err)
 	}
 
 	//+kubebuilder:scaffold:scheme
@@ -143,7 +138,7 @@ func StartController() error {
 
 	if err = (&bicepcontroller.DeploymentTemplateReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Arm"),
+		Log:    ctrl.Log.WithName("controllers").WithName("DeploymentTemplate"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("failed to initialize arm reconciler: %w", err)
@@ -243,6 +238,7 @@ func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	uns := &unstructured.Unstructured{}
 	err = json.Unmarshal(content, uns)
 	return uns, err
@@ -267,11 +263,11 @@ func gvr(unst *unstructured.Unstructured) (schema.GroupVersionResource, error) {
 			Version:  "v1alpha1",
 			Resource: "deployments",
 		}, nil
-	} else if unst.GroupVersionKind().Kind == "Arm" {
+	} else if unst.GroupVersionKind().Kind == "DeploymentTemplate" {
 		return schema.GroupVersionResource{
-			Group:    "radius.dev",
+			Group:    "bicep.dev",
 			Version:  "v1alpha1",
-			Resource: "arms",
+			Resource: "deploymenttemplates",
 		}, nil
 	}
 

@@ -1,6 +1,6 @@
 {
-    "apiVersion": "radius.dev/v1alpha1",
-    "kind": "Arm",
+    "apiVersion": "bicep.dev/v1alpha1",
+    "kind": "DeploymentTemplate",
     "metadata": {
         "name": "arm",
         "namespace": "arm"
