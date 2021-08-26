@@ -103,10 +103,10 @@ func main() {
 
 	if err = (&bicepcontroller.DeploymentTemplateReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Arm"),
+		Log:    ctrl.Log.WithName("controllers").WithName("DeploymentTemplate"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Arm")
+		setupLog.Error(err, "unable to create controller", "controller", "DeploymentTemplate")
 		os.Exit(1)
 	}
 
@@ -124,7 +124,7 @@ func main() {
 			os.Exit(1)
 		}
 		if err = (&bicepv1alpha1.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
+			setupLog.Error(err, "unable to create webhook", "webhook", "DeploymentTemplate")
 			os.Exit(1)
 		}
 	}
