@@ -37,6 +37,6 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 		},
 	}
 
-	err := c.Client.Patch(ctx, &deployment, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	err := c.Client.Create(ctx, &deployment, &client.CreateOptions{FieldManager: kubernetes.FieldManager})
 	return err
 }
