@@ -26,21 +26,16 @@ type Component struct {
 	OutputResources map[string]ExpectedOutputResource
 }
 
-type ExpectedOutputResourceStatus struct {
-	HealthState       string
-	ProvisioningState string
-}
-
 type ExpectedOutputResource struct {
 	LocalID            string
 	OutputResourceType string
 	ResourceKind       string
 	Managed            bool
-	Status             ExpectedOutputResourceStatus
+	Status             rest.OutputResourceStatus
 	verifyStatus       bool
 }
 
-func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, verifyStatus bool, status ExpectedOutputResourceStatus) ExpectedOutputResource {
+func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, verifyStatus bool, status rest.OutputResourceStatus) ExpectedOutputResource {
 	return ExpectedOutputResource{
 		LocalID:            localID,
 		OutputResourceType: outputResourceType,

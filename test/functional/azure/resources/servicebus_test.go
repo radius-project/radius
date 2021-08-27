@@ -49,7 +49,7 @@ func Test_ServiceBusManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "sender",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{

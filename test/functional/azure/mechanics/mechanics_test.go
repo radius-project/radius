@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 )
@@ -33,7 +34,7 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "a",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -59,14 +60,14 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "a",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "b",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -104,14 +105,14 @@ func Test_RedeployWithoutComponent(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "a",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "b",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -138,7 +139,7 @@ func Test_RedeployWithoutComponent(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "a",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, validation.ExpectedOutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
