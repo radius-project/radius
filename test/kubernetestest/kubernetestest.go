@@ -16,7 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/Azure/radius/test/radcli"
-	"github.com/Azure/radius/test/utils"
+	"github.com/Azure/radius/test/testcontext"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	k8s "k8s.io/client-go/kubernetes"
@@ -129,7 +129,7 @@ func NewApplicationTest(t *testing.T, application string, steps []Step) Applicat
 }
 
 func (at ApplicationTest) Test(t *testing.T) {
-	ctx, cancel := utils.GetContext(t)
+	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	// Capture all logs from all pods (only run one of these as it will monitor everything)

@@ -9,14 +9,14 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/test/kubernetestest"
-	"github.com/Azure/radius/test/utils"
+	"github.com/Azure/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInvalidTraitDefinition(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := utils.GetContext(t)
+	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	controllerStep := kubernetestest.ControllerStep{
@@ -34,7 +34,7 @@ func TestInvalidTraitDefinition(t *testing.T) {
 func TestInvalidApplication(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := utils.GetContext(t)
+	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	controllerStep := kubernetestest.ControllerStep{
@@ -56,7 +56,7 @@ func TestInvalidApplication(t *testing.T) {
 func TestBasicInvalid(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := utils.GetContext(t)
+	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	controllerStep := kubernetestest.ControllerStep{

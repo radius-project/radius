@@ -16,13 +16,13 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/test/azuretest"
-	"github.com/Azure/radius/test/utils"
+	"github.com/Azure/radius/test/testcontext"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAzureEnvironment(t *testing.T) {
-	ctx, cancel := utils.GetContext(t)
+	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	options := azuretest.NewTestOptions(t)

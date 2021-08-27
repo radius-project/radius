@@ -17,7 +17,7 @@ import (
 
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/radcli"
-	"github.com/Azure/radius/test/utils"
+	"github.com/Azure/radius/test/testcontext"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -28,7 +28,7 @@ const (
 )
 
 func Test_CLI(t *testing.T) {
-	ctx, cancel := utils.GetContext(t)
+	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	options := azuretest.NewTestOptions(t)

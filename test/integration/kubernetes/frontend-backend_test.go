@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/test/kubernetestest"
-	"github.com/Azure/radius/test/utils"
+	"github.com/Azure/radius/test/testcontext"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 
 func TestFrontendBackend(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := utils.GetContext(t)
+	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	controllerStep := kubernetestest.ControllerStep{
