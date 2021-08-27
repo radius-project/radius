@@ -6,14 +6,10 @@
 package handlers
 
 import (
-	"context"
-	"fmt"
 	"math/rand"
 	"strings"
 	"time"
 
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
@@ -39,17 +35,6 @@ func mergeProperties(resource outputresource.OutputResource, existing *db.Deploy
 	}
 
 	return properties
-}
-
-func getResourceGroupLocation(ctx context.Context, armConfig armauth.ArmConfig) (*string, error) {
-	rgc := clients.NewGroupsClient(armConfig.SubscriptionID, armConfig.Auth)
-
-	resourceGroup, err := rgc.Get(ctx, armConfig.ResourceGroup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get resource group location: %w", err)
-	}
-
-	return resourceGroup.Location, nil
 }
 
 type PasswordConditions struct {

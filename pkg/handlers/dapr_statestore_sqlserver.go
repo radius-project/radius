@@ -51,7 +51,7 @@ type daprStateStoreSQLServerHandler struct {
 func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.Existing)
 
-	location, err := getResourceGroupLocation(ctx, handler.arm)
+	location, err := azclients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
 		return nil, err
 	}

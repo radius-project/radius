@@ -159,7 +159,7 @@ func (handler *daprStateStoreAzureStorageHandler) GetStorageAccountByID(ctx cont
 }
 
 func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx context.Context, accountName string, options PutOptions) (*storage.Account, error) {
-	location, err := getResourceGroupLocation(ctx, handler.arm)
+	location, err := azclients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
 		return nil, err
 	}

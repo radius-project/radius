@@ -123,7 +123,7 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 		return nil, fmt.Errorf("failed to convert tenantID to UUID: %w", err)
 	}
 
-	location, err := getResourceGroupLocation(ctx, handler.arm)
+	location, err := azclients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
 		return nil, err
 	}
