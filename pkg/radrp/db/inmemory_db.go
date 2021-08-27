@@ -3,13 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package mocks
+package db
 
 import (
 	"context"
 	"sync"
 
-	radrpdb "github.com/Azure/radius/pkg/radrp/db"
 	resources "github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/golang/mock/gomock"
 )
@@ -19,8 +18,8 @@ func NewInMemoryRadrpDB(ctrl *gomock.Controller) *MockRadrpDB {
 	base := NewMockRadrpDB(ctrl)
 
 	store := &store{
-		applications: map[applicationKey]*map[string]*radrpdb.Application{},
-		operations:   map[string]*radrpdb.Operation{},
+		applications: map[applicationKey]*map[string]*Application{},
+		operations:   map[string]*Operation{},
 		mutex:        sync.Mutex{},
 	}
 
@@ -112,8 +111,8 @@ type applicationKey struct {
 }
 
 type store struct {
-	applications map[applicationKey]*map[string]*radrpdb.Application
-	operations   map[string]*radrpdb.Operation
+	applications map[applicationKey]*map[string]*Application
+	operations   map[string]*Operation
 	mutex        sync.Mutex
 }
 
@@ -124,9 +123,9 @@ func applicationKeyFromID(id resources.ResourceID) applicationKey {
 	}
 }
 
-var _ radrpdb.RadrpDB = &store{}
+var _ RadrpDB = &store{}
 
-func (s *store) findApplication(id resources.ApplicationID) *radrpdb.Application {
+func (s *store) findApplication(id resources.ApplicationID) *Application {
 	k := applicationKeyFromID(id.ResourceID)
 	list := s.applications[k]
 	if list == nil {
@@ -141,17 +140,17 @@ func (s *store) findApplication(id resources.ApplicationID) *radrpdb.Application
 	return app
 }
 
-func (s *store) ListApplicationsByResourceGroup(ctx context.Context, id resources.ResourceID) ([]radrpdb.Application, error) {
+func (s *store) ListApplicationsByResourceGroup(ctx context.Context, id resources.ResourceID) ([]Application, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	k := applicationKeyFromID(id)
 	list := s.applications[k]
 	if list == nil {
-		return []radrpdb.Application{}, nil
+		return []Application{}, nil
 	}
 
-	apps := []radrpdb.Application{}
+	apps := []Application{}
 	for _, v := range *list {
 		apps = append(apps, *v)
 	}
@@ -159,36 +158,36 @@ func (s *store) ListApplicationsByResourceGroup(ctx context.Context, id resource
 	return apps, nil
 }
 
-func (s *store) GetApplicationByID(ctx context.Context, id resources.ApplicationID) (*radrpdb.Application, error) {
+func (s *store) GetApplicationByID(ctx context.Context, id resources.ApplicationID) (*Application, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	return app.DeepCopy(), nil
 }
 
-func (s *store) PatchApplication(ctx context.Context, patch *radrpdb.ApplicationPatch) (bool, error) {
+func (s *store) PatchApplication(ctx context.Context, patch *ApplicationPatch) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	k := applicationKey{patch.SubscriptionID, patch.ResourceGroup}
 	list := s.applications[k]
 	if list == nil {
-		list = &map[string]*radrpdb.Application{}
+		list = &map[string]*Application{}
 		s.applications[k] = list
 	}
 
 	old := (*list)[patch.FriendlyName()]
-	new := &radrpdb.Application{}
+	new := &Application{}
 
 	if old == nil {
-		new.Components = map[string]radrpdb.Component{}
-		new.Deployments = map[string]radrpdb.Deployment{}
-		new.Scopes = map[string]radrpdb.Scope{}
+		new.Components = map[string]Component{}
+		new.Deployments = map[string]Deployment{}
+		new.Scopes = map[string]Scope{}
 	} else {
 		new.Components = old.Components
 		new.Deployments = old.Deployments
@@ -202,14 +201,14 @@ func (s *store) PatchApplication(ctx context.Context, patch *radrpdb.Application
 	return old == nil, nil
 }
 
-func (s *store) UpdateApplication(ctx context.Context, app *radrpdb.Application) (bool, error) {
+func (s *store) UpdateApplication(ctx context.Context, app *Application) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	k := applicationKey{app.SubscriptionID, app.ResourceGroup}
 	list := s.applications[k]
 	if list == nil {
-		list = &map[string]*radrpdb.Application{}
+		list = &map[string]*Application{}
 		s.applications[k] = list
 	}
 	old := (*list)[app.FriendlyName()]
@@ -231,16 +230,16 @@ func (s *store) DeleteApplicationByID(ctx context.Context, id resources.Applicat
 	return nil
 }
 
-func (s *store) ListComponentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]radrpdb.Component, error) {
+func (s *store) ListComponentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Component, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
-	items := []radrpdb.Component{}
+	items := []Component{}
 	for _, item := range app.Components {
 		items = append(items, item)
 	}
@@ -248,30 +247,30 @@ func (s *store) ListComponentsByApplicationID(ctx context.Context, id resources.
 	return items, nil
 }
 
-func (s *store) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*radrpdb.Component, error) {
+func (s *store) GetComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Component, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	item, ok := app.Components[name]
 	if !ok {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	return &item, nil
 }
 
-func (s *store) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *radrpdb.Component) (bool, error) {
+func (s *store) PatchComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Component) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return false, radrpdb.ErrNotFound
+		return false, ErrNotFound
 	}
 
 	_, ok := app.Components[name]
@@ -286,23 +285,23 @@ func (s *store) DeleteComponentByApplicationID(ctx context.Context, id resources
 
 	app := s.findApplication(id)
 	if app == nil {
-		return radrpdb.ErrNotFound
+		return ErrNotFound
 	}
 
 	delete(app.Components, name)
 	return nil
 }
 
-func (s *store) ListDeploymentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]radrpdb.Deployment, error) {
+func (s *store) ListDeploymentsByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Deployment, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
-	items := []radrpdb.Deployment{}
+	items := []Deployment{}
 	for _, d := range app.Deployments {
 		items = append(items, d)
 	}
@@ -310,30 +309,30 @@ func (s *store) ListDeploymentsByApplicationID(ctx context.Context, id resources
 	return items, nil
 }
 
-func (s *store) GetDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*radrpdb.Deployment, error) {
+func (s *store) GetDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Deployment, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	d, ok := app.Deployments[name]
 	if !ok {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	return &d, nil
 }
 
-func (s *store) PatchDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *radrpdb.Deployment) (bool, error) {
+func (s *store) PatchDeploymentByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Deployment) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return false, radrpdb.ErrNotFound
+		return false, ErrNotFound
 	}
 
 	_, ok := app.Deployments[name]
@@ -348,23 +347,23 @@ func (s *store) DeleteDeploymentByApplicationID(ctx context.Context, id resource
 
 	app := s.findApplication(id)
 	if app == nil {
-		return radrpdb.ErrNotFound
+		return ErrNotFound
 	}
 
 	delete(app.Deployments, name)
 	return nil
 }
 
-func (s *store) ListScopesByApplicationID(ctx context.Context, id resources.ApplicationID) ([]radrpdb.Scope, error) {
+func (s *store) ListScopesByApplicationID(ctx context.Context, id resources.ApplicationID) ([]Scope, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
-	items := []radrpdb.Scope{}
+	items := []Scope{}
 	for _, s := range app.Scopes {
 		items = append(items, s)
 	}
@@ -372,30 +371,30 @@ func (s *store) ListScopesByApplicationID(ctx context.Context, id resources.Appl
 	return items, nil
 }
 
-func (s *store) GetScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*radrpdb.Scope, error) {
+func (s *store) GetScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) (*Scope, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	scope, ok := app.Scopes[name]
 	if !ok {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	return &scope, nil
 }
 
-func (s *store) PatchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *radrpdb.Scope) (bool, error) {
+func (s *store) PatchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Scope) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	app := s.findApplication(id)
 	if app == nil {
-		return false, radrpdb.ErrNotFound
+		return false, ErrNotFound
 	}
 
 	_, ok := app.Scopes[name]
@@ -410,26 +409,26 @@ func (s *store) DeleteScopeByApplicationID(ctx context.Context, id resources.App
 
 	app := s.findApplication(id)
 	if app == nil {
-		return radrpdb.ErrNotFound
+		return ErrNotFound
 	}
 
 	delete(app.Scopes, name)
 	return nil
 }
 
-func (s *store) GetOperationByID(ctx context.Context, id resources.ResourceID) (*radrpdb.Operation, error) {
+func (s *store) GetOperationByID(ctx context.Context, id resources.ResourceID) (*Operation, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	op := s.operations[id.ID]
 	if op == nil {
-		return nil, radrpdb.ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	return op, nil
 }
 
-func (s *store) PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *radrpdb.Operation) (bool, error) {
+func (s *store) PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *Operation) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

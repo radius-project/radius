@@ -27,7 +27,7 @@ type DeleteOptions struct {
 }
 
 // ResourceHandler interface defines the methods that every output resource will implement
-//go:generate mockgen -destination=../../mocks/mockhandlers/mock_resource_handler.go -package=mockhandlers github.com/Azure/radius/pkg/handlers ResourceHandler
+//go:generate mockgen -destination=./mock_resource_handler.go -package=handlers -self_package github.com/Azure/radius/pkg/handlers github.com/Azure/radius/pkg/handlers ResourceHandler
 type ResourceHandler interface {
 	Put(ctx context.Context, options *PutOptions) (map[string]string, error)
 	Delete(ctx context.Context, options DeleteOptions) error

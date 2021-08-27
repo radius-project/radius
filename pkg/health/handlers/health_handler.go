@@ -12,7 +12,7 @@ import (
 )
 
 // HealthHandler interface defines the health check methods that every resource kind will implement
-//go:generate mockgen -destination=../mocks/mock_healthhandlers.go -package=mocks github.com/Azure/radius/pkg/health/handlers HealthHandler
+//go:generate mockgen -destination=./mock_healthhandler.go -package=handlers -self_package github.com/Azure/radius/pkg/health/handlers github.com/Azure/radius/pkg/health/handlers HealthHandler
 
 type HealthHandler interface {
 	GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo) healthcontract.ResourceHealthDataMessage

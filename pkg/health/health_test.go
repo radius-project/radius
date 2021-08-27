@@ -12,7 +12,6 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/health/handlers"
-	"github.com/Azure/radius/pkg/health/mocks"
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/health/model/azure"
 	"github.com/Azure/radius/pkg/healthcontract"
@@ -179,7 +178,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 	hpc := make(chan healthcontract.ResourceHealthDataMessage)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	mockHandler := mocks.NewMockHealthHandler(ctrl)
+	mockHandler := handlers.NewMockHealthHandler(ctrl)
 	handlers := map[string]handlers.HealthHandler{
 		"dummy": mockHandler,
 	}
@@ -231,7 +230,7 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 	hpc := make(chan healthcontract.ResourceHealthDataMessage)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	mockHandler := mocks.NewMockHealthHandler(ctrl)
+	mockHandler := handlers.NewMockHealthHandler(ctrl)
 	handlers := map[string]handlers.HealthHandler{
 		"dummy": mockHandler,
 	}

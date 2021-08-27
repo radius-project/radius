@@ -36,7 +36,7 @@ func NewRadrpDB(m *mongo.Database) RadrpDB {
 	}
 }
 
-//go:generate mockgen -destination=../../../mocks/mock_db.go -package=mocks github.com/Azure/radius/pkg/radrp/db RadrpDB
+//go:generate mockgen -destination=./mock_db.go -package=db -self_package github.com/Azure/radius/pkg/radrp/db github.com/Azure/radius/pkg/radrp/db RadrpDB
 
 // RadrpDB is our database abstraction.
 //
