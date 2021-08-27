@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,22 +31,18 @@ type ExpectedOutputResource struct {
 	OutputResourceType string
 	ResourceKind       string
 	Managed            bool
+	Status             rest.OutputResourceStatus
+	verifyStatus       bool
 }
 
-type ActualOutputResource struct {
-	LocalID            string      `json:"localId"`
-	Managed            bool        `json:"managed"`
-	ResourceKind       string      `json:"resourceKind"`
-	OutputResourceType string      `json:"outputResourceType"`
-	OutputResourceInfo interface{} `json:"outputResourceInfo"`
-}
-
-func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool) ExpectedOutputResource {
+func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, verifyStatus bool, status rest.OutputResourceStatus) ExpectedOutputResource {
 	return ExpectedOutputResource{
 		LocalID:            localID,
 		OutputResourceType: outputResourceType,
 		ResourceKind:       resourceKind,
 		Managed:            managed,
+		Status:             status,
+		verifyStatus:       verifyStatus,
 	}
 }
 
@@ -69,10 +66,10 @@ func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, su
 		}
 		t.Logf("")
 
-		all := []ActualOutputResource{}
+		all := []rest.OutputResource{}
 		t.Logf("Actual resources: ")
 		for _, v := range component.ComponentResource.Properties.Status.OutputResources {
-			actual, err := convertToActualOutputResource(v)
+			actual, err := convertToRestOutputResource(v)
 			require.NoError(t, err, "failed to convert output resource")
 			all = append(all, actual)
 
@@ -129,24 +126,36 @@ func ValidateOutputResources(t *testing.T, armConnection *armcore.Connection, su
 	}
 }
 
-func convertToActualOutputResource(obj interface{}) (ActualOutputResource, error) {
+func convertToRestOutputResource(obj interface{}) (rest.OutputResource, error) {
 	b, err := json.Marshal(obj)
 	if err != nil {
-		return ActualOutputResource{}, err
+		return rest.OutputResource{}, err
 	}
 
-	result := ActualOutputResource{}
+	result := rest.OutputResource{}
 	err = json.Unmarshal(b, &result)
 	if err != nil {
-		return ActualOutputResource{}, err
+		return rest.OutputResource{}, err
 	}
 
 	return result, nil
 }
 
-func (e ExpectedOutputResource) IsMatch(a ActualOutputResource) bool {
-	return e.LocalID == a.LocalID &&
+func (e ExpectedOutputResource) IsMatch(a rest.OutputResource) bool {
+	match := e.LocalID == a.LocalID &&
 		e.OutputResourceType == a.OutputResourceType &&
 		e.ResourceKind == a.ResourceKind &&
 		e.Managed == a.Managed
+
+	// TODO: Remove this check once health checks are implemented for all kinds of output resources
+	// https://github.com/Azure/radius/issues/827.
+	// Till then, we will selectively verify the health/provisioning state for output resources that
+	// have the functionality implemented.
+	if e.verifyStatus {
+		match = match &&
+			e.Status.HealthState == a.Status.HealthState &&
+			e.Status.ProvisioningState == a.Status.ProvisioningState
+	}
+
+	return match
 }

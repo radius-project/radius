@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 )
@@ -47,14 +49,22 @@ func Test_ServiceBusManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "sender",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "sbq",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureServiceBusQueue: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusQueue, outputresource.TypeARM, outputresource.KindAzureServiceBusQueue, true),
+							outputresource.LocalIDAzureServiceBusQueue: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusQueue,
+								outputresource.TypeARM,
+								outputresource.KindAzureServiceBusQueue,
+								true,
+								true,
+								rest.OutputResourceStatus{
+									HealthState:       healthcontract.HealthStateHealthy,
+									ProvisioningState: rest.Provisioned,
+								}),
 						},
 					},
 				},

@@ -184,7 +184,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					Dependencies: dependencies,
 				})
 
-				// Register the output resource with HealthService
 				outputResourceInfo := healthcontract.ResourceDetails{
 					ResourceID:     resource.GetResourceID(),
 					ResourceKind:   resource.Kind,
@@ -215,6 +214,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				addDBOutputResource(resource, &dbOutputResources)
 				action.Definition.Properties.Status.OutputResources = dbOutputResources
 
+				// Register the output resource with HealthService
 				dp.RegisterForHealthChecks(ctx, outputResourceInfo, healthID, resourceType.HealthHandler().GetHealthOptions(ctx))
 
 				dbDeploymentResource := db.DeploymentResource{
