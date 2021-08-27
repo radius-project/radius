@@ -61,7 +61,7 @@ func Test_ServiceBusManaged(t *testing.T) {
 								outputresource.KindAzureServiceBusQueue,
 								true,
 								true,
-								validation.ExpectedOutputResourceStatus{
+								rest.OutputResourceStatus{
 									HealthState:       healthcontract.HealthStateHealthy,
 									ProvisioningState: rest.Provisioned,
 								}),
