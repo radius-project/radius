@@ -12,6 +12,10 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 )
 
+const (
+	RoleNameKey = "rolename"
+)
+
 // NewAzureRoleAssignmentHandler initializes a new handler for resources of kind RoleAssignment
 func NewAzureRoleAssignmentHandler(arm armauth.ArmConfig) ResourceHandler {
 	return &azureRoleAssignmentHandler{arm: arm}

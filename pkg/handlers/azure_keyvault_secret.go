@@ -12,6 +12,11 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 )
 
+const (
+	KeyVaultSecretNameKey  = "keyvaultsecretname"
+	KeyVaultSecretValueKey = "keyvaultsecretvalue"
+)
+
 // NewAzureKeyVaultSecretHandler initializes a new handler for resources of kind Azure KeyVault Secret
 func NewAzureKeyVaultSecretHandler(arm armauth.ArmConfig) ResourceHandler {
 	return &azureKeyVaultSecretHandler{arm: arm}

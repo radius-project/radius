@@ -12,6 +12,12 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 )
 
+const (
+	UserAssignedIdentityNameKey        = "userassignedidentityname"
+	UserAssignedIdentityIDKey          = "userassignedidentityid"
+	UserAssignedIdentityPrincipalIDKey = "userassignedidentityprincipalid"
+)
+
 // NewAzureUserAssignedManagedIdentityHandler initializes a new handler for resources of kind UserAssignedManagedIdentity
 func NewAzureUserAssignedManagedIdentityHandler(arm armauth.ArmConfig) ResourceHandler {
 	return &azureUserAssignedManagedIdentityHandler{arm: arm}

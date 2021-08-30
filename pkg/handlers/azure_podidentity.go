@@ -20,6 +20,7 @@ import (
 const (
 	PodIdentityNameKey    = "podidentityname"
 	PodIdentityClusterKey = "podidentitycluster"
+	PodNamespaceKey       = "podnamespace"
 )
 
 func NewAzurePodIdentityHandler(arm armauth.ArmConfig) ResourceHandler {
