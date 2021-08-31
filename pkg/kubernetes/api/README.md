@@ -1,5 +1,7 @@
 # Webhooks and Kubernetes Controllers
 
+These contain meeting/presentation notes on webhooks and controllers with a radius kubernetes environment.
+
 ## Validating Webhooks
 
 Problem: I have defined an application and I want to deploy to k8s. However, I poorly defined my radius file with something that will fail due to improper configuration.
@@ -27,8 +29,6 @@ Truthfully, it's a bit odd that we are doing json schema validation in the valid
 The reason we use validating webhooks for now is that the openAPIV3Schema doesn't support discriminated unions sufficiently (see [structural schema](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#specifying-a-structural-schema)). We spent a bit of time trying to figure out if we could splice it together, however we deemed it too difficult to do versus just validating in the webhook.
 
 However, with the changes to AppModelV3, we should revisit this and see if we can leverage this to the fullest.
-
-### DEMO
 
 ## Kubernetes Controllers
 

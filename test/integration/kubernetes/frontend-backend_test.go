@@ -57,7 +57,7 @@ func TestFrontendBackend(t *testing.T) {
 // Validates frontend and backend are created from arm template with content
 func TestFrontendBackendArm(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := utils.GetContext(t)
+	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	controllerStep := kubernetestest.ControllerStep{
