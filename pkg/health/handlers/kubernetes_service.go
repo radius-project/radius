@@ -23,7 +23,7 @@ type kubernetesServiceHandler struct {
 	k8s client.Client
 }
 
-func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options healthcontract.HealthCheckOptions) healthcontract.ResourceHealthDataMessage {
+func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options Options) healthcontract.ResourceHealthDataMessage {
 	kID, err := healthcontract.ParseK8sResourceID(resourceInfo.ResourceID)
 	if err != nil {
 		return healthcontract.ResourceHealthDataMessage{

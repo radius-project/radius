@@ -119,12 +119,13 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
 		h.activeHealthProbesMutex.Unlock()
 
-		ctx = context.WithValue(ctx, "options", healthInfo.Options)
-		ctx = context.WithValue(ctx, "stopCh", healthInfo.stopProbeForResource)
-		ctx = context.WithValue(ctx, "notifyCh", h.watchHealthChangesChannel)
+		options := handlers.Options{
+			StopCh:                    healthInfo.stopProbeForResource,
+			WatchHealthChangesChannel: h.watchHealthChangesChannel,
+		}
 
 		// Watch health state
-		go healthHandler.GetHealthState(ctx, healthInfo.Resource, healthInfo.Options)
+		go healthHandler.GetHealthState(ctx, healthInfo.Resource, options)
 	} else if mode == handlers.HealthHandlerModePull {
 		// Need to actively probe the health periodically
 		h.probeHealth(ctx, healthHandler, healthInfo)
@@ -137,17 +138,20 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 	logger := radlogger.GetLogger(ctx)
 	// Create a ticker with a period as specified in the health options by the resource
 	healthInfo.ticker = time.NewTicker(healthInfo.Options.Interval)
-	// Create a new health handler for the resource
 	h.activeHealthProbesMutex.Lock()
 	h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
 	h.activeHealthProbesMutex.Unlock()
 
+	// Create a new health handler for the resource
 	go func(ticker *time.Ticker, healthHandler handlers.HealthHandler, stopProbeForResource <-chan struct{}) {
 		for {
 			select {
 			case <-ticker.C:
 				logger.Info("Probing health...")
-				newHealthState := healthHandler.GetHealthState(ctx, healthInfo.Resource, healthInfo.Options)
+				options := handlers.Options{
+					Interval: healthInfo.Options.Interval,
+				}
+				newHealthState := healthHandler.GetHealthState(ctx, healthInfo.Resource, options)
 				h.handleStateChanges(ctx, healthInfo.Resource, newHealthState)
 			case <-stopProbeForResource:
 				return

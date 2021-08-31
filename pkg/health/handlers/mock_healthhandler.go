@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	handlers "github.com/Azure/radius/pkg/health/handlers"
 	healthcontract "github.com/Azure/radius/pkg/healthcontract"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -36,7 +37,7 @@ func (m *MockHealthHandler) EXPECT() *MockHealthHandlerMockRecorder {
 }
 
 // GetHealthState mocks base method.
-func (m *MockHealthHandler) GetHealthState(arg0 context.Context, arg1 healthcontract.ResourceInfo, arg2 healthcontract.HealthCheckOptions) healthcontract.ResourceHealthDataMessage {
+func (m *MockHealthHandler) GetHealthState(arg0 context.Context, arg1 healthcontract.ResourceInfo, arg2 handlers.Options) healthcontract.ResourceHealthDataMessage {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHealthState", arg0, arg1, arg2)
 	ret0, _ := ret[0].(healthcontract.ResourceHealthDataMessage)

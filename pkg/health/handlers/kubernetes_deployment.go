@@ -26,7 +26,7 @@ type kubernetesDeploymentHandler struct {
 	k8s client.Client
 }
 
-func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options healthcontract.HealthCheckOptions) healthcontract.ResourceHealthDataMessage {
+func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options Options) healthcontract.ResourceHealthDataMessage {
 	kID, err := healthcontract.ParseK8sResourceID(resourceInfo.ResourceID)
 	if err != nil {
 		return healthcontract.ResourceHealthDataMessage{
@@ -54,11 +54,9 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		}
 	}
 
-	// Start watching deployment changes
-	notificationCh := ctx.Value("notifyCh").(chan healthcontract.ResourceHealthDataMessage)
-	stopCh := ctx.Value("stopCh").(chan struct{})
 	logger := radlogger.GetLogger(ctx)
 
+	// Start watching deployment changes
 	w, err := k8s.CoreV1().Pods(kID.Namespace).Watch(ctx, metav1.ListOptions{Watch: true})
 	if err != nil {
 		healthStateErrorDetails := err.Error()
@@ -101,10 +99,10 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 					HealthState:             healthState,
 					HealthStateErrorDetails: healthStateErrorDetails,
 				}
-				notificationCh <- msg
+				options.WatchHealthChangesChannel <- msg
 				logger.Info(fmt.Sprintf("Detected health change event for Resource: %s. Notifying watcher.", resourceInfo.ResourceID))
 			}
-		case <-stopCh:
+		case <-options.StopCh:
 			logger.Info(fmt.Sprintf("Stopped health monitoring for namespace: %v", kID.Namespace))
 			return healthcontract.ResourceHealthDataMessage{}
 		}
