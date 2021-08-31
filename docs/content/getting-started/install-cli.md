@@ -14,7 +14,7 @@ These steps will setup the required tools and extensions to get you up and runni
 
 ## Install CLI
 
-{{< tabs Windows MacOS Linux Binaries >}}
+{{< tabs Windows MacOS "Linux/WSL" Binaries >}}
 
 {{% codetab %}}
 
