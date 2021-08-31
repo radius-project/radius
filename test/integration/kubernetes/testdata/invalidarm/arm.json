@@ -1,6 +1,6 @@
 {
     "apiVersion": "radius.dev/v1alpha1",
-    "kind": "Arm",
+    "kind": "DeploymentTemplate",
     "metadata": {
         "name": "arm",
         "namespace": "invalidarm"
