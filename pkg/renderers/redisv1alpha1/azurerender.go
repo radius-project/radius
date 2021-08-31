@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -25,7 +25,7 @@ func (r AzureRenderer) AllocateBindings(ctx context.Context, workload workloads.
 	properties := resources[0].Properties
 	redisName := properties[handlers.RedisNameKey]
 
-	rc := azclients.NewRedisClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	rc := clients.NewRedisClient(r.Arm.SubscriptionID, r.Arm.Auth)
 
 	resource, err := rc.Get(ctx, r.Arm.ResourceGroup, redisName)
 	if err != nil {

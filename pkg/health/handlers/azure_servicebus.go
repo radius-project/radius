@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/health/db"
 	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/healthcontract"
@@ -38,7 +38,7 @@ func (handler *azureServiceBusBaseHandler) getQueueByID(ctx context.Context, id 
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
 	}
-	qc := azclients.NewQueuesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	qc := clients.NewQueuesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	queue, err := qc.Get(ctx, azureResource.ResourceGroup, azureResource.Types[0].Name, azureResource.Types[1].Name)
 	if err != nil {

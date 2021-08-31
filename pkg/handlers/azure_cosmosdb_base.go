@@ -13,7 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/keys"
 )
 
@@ -48,7 +48,7 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 		return nil, fmt.Errorf("failed to parse CosmosDB Account resource id: %w", err)
 	}
 
-	cosmosDBClient := azclients.NewDatabaseAccountsClient(parsed.SubscriptionID, handler.arm.Auth)
+	cosmosDBClient := clients.NewDatabaseAccountsClient(parsed.SubscriptionID, handler.arm.Auth)
 
 	account, err := cosmosDBClient.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
 	if err != nil {
@@ -60,7 +60,7 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 
 // CreateCosmosDBAccount creates CosmosDB account. Account name is randomly generated with specified database name as prefix.
 func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Context, properties map[string]string, databaseKind documentdb.DatabaseAccountKind, options PutOptions) (*documentdb.DatabaseAccountGetResults, error) {
-	cosmosDBClient := azclients.NewDatabaseAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	cosmosDBClient := clients.NewDatabaseAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	accountName, ok := properties[CosmosDBAccountNameKey]
 	if !ok {
 		var err error
@@ -119,17 +119,17 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 
 // DeleteCosmosDBAccount deletes CosmosDB account for the specified account name
 func (handler *azureCosmosDBBaseHandler) DeleteCosmosDBAccount(ctx context.Context, accountName string) error {
-	cosmosDBClient := azclients.NewDatabaseAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	cosmosDBClient := clients.NewDatabaseAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	future, err := cosmosDBClient.Delete(ctx, handler.arm.ResourceGroup, accountName)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "cosmosdb account", err)
 	}
 
 	err = future.WaitForCompletionRef(ctx, cosmosDBClient.Client)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "cosmosdb account", err)

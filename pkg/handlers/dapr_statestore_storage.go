@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -110,7 +110,7 @@ func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, op
 
 func (handler *daprStateStoreAzureStorageHandler) GenerateStorageAccountName(ctx context.Context, baseName string) (*string, error) {
 	logger := radlogger.GetLogger(ctx)
-	sc := azclients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sc := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	// names are kinda finicky here - they have to be unique across azure.
 	name := ""
@@ -148,7 +148,7 @@ func (handler *daprStateStoreAzureStorageHandler) GetStorageAccountByID(ctx cont
 		return nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
 
-	sac := azclients.NewAccountsClient(parsed.SubscriptionID, handler.arm.Auth)
+	sac := clients.NewAccountsClient(parsed.SubscriptionID, handler.arm.Auth)
 
 	account, err := sac.GetProperties(ctx, parsed.ResourceGroup, parsed.Types[0].Name, storage.AccountExpand(""))
 	if err != nil {
@@ -164,7 +164,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx conte
 		return nil, err
 	}
 
-	sc := azclients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sc := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	future, err := sc.Create(ctx, handler.arm.ResourceGroup, accountName, storage.AccountCreateParameters{
 		Location: location,
@@ -237,7 +237,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 }
 
 func (handler *daprStateStoreAzureStorageHandler) FindStorageKey(ctx context.Context, accountName string) (*storage.AccountKey, error) {
-	sc := azclients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sc := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	keys, err := sc.ListKeys(ctx, handler.arm.ResourceGroup, accountName, "")
 	if err != nil {
@@ -261,7 +261,7 @@ func (handler *daprStateStoreAzureStorageHandler) FindStorageKey(ctx context.Con
 }
 
 func (handler *daprStateStoreAzureStorageHandler) DeleteStorageAccount(ctx context.Context, accountName string) error {
-	sc := azclients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sc := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	_, err := sc.Delete(ctx, handler.arm.ResourceGroup, accountName)
 	if err != nil {

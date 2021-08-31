@@ -13,7 +13,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -253,7 +253,7 @@ func ValidateAzureResourcesDeleted(ctx context.Context, t *testing.T, authorizer
 }
 
 func (v *AzureResourceValidator) listResources(ctx context.Context) []ActualResourceExpanded {
-	resc := azclients.NewResourcesClient(v.SubscriptionID, v.Authorizer)
+	resc := clients.NewResourcesClient(v.SubscriptionID, v.Authorizer)
 
 	all := []ActualResourceExpanded{}
 	page, err := resc.ListByResourceGroup(ctx, v.ResourceGroup, "", "", nil)
@@ -270,7 +270,7 @@ func (v *AzureResourceValidator) listResources(ctx context.Context) []ActualReso
 }
 
 func (v *AzureResourceValidator) findChildResource(ctx context.Context, parent ActualResourceExpanded, child ExpectedChildResource) *ActualResource {
-	resc := azclients.NewResourcesClient(v.SubscriptionID, v.Authorizer)
+	resc := clients.NewResourcesClient(v.SubscriptionID, v.Authorizer)
 
 	parts := strings.Split(*parent.Type, "/")
 	require.Len(v.T, parts, 2, "resource type should have a provider and type")
@@ -289,7 +289,7 @@ func (v *AzureResourceValidator) findChildResource(ctx context.Context, parent A
 }
 
 func (v *AzureResourceValidator) getDefaultAPIVersion(ctx context.Context, provider string, resourceType string) string {
-	providerc := azclients.NewProvidersClient(v.SubscriptionID, v.Authorizer)
+	providerc := clients.NewProvidersClient(v.SubscriptionID, v.Authorizer)
 
 	p, err := providerc.Get(ctx, provider, "")
 	require.NoError(v.T, err, "failed to query provider")

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
@@ -42,7 +42,7 @@ func mergeProperties(resource outputresource.OutputResource, existing *db.Deploy
 }
 
 func getResourceGroupLocation(ctx context.Context, armConfig armauth.ArmConfig) (*string, error) {
-	rgc := azclients.NewGroupsClient(armConfig.SubscriptionID, armConfig.Auth)
+	rgc := clients.NewGroupsClient(armConfig.SubscriptionID, armConfig.Auth)
 
 	resourceGroup, err := rgc.Get(ctx, armConfig.ResourceGroup)
 	if err != nil {

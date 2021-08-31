@@ -11,7 +11,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/cli/output"
@@ -119,7 +119,7 @@ func deleteAllApplications(ctx context.Context, authorizer autorest.Authorizer, 
 // deleteRadiusResourcesInResourceGroup deletes all radius resources from the customer/user resource group.
 // Currently the custom resource provider is the only resource in the user's environment that has this tag.
 func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string) error {
-	resourceClient := azclients.NewResourcesClient(subscriptionID, authorizer)
+	resourceClient := clients.NewResourcesClient(subscriptionID, authorizer)
 
 	// Filter for all resources by rad-environment=True.
 	page, err := resourceClient.ListByResourceGroup(ctx, resourceGroup, "tagName eq '"+keys.TagRadiusEnvironment+"' and tagValue eq 'True'", "", nil)
@@ -132,7 +132,7 @@ func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autore
 			return err
 		}
 		for _, r := range page.Values() {
-			defaultApiVersion, err := azclients.GetDefaultAPIVersion(ctx, subscriptionID, authorizer, *r.Type)
+			defaultApiVersion, err := clients.GetDefaultAPIVersion(ctx, subscriptionID, authorizer, *r.Type)
 			if err != nil {
 				return err
 			}
@@ -157,11 +157,11 @@ func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autore
 
 // Deletes resource group and all its resources
 func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string) error {
-	rgc := azclients.NewGroupsClient(subscriptionID, authorizer)
+	rgc := clients.NewGroupsClient(subscriptionID, authorizer)
 
 	output.LogInfo("Deleting resource group %v", resourceGroup)
 	future, err := rgc.Delete(ctx, resourceGroup)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "the resource group", err)
@@ -169,7 +169,7 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 
 	output.LogInfo("Waiting for delete to complete...")
 	err = future.WaitForCompletionRef(ctx, rgc.Client)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "the resource group", err)
