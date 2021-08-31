@@ -20,14 +20,14 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	m.Run()
+	code := m.Run()
 
 	err = kubernetestest.StopController()
 	if err != nil {
 		panic(err)
 	}
 
-	os.Exit(0)
+	os.Exit(code)
 }
 
 func TestFrontendBackend(t *testing.T) {
