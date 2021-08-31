@@ -44,5 +44,6 @@ type MonitorOptions struct {
 	DB                          db.RadHealthDB
 	ResourceRegistrationChannel chan healthcontract.ResourceHealthRegistrationMessage
 	HealthProbeChannel          chan healthcontract.ResourceHealthDataMessage
+	WatchHealthChangesChannel   chan healthcontract.ResourceHealthDataMessage
 	HealthModel                 model.HealthModel
 }

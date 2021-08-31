@@ -24,6 +24,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const ChannelBufferSize = 100
+
 // HealthInfo represents the data maintained per resource being tracked by the HealthService
 type HealthInfo struct {
 	stopProbeForResource    chan struct{}
@@ -41,6 +43,7 @@ type Monitor struct {
 	db                            db.RadHealthDB
 	resourceRegistrationChannel   <-chan healthcontract.ResourceHealthRegistrationMessage
 	healthToRPNotificationChannel chan<- healthcontract.ResourceHealthDataMessage
+	watchHealthChangesChannel     chan healthcontract.ResourceHealthDataMessage
 	activeHealthProbes            map[string]HealthInfo
 	activeHealthProbesMutex       *sync.RWMutex
 	model                         model.HealthModel
@@ -59,6 +62,9 @@ func (h Monitor) Run(ctx context.Context) {
 			} else if msg.Action == healthcontract.ActionUnregister {
 				h.UnregisterResource(ctx, msg)
 			}
+		case newHealthState := <-h.watchHealthChangesChannel:
+			logger.Info(fmt.Sprintf("Watcher for: %v received a health state change event", newHealthState.Resource.HealthID))
+			h.handleStateChanges(ctx, newHealthState.Resource, newHealthState)
 		case <-ctx.Done():
 			logger.Info("RadHealth Service stopped...")
 			return
@@ -113,13 +119,9 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
 		h.activeHealthProbesMutex.Unlock()
 
-		// The health handler itself will take care of periodic monitoring of the resource
-		// Start a watcher to watch for change notifications
-		go h.WatchHealthChanges(ctx, healthInfo.notifyStateChange)
-
 		ctx = context.WithValue(ctx, "options", healthInfo.Options)
 		ctx = context.WithValue(ctx, "stopCh", healthInfo.stopProbeForResource)
-		ctx = context.WithValue(ctx, "notifyCh", healthInfo.notifyStateChange)
+		ctx = context.WithValue(ctx, "notifyCh", h.watchHealthChangesChannel)
 
 		// Watch health state
 		go healthHandler.GetHealthState(ctx, healthInfo.Resource, healthInfo.Options)
@@ -156,7 +158,6 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 
 func (h Monitor) handleStateChanges(ctx context.Context, resourceInfo healthcontract.ResourceInfo, newHealthState healthcontract.ResourceHealthDataMessage) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("HealthState: %s, HealthStateErrorDetails: %s", newHealthState.HealthState, newHealthState.HealthStateErrorDetails))
 	// Save the current health state in memory
 	h.activeHealthProbesMutex.RLock()
 	currentHealthInfo, ok := h.activeHealthProbes[resourceInfo.HealthID]
@@ -176,18 +177,7 @@ func (h Monitor) handleStateChanges(ctx context.Context, resourceInfo healthcont
 		h.activeHealthProbesMutex.Unlock()
 
 		h.SendHealthStateChangeNotification(ctx, resourceInfo, newHealthState)
-	}
-	logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthState.HealthState))
-}
-
-func (h Monitor) WatchHealthChanges(ctx context.Context, notifyStateChange chan healthcontract.ResourceHealthDataMessage) {
-	logger := radlogger.GetLogger(ctx)
-	for {
-		select {
-		case newHealthState := <-notifyStateChange:
-			logger.Info(fmt.Sprintf("Watcher for: %v received a health state change event", newHealthState.Resource.HealthID))
-			h.handleStateChanges(ctx, newHealthState.Resource, newHealthState)
-		}
+		logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthState.HealthState))
 	}
 }
 
@@ -257,6 +247,7 @@ func NewMonitor(options MonitorOptions, arm armauth.ArmConfig) Monitor {
 		db:                            options.DB,
 		resourceRegistrationChannel:   options.ResourceRegistrationChannel,
 		healthToRPNotificationChannel: options.HealthProbeChannel,
+		watchHealthChangesChannel:     options.WatchHealthChangesChannel,
 		model:                         options.HealthModel,
 	}
 	m.activeHealthProbes = make(map[string]HealthInfo)
@@ -287,6 +278,7 @@ func StartRadHealth(ctx context.Context, arm armauth.ArmConfig, k8s *client.Clie
 		DB:                          db,
 		ResourceRegistrationChannel: healthChannels.ResourceRegistrationWithHealthChannel,
 		HealthProbeChannel:          healthChannels.HealthToRPNotificationChannel,
+		WatchHealthChangesChannel:   make(chan healthcontract.ResourceHealthDataMessage, ChannelBufferSize),
 		HealthModel:                 model,
 	}
 

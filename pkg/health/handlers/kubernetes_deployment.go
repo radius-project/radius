@@ -8,7 +8,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -18,9 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
-
-// WaitInterval is the interval to avoid a tight loop
-const WaitInterval = time.Second * 5
 
 func NewKubernetesDeploymentHandler(k8s client.Client) HealthHandler {
 	return &kubernetesDeploymentHandler{k8s: k8s}
@@ -85,30 +81,12 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 				healthState = healthcontract.HealthStateUnhealthy
 				healthStateErrorDetails = "Object is not a pod"
 			} else {
-				containerStatuses := pod.Status.ContainerStatuses
-				status := ""
-				// Check the status for all containers within the pod
-				if len(containerStatuses) > 0 {
-					for i := range containerStatuses {
-						if pod.Status.Phase == corev1.PodPending {
-							healthState = healthcontract.HealthStateUnhealthy
-							healthStateErrorDetails = "Pod state pending"
-						}
-						if containerStatuses[i].State.Terminated != nil {
-							healthState = healthcontract.HealthStateUnhealthy
-							healthStateErrorDetails = containerStatuses[i].State.Terminated.Reason
-						}
-						if containerStatuses[i].State.Waiting != nil {
-							healthState = healthcontract.HealthStateUnhealthy
-							healthStateErrorDetails = containerStatuses[i].State.Waiting.Reason
-						}
-						if containerStatuses[i].State.Running != nil {
-							if status == "" { // if none of the containers report an error
-								healthState = healthcontract.HealthStateHealthy
-								healthStateErrorDetails = ""
-							}
-						}
-					}
+				if pod.Status.Phase == corev1.PodRunning {
+					healthState = healthcontract.HealthStateHealthy
+					healthStateErrorDetails = ""
+				} else {
+					healthState = healthcontract.HealthStateUnhealthy
+					healthStateErrorDetails = pod.Status.Reason
 				}
 			}
 
@@ -129,7 +107,6 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		case <-stopCh:
 			logger.Info(fmt.Sprintf("Stopped health monitoring for namespace: %v", kID.Namespace))
 			return healthcontract.ResourceHealthDataMessage{}
-		case <-time.After(WaitInterval):
 		}
 	}
 }
