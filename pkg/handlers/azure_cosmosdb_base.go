@@ -12,8 +12,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azclients"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	azclients "github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/keys"
 )
 

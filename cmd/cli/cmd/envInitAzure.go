@@ -24,7 +24,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azclients"
+	azclients "github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli"
 	radazure "github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/output"
