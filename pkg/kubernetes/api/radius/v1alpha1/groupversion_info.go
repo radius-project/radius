@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-// Package v1alpha1 contains API Schema definitions for the bicep v1alpha1 API group
+// Package v1alpha1 contains API Schema definitions for the radius v1alpha1 API group
 //+kubebuilder:object:generate=true
 //+groupName=radius.dev
 package v1alpha1
