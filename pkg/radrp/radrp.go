@@ -22,31 +22,17 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
-	"github.com/Azure/radius/pkg/radrp/k8sauth"
 	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/mongo"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // StartRadRP creates and starts the Radius RP
-func StartRadRP(ctx context.Context, arm armauth.ArmConfig, dbClient *mongo.Client, dbName string, healthChannels healthcontract.HealthChannels) {
+func StartRadRP(ctx context.Context, arm armauth.ArmConfig, k8s *client.Client, dbClient *mongo.Client, dbName string, healthChannels healthcontract.HealthChannels) {
 	// App Service uses this env-var to tell us what port to listen on.
 	port, ok := os.LookupEnv("PORT")
 	if !ok {
 		log.Fatalln("env: PORT is required")
-	}
-
-	var k8s *client.Client
-	var err error
-	skipKubernetes, ok := os.LookupEnv("SKIP_K8S")
-	if ok && strings.EqualFold(skipKubernetes, "true") {
-		log.Println("skipping Kubernetes connection...")
-	} else {
-		k8s, err = k8sauth.CreateClient()
-		if err != nil {
-			log.Printf("error connecting to kubernetes: %s", err)
-			panic(err)
-		}
 	}
 
 	authenticate := true

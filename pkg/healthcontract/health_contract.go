@@ -41,6 +41,12 @@ const HealthIDKey = "healthid"
 // ResourceIDKey is the key used by all resource types to return the actual resource to be tracked by the HealthService
 const ResourceIDKey = "resourceid"
 
+// Kinds of Kubernetes resources
+const (
+	KubernetesKindDeployment = "Deployment"
+	KubernetesKindService    = "Service"
+)
+
 // ResourceInfo includes the resource information that is required to perform its health check
 type ResourceInfo struct {
 	// Identifier used to register a resource with the HealthService and is unique across Radius applications/components
@@ -58,6 +64,15 @@ type ResourceDetails struct {
 	ComponentID    string
 	SubscriptionID string
 	ResourceGroup  string
+	Namespace      string
+	Name           string
+}
+
+// KubernetesID represents the ResourceID format for a Kubernetes resource
+type KubernetesID struct {
+	Kind      string
+	Namespace string
+	Name      string
 }
 
 // ParseHealthID parses a string healthID and returns a ResourceDetails data structure
@@ -91,4 +106,11 @@ type ResourceHealthDataMessage struct {
 	Resource                ResourceInfo
 	HealthState             string
 	HealthStateErrorDetails string
+}
+
+// Parses Kubernetes Resource ID
+func ParseK8sResourceID(id string) (KubernetesID, error) {
+	var kID KubernetesID
+	err := json.Unmarshal([]byte(id), &kID)
+	return kID, err
 }

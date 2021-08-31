@@ -208,7 +208,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		stopCh <- struct{}{}
 	})
 
-	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
+	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any(), gomock.Any()).
 		AnyTimes().Return(healthcontract.ResourceHealthDataMessage{
 		Resource:                ri,
 		HealthState:             "Healthy",

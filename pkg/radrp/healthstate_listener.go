@@ -98,6 +98,13 @@ func (cl *changeListener) UpdateHealth(ctx context.Context, healthUpdateMsg heal
 			} else if err != nil {
 				logger.Error(err, "Unable to update Health state in DB")
 			}
+
+			// temp, err := cl.db.GetComponentByApplicationID(ctx, a, c.Name)
+			// if err != nil {
+			// 	logger.Error(err, "Component not found in DB")
+			// }
+			// fmt.Printf("Updated and requeried component: %v", temp)
+
 			return patched
 		}
 	}

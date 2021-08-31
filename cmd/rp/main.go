@@ -19,8 +19,10 @@ import (
 	"github.com/Azure/radius/pkg/health"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radrp"
+	"github.com/Azure/radius/pkg/radrp/k8sauth"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ChannelBufferSize defines the buffer size for health registration channel
@@ -60,6 +62,18 @@ func main() {
 		panic(fmt.Sprintf("error connecting to ARM: %s", err))
 	}
 
+	var k8s *k8sClient.Client
+	skipKubernetes, ok := os.LookupEnv("SKIP_K8S")
+	if ok && strings.EqualFold(skipKubernetes, "true") {
+		log.Println("skipping Kubernetes connection...")
+	} else {
+		k8s, err = k8sauth.CreateClient()
+		if err != nil {
+			log.Printf("error connecting to kubernetes: %s", err)
+			panic(err)
+		}
+	}
+
 	// Create a channel to handle the shutdown
 	exitCh := make(chan os.Signal, 1)
 	signal.Notify(exitCh, syscall.SIGINT, syscall.SIGTERM)
@@ -68,8 +82,8 @@ func main() {
 
 	healthChannels := makeHealthChannels()
 
-	go radrp.StartRadRP(ctx, arm, client, dbName, healthChannels)
-	go health.StartRadHealth(ctx, arm, client, dbName, healthChannels)
+	go radrp.StartRadRP(ctx, arm, k8s, client, dbName, healthChannels)
+	go health.StartRadHealth(ctx, arm, k8s, client, dbName, healthChannels)
 
 	waitDuration := time.Second * 10
 	for {

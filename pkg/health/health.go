@@ -21,12 +21,14 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/mongo"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HealthInfo represents the data maintained per resource being tracked by the HealthService
 type HealthInfo struct {
 	stopProbeForResource    chan struct{}
 	ticker                  *time.Ticker
+	notifyStateChange       chan healthcontract.ResourceHealthDataMessage
 	handler                 handlers.HealthHandler
 	HealthState             string
 	HealthStateErrorDetails string
@@ -76,7 +78,8 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 
 	logger.Info("Registering resource with health service")
 
-	if h.model.LookupHandler(registerMsg.ResourceInfo.ResourceKind) == nil {
+	healthHandler, mode := h.model.LookupHandler(registerMsg)
+	if healthHandler == nil {
 		// TODO: Convert this log to error once health checks are implemented for all resource kinds
 		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %s not monitored by HealthService", registerMsg.ResourceInfo.ResourceKind, registerMsg.ResourceInfo.ResourceID))
 		return
@@ -97,16 +100,44 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		stopProbeForResource: stopCh,
 		// Create a new ticker for the resource which will start the health check at the specified interval
 		// TODO: Optimize and not create a ticker per resource
-		handler:     h.model.LookupHandler(registerMsg.ResourceInfo.ResourceKind),
+		handler:     healthHandler,
 		HealthState: healthcontract.HealthStateUnhealthy,
 		Resource:    registerMsg.ResourceInfo,
 		Options:     ho,
 	}
+
+	// Lookup whether the health can be watched or needs to be actively probed
+	if mode == handlers.HealthHandlerModePush {
+		h.activeHealthProbesMutex.Lock()
+		healthInfo.notifyStateChange = make(chan healthcontract.ResourceHealthDataMessage, 100)
+		h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
+		h.activeHealthProbesMutex.Unlock()
+
+		// The health handler itself will take care of periodic monitoring of the resource
+		// Start a watcher to watch for change notifications
+		go h.WatchHealthChanges(ctx, healthInfo.notifyStateChange)
+
+		ctx = context.WithValue(ctx, "options", healthInfo.Options)
+		ctx = context.WithValue(ctx, "stopCh", healthInfo.stopProbeForResource)
+		ctx = context.WithValue(ctx, "notifyCh", healthInfo.notifyStateChange)
+
+		// Watch health state
+		go healthHandler.GetHealthState(ctx, healthInfo.Resource, healthInfo.Options)
+	} else if mode == handlers.HealthHandlerModePull {
+		// Need to actively probe the health periodically
+		h.probeHealth(ctx, healthHandler, healthInfo)
+	}
+
+	logger.Info("Registered resource with health service successfully")
+}
+
+func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthHandler, healthInfo HealthInfo) {
+	logger := radlogger.GetLogger(ctx)
 	// Create a ticker with a period as specified in the health options by the resource
 	healthInfo.ticker = time.NewTicker(healthInfo.Options.Interval)
 	// Create a new health handler for the resource
 	h.activeHealthProbesMutex.Lock()
-	h.activeHealthProbes[registerMsg.ResourceInfo.HealthID] = healthInfo
+	h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
 	h.activeHealthProbesMutex.Unlock()
 
 	go func(ticker *time.Ticker, healthHandler handlers.HealthHandler, stopProbeForResource <-chan struct{}) {
@@ -114,37 +145,50 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 			select {
 			case <-ticker.C:
 				logger.Info("Probing health...")
-				newHealthInfo := healthHandler.GetHealthState(ctx, registerMsg.ResourceInfo)
-				logger.Info(fmt.Sprintf("HealthState: %s, HealthStateErrorDetails: %s", newHealthInfo.HealthState, newHealthInfo.HealthStateErrorDetails))
-
-				// Save the current health state in memory
-				h.activeHealthProbesMutex.RLock()
-				currentHealthInfo, ok := h.activeHealthProbes[registerMsg.ResourceInfo.HealthID]
-				h.activeHealthProbesMutex.RUnlock()
-				if !ok {
-					logger.Error(errors.New("NotFound"), "Unable to find active health probe for resource")
-					continue
-				}
-				if currentHealthInfo.HealthState != newHealthInfo.HealthState {
-					logger.Info(fmt.Sprintf("HealthState changed from :%s to %s. Sending notification...", currentHealthInfo.HealthState, newHealthInfo.HealthState))
-
-					// Save the new state as current state
-					currentHealthInfo.HealthState = newHealthInfo.HealthState
-					currentHealthInfo.HealthStateErrorDetails = newHealthInfo.HealthStateErrorDetails
-					h.activeHealthProbesMutex.Lock()
-					h.activeHealthProbes[registerMsg.ResourceInfo.HealthID] = currentHealthInfo
-					h.activeHealthProbesMutex.Unlock()
-
-					h.SendHealthStateChangeNotification(ctx, registerMsg.ResourceInfo, newHealthInfo)
-
-					logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthInfo.HealthState))
-				}
+				newHealthState := healthHandler.GetHealthState(ctx, healthInfo.Resource, healthInfo.Options)
+				h.handleStateChanges(ctx, healthInfo.Resource, newHealthState)
 			case <-stopProbeForResource:
 				return
 			}
 		}
 	}(healthInfo.ticker, healthInfo.handler, healthInfo.stopProbeForResource)
-	logger.Info("Registered resource with health service successfully")
+}
+
+func (h Monitor) handleStateChanges(ctx context.Context, resourceInfo healthcontract.ResourceInfo, newHealthState healthcontract.ResourceHealthDataMessage) {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("HealthState: %s, HealthStateErrorDetails: %s", newHealthState.HealthState, newHealthState.HealthStateErrorDetails))
+	// Save the current health state in memory
+	h.activeHealthProbesMutex.RLock()
+	currentHealthInfo, ok := h.activeHealthProbes[resourceInfo.HealthID]
+	h.activeHealthProbesMutex.RUnlock()
+	if !ok {
+		logger.Error(errors.New("NotFound"), "Unable to find active health probe for resource")
+		return
+	}
+	if currentHealthInfo.HealthState != newHealthState.HealthState {
+		logger.Info(fmt.Sprintf("HealthState changed from :%s to %s. Sending notification...", currentHealthInfo.HealthState, newHealthState.HealthState))
+
+		// Save the new state as current state
+		currentHealthInfo.HealthState = newHealthState.HealthState
+		currentHealthInfo.HealthStateErrorDetails = newHealthState.HealthStateErrorDetails
+		h.activeHealthProbesMutex.Lock()
+		h.activeHealthProbes[resourceInfo.HealthID] = currentHealthInfo
+		h.activeHealthProbesMutex.Unlock()
+
+		h.SendHealthStateChangeNotification(ctx, resourceInfo, newHealthState)
+	}
+	logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthState.HealthState))
+}
+
+func (h Monitor) WatchHealthChanges(ctx context.Context, notifyStateChange chan healthcontract.ResourceHealthDataMessage) {
+	logger := radlogger.GetLogger(ctx)
+	for {
+		select {
+		case newHealthState := <-notifyStateChange:
+			logger.Info(fmt.Sprintf("Watcher for: %v received a health state change event", newHealthState.Resource.HealthID))
+			h.handleStateChanges(ctx, newHealthState.Resource, newHealthState)
+		}
+	}
 }
 
 // UnregisterResource should be called when the output resource is deleted
@@ -158,7 +202,10 @@ func (h Monitor) UnregisterResource(ctx context.Context, unregisterMsg healthcon
 	defer h.activeHealthProbesMutex.Unlock()
 	healthProbe, ok := h.activeHealthProbes[unregisterMsg.ResourceInfo.HealthID]
 	if ok {
-		healthProbe.ticker.Stop()
+		if healthProbe.ticker != nil {
+			// The ticker could be nil when the health handler mode is push
+			healthProbe.ticker.Stop()
+		}
 		healthProbe.stopProbeForResource <- struct{}{}
 		// Remove entry from active health probe map
 		delete(h.activeHealthProbes, unregisterMsg.ResourceInfo.HealthID)
@@ -218,7 +265,7 @@ func NewMonitor(options MonitorOptions, arm armauth.ArmConfig) Monitor {
 }
 
 // StartRadHealth creates and starts the Radius Health Monitor
-func StartRadHealth(ctx context.Context, arm armauth.ArmConfig, dbClient *mongo.Client, dbName string, healthChannels healthcontract.HealthChannels) {
+func StartRadHealth(ctx context.Context, arm armauth.ArmConfig, k8s *client.Client, dbClient *mongo.Client, dbName string, healthChannels healthcontract.HealthChannels) {
 	// Create logger to log health events
 	logger, flushHealthLogs, err := radlogger.NewLogger(fmt.Sprintf("Health-ARM-%s-%s", arm.SubscriptionID, arm.ResourceGroup))
 	if err != nil {
@@ -233,7 +280,7 @@ func StartRadHealth(ctx context.Context, arm armauth.ArmConfig, dbClient *mongo.
 	// Create a DB to store health events
 	db := db.NewRadHealthDB(dbClient.Database(dbName))
 
-	model := azure.NewAzureHealthModel(arm)
+	model := azure.NewAzureHealthModel(arm, k8s)
 
 	options := MonitorOptions{
 		Logger:                      logger,

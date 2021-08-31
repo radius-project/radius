@@ -6,10 +6,12 @@
 package outputresource
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/Azure/radius/pkg/algorithm/graph"
 	"github.com/Azure/radius/pkg/health"
+	"github.com/Azure/radius/pkg/healthcontract"
 )
 
 // OutputResource represents the output of rendering a resource
@@ -104,7 +106,16 @@ func (resource OutputResource) GetResourceID() string {
 	} else if resource.Type == TypeAADPodIdentity {
 		return resource.Info.(AADPodIdentity).AKSClusterName + "-" + resource.Info.(AADPodIdentity).Name
 	} else if resource.Type == TypeKubernetes {
-		return resource.Info.(K8sInfo).Namespace + "-" + resource.Info.(K8sInfo).Name
+		kID := healthcontract.KubernetesID{
+			Kind:      resource.Info.(K8sInfo).Kind,
+			Namespace: resource.Info.(K8sInfo).Namespace,
+			Name:      resource.Info.(K8sInfo).Name,
+		}
+		id, err := json.Marshal(kID)
+		if err != nil {
+			return ""
+		}
+		return string(id)
 	}
 	return ""
 }

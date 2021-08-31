@@ -5,10 +5,8 @@
 
 package azure
 
-// ResourceKinds supported.
-// TODO: Duplicated from RP for now. Needs to be refactored to share this with RP without adding a dependency on RP
+// Azure ResourceKinds supported.
 const (
-	ResourceKindKubernetes                       = "kubernetes"
 	ResourceKindDaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
 	ResourceKindDaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
 	ResourceKindDaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
