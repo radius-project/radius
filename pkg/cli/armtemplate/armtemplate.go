@@ -16,7 +16,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radrp/armexpr"
 )
 

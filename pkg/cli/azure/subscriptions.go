@@ -11,7 +11,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/cli"
-	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/azclients"
 )
 
 // SubscriptionResult is the result of loading Azure subscriptions for the user.

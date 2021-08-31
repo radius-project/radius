@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azcli"
+	"github.com/Azure/radius/pkg/azure/azclients"
 	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/azcli"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"

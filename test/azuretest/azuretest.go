@@ -11,8 +11,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
-	auth, err := azure.GetResourceManagerEndpointAuthorizer()
+	auth, err := armauth.GetArmAuthorizer()
 	require.NoError(t, err, "failed to authenticate with azure")
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)

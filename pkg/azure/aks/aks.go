@@ -3,20 +3,21 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azure
+package aks
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azclients"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 func GetAKSMonitoringCredentials(ctx context.Context, subscriptionID string, resourceGroup string, clusterName string) (*rest.Config, error) {
-	armauth, err := GetResourceManagerEndpointAuthorizer()
+	armauth, err := armauth.GetArmAuthorizer()
 	if err != nil {
 		return nil, err
 	}

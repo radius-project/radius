@@ -9,9 +9,9 @@ import (
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azcli"
 	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/azcli"
-	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
 )
@@ -28,7 +28,7 @@ var envMergeCredentialsCmd = &cobra.Command{
 			return err
 		}
 
-		isServicePrincipalConfigured, err := azure.IsServicePrincipalConfigured()
+		isServicePrincipalConfigured, err := armauth.IsServicePrincipalConfigured()
 		if err != nil {
 			return err
 		}

@@ -107,7 +107,12 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 	} else {
 		log.Println("No Service Principal detected.")
 
-		auth, err := auth.NewAuthorizerFromCLIWithResource("https://management.azure.com")
+		settings, err := auth.GetSettingsFromEnvironment()
+		if err != nil {
+			return nil, err
+		}
+
+		auth, err := auth.NewAuthorizerFromCLIWithResource(settings.Environment.ResourceManagerEndpoint)
 
 		if err != nil {
 			return nil, err
@@ -119,13 +124,18 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 
 // GetAuthMethod returns the authentication method used by the RP
 func GetAuthMethod() string {
-	clientID, ok := os.LookupEnv("AZURE_CLIENT_ID")
+	settings, err := auth.GetSettingsFromEnvironment()
 
-	if ok && clientID != "" {
+	if err == nil && settings.Values[auth.ClientID] != "" && settings.Values[auth.ClientSecret] != "" {
 		return ServicePrincipalAuth
 	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
 		return ManagedIdentityAuth
 	} else {
 		return CliAuth
 	}
+}
+
+// IsServicePrincipalConfigured determines whether a service principal is specifed
+func IsServicePrincipalConfigured() (bool, error) {
+	return GetAuthMethod() == ServicePrincipalAuth, nil
 }

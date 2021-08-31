@@ -23,7 +23,8 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azclients"
 	"github.com/Azure/radius/pkg/cli"
 	radazure "github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/output"
@@ -300,7 +301,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string) error {
-	armauth, err := radazure.GetResourceManagerEndpointAuthorizer()
+	armauth, err := armauth.GetArmAuthorizer()
 	if err != nil {
 		return err
 	}
