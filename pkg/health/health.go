@@ -29,7 +29,6 @@ const ChannelBufferSize = 100
 type HealthInfo struct {
 	stopProbeForResource    chan struct{}
 	ticker                  *time.Ticker
-	notifyStateChange       chan healthcontract.ResourceHealthDataMessage
 	handler                 handlers.HealthHandler
 	HealthState             string
 	HealthStateErrorDetails string
@@ -114,7 +113,6 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	// Lookup whether the health can be watched or needs to be actively probed
 	if mode == handlers.HealthHandlerModePush {
 		h.activeHealthProbesMutex.Lock()
-		healthInfo.notifyStateChange = make(chan healthcontract.ResourceHealthDataMessage, 100)
 		h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
 		h.activeHealthProbesMutex.Unlock()
 
@@ -160,7 +158,10 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 }
 
 func (h Monitor) handleStateChanges(ctx context.Context, resourceInfo healthcontract.ResourceInfo, newHealthState healthcontract.ResourceHealthDataMessage) {
-	logger := radlogger.GetLogger(ctx)
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldHealthID, resourceInfo.HealthID,
+		radlogger.LogFieldResourceID, resourceInfo.ResourceID,
+		radlogger.LogFieldWorkLoadKind, resourceInfo.ResourceKind)
 	// Save the current health state in memory
 	h.activeHealthProbesMutex.RLock()
 	currentHealthInfo, ok := h.activeHealthProbes[resourceInfo.HealthID]

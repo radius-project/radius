@@ -19,18 +19,13 @@ type healthModel struct {
 }
 
 func (hm *healthModel) LookupHandler(registerMsg healthcontract.ResourceHealthRegistrationMessage) (handlers.HealthHandler, string) {
-	// For Kubernetes, return Push/Pull model based on the Kubernetes metadata type
+	// For Kubernetes, return Push mode
 	if registerMsg.ResourceInfo.ResourceKind == ResourceKindKubernetes {
 		kID, err := healthcontract.ParseK8sResourceID(registerMsg.ResourceInfo.ResourceID)
 		if err != nil {
 			return nil, ""
 		}
-
-		if kID.Kind == healthcontract.KubernetesKindDeployment {
-			return hm.handlersList[kID.Kind], handlers.HealthHandlerModePush
-		} else if kID.Kind == healthcontract.KubernetesKindService {
-			return hm.handlersList[kID.Kind], handlers.HealthHandlerModePull
-		}
+		return hm.handlersList[kID.Kind], handlers.HealthHandlerModePush
 	}
 
 	// For all other resource kinds, the mode is Pull
