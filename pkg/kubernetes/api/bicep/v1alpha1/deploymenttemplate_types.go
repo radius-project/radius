@@ -7,11 +7,14 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // DeploymentTemplateSpec defines the desired state of Arm
 type DeploymentTemplateSpec struct {
-	Content string `json:"content,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Content *runtime.RawExtension `json:"content,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of Arm

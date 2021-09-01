@@ -7,10 +7,12 @@ package kubernetes
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -21,6 +23,11 @@ type KubernetesDeploymentClient struct {
 
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) error {
 	kind := "DeploymentTemplate"
+
+	data, err := json.Marshal(content)
+	if err != nil {
+		return err
+	}
 
 	// TODO name and annotations
 	deployment := bicepv1alpha1.DeploymentTemplate{
@@ -33,10 +40,10 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 			Namespace:    c.Namespace,
 		},
 		Spec: bicepv1alpha1.DeploymentTemplateSpec{
-			Content: content,
+			Content: &runtime.RawExtension{Raw: data},
 		},
 	}
 
-	err := c.Client.Create(ctx, &deployment, &client.CreateOptions{FieldManager: kubernetes.FieldManager})
+	err = c.Client.Create(ctx, &deployment, &client.CreateOptions{FieldManager: kubernetes.FieldManager})
 	return err
 }

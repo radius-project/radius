@@ -47,7 +47,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	template, err := armtemplate.Parse(arm.Spec.Content)
+	template, err := armtemplate.Parse(string(arm.Spec.Content.Raw))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
