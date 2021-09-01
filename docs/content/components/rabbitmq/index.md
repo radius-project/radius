@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "RabbitMQ"
+title: "RabbitMQ message broker component"
 linkTitle: "RabbitMQ"
 description: "Learn how to use a RabbitMQ component in your application"
 ---
@@ -11,7 +11,8 @@ The `rabbitmq.com/MessageQueue` component is a Kubernetes specific component for
 
 | Platform | Resource |
 |----------|----------|
-| [Kubernetes]({{< ref kubernetes-environments >}}) | RabbitMQ service
+| [Microsoft Azure]({{< ref azure-environments >}}) | Not compatible |
+| [Kubernetes]({{< ref kubernetes-environments >}}) | [RabbitMQ](https://hub.docker.com/_/rabbitmq/) service |
 
 ## Configuration
 
@@ -41,6 +42,6 @@ Currently user-managed RabbitMQ components are not supported.
 The `default` Binding of kind `rabbitmq.com/MessageQueue` represents the the RabbitMQ resource, and all APIs it offers.
 
 | Property | Description | Example(s) |
-|----------|-------------|
+|----------|-------------|------------|
 | `connectionString` | The RabbitMQ connection string used to connect to the resource. | amqp://rabbitmq:5672/ |
 | `queue` | The message queue to which you are connecting.
