@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +27,7 @@ type kubernetesDeploymentHandler struct {
 	k8s k8s.Clientset
 }
 
-func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options Options) healthcontract.ResourceHealthDataMessage {
+func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options handleroptions.Options) healthcontract.ResourceHealthDataMessage {
 	kID, err := healthcontract.ParseK8sResourceID(resourceInfo.ResourceID)
 	if err != nil {
 		return healthcontract.ResourceHealthDataMessage{

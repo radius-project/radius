@@ -6,6 +6,7 @@
 package model
 
 import (
+	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/healthcontract"
 )
@@ -25,11 +26,11 @@ func (hm *healthModel) LookupHandler(registerMsg healthcontract.ResourceHealthRe
 		if err != nil {
 			return nil, ""
 		}
-		return hm.handlersList[kID.Kind], handlers.HealthHandlerModePush
+		return hm.handlersList[kID.Kind], handleroptions.HealthHandlerModePush
 	}
 
 	// For all other resource kinds, the mode is Pull
-	return hm.handlersList[registerMsg.ResourceInfo.ResourceKind], handlers.HealthHandlerModePull
+	return hm.handlersList[registerMsg.ResourceInfo.ResourceKind], handleroptions.HealthHandlerModePull
 
 }
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/health/model/azure"
@@ -67,7 +68,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	require.Equal(t, true, found)
 	handler, mode := monitor.model.LookupHandler(registrationMsg)
 	require.Equal(t, handler, healthInfo.handler)
-	require.Equal(t, handlers.HealthHandlerModePull, mode)
+	require.Equal(t, handleroptions.HealthHandlerModePull, mode)
 	require.Equal(t, "abc", healthInfo.Resource.HealthID)
 	require.Equal(t, "xyz", healthInfo.Resource.ResourceID)
 	require.Equal(t, azure.ResourceKindAzureServiceBusQueue, healthInfo.Resource.ResourceKind)

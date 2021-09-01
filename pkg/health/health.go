@@ -14,6 +14,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/health/db"
+	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/health/model/azure"
@@ -111,19 +112,19 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	}
 
 	// Lookup whether the health can be watched or needs to be actively probed
-	if mode == handlers.HealthHandlerModePush {
+	if mode == handleroptions.HealthHandlerModePush {
 		h.activeHealthProbesMutex.Lock()
 		h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
 		h.activeHealthProbesMutex.Unlock()
 
-		options := handlers.Options{
+		options := handleroptions.Options{
 			StopCh:                    healthInfo.stopProbeForResource,
 			WatchHealthChangesChannel: h.watchHealthChangesChannel,
 		}
 
 		// Watch health state
 		go healthHandler.GetHealthState(ctx, healthInfo.Resource, options)
-	} else if mode == handlers.HealthHandlerModePull {
+	} else if mode == handleroptions.HealthHandlerModePull {
 		// Need to actively probe the health periodically
 		h.probeHealth(ctx, healthHandler, healthInfo)
 	}
@@ -145,7 +146,7 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 			select {
 			case <-ticker.C:
 				logger.Info("Probing health...")
-				options := handlers.Options{
+				options := handleroptions.Options{
 					Interval: healthInfo.Options.Interval,
 				}
 				newHealthState := healthHandler.GetHealthState(ctx, healthInfo.Resource, options)

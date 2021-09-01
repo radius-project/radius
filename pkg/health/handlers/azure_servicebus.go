@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/health/db"
+	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/healthcontract"
 )
 
@@ -47,7 +48,7 @@ func (handler *azureServiceBusBaseHandler) getQueueByID(ctx context.Context, id 
 	return &queue, nil
 }
 
-func (handler *azureServiceBusBaseHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options Options) healthcontract.ResourceHealthDataMessage {
+func (handler *azureServiceBusBaseHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options handleroptions.Options) healthcontract.ResourceHealthDataMessage {
 	queue, err := handler.getQueueByID(ctx, resourceInfo.ResourceID)
 	var healthState = db.Healthy
 	var healthStateErrorDetails string
