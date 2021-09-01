@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radrp"
 	"github.com/Azure/radius/pkg/radrp/k8sauth"
+	"github.com/Azure/radius/pkg/service"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -82,8 +83,15 @@ func main() {
 
 	healthChannels := makeHealthChannels()
 
-	go radrp.StartRadRP(ctx, arm, k8s, client, dbName, healthChannels)
-	go health.StartRadHealth(ctx, arm, k8s, client, dbName, healthChannels)
+	options := service.Options{
+		Arm:            arm,
+		K8s:            k8s,
+		DBClient:       client,
+		DBName:         dbName,
+		HealthChannels: healthChannels,
+	}
+	go radrp.StartRadRP(ctx, options)
+	go health.StartRadHealth(ctx, options)
 
 	waitDuration := time.Second * 10
 	for {
