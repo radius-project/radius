@@ -12,7 +12,7 @@ The `radius.dev/Container` component provides an abstraction for a container wor
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | AKS Deployment |
+| [Microsoft Azure]({{< ref azure-environments >}}) | Kubernetes Deployment on AKS |
 | [Kubernetes]({{< ref kubernetes-environments >}}) | Kubernetes Deployment |
 
 
