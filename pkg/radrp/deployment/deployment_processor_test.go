@@ -9,14 +9,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/mocks/mockhandlers"
-	"github.com/Azure/radius/mocks/mockrenderers"
+	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
@@ -64,11 +64,11 @@ func Test_DeploymentProcessor_OrderActions(t *testing.T) {
 
 func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockResourceHandler := mockhandlers.NewMockResourceHandler(ctrl)
+	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
 	mockResourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(2).Return(map[string]string{}, nil)
-	mockHealthHandler := mockhandlers.NewMockHealthHandler(ctrl)
+	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
 	mockHealthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(2).Return(healthcontract.HealthCheckOptions{})
-	mockRendererKind := mockrenderers.NewMockWorkloadRenderer(ctrl)
+	mockRendererKind := renderers.NewMockWorkloadRenderer(ctrl)
 	mockRendererKind.EXPECT().Render(gomock.Any(), gomock.Any()).AnyTimes().Return([]outputresource.OutputResource{
 		{
 			LocalID:  "abc",
@@ -163,10 +163,10 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 
 func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockResourceHandler := mockhandlers.NewMockResourceHandler(ctrl)
+	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
 	mockResourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
-	mockHealthHandler := mockhandlers.NewMockHealthHandler(ctrl)
-	mockRendererKind := mockrenderers.NewMockWorkloadRenderer(ctrl)
+	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
+	mockRendererKind := renderers.NewMockWorkloadRenderer(ctrl)
 	mockRendererKind.EXPECT().Render(gomock.Any(), gomock.Any()).AnyTimes().Return([]outputresource.OutputResource{
 		{
 			LocalID:  "abc",

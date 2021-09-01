@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/mocks"
 	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -29,6 +28,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -41,26 +41,24 @@ const (
 
 type test struct {
 	t       *testing.T
-	db      *mocks.MockRadrpDB
+	db      *db.MockRadrpDB
 	ctrl    *gomock.Controller
-	k8s     *mocks.MockClient
 	server  *httptest.Server
-	deploy  *mocks.MockDeploymentProcessor
+	deploy  *deployment.MockDeploymentProcessor
 	handler http.Handler
 }
 
 func start(t *testing.T) *test {
 	ctrl := gomock.NewController(t)
-	db := mocks.NewInMemoryRadrpDB(ctrl)
-	k8s := mocks.NewMockClient(ctrl)
-	deploy := mocks.NewMockDeploymentProcessor(ctrl)
+	db := db.NewInMemoryRadrpDB(ctrl)
+	deploy := deployment.NewMockDeploymentProcessor(ctrl)
 
 	options := ServerOptions{
 		Address:      httptest.DefaultRemoteAddr,
 		Authenticate: false,
 		Deploy:       deploy,
 		DB:           db,
-		K8s:          k8s,
+		K8s:          fake.NewClientBuilder().Build(),
 	}
 
 	s := NewServer(options)
@@ -71,7 +69,6 @@ func start(t *testing.T) *test {
 	return &test{
 		t:       t,
 		db:      db,
-		k8s:     k8s,
 		deploy:  deploy,
 		ctrl:    ctrl,
 		server:  server,

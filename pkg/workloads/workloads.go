@@ -32,7 +32,7 @@ type InstantiatedWorkload struct {
 //
 // The idea is that this represents *fan-out* in terms of the implementation. All of the APIs here
 // could be replaced with REST calls.
-//go:generate mockgen -destination=../../mocks/mockrenderers/mock_renderer.go -package=mockrenderers github.com/Azure/radius/pkg/workloads WorkloadRenderer
+//go:generate mockgen -destination=../../pkg/renderers/mock_renderer.go -package=renderers github.com/Azure/radius/pkg/workloads WorkloadRenderer
 type WorkloadRenderer interface {
 	// AllocateBindings is called for the component to provide its supported bindings and their values.
 	AllocateBindings(ctx context.Context, workload InstantiatedWorkload, resources []WorkloadResourceProperties) (map[string]components.BindingState, error)

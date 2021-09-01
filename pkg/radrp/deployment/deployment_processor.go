@@ -20,7 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 )
 
-//go:generate mockgen -destination=../../../mocks/mock_deployment_processor.go -package=mocks github.com/Azure/radius/pkg/radrp/deployment DeploymentProcessor
+//go:generate mockgen -destination=./mock_deployment_processor.go -package=deployment -self_package github.com/Azure/radius/pkg/radrp/deployment github.com/Azure/radius/pkg/radrp/deployment DeploymentProcessor
 
 // DeploymentProcessor implements functionality for updating and deleting deployments.
 type DeploymentProcessor interface {
