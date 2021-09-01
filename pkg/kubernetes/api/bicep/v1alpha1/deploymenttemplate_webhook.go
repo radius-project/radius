@@ -28,7 +28,6 @@ func (r *DeploymentTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.Validator = &DeploymentTemplate{}
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //+kubebuilder:webhook:path=/validate-bicep-dev-v1alpha1-deploymenttemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=bicep.dev,resources=deploymenttemplates,verbs=create;update;delete,versions=v1alpha1,name=deploymenttemplate-validator.bicep.dev,admissionReviewVersions={v1,v1beta1}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
@@ -49,7 +48,7 @@ func (r *DeploymentTemplate) ValidateUpdate(old runtime.Object) error {
 func (r *DeploymentTemplate) ValidateDelete() error {
 	armlog.Info("validate delete", "name", r.Name)
 
-	return validateArm(r)
+	return nil
 }
 
 func validateArm(r *DeploymentTemplate) error {

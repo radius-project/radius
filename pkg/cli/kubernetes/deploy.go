@@ -39,7 +39,6 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 		return err
 	}
 
-	// TODO name and annotations
 	deployment := bicepv1alpha1.DeploymentTemplate{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "bicep.dev/v1alpha1",
