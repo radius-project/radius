@@ -14,7 +14,7 @@ These steps will setup the required tools and extensions to get you up and runni
 
 ## Install CLI
 
-{{< tabs Windows MacOS Linux "Cloud Shell" Binaries >}}
+{{< tabs Windows MacOS "Linux/WSL" "Cloud Shell" Binaries >}}
 
 {{% codetab %}}
 

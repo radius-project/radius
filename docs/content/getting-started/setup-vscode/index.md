@@ -28,6 +28,8 @@ Radius can be used with any text editor, but Radius-specific optimizations are a
       ```bash
       code --install-extension rad-vscode-bicep.vsix
       ```
+   - If running on Windows Subsystem for Linux (WSL), make sure to install the extension in WSL as well:
+      <img src="./wsl-extension.png" alt="Screenshot of installing a vsix extension in WSL" width=400>
 
 1. Disable the official Bicep extension if you have it installed. (Do NOT install the Bicep extension if you haven't already.)
    - Our custom extension needs to be responsible for handling `.bicep` files and you cannot have both extensions enabled at once.
