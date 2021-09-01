@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "MongoDB component"
+title: "MongoDB database component"
 linkTitle: "MongoDB"
 description: "Learn how to use a MongoDB component in your application"
 ---

@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Redis"
+title: "Redis cache component"
 linkTitle: "Redis"
 description: "Learn how to use a Redis component in your application"
 ---
