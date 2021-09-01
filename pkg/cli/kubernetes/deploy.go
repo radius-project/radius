@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +25,16 @@ type KubernetesDeploymentClient struct {
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) error {
 	kind := "DeploymentTemplate"
 
-	data, err := json.Marshal(content)
+	// Unmarhsal the content into a deployment template
+	// rather than a string.
+	armJson := armtemplate.DeploymentTemplate{}
+
+	err := json.Unmarshal([]byte(content), &armJson)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(armJson)
 	if err != nil {
 		return err
 	}
