@@ -10,10 +10,10 @@ import (
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/healthcontract"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8s "k8s.io/client-go/kubernetes"
 )
 
-func NewAzureHealthModel(arm armauth.ArmConfig, k8s *client.Client) model.HealthModel {
+func NewAzureHealthModel(arm armauth.ArmConfig, k8s *k8s.Clientset) model.HealthModel {
 	// Add health check handlers for the resource types
 	handlers := map[string]handlers.HealthHandler{
 		// TODO: Add health check handler for all resource kinds

@@ -274,7 +274,7 @@ func StartRadHealth(ctx context.Context, options service.Options) {
 	// Create a DB to store health events
 	db := db.NewRadHealthDB(options.DBClient.Database(options.DBName))
 
-	model := azure.NewAzureHealthModel(options.Arm, options.K8s)
+	model := azure.NewAzureHealthModel(options.Arm, options.K8sClientSet)
 
 	monitorOptions := MonitorOptions{
 		Logger:                      logger,

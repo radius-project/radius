@@ -14,18 +14,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const KubernetesLabelName = "app.kubernetes.io/name"
 
-func NewKubernetesDeploymentHandler(k8s client.Client) HealthHandler {
+func NewKubernetesDeploymentHandler(k8s k8s.Clientset) HealthHandler {
 	return &kubernetesDeploymentHandler{k8s: k8s}
 }
 
 type kubernetesDeploymentHandler struct {
-	k8s client.Client
+	k8s k8s.Clientset
 }
 
 func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options Options) healthcontract.ResourceHealthDataMessage {
@@ -38,28 +36,10 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		}
 	}
 
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return healthcontract.ResourceHealthDataMessage{
-			Resource:                resourceInfo,
-			HealthState:             healthcontract.HealthStateUnhealthy,
-			HealthStateErrorDetails: err.Error(),
-		}
-	}
-
-	k8s, err := k8s.NewForConfig(cfg)
-	if err != nil {
-		return healthcontract.ResourceHealthDataMessage{
-			Resource:                resourceInfo,
-			HealthState:             healthcontract.HealthStateUnhealthy,
-			HealthStateErrorDetails: err.Error(),
-		}
-	}
-
 	logger := radlogger.GetLogger(ctx)
 
 	// Start watching deployment changes
-	w, err := k8s.CoreV1().Pods(kID.Namespace).Watch(ctx, metav1.ListOptions{
+	w, err := handler.k8s.CoreV1().Pods(kID.Namespace).Watch(ctx, metav1.ListOptions{
 		Watch:         true,
 		LabelSelector: fmt.Sprintf("%s=%s", KubernetesLabelName, kID.Name),
 	})

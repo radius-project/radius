@@ -23,7 +23,9 @@ import (
 	"github.com/Azure/radius/pkg/service"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+	k8sClient "k8s.io/client-go/kubernetes"
+	k8sRClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 // ChannelBufferSize defines the buffer size for health registration channel
@@ -63,7 +65,7 @@ func main() {
 		panic(fmt.Sprintf("error connecting to ARM: %s", err))
 	}
 
-	var k8s *k8sClient.Client
+	var k8s *k8sRClient.Client
 	skipKubernetes, ok := os.LookupEnv("SKIP_K8S")
 	if ok && strings.EqualFold(skipKubernetes, "true") {
 		log.Println("skipping Kubernetes connection...")
@@ -73,6 +75,19 @@ func main() {
 			log.Printf("error connecting to kubernetes: %s", err)
 			panic(err)
 		}
+	}
+
+	// Create kubernetes clientset
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Printf("error getting kubernetes config: %s", err)
+		panic(err)
+	}
+
+	k8sClientSet, err := k8sClient.NewForConfig(cfg)
+	if err != nil {
+		log.Printf("error connecting to kubernetes: %s", err)
+		panic(err)
 	}
 
 	// Create a channel to handle the shutdown
@@ -85,7 +100,8 @@ func main() {
 
 	options := service.Options{
 		Arm:            arm,
-		K8s:            k8s,
+		K8sClient:      k8s,
+		K8sClientSet:   k8sClientSet,
 		DBClient:       client,
 		DBName:         dbName,
 		HealthChannels: healthChannels,

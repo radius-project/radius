@@ -52,9 +52,9 @@ func StartRadRP(ctx context.Context, options service.Options) {
 
 	var appmodel model.ApplicationModel
 	if os.Getenv("RADIUS_MODEL") == "" || strings.EqualFold(os.Getenv("RADIUS_MODEL"), "azure") {
-		appmodel = azure.NewAzureModel(options.Arm, options.K8s)
+		appmodel = azure.NewAzureModel(options.Arm, options.K8sClient)
 	} else if strings.EqualFold(os.Getenv("RADIUS_MODEL"), "k8s") {
-		appmodel = kubernetes.NewKubernetesModel(options.K8s)
+		appmodel = kubernetes.NewKubernetesModel(options.K8sClient)
 	} else {
 		log.Fatal(fmt.Errorf("unknown value for RADIUS_MODEL '%s'", os.Getenv("RADIUS_MODEL")))
 	}
