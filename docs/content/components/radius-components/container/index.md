@@ -8,7 +8,7 @@ weight: 1000
 
 The `radius.dev/Container` component provides an abstraction for a container workload that can be run on any [Radius platform]({{< ref environments >}}).
 
-## Resources
+## Platform resources
 
 | Platform | Resource |
 |----------|----------|

@@ -7,7 +7,7 @@ description: "Learn how to use a RabbitMQ component in your application"
 
 The `rabbitmq.com/MessageQueue` component is a Kubernetes specific component for message brokering.
 
-## Resources
+## Platform resources
 
 | Platform | Resource |
 |----------|----------|

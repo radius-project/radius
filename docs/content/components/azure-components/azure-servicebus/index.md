@@ -1,18 +1,25 @@
 ---
 type: docs
-title: "Azure ServiceBus Component"
-linkTitle: "ServiceBus"
-description: "Deploy and orchestrate Azure ServiceBus using Radius"
+title: "Azure ServiceBus Queue Component"
+linkTitle: "Service Bus Queue"
+description: "Deploy and orchestrate Azure Service Bus Queues using Radius"
 ---
 
 ## Overview
 
-The Azure ServiceBus component offers to the user:
+The Azure ServiceBus Queue component offers to the user:
 
 - Managed resource deployment and lifecycle of the ServiceBus Queue
 - Automatic configuration of Azure Managed Identities and RBAC between consuming components and the ServiceBus
 - Injection of connection information into connected containers
 - Automatic secret injection for configured components
+
+## Platform resources
+
+| Platform | Resource |
+|----------|----------|
+| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Service Bus Queue](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)
+| [Kubernetes]({{< ref kubernetes-environments >}}) | Not compatible
 
 ## Configuration
 

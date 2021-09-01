@@ -7,7 +7,7 @@ description: "Learn how to use a MongoDB component in your application"
 
 The `mongodb.com/MongoDB` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref environments >}}).
 
-## Resources
+## Platform resources
 
 | Platform | Resource |
 |----------|----------|
