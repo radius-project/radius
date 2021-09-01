@@ -14,7 +14,7 @@ These steps will setup the required tools and extensions to get you up and runni
 
 ## Install CLI
 
-{{< tabs Windows MacOS "Linux/WSL" Binaries >}}
+{{< tabs Windows MacOS "Linux/WSL" "Cloud Shell" Binaries >}}
 
 {{% codetab %}}
 
@@ -79,6 +79,23 @@ wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - |
 ```bash
 wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s <Version>
 ```
+
+{{% /codetab %}}
+
+{{% codetab %}}
+
+[Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/overview) is an interactive, authenticated, browser-accessible shell for managing Azure resources.
+
+Azure Cloud Shell for bash doesn't have a sudo command, so users are unable to install Radius to the default `/usr/local/bin` installation path. To install the rad CLI to the home directory, run the following commands:
+
+```bash
+export RADIUS_INSTALL_DIR=./
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash
+```
+
+You can now run the rad CLI with `./rad`.
+
+PowerShell for Cloud Shell is currently not supported.
 
 {{% /codetab %}}
 
