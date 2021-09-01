@@ -29,6 +29,11 @@ func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient
 	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.ListByResourceGroup(ctx, dm.ResourceGroup, nil)
 	if err != nil {
+		var httpresp azcore.HTTPResponse
+		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
+			errorMessage := fmt.Sprintf("no applications found in resource group '%s'", dm.ResourceGroup)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
 		return nil, err
 	}
 
@@ -39,6 +44,11 @@ func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationN
 	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.Get(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
+		var httpresp azcore.HTTPResponse
+		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
+			errorMessage := fmt.Sprintf("application '%s' in resource group '%s' was not found", applicationName, dm.ResourceGroup)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
 		return nil, err
 	}
 
@@ -51,6 +61,11 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, applicatio
 
 	_, err := ac.Delete(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
+		var httpresp azcore.HTTPResponse
+		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
+			errorMessage := fmt.Sprintf("application '%s' in resource group '%s' was not found", applicationName, dm.ResourceGroup)
+			return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
 		return err
 	}
 
@@ -62,6 +77,11 @@ func (dm *ARMManagementClient) ListComponents(ctx context.Context, applicationNa
 
 	response, err := componentClient.ListByApplication(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
+		var httpresp azcore.HTTPResponse
+		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
+			errorMessage := fmt.Sprintf("components for application '%s' and resource group '%s' were not found", applicationName, dm.ResourceGroup)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
 		return nil, err
 	}
 	return response.ComponentList, err
@@ -72,6 +92,11 @@ func (dm *ARMManagementClient) ShowComponent(ctx context.Context, applicationNam
 
 	response, err := componentClient.Get(ctx, dm.ResourceGroup, applicationName, componentName, nil)
 	if err != nil {
+		var httpresp azcore.HTTPResponse
+		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
+			errorMessage := fmt.Sprintf("component '%s' for application '%s' and resource group '%s' was not found", componentName, applicationName, dm.ResourceGroup)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
 		return nil, err
 	}
 
