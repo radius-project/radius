@@ -7,45 +7,52 @@ package kubernetes
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
+	"github.com/Azure/radius/pkg/kubernetes"
+	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/dynamic"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type KubernetesDeploymentClient struct {
-	Client    dynamic.Interface
+	Client    client.Client
 	Namespace string
 }
 
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) error {
-	template, err := armtemplate.Parse(content)
+	kind := "DeploymentTemplate"
+
+	// Unmarhsal the content into a deployment template
+	// rather than a string.
+	armJson := armtemplate.DeploymentTemplate{}
+
+	err := json.Unmarshal([]byte(content), &armJson)
 	if err != nil {
 		return err
 	}
 
-	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{})
+	data, err := json.Marshal(armJson)
 	if err != nil {
 		return err
 	}
 
-	for _, resource := range resources {
-		k8sInfo, err := armtemplate.ConvertToK8s(resource, c.Namespace)
-		if err != nil {
-			return err
-		}
-
-		data, err := k8sInfo.Unstructured.MarshalJSON()
-		if err != nil {
-			return err
-		}
-
-		_, err = c.Client.Resource(k8sInfo.GVR).Namespace(c.Namespace).Patch(ctx, k8sInfo.Name, types.ApplyPatchType, data, v1.PatchOptions{FieldManager: "rad"})
-		if err != nil {
-			return err
-		}
+	deployment := bicepv1alpha1.DeploymentTemplate{
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "bicep.dev/v1alpha1",
+			Kind:       kind,
+		},
+		ObjectMeta: v1.ObjectMeta{
+			GenerateName: "deploymenttemplate-",
+			Namespace:    c.Namespace,
+		},
+		Spec: bicepv1alpha1.DeploymentTemplateSpec{
+			Content: &runtime.RawExtension{Raw: data},
+		},
 	}
 
-	return nil
+	err = c.Client.Create(ctx, &deployment, &client.CreateOptions{FieldManager: kubernetes.FieldManager})
+	return err
 }

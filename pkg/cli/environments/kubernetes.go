@@ -42,7 +42,7 @@ func (e *KubernetesEnvironment) GetStatusLink() string {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	client, err := kubernetes.CreateDynamicClient(e.Context)
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}

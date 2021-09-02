@@ -62,6 +62,32 @@ rules:
   - update
   - watch
 - apiGroups:
+  - bicep.dev
+  resources:
+  - deploymenttemplates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - bicep.dev
+  resources:
+  - deploymenttemplates/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - bicep.dev
+  resources:
+  - deploymenttemplates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - dapr.io
   resources:
   - components

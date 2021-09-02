@@ -29,8 +29,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"github.com/Azure/radius/pkg/cli/kubernetes"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
-	"github.com/Azure/radius/pkg/kubernetes/controllers"
+	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
+	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/test/validation"
@@ -71,8 +73,8 @@ func StartController() error {
 	scheme := runtime.NewScheme()
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(bicepv1alpha1.AddToScheme(scheme))
 
 	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, converters.ConvertComponentToInternal)
 	if err != nil {
@@ -82,11 +84,6 @@ func StartController() error {
 	cfg, err := testEnv.Start()
 	if err != nil {
 		return fmt.Errorf("failed to initialize environment: %w", err)
-	}
-
-	err = radiusv1alpha1.AddToScheme(scheme)
-	if err != nil {
-		return fmt.Errorf("could not add scheme: %w", err)
 	}
 
 	//+kubebuilder:scaffold:scheme
@@ -113,7 +110,7 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize manager: %w", err)
 	}
-	err = (&controllers.ApplicationReconciler{
+	err = (&radcontroller.ApplicationReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
 		Scheme: mgr.GetScheme(),
@@ -122,7 +119,7 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize application reconciler: %w", err)
 	}
 
-	err = (&controllers.ComponentReconciler{
+	err = (&radcontroller.ComponentReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
 		Scheme: mgr.GetScheme(),
@@ -130,7 +127,7 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize component reconciler: %w", err)
 	}
-	err = (&controllers.DeploymentReconciler{
+	err = (&radcontroller.DeploymentReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Deployment"),
 		Scheme: mgr.GetScheme(),
@@ -138,6 +135,15 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize deployment reconciler: %w", err)
 	}
+
+	if err = (&bicepcontroller.DeploymentTemplateReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("DeploymentTemplate"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("failed to initialize arm reconciler: %w", err)
+	}
+
 	err = (&radiusv1alpha1.Application{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application webhook: %w", err)
@@ -149,6 +155,10 @@ func StartController() error {
 	err = (&radiusv1alpha1.Deployment{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize deployment webhook: %w", err)
+	}
+	err = (&bicepv1alpha1.DeploymentTemplate{}).SetupWebhookWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to initialize arm webhook: %w", err)
 	}
 
 	go func() {
@@ -228,6 +238,7 @@ func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	uns := &unstructured.Unstructured{}
 	err = json.Unmarshal(content, uns)
 	return uns, err
@@ -251,6 +262,12 @@ func gvr(unst *unstructured.Unstructured) (schema.GroupVersionResource, error) {
 			Group:    "radius.dev",
 			Version:  "v1alpha1",
 			Resource: "deployments",
+		}, nil
+	} else if unst.GroupVersionKind().Kind == "DeploymentTemplate" {
+		return schema.GroupVersionResource{
+			Group:    "bicep.dev",
+			Version:  "v1alpha1",
+			Resource: "deploymenttemplates",
 		}, nil
 	}
 
