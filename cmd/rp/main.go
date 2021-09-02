@@ -25,7 +25,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	k8sClient "k8s.io/client-go/kubernetes"
 	k8sRClient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 // ChannelBufferSize defines the buffer size for health registration channel
@@ -78,7 +77,7 @@ func main() {
 	}
 
 	// Create kubernetes clientset
-	cfg, err := config.GetConfig()
+	cfg, err := k8sauth.GetConfig()
 	if err != nil {
 		log.Printf("error getting kubernetes config: %s", err)
 		panic(err)
