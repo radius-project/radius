@@ -46,12 +46,13 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		LabelSelector: fmt.Sprintf("%s=%s", KubernetesLabelName, kID.Name),
 	})
 	if err != nil {
-		healthStateErrorDetails := err.Error()
-		return healthcontract.ResourceHealthDataMessage{
+		msg := healthcontract.ResourceHealthDataMessage{
 			Resource:                resourceInfo,
 			HealthState:             healthcontract.HealthStateUnhealthy,
-			HealthStateErrorDetails: healthStateErrorDetails,
+			HealthStateErrorDetails: err.Error(),
 		}
+		options.WatchHealthChangesChannel <- msg
+		return msg
 	}
 	defer w.Stop()
 

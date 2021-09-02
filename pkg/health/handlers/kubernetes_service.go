@@ -70,6 +70,21 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 		Watch:         true,
 		LabelSelector: fmt.Sprintf("%s=%s", KubernetesLabelName, kID.Name),
 	})
+	if err != nil {
+		msg := healthcontract.ResourceHealthDataMessage{
+			Resource: healthcontract.ResourceInfo{
+				HealthID:     resourceInfo.HealthID,
+				ResourceID:   resourceInfo.ResourceID,
+				ResourceKind: resourcekinds.ResourceKindKubernetes,
+			},
+			HealthState:             healthcontract.HealthStateUnhealthy,
+			HealthStateErrorDetails: err.Error(),
+		}
+		options.WatchHealthChangesChannel <- msg
+		return msg
+	}
+	defer watcher.Stop()
+
 	svcChans := watcher.ResultChan()
 
 	for {
