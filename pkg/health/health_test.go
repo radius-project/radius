@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/health/model/azure"
+	"github.com/Azure/radius/pkg/health/resourcekinds"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/go-logr/logr"
@@ -47,7 +48,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: azure.ResourceKindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.ResourceKindAzureServiceBusQueue,
 		},
 	}
 
@@ -71,7 +72,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	require.Equal(t, handleroptions.HealthHandlerModePull, mode)
 	require.Equal(t, "abc", healthInfo.Resource.HealthID)
 	require.Equal(t, "xyz", healthInfo.Resource.ResourceID)
-	require.Equal(t, azure.ResourceKindAzureServiceBusQueue, healthInfo.Resource.ResourceKind)
+	require.Equal(t, resourcekinds.ResourceKindAzureServiceBusQueue, healthInfo.Resource.ResourceKind)
 	require.NotNil(t, healthInfo.ticker)
 }
 
@@ -117,7 +118,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	resourceInfo := healthcontract.ResourceInfo{
 		HealthID:     "abc",
 		ResourceID:   "xyz",
-		ResourceKind: azure.ResourceKindAzureServiceBusQueue,
+		ResourceKind: resourcekinds.ResourceKindAzureServiceBusQueue,
 	}
 
 	monitor.activeHealthProbes["abc"] = HealthInfo{
@@ -131,7 +132,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: azure.ResourceKindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.ResourceKindAzureServiceBusQueue,
 		},
 	}
 	ctx := logr.NewContext(context.Background(), logger)
@@ -159,7 +160,7 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: azure.ResourceKindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.ResourceKindAzureServiceBusQueue,
 		},
 		Options: healthcontract.HealthCheckOptions{
 			Interval: optionsInterval,
