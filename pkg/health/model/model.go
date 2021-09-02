@@ -8,6 +8,7 @@ package model
 import (
 	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/health/handlers"
+	"github.com/Azure/radius/pkg/health/resourcekinds"
 	"github.com/Azure/radius/pkg/healthcontract"
 )
 
@@ -21,7 +22,7 @@ type healthModel struct {
 
 func (hm *healthModel) LookupHandler(registerMsg healthcontract.ResourceHealthRegistrationMessage) (handlers.HealthHandler, string) {
 	// For Kubernetes, return Push mode
-	if registerMsg.ResourceInfo.ResourceKind == ResourceKindKubernetes {
+	if registerMsg.ResourceInfo.ResourceKind == resourcekinds.ResourceKindKubernetes {
 		kID, err := healthcontract.ParseK8sResourceID(registerMsg.ResourceInfo.ResourceID)
 		if err != nil {
 			return nil, ""

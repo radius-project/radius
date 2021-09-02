@@ -17,17 +17,17 @@ import (
 	"github.com/Azure/radius/pkg/health/model/azure"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/k8sauth"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
+
+	// k8sclient "github.com/kubernetes-sdk-for-go-101/pkg/client"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/client-go/kubernetes"
+	fake "k8s.io/client-go/kubernetes/fake"
 )
 
-func getKubernetesClient(t *testing.T) *client.Client {
-	k8s, err := k8sauth.CreateClient()
-	require.NoError(t, err)
-	return k8s
+func getKubernetesClient() kubernetes.Interface {
+	return fake.NewSimpleClientset()
 }
 
 func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
@@ -38,7 +38,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient(t)),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -84,7 +84,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient(t)),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -110,7 +110,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient(t)),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	stopCh := make(chan struct{}, 1)
@@ -150,7 +150,7 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient(t)),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	optionsInterval := time.Microsecond * 5

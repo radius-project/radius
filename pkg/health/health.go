@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 )
 
+// ChannelBufferSize defines the buffer size for the Watch channel to receive health state changes from push mode watchers
 const ChannelBufferSize = 100
 
 // HealthInfo represents the data maintained per resource being tracked by the HealthService
@@ -62,8 +63,10 @@ func (h Monitor) Run(ctx context.Context) {
 				h.UnregisterResource(ctx, msg)
 			}
 		case newHealthState := <-h.watchHealthChangesChannel:
-			logger.Info(fmt.Sprintf("Watcher for: %v received a health state change event", newHealthState.Resource.HealthID))
-			h.handleStateChanges(ctx, newHealthState.Resource, newHealthState)
+			if newHealthState.HealthState != "" {
+				logger.Info(fmt.Sprintf("Watcher for: %v received a health state change event", newHealthState.Resource.HealthID))
+				h.handleStateChanges(ctx, newHealthState.Resource, newHealthState)
+			}
 		case <-ctx.Done():
 			logger.Info("RadHealth Service stopped...")
 			return
@@ -118,7 +121,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		h.activeHealthProbesMutex.Unlock()
 
 		options := handleroptions.Options{
-			StopCh:                    healthInfo.stopProbeForResource,
+			StopChannel:               healthInfo.stopProbeForResource,
 			WatchHealthChangesChannel: h.watchHealthChangesChannel,
 		}
 

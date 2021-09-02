@@ -10,20 +10,20 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/health/handleroptions"
+	"github.com/Azure/radius/pkg/health/resourcekinds"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
-	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes"
 )
 
-func NewKubernetesServiceHandler(k8s k8s.Clientset) HealthHandler {
+func NewKubernetesServiceHandler(k8s kubernetes.Interface) HealthHandler {
 	return &kubernetesServiceHandler{k8s: k8s}
 }
 
 type kubernetesServiceHandler struct {
-	k8s k8s.Clientset
+	k8s kubernetes.Interface
 }
 
 func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options handleroptions.Options) healthcontract.ResourceHealthDataMessage {
@@ -57,7 +57,7 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 		Resource: healthcontract.ResourceInfo{
 			HealthID:     resourceInfo.HealthID,
 			ResourceID:   resourceInfo.ResourceID,
-			ResourceKind: "ResourceKindKubernetes",
+			ResourceKind: resourcekinds.ResourceKindKubernetes,
 		},
 		HealthState:             healthState,
 		HealthStateErrorDetails: healthStateErrorDetails,
@@ -77,36 +77,28 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 		detail := ""
 		select {
 		case svcEvent := <-svcChans:
-			_, ok := svcEvent.Object.(*corev1.Service)
-			if !ok {
+			switch svcEvent.Type {
+			case watch.Deleted:
 				state = healthcontract.HealthStateUnhealthy
-				detail = "Object is not a service"
-			} else {
-				switch svcEvent.Type {
-				case watch.Deleted:
-					state = healthcontract.HealthStateUnhealthy
-					detail = "Service deleted"
-				case watch.Added:
-				case watch.Modified:
-					state = healthcontract.HealthStateHealthy
-					detail = ""
-				}
+				detail = "Service deleted"
+			case watch.Added:
+			case watch.Modified:
+				state = healthcontract.HealthStateHealthy
+				detail = ""
 			}
-			// Health state has changed. Notify the watcher
-			if state != "" {
-				msg := healthcontract.ResourceHealthDataMessage{
-					Resource: healthcontract.ResourceInfo{
-						HealthID:     resourceInfo.HealthID,
-						ResourceID:   resourceInfo.ResourceID,
-						ResourceKind: "ResourceKindKubernetes",
-					},
-					HealthState:             state,
-					HealthStateErrorDetails: detail,
-				}
-				options.WatchHealthChangesChannel <- msg
-				logger.Info(fmt.Sprintf("Detected health change event for Resource: %s. Notifying watcher.", resourceInfo.ResourceID))
+			// Notify the watcher. Let the watcher determine if an action is needed
+			msg := healthcontract.ResourceHealthDataMessage{
+				Resource: healthcontract.ResourceInfo{
+					HealthID:     resourceInfo.HealthID,
+					ResourceID:   resourceInfo.ResourceID,
+					ResourceKind: resourcekinds.ResourceKindKubernetes,
+				},
+				HealthState:             state,
+				HealthStateErrorDetails: detail,
 			}
-		case <-options.StopCh:
+			options.WatchHealthChangesChannel <- msg
+			logger.Info(fmt.Sprintf("Detected health change event for Resource: %s. Notifying watcher.", resourceInfo.ResourceID))
+		case <-options.StopChannel:
 			logger.Info(fmt.Sprintf("Stopped health monitoring for namespace: %v", kID.Namespace))
 			return healthcontract.ResourceHealthDataMessage{}
 		}

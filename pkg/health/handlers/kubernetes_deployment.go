@@ -10,21 +10,22 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/health/handleroptions"
+	"github.com/Azure/radius/pkg/health/resourcekinds"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes"
 )
 
 const KubernetesLabelName = "app.kubernetes.io/name"
 
-func NewKubernetesDeploymentHandler(k8s k8s.Clientset) HealthHandler {
+func NewKubernetesDeploymentHandler(k8s kubernetes.Interface) HealthHandler {
 	return &kubernetesDeploymentHandler{k8s: k8s}
 }
 
 type kubernetesDeploymentHandler struct {
-	k8s k8s.Clientset
+	k8s kubernetes.Interface
 }
 
 func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options handleroptions.Options) healthcontract.ResourceHealthDataMessage {
@@ -74,21 +75,19 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 				}
 			}
 
-			// Health state has changed. Notify the watcher
-			if healthState != "" {
-				msg := healthcontract.ResourceHealthDataMessage{
-					Resource: healthcontract.ResourceInfo{
-						HealthID:     resourceInfo.HealthID,
-						ResourceID:   resourceInfo.ResourceID,
-						ResourceKind: "ResourceKindKubernetes",
-					},
-					HealthState:             healthState,
-					HealthStateErrorDetails: healthStateErrorDetails,
-				}
-				options.WatchHealthChangesChannel <- msg
-				logger.Info(fmt.Sprintf("Detected health change event for Resource: %s. Notifying watcher.", resourceInfo.ResourceID))
+			// Notify the watcher. Let the watcher determine if an action is needed
+			msg := healthcontract.ResourceHealthDataMessage{
+				Resource: healthcontract.ResourceInfo{
+					HealthID:     resourceInfo.HealthID,
+					ResourceID:   resourceInfo.ResourceID,
+					ResourceKind: resourcekinds.ResourceKindKubernetes,
+				},
+				HealthState:             healthState,
+				HealthStateErrorDetails: healthStateErrorDetails,
 			}
-		case <-options.StopCh:
+			options.WatchHealthChangesChannel <- msg
+			logger.Info(fmt.Sprintf("Detected health change event for Resource: %s. Notifying watcher.", resourceInfo.ResourceID))
+		case <-options.StopChannel:
 			logger.Info(fmt.Sprintf("Stopped health monitoring for namespace: %v", kID.Namespace))
 			return healthcontract.ResourceHealthDataMessage{}
 		}

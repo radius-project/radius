@@ -41,12 +41,6 @@ const HealthIDKey = "healthid"
 // ResourceIDKey is the key used by all resource types to return the actual resource to be tracked by the HealthService
 const ResourceIDKey = "resourceid"
 
-// Kinds of Kubernetes resources
-const (
-	KubernetesKindDeployment = "Deployment"
-	KubernetesKindService    = "Service"
-)
-
 // ResourceInfo includes the resource information that is required to perform its health check
 type ResourceInfo struct {
 	// Identifier used to register a resource with the HealthService and is unique across Radius applications/components
