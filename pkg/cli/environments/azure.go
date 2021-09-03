@@ -109,7 +109,8 @@ func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (cli
 	con := armcore.NewDefaultConnection(azcred, nil)
 
 	return &azure.ARMManagementClient{
-		Connection:     con,
-		ResourceGroup:  e.ResourceGroup,
-		SubscriptionID: e.SubscriptionID}, nil
+		Connection:      con,
+		ResourceGroup:   e.ResourceGroup,
+		SubscriptionID:  e.SubscriptionID,
+		EnvironmentName: e.Name}, nil
 }

@@ -18,9 +18,10 @@ import (
 )
 
 type ARMManagementClient struct {
-	Connection     *armcore.Connection
-	ResourceGroup  string
-	SubscriptionID string
+	Connection      *armcore.Connection
+	ResourceGroup   string
+	SubscriptionID  string
+	EnvironmentName string
 }
 
 var _ clients.ManagementClient = (*ARMManagementClient)(nil)
@@ -31,7 +32,7 @@ func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient
 	if err != nil {
 		var httpresp azcore.HTTPResponse
 		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
-			errorMessage := fmt.Sprintf("no applications found in resource group '%s'", dm.ResourceGroup)
+			errorMessage := fmt.Sprintf("Applications not found in environment '%s'", dm.EnvironmentName)
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 		return nil, err
@@ -46,7 +47,7 @@ func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationN
 	if err != nil {
 		var httpresp azcore.HTTPResponse
 		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
-			errorMessage := fmt.Sprintf("application '%s' in resource group '%s' was not found", applicationName, dm.ResourceGroup)
+			errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 		return nil, err
@@ -63,7 +64,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, applicatio
 	if err != nil {
 		var httpresp azcore.HTTPResponse
 		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
-			errorMessage := fmt.Sprintf("application '%s' in resource group '%s' was not found", applicationName, dm.ResourceGroup)
+			errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
 			return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 		return err
@@ -79,7 +80,7 @@ func (dm *ARMManagementClient) ListComponents(ctx context.Context, applicationNa
 	if err != nil {
 		var httpresp azcore.HTTPResponse
 		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
-			errorMessage := fmt.Sprintf("components for application '%s' and resource group '%s' were not found", applicationName, dm.ResourceGroup)
+			errorMessage := fmt.Sprintf("Components not found in application '%s' and environment '%s'", applicationName, dm.EnvironmentName)
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 		return nil, err
@@ -94,7 +95,7 @@ func (dm *ARMManagementClient) ShowComponent(ctx context.Context, applicationNam
 	if err != nil {
 		var httpresp azcore.HTTPResponse
 		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
-			errorMessage := fmt.Sprintf("component '%s' for application '%s' and resource group '%s' was not found", componentName, applicationName, dm.ResourceGroup)
+			errorMessage := fmt.Sprintf("Component '%s' not found in application '%s' and environment '%s'", componentName, applicationName, dm.EnvironmentName)
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 		return nil, err
@@ -112,8 +113,14 @@ func (dm *ARMManagementClient) DeleteDeployment(ctx context.Context, application
 
 	_, err = poller.PollUntilDone(ctx, radclient.PollInterval)
 	if err != nil {
+		var httpresp azcore.HTTPResponse
+		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
+			errorMessage := fmt.Sprintf("Deployemnt '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, dm.EnvironmentName)
+			return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
 		return err
 	}
+
 	return err
 }
 
@@ -125,7 +132,7 @@ func (dm *ARMManagementClient) ListDeployments(ctx context.Context, applicationN
 	if err != nil {
 		var httpresp azcore.HTTPResponse
 		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
-			errorMessage := fmt.Sprintf("application '%s' was not found in the resource group '%s'", applicationName, dm.ResourceGroup)
+			errorMessage := fmt.Sprintf("Deployments not found in application '%s' and environment '%s'", applicationName, dm.EnvironmentName)
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 
@@ -142,7 +149,7 @@ func (dm *ARMManagementClient) ShowDeployment(ctx context.Context, deploymentNam
 	if err != nil {
 		var httpresp azcore.HTTPResponse
 		if ok := errors.As(err, &httpresp); ok && httpresp.RawResponse().StatusCode == http.StatusNotFound {
-			errorMessage := fmt.Sprintf("deployment '%s' for application '%s' and resource group '%s' was not found", deploymentName, applicationName, dm.ResourceGroup)
+			errorMessage := fmt.Sprintf("Deployemnt '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, dm.EnvironmentName)
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 

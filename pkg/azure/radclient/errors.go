@@ -22,7 +22,7 @@ type RadiusError struct {
 
 // Error implements the error interface for the RadiusError type.
 func (e *RadiusError) Error() string {
-	return fmt.Sprintf("Code: %s\nMessage: %s", e.Code, e.Message)
+	return fmt.Sprintf("%s\n%s", e.Code, e.Message)
 }
 
 // NewRadiusError returns a RadiusError instance for provided code and message.

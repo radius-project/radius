@@ -90,8 +90,9 @@ func (e *LocalRPEnvironment) CreateManagementClient(ctx context.Context) (client
 	con := armcore.NewConnection(e.URL, azcred, nil)
 
 	return &azure.ARMManagementClient{
-		Connection:     con,
-		ResourceGroup:  e.ResourceGroup,
-		SubscriptionID: e.SubscriptionID,
+		Connection:      con,
+		ResourceGroup:   e.ResourceGroup,
+		SubscriptionID:  e.SubscriptionID,
+		EnvironmentName: e.Name,
 	}, nil
 }
