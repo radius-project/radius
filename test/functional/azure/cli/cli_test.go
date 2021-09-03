@@ -83,7 +83,7 @@ azure-cli
 		output, err := cli.ComponentShow(ctx, application, "a")
 		require.NoError(t, err)
 		expected, _ := regexp.Compile(`COMPONENT  KIND                           PROVISIONING_STATE  HEALTH_STATE
-a          radius.dev/Container@v1alpha1  .*Provisioned      .*[h|H]ealthy  
+a          radius.dev/Container@v1alpha1  .*Provisioned      .*[h|H]ealthy\s*
 `)
 		match := expected.MatchString(output)
 		require.Equal(t, true, match)
