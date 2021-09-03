@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -42,7 +42,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 	logger.Info(fmt.Sprintf("fulfilling service for account: %v, db: %v", accountname, dbname))
 
-	cosmosDBClient := azclients.NewDatabaseAccountsClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	cosmosDBClient := clients.NewDatabaseAccountsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 
 	connectionStrings, err := cosmosDBClient.ListConnectionStrings(ctx, r.Arm.ResourceGroup, accountname)
 	if err != nil {

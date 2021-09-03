@@ -8,7 +8,7 @@ package tutorial_test
 import (
 	"testing"
 
-	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"

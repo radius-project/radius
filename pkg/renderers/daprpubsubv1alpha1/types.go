@@ -6,7 +6,7 @@
 package daprpubsubv1alpha1
 
 import (
-	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
 const Kind = "dapr.io/PubSubTopic@v1alpha1"

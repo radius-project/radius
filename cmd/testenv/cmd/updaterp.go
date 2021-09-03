@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azcli"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/azcli"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
@@ -103,7 +103,7 @@ func init() {
 }
 
 func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.AzureCloudEnvironment, image string, checkVersion string) error {
-	webc := azclients.NewWebClient(env.SubscriptionID, auth)
+	webc := clients.NewWebClient(env.SubscriptionID, auth)
 
 	list, err := webc.ListByResourceGroupComplete(ctx, env.ControlPlaneResourceGroup, nil)
 	if err != nil {

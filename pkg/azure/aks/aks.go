@@ -3,20 +3,21 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azure
+package aks
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 func GetAKSMonitoringCredentials(ctx context.Context, subscriptionID string, resourceGroup string, clusterName string) (*rest.Config, error) {
-	armauth, err := GetResourceManagerEndpointAuthorizer()
+	armauth, err := armauth.GetArmAuthorizer()
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +25,7 @@ func GetAKSMonitoringCredentials(ctx context.Context, subscriptionID string, res
 	// Currently we go to AKS every time to ask for credentials, we don't
 	// cache them locally. This could be done in the future, but skipping it for now
 	// since it's non-obvious that we'd store credentials in your ~/.rad directory
-	mcc := azclients.NewManagedClustersClient(subscriptionID, armauth)
+	mcc := clients.NewManagedClustersClient(subscriptionID, armauth)
 
 	results, err := mcc.ListClusterMonitoringUserCredentials(ctx, resourceGroup, clusterName, "")
 	if err != nil {

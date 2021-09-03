@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"

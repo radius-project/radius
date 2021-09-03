@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azclients
+package clients
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/google/go-cmp/cmp"
 )
 

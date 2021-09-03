@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/gofrs/uuid"
 )
@@ -20,7 +20,7 @@ import (
 // Create assigns the specified role name to the Identity over the specified scope
 func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string, resourceGroup, principalID, scope, roleName string) (*authorization.RoleAssignment, error) {
 	logger := radlogger.GetLogger(ctx)
-	rdc := azclients.NewRoleDefinitionsClient(subscriptionID, auth)
+	rdc := clients.NewRoleDefinitionsClient(subscriptionID, auth)
 
 	roleFilter := fmt.Sprintf("roleName eq '%s'", roleName)
 	roleList, err := rdc.List(ctx, scope, roleFilter)
@@ -28,7 +28,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 		return nil, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
 	}
 
-	rac := azclients.NewRoleAssignmentsClient(subscriptionID, auth)
+	rac := clients.NewRoleAssignmentsClient(subscriptionID, auth)
 	raName, _ := uuid.NewV4()
 
 	MaxRetries := 100
@@ -56,7 +56,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 		}
 
 		// Check the error and determine if it is ignorable/retryable
-		detailed, ok := azclients.ExtractDetailedError(err)
+		detailed, ok := clients.ExtractDetailedError(err)
 		if !ok {
 			return nil, err
 		}

@@ -9,11 +9,12 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/radius/pkg/azure/aks"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/Azure/radius/pkg/cli/localrp"
-	"github.com/Azure/radius/pkg/radclient"
 	k8s "k8s.io/client-go/kubernetes"
 )
 
@@ -68,7 +69,7 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 }
 
 func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	config, err := azure.GetAKSMonitoringCredentials(ctx, e.SubscriptionID, e.ControlPlaneResourceGroup, e.ClusterName)
+	config, err := aks.GetAKSMonitoringCredentials(ctx, e.SubscriptionID, e.ControlPlaneResourceGroup, e.ClusterName)
 	if err != nil {
 		return nil, err
 	}

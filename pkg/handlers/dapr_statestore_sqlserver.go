@@ -14,8 +14,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -141,23 +141,23 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 	databaseName := properties[ComponentNameKey]
 
 	// Delete database
-	sqlDBClient := azclients.NewDatabasesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sqlDBClient := clients.NewDatabasesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	response, err := sqlDBClient.Delete(ctx, handler.arm.ResourceGroup, serverName, databaseName)
 	if err != nil && response.StatusCode != 404 {
 		return fmt.Errorf("failed to delete sql database `%s`: %w", databaseName, err)
 	}
 
 	// Delete the server
-	sqlServerClient := azclients.NewServersClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sqlServerClient := clients.NewServersClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	future, err := sqlServerClient.Delete(ctx, handler.arm.ResourceGroup, serverName)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "sql server", err)
 	}
 
 	err = future.WaitForCompletionRef(ctx, sqlServerClient.Client)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "sql server", err)
@@ -170,7 +170,7 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context, location *string, databaseName string, password string, options PutOptions) (string, error) {
 	logger := radlogger.GetLogger(ctx)
 
-	sqlServerClient := azclients.NewServersClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sqlServerClient := clients.NewServersClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	var serverName = ""
 	retryAttempts := 10
@@ -230,7 +230,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 }
 
 func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, location *string, serverName string, dbName string, options PutOptions) error {
-	sqlDBClient := azclients.NewDatabasesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sqlDBClient := clients.NewDatabasesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	future, err := sqlDBClient.CreateOrUpdate(
 		ctx,

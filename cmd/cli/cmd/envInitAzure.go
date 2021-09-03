@@ -23,7 +23,8 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli"
 	radazure "github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/output"
@@ -243,7 +244,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 }
 
 func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (string, error) {
-	rgc := azclients.NewGroupsClient(sub.SubscriptionID, authorizer)
+	rgc := clients.NewGroupsClient(sub.SubscriptionID, authorizer)
 
 	name, err := prompt.Text("Enter a Resource Group name:", prompt.EmptyValidator)
 	if err != nil {
@@ -260,7 +261,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 
 	output.LogInfo("Resource Group '%v' will be created...", name)
 
-	subc := azclients.NewSubscriptionClient(authorizer)
+	subc := clients.NewSubscriptionClient(authorizer)
 
 	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
 	if err != nil {
@@ -300,7 +301,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string) error {
-	armauth, err := radazure.GetResourceManagerEndpointAuthorizer()
+	armauth, err := armauth.GetArmAuthorizer()
 	if err != nil {
 		return err
 	}
@@ -393,10 +394,10 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 }
 
 func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (bool, string, error) {
-	cpc := azclients.NewCustomResourceProviderClient(subscriptionID, authorizer)
+	cpc := clients.NewCustomResourceProviderClient(subscriptionID, authorizer)
 
 	_, err := cpc.Get(ctx, resourceGroup, "radius")
-	if azclients.Is404Error(err) {
+	if clients.Is404Error(err) {
 		// not found - will need to be created
 		return false, "", nil
 	} else if err != nil {
@@ -404,7 +405,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	}
 
 	// Custom Provider already exists, find the cluster...
-	mcc := azclients.NewManagedClustersClient(subscriptionID, authorizer)
+	mcc := clients.NewManagedClustersClient(subscriptionID, authorizer)
 
 	var cluster *containerservice.ManagedCluster
 	for list, err := mcc.ListByResourceGroupComplete(ctx, radazure.GetControlPlaneResourceGroup(resourceGroup)); list.NotDone(); err = list.NextWithContext(ctx) {
@@ -429,14 +430,14 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (*resources.Group, error) {
 	step := output.BeginStep("Validating Subscription...")
 
-	sc := azclients.NewSubscriptionClient(authorizer)
+	sc := clients.NewSubscriptionClient(authorizer)
 
 	_, err := sc.Get(ctx, subscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("cannot find subscription with id '%v'", subscriptionID)
 	}
 
-	rgc := azclients.NewGroupsClient(subscriptionID, authorizer)
+	rgc := clients.NewGroupsClient(subscriptionID, authorizer)
 
 	group, err := rgc.Get(ctx, resourceGroup)
 	if group.StatusCode == 404 {
@@ -452,9 +453,9 @@ func validateSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string) error {
 	step := output.BeginStep("Registering Subscription for required features...")
-	fc := azclients.NewFeaturesClient(subscriptionID, authorizer)
+	fc := clients.NewFeaturesClient(subscriptionID, authorizer)
 
-	providerClient := azclients.NewProvidersClient(subscriptionID, authorizer)
+	providerClient := clients.NewProvidersClient(subscriptionID, authorizer)
 
 	for feature, namespace := range requiredFeatures {
 		_, err := fc.Register(ctx, namespace, feature)
@@ -481,7 +482,7 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 
 func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, registryName string) (string, error) {
 	step := output.BeginStep("Validating Container Registry for %s...", registryName)
-	crc := azclients.NewRegistriesClient(subscriptionID, authorizer)
+	crc := clients.NewRegistriesClient(subscriptionID, authorizer)
 
 	for list, err := crc.ListComplete(ctx); list.NotDone(); err = list.NextWithContext(ctx) {
 		if err != nil {
@@ -503,7 +504,7 @@ func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Auth
 	if err != nil {
 		return "", fmt.Errorf("invalid log analytics workspace id: %w", err)
 	}
-	lwc := azclients.NewWorkspacesClient(resource.SubscriptionID, authorizer)
+	lwc := clients.NewWorkspacesClient(resource.SubscriptionID, authorizer)
 	_, err = lwc.Get(ctx, resource.ResourceGroup, resource.ResourceName)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve log analytics workspace: %w", err)
@@ -521,7 +522,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 	step := output.BeginStep(fmt.Sprintf("Deploying Environment from channel %s...\n\n"+
 		"New Environment '%v' with Resource Group '%v' will be available at:\n%v\n\n"+
 		"Deployment In Progress...", version.Channel(), name, params.ResourceGroup, envUrl))
-	dc := azclients.NewDeploymentsClient(subscriptionID, authorizer)
+	dc := clients.NewDeploymentsClient(subscriptionID, authorizer)
 	dc.Authorizer = authorizer
 
 	// Poll faster for completion when possible. The default is 60 seconds which is a long time to wait.

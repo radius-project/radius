@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/clients"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -137,7 +137,7 @@ func createRemote() (*rest.Config, error) {
 		return nil, fmt.Errorf("cannot authorize with ARM: %w", err)
 	}
 
-	aks := azclients.NewManagedClustersClient(subscriptionID, auth)
+	aks := clients.NewManagedClustersClient(subscriptionID, auth)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

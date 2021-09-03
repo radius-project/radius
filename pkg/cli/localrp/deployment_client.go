@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/radclient"
 	radresources "github.com/Azure/radius/pkg/radrp/resources"
 )
 

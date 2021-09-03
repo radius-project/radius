@@ -6,7 +6,7 @@
 package rest
 
 import (
-	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radrp/armerrors"

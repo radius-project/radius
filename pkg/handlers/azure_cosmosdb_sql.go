@@ -11,9 +11,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 )
@@ -112,7 +112,7 @@ func (handler *azureCosmosDBSQLDBHandler) GetDatabaseByID(ctx context.Context, d
 		return nil, fmt.Errorf("failed to parse CosmosDB SQL Database resource id: %w", err)
 	}
 
-	sqlClient := azclients.NewSQLResourcesClient(parsed.SubscriptionID, handler.arm.Auth)
+	sqlClient := clients.NewSQLResourcesClient(parsed.SubscriptionID, handler.arm.Auth)
 
 	account, err := sqlClient.GetSQLDatabase(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
 	if err != nil {
@@ -123,7 +123,7 @@ func (handler *azureCosmosDBSQLDBHandler) GetDatabaseByID(ctx context.Context, d
 }
 
 func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, accountName string, dbName string, options PutOptions) (*documentdb.SQLDatabaseGetResults, error) {
-	sqlClient := azclients.NewSQLResourcesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sqlClient := clients.NewSQLResourcesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	dbfuture, err := sqlClient.CreateUpdateSQLDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName, documentdb.SQLDatabaseCreateUpdateParameters{
 		SQLDatabaseCreateUpdateProperties: &documentdb.SQLDatabaseCreateUpdateProperties{
@@ -157,17 +157,17 @@ func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, ac
 }
 
 func (handler *azureCosmosDBSQLDBHandler) DeleteDatabase(ctx context.Context, accountName string, dbName string) error {
-	sqlClient := azclients.NewSQLResourcesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	sqlClient := clients.NewSQLResourcesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	future, err := sqlClient.DeleteSQLDatabase(ctx, handler.arm.ResourceGroup, accountName, dbName)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "sql database", err)
 	}
 
 	err = future.WaitForCompletionRef(ctx, sqlClient.Client)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "sql database", err)

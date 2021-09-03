@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
-	"github.com/Azure/radius/pkg/azclients"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -36,7 +36,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 	properties := resources[0].Properties
 	vaultName := properties[handlers.KeyVaultNameKey]
-	kvClient := azclients.NewVaultsClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	kvClient := clients.NewVaultsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	vault, err := kvClient.Get(ctx, r.Arm.ResourceGroup, vaultName)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch keyvault")
