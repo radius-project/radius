@@ -7,6 +7,7 @@ package radrp
 
 import (
 	radhealthdb "github.com/Azure/radius/pkg/health/db"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/rest"
 )
@@ -272,10 +273,30 @@ func newRESTOutputResourcesFromDB(original []db.OutputResource) []rest.OutputRes
 }
 
 func newRESTComponentStatusFromDB(original *db.Component) rest.ComponentStatus {
+	ors := newRESTOutputResourcesFromDB(original.Properties.Status.OutputResources)
+
+	// Aggregate the component status
+	healthState := healthcontract.HealthStateHealthy
+	provisioningState := rest.Provisioned
+	for _, or := range ors {
+		// If any of the output resources is not healthy, mark the component as unhealthy
+		if or.Status.HealthState != healthcontract.HealthStateHealthy {
+			healthState = healthcontract.HealthStateUnhealthy
+		}
+
+		// If any of the output resources is not in Provisioned state, mark the component accordingly
+		switch or.Status.ProvisioningState {
+		case db.Failed:
+			provisioningState = rest.Failed
+		case db.Provisioning:
+		case db.NotProvisioned:
+			provisioningState = rest.Provisioning
+		}
+	}
 	status := rest.ComponentStatus{
-		ProvisioningState: original.Properties.Status.ProvisioningState,
-		HealthState:       original.Properties.Status.HealthState,
-		OutputResources:   newRESTOutputResourcesFromDB(original.Properties.Status.OutputResources),
+		ProvisioningState: provisioningState,
+		HealthState:       healthState,
+		OutputResources:   ors,
 	}
 	return status
 }
