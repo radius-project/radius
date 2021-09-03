@@ -37,9 +37,6 @@ id = "G-9JR8B6TPF9"
   [[module.mounts]]
     source = "archetypes"
     target = "archetypes"
-  [[module.mounts]]
-    source = "../schemas/rest-api-specs"
-    target = "content/reference/api"
 
 # Disable categories & tags
 disableKinds = ["taxonomy", "term"]
