@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
@@ -81,10 +82,11 @@ azure-cli
 	t.Run("Validate rad component show", func(t *testing.T) {
 		output, err := cli.ComponentShow(ctx, application, "a")
 		require.NoError(t, err)
-		expected := `COMPONENT  KIND                           PROVISIONING_STATE  HEALTH_STATE
-a          radius.dev/Container@v1alpha1  NotProvisioned      Unhealthy  
-`
-		require.Equal(t, expected, output)
+		expected, _ := regexp.Compile(`COMPONENT  KIND                           PROVISIONING_STATE  HEALTH_STATE
+a          radius.dev/Container@v1alpha1  .*Provisioned      .*[h|H]ealthy\s*
+`)
+		match := expected.MatchString(output)
+		require.Equal(t, true, match)
 	})
 
 	t.Run("Validate rad component logs", func(t *testing.T) {
