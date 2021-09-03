@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 
 	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
 	"github.com/Azure/radius/pkg/model/components"
 	"k8s.io/apimachinery/pkg/conversion"
 )

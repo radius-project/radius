@@ -11,15 +11,25 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/health/model/azure"
+	"github.com/Azure/radius/pkg/health/resourcekinds"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
+
+	// k8sclient "github.com/kubernetes-sdk-for-go-101/pkg/client"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/kubernetes"
+	fake "k8s.io/client-go/kubernetes/fake"
 )
+
+func getKubernetesClient() kubernetes.Interface {
+	return fake.NewSimpleClientset()
+}
 
 func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
@@ -29,7 +39,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -38,7 +48,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: azure.ResourceKindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.ResourceKindAzureServiceBusQueue,
 		},
 	}
 
@@ -57,10 +67,12 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 
 	require.Equal(t, 1, probesLen)
 	require.Equal(t, true, found)
-	require.Equal(t, monitor.model.LookupHandler(azure.ResourceKindAzureServiceBusQueue), healthInfo.handler)
+	handler, mode := monitor.model.LookupHandler(registrationMsg)
+	require.Equal(t, handler, healthInfo.handler)
+	require.Equal(t, handleroptions.HealthHandlerModePull, mode)
 	require.Equal(t, "abc", healthInfo.Resource.HealthID)
 	require.Equal(t, "xyz", healthInfo.Resource.ResourceID)
-	require.Equal(t, azure.ResourceKindAzureServiceBusQueue, healthInfo.Resource.ResourceKind)
+	require.Equal(t, resourcekinds.ResourceKindAzureServiceBusQueue, healthInfo.Resource.ResourceKind)
 	require.NotNil(t, healthInfo.ticker)
 }
 
@@ -73,7 +85,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -99,14 +111,14 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	stopCh := make(chan struct{}, 1)
 	resourceInfo := healthcontract.ResourceInfo{
 		HealthID:     "abc",
 		ResourceID:   "xyz",
-		ResourceKind: azure.ResourceKindAzureServiceBusQueue,
+		ResourceKind: resourcekinds.ResourceKindAzureServiceBusQueue,
 	}
 
 	monitor.activeHealthProbes["abc"] = HealthInfo{
@@ -120,7 +132,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: azure.ResourceKindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.ResourceKindAzureServiceBusQueue,
 		},
 	}
 	ctx := logr.NewContext(context.Background(), logger)
@@ -139,7 +151,7 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	optionsInterval := time.Microsecond * 5
@@ -148,7 +160,7 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: azure.ResourceKindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.ResourceKindAzureServiceBusQueue,
 		},
 		Options: healthcontract.HealthCheckOptions{
 			Interval: optionsInterval,
@@ -208,7 +220,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		stopCh <- struct{}{}
 	})
 
-	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
+	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any(), gomock.Any()).
 		AnyTimes().Return(healthcontract.ResourceHealthDataMessage{
 		Resource:                ri,
 		HealthState:             "Healthy",
@@ -255,7 +267,7 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 			Interval: time.Nanosecond * 1,
 		},
 	}
-	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any()).
+	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any(), gomock.Any()).
 		AnyTimes().Return(healthcontract.ResourceHealthDataMessage{
 		Resource:                ri,
 		HealthState:             "Healthy",

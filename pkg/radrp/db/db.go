@@ -223,9 +223,10 @@ func (d radrpDB) PatchComponentByApplicationID(ctx context.Context, id resources
 		return false, fmt.Errorf("error updating Component: %s", err)
 	}
 
-	logger.Info("Updated component in DB")
+	updated := result.UpsertedCount > 0 || result.ModifiedCount > 0
+	logger.Info(fmt.Sprintf("Updated component in DB: %v", updated))
 
-	return result.UpsertedCount > 1 || result.ModifiedCount > 1, nil
+	return updated, nil
 }
 
 func (d radrpDB) DeleteComponentByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error {

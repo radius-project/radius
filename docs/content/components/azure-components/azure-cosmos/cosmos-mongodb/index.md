@@ -8,6 +8,13 @@ weight: 200
 
 The `azure.com/CosmosDBMongo` Component defines an [Azure CosmosDB](https://azure.microsoft.com/en-us/services/cosmos-db/) configured with a MongoDB API.
 
+## Platform resources
+
+| Platform | Resource |
+|----------|----------|
+| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure CosmosDB API for MongoDB](https://docs.microsoft.com/en-us/azure/cosmos-db/mongodb-introduction)
+| [Kubernetes]({{< ref kubernetes-environments >}}) | Not compatible
+
 ## Configuration
 
 | Property | Description | Example(s) |

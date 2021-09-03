@@ -98,6 +98,7 @@ func (cl *changeListener) UpdateHealth(ctx context.Context, healthUpdateMsg heal
 			} else if err != nil {
 				logger.Error(err, "Unable to update Health state in DB")
 			}
+
 			return patched
 		}
 	}

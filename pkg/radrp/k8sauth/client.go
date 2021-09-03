@@ -23,9 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// CreateClient creates a Kubernetes client.
-func CreateClient() (*client.Client, error) {
-	log.Println("Creating Kubernetes Client")
+// GetConfig gets the Kubernetes config
+func GetConfig() (*rest.Config, error) {
 	var config *rest.Config
 	var err error
 
@@ -46,6 +45,18 @@ func CreateClient() (*client.Client, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	return config, nil
+}
+
+// CreateClient creates a Kubernetes client.
+func CreateClient() (*client.Client, error) {
+	log.Println("Creating Kubernetes Client")
+
+	config, err := GetConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	s := scheme.Scheme

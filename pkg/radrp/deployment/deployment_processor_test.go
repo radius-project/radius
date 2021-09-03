@@ -7,6 +7,7 @@ package deployment
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/Azure/radius/pkg/handlers"
@@ -87,6 +88,7 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 			Info: outputresource.K8sInfo{
 				Name:      "name1",
 				Namespace: "ns1",
+				Kind:      "Deployment",
 			},
 		},
 	}, nil)
@@ -150,10 +152,17 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 	// Registration for second output resource
 	msg2 := <-registrationChannel
 	require.Equal(t, healthcontract.ActionRegister, msg2.Action)
-	require.Equal(t, "ns1-name1", msg2.ResourceInfo.ResourceID)
 	require.Equal(t, "Kind1", msg2.ResourceInfo.ResourceKind)
+
+	kID := healthcontract.KubernetesID{
+		Kind:      "Deployment",
+		Namespace: "ns1",
+		Name:      "name1",
+	}
+	resourceID, _ := json.Marshal(kID)
+	require.Equal(t, string(resourceID), msg2.ResourceInfo.ResourceID)
 	outputResourceInfo2 := healthcontract.ResourceDetails{
-		ResourceID:    "ns1-name1",
+		ResourceID:    string(resourceID),
 		ResourceKind:  "Kind1",
 		ApplicationID: "A",
 		ComponentID:   "C",

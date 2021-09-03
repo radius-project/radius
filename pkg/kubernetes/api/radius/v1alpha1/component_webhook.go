@@ -47,8 +47,7 @@ func (r *Component) ValidateUpdate(old runtime.Object) error {
 func (r *Component) ValidateDelete() error {
 	componentlog.Info("validate delete", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object deletion.
-	return validate(r)
+	return nil
 }
 
 func validate(r *Component) error {

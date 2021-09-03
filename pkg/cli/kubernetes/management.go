@@ -11,7 +11,8 @@ import (
 
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/v1alpha1"
+	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
 	"github.com/Azure/radius/pkg/radclient"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -28,6 +29,7 @@ var Scheme = runtime.NewScheme()
 func init() {
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = radiusv1alpha1.AddToScheme(Scheme)
+	_ = bicepv1alpha1.AddToScheme(Scheme)
 }
 
 // NOTE: for now we translate the K8s objects into the ARM format.

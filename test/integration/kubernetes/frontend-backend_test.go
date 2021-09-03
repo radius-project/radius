@@ -20,14 +20,14 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	m.Run()
+	code := m.Run()
 
 	err = kubernetestest.StopController()
 	if err != nil {
 		panic(err)
 	}
 
-	os.Exit(0)
+	os.Exit(code)
 }
 
 func TestFrontendBackend(t *testing.T) {
@@ -43,6 +43,31 @@ func TestFrontendBackend(t *testing.T) {
 				"frontend-backend": {
 					validation.NewK8sObjectForComponent("frontend-backend", "frontend"),
 					validation.NewK8sObjectForComponent("frontend-backend", "backend"),
+				},
+			},
+		},
+	}
+
+	test := kubernetestest.NewControllerTest(ctx, controllerStep)
+	err := test.Test(t)
+	require.NoError(t, err, "Test failed to start")
+	test.ValidateDeploymentsRunning(t)
+}
+
+// Validates frontend and backend are created from arm template with content
+func TestFrontendBackendArm(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	controllerStep := kubernetestest.ControllerStep{
+		Namespace:      "arm",
+		TemplateFolder: "testdata/arm/",
+		Deployments: validation.K8sObjectSet{
+			Namespaces: map[string][]validation.K8sObject{
+				"arm": {
+					validation.NewK8sObjectForComponent("kubernetes-resources-container-httpbinding", "frontend"),
+					validation.NewK8sObjectForComponent("kubernetes-resources-container-httpbinding", "backend"),
 				},
 			},
 		},

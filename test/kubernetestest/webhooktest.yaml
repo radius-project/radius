@@ -71,3 +71,25 @@ webhooks:
     resources:
     - deployments
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: radius-system
+      path: /validate-bicep-dev-v1alpha1-deploymenttemplate
+  failurePolicy: Fail
+  name: deploymenttemplate-validation.bicep.dev
+  rules:
+  - apiGroups:
+    - bicep.dev
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - deploymenttemplates
+  sideEffects: None
