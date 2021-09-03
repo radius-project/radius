@@ -1,2 +1,2 @@
 container: radius.azurecr.io/radius-controller
-tag: 0.4 # Tag for radius-controller image.
+tag: 0.5 # Tag for radius-controller image.
