@@ -38,8 +38,8 @@ id = "G-9JR8B6TPF9"
     source = "archetypes"
     target = "archetypes"
   [[module.mounts]]
-    source = "../schemas/rest-api-specs"
-    target = "content/reference/api"
+    source = "../pkg/radrp/schema"
+    target = "content/reference/controlplane-schema"
 
 # Disable categories & tags
 disableKinds = ["taxonomy", "term"]
