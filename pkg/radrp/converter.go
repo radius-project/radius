@@ -278,6 +278,7 @@ func newRESTComponentStatusFromDB(original *db.Component) rest.ComponentStatus {
 	// Aggregate the component status
 	healthState := healthcontract.HealthStateHealthy
 	provisioningState := rest.Provisioned
+forLoop:
 	for _, or := range ors {
 		// If any of the output resources is not healthy, mark the component as unhealthy
 		if or.Status.HealthState != healthcontract.HealthStateHealthy {
@@ -288,8 +289,8 @@ func newRESTComponentStatusFromDB(original *db.Component) rest.ComponentStatus {
 		switch or.Status.ProvisioningState {
 		case db.Failed:
 			provisioningState = rest.Failed
-		case db.Provisioning:
-		case db.NotProvisioned:
+			break forLoop
+		case db.Provisioning, db.NotProvisioned:
 			provisioningState = rest.Provisioning
 		}
 	}
