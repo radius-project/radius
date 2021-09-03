@@ -20,12 +20,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/azure/roleassignment"
 	"github.com/Azure/radius/pkg/handlers"
@@ -37,9 +34,6 @@ import (
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 )
-
-// keyVaultSecretsResourceType declares the resource type for Azure KeyVault Secrets.
-const keyVaultSecretsResourceType = azresources.KeyVaultVaults + "/" + azresources.KeyVaultVaultsSecrets
 
 // Permissions granted on the key vault
 // Role description: https://docs.microsoft.com/en-us/azure/key-vault/general/rbac-guide?tabs=azure-cli
@@ -246,9 +240,9 @@ func (r Renderer) assignRoleToManagedIdentity(ctx context.Context, keyVaultName 
 	return outputResources, nil
 }
 
-func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, component *ContainerComponent) (outputresource.AADPodIdentity, []outputresource.OutputResource, error) {
+func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.InstantiatedWorkload, component *ContainerComponent) (outputresource.AADPodIdentityInfo, []outputresource.OutputResource, error) {
 	logger := radlogger.GetLogger(ctx)
-	var podIdentityInfo outputresource.AADPodIdentity
+	var podIdentityInfo outputresource.AADPodIdentityInfo
 
 	outputResources := []outputresource.OutputResource{}
 	for _, dependency := range component.Uses {
@@ -298,7 +292,6 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
 	outputResources := []outputresource.OutputResource{}
-	// deploymentDependencies := []outputresource.Dependency{}
 
 	component := &ContainerComponent{}
 	err := workload.Workload.AsRequired(Kind, component)
@@ -327,7 +320,7 @@ func (r Renderer) Render(ctx context.Context, workload workloads.InstantiatedWor
 	return outputResources, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, component *ContainerComponent, podIdentityInfo outputresource.AADPodIdentity) (*appsv1.Deployment, []outputresource.OutputResource, error) {
+func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, component *ContainerComponent, podIdentityInfo outputresource.AADPodIdentityInfo) (*appsv1.Deployment, []outputresource.OutputResource, error) {
 	outputResources := []outputresource.OutputResource{}
 	deploymentDependencies := []outputresource.Dependency{}
 
@@ -391,7 +384,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 
 		// Create secrets in the specified keyvault
 		for secretName, secretValue := range secrets {
-			secretsOutputResource, err := r.createSecret(ctx, keyVaultURI, secretName, secretValue)
+			secretsOutputResource, err := r.createKeyVaultSecretOutputResource(ctx, keyVaultURI, secretName, secretValue)
 			if err != nil {
 				return nil, outputResources, fmt.Errorf("could not create secret: %v: %w", secretName, err)
 			}
@@ -469,9 +462,9 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 	return &deployment, outputResources, nil
 }
 
-func (r Renderer) createPodIdentity(ctx context.Context, userAssignedIdentity msi.Identity, containerName string, podNamespace string) (outputresource.AADPodIdentity, outputresource.OutputResource, error) {
+func (r Renderer) createPodIdentity(ctx context.Context, userAssignedIdentity msi.Identity, containerName string, podNamespace string) (outputresource.AADPodIdentityInfo, outputresource.OutputResource, error) {
 	logger := radlogger.GetLogger(ctx)
-	var podIdentityInfo outputresource.AADPodIdentity
+	var podIdentityInfo outputresource.AADPodIdentityInfo
 
 	if r.Arm.K8sSubscriptionID == "" || r.Arm.K8sResourceGroup == "" || r.Arm.K8sClusterName == "" {
 		return podIdentityInfo, outputresource.OutputResource{}, errors.New("pod identity is not supported because the RP is not configured for AKS")
@@ -550,7 +543,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, userAssignedIdentity ms
 		return podIdentityInfo, outputresource.OutputResource{}, fmt.Errorf("failed to add pod identity on the cluster: %w", err)
 	}
 
-	podIdentityInfo = outputresource.AADPodIdentity{
+	podIdentityInfo = outputresource.AADPodIdentityInfo{
 		AKSClusterName: r.Arm.K8sClusterName,
 		Name:           podIdentityName,
 		Namespace:      podNamespace,
@@ -585,92 +578,24 @@ func (r Renderer) createPodIdentity(ctx context.Context, userAssignedIdentity ms
 	return podIdentityInfo, outputResource, nil
 }
 
-// Create secret in the Key Vault using ARM since ARM has write permissions to create secrets
-// and no special role assignment is needed.
-func (r Renderer) createSecret(ctx context.Context, kvURI string, secretName string, secretValue string) (outputresource.OutputResource, error) {
-	logger := radlogger.GetLogger(ctx)
-
-	// UserAgent() returns a string of format: Azure-SDK-For-Go/v52.2.0 keyvault/2019-09-01 profiles/latest
-	keyVaultAPIVersion := strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " ")[0]
-
-	// KeyVault URI has the format: "https://<kv name>.vault.azure.net"
-	vaultName := strings.Split(strings.Split(kvURI, "https://")[1], ".vault.azure.net")[0]
-	secretFullName := vaultName + "/" + secretName
-	template := map[string]interface{}{
-		"$schema":        "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-		"contentVersion": "1.0.0.0",
-		"parameters":     map[string]interface{}{},
-		"resources": []interface{}{
-			map[string]interface{}{
-				"type":       keyVaultSecretsResourceType,
-				"name":       secretFullName,
-				"apiVersion": keyVaultAPIVersion,
-				"properties": map[string]interface{}{
-					"contentType": "text/plain",
-					"value":       secretValue,
-				},
-			},
-		},
-	}
-
-	dc := clients.NewDeploymentsClient(r.Arm.SubscriptionID, r.Arm.Auth)
-	parameters := map[string]interface{}{}
-	deploymentProperties := &resources.DeploymentProperties{
-		Parameters: parameters,
-		Mode:       resources.DeploymentModeIncremental,
-		Template:   template,
-	}
-	deploymentName := "create-secret-" + vaultName + "-" + secretName
-	resultFuture, err := dc.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, deploymentName, resources.Deployment{
-		Properties: deploymentProperties,
-	})
-	if err != nil {
-		return outputresource.OutputResource{}, fmt.Errorf("unable to create secret: %w", err)
-	}
-
-	err = resultFuture.WaitForCompletionRef(context.Background(), dc.Client)
-	if err != nil {
-		return outputresource.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
-	}
-
-	_, err = resultFuture.Result(dc)
-	if err != nil {
-		return outputresource.OutputResource{}, fmt.Errorf("could not create secret: %w", err)
-	}
-
-	// secretResource := azure.Resource{
-	// 	SubscriptionID: r.Arm.SubscriptionID,
-	// 	ResourceGroup:  r.Arm.ResourceGroup,
-	// 	Provider:       "Microsoft.KeyVault",
-	// 	ResourceType:   keyVaultSecretsResourceType,
-	// 	ResourceName:   secretFullName,
-	// }
-	or := outputresource.OutputResource{
+func (r Renderer) createKeyVaultSecretOutputResource(ctx context.Context, kvURI string, secretName string, secretValue string) (outputresource.OutputResource, error) {
+	keyvaultSecretOutputResource := outputresource.OutputResource{
 		LocalID:  outputresource.LocalIDKeyVaultSecret,
 		Type:     outputresource.TypeARM,
 		Kind:     resourcekinds.AzureKeyVaultSecret,
-		Deployed: true,
+		Deployed: false,
 		Managed:  true,
-		// Info: outputresource.ARMInfo{
-		// 	ID:           secretResource.String(),
-		// 	ResourceType: keyVaultSecretsResourceType,
-		// 	APIVersion:   keyVaultAPIVersion,
-		// },
 		Resource: map[string]string{
 			handlers.ManagedKey:             "true",
-			handlers.KeyVaultNameKey:        vaultName,
+			handlers.KeyVaultURIKey:         kvURI,
 			handlers.KeyVaultSecretNameKey:  secretName,
 			handlers.KeyVaultSecretValueKey: secretValue,
-			// "KeyVaultSecretFullNameKey":     secretFullName, // TODO remove, should be generated in handler
-			// "deploymentNameKey":             deploymentName, // TODO remove, should be generated in handler
 		},
 	}
-	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDKeyVaultSecret).Info(fmt.Sprintf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName))
 
-	return or, nil
+	return keyvaultSecretOutputResource, nil
 }
 
-// func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent, deployment *appsv1.Deployment) (*corev1.Service, error) {
 func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkload, cc *ContainerComponent, deployment *appsv1.Deployment) ([]outputresource.OutputResource, error) {
 	service := corev1.Service{
 		TypeMeta: v1.TypeMeta{
@@ -733,6 +658,5 @@ func (r Renderer) makeService(ctx context.Context, w workloads.InstantiatedWorkl
 		Dependencies: serviceDependencies,
 	}
 
-	// return &service, nil
 	return []outputresource.OutputResource{serviceOutputResource}, nil
 }

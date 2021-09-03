@@ -112,7 +112,7 @@ func (handler *azureRedisHandler) CreateRedis(ctx context.Context, redisName str
 		Capacity: to.Int32Ptr(1),
 	}
 
-	location, err := azclients.GetResourceGroupLocation(ctx, handler.arm)
+	location, err := clients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
 		return nil, err
 	}
