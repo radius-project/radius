@@ -28,6 +28,13 @@ The Radius KeyVault component `azure.com/KeyVault` offers to the user:
 - Injection of connection information into connected containers
 - Automatic secret management for configured components
 
+## Platform resources
+
+| Platform | Resource |
+|----------|----------|
+| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Key Vault](https://docs.microsoft.com/en-us/azure/key-vault/general/)
+| [Kubernetes]({{< ref kubernetes-environments >}}) | Not compatible
+
 ## Configuration
 
 | Property | Description | Example(s) |

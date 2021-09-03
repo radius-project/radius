@@ -1,13 +1,13 @@
 ---
 type: docs
-title: "Redis"
+title: "Redis cache component"
 linkTitle: "Redis"
 description: "Learn how to use a Redis component in your application"
 ---
 
 The `redislabs.com/Redis` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref environments >}}).
 
-## Resources
+## Platform resources
 
 | Platform | Resource |
 |----------|----------|

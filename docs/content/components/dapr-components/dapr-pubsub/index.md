@@ -1,58 +1,74 @@
 ---
 type: docs
-title: "Use Dapr Pub/Sub with Azure ServiceBus"
-linkTitle: "Azure ServiceBus"
-description: "Learn how to use Dapr Pub/Sub with Azure ServiceBus"
-weight: 200
+title: "Use Dapr Pub/Sub with Radius"
+linkTitle: "Pub/Sub"
+description: "Learn how to use Dapr Pub/Sub components in Radius"
+weight: 300
 ---
 
-Radius components for Dapr Pub/Sub with Azure ServiceBus offers:
+## Overview
 
-- Managed deployment and management of the underlying Azure ServiceBus
-- Setup and configuration of Managed Identities and RBAC for consuming components
+The `dapr.io/PubSubTopic` component represents a [Dapr pub/sub](https://docs.dapr.io/developing-applications/building-blocks/pubsub/pubsub-overview/) topic.
+
+This component will automatically:
+- Ensure the Dapr control plane is initialized
+- Deploy and manage the underlying resource
+- Setup and configuration of connection strings for consuming components
 - Creation and configuration of the Dapr component spec
 
-## Using a Radius-managed ServiceBus topic
+## Configuration
+
+| Property | Description | Example(s) |
+|----------|-------------|---------|
+| name | The name of the state store | `my-pubsub` |
+| kind | The kind and version of Radius component, in this case `dapr.io/PubSubTopic@v1alpha1` | `dapr.io/PubSubTopic@v1alpha1`
+| properties.config.kind | The kind of the underlying pub/sub resource. See [Pub/Sub  kinds](#pubsub-kinds) for more information. | `pubsub.azure.servicebus`
+| properties.config.managed | Indicates if the resource is Radius-managed. | `true`
+| properties.config.resource | Points to the user-managed resource, if used. | `namespace::topic.id`
+| properties.config.topic | The name of the topic to create for this Pub/Sub broker | `TOPIC_A`
+
+To add a new managed Dapr Pub/Sub component, add the following Radius component:
+
+```sh
+resource pubsub 'Components' = {
+  name: 'pubsub'
+  kind: 'dapr.io/PubSubTopic@v1alpha1'
+  properties: {
+    config: {
+      kind: '<PUBSUB_KIND>'
+      topic: 'TOPIC_A'
+      managed: true
+    }
+  }
+}
+```
+
+## Pub/Sub kinds
+
+The following resources can act as a `dapr.io/PubSubTopic` resource:
+
+### Azure Service Bus
+
+The `pubsub.azure.servicebus` kind represents an [Azure Service Bus](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview) account that is configured as a Dapr pubsub broker.
+
+| Platform | Resource |
+|----------|----------|
+| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Service Bus](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)
+| [Kubernetes]({{< ref kubernetes-environments >}}) | Not compatible
+
+#### Using a Radius-managed ServiceBus topic
 
 This example sets the property `managed: true` for the Dapr PubSub Component. When `managed` is set to true, Radius will manage the lifecycle of the underlying ServiceBus namespace and topic.
 
-{{< rad file="snippets/managed.bicep" embed=true >}}
+{{< rad file="snippets/servicebus-managed.bicep" download=true >}}
 
-## Using a user-managed ServiceBus topic
+#### Using a user-managed ServiceBus topic
 
 This example sets the `resource` property to a ServiceBus topic for the Dapr PubSub Component. Setting `managed: false` or using the default value allows you to explicitly specify a link to an Azure resource that you managed. When you supply your own `resource` value, Radius will not change or delete the resource you provide. 
 
 In this example the ServiceBus resources are configured as part of the same `.bicep` template.
 
-{{< rad file="snippets/usermanaged.bicep" embed=true >}}
-
-## Access from a container
-
-To access the Dapr PubSub component from a container, add the following traits and dependencies:
-
-```sh
-resource nodesubscriber 'Components' = {
-  name: 'nodesubscriber'
-  kind: 'radius.dev/Container@v1alpha1'
-  properties: {
-  uses: [
-    {
-      binding: pubsub.properties.bindings.default
-      env: {
-        SB_PUBSUBNAME: pubsub.properties.bindings.default.pubSubName
-        SB_TOPIC: pubsub.properties.bindings.default.topic
-      }
-    }
-  ]
-  traits: [
-    {
-      kind: 'dapr.io/App@v1alpha1'
-      appId: 'nodesubscriber'
-      appPort: 50051
-    }
-  ]
-}
-```
+{{< rad file="snippets/servicebus-usermanaged.bicep" download=true >}}
 
 ## Tutorial
 
@@ -70,11 +86,11 @@ No prior knowledge of Radius is needed, this tutorial will walk you through auth
 
 #### Radius-managed
 
-{{< rad file="snippets/managed.bicep" download=true >}}
+{{< rad file="snippets/servicebus-managed.bicep" download=true >}}
 
 #### User-managed
 
-{{< rad file="snippets/managed.bicep" download=true >}}
+{{< rad file="snippets/servicebus-managed.bicep" download=true >}}
 
 ### Understanding the application
 
@@ -164,11 +180,6 @@ TOPIC_A :  hello world
 {{% /codetab %}}
 
 {{< /tabs >}}
-
-
-
-
-
 
 You have completed this tutorial!
 
