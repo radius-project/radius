@@ -1,2 +1,2 @@
 container: radius.azurecr.io/radius-controller
-tag: 0.4.0 # Tag for radius-controller image, include patch version updates.
+tag: 0.4 # Tag for radius-controller image.
