@@ -3,12 +3,14 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azure
+package resourcekinds
 
-// ResourceKinds supported.
-// TODO: Duplicated from RP for now. Needs to be refactored to share this with RP without adding a dependency on RP
+// Azure ResourceKinds supported.
+// TODO: Duplicated from RP for now. Needs to be refactored to share this with RP without adding a dependency on RP: #983
 const (
 	ResourceKindKubernetes                       = "kubernetes"
+	KubernetesKindDeployment                     = "Deployment"
+	KubernetesKindService                        = "Service"
 	ResourceKindDaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
 	ResourceKindDaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
 	ResourceKindDaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"

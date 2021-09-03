@@ -14,39 +14,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/model/azure"
 	"github.com/Azure/radius/pkg/model/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
-	"github.com/Azure/radius/pkg/radrp/k8sauth"
+	"github.com/Azure/radius/pkg/service"
 	"github.com/go-logr/logr"
-	"go.mongodb.org/mongo-driver/mongo"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // StartRadRP creates and starts the Radius RP
-func StartRadRP(ctx context.Context, arm armauth.ArmConfig, dbClient *mongo.Client, dbName string, healthChannels healthcontract.HealthChannels) {
+func StartRadRP(ctx context.Context, options service.Options) {
 	// App Service uses this env-var to tell us what port to listen on.
 	port, ok := os.LookupEnv("PORT")
 	if !ok {
 		log.Fatalln("env: PORT is required")
-	}
-
-	var k8s *client.Client
-	var err error
-	skipKubernetes, ok := os.LookupEnv("SKIP_K8S")
-	if ok && strings.EqualFold(skipKubernetes, "true") {
-		log.Println("skipping Kubernetes connection...")
-	} else {
-		k8s, err = k8sauth.CreateClient()
-		if err != nil {
-			log.Printf("error connecting to kubernetes: %s", err)
-			panic(err)
-		}
 	}
 
 	authenticate := true
@@ -56,41 +39,41 @@ func StartRadRP(ctx context.Context, arm armauth.ArmConfig, dbClient *mongo.Clie
 		authenticate = false
 	}
 
-	logger, flushLogs, err := radlogger.NewLogger(fmt.Sprintf("radRP-%s-%s", arm.SubscriptionID, arm.ResourceGroup))
+	logger, flushLogs, err := radlogger.NewLogger(fmt.Sprintf("radRP-%s-%s", options.Arm.SubscriptionID, options.Arm.ResourceGroup))
 	if err != nil {
 		panic(err)
 	}
 	defer flushLogs()
 	logger = logger.WithValues(
-		radlogger.LogFieldResourceGroup, arm.ResourceGroup,
-		radlogger.LogFieldSubscriptionID, arm.SubscriptionID)
+		radlogger.LogFieldResourceGroup, options.Arm.ResourceGroup,
+		radlogger.LogFieldSubscriptionID, options.Arm.SubscriptionID)
 
-	db := db.NewRadrpDB(dbClient.Database(dbName))
+	db := db.NewRadrpDB(options.DBClient.Database(options.DBName))
 
 	var appmodel model.ApplicationModel
 	if os.Getenv("RADIUS_MODEL") == "" || strings.EqualFold(os.Getenv("RADIUS_MODEL"), "azure") {
-		appmodel = azure.NewAzureModel(arm, k8s)
+		appmodel = azure.NewAzureModel(options.Arm, options.K8sClient)
 	} else if strings.EqualFold(os.Getenv("RADIUS_MODEL"), "k8s") {
-		appmodel = kubernetes.NewKubernetesModel(k8s)
+		appmodel = kubernetes.NewKubernetesModel(options.K8sClient)
 	} else {
 		log.Fatal(fmt.Errorf("unknown value for RADIUS_MODEL '%s'", os.Getenv("RADIUS_MODEL")))
 	}
 
-	options := ServerOptions{
+	serverOptions := ServerOptions{
 		Address:      ":" + port,
 		Authenticate: authenticate,
-		Deploy:       deployment.NewDeploymentProcessor(appmodel, &healthChannels),
+		Deploy:       deployment.NewDeploymentProcessor(appmodel, &options.HealthChannels),
 		DB:           db,
 		Logger:       logger,
 	}
 
-	changeListener := NewChangeListener(db, &healthChannels)
+	changeListener := NewChangeListener(db, &options.HealthChannels)
 	ctx = logr.NewContext(ctx, logger)
 	go changeListener.ListenForChanges(ctx)
-	server := NewServer(options)
+	server := NewServer(serverOptions)
 	go exitListener(ctx, server)
 
-	logger.Info(fmt.Sprintf("listening on: '%s'...", options.Address))
+	logger.Info(fmt.Sprintf("listening on: '%s'...", serverOptions.Address))
 	err = server.ListenAndServe()
 	if err != nil {
 		panic(err)

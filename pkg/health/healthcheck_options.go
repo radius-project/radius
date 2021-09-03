@@ -40,9 +40,13 @@ func WithInterval(interval time.Duration) HealthCheckOption {
 
 // MonitorOptions are the options that are passed in to the health service
 type MonitorOptions struct {
-	Logger                      logr.Logger
-	DB                          db.RadHealthDB
+	Logger logr.Logger
+	DB     db.RadHealthDB
+	// ResourceRegistrationChannel is used to receive registration/unregistration messages
 	ResourceRegistrationChannel chan healthcontract.ResourceHealthRegistrationMessage
-	HealthProbeChannel          chan healthcontract.ResourceHealthDataMessage
-	HealthModel                 model.HealthModel
+	// HealthProbeChannel is used to send health updates for resources to the RP
+	HealthProbeChannel chan healthcontract.ResourceHealthDataMessage
+	// WatchHealthChangesChannel is used to receive health change notifications from push mode watchers
+	WatchHealthChangesChannel chan healthcontract.ResourceHealthDataMessage
+	HealthModel               model.HealthModel
 }

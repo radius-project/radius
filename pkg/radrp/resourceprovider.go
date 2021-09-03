@@ -505,7 +505,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 				definition.Properties.Status.OutputResources = nil
 				a.Components[c] = definition
 			} else if action.Operation != deployment.None {
-				// if the component was updated or created add its resources
+				// if the component was updated or created add its output resources
 				logger.Info(fmt.Sprintf("Updating component with %v output resources", len(action.Definition.Properties.Status.OutputResources)))
 				a.Components[c] = *action.Definition
 			}

@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	handleroptions "github.com/Azure/radius/pkg/health/handleroptions"
 	healthcontract "github.com/Azure/radius/pkg/healthcontract"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -36,15 +37,15 @@ func (m *MockHealthHandler) EXPECT() *MockHealthHandlerMockRecorder {
 }
 
 // GetHealthState mocks base method.
-func (m *MockHealthHandler) GetHealthState(arg0 context.Context, arg1 healthcontract.ResourceInfo) healthcontract.ResourceHealthDataMessage {
+func (m *MockHealthHandler) GetHealthState(arg0 context.Context, arg1 healthcontract.ResourceInfo, arg2 handleroptions.Options) healthcontract.ResourceHealthDataMessage {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHealthState", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetHealthState", arg0, arg1, arg2)
 	ret0, _ := ret[0].(healthcontract.ResourceHealthDataMessage)
 	return ret0
 }
 
 // GetHealthState indicates an expected call of GetHealthState.
-func (mr *MockHealthHandlerMockRecorder) GetHealthState(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockHealthHandlerMockRecorder) GetHealthState(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHealthState", reflect.TypeOf((*MockHealthHandler)(nil).GetHealthState), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHealthState", reflect.TypeOf((*MockHealthHandler)(nil).GetHealthState), arg0, arg1, arg2)
 }
