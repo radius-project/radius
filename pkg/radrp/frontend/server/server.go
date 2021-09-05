@@ -13,11 +13,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/certs"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/gorilla/mux"
 )
@@ -25,42 +22,15 @@ import (
 type ServerOptions struct {
 	Address      string
 	Authenticate bool
-	RP           resourceprovider.ResourceProvider
+	Configure    func(*mux.Router)
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
 func NewServer(ctx context.Context, options ServerOptions) *http.Server {
-	h := &handler{options.RP}
-
 	r := mux.NewRouter()
-	var s *mux.Router
-
-	r.Path(azresources.MakeCollectionURITemplate(resources.ApplicationCollectionType)).Methods("GET").HandlerFunc(h.listApplications)
-	s = r.Path(azresources.MakeResourceURITemplate(resources.ApplicationResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getApplication)
-	s.Methods("PUT").HandlerFunc(h.updateApplication)
-	s.Methods("DELETE").HandlerFunc(h.deleteApplication)
-
-	r.Path(azresources.MakeCollectionURITemplate(resources.ComponentCollectionType)).Methods("GET").HandlerFunc(h.listComponents)
-	s = r.Path(azresources.MakeResourceURITemplate(resources.ComponentResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getComponent)
-	s.Methods("PUT").HandlerFunc(h.updateComponent)
-	s.Methods("DELETE").HandlerFunc(h.deleteComponent)
-
-	r.Path(azresources.MakeCollectionURITemplate(resources.DeploymentCollectionType)).Methods("GET").HandlerFunc(h.listDeployments)
-	s = r.Path(azresources.MakeResourceURITemplate(resources.DeploymentResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getDeployment)
-	s.Methods("PUT").HandlerFunc(h.updateDeployment)
-	s.Methods("DELETE").HandlerFunc(h.deleteDeployment)
-
-	s = r.Path(azresources.MakeResourceURITemplate(resources.DeploymentOperationResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getDeploymentOperation)
-
-	r.Path(azresources.MakeCollectionURITemplate(resources.ScopeCollectionType)).Methods("GET").HandlerFunc(h.listScopes)
-	s = r.Path(azresources.MakeResourceURITemplate(resources.ScopeResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getScope)
-	s.Methods("PUT").HandlerFunc(h.updateScope)
-	s.Methods("DELETE").HandlerFunc(h.deleteScope)
+	if options.Configure != nil {
+		options.Configure(r)
+	}
 
 	r.Path("/version").Methods("GET").HandlerFunc(reportVersion)
 

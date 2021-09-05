@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package server
+package handlerv2
 
 import (
 	"context"

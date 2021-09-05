@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package server
+package handlerv2
 
 import (
 	"bytes"
@@ -25,10 +25,12 @@ import (
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,14 +64,17 @@ func start(t *testing.T) *test {
 	ctrl := gomock.NewController(t)
 	db := db.NewInMemoryRadrpDB(ctrl)
 	deploy := deployment.NewMockDeploymentProcessor(ctrl)
+	rp := resourceprovider.NewResourceProvider(db, deploy)
 
-	options := ServerOptions{
+	options := server.ServerOptions{
 		Address:      httptest.DefaultRemoteAddr,
 		Authenticate: false,
-		RP:           resourceprovider.NewResourceProvider(db, deploy),
+		Configure: func(router *mux.Router) {
+			AddRoutes(rp, router)
+		},
 	}
 
-	s := NewServer(createContext(t), options)
+	s := server.NewServer(createContext(t), options)
 	server := httptest.NewServer(s.Handler)
 	h := rewriteHandler(t, server.Config.Handler)
 	t.Cleanup(server.Close)
