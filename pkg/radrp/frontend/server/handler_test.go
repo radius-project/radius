@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radrp
+package server
 
 import (
 	"bytes"
@@ -24,12 +24,12 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -49,6 +49,15 @@ type test struct {
 	handler http.Handler
 }
 
+func createContext(t *testing.T) context.Context {
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
+}
+
 func start(t *testing.T) *test {
 	ctrl := gomock.NewController(t)
 	db := db.NewInMemoryRadrpDB(ctrl)
@@ -57,12 +66,10 @@ func start(t *testing.T) *test {
 	options := ServerOptions{
 		Address:      httptest.DefaultRemoteAddr,
 		Authenticate: false,
-		Deploy:       deploy,
-		DB:           db,
-		K8s:          fake.NewClientBuilder().Build(),
+		RP:           resourceprovider.NewResourceProvider(db, deploy),
 	}
 
-	s := NewServer(options)
+	s := NewServer(createContext(t), options)
 	server := httptest.NewServer(s.Handler)
 	h := rewriteHandler(t, server.Config.Handler)
 	t.Cleanup(server.Close)

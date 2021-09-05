@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) model.ApplicationModel {
+func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationModel {
 	renderers := map[string]workloads.WorkloadRenderer{
 		daprstatestorev1alpha1.Kind:  &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues},
 		daprpubsubv1alpha1.Kind:      &daprpubsubv1alpha1.Renderer{},
@@ -40,10 +40,10 @@ func NewAzureModel(arm armauth.ArmConfig, k8s *client.Client) model.ApplicationM
 	}
 
 	handlers := map[string]model.Handlers{
-		outputresource.KindKubernetes:                       {ResourceHandler: handlers.NewKubernetesHandler(*k8s), HealthHandler: handlers.NewKubernetesHealthHandler(*k8s)},
-		outputresource.KindDaprStateStoreAzureStorage:       {ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, *k8s), HealthHandler: handlers.NewDaprStateStoreAzureStorageHealthHandler(arm, *k8s)},
-		outputresource.KindDaprStateStoreSQLServer:          {ResourceHandler: handlers.NewDaprStateStoreSQLServerHandler(arm, *k8s), HealthHandler: handlers.NewDaprStateStoreSQLServerHealthHandler(arm, *k8s)},
-		outputresource.KindDaprPubSubTopicAzureServiceBus:   {ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, *k8s), HealthHandler: handlers.NewDaprPubSubServiceBusHealthHandler(arm, *k8s)},
+		outputresource.KindKubernetes:                       {ResourceHandler: handlers.NewKubernetesHandler(k8s), HealthHandler: handlers.NewKubernetesHealthHandler(k8s)},
+		outputresource.KindDaprStateStoreAzureStorage:       {ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s), HealthHandler: handlers.NewDaprStateStoreAzureStorageHealthHandler(arm, k8s)},
+		outputresource.KindDaprStateStoreSQLServer:          {ResourceHandler: handlers.NewDaprStateStoreSQLServerHandler(arm, k8s), HealthHandler: handlers.NewDaprStateStoreSQLServerHealthHandler(arm, k8s)},
+		outputresource.KindDaprPubSubTopicAzureServiceBus:   {ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s), HealthHandler: handlers.NewDaprPubSubServiceBusHealthHandler(arm, k8s)},
 		outputresource.KindAzureCosmosDBMongo:               {ResourceHandler: handlers.NewAzureCosmosDBMongoHandler(arm), HealthHandler: handlers.NewAzureCosmosDBMongoHealthHandler(arm)},
 		outputresource.KindAzureCosmosAccountMongo:          {ResourceHandler: handlers.NewAzureCosmosAccountMongoHandler(arm), HealthHandler: handlers.NewAzureCosmosAccountMongoHealthHandler(arm)},
 		outputresource.KindAzureCosmosDBSQL:                 {ResourceHandler: handlers.NewAzureCosmosDBSQLHandler(arm), HealthHandler: handlers.NewAzureCosmosDBSQLHealthHandler(arm)},

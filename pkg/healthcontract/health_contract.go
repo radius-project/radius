@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// ChannelBufferSize defines the buffer size for health registration channel
+const ChannelBufferSize = 100
+
 // Possible action values for a RegistrationMessage
 const (
 	ActionRegister   = "Register"
@@ -33,6 +36,15 @@ type HealthChannels struct {
 	ResourceRegistrationWithHealthChannel chan ResourceHealthRegistrationMessage
 	// HealthToRPNotificationChannel is the channel on which the HealthService sends health state change notifications to the RP (HealthService -> RP)
 	HealthToRPNotificationChannel chan ResourceHealthDataMessage
+}
+
+func NewHealthChannels() HealthChannels {
+	rrc := make(chan ResourceHealthRegistrationMessage, ChannelBufferSize)
+	hpc := make(chan ResourceHealthDataMessage, ChannelBufferSize)
+	return HealthChannels{
+		ResourceRegistrationWithHealthChannel: rrc,
+		HealthToRPNotificationChannel:         hpc,
+	}
 }
 
 // HealthIDKey is the key used by all resource types to represent the id used to register with HealthService
