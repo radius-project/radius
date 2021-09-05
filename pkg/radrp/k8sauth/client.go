@@ -16,11 +16,8 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/clients"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // GetConfig gets the Kubernetes config
@@ -48,33 +45,6 @@ func GetConfig() (*rest.Config, error) {
 	}
 
 	return config, nil
-}
-
-// CreateClient creates a Kubernetes client.
-func CreateClient() (*client.Client, error) {
-	log.Println("Creating Kubernetes Client")
-
-	config, err := GetConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	s := scheme.Scheme
-	c, err := client.New(config, client.Options{Scheme: s})
-	if err != nil {
-		return nil, err
-	}
-
-	log.Println("Testing connection")
-	ns := &corev1.NamespaceList{}
-	err = c.List(context.Background(), ns, &client.ListOptions{})
-	if err != nil {
-		log.Println("Connection failed")
-		return nil, fmt.Errorf("failed to connect to kubernetes ... %w", err)
-	}
-	log.Println("Connection verified")
-
-	return &c, nil
 }
 
 func createLocal() (*rest.Config, error) {

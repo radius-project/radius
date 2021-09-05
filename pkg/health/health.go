@@ -17,11 +17,8 @@ import (
 	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model"
-	"github.com/Azure/radius/pkg/health/model/azure"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/service"
-	"github.com/go-logr/logr"
 )
 
 // HealthMonitoringInitialDelay is the delay after which the health service will start monitoring the resource
@@ -53,7 +50,7 @@ type Monitor struct {
 }
 
 // Run starts the HealthService
-func (h Monitor) Run(ctx context.Context) {
+func (h Monitor) Run(ctx context.Context) error {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info("RadHealth Service started...")
 	for {
@@ -72,7 +69,7 @@ func (h Monitor) Run(ctx context.Context) {
 			}
 		case <-ctx.Done():
 			logger.Info("RadHealth Service stopped...")
-			return
+			return nil
 		}
 	}
 }
@@ -273,36 +270,4 @@ func NewMonitor(options MonitorOptions, arm armauth.ArmConfig) Monitor {
 	m.activeHealthProbes = make(map[string]HealthInfo)
 	m.activeHealthProbesMutex = &sync.RWMutex{}
 	return m
-}
-
-// StartRadHealth creates and starts the Radius Health Monitor
-func StartRadHealth(ctx context.Context, options service.Options) {
-	// Create logger to log health events
-	logger, flushHealthLogs, err := radlogger.NewLogger(fmt.Sprintf("Health-ARM-%s-%s", options.Arm.SubscriptionID, options.Arm.ResourceGroup))
-	if err != nil {
-		panic(err)
-	}
-	logger = logger.WithValues(
-		radlogger.LogFieldResourceGroup, options.Arm.ResourceGroup,
-		radlogger.LogFieldSubscriptionID, options.Arm.SubscriptionID)
-
-	defer flushHealthLogs()
-
-	// Create a DB to store health events
-	db := db.NewRadHealthDB(options.DBClient.Database(options.DBName))
-
-	model := azure.NewAzureHealthModel(options.Arm, options.K8sClientSet)
-
-	monitorOptions := MonitorOptions{
-		Logger:                      logger,
-		DB:                          db,
-		ResourceRegistrationChannel: options.HealthChannels.ResourceRegistrationWithHealthChannel,
-		HealthProbeChannel:          options.HealthChannels.HealthToRPNotificationChannel,
-		WatchHealthChangesChannel:   make(chan healthcontract.ResourceHealthDataMessage, ChannelBufferSize),
-		HealthModel:                 model,
-	}
-
-	ctx = logr.NewContext(ctx, logger)
-	healthMonitor := NewMonitor(monitorOptions, options.Arm)
-	healthMonitor.Run(ctx)
 }

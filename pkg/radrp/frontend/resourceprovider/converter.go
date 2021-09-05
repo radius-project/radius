@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radrp
+package resourceprovider
 
 import (
 	radhealthdb "github.com/Azure/radius/pkg/health/db"

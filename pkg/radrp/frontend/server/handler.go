@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radrp
+package server
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schema"
@@ -35,7 +36,7 @@ import (
 // within the RP or a bug.
 
 type handler struct {
-	rp ResourceProvider
+	rp resourceprovider.ResourceProvider
 }
 
 func (h *handler) listApplications(w http.ResponseWriter, req *http.Request) {

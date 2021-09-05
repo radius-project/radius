@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radrp
+package healthlistener
 
 import (
 	"context"
@@ -23,41 +23,45 @@ const (
 	ComponentsResourceType   = "Components"
 )
 
-// ChangeListener implements functionality for listening for health state changes
-type ChangeListener interface {
-	ListenForChanges(ctx context.Context)
+type Service struct {
+	Options ServiceOptions
+	db      db.RadrpDB
 }
 
-type changeListener struct {
-	db     db.RadrpDB
-	health *healthcontract.HealthChannels
-}
-
-// NewChangeListener initializes a listener that listens for change in health state for resources
-func NewChangeListener(db db.RadrpDB, health *healthcontract.HealthChannels) ChangeListener {
-	return &changeListener{
-		db:     db,
-		health: health,
+func NewService(options ServiceOptions) *Service {
+	return &Service{
+		Options: options,
 	}
 }
 
-func (cl *changeListener) ListenForChanges(ctx context.Context) {
+func (s *Service) Name() string {
+	return "backend.health-listener"
+}
+
+func (s *Service) Run(ctx context.Context) error {
 	logger := radlogger.GetLogger(ctx)
+
+	dbclient, err := s.Options.DBClientFactory(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	s.db = db.NewRadrpDB(dbclient)
+
 	logger.Info("Started listening for Health State change notifications from HealthService...")
 	for {
 		select {
-		case msg := <-cl.health.HealthToRPNotificationChannel:
-			updated := cl.UpdateHealth(ctx, msg)
+		case msg := <-s.Options.HealthChannels.HealthToRPNotificationChannel:
+			updated := s.UpdateHealth(ctx, msg)
 			logger.Info(fmt.Sprintf("Updated application health state changes successfully: %v", updated))
 		case <-ctx.Done():
 			logger.Info("Stopping to listen for health state change notifications")
-			return
+			return nil
 		}
 	}
-
 }
 
-func (cl *changeListener) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontract.ResourceHealthDataMessage) bool {
+func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontract.ResourceHealthDataMessage) bool {
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldResourceID, healthUpdateMsg.Resource.ResourceID,
 		radlogger.LogFieldHealthID, healthUpdateMsg.Resource.HealthID)
@@ -81,7 +85,7 @@ func (cl *changeListener) UpdateHealth(ctx context.Context, healthUpdateMsg heal
 		logger.Error(err, "Invalid application ID")
 		return false
 	}
-	c, err := cl.db.GetComponentByApplicationID(ctx, a, cid.Name())
+	c, err := s.db.GetComponentByApplicationID(ctx, a, cid.Name())
 	if err != nil {
 		logger.Error(err, "Component not found")
 		return false
@@ -92,7 +96,7 @@ func (cl *changeListener) UpdateHealth(ctx context.Context, healthUpdateMsg heal
 			// Update the health state
 			c.Properties.Status.OutputResources[i].Status.HealthState = healthUpdateMsg.HealthState
 			c.Properties.Status.OutputResources[i].Status.HealthStateErrorDetails = healthUpdateMsg.HealthStateErrorDetails
-			patched, err := cl.db.PatchComponentByApplicationID(ctx, a, c.Name, c)
+			patched, err := s.db.PatchComponentByApplicationID(ctx, a, c.Name, c)
 			if err == db.ErrNotFound {
 				logger.Error(err, "Component not found in DB")
 			} else if err != nil {
