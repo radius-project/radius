@@ -52,7 +52,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDKeyVault, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureKeyVault, resource.Kind)
+	require.Equal(t, resourcekinds.KindAzureKeyVault, resource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey: "true",
@@ -84,7 +84,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDKeyVault, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureKeyVault, resource.Kind)
+	require.Equal(t, resourcekinds.KindAzureKeyVault, resource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:      "false",

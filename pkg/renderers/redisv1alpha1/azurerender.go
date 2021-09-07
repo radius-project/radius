@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -66,7 +67,7 @@ func (r AzureRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkl
 	if component.Config.Managed {
 		resource := outputresource.OutputResource{
 			LocalID: outputresource.LocalIDAzureRedis,
-			Kind:    outputresource.KindAzureRedis,
+			Kind:    resourcekinds.KindAzureRedis,
 			Type:    outputresource.TypeARM,
 			Managed: true,
 			Resource: map[string]string{

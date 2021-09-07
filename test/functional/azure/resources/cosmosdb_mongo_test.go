@@ -45,15 +45,15 @@ func Test_CosmosDBMongoManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "db",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, outputresource.KindAzureCosmosAccountMongo, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, outputresource.KindAzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, resourcekinds.KindAzureCosmosAccountMongo, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.KindAzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -101,15 +101,15 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "db",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, outputresource.KindAzureCosmosAccountMongo, false, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, outputresource.KindAzureCosmosDBMongo, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, resourcekinds.KindAzureCosmosAccountMongo, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.KindAzureCosmosDBMongo, false, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

@@ -10,9 +10,9 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/health/handleroptions"
-	"github.com/Azure/radius/pkg/health/resourcekinds"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
@@ -57,7 +57,7 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 		Resource: healthcontract.ResourceInfo{
 			HealthID:     resourceInfo.HealthID,
 			ResourceID:   resourceInfo.ResourceID,
-			ResourceKind: resourcekinds.ResourceKindKubernetes,
+			ResourceKind: resourcekinds.KindKubernetes,
 		},
 		HealthState:             healthState,
 		HealthStateErrorDetails: healthStateErrorDetails,
@@ -75,7 +75,7 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 			Resource: healthcontract.ResourceInfo{
 				HealthID:     resourceInfo.HealthID,
 				ResourceID:   resourceInfo.ResourceID,
-				ResourceKind: resourcekinds.ResourceKindKubernetes,
+				ResourceKind: resourcekinds.KindKubernetes,
 			},
 			HealthState:             healthcontract.HealthStateUnhealthy,
 			HealthStateErrorDetails: err.Error(),
@@ -106,7 +106,7 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 				Resource: healthcontract.ResourceInfo{
 					HealthID:     resourceInfo.HealthID,
 					ResourceID:   resourceInfo.ResourceID,
-					ResourceKind: resourcekinds.ResourceKindKubernetes,
+					ResourceKind: resourcekinds.KindKubernetes,
 				},
 				HealthState:             state,
 				HealthStateErrorDetails: detail,

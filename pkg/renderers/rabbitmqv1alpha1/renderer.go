@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -116,7 +117,7 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 	}
 
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.KindKubernetes,
 		LocalID:  outputresource.LocalIDRabbitMQDeployment,
 		Resource: &deployment})
 
@@ -145,7 +146,7 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 	}
 
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.KindKubernetes,
 		LocalID:  outputresource.LocalIDRabbitMQService,
 		Resource: &service})
 

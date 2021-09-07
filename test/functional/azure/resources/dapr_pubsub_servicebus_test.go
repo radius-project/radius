@@ -47,14 +47,14 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, resourcekinds.KindDaprPubSubTopicAzureServiceBus, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -102,14 +102,14 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "publisher",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, outputresource.KindKubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.KindKubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, outputresource.KindDaprPubSubTopicAzureServiceBus, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, resourcekinds.KindDaprPubSubTopicAzureServiceBus, false, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

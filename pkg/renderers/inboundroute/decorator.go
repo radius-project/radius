@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha1"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,7 +124,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	resource := outputresource.OutputResource{
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.KindKubernetes,
 		LocalID:  outputresource.LocalIDIngress,
 		Deployed: false,
 		Managed:  true,

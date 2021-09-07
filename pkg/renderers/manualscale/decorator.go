@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -51,7 +52,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// ManualScaling detected, update deployment
 	for _, resource := range resources {
-		if resource.Kind != outputresource.KindKubernetes {
+		if resource.Kind != resourcekinds.KindKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}

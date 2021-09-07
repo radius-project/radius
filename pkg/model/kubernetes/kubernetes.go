@@ -9,7 +9,6 @@ import (
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/dapr"
 	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
@@ -18,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/rabbitmqv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha1"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -31,7 +31,7 @@ func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 		redisv1alpha1.Kind:          &redisv1alpha1.KubernetesRenderer{},
 	}
 	handlers := map[string]model.Handlers{
-		outputresource.KindKubernetes: {ResourceHandler: handlers.NewKubernetesHandler(*k8s), HealthHandler: nil},
+		resourcekinds.KindKubernetes: {ResourceHandler: handlers.NewKubernetesHandler(*k8s), HealthHandler: nil},
 	}
 	return model.NewModel(renderers, handlers)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -28,8 +29,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != outputresource.KindDaprPubSubTopicAzureServiceBus {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", outputresource.KindDaprPubSubTopicAzureServiceBus)
+	if len(resources) != 1 || resources[0].Type != resourcekinds.KindDaprPubSubTopicAzureServiceBus {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", resourcekinds.KindDaprPubSubTopicAzureServiceBus)
 	}
 
 	properties := resources[0].Properties
@@ -78,7 +79,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// generate data we can use to manage a servicebus topic
 		resource := outputresource.OutputResource{
 			LocalID: outputresource.LocalIDAzureServiceBusTopic,
-			Kind:    outputresource.KindDaprPubSubTopicAzureServiceBus,
+			Kind:    resourcekinds.KindDaprPubSubTopicAzureServiceBus,
 			Type:    outputresource.TypeARM,
 			Managed: true,
 			Resource: map[string]string{
@@ -108,7 +109,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		resource := outputresource.OutputResource{
 			LocalID: outputresource.LocalIDAzureServiceBusTopic,
-			Kind:    outputresource.KindDaprPubSubTopicAzureServiceBus,
+			Kind:    resourcekinds.KindDaprPubSubTopicAzureServiceBus,
 			Type:    outputresource.TypeARM,
 			Managed: false,
 			Resource: map[string]string{

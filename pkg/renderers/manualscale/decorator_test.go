@@ -30,7 +30,7 @@ func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorklo
 
 	deploymentResource := outputresource.OutputResource{
 		Resource: &deployment,
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.KindKubernetes,
 		LocalID:  outputresource.LocalIDDeployment,
 	}
 
