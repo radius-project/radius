@@ -21,7 +21,7 @@ These steps will setup the required tools and extensions to get you up and runni
 ### PowerShell
 
 ```powershell
-iwr -useb https://get.radapp.dev/tools/rad/install.ps1 | iex
+iwr -useb "https://get.radapp.dev/tools/rad/install.ps1" | iex
 ```
 
 {{% /codetab %}}
