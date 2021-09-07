@@ -203,7 +203,7 @@ func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, appl
 		}
 	}
 
-	errorMessage := fmt.Sprintf("Deployemnt '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
+	errorMessage := fmt.Sprintf("Deployment '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
 	return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }
 
@@ -255,6 +255,6 @@ func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applic
 		}
 	}
 
-	errorMessage := fmt.Sprintf("Deployemnt '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
+	errorMessage := fmt.Sprintf("Deployment '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
 	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }
