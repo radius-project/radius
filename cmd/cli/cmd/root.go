@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azclients"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/bicep"
 	"github.com/Azure/radius/pkg/cli/output"
@@ -32,14 +32,14 @@ var RootCmd = &cobra.Command{
 
 func prettyPrintRPError(err error) string {
 	raw := err.Error()
-	if new := azclients.TryUnfoldErrorResponse(err); new != nil {
+	if new := clients.TryUnfoldErrorResponse(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m
 		}
 		return raw
 	}
-	if new := azclients.TryUnfoldServiceError(err); new != nil {
+	if new := clients.TryUnfoldServiceError(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m

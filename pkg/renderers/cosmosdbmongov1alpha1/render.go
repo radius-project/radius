@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -92,7 +92,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 func GetConnectionString(ctx context.Context, arm armauth.ArmConfig, accountName string, databaseName string) (string, error) {
 	// cosmos uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
-	dac := azclients.NewDatabaseAccountsClient(arm.SubscriptionID, arm.Auth)
+	dac := clients.NewDatabaseAccountsClient(arm.SubscriptionID, arm.Auth)
 	css, err := dac.ListConnectionStrings(ctx, arm.ResourceGroup, accountName)
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve connection strings: %w", err)

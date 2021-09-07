@@ -28,7 +28,7 @@ ok  	github.com/Azure/radius/pkg/radrp/resources	0.283s
 ?   	github.com/Azure/radius/pkg/radrp/rest	[no test files]
 ?   	github.com/Azure/radius/pkg/radrp/revision	[no test files]
 ok  	github.com/Azure/radius/pkg/cli	0.250s
-?   	github.com/Azure/radius/pkg/cli/azcli	[no test files]
+?   	github.com/Azure/radius/pkg/azure/azcli	[no test files]
 ?   	github.com/Azure/radius/pkg/cli/azure	[no test files]
 ?   	github.com/Azure/radius/pkg/cli/bicep	[no test files]
 ?   	github.com/Azure/radius/pkg/cli/environments	[no test files]
@@ -36,7 +36,7 @@ ok  	github.com/Azure/radius/pkg/cli	0.250s
 ?   	github.com/Azure/radius/pkg/cli/namegenerator	[no test files]
 ?   	github.com/Azure/radius/pkg/cli/prompt	[no test files]
 ?   	github.com/Azure/radius/pkg/cli/util	[no test files]
-?   	github.com/Azure/radius/pkg/radclient	[no test files]
+?   	github.com/Azure/radius/pkg/azure/radclient	[no test files]
 ?   	github.com/Azure/radius/pkg/renderers	[no test files]
 ok  	github.com/Azure/radius/pkg/renderers/containerv1alpha1
 ok   	github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha1

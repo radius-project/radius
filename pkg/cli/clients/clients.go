@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/Azure/radius/pkg/radclient"
+	"github.com/Azure/radius/pkg/azure/radclient"
 )
 
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).

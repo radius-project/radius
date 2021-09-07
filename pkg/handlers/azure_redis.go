@@ -11,9 +11,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/redis/mgmt/redis"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 )
 
@@ -44,7 +44,7 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 			redisName, err = generateUniqueAzureResourceName(ctx,
 				properties[RedisBaseName],
 				func(name string) error {
-					rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
+					rc := clients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
 					redisType := "Microsoft.Cache/redis"
 					checkNameParams := redis.CheckNameAvailabilityParameters{
 						Name: &name,
@@ -103,7 +103,7 @@ func (handler *azureRedisHandler) Delete(ctx context.Context, options DeleteOpti
 }
 
 func (handler *azureRedisHandler) CreateRedis(ctx context.Context, redisName string) (*redis.ResourceType, error) {
-	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	rc := clients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	// Basic redis SKU
 	redisSku := &redis.Sku{
@@ -144,17 +144,17 @@ func (handler *azureRedisHandler) CreateRedis(ctx context.Context, redisName str
 }
 
 func (handler *azureRedisHandler) DeleteRedis(ctx context.Context, redisName string) error {
-	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	rc := clients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	future, err := rc.Delete(ctx, handler.arm.ResourceGroup, redisName)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "redis", err)
 	}
 
 	err = future.WaitForCompletionRef(ctx, rc.Client)
-	if azclients.IsLongRunning404(err, future.FutureAPI) {
+	if clients.IsLongRunning404(err, future.FutureAPI) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to delete %s: %w", "redis", err)
@@ -169,7 +169,7 @@ func (handler *azureRedisHandler) GetRedisByID(ctx context.Context, id string) (
 		return nil, fmt.Errorf("failed to parse redis resource id: %w", err)
 	}
 
-	rc := azclients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	rc := clients.NewRedisClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	redis, err := rc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
 	if err != nil {

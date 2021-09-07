@@ -6,7 +6,7 @@
 package keyvaultv1alpha1
 
 import (
-	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
 const Kind = "azure.com/KeyVault@v1alpha1"

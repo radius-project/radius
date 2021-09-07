@@ -11,9 +11,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -99,7 +99,7 @@ func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id str
 		return nil, fmt.Errorf("failed to parse KeyVault resource id: %w", err)
 	}
 
-	kvc := azclients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	kvc := clients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	kv, err := kvc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
 	if err != nil {
@@ -110,9 +110,9 @@ func (handler *azureKeyVaultHandler) GetKeyVaultByID(ctx context.Context, id str
 }
 
 func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultName string, options PutOptions) (*keyvault.Vault, error) {
-	kvc := azclients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	kvc := clients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	sc := azclients.NewSubscriptionsClient(handler.arm.Auth)
+	sc := clients.NewSubscriptionsClient(handler.arm.Auth)
 
 	s, err := sc.Get(ctx, handler.arm.SubscriptionID)
 	if err != nil {
@@ -164,7 +164,7 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 }
 
 func (handler *azureKeyVaultHandler) DeleteKeyVault(ctx context.Context, vaultName string) error {
-	kvClient := azclients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	kvClient := clients.NewVaultsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	_, err := kvClient.Delete(ctx, handler.arm.ResourceGroup, vaultName)
 	if err != nil {

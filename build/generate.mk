@@ -27,7 +27,7 @@ generate-radclient: generate-node-installed generate-autorest-installed ## Gener
 		--tag=package-2018-09-01-preview \
 		--go  \
 		--gomod-root=. \
-		--output-folder=./pkg/radclient \
+		--output-folder=./pkg/azure/radclient \
 		--modelerfour.lenient-model-deduplication \
 		--license-header=MICROSOFT_MIT_NO_VERSION \
 		--file-prefix=zz_generated_ \

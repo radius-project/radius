@@ -11,8 +11,8 @@ import (
 	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radclient"
 )
 
 func ConvertK8sApplicationToARM(input radiusv1alpha1.Application) (*radclient.ApplicationResource, error) {

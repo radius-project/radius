@@ -26,16 +26,16 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/azclients"
-	"github.com/Azure/radius/pkg/azresources"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/roleassignment"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/roleassignment"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -99,7 +99,7 @@ func (r Renderer) createManagedIdentity(ctx context.Context, application, compon
 	logger := radlogger.GetLogger(ctx)
 	localID := outputresource.LocalIDUserAssignedManagedIdentityKV
 	// Create a user assigned managed identity
-	msiClient := azclients.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	msiClient := clients.NewUserAssignedIdentitiesClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	id, err := msiClient.CreateOrUpdate(context.Background(), r.Arm.ResourceGroup, identityName, msi.Identity{
 		Location: to.StringPtr(location),
 		Tags:     keys.MakeTagsForRadiusComponent(application, component),
@@ -139,7 +139,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	// Create user assigned managed identity
 	managedIdentityName := kvName + "-" + cw.Name + "-msi"
 
-	rgc := azclients.NewGroupsClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	rgc := clients.NewGroupsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 
 	rg, err := rgc.Get(ctx, r.Arm.ResourceGroup)
 	if err != nil {
@@ -171,7 +171,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 	outputResources = append(outputResources, res)
 
-	kvc := azclients.NewVaultsClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	kvc := clients.NewVaultsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -504,7 +504,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 	}
 
 	// Get AKS cluster name in current resource group
-	mcc := azclients.NewManagedClustersClient(r.Arm.K8sSubscriptionID, r.Arm.Auth)
+	mcc := clients.NewManagedClustersClient(r.Arm.K8sSubscriptionID, r.Arm.Auth)
 
 	// Note: Pod Identity name cannot have camel case
 	podIdentityName := "podid-" + strings.ToLower(containerName)
@@ -557,7 +557,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, msi msi.Identity, conta
 		}
 
 		// Check the error and determine if it is retryable
-		detailed, ok := azclients.ExtractDetailedError(err)
+		detailed, ok := clients.ExtractDetailedError(err)
 		if !ok {
 			return podIdentity, err
 		}
@@ -617,7 +617,7 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		},
 	}
 
-	dc := azclients.NewDeploymentsClient(r.Arm.SubscriptionID, r.Arm.Auth)
+	dc := clients.NewDeploymentsClient(r.Arm.SubscriptionID, r.Arm.Auth)
 	parameters := map[string]interface{}{}
 	deploymentProperties := &resources.DeploymentProperties{
 		Parameters: parameters,

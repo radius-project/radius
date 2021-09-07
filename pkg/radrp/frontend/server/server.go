@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radrp
+package server
 
 import (
 	"context"
@@ -13,40 +13,27 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azresources"
-	"github.com/Azure/radius/pkg/healthcontract"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/certs"
-	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/deployment"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/version"
-	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ServerOptions is
 type ServerOptions struct {
-	Address       string
-	Authenticate  bool
-	Deploy        deployment.DeploymentProcessor
-	K8s           client.Client
-	DB            db.RadrpDB
-	Logger        logr.Logger
-	HealthService healthcontract.HealthChannels
+	Address      string
+	Authenticate bool
+	RP           resourceprovider.ResourceProvider
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
-func NewServer(options ServerOptions) *http.Server {
+func NewServer(ctx context.Context, options ServerOptions) *http.Server {
+	h := &handler{options.RP}
+
 	r := mux.NewRouter()
 	var s *mux.Router
-
-	rp := NewResourceProvider(
-		options.DB,
-		options.Deploy,
-	)
-	h := &handler{rp}
 
 	r.Path(azresources.MakeCollectionURITemplate(resources.ApplicationCollectionType)).Methods("GET").HandlerFunc(h.listApplications)
 	s = r.Path(azresources.MakeResourceURITemplate(resources.ApplicationResourceType)).Subrouter()
@@ -77,7 +64,6 @@ func NewServer(options ServerOptions) *http.Server {
 
 	r.Path("/version").Methods("GET").HandlerFunc(reportVersion)
 
-	ctx := logr.NewContext(context.Background(), options.Logger)
 	app := rewrite(ctx, r)
 
 	if options.Authenticate {

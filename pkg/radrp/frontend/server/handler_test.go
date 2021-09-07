@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radrp
+package server
 
 import (
 	"bytes"
@@ -17,18 +17,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/pkg/azresources"
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -48,6 +49,15 @@ type test struct {
 	handler http.Handler
 }
 
+func createContext(t *testing.T) context.Context {
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
+}
+
 func start(t *testing.T) *test {
 	ctrl := gomock.NewController(t)
 	db := db.NewInMemoryRadrpDB(ctrl)
@@ -56,12 +66,10 @@ func start(t *testing.T) *test {
 	options := ServerOptions{
 		Address:      httptest.DefaultRemoteAddr,
 		Authenticate: false,
-		Deploy:       deploy,
-		DB:           db,
-		K8s:          fake.NewClientBuilder().Build(),
+		RP:           resourceprovider.NewResourceProvider(db, deploy),
 	}
 
-	s := NewServer(options)
+	s := NewServer(createContext(t), options)
 	server := httptest.NewServer(s.Handler)
 	h := rewriteHandler(t, server.Config.Handler)
 	t.Cleanup(server.Close)
@@ -598,6 +606,302 @@ func Test_GetComponent_Found(t *testing.T) {
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
 			Revision: rev,
+			Status: rest.ComponentStatus{
+				ProvisioningState: rest.Provisioned,
+				HealthState:       healthcontract.HealthStateHealthy,
+			},
+		},
+	}
+	requireJSON(t, expected, w)
+}
+
+func Test_GetComponent_OutputResourceUnhealthy(t *testing.T) {
+	test := start(t)
+
+	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
+		Status: db.ComponentStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:  "A",
+					HealthID: "A",
+					Status: db.OutputResourceStatus{
+						ProvisioningState: db.Provisioned,
+						HealthState:       healthcontract.HealthStateUnhealthy,
+					},
+				},
+				{
+					LocalID:  "B",
+					HealthID: "B",
+					Status: db.OutputResourceStatus{
+						ProvisioningState: db.Provisioned,
+						HealthState:       healthcontract.HealthStateHealthy,
+					},
+				},
+			},
+		},
+	})
+
+	componentID := componentID(TestApplicationName, "A")
+	req := httptest.NewRequest("GET", componentID.ID, nil)
+	w := httptest.NewRecorder()
+
+	test.handler.ServeHTTP(w, req)
+
+	require.Equal(t, 200, w.Code)
+
+	expected := &rest.Component{
+		ResourceBase: rest.ResourceBase{
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
+		},
+		Kind: "radius.dev/Test@v1alpha1",
+		Properties: rest.ComponentProperties{
+			Revision: rev,
+			Status: rest.ComponentStatus{
+				ProvisioningState: rest.Provisioned,
+				HealthState:       healthcontract.HealthStateUnhealthy,
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:  "A",
+						HealthID: "A",
+						Status: rest.OutputResourceStatus{
+							ProvisioningState: db.Provisioned,
+							HealthState:       healthcontract.HealthStateUnhealthy,
+						},
+					},
+					{
+						LocalID:  "B",
+						HealthID: "B",
+						Status: rest.OutputResourceStatus{
+							ProvisioningState: db.Provisioned,
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+				},
+			},
+		},
+	}
+	requireJSON(t, expected, w)
+}
+
+func Test_GetComponent_OutputResourceProvisioning(t *testing.T) {
+	test := start(t)
+
+	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
+		Status: db.ComponentStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:  "A",
+					HealthID: "A",
+					Status: db.OutputResourceStatus{
+						ProvisioningState: db.Provisioning,
+						HealthState:       healthcontract.HealthStateHealthy,
+					},
+				},
+				{
+					LocalID:  "B",
+					HealthID: "B",
+					Status: db.OutputResourceStatus{
+						ProvisioningState: db.Provisioned,
+						HealthState:       healthcontract.HealthStateHealthy,
+					},
+				},
+			},
+		},
+	})
+
+	componentID := componentID(TestApplicationName, "A")
+	req := httptest.NewRequest("GET", componentID.ID, nil)
+	w := httptest.NewRecorder()
+
+	test.handler.ServeHTTP(w, req)
+
+	require.Equal(t, 200, w.Code)
+
+	expected := &rest.Component{
+		ResourceBase: rest.ResourceBase{
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
+		},
+		Kind: "radius.dev/Test@v1alpha1",
+		Properties: rest.ComponentProperties{
+			Revision: rev,
+			Status: rest.ComponentStatus{
+				ProvisioningState: rest.Provisioning,
+				HealthState:       healthcontract.HealthStateHealthy,
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:  "A",
+						HealthID: "A",
+						Status: rest.OutputResourceStatus{
+							ProvisioningState: db.Provisioning,
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+					{
+						LocalID:  "B",
+						HealthID: "B",
+						Status: rest.OutputResourceStatus{
+							ProvisioningState: db.Provisioned,
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+				},
+			},
+		},
+	}
+	requireJSON(t, expected, w)
+}
+
+func Test_GetComponent_OutputResourceFailed(t *testing.T) {
+	test := start(t)
+
+	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
+		Status: db.ComponentStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:  "A",
+					HealthID: "A",
+					Status: db.OutputResourceStatus{
+						ProvisioningState: db.Failed,
+						HealthState:       healthcontract.HealthStateHealthy,
+					},
+				},
+				{
+					LocalID:  "B",
+					HealthID: "B",
+					Status: db.OutputResourceStatus{
+						ProvisioningState: db.Provisioning,
+						HealthState:       healthcontract.HealthStateHealthy,
+					},
+				},
+			},
+		},
+	})
+
+	componentID := componentID(TestApplicationName, "A")
+	req := httptest.NewRequest("GET", componentID.ID, nil)
+	w := httptest.NewRecorder()
+
+	test.handler.ServeHTTP(w, req)
+
+	require.Equal(t, 200, w.Code)
+
+	expected := &rest.Component{
+		ResourceBase: rest.ResourceBase{
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
+		},
+		Kind: "radius.dev/Test@v1alpha1",
+		Properties: rest.ComponentProperties{
+			Revision: rev,
+			Status: rest.ComponentStatus{
+				ProvisioningState: rest.Failed,
+				HealthState:       healthcontract.HealthStateHealthy,
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:  "A",
+						HealthID: "A",
+						Status: rest.OutputResourceStatus{
+							ProvisioningState: db.Failed,
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+					{
+						LocalID:  "B",
+						HealthID: "B",
+						Status: rest.OutputResourceStatus{
+							ProvisioningState: db.Provisioning,
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+				},
+			},
+		},
+	}
+	requireJSON(t, expected, w)
+}
+
+func Test_GetComponent_OutputResourceNotProvisioned(t *testing.T) {
+	test := start(t)
+
+	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
+	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{
+		Status: db.ComponentStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:  "A",
+					HealthID: "A",
+					Status: db.OutputResourceStatus{
+						ProvisioningState: db.NotProvisioned,
+						HealthState:       healthcontract.HealthStateHealthy,
+					},
+				},
+				{
+					LocalID:  "B",
+					HealthID: "B",
+					Status: db.OutputResourceStatus{
+						ProvisioningState: db.Provisioned,
+						HealthState:       healthcontract.HealthStateHealthy,
+					},
+				},
+			},
+		},
+	})
+
+	componentID := componentID(TestApplicationName, "A")
+	req := httptest.NewRequest("GET", componentID.ID, nil)
+	w := httptest.NewRecorder()
+
+	test.handler.ServeHTTP(w, req)
+
+	require.Equal(t, 200, w.Code)
+
+	expected := &rest.Component{
+		ResourceBase: rest.ResourceBase{
+			ID:             componentID.ID,
+			SubscriptionID: componentID.SubscriptionID,
+			ResourceGroup:  componentID.ResourceGroup,
+			Name:           componentID.Name(),
+			Type:           componentID.Kind(),
+		},
+		Kind: "radius.dev/Test@v1alpha1",
+		Properties: rest.ComponentProperties{
+			Revision: rev,
+			Status: rest.ComponentStatus{
+				ProvisioningState: rest.Provisioning,
+				HealthState:       healthcontract.HealthStateHealthy,
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:  "A",
+						HealthID: "A",
+						Status: rest.OutputResourceStatus{
+							ProvisioningState: db.NotProvisioned,
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+					{
+						LocalID:  "B",
+						HealthID: "B",
+						Status: rest.OutputResourceStatus{
+							ProvisioningState: db.Provisioned,
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+				},
+			},
 		},
 	}
 	requireJSON(t, expected, w)
@@ -670,6 +974,10 @@ func Test_ListComponents_Found(t *testing.T) {
 			Kind: "radius.dev/Test@v1alpha1",
 			Properties: rest.ComponentProperties{
 				Revision: rev,
+				Status: rest.ComponentStatus{
+					ProvisioningState: rest.Provisioned,
+					HealthState:       healthcontract.HealthStateHealthy,
+				},
 			},
 		},
 	}}
@@ -768,8 +1076,8 @@ func Test_UpdateComponent_Create(t *testing.T) {
 				},
 			},
 			Status: rest.ComponentStatus{
-				ProvisioningState: "NotProvisioned",
-				HealthState:       "Unhealthy",
+				ProvisioningState: rest.Provisioned,
+				HealthState:       healthcontract.HealthStateHealthy,
 			},
 		},
 	}
@@ -828,8 +1136,8 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 				},
 			},
 			Status: rest.ComponentStatus{
-				ProvisioningState: "NotProvisioned",
-				HealthState:       "Unhealthy",
+				ProvisioningState: rest.Provisioned,
+				HealthState:       healthcontract.HealthStateHealthy,
 			},
 		},
 	}
@@ -894,8 +1202,8 @@ func Test_UpdateComponent_Update(t *testing.T) {
 				},
 			},
 			Status: rest.ComponentStatus{
-				ProvisioningState: "NotProvisioned",
-				HealthState:       "Unhealthy",
+				ProvisioningState: rest.Provisioned,
+				HealthState:       healthcontract.HealthStateHealthy,
 			},
 		},
 	}

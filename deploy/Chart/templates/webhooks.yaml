@@ -1,7 +1,7 @@
 {{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "radius-controller-cert"}}
-{{- $existingWebHookConfig := lookup "admissionregistration.k8s.io/v1" "ValidatingWebhookConfiguration" .Release.Namespace "radius-controller"}}
+{{- $existingWebHookConfig := lookup "admissionregistration.k8s.io/v1" "ValidatingWebhookConfiguration" .Release.Namespace "webhook-service"}}
 {{- $ca := genCA "radius-controller-ca" 3650 }}
-{{- $cn := printf "radius-controller" }}
+{{- $cn := printf "webhook-service" }}
 {{- $altName1 := printf "webhook-service.%s" .Release.Namespace }}
 {{- $altName2 := printf "webhook-service.%s.svc" .Release.Namespace }}
 {{- $altName3 := printf "webhook-service.%s.svc.cluster" .Release.Namespace }}
@@ -26,7 +26,7 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   creationTimestamp: null
-  name: validating-webhook-configuration
+  name: webhook-service
 webhooks:
 - admissionReviewVersions:
   - v1
