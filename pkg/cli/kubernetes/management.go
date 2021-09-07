@@ -20,8 +20,9 @@ import (
 )
 
 type KubernetesManagementClient struct {
-	Client    client.Client
-	Namespace string
+	Client          client.Client
+	Namespace       string
+	EnvironmentName string
 }
 
 var Scheme = runtime.NewScheme()
@@ -53,6 +54,11 @@ func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*ra
 		converted = append(converted, application)
 	}
 
+	if len(converted) == 0 {
+		errorMessage := fmt.Sprintf("Applications not found in environment '%s'", mc.EnvironmentName)
+		return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+	}
+
 	return &radclient.ApplicationList{Value: converted}, nil
 }
 
@@ -76,7 +82,8 @@ func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, appli
 		}
 	}
 
-	return nil, fmt.Errorf("application %s was not found", applicationName)
+	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, mc.EnvironmentName)
+	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }
 
 func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, applicationName string) error {
@@ -100,7 +107,8 @@ func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, app
 		}
 	}
 
-	return fmt.Errorf("application %s was not found", applicationName)
+	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, mc.EnvironmentName)
+	return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }
 
 func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error) {
@@ -120,6 +128,11 @@ func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applic
 
 			converted = append(converted, component)
 		}
+	}
+
+	if len(converted) == 0 {
+		errorMessage := fmt.Sprintf("Applications not found in environment '%s'", mc.EnvironmentName)
+		return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 	}
 
 	return &radclient.ComponentList{Value: converted}, nil
@@ -146,7 +159,8 @@ func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applica
 		}
 	}
 
-	return nil, fmt.Errorf("component %s was not found", componentName)
+	errorMessage := fmt.Sprintf("Component '%s' not found in application '%s' and environment '%s'", componentName, applicationName, mc.EnvironmentName)
+	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }
 
 func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.Context, applicationName string) error {
@@ -189,7 +203,8 @@ func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, appl
 		}
 	}
 
-	return fmt.Errorf("deployment %s was not found", deploymentName)
+	errorMessage := fmt.Sprintf("Deployment '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
+	return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }
 
 func (mc *KubernetesManagementClient) ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error) {
@@ -209,6 +224,11 @@ func (mc *KubernetesManagementClient) ListDeployments(ctx context.Context, appli
 
 			converted = append(converted, deployment)
 		}
+	}
+
+	if len(converted) == 0 {
+		errorMessage := fmt.Sprintf("Deployments not found in application '%s' and environment '%s'", applicationName, mc.EnvironmentName)
+		return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 	}
 
 	return &radclient.DeploymentList{Value: converted}, nil
@@ -235,5 +255,6 @@ func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applic
 		}
 	}
 
-	return nil, fmt.Errorf("deployment %s was not found", deploymentName)
+	errorMessage := fmt.Sprintf("Deployment '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
+	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }

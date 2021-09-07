@@ -73,7 +73,8 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 	}
 
 	return &kubernetes.KubernetesManagementClient{
-		Client:    client,
-		Namespace: e.Namespace,
+		Client:          client,
+		Namespace:       e.Namespace,
+		EnvironmentName: e.Name,
 	}, nil
 }
