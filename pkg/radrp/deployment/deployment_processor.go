@@ -485,7 +485,12 @@ func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, appI
 			radlogger.LogFieldLocalID, or.LocalID,
 			radlogger.LogFieldHealthID, or.HealthID).Info(fmt.Sprintf("Registered output resource with HealthID: %s for health checks", or.HealthID))
 	}
-	return &CompositeError{errs}
+
+	if len(errs) > 0 {
+		return &CompositeError{Errors: errs}
+	}
+
+	return nil
 }
 
 func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, healthInfo healthcontract.ResourceDetails, healthID string, options healthcontract.HealthCheckOptions) {
