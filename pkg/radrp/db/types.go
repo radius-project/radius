@@ -142,6 +142,7 @@ type ComponentTrait struct {
 type OutputResource struct {
 	LocalID            string               `bson:"id"`
 	HealthID           string               `bson:"healthId"`
+	ResourceID         string               `bson:"resourceId"`
 	ResourceKind       string               `bson:"resourceKind"`
 	OutputResourceInfo interface{}          `bson:"outputResourceInfo"`
 	Managed            bool                 `bson:"managed"`

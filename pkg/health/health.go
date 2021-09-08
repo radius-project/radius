@@ -21,9 +21,6 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 )
 
-// HealthMonitoringInitialDelay is the delay after which the health service will start monitoring the resource
-const HealthMonitoringInitialDelay = time.Second * 5
-
 // ChannelBufferSize defines the buffer size for the Watch channel to receive health state changes from push mode watchers
 const ChannelBufferSize = 100
 
@@ -126,16 +123,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		}
 
 		// Watch health state
-		go func() {
-			// HealthMonitoringInitialDelay is required to avoid a race condition where the health updates start getting pushed to RP
-			// when the RP has not yet updated the component with outputresources in DB
-			// As a result, the initial health updates get missed. This is especially required
-			// when the health handler is operating in push mode where the health state may never be updated if there
-			// are no updates to the health state after the initial missed updates.
-			// To avoid this, start monitoring the output resources with a delay
-			time.Sleep(HealthMonitoringInitialDelay)
-			healthHandler.GetHealthState(ctx, healthInfo.Resource, options)
-		}()
+		go healthHandler.GetHealthState(ctx, healthInfo.Resource, options)
 	} else if mode == handleroptions.HealthHandlerModePull {
 		// Need to actively probe the health periodically
 		h.probeHealth(ctx, healthHandler, healthInfo)

@@ -517,6 +517,15 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			logger.Error(err, "failed to update application")
 			return
 		}
+
+		// Now all the components have been persisted in the DB. Register for health checks
+		for _, action := range actions {
+			err := r.deploy.RegisterForHealthChecks(ctx, action.ApplicationName, *action.Definition)
+			if err != nil {
+				logger.Error(err, fmt.Sprintf("Registration of output resources with health service failed for component: %s", action.Definition.Name))
+			}
+		}
+
 		logger.WithValues(radlogger.LogFieldOperationStatus, status).Info("completed deployment in the background with status")
 	}()
 
