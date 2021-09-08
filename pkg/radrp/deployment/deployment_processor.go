@@ -26,6 +26,7 @@ import (
 type DeploymentProcessor interface {
 	UpdateDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus, actions map[string]ComponentAction) error
 	DeleteDeployment(ctx context.Context, appName string, name string, d *db.DeploymentStatus) error
+	RegisterForHealthChecks(ctx context.Context, appName string, c db.Component) error
 }
 
 type deploymentProcessor struct {
@@ -207,15 +208,13 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				}
 				properties[healthcontract.HealthIDKey] = healthID
 
+				properties[healthcontract.HealthIDKey] = healthID
 				resource.Status.ProvisioningState = db.Provisioned
 				resource.Status.ProvisioningErrorDetails = ""
 
 				// Persist output resource state in the database.
 				addDBOutputResource(resource, &dbOutputResources)
 				action.Definition.Properties.Status.OutputResources = dbOutputResources
-
-				// Register the output resource with HealthService
-				dp.RegisterForHealthChecks(ctx, outputResourceInfo, healthID, resourceType.HealthHandler().GetHealthOptions(ctx))
 
 				dbDeploymentResource := db.DeploymentResource{
 					LocalID:    resource.LocalID,
@@ -318,6 +317,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 func addDBOutputResource(resource outputresource.OutputResource, dbOutputResources *[]db.OutputResource) {
 	// Save the output resource to DB
 	dbr := db.OutputResource{
+		ResourceID:         resource.GetResourceID(),
 		Managed:            resource.Managed,
 		HealthID:           resource.HealthID,
 		LocalID:            resource.LocalID,
@@ -461,7 +461,35 @@ func (dp *deploymentProcessor) processBindings(ctx context.Context, w workloads.
 	return nil
 }
 
-func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, healthInfo healthcontract.ResourceDetails, healthID string, options healthcontract.HealthCheckOptions) {
+func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, appID string, component db.Component) error {
+	logger := radlogger.GetLogger(ctx)
+	logger = logger.WithValues(
+		radlogger.LogFieldComponentName, component.Name,
+	)
+	var errs []error
+	for _, or := range component.Properties.Status.OutputResources {
+		outputResourceInfo := healthcontract.ResourceDetails{
+			ResourceID:     or.ResourceID,
+			ResourceKind:   or.ResourceKind,
+			ApplicationID:  appID,
+			ComponentID:    component.Name,
+			SubscriptionID: component.SubscriptionID,
+			ResourceGroup:  component.ResourceGroup,
+		}
+		resourceType, err := dp.appmodel.LookupResource(or.ResourceKind)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		dp.registerOutputResourceForHealthChecks(ctx, outputResourceInfo, or.HealthID, resourceType.HealthHandler().GetHealthOptions(ctx))
+		logger.WithValues(
+			radlogger.LogFieldLocalID, or.LocalID,
+			radlogger.LogFieldHealthID, or.HealthID).Info(fmt.Sprintf("Registered output resource with HealthID: %s for health checks", or.HealthID))
+	}
+	return &CompositeError{errs}
+}
+
+func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, healthInfo healthcontract.ResourceDetails, healthID string, options healthcontract.HealthCheckOptions) {
 	if healthInfo.ResourceID == "" || healthInfo.ResourceKind == "" || healthID == "" {
 		// TODO: Health status is not completely implemented for all resource kinds.
 		// Adding this check for now to bypass this for unimplemented resources
