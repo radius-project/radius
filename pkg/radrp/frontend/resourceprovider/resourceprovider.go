@@ -518,12 +518,9 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			return
 		}
 
-		// Now all the components have been persisted in the DB. Register for health checks
-		for _, action := range actions {
-			err := r.deploy.RegisterForHealthChecks(ctx, action.ApplicationName, *action.Definition)
-			if err != nil {
-				logger.Error(err, fmt.Sprintf("Registration of output resources with health service failed for component: %s", action.Definition.Name))
-			}
+		err = r.registerForHealthChecks(ctx, actions)
+		if err != nil {
+			logger.Error(err, "Registration of output resources with health service failed")
 		}
 
 		logger.WithValues(radlogger.LogFieldOperationStatus, status).Info("completed deployment in the background with status")
@@ -532,6 +529,21 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	// As a limitation of custom resource providers, we have to use HTTP 202 for this.
 	body := newRESTDeploymentFromDB(newdbitem)
 	return rest.NewAcceptedAsyncResponse(body, oid.Resource.ID), nil
+}
+
+func (r *rp) registerForHealthChecks(ctx context.Context, actions map[string]deployment.ComponentAction) error {
+	// Now all the components have been persisted in the DB. Register for health checks
+	var errs []error
+	for _, action := range actions {
+		err := r.deploy.RegisterForHealthChecks(ctx, action.ApplicationName, *action.Definition)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return &deployment.CompositeError{Errors: errs}
+	}
+	return nil
 }
 
 func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (rest.Response, error) {
