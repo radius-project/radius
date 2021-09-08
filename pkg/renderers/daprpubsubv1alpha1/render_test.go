@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 )

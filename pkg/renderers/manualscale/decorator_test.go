@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"

@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha1"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 )
