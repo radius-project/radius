@@ -193,7 +193,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					ResourceGroup:  action.Definition.ResourceGroup,
 				}
 				healthID := outputResourceInfo.GetHealthID()
-				properties[healthcontract.HealthIDKey] = healthID
 				resource.HealthID = healthID
 
 				if err != nil {
@@ -206,6 +205,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					errs = append(errs, fmt.Errorf("error applying workload for component %v %v: %w", properties, action.ComponentName, err))
 					continue
 				}
+				properties[healthcontract.HealthIDKey] = healthID
 
 				resource.Status.ProvisioningState = db.Provisioned
 				resource.Status.ProvisioningErrorDetails = ""

@@ -6,10 +6,6 @@
 package handlers
 
 import (
-	"math/rand"
-	"strings"
-	"time"
-
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
@@ -35,36 +31,4 @@ func mergeProperties(resource outputresource.OutputResource, existing *db.Deploy
 	}
 
 	return properties
-}
-
-type PasswordConditions struct {
-	Lower       int
-	Upper       int
-	Digits      int
-	SpecialChar int
-}
-
-func generatePassword(conditions *PasswordConditions) string {
-	pwd := generateString(conditions.Digits, "1234567890") +
-		generateString(conditions.Lower, "abcdefghijklmnopqrstuvwxyz") +
-		generateString(conditions.Upper, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") +
-		generateString(conditions.SpecialChar, "-")
-
-	pwdArray := strings.Split(pwd, "")
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(pwdArray), func(i, j int) {
-		pwdArray[i], pwdArray[j] = pwdArray[j], pwdArray[i]
-	})
-	pwd = strings.Join(pwdArray, "")
-
-	return pwd
-}
-
-func generateString(length int, allowedCharacters string) string {
-	str := ""
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for len(str) < length {
-		str += string(allowedCharacters[rnd.Intn(len(allowedCharacters))])
-	}
-	return str
 }

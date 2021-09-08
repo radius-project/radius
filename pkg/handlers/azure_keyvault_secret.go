@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
@@ -41,15 +41,14 @@ func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options *Put
 
 	secretName := properties[KeyVaultSecretNameKey]
 	secretValue := properties[KeyVaultSecretValueKey]
-	keyVaultURI := properties[KeyVaultURIKey]
+	keyVaultName := properties[KeyVaultNameKey]
 	keyVaultSecretsResourceType := azresources.KeyVaultVaults + "/" + azresources.KeyVaultVaultsSecrets
 
 	// UserAgent() returns a string of format: Azure-SDK-For-Go/v52.2.0 keyvault/2019-09-01 profiles/latest
 	keyVaultAPIVersion := strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " ")[0]
 
 	// KeyVault URI has the format: "https://<kv name>.vault.azure.net"
-	vaultName := strings.Split(strings.Split(keyVaultURI, "https://")[1], ".vault.azure.net")[0]
-	secretFullName := vaultName + "/" + secretName
+	secretFullName := keyVaultName + "/" + secretName
 	template := map[string]interface{}{
 		"$schema":        "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
 		"contentVersion": "1.0.0.0",
@@ -74,25 +73,25 @@ func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options *Put
 		Mode:       resources.DeploymentModeIncremental,
 		Template:   template,
 	}
-	deploymentName := "create-secret-" + vaultName + "-" + secretName
+	deploymentName := "create-secret-" + keyVaultName + "-" + secretName
 	resultFuture, err := dc.CreateOrUpdate(context.Background(), handler.arm.ResourceGroup, deploymentName, resources.Deployment{
 		Properties: deploymentProperties,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("unable to create secret: %w", err)
+		return nil, fmt.Errorf("unable to create key vault secret: %w", err)
 	}
 
 	err = resultFuture.WaitForCompletionRef(context.Background(), dc.Client)
 	if err != nil {
-		return nil, fmt.Errorf("could not create secret: %w", err)
+		return nil, fmt.Errorf("could not create key vault secret: %w", err)
 	}
 
 	_, err = resultFuture.Result(dc)
 	if err != nil {
-		return nil, fmt.Errorf("could not create secret: %w", err)
+		return nil, fmt.Errorf("could not create key vault secret: %w", err)
 	}
 
-	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDKeyVaultSecret).Info(fmt.Sprintf("Created secret: %s in Key Vault: %s successfully", secretName, vaultName))
+	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDKeyVaultSecret).Info(fmt.Sprintf("Created secret: %s in Key Vault: %s successfully", secretName, keyVaultName))
 
 	secretResource := azure.Resource{
 		SubscriptionID: handler.arm.SubscriptionID,
