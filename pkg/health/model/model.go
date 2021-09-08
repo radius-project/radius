@@ -22,7 +22,7 @@ type healthModel struct {
 
 func (hm *healthModel) LookupHandler(registerMsg healthcontract.ResourceHealthRegistrationMessage) (handlers.HealthHandler, string) {
 	// For Kubernetes, return Push mode
-	if registerMsg.ResourceInfo.ResourceKind == resourcekinds.KindKubernetes {
+	if registerMsg.ResourceInfo.ResourceKind == resourcekinds.Kubernetes {
 		kID, err := healthcontract.ParseK8sResourceID(registerMsg.ResourceInfo.ResourceID)
 		if err != nil {
 			return nil, ""

@@ -121,7 +121,7 @@ func RenderManaged(component CosmosDBMongoComponent) ([]outputresource.OutputRes
 	cosmosAccountResource := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureCosmosMongoAccount,
 		Type:    outputresource.TypeARM,
-		Kind:    resourcekinds.KindAzureCosmosAccountMongo,
+		Kind:    resourcekinds.AzureCosmosAccountMongo,
 		Managed: true,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "true",
@@ -133,7 +133,7 @@ func RenderManaged(component CosmosDBMongoComponent) ([]outputresource.OutputRes
 	databaseResource := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
 		Type:    outputresource.TypeARM,
-		Kind:    resourcekinds.KindAzureCosmosDBMongo,
+		Kind:    resourcekinds.AzureCosmosDBMongo,
 		Managed: true,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "true",
@@ -161,7 +161,7 @@ func RenderUnmanaged(component CosmosDBMongoComponent) ([]outputresource.OutputR
 	cosmosAccountResource := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureCosmosMongoAccount,
 		Type:    outputresource.TypeARM,
-		Kind:    resourcekinds.KindAzureCosmosAccountMongo,
+		Kind:    resourcekinds.AzureCosmosAccountMongo,
 		Resource: map[string]string{
 			handlers.ManagedKey:             "false",
 			handlers.CosmosDBAccountIDKey:   cosmosAccountID,
@@ -171,7 +171,7 @@ func RenderUnmanaged(component CosmosDBMongoComponent) ([]outputresource.OutputR
 
 	databaseResource := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
-		Kind:    resourcekinds.KindAzureCosmosDBMongo,
+		Kind:    resourcekinds.AzureCosmosDBMongo,
 		Type:    outputresource.TypeARM,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "false",

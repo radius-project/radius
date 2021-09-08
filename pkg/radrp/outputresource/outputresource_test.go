@@ -24,13 +24,13 @@ func TestGetDependencies(t *testing.T) {
 func TestGetDependencies_MissingLocalID(t *testing.T) {
 	testResource1 := OutputResource{
 		Type: TypeARM,
-		Kind: resourcekinds.KindAzureRoleAssignment,
+		Kind: resourcekinds.AzureRoleAssignment,
 	}
 
 	testResource2 := OutputResource{
 		LocalID:      LocalIDRoleAssignmentKVKeys,
 		Type:         TypeARM,
-		Kind:         resourcekinds.KindAzureRoleAssignment,
+		Kind:         resourcekinds.AzureRoleAssignment,
 		Dependencies: []Dependency{{LocalID: testResource1.LocalID}},
 	}
 
@@ -43,7 +43,7 @@ func TestGetDependencies_Empty(t *testing.T) {
 	testOutputResource := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentityKV,
 		Type:    TypeARM,
-		Kind:    resourcekinds.KindAzureUserAssignedManagedIdentity,
+		Kind:    resourcekinds.AzureUserAssignedManagedIdentity,
 	}
 
 	dependencies, err := testOutputResource.GetDependencies()
@@ -70,20 +70,20 @@ func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputR
 	managedIdentity := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentityKV,
 		Type:    TypeARM,
-		Kind:    resourcekinds.KindAzureUserAssignedManagedIdentity,
+		Kind:    resourcekinds.AzureUserAssignedManagedIdentity,
 	}
 
 	roleAssignmentKeys := OutputResource{
 		LocalID:      LocalIDRoleAssignmentKVKeys,
 		Type:         TypeARM,
-		Kind:         resourcekinds.KindAzureRoleAssignment,
+		Kind:         resourcekinds.AzureRoleAssignment,
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
 	aadPodIdentity := OutputResource{
 		LocalID: LocalIDAADPodIdentity,
 		Type:    TypeAADPodIdentity,
-		Kind:    resourcekinds.KindAzurePodIdentity,
+		Kind:    resourcekinds.AzurePodIdentity,
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
 			{LocalID: roleAssignmentKeys.LocalID},

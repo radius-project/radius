@@ -52,7 +52,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// ManualScaling detected, update deployment
 	for _, resource := range resources {
-		if resource.Kind != resourcekinds.KindKubernetes {
+		if resource.Kind != resourcekinds.Kubernetes {
 			// Not a Kubernetes resource
 			continue
 		}

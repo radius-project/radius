@@ -125,7 +125,7 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 	// Update the output resource with the info from the deployed Azure resource
 	options.Resource.Info = outputresource.ARMInfo{
 		ID:           queueID,
-		ResourceType: resourcekinds.KindAzureServiceBusQueue,
+		ResourceType: resourcekinds.AzureServiceBusQueue,
 		APIVersion:   handler.GetAPIVersion(),
 	}
 

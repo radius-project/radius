@@ -112,7 +112,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	secret := r.MakeSecret(options, "admin", "password")
 	resources = append(resources, outputresource.OutputResource{
 		Resource: secret,
-		Kind:     resourcekinds.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDSecret,
 		Managed:  true,
 		Type:     outputresource.TypeKubernetes,
@@ -129,7 +129,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	service := r.MakeService(options)
 	resources = append(resources, outputresource.OutputResource{
 		Resource: service,
-		Kind:     resourcekinds.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDService,
 		Managed:  true,
 		Type:     outputresource.TypeKubernetes,
@@ -144,7 +144,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	set := r.MakeStatefulSet(options, service.Name, secret.Name)
 	resources = append(resources, outputresource.OutputResource{
 		Resource: set,
-		Kind:     resourcekinds.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDStatefulSet,
 		Managed:  true,
 		Type:     outputresource.TypeKubernetes,

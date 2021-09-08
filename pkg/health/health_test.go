@@ -48,7 +48,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: resourcekinds.KindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.AzureServiceBusQueue,
 		},
 	}
 
@@ -72,7 +72,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	require.Equal(t, handleroptions.HealthHandlerModePull, mode)
 	require.Equal(t, "abc", healthInfo.Resource.HealthID)
 	require.Equal(t, "xyz", healthInfo.Resource.ResourceID)
-	require.Equal(t, resourcekinds.KindAzureServiceBusQueue, healthInfo.Resource.ResourceKind)
+	require.Equal(t, resourcekinds.AzureServiceBusQueue, healthInfo.Resource.ResourceKind)
 	require.NotNil(t, healthInfo.ticker)
 }
 
@@ -118,7 +118,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	resourceInfo := healthcontract.ResourceInfo{
 		HealthID:     "abc",
 		ResourceID:   "xyz",
-		ResourceKind: resourcekinds.KindAzureServiceBusQueue,
+		ResourceKind: resourcekinds.AzureServiceBusQueue,
 	}
 
 	monitor.activeHealthProbes["abc"] = HealthInfo{
@@ -132,7 +132,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: resourcekinds.KindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.AzureServiceBusQueue,
 		},
 	}
 	ctx := logr.NewContext(context.Background(), logger)
@@ -160,7 +160,7 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 		ResourceInfo: healthcontract.ResourceInfo{
 			HealthID:     "abc",
 			ResourceID:   "xyz",
-			ResourceKind: resourcekinds.KindAzureServiceBusQueue,
+			ResourceKind: resourcekinds.AzureServiceBusQueue,
 		},
 		Options: healthcontract.HealthCheckOptions{
 			Interval: optionsInterval,

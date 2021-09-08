@@ -108,7 +108,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 }
 
 func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
-	if resource.Kind != resourcekinds.KindKubernetes {
+	if resource.Kind != resourcekinds.Kubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}
 

@@ -31,7 +31,7 @@ func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 		redisv1alpha1.Kind:          &redisv1alpha1.KubernetesRenderer{},
 	}
 	handlers := map[string]model.Handlers{
-		resourcekinds.KindKubernetes: {ResourceHandler: handlers.NewKubernetesHandler(*k8s), HealthHandler: nil},
+		resourcekinds.Kubernetes: {ResourceHandler: handlers.NewKubernetesHandler(*k8s), HealthHandler: nil},
 	}
 	return model.NewModel(renderers, handlers)
 }

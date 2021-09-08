@@ -5,22 +5,23 @@
 
 package resourcekinds
 
-// Azure ResourceKinds supported.
+// ResourceKinds supported. The RP determines how these are created/deleted and the HealthService determines how
+// health checks are handled for these
 const (
-	KindKubernetes                       = "kubernetes"
-	KindDeployment                       = "Deployment"
-	KindService                          = "Service"
-	KindDaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
-	KindDaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
-	KindDaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
-	KindAzureCosmosAccountMongo          = "azure.cosmosdb.account.mongo"
-	KindAzureCosmosDBMongo               = "azure.cosmosdb.mongo"
-	KindAzureCosmosDBSQL                 = "azure.cosmosdb.sql"
-	KindAzureServiceBusQueue             = "azure.servicebus.queue"
-	KindAzureKeyVault                    = "azure.keyvault"
-	KindAzureKeyVaultSecret              = "azure.keyvault.secret"
-	KindAzurePodIdentity                 = "azure.aadpodidentity"
-	KindAzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
-	KindAzureRoleAssignment              = "azure.roleassignment"
-	KindAzureRedis                       = "azure.redis"
+	Kubernetes                       = "kubernetes"
+	Deployment                       = "Deployment"
+	Service                          = "Service"
+	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
+	DaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
+	DaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
+	AzureCosmosAccountMongo          = "azure.cosmosdb.account.mongo"
+	AzureCosmosDBMongo               = "azure.cosmosdb.mongo"
+	AzureCosmosDBSQL                 = "azure.cosmosdb.sql"
+	AzureServiceBusQueue             = "azure.servicebus.queue"
+	AzureKeyVault                    = "azure.keyvault"
+	AzureKeyVaultSecret              = "azure.keyvault.secret"
+	AzurePodIdentity                 = "azure.aadpodidentity"
+	AzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
+	AzureRoleAssignment              = "azure.roleassignment"
+	AzureRedis                       = "azure.redis"
 )

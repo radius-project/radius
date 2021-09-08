@@ -124,7 +124,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	}
 
 	resource := outputresource.OutputResource{
-		Kind:     resourcekinds.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDIngress,
 		Deployed: false,
 		Managed:  true,

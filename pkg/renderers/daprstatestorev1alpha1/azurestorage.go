@@ -14,7 +14,7 @@ import (
 )
 
 func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]outputresource.OutputResource, error) {
-	resourceKind := resourcekinds.KindDaprStateStoreAzureStorage
+	resourceKind := resourcekinds.DaprStateStoreAzureStorage
 	localID := outputresource.LocalIDDaprStateStoreAzureStorage
 
 	if component.Config.Managed {

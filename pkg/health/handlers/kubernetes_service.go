@@ -57,7 +57,7 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 		Resource: healthcontract.ResourceInfo{
 			HealthID:     resourceInfo.HealthID,
 			ResourceID:   resourceInfo.ResourceID,
-			ResourceKind: resourcekinds.KindKubernetes,
+			ResourceKind: resourcekinds.Kubernetes,
 		},
 		HealthState:             healthState,
 		HealthStateErrorDetails: healthStateErrorDetails,
@@ -75,7 +75,7 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 			Resource: healthcontract.ResourceInfo{
 				HealthID:     resourceInfo.HealthID,
 				ResourceID:   resourceInfo.ResourceID,
-				ResourceKind: resourcekinds.KindKubernetes,
+				ResourceKind: resourcekinds.Kubernetes,
 			},
 			HealthState:             healthcontract.HealthStateUnhealthy,
 			HealthStateErrorDetails: err.Error(),
@@ -106,7 +106,7 @@ func (handler *kubernetesServiceHandler) GetHealthState(ctx context.Context, res
 				Resource: healthcontract.ResourceInfo{
 					HealthID:     resourceInfo.HealthID,
 					ResourceID:   resourceInfo.ResourceID,
-					ResourceKind: resourcekinds.KindKubernetes,
+					ResourceKind: resourcekinds.Kubernetes,
 				},
 				HealthState:             state,
 				HealthStateErrorDetails: detail,

@@ -61,7 +61,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
-	require.Equal(t, resourcekinds.KindDaprStateStoreAzureStorage, resource.Kind)
+	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, resource.Kind)
 	require.Equal(t, outputresource.TypeARM, resource.Type)
 	require.True(t, resource.Managed)
 
@@ -101,7 +101,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
-	require.Equal(t, resourcekinds.KindDaprStateStoreAzureStorage, resource.Kind)
+	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, resource.Kind)
 	require.Equal(t, outputresource.TypeARM, resource.Type)
 	require.False(t, resource.Managed)
 
@@ -187,7 +187,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreSQLServer, resource.LocalID)
-	require.Equal(t, resourcekinds.KindDaprStateStoreSQLServer, resource.Kind)
+	require.Equal(t, resourcekinds.DaprStateStoreSQLServer, resource.Kind)
 	require.Equal(t, outputresource.TypeARM, resource.Type)
 	require.True(t, resource.Managed)
 
@@ -274,17 +274,17 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 	redisDeployment := resources[0]
 
 	require.Equal(t, outputresource.LocalIDRedisDeployment, redisDeployment.LocalID)
-	require.Equal(t, resourcekinds.KindKubernetes, redisDeployment.Kind)
+	require.Equal(t, resourcekinds.Kubernetes, redisDeployment.Kind)
 	resourceDeployment := redisDeployment.Resource.(*appsv1.Deployment)
 
 	redisService := resources[1]
 	require.Equal(t, outputresource.LocalIDRedisService, redisService.LocalID)
-	require.Equal(t, resourcekinds.KindKubernetes, redisService.Kind)
+	require.Equal(t, resourcekinds.Kubernetes, redisService.Kind)
 	resourceService := redisService.Resource.(*corev1.Service)
 
 	dapr := resources[2]
 	require.Equal(t, outputresource.LocalIDDaprStateStoreComponent, dapr.LocalID)
-	require.Equal(t, resourcekinds.KindKubernetes, dapr.Kind)
+	require.Equal(t, resourcekinds.Kubernetes, dapr.Kind)
 	resourceDapr := dapr.Resource.(*unstructured.Unstructured)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-component")

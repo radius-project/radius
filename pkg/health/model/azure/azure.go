@@ -17,9 +17,9 @@ func NewAzureHealthModel(arm armauth.ArmConfig, k8s kubernetes.Interface) model.
 	// Add health check handlers for the resource types: https://github.com/Azure/radius/issues/827
 	handlers := map[string]handlers.HealthHandler{
 		// TODO: Add health check handler for all resource kinds
-		resourcekinds.KindAzureServiceBusQueue: handlers.NewAzureServiceBusQueueHandler(arm),
-		resourcekinds.KindDeployment:           handlers.NewKubernetesDeploymentHandler(k8s),
-		resourcekinds.KindService:              handlers.NewKubernetesServiceHandler(k8s),
+		resourcekinds.AzureServiceBusQueue: handlers.NewAzureServiceBusQueueHandler(arm),
+		resourcekinds.Deployment:           handlers.NewKubernetesDeploymentHandler(k8s),
+		resourcekinds.Service:              handlers.NewKubernetesServiceHandler(k8s),
 	}
 	return model.NewHealthModel(handlers)
 }

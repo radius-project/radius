@@ -101,7 +101,7 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 	}
 
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     resourcekinds.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDRedisDeployment,
 		Resource: &deployment})
 
@@ -140,7 +140,7 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 	}
 
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     resourcekinds.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDRedisService,
 		Resource: &service})
 

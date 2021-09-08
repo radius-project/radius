@@ -31,8 +31,8 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
 	}
 
-	if len(resources) != 1 || resources[0].Type != resourcekinds.KindAzureKeyVault {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", resourcekinds.KindAzureKeyVault)
+	if len(resources) != 1 || resources[0].Type != resourcekinds.AzureKeyVault {
+		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", resourcekinds.AzureKeyVault)
 	}
 
 	properties := resources[0].Properties
@@ -78,7 +78,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			Deployed: false,
 			LocalID:  outputresource.LocalIDKeyVault,
 			Managed:  true,
-			Kind:     resourcekinds.KindAzureKeyVault,
+			Kind:     resourcekinds.AzureKeyVault,
 			Type:     outputresource.TypeARM,
 		}
 
@@ -96,7 +96,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		resource = outputresource.OutputResource{
 			LocalID:  outputresource.LocalIDKeyVault,
-			Kind:     resourcekinds.KindAzureKeyVault,
+			Kind:     resourcekinds.AzureKeyVault,
 			Managed:  false,
 			Deployed: true,
 			Type:     outputresource.TypeARM,
