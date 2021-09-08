@@ -193,6 +193,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					SubscriptionID: action.Definition.SubscriptionID,
 					ResourceGroup:  action.Definition.ResourceGroup,
 				}
+				// Save the healthID on the resource
 				healthID := outputResourceInfo.GetHealthID()
 				resource.HealthID = healthID
 
