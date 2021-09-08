@@ -518,6 +518,8 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			return
 		}
 
+		// Now all the components have been persisted in the DB.
+		// Register the output resources for each component with health service
 		err = r.registerForHealthChecks(ctx, actions)
 		if err != nil {
 			logger.Error(err, "Registration of output resources with health service failed")
@@ -532,7 +534,6 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 }
 
 func (r *rp) registerForHealthChecks(ctx context.Context, actions map[string]deployment.ComponentAction) error {
-	// Now all the components have been persisted in the DB. Register for health checks
 	var errs []error
 	for _, action := range actions {
 		err := r.deploy.RegisterForHealthChecks(ctx, action.ApplicationName, *action.Definition)
