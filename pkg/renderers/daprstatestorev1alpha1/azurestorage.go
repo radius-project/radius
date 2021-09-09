@@ -9,11 +9,12 @@ import (
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
 func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]outputresource.OutputResource, error) {
-	resourceKind := outputresource.KindDaprStateStoreAzureStorage
+	resourceKind := resourcekinds.DaprStateStoreAzureStorage
 	localID := outputresource.LocalIDDaprStateStoreAzureStorage
 
 	if component.Config.Managed {

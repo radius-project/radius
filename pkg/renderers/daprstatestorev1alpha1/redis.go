@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -68,7 +69,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDRedisDeployment,
 		Resource: &deployment})
 
@@ -96,7 +97,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDRedisService,
 		Resource: &service})
 
@@ -126,7 +127,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		},
 	}
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDDaprStateStoreComponent,
 		Resource: &statestore})
 

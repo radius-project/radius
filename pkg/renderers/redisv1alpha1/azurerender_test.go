@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +41,7 @@ func Test_Render_Managed_Azure_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDAzureRedis, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureRedis, resource.Kind)
+	require.Equal(t, resourcekinds.AzureRedis, resource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:    "true",

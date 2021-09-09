@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 )
 
 const (
@@ -124,7 +125,7 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 	// Update the output resource with the info from the deployed Azure resource
 	options.Resource.Info = outputresource.ARMInfo{
 		ID:           queueID,
-		ResourceType: outputresource.KindAzureServiceBusQueue,
+		ResourceType: resourcekinds.AzureServiceBusQueue,
 		APIVersion:   handler.GetAPIVersion(),
 	}
 

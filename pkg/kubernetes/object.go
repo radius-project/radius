@@ -7,6 +7,7 @@ package kubernetes
 
 import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -14,7 +15,7 @@ import (
 // Finds deployment in a list of output resources
 func FindDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
 	for _, r := range resources {
-		if r.Kind != outputresource.KindKubernetes {
+		if r.Kind != resourcekinds.Kubernetes {
 			continue
 		}
 
@@ -32,7 +33,7 @@ func FindDeployment(resources []outputresource.OutputResource) *appsv1.Deploymen
 // Finds service in a list of output resources
 func FindService(resources []outputresource.OutputResource) *corev1.Service {
 	for _, r := range resources {
-		if r.Kind != outputresource.KindKubernetes {
+		if r.Kind != resourcekinds.Kubernetes {
 			continue
 		}
 

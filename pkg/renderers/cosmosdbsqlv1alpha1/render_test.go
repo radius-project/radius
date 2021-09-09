@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha1"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +42,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	renderedResource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDAzureCosmosDBSQL, renderedResource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBSQL, renderedResource.Kind)
+	require.Equal(t, resourcekinds.AzureCosmosDBSQL, renderedResource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
@@ -89,7 +90,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDAzureCosmosDBSQL, resource.LocalID)
-	require.Equal(t, outputresource.KindAzureCosmosDBSQL, resource.Kind)
+	require.Equal(t, resourcekinds.AzureCosmosDBSQL, resource.Kind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "false",

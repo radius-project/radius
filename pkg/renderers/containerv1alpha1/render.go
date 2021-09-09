@@ -36,6 +36,7 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -158,7 +159,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 
 	apiversionMsi := strings.Split(strings.Split(msi.UserAgent(), "msi/")[1], " profiles")[0]
 	res := outputresource.OutputResource{
-		Kind:     outputresource.KindAzureUserAssignedManagedIdentity,
+		Kind:     resourcekinds.AzureUserAssignedManagedIdentity,
 		LocalID:  midLocalID,
 		Deployed: true,
 		Managed:  true,
@@ -197,7 +198,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	}
 	apiversionRA := strings.Split(strings.Split(authorization.UserAgent(), "authorization/")[1], " profiles")[0]
 	res = outputresource.OutputResource{
-		Kind:     outputresource.KindAzureRoleAssignment,
+		Kind:     resourcekinds.AzureRoleAssignment,
 		LocalID:  outputresource.LocalIDRoleAssignmentKVSecretsCerts,
 		Deployed: true,
 		Managed:  true,
@@ -221,7 +222,7 @@ func (r Renderer) createManagedIdentityForKeyVault(ctx context.Context, store co
 	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVSecretsCerts).Info(fmt.Sprintf("Created certs/secrets role assignment for %v to access %v", *mid.ID, *kv.ID))
 
 	res = outputresource.OutputResource{
-		Kind:     outputresource.KindAzureRoleAssignment,
+		Kind:     resourcekinds.AzureRoleAssignment,
 		LocalID:  outputresource.LocalIDRoleAssignmentKVKeys,
 		Deployed: true,
 		Managed:  true,
@@ -273,7 +274,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, w workloads.Ins
 			}
 			res := outputresource.OutputResource{
 				Deployed: true,
-				Kind:     outputresource.KindAzurePodIdentity,
+				Kind:     resourcekinds.AzurePodIdentity,
 				Type:     outputresource.TypeAADPodIdentity,
 				LocalID:  outputresource.LocalIDAADPodIdentity,
 				Managed:  true,
@@ -332,7 +333,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 	outputResources = append(outputResources, or...)
 
 	res := outputresource.OutputResource{
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDDeployment,
 		Deployed: false,
 		Managed:  true,
@@ -349,7 +350,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	if service != nil {
 		res = outputresource.OutputResource{
-			Kind:     outputresource.KindKubernetes,
+			Kind:     resourcekinds.Kubernetes,
 			LocalID:  outputresource.LocalIDService,
 			Deployed: false,
 			Managed:  true,
@@ -650,7 +651,7 @@ func (r Renderer) createSecret(ctx context.Context, kvURI, secretName string, se
 		ResourceName:   secretFullName,
 	}
 	or := outputresource.OutputResource{
-		Kind:     outputresource.KindAzureKeyVaultSecret,
+		Kind:     resourcekinds.AzureKeyVaultSecret,
 		LocalID:  outputresource.LocalIDKeyVaultSecret,
 		Deployed: true,
 		Managed:  true,

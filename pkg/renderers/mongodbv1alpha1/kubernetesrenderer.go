@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -111,7 +112,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	secret := r.MakeSecret(options, "admin", "password")
 	resources = append(resources, outputresource.OutputResource{
 		Resource: secret,
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDSecret,
 		Managed:  true,
 		Type:     outputresource.TypeKubernetes,
@@ -128,7 +129,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	service := r.MakeService(options)
 	resources = append(resources, outputresource.OutputResource{
 		Resource: service,
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDService,
 		Managed:  true,
 		Type:     outputresource.TypeKubernetes,
@@ -143,7 +144,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	set := r.MakeStatefulSet(options, service.Name, secret.Name)
 	resources = append(resources, outputresource.OutputResource{
 		Resource: set,
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDStatefulSet,
 		Managed:  true,
 		Type:     outputresource.TypeKubernetes,

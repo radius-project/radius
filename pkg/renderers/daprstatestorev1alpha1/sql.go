@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -24,7 +25,7 @@ func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component Dapr
 	// generate data we can use to connect to a Storage Account
 	resource := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDDaprStateStoreSQLServer,
-		Kind:    outputresource.KindDaprStateStoreSQLServer,
+		Kind:    resourcekinds.DaprStateStoreSQLServer,
 		Type:    outputresource.TypeARM,
 		Managed: true,
 		Resource: map[string]string{
