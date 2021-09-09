@@ -38,7 +38,6 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	//
 	// The calling infrastructure will validate that any bindings specified by the user have a matching
 	// binding in the outputs.
-
 	bindings := map[string]components.BindingState{}
 
 	for name, binding := range workload.Workload.Bindings {
@@ -82,8 +81,36 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 	return bindings, nil
 }
 
-// Creates a user assigned managed identity
-func (r Renderer) createManagedIdentity(ctx context.Context, applicationName string, componentName string, keyVaultName string) outputresource.OutputResource {
+// Render is the WorkloadRenderer implementation for containerized workload.
+func (r Renderer) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+	component := &ContainerComponent{}
+	err := workload.Workload.AsRequired(Kind, component)
+	if err != nil {
+		return nil, err
+	}
+
+	podIdentityName, outputResources, err := r.getPodIdentityAndDependencies(ctx, workload, component)
+	if err != nil {
+		return nil, err
+	}
+
+	deployment, deploymentOutputResources, err := r.makeDeployment(ctx, workload, component, podIdentityName)
+	if err != nil {
+		return nil, err
+	}
+	outputResources = append(outputResources, deploymentOutputResources...)
+
+	serviceOutputResources, err := r.makeService(ctx, workload, component, deployment)
+	if err != nil {
+		return nil, err
+	}
+	outputResources = append(outputResources, serviceOutputResources...)
+
+	return outputResources, nil
+}
+
+// Builds a user assigned managed identity output resource
+func (r Renderer) getManagedIdentityOutput(ctx context.Context, applicationName string, componentName string, keyVaultName string) outputresource.OutputResource {
 
 	managedIdentityName := keyVaultName + "-" + componentName + "-msi"
 	identityOutputResource := outputresource.OutputResource{
@@ -117,8 +144,8 @@ func (r Renderer) getKeyVaultName(keyVaultBinding components.BindingState) (stri
 	return kvName, nil
 }
 
-// Assigns secrets user and cryto user roles to the managed identity for access to the keyvault
-func (r Renderer) assignRoleToManagedIdentity(ctx context.Context, keyVaultName string) []outputresource.OutputResource {
+// Builds output resources to assigns secrets user and cryto user roles to the managed identity for access to the keyvault
+func (r Renderer) getRoleAssignmentOutputResources(ctx context.Context, keyVaultName string) []outputresource.OutputResource {
 	// Role description: https://docs.microsoft.com/en-us/azure/key-vault/general/rbac-guide?tabs=azure-cli
 	keyVaultSecretsReadRole := "Key Vault Secrets User"
 	keyVaultCryptoOperationsRole := "Key Vault Crypto User"
@@ -161,7 +188,7 @@ func (r Renderer) assignRoleToManagedIdentity(ctx context.Context, keyVaultName 
 	return outputResources
 }
 
-func (r Renderer) createPodIdentityResource(ctx context.Context, workload workloads.InstantiatedWorkload, component *ContainerComponent) (podIdentityName string, outputResources []outputresource.OutputResource, err error) {
+func (r Renderer) getPodIdentityAndDependencies(ctx context.Context, workload workloads.InstantiatedWorkload, component *ContainerComponent) (podIdentityName string, outputResources []outputresource.OutputResource, err error) {
 	for _, dependency := range component.Uses {
 		binding, err := dependency.Binding.GetMatchingBinding(workload.BindingValues)
 		if err != nil {
@@ -177,15 +204,15 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, workload worklo
 			}
 
 			// Create a user assigned managed identity
-			identityOutputResource := r.createManagedIdentity(ctx, workload.Application, workload.Name, keyVaultName)
+			identityOutputResource := r.getManagedIdentityOutput(ctx, workload.Application, workload.Name, keyVaultName)
 			outputResources := []outputresource.OutputResource{identityOutputResource}
 
 			// RBAC on managed identity to access the KeyVault
-			roleAssignmentOutputResources := r.assignRoleToManagedIdentity(ctx, keyVaultName)
+			roleAssignmentOutputResources := r.getRoleAssignmentOutputResources(ctx, keyVaultName)
 			outputResources = append(outputResources, roleAssignmentOutputResources...)
 
 			// Create pod identity
-			podIdentityName, podIdentityOutputResource := r.createPodIdentity(ctx, component.Name, workload.Application)
+			podIdentityName, podIdentityOutputResource := r.getPodIdentityOutputResource(ctx, component.Name, workload.Application)
 			outputResources = append(outputResources, podIdentityOutputResource)
 
 			return podIdentityName, outputResources, nil
@@ -195,35 +222,7 @@ func (r Renderer) createPodIdentityResource(ctx context.Context, workload worklo
 	return "", nil, nil
 }
 
-// Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := &ContainerComponent{}
-	err := workload.Workload.AsRequired(Kind, component)
-	if err != nil {
-		return nil, err
-	}
-
-	podIdentityName, outputResources, err := r.createPodIdentityResource(ctx, workload, component)
-	if err != nil {
-		return nil, err
-	}
-
-	deployment, deploymentOutputResources, err := r.makeDeployment(ctx, workload, component, podIdentityName)
-	if err != nil {
-		return nil, err
-	}
-	outputResources = append(outputResources, deploymentOutputResources...)
-
-	serviceOutputResources, err := r.makeService(ctx, workload, component, deployment)
-	if err != nil {
-		return nil, err
-	}
-	outputResources = append(outputResources, serviceOutputResources...)
-
-	return outputResources, nil
-}
-
-func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWorkload, component *ContainerComponent, podIdentityName string) (*appsv1.Deployment, []outputresource.OutputResource, error) {
+func (r Renderer) makeDeployment(ctx context.Context, workload workloads.InstantiatedWorkload, component *ContainerComponent, podIdentityName string) (*appsv1.Deployment, []outputresource.OutputResource, error) {
 	outputResources := []outputresource.OutputResource{}
 	deploymentDependencies := []outputresource.Dependency{}
 
@@ -244,7 +243,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 	for _, dep := range component.Uses {
 		// Set environment variables in the container
 		for k, v := range dep.Env {
-			str, err := v.EvaluateString(w.BindingValues)
+			str, err := v.EvaluateString(workload.BindingValues)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -253,16 +252,15 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 				Value: str,
 			})
 		}
-	}
 
-	for _, dep := range component.Uses {
+		// Evaluate dependencies on keyvault secrets, generate output resource
 		if dep.Secrets == nil {
 			continue
 		}
 
 		deploymentDependencies = append(deploymentDependencies, outputresource.Dependency{LocalID: outputresource.LocalIDKeyVaultSecret})
 
-		store, err := dep.Secrets.Store.GetMatchingBinding(w.BindingValues)
+		store, err := dep.Secrets.Store.GetMatchingBinding(workload.BindingValues)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -274,7 +272,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 
 		secrets := map[string]string{}
 		for k, v := range dep.Secrets.Keys {
-			value, err := v.EvaluateString(w.BindingValues)
+			value, err := v.EvaluateString(workload.BindingValues)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -283,7 +281,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 
 		// Create secrets in the specified keyvault
 		for secretName, secretValue := range secrets {
-			secretsOutputResource, err := r.createKeyVaultSecretOutputResource(ctx, keyVaultName, secretName, secretValue)
+			secretsOutputResource, err := r.getKeyVaultSecretOutputResource(ctx, keyVaultName, secretName, secretValue)
 			if err != nil {
 				return nil, nil, fmt.Errorf("could not create secret: %v: %w", secretName, err)
 			}
@@ -291,7 +289,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		}
 	}
 
-	for name, genericBinding := range w.Workload.Bindings {
+	for name, genericBinding := range workload.Workload.Bindings {
 		if genericBinding.Kind == KindHTTP {
 			httpBinding := HTTPBinding{}
 			err := genericBinding.AsRequired(KindHTTP, &httpBinding)
@@ -316,16 +314,16 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
-			Namespace: w.Application,
-			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
+			Namespace: workload.Application,
+			Labels:    kubernetes.MakeDescriptiveLabels(workload.Application, workload.Name),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{
-				MatchLabels: kubernetes.MakeSelectorLabels(w.Application, w.Name),
+				MatchLabels: kubernetes.MakeSelectorLabels(workload.Application, workload.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
+					Labels: kubernetes.MakeDescriptiveLabels(workload.Application, workload.Name),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{container},
@@ -361,7 +359,7 @@ func (r Renderer) makeDeployment(ctx context.Context, w workloads.InstantiatedWo
 	return &deployment, outputResources, nil
 }
 
-func (r Renderer) createPodIdentity(ctx context.Context, containerName string, podNamespace string) (string, outputresource.OutputResource) {
+func (r Renderer) getPodIdentityOutputResource(ctx context.Context, containerName string, podNamespace string) (string, outputresource.OutputResource) {
 	// Note: Pod Identity name cannot have camel case
 	podIdentityName := "podid-" + strings.ToLower(containerName)
 
@@ -396,7 +394,7 @@ func (r Renderer) createPodIdentity(ctx context.Context, containerName string, p
 	return podIdentityName, outputResource
 }
 
-func (r Renderer) createKeyVaultSecretOutputResource(ctx context.Context, keyVaultName string, secretName string, secretValue string) (outputresource.OutputResource, error) {
+func (r Renderer) getKeyVaultSecretOutputResource(ctx context.Context, keyVaultName string, secretName string, secretValue string) (outputresource.OutputResource, error) {
 	keyVaultSecretOutputResource := outputresource.OutputResource{
 		LocalID:  outputresource.LocalIDKeyVaultSecret,
 		Type:     outputresource.TypeARM,
