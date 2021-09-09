@@ -464,9 +464,10 @@ func (dp *deploymentProcessor) processBindings(ctx context.Context, w workloads.
 func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, appID string, component db.Component) error {
 	logger := radlogger.GetLogger(ctx)
 	logger = logger.WithValues(
+		radlogger.LogFieldAppID, appID,
 		radlogger.LogFieldComponentName, component.Name,
 	)
-	var errs []error
+	errs := []error{}
 	for _, or := range component.Properties.Status.OutputResources {
 		outputResourceInfo := healthcontract.ResourceDetails{
 			ResourceID:     or.ResourceID,
