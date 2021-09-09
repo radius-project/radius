@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 )
@@ -45,15 +46,15 @@ func Test_CosmosDBMongoManaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.KindKubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "db",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, resourcekinds.KindAzureCosmosAccountMongo, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.KindAzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccountMongo, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -101,15 +102,15 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 						ApplicationName: application,
 						ComponentName:   "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.KindKubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ComponentName:   "db",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, resourcekinds.KindAzureCosmosAccountMongo, false, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.KindAzureCosmosDBMongo, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccountMongo, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, false, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
