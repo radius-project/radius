@@ -493,6 +493,8 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			logger.Error(err, "failed to retrieve application")
 			return
 		}
+
+		logger = logger.WithValues(radlogger.LogFieldAppName, a.Name)
 		// Update the deployment in the application
 		logger.Info("Updating deployment")
 		a.Deployments[id.Resource.Name()] = *d
@@ -534,7 +536,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 }
 
 func (r *rp) registerForHealthChecks(ctx context.Context, actions map[string]deployment.ComponentAction) error {
-	var errs []error
+	errs := []error{}
 	for _, action := range actions {
 		err := r.deploy.RegisterForHealthChecks(ctx, action.ApplicationName, *action.Definition)
 		if err != nil {
