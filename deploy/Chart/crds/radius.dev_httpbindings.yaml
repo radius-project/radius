@@ -6,17 +6,17 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: components.radius.dev
+  name: httpbindings.radius.dev
 spec:
   group: radius.dev
   names:
     categories:
     - all
     - radius
-    kind: Component
-    listKind: ComponentList
-    plural: components
-    singular: component
+    kind: HttpBinding
+    listKind: HttpBindingList
+    plural: httpbindings
+    singular: httpbinding
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -35,7 +35,6 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Component is the Schema for the components API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -63,6 +62,9 @@ spec:
                   type: string
                 type: array
               kind:
+                description: // +kubebuilder:pruning:PreserveUnknownFields // +kubebuilder:validation:PreserveUnknownFields
+                  Template *runtime.RawExtension `json:"template,omitempty"` // TODO
+                  make secret instead
                 type: string
               run:
                 type: object

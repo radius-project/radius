@@ -19,6 +19,13 @@ type DeploymentTemplateSpec struct {
 
 // DeploymentTemplateStatus defines the observed state of Arm
 type DeploymentTemplateStatus struct {
+	Operations []DeploymentTemplateOperation `json:"resources,omitempty"`
+}
+
+type DeploymentTemplateOperation struct {
+	Name        string `json:"name,omitempty"`
+	Namespace   string `json:"namespace,omitempty"`
+	Provisioned bool   `json:"provisioned,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -6,29 +6,16 @@
 package armtemplate
 
 import (
-	"fmt"
+	"encoding/json"
 	"strings"
 
-	radresources "github.com/Azure/radius/pkg/radrp/resources"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
-type K8sInfo struct {
-	Unstructured *unstructured.Unstructured
-	GVR          schema.GroupVersionResource
-	Name         string
-}
-
-func ConvertToK8s(resource Resource, namespace string) (K8sInfo, error) {
-	gvr, kind, err := gvr(resource)
-	if err != nil {
-		return K8sInfo{}, err
-	}
-
+func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, error) {
 	// Calculate the resource name from the full resource name
-	name := strings.ReplaceAll(resource.Name, "/", "-")
+	// name := strings.ReplaceAll(resource.Name, "/", "-")
 
 	annotations := map[string]string{}
 
@@ -36,67 +23,37 @@ func ConvertToK8s(resource Resource, namespace string) (K8sInfo, error) {
 	typeParts := strings.Split(resource.Type, "/")
 	nameParts := strings.Split(resource.Name, "/")
 
-	spec := map[string]interface{}{}
-
-	k, ok := resource.Body["kind"]
-	if ok {
-		spec["kind"] = k
+	data, err := json.Marshal(resource)
+	if err != nil {
+		return nil, err
 	}
 
-	obj, ok := resource.Body["properties"]
-	if ok {
-		p, ok := obj.(map[string]interface{})
-		if ok {
-			for k, v := range p {
-				spec[k] = v
-			}
+	if len(nameParts) > 1 {
+		annotations["radius.dev/application"] = nameParts[1]
+		if len(nameParts) > 2 {
+			annotations["radius.dev/resource"] = nameParts[2]
 		}
 	}
 
-	hierarchy := []string{}
-	for i, tp := range typeParts[1:] {
-		annotations[fmt.Sprintf("radius.dev/%s", strings.ToLower(tp))] = strings.ToLower(nameParts[i])
-		hierarchy = append(hierarchy, strings.ToLower(nameParts[i]))
-	}
-	spec["hierarchy"] = hierarchy
+	// for i, tp := range typeParts[1:] {
+	// 	annotations[fmt.Sprintf("radius.dev/%s", strings.ToLower(tp))] = strings.ToLower(nameParts[i])
+	// }
 
-	uns := unstructured.Unstructured{
+	uns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": gvr.Group + "/" + gvr.Version,
-			"kind":       kind,
+			"apiVersion": "radius.dev/v1alpha1",
+			"kind":       typeParts[len(typeParts)-1],
 			"metadata": map[string]interface{}{
-				"name":      name,
+				"name":      nameParts[len(nameParts)-1],
 				"namespace": namespace,
 			},
 
-			"spec": spec,
+			"spec": map[string]interface{}{
+				"template": runtime.RawExtension{Raw: data},
+			},
 		},
 	}
 
 	uns.SetAnnotations(annotations)
-	return K8sInfo{&uns, gvr, name}, nil
-}
-
-func gvr(resource Resource) (schema.GroupVersionResource, string, error) {
-	if resource.Type == radresources.ApplicationResourceType.Type() {
-		return schema.GroupVersionResource{
-			Group:    "radius.dev",
-			Version:  "v1alpha1",
-			Resource: "applications",
-		}, "Application", nil
-	} else if resource.Type == radresources.ComponentResourceType.Type() {
-		return schema.GroupVersionResource{
-			Group:    "radius.dev",
-			Version:  "v1alpha1",
-			Resource: "components",
-		}, "Component", nil
-	} else if resource.Type == radresources.DeploymentResourceType.Type() {
-		return schema.GroupVersionResource{
-			Group:    "radius.dev",
-			Version:  "v1alpha1",
-			Resource: "deployments",
-		}, "Deployment", nil
-	}
-
-	return schema.GroupVersionResource{}, "", fmt.Errorf("unsupported resource type '%s'", resource.Type)
+	return uns, nil
 }

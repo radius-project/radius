@@ -7,15 +7,20 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
 )
 
 // DeploymentTemplateReconciler reconciles a Arm object
@@ -38,30 +43,114 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	// Need to do a diff on currently running crds.
+	arm.Status.Operations = nil
+
+	result, err := r.ApplyState(ctx, req, arm)
+
+	_ = r.Status().Update(ctx, arm)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return result, err
+}
+
+func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.Request, arm *bicepv1alpha1.DeploymentTemplate) (ctrl.Result, error) {
 	template, err := armtemplate.Parse(string(arm.Spec.Content.Raw))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{})
+	options := armtemplate.TemplateOptions{}
+	resources, err := armtemplate.Eval(template, options)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	deployed := map[string]map[string]interface{}{}
+	evaluator := &evaluator{
+		Template:  template,
+		Options:   options,
+		Deployed:  deployed,
+		Variables: map[string]interface{}{},
+	}
 
-	for _, resource := range resources {
+	for name, variable := range template.Variables {
+		value, err := evaluator.VisitValue(variable)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		evaluator.Variables[name] = value
+	}
+
+	var k8sInfos []*unstructured.Unstructured
+
+	for i, resource := range resources {
+		body, err := evaluator.VisitMap(resource.Body)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		resource.Body = body
+
 		k8sInfo, err := armtemplate.ConvertToK8s(resource, req.NamespacedName.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		k8sInfos = append(k8sInfos, k8sInfo)
 
-		err = r.Client.Patch(ctx, k8sInfo.Unstructured, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+		// TODO resources are already ordered here,
+		// Apply one at a time, waiting for each to finish.
+		// Think it's time to do a deep dive into status.
+		// The status should be representative of when we need to start the next operation.
+		arm.Status.Operations = append(arm.Status.Operations, bicepv1alpha1.DeploymentTemplateOperation{
+			Name:      k8sInfo.GetName(),
+			Namespace: k8sInfo.GetNamespace(),
+		})
 
+		err = r.Client.Get(ctx, client.ObjectKey{
+			Namespace: k8sInfo.GetNamespace(),
+			Name:      k8sInfo.GetName(),
+		}, k8sInfo)
+
+		if err != nil && client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, err
+		}
+
+		// k8sInfo
+		if apierrors.IsNotFound(err) {
+			err = r.Client.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+		}
+
+		arm.Status.Operations[i].Provisioned = true
+
+		// TODO could remove this dependecy on radiusv1alpha1
+		k8sResource := &radiusv1alpha1.Resource{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, k8sResource)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+
+		// Reference additional properties of the status.
+		deployed[resource.ID] = map[string]interface{}{}
+
+		for key, value := range k8sResource.Status.Properties {
+			deployed[resource.ID][key] = value
+		}
+
+		if k8sResource.Status.Phrase != "Ready" {
+
+			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+		}
 	}
 
-	return ctrl.Result{}, nil
+	return reconcile.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

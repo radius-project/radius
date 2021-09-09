@@ -1,0 +1,454 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package controllers
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/Azure/radius/pkg/kubernetes"
+	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
+	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
+	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/workloadsv1alpha3"
+	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/tools/record"
+	ref "k8s.io/client-go/tools/reference"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"k8s.io/apimachinery/pkg/api/meta"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+const (
+	CacheKeySpecApplication = "metadata.application"
+	CacheKeyController      = "metadata.controller"
+	AnnotationLocalID       = "radius.dev/local-id"
+)
+
+// ResourceReconciler reconciles a Resource object
+type ResourceReconciler struct {
+	client.Client
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	recorder record.EventRecorder
+	Dynamic  dynamic.Interface
+	Model    model.ApplicationModel
+	GVR      schema.GroupVersionResource
+}
+
+//+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="apps",resources=statefulsets,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="dapr.io",resources=resources,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=resources,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=resources/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=resources/finalizers,verbs=update
+
+func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := r.Log.WithValues("resource", req.NamespacedName)
+
+	unst, err := r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).Get(ctx, req.Name, v1.GetOptions{})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	resource := &radiusv1alpha1.Resource{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, resource)
+	if err != nil && client.IgnoreNotFound(err) == nil {
+		// Resource was deleted - we don't need to handle this because it will cascade
+		return ctrl.Result{}, nil
+	} else if err != nil {
+		log.Error(err, "failed to retrieve resource")
+		return ctrl.Result{}, err
+	}
+
+	applicationName := resource.Annotations[kubernetes.AnnotationsApplication]
+	resourceName := resource.Annotations[kubernetes.AnnotationsResource]
+
+	log = log.WithValues(
+		"application", applicationName,
+		"resource", resourceName)
+
+	application := &radiusv1alpha1.Application{}
+	key := client.ObjectKey{Namespace: resource.Namespace, Name: applicationName}
+	err = r.Get(ctx, key, application)
+	if err != nil && client.IgnoreNotFound(err) == nil {
+		// Application is not found
+		r.recorder.Eventf(resource, "Normal", "Waiting", "Application %s does not exist", applicationName)
+		log.Info("application does not exist... waiting")
+
+		// Keep going, we'll turn this into an "empty" render
+
+	} else if err != nil {
+		log.Error(err, "failed to retrieve application")
+		return ctrl.Result{}, err
+	}
+
+	desired, rendered, err := r.RenderResource(ctx, log, application, resource, applicationName, resourceName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if rendered {
+		resource.Status.Phrase = "Ready"
+	} else {
+		resource.Status.Phrase = "Waiting"
+	}
+
+	// Now we need to rationalize the set of logical resources (desired state against the actual state)
+	actual, err := r.FetchKubernetesResources(ctx, log, resource)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.ApplyState(ctx, log, req, application, resource, actual, desired)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if rendered {
+		r.recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
+		return ctrl.Result{}, nil
+	}
+
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log logr.Logger, resource *radiusv1alpha1.Resource) ([]client.Object, error) {
+	log.Info("fetching existing resources for resource")
+	results := []client.Object{}
+
+	deployments := &appsv1.DeploymentList{}
+	err := r.Client.List(ctx, deployments, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Name})
+	if err != nil {
+		log.Error(err, "failed to retrieve deployments")
+		return nil, err
+	}
+
+	for _, d := range (*deployments).Items {
+		obj := d
+		results = append(results, &obj)
+	}
+
+	services := &corev1.ServiceList{}
+	err = r.Client.List(ctx, services, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Name})
+	if err != nil {
+		log.Error(err, "failed to retrieve services")
+		return nil, err
+	}
+
+	for _, s := range (*services).Items {
+		obj := s
+		results = append(results, &obj)
+	}
+
+	log.Info("found existing resource for resource", "count", len(results))
+	return results, nil
+}
+
+// Make this work for generic
+func (r *ResourceReconciler) RenderResource(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, resource *radiusv1alpha1.Resource, applicationName string, resourceName string) ([]outputresource.OutputResource, bool, error) {
+	// If the application hasn't been defined yet, then just produce no output.
+	if application == nil {
+		r.recorder.Eventf(resource, "Normal", "Waiting", "Resource is waiting for application: %s", applicationName)
+		return nil, false, nil
+	}
+
+	generic := &resourcesv1alpha3.GenericResource{}
+	err := r.Scheme.Convert(resource, generic, ctx)
+	if err != nil {
+		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not be converted: %v", err)
+		log.Error(err, "failed to convert resource")
+		return nil, false, err
+	}
+
+	resourceKind, err := r.Model.LookupResource(generic.Kind)
+	if err != nil {
+		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource kind '%s' is not supported'", generic.Kind)
+		log.Error(err, "unsupported kind for resource")
+		return nil, false, err
+	}
+
+	// TODO fill out depends on
+	w := workloadsv1alpha3.InstantiatedWorkload{
+		Application: applicationName,
+		Name:        resourceName,
+		Namespace:   resource.Namespace,
+		Workload:    *generic,
+	}
+
+	// TODO get bindings from resources based off depends on
+
+	// Check provides and connections to make sure they exist
+	missing, err := GetMissingBindings(generic, r, ctx, resource, log, applicationName, w)
+	if err != nil {
+		return nil, false, err
+	}
+
+	resources := []outputresource.OutputResource{}
+	if len(missing) > 0 {
+		missingNames := []string{}
+		for _, key := range missing {
+			missingNames = append(missingNames, fmt.Sprintf("%s:%s", key.Resource, key.Binding))
+		}
+		r.recorder.Eventf(resource, "Normal", "Waiting", "Resource is waiting for bindings: %s", strings.Join(missingNames, ", "))
+		log.Info("resource is waiting for bindings", "missing", missing)
+	} else {
+		resources, err = resourceKind.Renderer().Render(ctx, w)
+		if err != nil {
+			r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
+			log.Error(err, "failed to render resources for resource")
+			return nil, false, err
+		}
+	}
+
+	// TODO add ProvidesValues
+	// bindingStates, err := resourceKind.Renderer().ProvideBindings(ctx, w, []workloadsv1alpha3.WorkloadResourceProperties{})
+	// if err != nil {
+	// 	r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
+	// 	log.Error(err, "failed to render bindings for resource")
+	// 	return nil, nil, false, err
+	// }
+
+	// for name, binding := range bindingStates {
+	// 	kind := binding.Kind
+
+	// 	b, err := json.Marshal(binding.Properties)
+	// 	if err != nil {
+	// 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
+	// 		log.Error(err, "failed to render bindings for resource")
+	// 		return nil, nil, false, err
+	// 	}
+
+	// 	bindings = append(bindings, radiusv1alpha1.ResourceStatusBinding{
+	// 		Name:   name,
+	// 		Kind:   kind,
+	// 		Values: runtime.RawExtension{Raw: b},
+	// 	})
+	// }
+
+	log.Info("rendered output resources", "count", len(resources))
+	return resources, len(missing) == 0, nil
+}
+
+// Checks to see if all bindings are present.
+// Eventually this will return an error as it should be guaranteed that all
+// bindings are present.
+func GetMissingBindings(generic *resourcesv1alpha3.GenericResource, r *ResourceReconciler, ctx context.Context, resource *radiusv1alpha1.Resource, log logr.Logger, applicationName string, w workloadsv1alpha3.InstantiatedWorkload) ([]resourcesv1alpha3.BindingKey, error) {
+	missing := []resourcesv1alpha3.BindingKey{}
+	// body := generic.Template.Body
+	// if body == nil {
+	// 	return missing, nil
+	// }
+	// properties := body["properties"]
+	// if properties == nil {
+	// 	return missing, nil
+	// }
+
+	// Check connections for missing ones, provides?
+
+	// for key, dependency := range properties.(map[string]interface{}) {
+	// 	if key == "connections" {
+	// 		// look into connection and grab sources, verifying they exist
+	// 		for _, connection := range dependency.(map[string]interface{}) {
+	// 			source := connection["source"]
+	// 			if source == nil {
+	// 				continue
+	// 			}
+	// 			// required binding is in source, make sure it exists
+	// 		}
+	// 	}
+	// 	// Check provides as well, as we can't provide something that doesn't exist
+	// }
+	return missing, nil
+}
+
+func (r *ResourceReconciler) ApplyState(
+	ctx context.Context,
+	log logr.Logger,
+	req ctrl.Request,
+	application *radiusv1alpha1.Application,
+	resource *radiusv1alpha1.Resource,
+	actual []client.Object,
+	desired []outputresource.OutputResource) error {
+
+	// First we go through the desired state and apply all of those resources.
+	//
+	// While we do that we eliminate items from the 'actual' state list that are part of the desired
+	// state. This leaves us with the set of things that need to be deleted
+	//
+	// We also trample over the 'resources' part of the status so that it's clean.
+
+	resource.Status.Resources = map[string]corev1.ObjectReference{}
+
+	for _, cr := range desired {
+		obj, ok := cr.Resource.(client.Object)
+		if !ok {
+			err := fmt.Errorf("resource is not a kubernetes resource, was: %T", cr.Resource)
+			log.Error(err, "failed to render resources for resource")
+			return err
+		}
+
+		// TODO: configure all of the metadata at the top-level
+		obj.SetNamespace(resource.Namespace)
+		annotations := obj.GetAnnotations()
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		annotations[AnnotationLocalID] = cr.LocalID
+		obj.SetAnnotations(annotations)
+
+		// Remove items with the same identity from the 'actual' list
+		for i, a := range actual {
+			if a.GetObjectKind().GroupVersionKind().String() == obj.GetObjectKind().GroupVersionKind().String() && a.GetName() == obj.GetName() && a.GetNamespace() == obj.GetNamespace() {
+				actual = append(actual[:i], actual[i+1:]...)
+				break
+			}
+		}
+
+		log := log.WithValues(
+			"resourcenamespace", obj.GetNamespace(),
+			"resourcename", obj.GetName(),
+			"resourcekind", obj.GetObjectKind().GroupVersionKind().String(),
+			"localid", cr.LocalID)
+
+		err := controllerutil.SetControllerReference(resource, obj, r.Scheme)
+		if err != nil {
+			log.Error(err, "failed to set owner reference for resource")
+			return err
+		}
+
+		// We don't have to diff the actual resource - server side apply is magic.
+		log.Info("applying output resource for resource")
+		err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
+		if err != nil {
+			log.Error(err, "failed to apply resources for resource")
+			return err
+		}
+
+		or, err := ref.GetReference(r.Scheme, obj)
+		if err != nil {
+			log.Error(err, "failed to get resource reference for resource")
+			return err
+		}
+
+		resource.Status.Resources[cr.LocalID] = *or
+
+		log.Info("applied output resource for resource")
+	}
+
+	for _, obj := range actual {
+		log := log.WithValues(
+			"resourcenamespace", obj.GetNamespace(),
+			"resourcename", obj.GetName(),
+			"resourcekind", obj.GetObjectKind().GroupVersionKind().String())
+		log.Info("deleting unused resource")
+
+		err := r.Client.Delete(ctx, obj)
+		if err != nil && client.IgnoreNotFound(err) == nil {
+			// ignore
+		} else if err != nil {
+			log.Error(err, "failed to delete resource for resource")
+			return err
+		}
+
+		log.Info("deleted unused resource")
+	}
+
+	properties := map[string]string{}
+
+	for _, or := range desired {
+		for key, value := range or.AdditionalProperties {
+			// Only support strings for now
+			str, ok := value.(string)
+			if ok {
+				properties[key] = str
+			}
+		}
+	}
+
+	resource.Status.Properties = properties
+
+	// Can't use resource type to update as it will assume the wrong type
+	unst, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
+	u := &unstructured.Unstructured{Object: unst}
+
+	_, err = r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).UpdateStatus(ctx, u, v1.UpdateOptions{})
+
+	if err != nil {
+		log.Error(err, "failed to update resource status for resource")
+		return err
+	}
+
+	log.Info("applied output resources", "count", len(desired), "deleted", len(actual))
+	return nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Object, listObject client.ObjectList) error {
+	r.Model = k8smodel.NewKubernetesModel(&r.Client)
+	r.recorder = mgr.GetEventRecorderFor("radius")
+
+	// Index resources by application
+	err := mgr.GetFieldIndexer().IndexField(context.Background(), object, CacheKeySpecApplication, extractApplicationKey)
+	if err != nil {
+		return err
+	}
+
+	cache := mgr.GetClient()
+	applicationSource := &source.Kind{Type: &radiusv1alpha1.Application{}}
+	applicationHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []ctrl.Request {
+		// Queue notification on each resource when the application changes.
+		application := obj.(*radiusv1alpha1.Application)
+		err := cache.List(context.Background(), listObject, client.InNamespace(application.Namespace), client.MatchingFields{CacheKeySpecApplication: application.Name})
+		if err != nil {
+			mgr.GetLogger().Error(err, "failed to list resources")
+			return nil
+		}
+
+		requests := []ctrl.Request{}
+		err = meta.EachListItem(listObject, func(obj runtime.Object) error {
+			o := obj.(client.Object)
+			requests = append(requests, ctrl.Request{NamespacedName: types.NamespacedName{Namespace: application.Namespace, Name: o.GetName()}})
+			return nil
+		})
+		if err != nil {
+			mgr.GetLogger().Error(err, "failed to create requests")
+			return nil
+		}
+		return requests
+	})
+
+	return ctrl.NewControllerManagedBy(mgr).
+		For(object).
+		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Service{}).
+		Watches(applicationSource, applicationHandler).
+		Complete(r)
+}
+
+func extractApplicationKey(obj client.Object) []string {
+	return []string{obj.GetAnnotations()[kubernetes.AnnotationsApplication]}
+}

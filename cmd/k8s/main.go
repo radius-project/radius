@@ -5,6 +5,7 @@ Copyright 2021.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
@@ -12,11 +13,19 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/restmapper"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -25,8 +34,12 @@ import (
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
-	"github.com/Azure/radius/pkg/model/components"
+	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	//+kubebuilder:scaffold:imports
+)
+
+const (
+	CacheKeyController = "metadata.controller"
 )
 
 var (
@@ -41,7 +54,20 @@ func init() {
 
 	utilruntime.Must(bicepv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
-	_ = scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, converters.ConvertComponentToInternal)
+	_ = scheme.AddConversionFunc(&radiusv1alpha1.Resource{}, &resourcesv1alpha3.GenericResource{}, converters.ConvertComponentToInternal)
+}
+
+func extractOwnerKey(obj client.Object) []string {
+	owner := metav1.GetControllerOf(obj)
+	if owner == nil {
+		return nil
+	}
+
+	if owner.APIVersion != radiusv1alpha1.GroupVersion.String() || owner.Kind != "Component" {
+		return nil
+	}
+
+	return []string{owner.Name}
 }
 
 func main() {
@@ -86,21 +112,69 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
 	}
-	if err = (&radcontroller.ComponentReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Component")
+
+	// Index deployments by the owner (component)
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
 	}
-	if err = (&radcontroller.DeploymentReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Deployment"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Deployment")
+
+	// Index services by the owner (component)
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
+	}
+
+	componentTypes := []struct {
+		client.Object
+		client.ObjectList
+	}{ // TODO GetListType
+		{&radiusv1alpha1.ContainerComponent{}, &radiusv1alpha1.ContainerComponentList{}},
+		{&radiusv1alpha1.DaprIOPubSubComponent{}, &radiusv1alpha1.DaprIOPubSubComponentList{}},
+		{&radiusv1alpha1.DaprIOStateStoreComponent{}, &radiusv1alpha1.DaprIOStateStoreComponentList{}},
+		{&radiusv1alpha1.HttpRoute{}, &radiusv1alpha1.HttpRouteList{}},
+	}
+
+	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
+
+	dc, err := discovery.NewDiscoveryClientForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		setupLog.Error(err, "unable to create discovery client")
+		os.Exit(1)
+	}
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+
+	for _, componentType := range componentTypes {
+		gvks, _, err := scheme.ObjectKinds(componentType.Object)
+		if err != nil {
+			setupLog.Error(err, "unable to get GVK for component type", "componentType", componentType.Object)
+			os.Exit(1)
+		}
+		for _, gvk := range gvks {
+			if gvk.GroupVersion() != radiusv1alpha1.GroupVersion {
+				continue
+			}
+			// Get GVR for corresponding component.
+			gvr, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+
+			if err != nil {
+				setupLog.Error(err, "unable to get GVR for component", "component", gvk.Kind)
+				os.Exit(1)
+			}
+
+			if err = (&radcontroller.ResourceReconciler{
+				Client:  mgr.GetClient(),
+				Log:     ctrl.Log.WithName("controllers").WithName(componentType.GetName()),
+				Scheme:  mgr.GetScheme(),
+				Dynamic: unstructuredClient,
+				GVR:     gvr.Resource,
+			}).SetupWithManager(mgr, componentType.Object, componentType.ObjectList); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "Component")
+				os.Exit(1)
+			}
+		}
 	}
 
 	if err = (&bicepcontroller.DeploymentTemplateReconciler{
@@ -117,12 +191,8 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Application")
 			os.Exit(1)
 		}
-		if err = (&radiusv1alpha1.Component{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = (&radiusv1alpha1.Resource{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Component")
-			os.Exit(1)
-		}
-		if err = (&radiusv1alpha1.Deployment{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Deployment")
 			os.Exit(1)
 		}
 		if err = (&bicepv1alpha1.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {

@@ -90,7 +90,7 @@ rules:
 - apiGroups:
   - dapr.io
   resources:
-  - components
+  - resources
   verbs:
   - create
   - delete
@@ -140,7 +140,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - components
+  - resources
   verbs:
   - create
   - delete
@@ -152,39 +152,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - components/finalizers
+  - resources/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - components/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - radius.dev
-  resources:
-  - deployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - radius.dev
-  resources:
-  - deployments/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - radius.dev
-  resources:
-  - deployments/status
+  - resources/status
   verbs:
   - get
   - patch

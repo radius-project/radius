@@ -1,0 +1,143 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package resourcesv1alpha3
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// GenericComponent represents a binding used by an Radius Component.
+type GenericResource struct {
+	Name                 string                 `json:"name"`
+	Kind                 string                 `json:"kind"`
+	ID                   string                 `json:"id"`
+	AdditionalProperties map[string]interface{} `json:"additionalProperties"`
+}
+
+// TODO may not need this
+// type GenericComponent struct {
+// 	Name                 string                       `json:"name"`
+// 	Kind                 string                       `json:"kind"`
+// 	Connections          map[string]GenericDependency `json:"connections,omitempty"`
+// 	Traits               []GenericTrait               `json:"traits,omitempty"`
+// 	AdditionalProperties map[string]interface{}       `json:"additionalProperties,omitempty"`
+// }
+
+// // GenericRoute represents a route provided by an Radius Component.
+// type GenericRoute struct {
+// 	Name string `json:"name"`
+// 	Kind string `json:"kind"`
+
+// 	AdditionalProperties map[string]interface{}
+// }
+
+// GenericDependency represents a binding used by an Radius Component.
+type GenericConnection struct {
+	Kind   string `json:"kind"`
+	Source string `json:"source"`
+}
+
+// Env is separate now. That has bindings
+// part of container
+
+// GenericTrait represents a trait for an Radius component.
+type GenericTrait struct {
+	Kind                 string
+	AdditionalProperties map[string]interface{}
+
+	// GenericTrait has custom marshaling code
+}
+
+func (generic GenericResource) As(kind string, specific interface{}) (bool, error) {
+	if generic.Kind != kind {
+		return false, nil
+	}
+
+	body := generic
+
+	bytes, err := json.Marshal(body)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal generic component value: %w", err)
+	}
+
+	err = json.Unmarshal(bytes, specific)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal as value of type %T: %w", specific, err)
+	}
+
+	return true, nil
+}
+
+func (generic GenericResource) AsRequired(kind string, specific interface{}) error {
+	match, err := generic.As(kind, specific)
+	if err != nil {
+		return err
+	}
+
+	if !match {
+		return fmt.Errorf("the component was expected to have kind '%s', instead it is '%s'", kind, generic.Kind)
+	}
+
+	return nil
+}
+
+func (generic GenericResource) FindTrait(kind string, trait interface{}) (bool, error) {
+	// for _, t := range generic.Template.Body.([]GenericTrait) {
+	// 	if kind == t.Kind {
+	// 		return t.As(kind, trait)
+	// 	}
+	// }
+
+	return false, nil
+}
+
+// func (generic GenericBinding) As(kind string, specific interface{}) (bool, error) {
+// 	if generic.Kind != kind {
+// 		return false, nil
+// 	}
+
+// 	bytes, err := json.Marshal(generic)
+// 	if err != nil {
+// 		return false, fmt.Errorf("failed to marshal generic dependency value: %w", err)
+// 	}
+
+// 	err = json.Unmarshal(bytes, specific)
+// 	if err != nil {
+// 		return false, fmt.Errorf("failed to unmarshal JSON as value of type %T: %w", specific, err)
+// 	}
+
+// 	return true, nil
+// }
+
+// func (generic GenericBinding) AsRequired(kind string, specific interface{}) error {
+// 	match, err := generic.As(kind, specific)
+// 	if err != nil {
+// 		return err
+// 	} else if !match {
+// 		return fmt.Errorf("the binding was expected to have kind '%s' but was '%s", kind, generic.Kind)
+// 	}
+
+// 	return nil
+// }
+
+func (generic GenericTrait) As(kind string, specific interface{}) (bool, error) {
+	if generic.Kind != kind {
+		return false, nil
+	}
+
+	bytes, err := json.Marshal(generic)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal generic trait value: %w", err)
+	}
+
+	err = json.Unmarshal(bytes, specific)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal JSON as value of type %T: %w", specific, err)
+	}
+
+	return true, nil
+}

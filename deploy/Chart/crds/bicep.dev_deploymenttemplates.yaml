@@ -45,6 +45,18 @@ spec:
             type: object
           status:
             description: DeploymentTemplateStatus defines the observed state of Arm
+            properties:
+              resources:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                    provisioned:
+                      type: boolean
+                  type: object
+                type: array
             type: object
         type: object
     served: true

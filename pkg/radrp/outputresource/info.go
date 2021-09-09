@@ -19,16 +19,17 @@ import (
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	LocalID      string
-	HealthID     string
-	Type         string
-	Kind         string
-	Deployed     bool
-	Managed      bool
-	Info         interface{}
-	Resource     interface{}
-	Dependencies []Dependency // resources that are required to be deployed before this resource can be deployed
-	Status       OutputResourceStatus
+	LocalID              string
+	HealthID             string
+	Type                 string
+	Kind                 string
+	Deployed             bool
+	Managed              bool
+	Info                 interface{}
+	Resource             interface{}
+	Dependencies         []Dependency // resources that are required to be deployed before this resource can be deployed
+	Status               OutputResourceStatus
+	AdditionalProperties map[string]interface{}
 }
 
 type Dependency struct {

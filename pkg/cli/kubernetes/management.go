@@ -114,7 +114,7 @@ func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, app
 }
 
 func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error) {
-	components := radiusv1alpha1.ComponentList{}
+	components := radiusv1alpha1.ResourceList{}
 	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applic
 func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applicationName string, componentName string) (*radclient.ComponentResource, error) {
 	// We don't have a guarantee that the component name is the same
 	// as the k8s resource name, so we have to filter on the client.
-	components := radiusv1alpha1.ComponentList{}
+	components := radiusv1alpha1.ResourceList{}
 	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applica
 }
 
 func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.Context, applicationName string) error {
-	components := radiusv1alpha1.ComponentList{}
+	components := radiusv1alpha1.ResourceList{}
 	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return err
@@ -187,7 +187,7 @@ func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.
 func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error {
 	// We don't have a guarantee that the deployment name is the same
 	// as the k8s resource name, so we have to filter on the client.
-	deployments := radiusv1alpha1.DeploymentList{}
+	deployments := bicepv1alpha1.DeploymentTemplateList{}
 	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return err
@@ -210,7 +210,7 @@ func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, appl
 }
 
 func (mc *KubernetesManagementClient) ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error) {
-	deployments := radiusv1alpha1.DeploymentList{}
+	deployments := bicepv1alpha1.DeploymentTemplateList{}
 	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -239,7 +239,7 @@ func (mc *KubernetesManagementClient) ListDeployments(ctx context.Context, appli
 func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applicationName string, deploymentName string) (*radclient.DeploymentResource, error) {
 	// We don't have a guarantee that the deployment name is the same
 	// as the k8s resource name, so we have to filter on the client.
-	deployments := radiusv1alpha1.DeploymentList{}
+	deployments := bicepv1alpha1.DeploymentTemplateList{}
 	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err

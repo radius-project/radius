@@ -34,7 +34,7 @@ import (
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
-	"github.com/Azure/radius/pkg/model/components"
+	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -76,7 +76,7 @@ func StartController() error {
 	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(bicepv1alpha1.AddToScheme(scheme))
 
-	err := scheme.AddConversionFunc(&radiusv1alpha1.Component{}, &components.GenericComponent{}, converters.ConvertComponentToInternal)
+	err := scheme.AddConversionFunc(&radiusv1alpha1.Resource{}, &resourcesv1alpha3.GenericResource{}, converters.ConvertComponentToInternal)
 	if err != nil {
 		return fmt.Errorf("failed to add conversion func: %w", err)
 	}
@@ -119,21 +119,13 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize application reconciler: %w", err)
 	}
 
-	err = (&radcontroller.ComponentReconciler{
+	err = (&radcontroller.ResourceReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize component reconciler: %w", err)
-	}
-	err = (&radcontroller.DeploymentReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Deployment"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to initialize deployment reconciler: %w", err)
 	}
 
 	if err = (&bicepcontroller.DeploymentTemplateReconciler{
@@ -148,13 +140,9 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize application webhook: %w", err)
 	}
-	err = (&radiusv1alpha1.Component{}).SetupWebhookWithManager(mgr)
+	err = (&radiusv1alpha1.Resource{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize component webhook: %w", err)
-	}
-	err = (&radiusv1alpha1.Deployment{}).SetupWebhookWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to initialize deployment webhook: %w", err)
 	}
 	err = (&bicepv1alpha1.DeploymentTemplate{}).SetupWebhookWithManager(mgr)
 	if err != nil {

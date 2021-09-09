@@ -15,6 +15,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+func GetShortenedTargetPortName(name string) string {
+	// targetPort can only be a maximum of 15 characters long.
+	// 32 bit number should always be less than that.
+	h := fnv.New32a()
+	h.Write([]byte(name))
+	return "a" + fmt.Sprint(h.Sum32())
+}
+
 // FindDeployment finds deployment in a list of output resources
 func FindDeployment(resources []outputresource.OutputResource) (*appsv1.Deployment, outputresource.OutputResource) {
 	for _, r := range resources {

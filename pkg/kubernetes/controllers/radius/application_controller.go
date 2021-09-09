@@ -29,7 +29,18 @@ type ApplicationReconciler struct {
 
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("application", req.NamespacedName)
+	app := &radiusv1alpha1.Application{}
+	err := r.Client.Get(ctx, req.NamespacedName, app)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
+	app.Status.Phrase = "Ready"
+
+	err = r.Status().Update(ctx, app)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 
