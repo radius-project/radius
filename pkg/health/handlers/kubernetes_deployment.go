@@ -40,6 +40,35 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 
 	logger := radlogger.GetLogger(ctx)
 
+	pod, err := handler.k8s.CoreV1().Pods(kID.Namespace).Get(ctx, kID.Name, metav1.GetOptions{})
+	var healthState string
+	var healthStateErrorDetails string
+	if err != nil {
+		healthState = healthcontract.HealthStateUnhealthy
+		healthStateErrorDetails = err.Error()
+	} else if pod.Status.Phase == corev1.PodRunning {
+		healthState = healthcontract.HealthStateHealthy
+		healthStateErrorDetails = ""
+	} else {
+		healthState = healthcontract.HealthStateUnhealthy
+		healthStateErrorDetails = pod.Status.Reason
+	}
+
+	// Notify initial health state transition. This needs to be done explicitly since
+	// the pod might already be up and running when the health is first probed and the watcher
+	// will not detect the initial transition
+	msg := healthcontract.ResourceHealthDataMessage{
+		Resource: healthcontract.ResourceInfo{
+			HealthID:     resourceInfo.HealthID,
+			ResourceID:   resourceInfo.ResourceID,
+			ResourceKind: resourcekinds.ResourceKindKubernetes,
+		},
+		HealthState:             healthState,
+		HealthStateErrorDetails: healthStateErrorDetails,
+	}
+	options.WatchHealthChangesChannel <- msg
+	logger.Info(fmt.Sprintf("Detected health change event for Resource: %s. Notifying watcher.", resourceInfo.ResourceID))
+
 	// Start watching deployment changes
 	w, err := handler.k8s.CoreV1().Pods(kID.Namespace).Watch(ctx, metav1.ListOptions{
 		Watch:         true,
