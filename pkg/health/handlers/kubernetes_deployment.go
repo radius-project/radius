@@ -61,7 +61,7 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		Resource: healthcontract.ResourceInfo{
 			HealthID:     resourceInfo.HealthID,
 			ResourceID:   resourceInfo.ResourceID,
-			ResourceKind: resourcekinds.ResourceKindKubernetes,
+			ResourceKind: resourcekinds.Kubernetes,
 		},
 		HealthState:             healthState,
 		HealthStateErrorDetails: healthStateErrorDetails,
