@@ -21,7 +21,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     env:
-      GOVER: '^1.16.0'
+      GOVER: '1.16.8'
       GOPROXY: https://proxy.golang.org
     steps:
       - name: Check out repo
@@ -40,7 +40,7 @@ jobs:
     name: Check generated code
     runs-on: ubuntu-latest
     env:
-      GOVER: '^1.16.0'
+      GOVER: '1.16.8'
       GOPROXY: https://proxy.golang.org
     steps:
       - name: Check out repo
