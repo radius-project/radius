@@ -27,8 +27,13 @@ This is the list of core dependencies to install for the most common tasks. In g
   sudo apt-get install build-essential
   ```
   **Mac**:
-  ```bash
+  Using Xcode:
+  ```bash  
   xcode-select --install
+  ```
+  Using Homebrew:
+  ```bash  
+  brew install make
   ```
 - [Go](https://golang.org/doc/install)
 - [Node.js](https://nodejs.org/en/)
