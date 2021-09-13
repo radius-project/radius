@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv2"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
@@ -64,7 +65,7 @@ func start(t *testing.T) *test {
 	ctrl := gomock.NewController(t)
 	db := db.NewInMemoryRadrpDB(ctrl)
 	deploy := deployment.NewMockDeploymentProcessor(ctrl)
-	rp := resourceprovider.NewResourceProvider(db, deploy)
+	rp := resourceproviderv2.NewResourceProvider(db, deploy)
 
 	options := server.ServerOptions{
 		Address:      httptest.DefaultRemoteAddr,
@@ -342,6 +343,19 @@ func (test *test) PollForFailedOperation(id resources.ResourceID, location strin
 	require.NoError(test.t, err)
 
 	return w.Code, *deployment, armerr
+}
+
+// Tests that the v2 handler is not reachable with the v3 resource path
+func Test_ListV3Applications_NotFound(t *testing.T) {
+	test := start(t)
+
+	id := parseOrPanic(strings.Replace(baseURI, "radius", "radiusv3", 1) + "/Application")
+	req := httptest.NewRequest("GET", id.ID, nil)
+	w := httptest.NewRecorder()
+
+	test.handler.ServeHTTP(w, req)
+
+	require.Equal(t, 404, w.Code)
 }
 
 func Test_GetApplication_NotFound(t *testing.T) {

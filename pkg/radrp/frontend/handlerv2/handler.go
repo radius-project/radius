@@ -15,13 +15,13 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv2"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schema"
 )
 
-// A brief not on error handling... The handler is responsible for all of the direct actions
+// A brief note on error handling... The handler is responsible for all of the direct actions
 // with HTTP request/reponse.
 //
 // The RP returns the rest.Response type for "known" or "expected" error conditions:
@@ -32,11 +32,11 @@ import (
 // - DB failure
 // - I/O failure
 //
-// This code will assume that any error returned from the RP represents a reliability error
+// This code will assume that any Golang error returned from the RP represents a reliability error
 // within the RP or a bug.
 
 type handler struct {
-	rp resourceprovider.ResourceProvider
+	rp resourceproviderv2.ResourceProvider
 }
 
 func (h *handler) listApplications(w http.ResponseWriter, req *http.Request) {

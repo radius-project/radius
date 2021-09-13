@@ -7,12 +7,12 @@ package handlerv2
 
 import (
 	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv2"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/gorilla/mux"
 )
 
-func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router) {
+func AddRoutes(rp resourceproviderv2.ResourceProvider, router *mux.Router) {
 	h := handler{rp}
 	var subrouter *mux.Router
 

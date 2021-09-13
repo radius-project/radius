@@ -15,7 +15,8 @@ import (
 	"github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/radrp/frontend/handlerv2"
 	"github.com/Azure/radius/pkg/radrp/frontend/handlerv3"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv2"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
@@ -54,15 +55,16 @@ func (s *Service) Run(ctx context.Context) error {
 
 	db := db.NewRadrpDB(dbclient)
 	deploy := deployment.NewDeploymentProcessor(appmodel, &s.Options.HealthChannels)
-	rp := resourceprovider.NewResourceProvider(db, deploy)
+	rp2 := resourceproviderv2.NewResourceProvider(db, deploy)
+	rp3 := resourceproviderv3.NewResourceProvider()
 
 	ctx = logr.NewContext(ctx, logger)
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address:      s.Options.Address,
 		Authenticate: s.Options.Authenticate,
 		Configure: func(router *mux.Router) {
-			handlerv2.AddRoutes(rp, router)
-			handlerv3.AddRoutes(rp, router)
+			handlerv2.AddRoutes(rp2, router)
+			handlerv3.AddRoutes(rp3, router)
 		},
 	})
 

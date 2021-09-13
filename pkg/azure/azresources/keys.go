@@ -20,4 +20,10 @@ const (
 
 	// ApplicationNameKey is the route parameter key for the application name segment of the URL.
 	ApplicationNameKey = "applicationName"
+
+	// ResourceTypeKey is the route parameter key for the resource type (child resource of application) segment of the URL.
+	ResourceTypeKey = "resourceType"
+
+	// OperationIDKey is the route parameter key for the operation id segment of the URL.
+	OperationIDKey = "operationId"
 )
