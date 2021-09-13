@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/radrp/frontend/handlerv2"
+	"github.com/Azure/radius/pkg/radrp/frontend/handlerv3"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/go-logr/logr"
@@ -61,6 +62,7 @@ func (s *Service) Run(ctx context.Context) error {
 		Authenticate: s.Options.Authenticate,
 		Configure: func(router *mux.Router) {
 			handlerv2.AddRoutes(rp, router)
+			handlerv3.AddRoutes(rp, router)
 		},
 	})
 
