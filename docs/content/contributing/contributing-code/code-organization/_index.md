@@ -5,7 +5,7 @@ linkTitle: "Code Organization"
 weight: 100
 ---
 
-This document describes the high-level organization of code for the Radius repository. The goal is of this document is to capture most of the important details, not every single thing will be described here.
+This document describes the high-level organization of code for the Radius repository. The goal of this document is to capture most of the important details, not every single thing will be described here.
 
 In general you should ask for permission/guidance before creating a new top-level folder in the repo or creating a new folder in `pkg/`. There is usually a better place to put something.
 
