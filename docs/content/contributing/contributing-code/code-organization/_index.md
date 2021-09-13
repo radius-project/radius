@@ -39,5 +39,5 @@ In general you should ask for guidance before creating a new top-level folder in
 | `radlogger/`      | Logging infrastructure                                                                  |
 | `radrp/`          | The resource provider implementation                                                    |
 | `renderers/`      | Renderers for component implementations                                                 |
-| `version/`        | Infrastructure for how version the Radius implementations                               |
+| `version/`        | Infrastructure for how to version the Radius implementations                               |
 | `workloads/`      | Data types for renderers                                                                |
