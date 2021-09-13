@@ -35,7 +35,7 @@ In general you should ask for guidance before creating a new top-level folder in
 | `hosting/`        | The hosting model for the RP process                                                    |
 | `keys/`           | Azure tag and Kubernetes label constants                                                |
 | `kubernetes/`     | Utility code and library integrations for working with Kubernetes                       |
-| `model/`          | The data-driven model for resresenting the set of Radius types                          |
+| `model/`          | The data-driven model for representing the set of Radius types                          |
 | `radlogger/`      | Logging infrastructure                                                                  |
 | `radrp/`          | The resource provider implementation                                                    |
 | `renderers/`      | Renderers for component implementations                                                 |
