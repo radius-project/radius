@@ -78,11 +78,19 @@ PowerShell for Cloud Shell is currently not supported.
 
 For unstable (edge) versions, visit the [edge docs](https://edge.radapp.dev/getting-started/install-cli/).
 
+## Install Bicep
+
+To ensure you have the latest version of Bicep, run the following command:
+
+```bash
+rad bicep download
+```
+
 ## Test it out
 
-1. Verify the rad CLI is installed correctly:
+Verify the rad CLI is installed correctly:
 
-   ```bash
+   ```txt
    $ rad
    
    Usage:
