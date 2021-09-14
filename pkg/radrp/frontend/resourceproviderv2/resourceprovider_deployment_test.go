@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resourceprovider
+package resourceproviderv2
 
 import (
 	"context"
