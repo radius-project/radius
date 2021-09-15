@@ -63,12 +63,12 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		daemonLog.Error(err, "unable to create controller", "controller", "Executable")
-		os.Exit(1)
+		os.Exit(2)
 	}
 
 	daemonLog.Info("starting controller manager...")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		daemonLog.Error(err, "failed to start controller manager")
-		os.Exit(2)
+		os.Exit(3)
 	}
 }
