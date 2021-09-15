@@ -29,13 +29,13 @@ iwr -useb "https://get.radapp.dev/tools/rad/install.ps1" | iex
 #### Install the latest unstable version
 
 ```powershell
-$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList edge
+$script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList edge
 ```
 
 #### Install a specific version
 
 ```powershell
-$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>
+$script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>
 ```
 
 {{% /codetab %}}
