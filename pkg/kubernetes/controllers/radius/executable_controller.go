@@ -23,14 +23,13 @@ import (
 
 const (
 	maxReplicaConcurrentStarts = 2
-	maxReplicasPerExecutable   = 100
 )
 
 const (
 	// A valid exit code of a process is a non-negative number
 	// We use ExitCodeRunning to indicate that a process is running
 	ExitCodeRunning = -1
-	// We use ExitCodeAbandoned if we release the process without waiting for it to finish, forfeiting the chance to obtain an exit code. It is also used when replica is killed as result of reducing number of replicas after creation.
+	// We use ExitCodeAbandoned if we release the process without waiting for it to finish, forfeiting the chance to obtain an exit code. It is also used when replica is killed as result of reducing number of replicas after creation, or when we could not obtain the exit code for some reason.
 	ExitCodeAbandoned = -2
 	// We use ExitCodeFailedToStart to designate failed replica start attempts
 	ExitCodeFailedToStart = -3
@@ -293,7 +292,7 @@ func (r *ExecutableReconciler) terminateRemainingReplicas(owner types.Namespaced
 	r.processStatus.Range(processReplica)
 }
 
-func (r *ExecutableReconciler) stopReplica(pid int, log logr.Logger) error {
+func (r *ExecutableReconciler) stopReplica(pid int, log logr.Logger) {
 	r.processStatus.Delete(pid)
 
 	err := r.ProcessExecutor.StopProcess(pid)
@@ -302,19 +301,26 @@ func (r *ExecutableReconciler) stopReplica(pid int, log logr.Logger) error {
 	} else {
 		log.Info("replica process terminated", "PID", pid)
 	}
-
-	return err
 }
 
-func (r *ExecutableReconciler) OnProcessExited(pid int, exitCode int) {
-	found := r.memorizeExitCode(pid, exitCode)
+func (r *ExecutableReconciler) OnProcessExited(pid int, exitCode int, err error) {
+	if err != nil {
+		r.Log.Info("replica process could not be tracked", "PID", pid, "Error", err.Error())
 
-	// Receiving an exit code update for process that we are not tracking is not necessarily a problem.
-	// It can happen when Executable starts a bunch of replicas and then the number of replicas is decreased in the spec.
-	// Extra replicas are then killed, but we might still receive exit notifications for them.
-	if found {
-		r.Log.Info("replica process exited", "PID", pid, "exitCode", exitCode)
+		// Need to keep information about the replica process around for the next run of reconciliation loop.
+		// The reconciliation will mark the replica Status accordingly.
+		r.memorizeExitCode(pid, ExitCodeAbandoned)
+	} else {
+		found := r.memorizeExitCode(pid, exitCode)
+
+		// Receiving an exit code update for process that we are not tracking is not necessarily a problem.
+		// It can happen when Executable starts a bunch of replicas and then the number of replicas is decreased in the spec.
+		// Extra replicas are then killed, but we might still receive exit notifications for them.
+		if found {
+			r.Log.Info("replica process exited", "PID", pid, "exitCode", exitCode)
+		}
 	}
+
 }
 
 func (r *ExecutableReconciler) getProcesStatus(pid int) (runningProcessStatus, bool) {

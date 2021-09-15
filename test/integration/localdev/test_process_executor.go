@@ -83,7 +83,7 @@ func (e *TestProcessExecutor) StopProcess(pid int) error {
 	pe.EndedAt = time.Now()
 	e.Executions[i] = pe
 	if pe.ExitHandler != nil {
-		pe.ExitHandler.OnProcessExited(pid, KilledProcessExitCode)
+		pe.ExitHandler.OnProcessExited(pid, KilledProcessExitCode, nil)
 	}
 	return nil
 }
@@ -98,7 +98,7 @@ func (e *TestProcessExecutor) SimulateProcessExit(t *testing.T, pid int, exitCod
 	pe.EndedAt = time.Now()
 	e.Executions[i] = pe
 	if pe.ExitHandler != nil {
-		pe.ExitHandler.OnProcessExited(pid, exitCode)
+		pe.ExitHandler.OnProcessExited(pid, exitCode, nil)
 	}
 }
 

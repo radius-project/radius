@@ -7,6 +7,7 @@ package process
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 )
@@ -29,16 +30,23 @@ func (e *OSExecutor) StartProcess(ctx context.Context, exe string, args []string
 		return 0, nil, err
 	}
 
-	processExited := make(chan struct{}, 1)
+	processExited := make(chan error, 1)
 
 	go func() {
+		var err error
 		select {
-		case <-processExited:
+		case err = <-processExited:
+			// Do not report anything if the context expired
 			if ctx.Err() == nil {
 				// We did not kill the process and the context has not expired--
 				// report process exit code.
 				if handler != nil {
-					handler.OnProcessExited(cmd.Process.Pid, cmd.ProcessState.ExitCode())
+					var ee *exec.ExitError
+					if err == nil || errors.As(err, &ee) {
+						handler.OnProcessExited(cmd.Process.Pid, cmd.ProcessState.ExitCode(), nil)
+					} else {
+						handler.OnProcessExited(cmd.Process.Pid, -1, err)
+					}
 				}
 			}
 		case <-ctx.Done():
@@ -48,8 +56,8 @@ func (e *OSExecutor) StartProcess(ctx context.Context, exe string, args []string
 
 	startWaitingForProcessExit := func() {
 		go func() {
-			cmd.Wait()
-			processExited <- struct{}{}
+			err := cmd.Wait()
+			processExited <- err
 			close(processExited)
 		}()
 	}

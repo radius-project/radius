@@ -15,5 +15,8 @@ type IExecutor interface {
 }
 
 type ProcessExitHandler interface {
-	OnProcessExited(pid int, exitCode int)
+	// Indicates that process with a given PID has finished execution
+	// If err is nil, the process exit code was properly captured and the exitCode value is valid
+	// if err is not nil, there was a problem tracking the process and the exitCode value is not valid
+	OnProcessExited(pid int, exitCode int, err error)
 }

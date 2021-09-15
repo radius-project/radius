@@ -151,7 +151,7 @@ func ensureNamespace(ctx context.Context, namespace string) error {
 	return client.Create(ctx, &nsObject, &runtimeclient.CreateOptions{})
 }
 
-func ensureReplicasRunning(ctx context.Context, exeName string, n int) {
+func ensureReplicasRunning(ctx context.Context, exeName string, n int) error {
 	waitReplicaStarted := func() (bool, error) {
 		runninReplicas := executor.FindAll(exeName, func(pe ProcessExecution) bool {
 			return pe.EndedAt.IsZero()
@@ -159,7 +159,7 @@ func ensureReplicasRunning(ctx context.Context, exeName string, n int) {
 
 		return len(runninReplicas) == n, nil
 	}
-	wait.PollUntil(time.Second, waitReplicaStarted, ctx.Done())
+	return wait.PollUntil(time.Second, waitReplicaStarted, ctx.Done())
 }
 
 func updateExecutable(t *testing.T, ctx context.Context, key runtimeclient.ObjectKey, applyChanges func(*radiusv1alpha1.Executable)) error {
@@ -221,7 +221,9 @@ func TestExecutableStartsReplicas(t *testing.T) {
 	}
 
 	t.Log("Checking if replica has started...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas); err != nil {
+		t.Fatalf("Replicas could not be started: %v", err)
+	}
 }
 
 // Ensure exit code(s) of replicas are captured when replicas exit
@@ -252,11 +254,12 @@ func TestExitCodeCaptured(t *testing.T) {
 	}
 
 	t.Log("Waiting for replicas to start...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas); err != nil {
+		t.Fatalf("Replicas could not be started: %v", err)
+	}
 
 	t.Log("Replicas started, shutting them down...")
-	var replicas []ProcessExecution
-	replicas = executor.FindAll(exe.Spec.Executable, nil)
+	replicas := executor.FindAll(exe.Spec.Executable, nil)
 	require.Equal(t, 2, len(replicas))
 	const r0_ec, r1_ec = 12, 14
 	executor.SimulateProcessExit(t, replicas[0].PID, r0_ec)
@@ -292,7 +295,10 @@ func TestExitCodeCaptured(t *testing.T) {
 
 		return true, nil
 	}
-	wait.PollUntil(time.Second, waitExitCodeCaptured, ctx.Done())
+	err := wait.PollUntil(time.Second, waitExitCodeCaptured, ctx.Done())
+	if err != nil {
+		t.Fatalf("Exit codes could not be captured for some replicas: %v", err)
+	}
 }
 
 // Ensure that additional replicas are started if desired replica count is increased
@@ -323,7 +329,9 @@ func TestReplicaScaleUp(t *testing.T) {
 	}
 
 	t.Log("Waiting for replicas to start...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas); err != nil {
+		t.Fatalf("Replicas could not be started: %v", err)
+	}
 
 	const desired = 5
 	t.Logf("Increasing desired replica count to %d...", desired)
@@ -332,7 +340,9 @@ func TestReplicaScaleUp(t *testing.T) {
 	}
 
 	t.Log("Waiting for additional replicas to start...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, desired)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, desired); err != nil {
+		t.Fatalf("Additional replicas could not be started: %v", err)
+	}
 }
 
 // Ensure that unnecessary replicas are killed if desired replica count is decreased
@@ -363,7 +373,9 @@ func TestReplicaScaleDown(t *testing.T) {
 	}
 
 	t.Log("Waiting for replicas to start...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas); err != nil {
+		t.Fatalf("Replicas could not be started: %v", err)
+	}
 
 	const desired = 1
 	t.Logf("Decreasing desired replica count to %d...", desired)
@@ -372,7 +384,9 @@ func TestReplicaScaleDown(t *testing.T) {
 	}
 
 	t.Log("Waiting for running replicas to reach desired number...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, desired)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, desired); err != nil {
+		t.Fatalf("Running replicas did not reach desired number: %v", err)
+	}
 }
 
 // Ensure that Executable is marked as finished (FinishTimestamp is set) if all replicas end execution
@@ -403,7 +417,9 @@ func TestExecutableFinishHandling(t *testing.T) {
 	}
 
 	t.Log("Waiting for replicas to start...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas); err != nil {
+		t.Fatalf("Replicas could not be started: %v", err)
+	}
 
 	t.Log("Simulating replica finish...")
 	replicas := executor.FindAll(exe.Spec.Executable, nil)
@@ -425,7 +441,10 @@ func TestExecutableFinishHandling(t *testing.T) {
 			return true, nil
 		}
 	}
-	wait.PollUntil(time.Second, waitExecutableFinish, ctx.Done())
+	err := wait.PollUntil(time.Second, waitExecutableFinish, ctx.Done())
+	if err != nil {
+		t.Fatalf("Waiting for the Executable to finish failed: %v", err)
+	}
 }
 
 // Ensure that Executable is marked as finished (FinishTimestamp is set) if all replicas are terminated as a result of scale-down
@@ -456,7 +475,9 @@ func TestExecutableFinishAfterScaleDown(t *testing.T) {
 	}
 
 	t.Log("Waiting for replicas to start...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas); err != nil {
+		t.Fatalf("Replicas could not be started: %v", err)
+	}
 
 	t.Log("Simulating two replica finish...")
 	replicas := executor.FindAll(exe.Spec.Executable, nil)
@@ -487,7 +508,10 @@ func TestExecutableFinishAfterScaleDown(t *testing.T) {
 			return true, nil
 		}
 	}
-	wait.PollUntil(time.Second, waitExecutableFinish, ctx.Done())
+	err := wait.PollUntil(time.Second, waitExecutableFinish, ctx.Done())
+	if err != nil {
+		t.Fatalf("Waiting for Executable to finish failed: %v", err)
+	}
 
 	replicas = executor.FindAll(exe.Spec.Executable, func(pe ProcessExecution) bool {
 		return !pe.EndedAt.IsZero() && pe.ExitCode == 0
@@ -528,7 +552,9 @@ func TestReplicasTerminatedUponExecutableDeletion(t *testing.T) {
 	}
 
 	t.Log("Waiting for replicas to start...")
-	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+	if err := ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas); err != nil {
+		t.Fatalf("Replicas could not be started: %v", err)
+	}
 
 	t.Log("Deleting executable...")
 	if err := client.Delete(ctx, &exe); err != nil {
@@ -543,5 +569,8 @@ func TestReplicasTerminatedUponExecutableDeletion(t *testing.T) {
 
 		return len(killedReplicas) == exe.Spec.Replicas, nil
 	}
-	wait.PollUntil(time.Second, waitReplicasKilled, ctx.Done())
+	err := wait.PollUntil(time.Second, waitReplicasKilled, ctx.Done())
+	if err != nil {
+		t.Fatalf("Waiting for all replicas to be killed failed: %v", err)
+	}
 }

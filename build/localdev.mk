@@ -5,6 +5,7 @@
 
 # Assumptions:
 # 1. kcp binary is located under ~/bin
+#    (if building from sources, do go build -o ~/bin/kcp ./cmd/kcp)
 # 2. kcp has been started (cd ~/bin && ./kcp start)
 # 3. The resulting kcp configuration files are under ~/bin/.kcp
 

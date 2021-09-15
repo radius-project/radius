@@ -6,8 +6,6 @@
 package v1alpha1
 
 import (
-	"fmt"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -160,16 +158,14 @@ func (in *ExecutableStatus) DeepCopyInto(out *ExecutableStatus) {
 	}
 }
 
-func (es *ExecutableStatus) SetProcessExitCode(pid int, exitCode int) error {
+func (es *ExecutableStatus) SetProcessExitCode(pid int, exitCode int) {
 	for i, rs := range es.Replicas {
 		if rs.PID == pid {
 			rs.ExitCode = exitCode
 			es.Replicas[i] = rs
-			return nil
+			break
 		}
 	}
-
-	return fmt.Errorf("replica with PID %d not found", pid)
 }
 
 func (es *ExecutableStatus) RemoveReplicas(pidsToRemove []int) {
