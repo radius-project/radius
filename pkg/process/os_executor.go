@@ -7,6 +7,7 @@ package process
 
 import (
 	"context"
+	"os"
 	"os/exec"
 )
 
@@ -54,4 +55,12 @@ func (e *OSExecutor) StartProcess(ctx context.Context, exe string, args []string
 	}
 
 	return cmd.Process.Pid, startWaitingForProcessExit, nil
+}
+
+func (e *OSExecutor) StopProcess(pid int) error {
+	proc, err := os.FindProcess(pid)
+	if err == nil {
+		err = proc.Kill()
+	}
+	return err
 }

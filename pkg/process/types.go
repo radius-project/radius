@@ -11,6 +11,7 @@ import (
 
 type IExecutor interface {
 	StartProcess(ctx context.Context, exe string, args []string, env []string, exitHandler ProcessExitHandler) (pid int, startWaitForProcessExit func(), err error)
+	StopProcess(pid int) error
 }
 
 type ProcessExitHandler interface {

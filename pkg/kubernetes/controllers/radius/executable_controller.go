@@ -8,7 +8,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -52,7 +51,8 @@ type ExecutableReconciler struct {
 	Scheme *runtime.Scheme
 
 	// A PID-to-runningProcessStatus map used to track changes to the replicas of an executable.
-	processStatus   *sync.Map
+	processStatus *sync.Map
+
 	ProcessExecutor process.IExecutor
 }
 
@@ -153,7 +153,7 @@ func (r *ExecutableReconciler) updateReplicaState(executable *radiusv1alpha1.Exe
 		} else if rps.ExitCode != ExitCodeRunning {
 			log.Info("replica finished", "PID", rs.PID, "ExitCode", rps.ExitCode)
 			executable.Status.SetProcessExitCode(rs.PID, rps.ExitCode)
-			r.stopTracking(rs.PID)
+			r.processStatus.Delete(rs.PID)
 			changed = true
 		}
 	}
@@ -171,8 +171,30 @@ func (r *ExecutableReconciler) manageReplicas(ctx context.Context, executable *r
 		}
 	}
 
-	if count == executable.Spec.Replicas {
-		return false
+	if count > executable.Spec.Replicas && len(pidsRunning) > 0 {
+		cStop := count - executable.Spec.Replicas
+		if cStop > len(pidsRunning) {
+			cStop = len(pidsRunning)
+		}
+		log.Info("stopping extra replicas...", "Count", cStop)
+
+		for i, pid := range pidsRunning {
+			r.stopReplica(pid, log)
+			executable.Status.SetProcessExitCode(pid, ExitCodeAbandoned)
+			if cStop--; cStop == 0 {
+				// We also want to remove the corresponding Replicas from the ExecutableStatus.
+				// If we don't, in the next reconciliation loop it might seem that we are done, that is,
+				// we have executed more replicas than the Spec calls for. But this is not the case.
+				// We need to differentiate between replicas that finish execution normally,
+				// and replicas that were killed as result of a scale-down. The latters "do not count".
+				pidsToRemove := pidsRunning[0 : i+1]
+				executable.Status.RemoveReplicas(pidsToRemove)
+
+				break
+			}
+		}
+
+		return true
 	}
 
 	if count < executable.Spec.Replicas {
@@ -189,25 +211,6 @@ func (r *ExecutableReconciler) manageReplicas(ctx context.Context, executable *r
 
 		for i := 0; i < cStart; i++ {
 			r.startReplica(ctx, executable, log)
-		}
-
-		return true
-	}
-
-	if count > executable.Spec.Replicas && len(pidsRunning) > 0 {
-		cStop := count - executable.Spec.Replicas
-		if cStop > len(pidsRunning) {
-			cStop = len(pidsRunning)
-		}
-		log.Info("stopping extra replicas...", "Count", cStop)
-
-		for i, pid := range pidsRunning {
-			r.stopTracking(pid)
-			stopReplica(pid, log)
-			executable.Status.SetProcessExitCode(pid, ExitCodeAbandoned)
-			if i == cStop {
-				break
-			}
 		}
 
 		return true
@@ -281,8 +284,7 @@ func (r *ExecutableReconciler) terminateRemainingReplicas(owner types.Namespaced
 		ours := ps.OwnerName == owner.Name && ps.OwnerNamespace == owner.Namespace
 		running := ps.ExitCode == ExitCodeRunning || ps.ExitCode == ExitCodeAbandoned
 		if ours && running {
-			r.stopTracking(pid)
-			stopReplica(pid, log)
+			r.stopReplica(pid, log)
 		}
 
 		return true
@@ -291,11 +293,10 @@ func (r *ExecutableReconciler) terminateRemainingReplicas(owner types.Namespaced
 	r.processStatus.Range(processReplica)
 }
 
-func stopReplica(pid int, log logr.Logger) error {
-	proc, err := os.FindProcess(pid)
-	if err == nil {
-		err = proc.Kill()
-	}
+func (r *ExecutableReconciler) stopReplica(pid int, log logr.Logger) error {
+	r.processStatus.Delete(pid)
+
+	err := r.ProcessExecutor.StopProcess(pid)
 	if err != nil {
 		log.Info("could not terminate replica process", "PID", pid, "Error", err.Error())
 	} else {
@@ -318,7 +319,11 @@ func (r *ExecutableReconciler) OnProcessExited(pid int, exitCode int) {
 
 func (r *ExecutableReconciler) getProcesStatus(pid int) (runningProcessStatus, bool) {
 	retval, found := r.processStatus.Load(pid)
-	return retval.(runningProcessStatus), found
+	if found {
+		return retval.(runningProcessStatus), found
+	} else {
+		return runningProcessStatus{}, found
+	}
 }
 
 func (r *ExecutableReconciler) processStarted(pid int, owner types.NamespacedName) {
@@ -339,10 +344,6 @@ func (r *ExecutableReconciler) memorizeExitCode(pid int, exitCode int) bool {
 	return found
 }
 
-func (r *ExecutableReconciler) stopTracking(pid int) {
-	r.processStatus.Delete(pid)
-}
-
 func toEnvArray(env map[string]string) []string {
 	retval := make([]string, len(env))
 	i := 0
@@ -355,6 +356,7 @@ func toEnvArray(env map[string]string) []string {
 
 func (r *ExecutableReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.processStatus = &sync.Map{}
+
 	if r.ProcessExecutor == nil {
 		r.ProcessExecutor = process.NewOSExecutor()
 	}

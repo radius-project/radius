@@ -172,8 +172,29 @@ func (es *ExecutableStatus) SetProcessExitCode(pid int, exitCode int) error {
 	return fmt.Errorf("replica with PID %d not found", pid)
 }
 
+func (es *ExecutableStatus) RemoveReplicas(pidsToRemove []int) {
+	newReplicas := make([]ReplicaStatus, 0)
+
+	for _, rs := range es.Replicas {
+		if !contains(pidsToRemove, rs.PID) {
+			newReplicas = append(newReplicas, rs)
+		}
+	}
+
+	es.Replicas = newReplicas
+}
+
 func (es *ExecutableStatus) AddReplica(rs ReplicaStatus) {
 	es.Replicas = append(es.Replicas, rs)
+}
+
+func contains(s []int, e int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {

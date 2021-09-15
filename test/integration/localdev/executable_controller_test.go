@@ -154,7 +154,14 @@ func ensureNamespace(ctx context.Context, namespace string) error {
 func ensureReplicasRunning(ctx context.Context, exeName string, n int) {
 	waitReplicaStarted := func() (bool, error) {
 		replicas := executor.FindAll(exeName)
-		if len(replicas) == n {
+		running := 0
+		for _, pe := range replicas {
+			if pe.EndedAt.IsZero() {
+				running++
+			}
+		}
+
+		if running == n {
 			return true, nil
 		} else {
 			return false, nil
@@ -346,15 +353,55 @@ func TestReplicaScaleDown(t *testing.T) {
 	if err := ensureNamespace(ctx, namespace); err != nil {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
+
+	exe := radiusv1alpha1.Executable{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "replica-scale-down",
+		},
+		Spec: radiusv1alpha1.ExecutableSpec{
+			Executable: "path/to/replica-scale-down",
+			Replicas:   5,
+		},
+	}
+
+	t.Logf("Creating Executable '%s'", exe.ObjectMeta.Name)
+	if err := client.Create(ctx, &exe, &runtimeclient.CreateOptions{}); err != nil {
+		t.Fatalf("Unable to create Executable: %v", err)
+	}
+
+	t.Log("Waiting for replicas to start...")
+	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+
+	const desired = 1
+	t.Logf("Decreasing desired replica count to %d...", desired)
+	if err := updateExecutable(t, ctx, runtimeclient.ObjectKeyFromObject(&exe), func(e *radiusv1alpha1.Executable) { e.Spec.Replicas = desired }); err != nil {
+		t.Fatalf("Unable to update Executable: %v", err)
+	}
+
+	t.Log("Waiting for running replicas to reach desired number...")
+	ensureReplicasRunning(ctx, exe.Spec.Executable, desired)
 }
 
-// Ensure that Executable is marked as finished (FinishTimestamp is set) if all replicas
+// Ensure that Executable is marked as finished (FinishTimestamp is set) if all replicas end execution
 func TestExecutableFinishHandling(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	const namespace = "executable-finish-handling-ns"
+	if err := ensureNamespace(ctx, namespace); err != nil {
+		t.Fatalf("Could not create namespace for the test: %v", err)
+	}
+}
+
+// Ensure that Executable is marked as finished (FinishTimestamp is set) if all replicas are terminated as a result of scale-down
+func TestExecutableFinishAfterScaleDown(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	const namespace = "executable-finish-after-scale-down-ns"
 	if err := ensureNamespace(ctx, namespace); err != nil {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}

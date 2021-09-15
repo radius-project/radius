@@ -7,6 +7,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -33,7 +34,8 @@ type TestProcessExecutor struct {
 }
 
 const (
-	NotFound = -1
+	NotFound              = -1
+	KilledProcessExitCode = 137 // 128 + SIGKILL (9)
 )
 
 func NewTestProcessExecutor() *TestProcessExecutor {
@@ -71,16 +73,33 @@ func (e *TestProcessExecutor) StartProcess(ctx context.Context, exe string, args
 	return
 }
 
+func (e *TestProcessExecutor) StopProcess(pid int) error {
+	i := e.findByPid(pid)
+	if i == NotFound {
+		return fmt.Errorf("No process with PID %d found", pid)
+	}
+	pe := e.Executions[i]
+	pe.ExitCode = KilledProcessExitCode
+	pe.EndedAt = time.Now()
+	e.Executions[i] = pe
+	if pe.ExitHandler != nil {
+		pe.ExitHandler.OnProcessExited(pid, KilledProcessExitCode)
+	}
+	return nil
+}
+
 func (e *TestProcessExecutor) SimulateProcessExit(t *testing.T, pid int, exitCode int) {
 	i := e.findByPid(pid)
 	if i == NotFound {
-		require.Failf(t, "invalid PID", "no process with given PID %d found (test issue)", pid)
+		require.Failf(t, "invalid PID", "no process with PID %d found (test issue)", pid)
 	}
 	pe := e.Executions[i]
 	pe.ExitCode = exitCode
 	pe.EndedAt = time.Now()
 	e.Executions[i] = pe
-	pe.ExitHandler.OnProcessExited(pid, exitCode)
+	if pe.ExitHandler != nil {
+		pe.ExitHandler.OnProcessExited(pid, exitCode)
+	}
 }
 
 func (e *TestProcessExecutor) FindAll(exeName string) []ProcessExecution {
