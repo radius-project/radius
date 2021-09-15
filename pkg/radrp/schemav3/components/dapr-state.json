@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "DaprStateStoreComponentResource": {
+      "description": "Component for Dapr state store",
+      "required": [
+        "kind",
+        "properties"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "dapr.io/StateStore@v1alpha1"
+          ]
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprStateStoreComponentProperties"
+        }
+      }
+    },
+    "DaprStateStoreComponentProperties": {
+      "allOf": [
+        {
+          "$ref": "basic-component.json#/definitions/BasicComponentProperties"
+        }
+      ],
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "required": [
+            "managed",
+            "kind"
+          ],
+          "properties": {
+            "managed": {
+              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
+              "type": "boolean",
+              "enum": [
+                true
+              ],
+              "examples": [
+                true
+              ]
+            },
+            "kind": {
+              "description": "Statestore kind",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

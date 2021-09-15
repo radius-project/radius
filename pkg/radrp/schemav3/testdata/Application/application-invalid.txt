@@ -1,0 +1,1 @@
+(root).properties: Additional property someUnknownProperty is not allowed

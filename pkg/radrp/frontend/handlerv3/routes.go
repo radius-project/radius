@@ -13,10 +13,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func AddRoutes(rp resourceproviderv3.ResourceProvider, router *mux.Router) {
+func AddRoutes(rp resourceproviderv3.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory) {
 	// Nothing for now
 
-	h := handler{rp: rp}
+	h := handler{rp: rp, validatorFactory: validatorFactory}
 	var subrouter *mux.Router
 
 	var applicationCollectionPath = fmt.Sprintf(

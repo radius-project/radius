@@ -16,7 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
 	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/Azure/radius/pkg/radrp/schemav3"
 )
 
 // A brief note on error handling... The handler is responsible for all of the direct actions
@@ -34,7 +34,8 @@ import (
 // within the RP or a bug.
 
 type handler struct {
-	rp resourceproviderv3.ResourceProvider
+	rp               resourceproviderv3.ResourceProvider
+	validatorFactory ValidatorFactory
 }
 
 func (h *handler) ListApplications(w http.ResponseWriter, req *http.Request) {
@@ -76,9 +77,15 @@ func (h *handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
 	}
 
 	id := resourceID(req)
-	err = validateJSONBody(id, body)
+	validator, err := h.findValidator(id)
 	if err != nil {
 		badRequest(ctx, w, req, err)
+		return
+	}
+
+	validationErrs := validator.ValidateJSON(body)
+	if len(validationErrs) > 0 {
+		validationError(ctx, w, req, validationErrs)
 		return
 	}
 
@@ -149,9 +156,15 @@ func (h *handler) UpdateResource(w http.ResponseWriter, req *http.Request) {
 	}
 
 	id := resourceID(req)
-	err = validateJSONBody(id, body)
+	validator, err := h.findValidator(id)
 	if err != nil {
 		badRequest(ctx, w, req, err)
+		return
+	}
+
+	validationErrs := validator.ValidateJSON(body)
+	if len(validationErrs) > 0 {
+		validationError(ctx, w, req, validationErrs)
 		return
 	}
 
@@ -198,6 +211,11 @@ func (h *handler) GetOperation(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (h *handler) findValidator(id azresources.ResourceID) (schemav3.Validator, error) {
+	resourceType := id.Types[len(id.Types)-1].Type
+	return h.validatorFactory(resourceType)
+}
+
 func resourceID(req *http.Request) azresources.ResourceID {
 	logger := radlogger.GetLogger(req.Context())
 	id, err := azresources.Parse(req.URL.Path)
@@ -208,34 +226,43 @@ func resourceID(req *http.Request) azresources.ResourceID {
 	return id
 }
 
+func validationError(ctx context.Context, w http.ResponseWriter, req *http.Request, validationErrs []schemav3.ValidationError) {
+	logger := radlogger.GetLogger(ctx)
+
+	body := armerrors.ErrorResponse{
+		Error: armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: "Validation error",
+			Details: make([]armerrors.ErrorDetails, len(validationErrs)),
+		},
+	}
+
+	for i, err := range validationErrs {
+		if err.JSONError != nil {
+			// The given document isn't even JSON.
+			body.Error.Details[i].Message = fmt.Sprintf("%s: %v", err.Message, err.JSONError)
+		} else {
+			body.Error.Details[i].Message = fmt.Sprintf("%s: %s", err.Position, err.Message)
+		}
+	}
+
+	response := rest.NewBadRequestARMResponse(body)
+	err := response.Apply(ctx, w, req)
+	if err != nil {
+		// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
+	}
+}
+
 func badRequest(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := radlogger.GetLogger(ctx)
-	validationErr, ok := err.(*schema.AggregateValidationError)
-	var body armerrors.ErrorResponse
-	if !ok {
-		// Try to use the ARM format to send back the error info
-		body = armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.Invalid,
-				Message: err.Error(),
-			},
-		}
-	} else {
-		body = armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.Invalid,
-				Message: "Validation error",
-				Details: make([]armerrors.ErrorDetails, len(validationErr.Details)),
-			},
-		}
-		for i, err := range validationErr.Details {
-			if err.JSONError != nil {
-				// The given document isn't even JSON.
-				body.Error.Details[i].Message = fmt.Sprintf("%s: %v", err.Message, err.JSONError)
-			} else {
-				body.Error.Details[i].Message = fmt.Sprintf("%s: %s", err.Position, err.Message)
-			}
-		}
+	// Try to use the ARM format to send back the error info
+	body := armerrors.ErrorResponse{
+		Error: armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+		},
 	}
 
 	response := rest.NewBadRequestARMResponse(body)
@@ -274,8 +301,4 @@ func readJSONBody(req *http.Request) ([]byte, error) {
 	}
 
 	return data, nil
-}
-
-func validateJSONBody(id azresources.ResourceID, body []byte) error {
-	return nil
 }
