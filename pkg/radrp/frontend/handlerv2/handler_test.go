@@ -45,7 +45,7 @@ const (
 
 type test struct {
 	t       *testing.T
-	db      *db.MockRadrpDB
+	db      db.RadrpDB
 	ctrl    *gomock.Controller
 	server  *httptest.Server
 	deploy  *deployment.MockDeploymentProcessor
@@ -63,7 +63,7 @@ func createContext(t *testing.T) context.Context {
 
 func start(t *testing.T) *test {
 	ctrl := gomock.NewController(t)
-	db := db.NewInMemoryRadrpDB(ctrl)
+	db := db.NewInMemoryRadrpDB()
 	deploy := deployment.NewMockDeploymentProcessor(ctrl)
 	rp := resourceproviderv2.NewResourceProvider(db, deploy)
 
@@ -145,7 +145,7 @@ func (test *test) DBCreateApplication(applicationName string, properties db.Appl
 			SubscriptionID: applicationID.SubscriptionID,
 			ResourceGroup:  applicationID.ResourceGroup,
 			Name:           applicationID.Name(),
-			Type:           applicationID.Kind(),
+			Type:           applicationID.Type(),
 		},
 		Properties: properties,
 	})
@@ -176,7 +176,7 @@ func (test *test) DBCreateComponent(applicationName string, componentName string
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind:       kind,
 		Properties: properties,
@@ -223,7 +223,7 @@ func (test *test) DBCreateDeployment(applicationName string, deploymentName stri
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: properties,
 	}
@@ -252,7 +252,7 @@ func (test *test) DBCreateScope(applicationName string, scopeName string, proper
 			SubscriptionID: scopeID.SubscriptionID,
 			ResourceGroup:  scopeID.ResourceGroup,
 			Name:           scopeID.Name(),
-			Type:           scopeID.Kind(),
+			Type:           scopeID.Type(),
 		},
 		Properties: properties,
 	}
@@ -398,7 +398,7 @@ func Test_GetApplication_Found(t *testing.T) {
 			SubscriptionID: applicationID.SubscriptionID,
 			ResourceGroup:  applicationID.ResourceGroup,
 			Name:           applicationID.Name(),
-			Type:           applicationID.Kind(),
+			Type:           applicationID.Type(),
 		},
 	}
 	requireJSON(t, expected, w)
@@ -438,7 +438,7 @@ func Test_ListApplications_Found(t *testing.T) {
 				SubscriptionID: applicationID.SubscriptionID,
 				ResourceGroup:  applicationID.ResourceGroup,
 				Name:           applicationID.Name(),
-				Type:           applicationID.Kind(),
+				Type:           applicationID.Type(),
 			},
 		},
 	}}
@@ -487,7 +487,7 @@ func Test_UpdateApplication_Create(t *testing.T) {
 			SubscriptionID: applicationID.SubscriptionID,
 			ResourceGroup:  applicationID.ResourceGroup,
 			Name:           applicationID.Name(),
-			Type:           applicationID.Kind(),
+			Type:           applicationID.Type(),
 		},
 		Properties: rest.ApplicationProperties{},
 	}
@@ -523,7 +523,7 @@ func Test_UpdateApplication_Update(t *testing.T) {
 			SubscriptionID: applicationID.SubscriptionID,
 			ResourceGroup:  applicationID.ResourceGroup,
 			Name:           applicationID.Name(),
-			Type:           applicationID.Kind(),
+			Type:           applicationID.Type(),
 		},
 		Properties: rest.ApplicationProperties{},
 	}
@@ -620,7 +620,7 @@ func Test_GetComponent_Found(t *testing.T) {
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -675,7 +675,7 @@ func Test_GetComponent_OutputResourceUnhealthy(t *testing.T) {
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -748,7 +748,7 @@ func Test_GetComponent_OutputResourceProvisioning(t *testing.T) {
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -821,7 +821,7 @@ func Test_GetComponent_OutputResourceFailed(t *testing.T) {
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -894,7 +894,7 @@ func Test_GetComponent_OutputResourceNotProvisioned(t *testing.T) {
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind: "radius.dev/Test@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -988,7 +988,7 @@ func Test_ListComponents_Found(t *testing.T) {
 				SubscriptionID: componentID.SubscriptionID,
 				ResourceGroup:  componentID.ResourceGroup,
 				Name:           componentID.Name(),
-				Type:           componentID.Kind(),
+				Type:           componentID.Type(),
 			},
 			Kind: "radius.dev/Test@v1alpha1",
 			Properties: rest.ComponentProperties{
@@ -1084,7 +1084,7 @@ func Test_UpdateComponent_Create(t *testing.T) {
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind: "radius.dev/Container@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -1144,7 +1144,7 @@ func Test_UpdateComponent_UpdateNoOp(t *testing.T) {
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind: "radius.dev/Container@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -1210,7 +1210,7 @@ func Test_UpdateComponent_Update(t *testing.T) {
 			SubscriptionID: componentID.SubscriptionID,
 			ResourceGroup:  componentID.ResourceGroup,
 			Name:           componentID.Name(),
-			Type:           componentID.Kind(),
+			Type:           componentID.Type(),
 		},
 		Kind: "radius.dev/Container@v1alpha1",
 		Properties: rest.ComponentProperties{
@@ -1334,7 +1334,7 @@ func Test_GetDeployment_Found(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{},
 	}
@@ -1403,7 +1403,7 @@ func Test_ListDeployments_Found(t *testing.T) {
 				SubscriptionID: deploymentID.SubscriptionID,
 				ResourceGroup:  deploymentID.ResourceGroup,
 				Name:           deploymentID.Name(),
-				Type:           deploymentID.Kind(),
+				Type:           deploymentID.Type(),
 			},
 			Properties: rest.DeploymentProperties{},
 		},
@@ -1486,7 +1486,7 @@ func Test_UpdateDeployment_Create(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeployingStatus,
@@ -1581,7 +1581,7 @@ func Test_UpdateDeployment_Create_Failure(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeployingStatus,
@@ -1659,7 +1659,7 @@ func Test_UpdateDeployment_FailureCanBeRetried(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeployingStatus,
@@ -1759,7 +1759,7 @@ func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeployingStatus,
@@ -1810,7 +1810,7 @@ func Test_UpdateDeployment_UpdateNoOp(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{},
 	}
@@ -1879,7 +1879,7 @@ func Test_DeleteDeployment_Found_Success(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeletingStatus,
@@ -1935,7 +1935,7 @@ func Test_DeleteDeployment_Found_ValidationFailure(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeletingStatus,
@@ -1993,7 +1993,7 @@ func Test_DeleteDeployment_Found_Failed(t *testing.T) {
 			SubscriptionID: deploymentID.SubscriptionID,
 			ResourceGroup:  deploymentID.ResourceGroup,
 			Name:           deploymentID.Name(),
-			Type:           deploymentID.Kind(),
+			Type:           deploymentID.Type(),
 		},
 		Properties: rest.DeploymentProperties{
 			ProvisioningState: rest.DeletingStatus,
@@ -2079,7 +2079,7 @@ func Test_GetScope_Found(t *testing.T) {
 			SubscriptionID: scopeID.SubscriptionID,
 			ResourceGroup:  scopeID.ResourceGroup,
 			Name:           scopeID.Name(),
-			Type:           scopeID.Kind(),
+			Type:           scopeID.Type(),
 		},
 	}
 	requireJSON(t, expected, w)
@@ -2147,7 +2147,7 @@ func Test_ListScopes_Found(t *testing.T) {
 				SubscriptionID: scopeID.SubscriptionID,
 				ResourceGroup:  scopeID.ResourceGroup,
 				Name:           scopeID.Name(),
-				Type:           scopeID.Kind(),
+				Type:           scopeID.Type(),
 			},
 		},
 	}}
@@ -2211,7 +2211,7 @@ func Test_UpdateScopes_Create(t *testing.T) {
 			SubscriptionID: scopeID.SubscriptionID,
 			ResourceGroup:  scopeID.ResourceGroup,
 			Name:           scopeID.Name(),
-			Type:           scopeID.Kind(),
+			Type:           scopeID.Type(),
 		},
 		Properties: map[string]interface{}{},
 	}
@@ -2244,7 +2244,7 @@ func Test_UpdateScopes_UpdateNoOp(t *testing.T) {
 			SubscriptionID: scopeID.SubscriptionID,
 			ResourceGroup:  scopeID.ResourceGroup,
 			Name:           scopeID.Name(),
-			Type:           scopeID.Kind(),
+			Type:           scopeID.Type(),
 		},
 		Properties: map[string]interface{}{},
 	}
@@ -2277,7 +2277,7 @@ func Test_UpdateScopes_Update(t *testing.T) {
 			SubscriptionID: scopeID.SubscriptionID,
 			ResourceGroup:  scopeID.ResourceGroup,
 			Name:           scopeID.Name(),
-			Type:           scopeID.Kind(),
+			Type:           scopeID.Type(),
 		},
 		Properties: map[string]interface{}{},
 	}

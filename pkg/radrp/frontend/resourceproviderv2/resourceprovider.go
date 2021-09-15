@@ -414,7 +414,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		radlogger.LogFieldResourceName, id.Resource.Name(),
 		radlogger.LogFieldResourceID, id.Resource.ID)
 
-	_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
+	_, err = r.db.PatchOperationByID(ctx, oid.Resource.ResourceID, operation)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +455,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 		}
 
 		// If we get here the deployment is complete (possibly failed)
-		operation, err := r.db.GetOperationByID(ctx, oid.Resource)
+		operation, err := r.db.GetOperationByID(ctx, oid.Resource.ResourceID)
 		if err != nil {
 			// If we get here we're not going to be able to update the operation
 			// try to update the deployment as a cleanup step (if possible).
@@ -470,7 +470,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 			operation.Status = string(status)
 			operation.Error = failure
 
-			_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
+			_, err = r.db.PatchOperationByID(ctx, oid.Resource.ResourceID, operation)
 			if err != nil {
 				logger.Error(err, "failed to update operation. marking deployment as failed")
 				if status == rest.SuccededStatus {
@@ -558,7 +558,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		StartTime:       time.Now().UTC().Format(time.RFC3339),
 		PercentComplete: 0,
 	}
-	_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
+	_, err = r.db.PatchOperationByID(ctx, oid.Resource.ResourceID, operation)
 	if err != nil {
 		return nil, err
 	}
@@ -596,7 +596,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 		}
 
 		// If we get here the deployment is complete (possibly failed)
-		operation, err := r.db.GetOperationByID(ctx, oid.Resource)
+		operation, err := r.db.GetOperationByID(ctx, oid.Resource.ResourceID)
 		if err != nil {
 			// If we get here we're not going to be able to update the operation
 			// try to update the deployment as a cleanup step (if possible).
@@ -610,7 +610,7 @@ func (r *rp) DeleteDeployment(ctx context.Context, id resources.ResourceID) (res
 			operation.Status = string(status)
 			operation.Error = failure
 
-			_, err = r.db.PatchOperationByID(ctx, oid.Resource, operation)
+			_, err = r.db.PatchOperationByID(ctx, oid.Resource.ResourceID, operation)
 			if err != nil {
 				logger.Error(err, "failed to update operation. marking deployment as failed")
 				if status == rest.SuccededStatus {
@@ -750,7 +750,7 @@ func (r *rp) GetDeploymentOperationByID(ctx context.Context, id resources.Resour
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	operation, err := r.db.GetOperationByID(ctx, oid.Resource)
+	operation, err := r.db.GetOperationByID(ctx, oid.Resource.ResourceID)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
