@@ -67,6 +67,7 @@ Write-Output "Downloading $binaryUrl ..."
 $uri = [uri]$binaryUrl
 try
 {
+    $ProgressPreference = "SilentlyContinue" # Do not show progress bar
     Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath -UseBasicParsing
     if (!(Test-Path $binaryFilePath -PathType Leaf)) {
         throw "Failed to download Radius Cli binary - $binaryFilePath"
