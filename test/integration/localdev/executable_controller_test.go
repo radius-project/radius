@@ -153,19 +153,11 @@ func ensureNamespace(ctx context.Context, namespace string) error {
 
 func ensureReplicasRunning(ctx context.Context, exeName string, n int) {
 	waitReplicaStarted := func() (bool, error) {
-		replicas := executor.FindAll(exeName)
-		running := 0
-		for _, pe := range replicas {
-			if pe.EndedAt.IsZero() {
-				running++
-			}
-		}
+		runninReplicas := executor.FindAll(exeName, func(pe ProcessExecution) bool {
+			return pe.EndedAt.IsZero()
+		})
 
-		if running == n {
-			return true, nil
-		} else {
-			return false, nil
-		}
+		return len(runninReplicas) == n, nil
 	}
 	wait.PollUntil(time.Second, waitReplicaStarted, ctx.Done())
 }
@@ -262,11 +254,10 @@ func TestExitCodeCaptured(t *testing.T) {
 	t.Log("Waiting for replicas to start...")
 	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
 
-	var replicas []ProcessExecution
-	replicas = executor.FindAll(exe.Spec.Executable)
-	require.Equal(t, 2, len(replicas))
-
 	t.Log("Replicas started, shutting them down...")
+	var replicas []ProcessExecution
+	replicas = executor.FindAll(exe.Spec.Executable, nil)
+	require.Equal(t, 2, len(replicas))
 	const r0_ec, r1_ec = 12, 14
 	executor.SimulateProcessExit(t, replicas[0].PID, r0_ec)
 	executor.SimulateProcessExit(t, replicas[1].PID, r1_ec)
@@ -276,6 +267,7 @@ func TestExitCodeCaptured(t *testing.T) {
 		var updatedExe radiusv1alpha1.Executable
 		if err := client.Get(ctx, runtimeclient.ObjectKeyFromObject(&exe), &updatedExe); err != nil {
 			t.Fatalf("Unable to fetch updated Executable: %v", err)
+			return false, err
 		}
 
 		if len(updatedExe.Status.Replicas) < 2 {
@@ -287,7 +279,7 @@ func TestExitCodeCaptured(t *testing.T) {
 			return false, nil
 		}
 		if rs.ExitCode != r0_ec {
-			return false, nil
+			return false, fmt.Errorf("Unexpected exit code from first replica: expected %d actual %d", r0_ec, rs.ExitCode)
 		}
 
 		rs, err = find(updatedExe.Status.Replicas, replicas[1].PID)
@@ -295,7 +287,7 @@ func TestExitCodeCaptured(t *testing.T) {
 			return false, nil
 		}
 		if rs.ExitCode != r1_ec {
-			return false, nil
+			return false, fmt.Errorf("Unexpected exit code from second replica: expected %d actual %d", r1_ec, rs.ExitCode)
 		}
 
 		return true, nil
@@ -393,6 +385,47 @@ func TestExecutableFinishHandling(t *testing.T) {
 	if err := ensureNamespace(ctx, namespace); err != nil {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
+
+	exe := radiusv1alpha1.Executable{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "finish-handling",
+		},
+		Spec: radiusv1alpha1.ExecutableSpec{
+			Executable: "path/to/finish-handling",
+			Replicas:   3,
+		},
+	}
+
+	t.Logf("Creating Executable '%s'", exe.ObjectMeta.Name)
+	if err := client.Create(ctx, &exe, &runtimeclient.CreateOptions{}); err != nil {
+		t.Fatalf("Unable to create Executable: %v", err)
+	}
+
+	t.Log("Waiting for replicas to start...")
+	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+
+	t.Log("Simulating replica finish...")
+	replicas := executor.FindAll(exe.Spec.Executable, nil)
+	for _, r := range replicas {
+		executor.SimulateProcessExit(t, r.PID, 0)
+	}
+
+	waitExecutableFinish := func() (bool, error) {
+		t.Log("Checking Executable status...")
+		var updatedExe radiusv1alpha1.Executable
+		if err := client.Get(ctx, runtimeclient.ObjectKeyFromObject(&exe), &updatedExe); err != nil {
+			t.Fatalf("Unable to fetch updated Executable: %v", err)
+			return false, err
+		}
+
+		if updatedExe.Status.FinishTimestamp.IsZero() {
+			return false, nil // Not finished yet, keep waiting
+		} else {
+			return true, nil
+		}
+	}
+	wait.PollUntil(time.Second, waitExecutableFinish, ctx.Done())
 }
 
 // Ensure that Executable is marked as finished (FinishTimestamp is set) if all replicas are terminated as a result of scale-down
@@ -405,6 +438,66 @@ func TestExecutableFinishAfterScaleDown(t *testing.T) {
 	if err := ensureNamespace(ctx, namespace); err != nil {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
+
+	exe := radiusv1alpha1.Executable{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "finish-after-scale-down",
+		},
+		Spec: radiusv1alpha1.ExecutableSpec{
+			Executable: "path/to/finish-after-scale-down",
+			Replicas:   5,
+		},
+	}
+
+	t.Logf("Creating Executable '%s'", exe.ObjectMeta.Name)
+	if err := client.Create(ctx, &exe, &runtimeclient.CreateOptions{}); err != nil {
+		t.Fatalf("Unable to create Executable: %v", err)
+	}
+
+	t.Log("Waiting for replicas to start...")
+	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+
+	t.Log("Simulating two replica finish...")
+	replicas := executor.FindAll(exe.Spec.Executable, nil)
+	require.Equal(t, exe.Spec.Replicas, len(replicas))
+	executor.SimulateProcessExit(t, replicas[0].PID, 0)
+	executor.SimulateProcessExit(t, replicas[1].PID, 0)
+
+	// With two replicas finished normally, after scaling the Spec down to two replicas, the Executable should:
+	// 1. be marked as finished
+	// 2. remaining replicas should be killed
+	const desired = 2
+	t.Logf("Decreasing desired replica count to %d...", desired)
+	if err := updateExecutable(t, ctx, runtimeclient.ObjectKeyFromObject(&exe), func(e *radiusv1alpha1.Executable) { e.Spec.Replicas = desired }); err != nil {
+		t.Fatalf("Unable to update Executable: %v", err)
+	}
+
+	waitExecutableFinish := func() (bool, error) {
+		t.Log("Checking Executable status...")
+		var updatedExe radiusv1alpha1.Executable
+		if err := client.Get(ctx, runtimeclient.ObjectKeyFromObject(&exe), &updatedExe); err != nil {
+			t.Fatalf("Unable to fetch updated Executable: %v", err)
+			return false, err
+		}
+
+		if updatedExe.Status.FinishTimestamp.IsZero() {
+			return false, nil // Not finished yet, keep waiting
+		} else {
+			return true, nil
+		}
+	}
+	wait.PollUntil(time.Second, waitExecutableFinish, ctx.Done())
+
+	replicas = executor.FindAll(exe.Spec.Executable, func(pe ProcessExecution) bool {
+		return !pe.EndedAt.IsZero() && pe.ExitCode == 0
+	})
+	require.Equal(t, 2, len(replicas), "Expected two normally finished replicas")
+
+	replicas = executor.FindAll(exe.Spec.Executable, func(pe ProcessExecution) bool {
+		return !pe.EndedAt.IsZero() && pe.ExitCode == KilledProcessExitCode
+	})
+	require.Equal(t, 3, len(replicas), "Expected three killed replicas")
 }
 
 // Ensure all replicas are killed if Executable is deleted
@@ -417,4 +510,38 @@ func TestReplicasTerminatedUponExecutableDeletion(t *testing.T) {
 	if err := ensureNamespace(ctx, namespace); err != nil {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
+
+	exe := radiusv1alpha1.Executable{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "executable-deletion",
+		},
+		Spec: radiusv1alpha1.ExecutableSpec{
+			Executable: "path/to/executable-deletion",
+			Replicas:   2,
+		},
+	}
+
+	t.Logf("Creating Executable '%s'", exe.ObjectMeta.Name)
+	if err := client.Create(ctx, &exe, &runtimeclient.CreateOptions{}); err != nil {
+		t.Fatalf("Unable to create Executable: %v", err)
+	}
+
+	t.Log("Waiting for replicas to start...")
+	ensureReplicasRunning(ctx, exe.Spec.Executable, exe.Spec.Replicas)
+
+	t.Log("Deleting executable...")
+	if err := client.Delete(ctx, &exe); err != nil {
+		t.Fatalf("Unable to create Executable: %v", err)
+	}
+
+	t.Log("Waiting for all replicas to be killed...")
+	waitReplicasKilled := func() (bool, error) {
+		killedReplicas := executor.FindAll(exe.Spec.Executable, func(pe ProcessExecution) bool {
+			return !pe.EndedAt.IsZero() && pe.ExitCode == KilledProcessExitCode
+		})
+
+		return len(killedReplicas) == exe.Spec.Replicas, nil
+	}
+	wait.PollUntil(time.Second, waitReplicasKilled, ctx.Done())
 }

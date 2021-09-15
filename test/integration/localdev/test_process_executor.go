@@ -102,12 +102,19 @@ func (e *TestProcessExecutor) SimulateProcessExit(t *testing.T, pid int, exitCod
 	}
 }
 
-func (e *TestProcessExecutor) FindAll(exeName string) []ProcessExecution {
-	var retval []ProcessExecution
+func (e *TestProcessExecutor) FindAll(exeName string, cond func(pe ProcessExecution) bool) []ProcessExecution {
+	retval := make([]ProcessExecution, 0)
 
 	for _, pe := range e.Executions {
 		if pe.Executable == exeName {
-			retval = append(retval, pe)
+			include := true
+			if cond != nil {
+				include = cond(pe)
+			}
+
+			if include {
+				retval = append(retval, pe)
+			}
 		}
 	}
 
