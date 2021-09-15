@@ -11,6 +11,6 @@ metadata:
   name: executable-test
   namespace: radius-test
 spec:
-  executable: "/Users/karolz/code/radius/test/localdev/repeater/repeater"
+  executable: "<path to repeater executable>"
   args: ["5", "12"]
   replicas: 2
