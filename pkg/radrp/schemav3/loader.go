@@ -75,7 +75,7 @@ func loadOrPanic() map[string]validator {
 		return nil
 	})
 	if err != nil {
-		panic("Failed to load schemas: " + err.Error())
+		log.Fatal("Failed to load schemas:", err)
 	}
 
 	manifest := readManifestOrPanic()
