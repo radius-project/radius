@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/radius/pkg/azure/armauth"
 )
 
 func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer autorest.Authorizer, resourceType string) (string, error) {
@@ -40,4 +41,15 @@ func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer
 	}
 
 	return "", nil // unreachable
+}
+
+func GetResourceGroupLocation(ctx context.Context, armConfig armauth.ArmConfig) (*string, error) {
+	rgc := NewGroupsClient(armConfig.SubscriptionID, armConfig.Auth)
+
+	resourceGroup, err := rgc.Get(ctx, armConfig.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resource group location: %w", err)
+	}
+
+	return resourceGroup.Location, nil
 }

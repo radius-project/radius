@@ -71,7 +71,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 			return nil, fmt.Errorf("failed to create role assignment with error: %v, statuscode: %v", detailed.Message, detailed.StatusCode)
 		}
 
-		logger.Info(fmt.Sprintf("Failed to create role assignment. Retrying: %d attempt ...", i))
+		logger.Info(fmt.Sprintf("Failed to create role assignment %v. Retrying: %d attempt ...", err, i))
 		time.Sleep(5 * time.Second)
 	}
 

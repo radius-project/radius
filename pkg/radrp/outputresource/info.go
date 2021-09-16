@@ -72,7 +72,7 @@ type K8sInfo struct {
 }
 
 // AADPodIdentity pod identity for AKS cluster to enable access to keyvault
-type AADPodIdentity struct {
+type AADPodIdentityInfo struct {
 	AKSClusterName string `bson:"aksClusterName"`
 	Name           string `bson:"name"`
 	Namespace      string `bson:"namespace"`
@@ -104,7 +104,7 @@ func (resource OutputResource) GetResourceID() string {
 	if resource.Type == TypeARM {
 		return resource.Info.(ARMInfo).ID
 	} else if resource.Type == TypeAADPodIdentity {
-		return resource.Info.(AADPodIdentity).AKSClusterName + "-" + resource.Info.(AADPodIdentity).Name
+		return resource.Info.(AADPodIdentityInfo).AKSClusterName + "-" + resource.Info.(AADPodIdentityInfo).Name
 	} else if resource.Type == TypeKubernetes {
 		kID := healthcontract.KubernetesID{
 			Kind:      resource.Info.(K8sInfo).Kind,

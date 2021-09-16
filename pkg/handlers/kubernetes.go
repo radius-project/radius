@@ -39,7 +39,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	}
 
 	// For a Kubernetes resource we only need to store the ObjectMeta and TypeMeta data
-	p := map[string]string{
+	properties := map[string]string{
 		KubernetesKindKey:       item.GetKind(),
 		KubernetesAPIVersionKey: item.GetAPIVersion(),
 		KubernetesNamespaceKey:  item.GetNamespace(),
@@ -50,7 +50,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		// This resource is deployed in the Render process
 		// TODO: This will eventually change
 		// For now, no need to process any further
-		return p, nil
+		return properties, nil
 	}
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
@@ -64,7 +64,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		APIVersion: item.GetAPIVersion(),
 	}
 
-	return p, err
+	return properties, err
 }
 
 func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {

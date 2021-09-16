@@ -82,7 +82,7 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 		}
 	}
 
-	location, err := getResourceGroupLocation(ctx, handler.arm)
+	location, err := clients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
 		return nil, err
 	}

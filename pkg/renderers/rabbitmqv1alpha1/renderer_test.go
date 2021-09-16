@@ -50,10 +50,10 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
 
-	deployment := kubernetes.FindDeployment(resources)
+	deployment, _ := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
-	service := kubernetes.FindService(resources)
+	service, _ := kubernetes.FindService(resources)
 	require.NotNil(t, service)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-component")

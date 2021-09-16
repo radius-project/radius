@@ -66,7 +66,7 @@ func Test_Render_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	deployment := kubernetes.FindDeployment(resources)
+	deployment, _ := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
 	expected := map[string]string{
