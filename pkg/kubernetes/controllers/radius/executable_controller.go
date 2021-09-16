@@ -119,7 +119,7 @@ func (r *ExecutableReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	if err = r.Update(ctx, &executable); err != nil {
+	if err = r.Status().Update(ctx, &executable); err != nil {
 		log.Error(err, "executable update failed")
 		return ctrl.Result{}, err
 	}

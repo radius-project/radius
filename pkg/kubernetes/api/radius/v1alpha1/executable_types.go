@@ -48,6 +48,7 @@ type ExecutableStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:categories={"all","radius"}
+//+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Executable",type="string",JSONPath=".spec.executable"
 //+kubebuilder:printcolumn:name="Args",type="string",JSONPath=".spec.args"
 
