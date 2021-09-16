@@ -43,7 +43,7 @@ func readManifestOrPanic() manifest {
 	manifest := manifest{}
 	err := json.Unmarshal([]byte(manifestFile), &manifest)
 	if err != nil {
-		log.Fatalf("Failed to load resource manifest: " + err.Error())
+		log.Fatal("Failed to load resource manifest:", err)
 	}
 
 	return manifest
