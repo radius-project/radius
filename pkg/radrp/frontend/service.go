@@ -64,7 +64,7 @@ func (s *Service) Run(ctx context.Context) error {
 		Authenticate: s.Options.Authenticate,
 		Configure: func(router *mux.Router) {
 			handlerv2.AddRoutes(rp2, router)
-			handlerv3.AddRoutes(rp3, router)
+			handlerv3.AddRoutes(rp3, router, handlerv3.DefaultValidatorFactory)
 		},
 	})
 

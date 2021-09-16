@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -20,6 +21,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/radrp/schemav3"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
@@ -34,11 +36,12 @@ import (
 const baseURI = "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application"
 
 type test struct {
-	t       *testing.T
-	ctrl    *gomock.Controller
-	server  *httptest.Server
-	handler http.Handler
-	rp      *resourceproviderv3.MockResourceProvider
+	t         *testing.T
+	ctrl      *gomock.Controller
+	server    *httptest.Server
+	handler   http.Handler
+	rp        *resourceproviderv3.MockResourceProvider
+	validator *FakeValidator
 }
 
 func createContext(t *testing.T) context.Context {
@@ -54,11 +57,18 @@ func start(t *testing.T) *test {
 	ctrl := gomock.NewController(t)
 	rp := resourceproviderv3.NewMockResourceProvider(ctrl)
 
+	validator := &FakeValidator{}
 	options := server.ServerOptions{
 		Address:      httptest.DefaultRemoteAddr,
 		Authenticate: false,
 		Configure: func(router *mux.Router) {
-			AddRoutes(rp, router)
+			AddRoutes(rp, router, func(resourceType string) (schemav3.Validator, error) {
+				if validator.RejectType {
+					return nil, errors.New("unsupported type")
+				}
+
+				return validator, nil
+			})
 		},
 	}
 
@@ -68,11 +78,12 @@ func start(t *testing.T) *test {
 	t.Cleanup(server.Close)
 
 	return &test{
-		t:       t,
-		rp:      rp,
-		ctrl:    ctrl,
-		server:  server,
-		handler: h,
+		t:         t,
+		rp:        rp,
+		ctrl:      ctrl,
+		server:    server,
+		handler:   h,
+		validator: validator,
 	}
 }
 
@@ -102,6 +113,15 @@ type FaultingResponse struct {
 
 func (r *FaultingResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	return fmt.Errorf("write failure!")
+}
+
+type FakeValidator struct {
+	RejectType bool
+	Errors     []schemav3.ValidationError
+}
+
+func (v *FakeValidator) ValidateJSON(body []byte) []schemav3.ValidationError {
+	return v.Errors
 }
 
 func Test_Handler(t *testing.T) {
@@ -301,27 +321,82 @@ func Test_Handler(t *testing.T) {
 				return
 			}
 
-			t.Run("Invalid-JSON", func(t *testing.T) {
+			t.Run("Validator-Missing", func(t *testing.T) {
 				test := start(t)
-				testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {
-					return &FaultingResponse{}, nil
-				})
 
-				req := httptest.NewRequest(testcase.Method, testcase.URI, bytes.NewBuffer([]byte("not json")))
+				// Simulate an unknown type
+				test.validator.RejectType = true
+
+				var err error
+				body := []byte{}
+				if testcase.Body != nil {
+					body, err = json.Marshal(testcase.Body)
+					require.NoError(t, err)
+				}
+
+				req := httptest.NewRequest(testcase.Method, testcase.URI, bytes.NewBuffer(body))
 				w := httptest.NewRecorder()
 
 				test.handler.ServeHTTP(w, req)
 
-				require.Equal(t, 500, w.Code)
+				require.Equal(t, 400, w.Code)
 				requireJSON(t, &armerrors.ErrorResponse{
 					Error: armerrors.ErrorDetails{
-						Message: "write failure!",
+						Code:    armerrors.Invalid,
+						Message: "unsupported type",
 					},
 				}, w)
 			})
 
 			t.Run("Validation-Failure", func(t *testing.T) {
-				// Placeholder for adding schema validation support
+				test := start(t)
+
+				// Simulate a validation failure
+				test.validator.Errors = []schemav3.ValidationError{
+					{
+						Position: "test-position1",
+						Message:  "test-message1",
+					},
+					{
+						Position: "test-position2",
+						Message:  "test-message2",
+					},
+					{
+						JSONError: errors.New("test-error3"),
+						Message:   "test-message3",
+					},
+				}
+
+				var err error
+				body := []byte{}
+				if testcase.Body != nil {
+					body, err = json.Marshal(testcase.Body)
+					require.NoError(t, err)
+				}
+
+				req := httptest.NewRequest(testcase.Method, testcase.URI, bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+
+				test.handler.ServeHTTP(w, req)
+
+				require.Equal(t, 400, w.Code)
+				requireJSON(t, &armerrors.ErrorResponse{
+					Error: armerrors.ErrorDetails{
+						Code:    armerrors.Invalid,
+						Message: "Validation error",
+						Details: []armerrors.ErrorDetails{
+							{
+								Message: "test-position1: test-message1",
+							},
+							{
+								Message: "test-position2: test-message2",
+							},
+							{
+								Message: "test-message3: test-error3",
+							},
+						},
+					},
+				}, w)
 			})
 		})
 	}

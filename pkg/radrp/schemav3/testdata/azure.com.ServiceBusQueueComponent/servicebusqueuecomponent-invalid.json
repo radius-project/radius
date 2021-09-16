@@ -1,0 +1,7 @@
+{
+  "properties": {
+    "someUnknownProperty": true,
+    "resource": 54,
+    "managed": false
+  }
+}

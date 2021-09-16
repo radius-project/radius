@@ -1,0 +1,46 @@
+{
+  "properties": {
+    "connections": {
+      "gateway": {
+        "kind": "UnknownKind",
+        "anotherThing": true
+      },
+      "backend": {
+        "kind": "Http"
+      },
+      "frontend": {
+        "kind": "Http",
+        "source": "something",
+        "anotherThing": true
+      }
+    },
+    "container": {
+      "image": 45,
+      "env": {
+        "TEST": "Value",
+        "COol?": true
+      },
+      "ports": {
+        "web": {
+          "provides": "something",
+          "protocol": "TCP"
+        },
+        "grpc": {
+          "containerPort": 80,
+          "provides": "something",
+          "protocol": "GRPCLOL"
+        }
+      }
+    }
+  },
+  "traits": [
+    {
+      "kind": "UNKNOWN TRAIT",
+      "appId": "cool-app"
+    },
+    {
+      "kind": "dapr.io/App@v1alpha1",
+      "appId": "cool-app"
+    }
+  ]
+}
