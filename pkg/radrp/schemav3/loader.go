@@ -93,7 +93,7 @@ func loadOrPanic() map[string]validator {
 		}
 		schema, err := loader.Compile(workaround)
 		if err != nil {
-			log.Fatalf("Failed to parse JSON Schema '%s': %s", ref, err)
+			log.Fatalf("Failed to parse JSON Schema %q: %s", ref, err)
 		}
 		validators[resourceType] = validator{
 			schema:   schema,
