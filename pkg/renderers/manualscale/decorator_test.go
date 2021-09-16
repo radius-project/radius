@@ -63,7 +63,7 @@ func Test_Render_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	deployment := kubernetes.FindDeployment(resources)
+	deployment, _ := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
 	require.Equal(t, int32(2), *deployment.Spec.Replicas)
@@ -94,7 +94,7 @@ func Test_Render_CanSpecifyZero(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 
-	deployment := kubernetes.FindDeployment(resources)
+	deployment, _ := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
 	require.Equal(t, int32(0), *deployment.Spec.Replicas)

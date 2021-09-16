@@ -260,12 +260,12 @@ func (r Renderer) makeDeployment(ctx context.Context, workload workloads.Instant
 
 		deploymentDependencies = append(deploymentDependencies, outputresource.Dependency{LocalID: outputresource.LocalIDKeyVaultSecret})
 
-		store, err := dep.Secrets.Store.GetMatchingBinding(workload.BindingValues)
+		storeBinding, err := dep.Secrets.Store.GetMatchingBinding(workload.BindingValues)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		keyVaultName, err := r.getKeyVaultName(store)
+		keyVaultName, err := r.getKeyVaultName(storeBinding)
 		if err != nil {
 			return nil, nil, err
 		}

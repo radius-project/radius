@@ -13,7 +13,7 @@ import (
 )
 
 // Finds deployment in a list of output resources
-func FindDeployment(resources []outputresource.OutputResource) *appsv1.Deployment {
+func FindDeployment(resources []outputresource.OutputResource) (*appsv1.Deployment, outputresource.OutputResource) {
 	for _, r := range resources {
 		if r.Kind != resourcekinds.Kubernetes {
 			continue
@@ -24,14 +24,14 @@ func FindDeployment(resources []outputresource.OutputResource) *appsv1.Deploymen
 			continue
 		}
 
-		return deployment
+		return deployment, r
 	}
 
-	return nil
+	return nil, outputresource.OutputResource{}
 }
 
 // Finds service in a list of output resources
-func FindService(resources []outputresource.OutputResource) *corev1.Service {
+func FindService(resources []outputresource.OutputResource) (*corev1.Service, outputresource.OutputResource) {
 	for _, r := range resources {
 		if r.Kind != resourcekinds.Kubernetes {
 			continue
@@ -42,8 +42,8 @@ func FindService(resources []outputresource.OutputResource) *corev1.Service {
 			continue
 		}
 
-		return service
+		return service, r
 	}
 
-	return nil
+	return nil, outputresource.OutputResource{}
 }
