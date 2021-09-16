@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloadsv1alpha3"
 )
 
@@ -61,7 +62,7 @@ func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWo
 	service.Spec.Ports = append(service.Spec.Ports, port)
 
 	res := outputresource.OutputResource{
-		Kind:     outputresource.KindKubernetes,
+		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDService,
 		Deployed: false,
 		Managed:  true,

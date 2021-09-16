@@ -68,7 +68,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 	deployed := map[string]map[string]interface{}{}
-	evaluator := &evaluator{
+	evaluator := &armtemplate.DeploymentEvaluator{
 		Template:  template,
 		Options:   options,
 		Deployed:  deployed,
