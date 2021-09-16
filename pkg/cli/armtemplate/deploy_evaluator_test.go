@@ -13,18 +13,52 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_DeploymentTemplate(t *testing.T) {
+// Main purpose of deploy evaluator is to verify reference works between deployed resources
+func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 	content, err := ioutil.ReadFile(path.Join("testdata", "frontend-backend.json"))
 	require.NoError(t, err)
 
 	template, err := Parse(string(content))
 	require.NoError(t, err)
-
-	resources, err := Eval(template, TemplateOptions{
+	options := TemplateOptions{
 		SubscriptionID: "test-sub",
 		ResourceGroup:  "test-group",
-	})
+	}
+
+	resources, err := Eval(template, options)
 	require.NoError(t, err)
+
+	deployed := map[string]map[string]interface{}{}
+	evaluator := &DeploymentEvaluator{
+		Template:  template,
+		Options:   options,
+		Deployed:  deployed,
+		Variables: map[string]interface{}{},
+	}
+
+	for name, variable := range template.Variables {
+		value, err := evaluator.VisitValue(variable)
+		require.NoError(t, err)
+
+		evaluator.Variables[name] = value
+	}
+	var evaluated []Resource
+
+	for _, resource := range resources {
+		body, err := evaluator.VisitMap(resource.Body)
+		require.NoError(t, err)
+
+		resource.Body = body
+
+		deployed[resource.ID] = map[string]interface{}{}
+		properties := body["properties"]
+		if properties != nil {
+			for k, v := range properties.(map[string]interface{}) {
+				deployed[resource.ID][k] = v
+			}
+		}
+		evaluated = append(evaluated, resource)
+	}
 
 	expected := []Resource{
 		{
@@ -84,9 +118,12 @@ func Test_DeploymentTemplate(t *testing.T) {
 					},
 					"uses": []interface{}{
 						map[string]interface{}{
-							"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web]",
+							"binding": map[string]interface{}{
+								"kind":       "http",
+								"targetPort": 81.0,
+							},
 							"env": map[string]interface{}{
-								"SERVICE__BACKEND__TARGETPORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.targetPort]",
+								"SERVICE__BACKEND__TARGETPORT": 81.0,
 							},
 						},
 					},
@@ -117,5 +154,5 @@ func Test_DeploymentTemplate(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, expected, resources)
+	require.Equal(t, expected, evaluated)
 }

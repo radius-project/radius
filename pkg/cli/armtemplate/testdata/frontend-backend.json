@@ -18,8 +18,7 @@
           {
             "binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web]",
             "env": {
-              "SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.host]",
-              "SERVICE__BACKEND__PORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.port]"
+              "SERVICE__BACKEND__TARGETPORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.targetPort]"
             }
           }
         ],
@@ -48,7 +47,7 @@
         "bindings": {
           "web": {
             "kind": "http",
-            "targetPort": 80
+            "targetPort": 81
           }
         }
       },
