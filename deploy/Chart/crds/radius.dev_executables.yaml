@@ -5,6 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
   name: executables.radius.dev
 spec:
   group: radius.dev
@@ -18,10 +19,16 @@ spec:
     singular: executable
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.executable
+      name: Executable
+      type: string
+    - jsonPath: .spec.args
+      name: Args
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Executable is the Schema for the executables API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -37,63 +44,64 @@ spec:
             type: object
           spec:
             description: ExecutableSpec defines the desired state of an Executable
-            type: object
             properties:
-              executable:
-                type: string
-                description: Path to the Executable binary
-              workingDirectory:
-                type: string
-                description: The working directory for the Executable
               args:
-                type: array
+                description: Launch arguments to be passed to the Executable
                 items:
                   type: string
-                description: Launch arguments to be passed to the Executable
+                type: array
               env:
-                type: object
                 additionalProperties:
                   type: string
                 description: Environment variables to be set for the Executable
+                type: object
               envFiles:
-                type: array
+                description: Environment variable files to be used for initializing
+                  Executable environment
                 items:
                   type: string
-                description: Environment variable files to be used for initializing Executable environment
+                type: array
+              executable:
+                description: Path to Executable binary
+                type: string
               replicas:
-                type: integer
-                description: Number of replicas to launch for the Executable
-                minimum: 1
-                maximum: 100
                 default: 1
+                description: Number of replicas to launch for the Executable
+                maximum: 100
+                minimum: 1
+                type: integer
+              workingDirectory:
+                description: The working directory for the Executable
+                type: string
             required:
             - executable
-          status:
-            description: ExecutableStatus defines the observed state of an Executable
             type: object
+          status:
             properties:
               finishTimestamp:
-                type: string
                 format: date-time
-                description: The time when ExecutableController noticed that all replicas finished running
+                type: string
               replicas:
-                type: array
                 items:
-                  type: object
                   properties:
-                    pid:
-                      type: integer
-                      description: The PID of the running process
                     exitCode:
+                      description: Exit code of a process
                       type: integer
-                      description: The exit code of the process
+                    pid:
+                      description: The process ID
+                      type: integer
+                  required:
+                  - pid
+                  type: object
+                type: array
+            type: object
         type: object
     served: true
     storage: true
-    additionalPrinterColumns:
-    - jsonPath: .spec.executable
-      name: Executable
-      type: string
-    - jsonPath: .spec.args
-      name: Args
-      type: string
+    subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

@@ -61,7 +61,7 @@ func startController() error {
 	}
 
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "deploy", "localdev", "crds")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "deploy", "Chart", "crds")},
 		ErrorIfCRDPathMissing: true,
 		BinaryAssetsDirectory: assetDir,
 	}

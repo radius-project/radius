@@ -13,10 +13,10 @@ radiusd-run: check-kcp-running
 	KUBECONFIG=~/bin/.kcp/data/admin.kubeconfig go run ./cmd/radiusd/main.go -zap-devel
 
 radiusd-crd-install: check-kcp-running
-	KUBECONFIG=~/bin/.kcp/data/admin.kubeconfig kubectl apply -f ./deploy/localdev/crds/radius.dev_executables.yaml
+	KUBECONFIG=~/bin/.kcp/data/admin.kubeconfig kubectl apply -f ./deploy/Chart/crds/radius.dev_executables.yaml
 
 radiusd-crd-uninstall: check-kcp-running
-	KUBECONFIG=~/bin/.kcp/data/admin.kubeconfig kubectl delete -f ./deploy/localdev/crds/radius.dev_executables.yaml
+	KUBECONFIG=~/bin/.kcp/data/admin.kubeconfig kubectl delete -f ./deploy/Chart/crds/radius.dev_executables.yaml
 
 check-kcp-running:
 	./build/check-kcp.sh
