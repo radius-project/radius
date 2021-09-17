@@ -40,8 +40,8 @@ func (t KnownType) Type() string {
 	return strings.Join(types, "/")
 }
 
-// Kind returns the fully-qualified resource kind of a ResourceID.
-func (ri ResourceID) Kind() string {
+// Type returns the fully-qualified resource type of a ResourceID.
+func (ri ResourceID) Type() string {
 	types := make([]string, len(ri.Types))
 	for i, t := range ri.Types {
 		types[i] = t.Type

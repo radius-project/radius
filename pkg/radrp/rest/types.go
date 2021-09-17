@@ -244,7 +244,7 @@ func (app *Application) SetID(resource resources.ResourceID) {
 	app.ResourceBase.Name = resource.Name()
 	app.ResourceBase.SubscriptionID = resource.SubscriptionID
 	app.ResourceBase.ResourceGroup = resource.ResourceGroup
-	app.ResourceBase.Type = resource.Kind()
+	app.ResourceBase.Type = resource.Type()
 }
 
 // GetID produces a ResourceID from a resource.
@@ -269,7 +269,7 @@ func (c *Component) SetID(resource resources.ResourceID) {
 	c.ResourceBase.Name = resource.Name()
 	c.ResourceBase.SubscriptionID = resource.SubscriptionID
 	c.ResourceBase.ResourceGroup = resource.ResourceGroup
-	c.ResourceBase.Type = resource.Kind()
+	c.ResourceBase.Type = resource.Type()
 }
 
 // GetID produces a ResourceID from a resource.
@@ -294,7 +294,7 @@ func (d *Deployment) SetID(resource resources.ResourceID) {
 	d.ResourceBase.Name = resource.Name()
 	d.ResourceBase.SubscriptionID = resource.SubscriptionID
 	d.ResourceBase.ResourceGroup = resource.ResourceGroup
-	d.ResourceBase.Type = resource.Kind()
+	d.ResourceBase.Type = resource.Type()
 }
 
 // GetID produces a ResourceID from a resource.
@@ -319,5 +319,5 @@ func (s *Scope) SetID(resource resources.ResourceID) {
 	s.ResourceBase.Name = resource.Name()
 	s.ResourceBase.SubscriptionID = resource.SubscriptionID
 	s.ResourceBase.ResourceGroup = resource.ResourceGroup
-	s.ResourceBase.Type = resource.Kind()
+	s.ResourceBase.Type = resource.Type()
 }

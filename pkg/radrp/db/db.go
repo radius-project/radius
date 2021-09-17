@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"go.mongodb.org/mongo-driver/bson"
@@ -36,8 +37,6 @@ func NewRadrpDB(m *mongo.Database) RadrpDB {
 	}
 }
 
-//go:generate mockgen -destination=./mock_db.go -package=db -self_package github.com/Azure/radius/pkg/radrp/db github.com/Azure/radius/pkg/radrp/db RadrpDB
-
 // RadrpDB is our database abstraction.
 //
 // Patch operations are an upsert operation. It creates or updates the entry. `true` will be returned for a new record.
@@ -63,9 +62,20 @@ type RadrpDB interface {
 	PatchScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string, patch *Scope) (bool, error)
 	DeleteScopeByApplicationID(ctx context.Context, id resources.ApplicationID, name string) error
 
-	GetOperationByID(ctx context.Context, id resources.ResourceID) (*Operation, error)
-	PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *Operation) (bool, error)
-	DeleteOperationByID(ctx context.Context, id resources.ResourceID) error
+	GetOperationByID(ctx context.Context, id azresources.ResourceID) (*Operation, error)
+	PatchOperationByID(ctx context.Context, id azresources.ResourceID, patch *Operation) (bool, error)
+	DeleteOperationByID(ctx context.Context, id azresources.ResourceID) error
+
+	ListV3Applications(ctx context.Context, id azresources.ResourceID) ([]ApplicationResource, error)
+	GetV3Application(ctx context.Context, id azresources.ResourceID) (ApplicationResource, error)
+	UpdateV3ApplicationDefinition(ctx context.Context, id azresources.ResourceID, application ApplicationResource) (bool, error)
+	DeleteV3Application(ctx context.Context, id azresources.ResourceID) error
+
+	ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error)
+	GetV3Resource(ctx context.Context, id azresources.ResourceID) (RadiusResource, error)
+	UpdateV3ResourceDefinition(ctx context.Context, id azresources.ResourceID, resource RadiusResource) (bool, error)
+	UpdateV3ResourceStatus(ctx context.Context, id azresources.ResourceID, resource RadiusResource) error
+	DeleteV3Resource(ctx context.Context, id azresources.ResourceID) error
 }
 
 type radrpDB struct {
@@ -409,7 +419,7 @@ func (d radrpDB) DeleteScopeByApplicationID(ctx context.Context, id resources.Ap
 	return nil
 }
 
-func (d radrpDB) GetOperationByID(ctx context.Context, id resources.ResourceID) (*Operation, error) {
+func (d radrpDB) GetOperationByID(ctx context.Context, id azresources.ResourceID) (*Operation, error) {
 	item := &Operation{}
 
 	filter := bson.D{{Key: "_id", Value: id.ID}}
@@ -435,7 +445,7 @@ func (d radrpDB) GetOperationByID(ctx context.Context, id resources.ResourceID) 
 	return item, nil
 }
 
-func (d radrpDB) PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *Operation) (bool, error) {
+func (d radrpDB) PatchOperationByID(ctx context.Context, id azresources.ResourceID, patch *Operation) (bool, error) {
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 	logger := radlogger.GetLogger(ctx).WithValues(
@@ -453,7 +463,7 @@ func (d radrpDB) PatchOperationByID(ctx context.Context, id resources.ResourceID
 	return result.UpsertedCount > 1, nil
 }
 
-func (d radrpDB) DeleteOperationByID(ctx context.Context, id resources.ResourceID) error {
+func (d radrpDB) DeleteOperationByID(ctx context.Context, id azresources.ResourceID) error {
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldOperationID, id)
@@ -469,4 +479,40 @@ func (d radrpDB) DeleteOperationByID(ctx context.Context, id resources.ResourceI
 
 	logger.Info("Deleted operation from DB")
 	return nil
+}
+
+func (d radrpDB) ListV3Applications(ctx context.Context, id azresources.ResourceID) ([]ApplicationResource, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (d radrpDB) GetV3Application(ctx context.Context, id azresources.ResourceID) (ApplicationResource, error) {
+	return ApplicationResource{}, errors.New("not implemented")
+}
+
+func (d radrpDB) UpdateV3ApplicationDefinition(ctx context.Context, id azresources.ResourceID, application ApplicationResource) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.ResourceID) error {
+	return errors.New("not implemented")
+}
+
+func (d radrpDB) ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (d radrpDB) GetV3Resource(ctx context.Context, id azresources.ResourceID) (RadiusResource, error) {
+	return RadiusResource{}, errors.New("not implemented")
+}
+
+func (d radrpDB) UpdateV3ResourceDefinition(ctx context.Context, id azresources.ResourceID, resource RadiusResource) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (d radrpDB) UpdateV3ResourceStatus(ctx context.Context, id azresources.ResourceID, resource RadiusResource) error {
+	return errors.New("not implemented")
+}
+
+func (d radrpDB) DeleteV3Resource(ctx context.Context, id azresources.ResourceID) error {
+	return errors.New("not implemented")
 }
