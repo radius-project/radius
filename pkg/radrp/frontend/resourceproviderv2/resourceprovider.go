@@ -538,6 +538,11 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 func (r *rp) registerForHealthChecks(ctx context.Context, actions map[string]deployment.ComponentAction) error {
 	errs := []error{}
 	for _, action := range actions {
+		if action.Definition == nil || action.Operation == deployment.DeleteWorkload {
+			fmt.Printf("@@@@@ Ignoring handling of action: %s, op: %s, def: %v @@@@ \n", action.Name, action.Operation, action.Definition)
+			// Do nothing for delete workloads
+			continue
+		}
 		err := r.deploy.RegisterForHealthChecks(ctx, action.ApplicationName, *action.Definition)
 		if err != nil {
 			errs = append(errs, err)
