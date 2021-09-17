@@ -111,7 +111,6 @@ func (eva *DeploymentEvaluator) VisitMap(input map[string]interface{}) (map[stri
 			return nil, err
 		}
 
-		// Maps are pointer-like, so we can just modify them in place
 		output[key] = v
 	}
 
