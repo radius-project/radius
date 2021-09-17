@@ -18,44 +18,45 @@ These steps will setup the required tools and extensions to get you up and runni
 
 {{% codetab %}}
 
-### Install the latest stable version
+### PowerShell
+
+#### Install the latest stable version
 
 ```powershell
-powershell -Command "iwr -useb https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1 | iex"
+iwr -useb "https://get.radapp.dev/tools/rad/install.ps1" | iex
 ```
 
-### Install the latest unstable version
+#### Install the latest unstable version
 
 ```powershell
-powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList edge"
+$script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList edge
 ```
 
-
-### Install a specific version
+#### Install a specific version
 
 ```powershell
-powershell -Command "$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>"
+$script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList <Version>
 ```
 
 {{% /codetab %}}
 {{% codetab %}}
 
-### Install the latest stable version
+#### Install the latest stable version
 
 ```bash
-curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash
+curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash
 ```
 
 ### Install the latest unstable version
 
 ```bash
-curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s edge
+curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s edge
 ```
 
 ### Install a specific version
 
 ```bash
-curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s <Version>
+curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s <Version>
 ```
 
 {{% /codetab %}}
@@ -65,19 +66,19 @@ curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /
 ### Install the latest stable version
 
 ```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash
+wget -q "https://get.radapp.dev/tools/rad/install.sh" -O - | /bin/bash
 ```
 
 ### Install the latest unstable version
 
 ```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s edge
+wget -q "https://get.radapp.dev/tools/rad/install.sh" -O - | /bin/bash -s edge
 ```
 
 ### Install a specific version
 
 ```bash
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s <Version>
+wget -q "https://get.radapp.dev/tools/rad/install.sh" -O - | /bin/bash -s <Version>
 ```
 
 {{% /codetab %}}
@@ -90,7 +91,7 @@ Azure Cloud Shell for bash doesn't have a sudo command, so users are unable to i
 
 ```bash
 export RADIUS_INSTALL_DIR=./
-wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash
+wget -q "https://get.radapp.dev/tools/rad/install.sh" -O - | /bin/bash
 ```
 
 You can now run the rad CLI with `./rad`.
@@ -105,9 +106,9 @@ PowerShell for Cloud Shell is currently not supported.
 
 1. Download the `rad` CLI from one of these URLs:
 
-   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/0.2/macos-x64/rad
-   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/0.2/linux-x64/rad
-   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/0.2/windows-x64/rad.exe
+   - MacOS: https://get.radapp.dev/tools/rad/0.5/macos-x64/rad
+   - Linux: https://get.radapp.dev/tools/rad/0.5/linux-x64/rad
+   - Windows: https://get.radapp.dev/tools/rad/0.5/windows-x64/rad.exe
 
 1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
@@ -115,9 +116,9 @@ PowerShell for Cloud Shell is currently not supported.
 
 1. Download the `rad` CLI from one of these URLs:
 
-   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/edge/macos-x64/rad
-   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad
-   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/edge/windows-x64/rad.exe
+   - MacOS: https://get.radapp.dev/tools/rad/edge/macos-x64/rad
+   - Linux: https://get.radapp.dev/tools/rad/edge/linux-x64/rad
+   - Windows: https://get.radapp.dev/tools/rad/edge/windows-x64/rad.exe
 
 1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
@@ -125,9 +126,9 @@ PowerShell for Cloud Shell is currently not supported.
 
 1. Download the `rad` CLI from one of these URLs (replace `<version>` with your desired version):
 
-   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/macos-x64/rad
-   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/linux-x64/rad
-   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/<version\>/windows-x64/rad.exe
+   - MacOS: https://get.radapp.dev/tools/rad/<version\>/macos-x64/rad
+   - Linux: https://get.radapp.dev/tools/rad/<version\>/linux-x64/rad
+   - Windows: https://get.radapp.dev/tools/rad/<version\>/windows-x64/rad.exe
 
 2. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
@@ -135,9 +136,17 @@ PowerShell for Cloud Shell is currently not supported.
 
 {{< /tabs >}}
 
+## Install Bicep
+
+To ensure you have the latest version of Bicep, run the following command:
+
+```bash
+rad bicep download
+```
+
 ## Test it out
 
-1. Verify the rad CLI is installed correctly:
+Verify the rad CLI is installed correctly:
 
    ```bash
    $ rad

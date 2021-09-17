@@ -18,8 +18,8 @@ $RadiusRoot = $RadiusRoot -replace ' ', '` '
 $RadiusCliFileName = "rad.exe"
 $RadiusCliFilePath = "${RadiusRoot}\${RadiusCliFileName}"
 $OsArch = "windows-x64"
-$BaseDownloadUrl = "https://radiuspublic.blob.core.windows.net/tools/rad"
-$StableVersionUrl = "https://radiuspublic.blob.core.windows.net/version/stable.txt"
+$BaseDownloadUrl = "https://get.radapp.dev/tools/rad"
+$StableVersionUrl = "https://get.radapp.dev/version/stable.txt"
 
 if ((Get-ExecutionPolicy) -gt 'RemoteSigned' -or (Get-ExecutionPolicy) -eq 'ByPass') {
     Write-Output "PowerShell requires an execution policy of 'RemoteSigned'."
@@ -50,7 +50,7 @@ if (!(Test-Path $RadiusRoot -PathType Container)) {
 
 if($Version -eq "")
 {
-    $Version = Invoke-WebRequest $StableVersionUrl
+    $Version = Invoke-WebRequest $StableVersionUrl -UseBasicParsing
     $Version = $Version.Trim()
 }
 $urlParts = @(
@@ -67,7 +67,8 @@ Write-Output "Downloading $binaryUrl ..."
 $uri = [uri]$binaryUrl
 try
 {
-    Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath
+    $ProgressPreference = "SilentlyContinue" # Do not show progress bar
+    Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath -UseBasicParsing
     if (!(Test-Path $binaryFilePath -PathType Leaf)) {
         throw "Failed to download Radius Cli binary - $binaryFilePath"
     }

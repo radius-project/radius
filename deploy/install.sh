@@ -96,7 +96,7 @@ checkExistingRadius() {
 }
 
 getLatestRelease() {
-    local releaseUrl="https://radiuspublic.blob.core.windows.net/version/stable.txt"
+    local releaseUrl="https://get.radapp.dev/version/stable.txt"
     local latest_release=""
 
     if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
@@ -113,7 +113,7 @@ downloadFile() {
 
     OS_ARCH="${OS}-${ARCH}"
     RADIUS_CLI_ARTIFACT="rad"
-    DOWNLOAD_BASE="https://radiuspublic.blob.core.windows.net/tools/rad"
+    DOWNLOAD_BASE="https://get.radapp.dev/tools/rad"
     DOWNLOAD_URL="${DOWNLOAD_BASE}/${LATEST_RELEASE_TAG}/${OS_ARCH}/${RADIUS_CLI_ARTIFACT}"
 
     # Create the temp directory
