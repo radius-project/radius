@@ -60,10 +60,9 @@ jobs:
         id: gitdiff
         run: |
           git diff --exit-code
-      # TODO: Investigate why this is failing
-      # - name: Check failures
-      #   if: steps.gitdiff.outcome != 'success'
-      #   run: |
-      #     echo "Generated code is not up to date, run 'make generate' to update generated code."
-      #     exit 1
+      - name: Check failures
+        if: steps.gitdiff.outcome != 'success'
+        run: |
+          echo "Generated code is not up to date, run 'make generate' to update generated code."
+          exit 1
 
