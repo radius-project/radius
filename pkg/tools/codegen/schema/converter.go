@@ -26,8 +26,6 @@ func (c *converter) Convert(schemas map[string]Schema) (*Schema, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Make all the type inlined since we will be producing a single file.
-	s.InlineAllRefs()
 
 	// Fill in the autorest specific polymorphic type annotations.
 	for parent, spec := range s.Definitions {
@@ -68,11 +66,13 @@ func (c *converter) Merge(schemas map[string]Schema) (*Schema, error) {
 
 	for name, schema := range schemas {
 		merged, err := out.Merge(&schema)
+
 		if err != nil {
 			return nil, fmt.Errorf("fail to merge schema from file %s: %w", name, err)
 		}
 		*out = *merged
 	}
 
+	out.InlineAllRefs()
 	return out, nil
 }

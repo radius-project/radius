@@ -1,0 +1,20 @@
+{
+  "definitions": {
+    "ManualScalingTrait": {
+      "type": "object",
+      "description": "ManualScaling ComponentTrait",
+      "properties": {
+        "kind": {
+          "description": "Trait kind.",
+          "type": "string",
+          "enum": ["radius.dev/ManualScaling@v1alpha1"]
+        },
+        "replicas": {
+          "description": "Replica count.",
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
