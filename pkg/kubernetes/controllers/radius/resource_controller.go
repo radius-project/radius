@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
@@ -74,7 +74,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	resource := &radiusv1alpha1.Resource{}
+	resource := &radiusv1alpha3.Resource{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, resource)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Resource was deleted - we don't need to handle this because it will cascade
@@ -91,7 +91,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		"application", applicationName,
 		"resource", resourceName)
 
-	application := &radiusv1alpha1.Application{}
+	application := &radiusv1alpha3.Application{}
 	key := client.ObjectKey{Namespace: resource.Namespace, Name: applicationName}
 	err = r.Get(ctx, key, application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
@@ -136,7 +136,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
-func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log logr.Logger, resource *radiusv1alpha1.Resource) ([]client.Object, error) {
+func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log logr.Logger, resource *radiusv1alpha3.Resource) ([]client.Object, error) {
 	log.Info("fetching existing resources for resource")
 	results := []client.Object{}
 
@@ -169,7 +169,7 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 }
 
 // Make this work for generic
-func (r *ResourceReconciler) RenderResource(ctx context.Context, log logr.Logger, application *radiusv1alpha1.Application, resource *radiusv1alpha1.Resource, applicationName string, resourceName string) ([]outputresource.OutputResource, bool, error) {
+func (r *ResourceReconciler) RenderResource(ctx context.Context, log logr.Logger, application *radiusv1alpha3.Application, resource *radiusv1alpha3.Resource, applicationName string, resourceName string) ([]outputresource.OutputResource, bool, error) {
 	// If the application hasn't been defined yet, then just produce no output.
 	if application == nil {
 		r.recorder.Eventf(resource, "Normal", "Waiting", "Resource is waiting for application: %s", applicationName)
@@ -242,7 +242,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, log logr.Logger
 	// 		return nil, nil, false, err
 	// 	}
 
-	// 	bindings = append(bindings, radiusv1alpha1.ResourceStatusBinding{
+	// 	bindings = append(bindings, radiusv1alpha3.ResourceStatusBinding{
 	// 		Name:   name,
 	// 		Kind:   kind,
 	// 		Values: runtime.RawExtension{Raw: b},
@@ -256,7 +256,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, log logr.Logger
 // Checks to see if all bindings are present.
 // Eventually this will return an error as it should be guaranteed that all
 // bindings are present.
-func GetMissingBindings(generic *resourcesv1alpha3.GenericResource, r *ResourceReconciler, ctx context.Context, resource *radiusv1alpha1.Resource, log logr.Logger, applicationName string, w workloadsv1alpha3.InstantiatedWorkload) ([]resourcesv1alpha3.BindingKey, error) {
+func GetMissingBindings(generic *resourcesv1alpha3.GenericResource, r *ResourceReconciler, ctx context.Context, resource *radiusv1alpha3.Resource, log logr.Logger, applicationName string, w workloadsv1alpha3.InstantiatedWorkload) ([]resourcesv1alpha3.BindingKey, error) {
 	missing := []resourcesv1alpha3.BindingKey{}
 	// body := generic.Template.Body
 	// if body == nil {
@@ -289,8 +289,8 @@ func (r *ResourceReconciler) ApplyState(
 	ctx context.Context,
 	log logr.Logger,
 	req ctrl.Request,
-	application *radiusv1alpha1.Application,
-	resource *radiusv1alpha1.Resource,
+	application *radiusv1alpha3.Application,
+	resource *radiusv1alpha3.Resource,
 	actual []client.Object,
 	desired []outputresource.OutputResource) error {
 
@@ -418,10 +418,10 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Ob
 	}
 
 	cache := mgr.GetClient()
-	applicationSource := &source.Kind{Type: &radiusv1alpha1.Application{}}
+	applicationSource := &source.Kind{Type: &radiusv1alpha3.Application{}}
 	applicationHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []ctrl.Request {
 		// Queue notification on each resource when the application changes.
-		application := obj.(*radiusv1alpha1.Application)
+		application := obj.(*radiusv1alpha3.Application)
 		err := cache.List(context.Background(), listObject, client.InNamespace(application.Namespace), client.MatchingFields{CacheKeySpecApplication: application.Name})
 		if err != nil {
 			mgr.GetLogger().Error(err, "failed to list resources")

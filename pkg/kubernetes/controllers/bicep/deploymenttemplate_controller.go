@@ -19,8 +19,8 @@ import (
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
-	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 )
 
 // DeploymentTemplateReconciler reconciles a Arm object
@@ -37,7 +37,7 @@ type DeploymentTemplateReconciler struct {
 func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("deploymenttemplate", req.NamespacedName)
 
-	arm := &bicepv1alpha1.DeploymentTemplate{}
+	arm := &bicepv1alpha3.DeploymentTemplate{}
 	err := r.Get(ctx, req.NamespacedName, arm)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -56,7 +56,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	return result, err
 }
 
-func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.Request, arm *bicepv1alpha1.DeploymentTemplate) (ctrl.Result, error) {
+func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.Request, arm *bicepv1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	template, err := armtemplate.Parse(string(arm.Spec.Content.Raw))
 	if err != nil {
 		return ctrl.Result{}, err
@@ -104,7 +104,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		// Apply one at a time, waiting for each to finish.
 		// Think it's time to do a deep dive into status.
 		// The status should be representative of when we need to start the next operation.
-		arm.Status.Operations = append(arm.Status.Operations, bicepv1alpha1.DeploymentTemplateOperation{
+		arm.Status.Operations = append(arm.Status.Operations, bicepv1alpha3.DeploymentTemplateOperation{
 			Name:      k8sInfo.GetName(),
 			Namespace: k8sInfo.GetNamespace(),
 		})
@@ -131,7 +131,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		arm.Status.Operations[i].Provisioned = true
 
 		// TODO could remove this dependecy on radiusv1alpha1
-		k8sResource := &radiusv1alpha1.Resource{}
+		k8sResource := &radiusv1alpha3.Resource{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, k8sResource)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -156,6 +156,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 // SetupWithManager sets up the controller with the Manager.
 func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&bicepv1alpha1.DeploymentTemplate{}).
+		For(&bicepv1alpha3.DeploymentTemplate{}).
 		Complete(r)
 }

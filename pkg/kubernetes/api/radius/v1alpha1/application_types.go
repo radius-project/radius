@@ -7,14 +7,15 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // ApplicationSpec defines the desired state of Application
 type ApplicationSpec struct {
-	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:PreserveUnknownFields
-	Template *runtime.RawExtension `json:"template,omitempty"`
+	Hierarchy []string `json:"hierarchy,omitempty"`
+}
+
+// ApplicationStatus defines the observed state of Application
+type ApplicationStatus struct {
 }
 
 //+kubebuilder:object:root=true
@@ -27,8 +28,8 @@ type Application struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ApplicationSpec `json:"spec,omitempty"`
-	Status ResourceStatus  `json:"status,omitempty"`
+	Spec   ApplicationSpec   `json:"spec,omitempty"`
+	Status ApplicationStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

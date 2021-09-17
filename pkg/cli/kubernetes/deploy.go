@@ -41,7 +41,7 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 
 	deployment := bicepv1alpha1.DeploymentTemplate{
 		TypeMeta: v1.TypeMeta{
-			APIVersion: "bicep.dev/v1alpha1",
+			APIVersion: "bicep.dev/v1alpha3",
 			Kind:       kind,
 		},
 		ObjectMeta: v1.ObjectMeta{

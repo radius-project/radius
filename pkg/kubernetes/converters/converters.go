@@ -10,13 +10,13 @@ import (
 	"errors"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	"k8s.io/apimachinery/pkg/conversion"
 )
 
 func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.Scope) error {
-	original := a.(*radiusv1alpha1.Resource)
+	original := a.(*radiusv1alpha3.Resource)
 	result := b.(*resourcesv1alpha3.GenericResource)
 	result.Name = original.Name
 	result.Kind = original.Kind

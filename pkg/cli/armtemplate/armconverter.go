@@ -41,7 +41,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 	uns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": "radius.dev/v1alpha1",
+			"apiVersion": "radius.dev/v1alpha3",
 			"kind":       typeParts[len(typeParts)-1],
 			"metadata": map[string]interface{}{
 				"name":      nameParts[len(nameParts)-1],
