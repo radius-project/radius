@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package v1alpha1
+package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,12 +19,18 @@ type DeploymentTemplateSpec struct {
 
 // DeploymentTemplateStatus defines the observed state of Arm
 type DeploymentTemplateStatus struct {
+	Operations []DeploymentTemplateOperation `json:"resources,omitempty"`
+}
+
+type DeploymentTemplateOperation struct {
+	Name        string `json:"name,omitempty"`
+	Namespace   string `json:"namespace,omitempty"`
+	Provisioned bool   `json:"provisioned,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:categories={"all","bicep"}
 //+kubebuilder:subresource:status
-//+kubebuilder:storageversion
 
 // DeploymentTemplate is the Schema for the DeploymentTemplate API
 type DeploymentTemplate struct {
