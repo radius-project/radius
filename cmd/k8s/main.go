@@ -29,8 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
@@ -50,11 +50,11 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 
-	utilruntime.Must(bicepv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
-	_ = scheme.AddConversionFunc(&radiusv1alpha1.Resource{}, &resourcesv1alpha3.GenericResource{}, converters.ConvertComponentToInternal)
+	_ = scheme.AddConversionFunc(&radiusv1alpha3.Resource{}, &resourcesv1alpha3.GenericResource{}, converters.ConvertComponentToInternal)
 }
 
 func extractOwnerKey(obj client.Object) []string {
@@ -63,7 +63,7 @@ func extractOwnerKey(obj client.Object) []string {
 		return nil
 	}
 
-	if owner.APIVersion != radiusv1alpha1.GroupVersion.String() || owner.Kind != "Component" {
+	if owner.APIVersion != radiusv1alpha3.GroupVersion.String() || owner.Kind != "Component" {
 		return nil
 	}
 
@@ -131,10 +131,10 @@ func main() {
 		client.Object
 		client.ObjectList
 	}{ // TODO GetListType
-		{&radiusv1alpha1.ContainerComponent{}, &radiusv1alpha1.ContainerComponentList{}},
-		{&radiusv1alpha1.DaprIOPubSubComponent{}, &radiusv1alpha1.DaprIOPubSubComponentList{}},
-		{&radiusv1alpha1.DaprIOStateStoreComponent{}, &radiusv1alpha1.DaprIOStateStoreComponentList{}},
-		{&radiusv1alpha1.HttpRoute{}, &radiusv1alpha1.HttpRouteList{}},
+		{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
+		{&radiusv1alpha3.DaprIOPubSubComponent{}, &radiusv1alpha3.DaprIOPubSubComponentList{}},
+		{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
+		{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
 	}
 
 	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
@@ -153,7 +153,7 @@ func main() {
 			os.Exit(1)
 		}
 		for _, gvk := range gvks {
-			if gvk.GroupVersion() != radiusv1alpha1.GroupVersion {
+			if gvk.GroupVersion() != radiusv1alpha3.GroupVersion {
 				continue
 			}
 			// Get GVR for corresponding component.
@@ -187,15 +187,15 @@ func main() {
 	}
 
 	if os.Getenv("SKIP_WEBHOOKS") != "true" {
-		if err = (&radiusv1alpha1.Application{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Application")
 			os.Exit(1)
 		}
-		if err = (&radiusv1alpha1.Resource{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = (&radiusv1alpha3.Resource{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Component")
 			os.Exit(1)
 		}
-		if err = (&bicepv1alpha1.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "DeploymentTemplate")
 			os.Exit(1)
 		}

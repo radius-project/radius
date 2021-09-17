@@ -11,7 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
-	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,7 +39,7 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 		return err
 	}
 
-	deployment := bicepv1alpha1.DeploymentTemplate{
+	deployment := bicepv1alpha3.DeploymentTemplate{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "bicep.dev/v1alpha3",
 			Kind:       kind,
@@ -48,7 +48,7 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 			GenerateName: "deploymenttemplate-",
 			Namespace:    c.Namespace,
 		},
-		Spec: bicepv1alpha1.DeploymentTemplateSpec{
+		Spec: bicepv1alpha3.DeploymentTemplateSpec{
 			Content: &runtime.RawExtension{Raw: data},
 		},
 	}

@@ -6,15 +6,15 @@
 package kubernetes
 
 import (
-	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/kubernetes"
 )
 
-func ConvertK8sApplicationToARM(input radiusv1alpha1.Application) (*radclient.ApplicationResource, error) {
+func ConvertK8sApplicationToARM(input radiusv1alpha3.Application) (*radclient.ApplicationResource, error) {
 	result := radclient.ApplicationResource{}
 	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsApplication])
 
@@ -24,7 +24,7 @@ func ConvertK8sApplicationToARM(input radiusv1alpha1.Application) (*radclient.Ap
 	return &result, nil
 }
 
-func ConvertK8sComponentToARM(input radiusv1alpha1.Resource) (*radclient.ComponentResource, error) {
+func ConvertK8sComponentToARM(input radiusv1alpha3.Resource) (*radclient.ComponentResource, error) {
 	result := radclient.ComponentResource{}
 	// result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsComponent])
 	// result.Kind = &input.Spec.Kind
@@ -101,7 +101,7 @@ func ConvertK8sComponentToARM(input radiusv1alpha1.Resource) (*radclient.Compone
 	return &result, nil
 }
 
-func ConvertK8sDeploymentToARM(input bicepv1alpha1.DeploymentTemplate) (*radclient.DeploymentResource, error) {
+func ConvertK8sDeploymentToARM(input bicepv1alpha3.DeploymentTemplate) (*radclient.DeploymentResource, error) {
 	result := radclient.DeploymentResource{}
 	result.Properties = &radclient.DeploymentProperties{}
 

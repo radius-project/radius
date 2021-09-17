@@ -130,7 +130,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 
 		arm.Status.Operations[i].Provisioned = true
 
-		// TODO could remove this dependecy on radiusv1alpha1
+		// TODO could remove this dependecy on radiusv1alpha3
 		k8sResource := &radiusv1alpha3.Resource{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, k8sResource)
 		if err != nil {

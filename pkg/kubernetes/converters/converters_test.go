@@ -10,8 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,7 +67,7 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 	runJson, err := json.Marshal(run)
 	require.NoError(t, err, "failed to marshal run json")
 
-	original := radiusv1alpha1.Component{
+	original := radiusv1alpha3.Component{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "radius.dev/v1alpha1",
 			Kind:       "Component",

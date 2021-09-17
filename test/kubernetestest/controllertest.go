@@ -29,8 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"github.com/Azure/radius/pkg/cli/kubernetes"
-	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
@@ -73,10 +73,10 @@ func StartController() error {
 	scheme := runtime.NewScheme()
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(bicepv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
+	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 
-	err := scheme.AddConversionFunc(&radiusv1alpha1.Resource{}, &resourcesv1alpha3.GenericResource{}, converters.ConvertComponentToInternal)
+	err := scheme.AddConversionFunc(&radiusv1alpha3.Resource{}, &resourcesv1alpha3.GenericResource{}, converters.ConvertComponentToInternal)
 	if err != nil {
 		return fmt.Errorf("failed to add conversion func: %w", err)
 	}
@@ -136,15 +136,15 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize arm reconciler: %w", err)
 	}
 
-	err = (&radiusv1alpha1.Application{}).SetupWebhookWithManager(mgr)
+	err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application webhook: %w", err)
 	}
-	err = (&radiusv1alpha1.Resource{}).SetupWebhookWithManager(mgr)
+	err = (&radiusv1alpha3.Resource{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize component webhook: %w", err)
 	}
-	err = (&bicepv1alpha1.DeploymentTemplate{}).SetupWebhookWithManager(mgr)
+	err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize arm webhook: %w", err)
 	}

@@ -12,8 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -21,7 +20,7 @@ import (
 )
 
 func Test_ConvertK8sApplicationToARM(t *testing.T) {
-	original := radiusv1alpha1.Application{
+	original := radiusv1alpha3.Application{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "radius.dev/v1alpha1",
 			Kind:       "Application",
@@ -100,7 +99,7 @@ func Test_ConvertK8sComponentToARM(t *testing.T) {
 	runJson, err := json.Marshal(run)
 	require.NoError(t, err, "failed to marshal run json")
 
-	original := radiusv1alpha1.Component{
+	original := radiusv1alpha3.Component{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "radius.dev/v1alpha1",
 			Kind:       "Component",
