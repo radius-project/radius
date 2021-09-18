@@ -258,3 +258,15 @@ func MakeResourceURITemplate(t KnownType) string {
 
 	return "/" + strings.Join(segments, "/")
 }
+
+// Truncate removes the last type/name pair of the ResourceID. Calling truncate on a top level resource has no effect.
+func (ri ResourceID) Truncate() ResourceID {
+	if len(ri.Types) < 2 {
+		return ri
+	}
+	result, err := Parse(MakeID(ri.SubscriptionID, ri.ResourceGroup, ri.Types[0], ri.Types[1:len(ri.Types)-1]...))
+	if err != nil {
+		panic(err) // Should not be possible.
+	}
+	return result
+}

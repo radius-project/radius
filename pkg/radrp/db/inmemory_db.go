@@ -373,7 +373,7 @@ func (s *store) GetV3Application(ctx context.Context, id azresources.ResourceID)
 	return ApplicationResource{}, errors.New("not implemented")
 }
 
-func (s *store) UpdateV3ApplicationDefinition(ctx context.Context, id azresources.ResourceID, application ApplicationResource) (bool, error) {
+func (s *store) UpdateV3ApplicationDefinition(ctx context.Context, application ApplicationResource) (bool, error) {
 	return false, errors.New("not implemented")
 }
 
