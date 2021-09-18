@@ -195,6 +195,7 @@ func Test_DeploymentUpdate_RegistersForHealthChecks(t *testing.T) {
 		"C1": {
 			ApplicationName: "A",
 			ComponentName:   "C1",
+			Operation: deployment.UpdateWorkload,
 			Definition: &db.Component{
 				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
@@ -204,6 +205,7 @@ func Test_DeploymentUpdate_RegistersForHealthChecks(t *testing.T) {
 		"C2": {
 			ApplicationName: "A",
 			ComponentName:   "C2",
+			Operation: deployment.UpdateWorkload,
 			Definition: &db.Component{
 				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
@@ -213,6 +215,7 @@ func Test_DeploymentUpdate_RegistersForHealthChecks(t *testing.T) {
 		"C3": {
 			ApplicationName: "A",
 			ComponentName:   "C3",
+			Operation: deployment.UpdateWorkload,
 			Definition: &db.Component{
 				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
