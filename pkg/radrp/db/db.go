@@ -553,13 +553,28 @@ func (d radrpDB) UpdateV3ApplicationDefinition(ctx context.Context, application 
 }
 
 func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.ResourceID) error {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id)
-	filter := bson.D{{Key: "_id", Value: id.ID}}
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id.ID)
 
+	// Ensure resources do not exist for this application
+	application, err := d.GetV3Application(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	items, err := d.listV3ResourcesByApplication(ctx, id, application)
+	if err != nil {
+		return err
+	}
+	if len(items) > 0 {
+		return errors.New("the application has resources associated to it")
+	}
+
+	// Delete application
+	filter := bson.D{{Key: "_id", Value: id.ID}}
 	logger.Info(fmt.Sprintf("Deleting Application from DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsV3Collection)
 	result := col.FindOneAndDelete(ctx, filter)
-	err := result.Err()
+	err = result.Err()
 	if err == mongo.ErrNoDocuments {
 		return nil
 	} else if err != nil {
@@ -570,12 +585,21 @@ func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.Resourc
 }
 
 func (d radrpDB) ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id)
-
 	application, err := d.GetV3Application(ctx, id.Truncate())
 	if err != nil {
 		return nil, err
 	}
+
+	items, err := d.listV3ResourcesByApplication(ctx, id, application)
+	if err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+func (d radrpDB) listV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, application ApplicationResource) ([]RadiusResource, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.ID)
 
 	items := make([]RadiusResource, 0)
 	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup},
@@ -638,7 +662,10 @@ func (d radrpDB) UpdateV3ResourceDefinition(ctx context.Context, id azresources.
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 
-	update := bson.D{{Key: "$set", Value: bson.D{{Key: "definition", Value: resource.Definition},
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "_id", Value: resource.ID},
+		{Key: "type", Value: resource.Type}, {Key: "subscriptionId", Value: resource.SubscriptionID},
+		{Key: "resourceGroup", Value: resource.ResourceGroup}, {Key: "applicationName", Value: resource.ApplicationName},
+		{Key: "resourceName", Value: resource.ResourceName}, {Key: "definition", Value: resource.Definition},
 		{Key: "provisioningState", Value: resource.ProvisioningState}}}}
 
 	logger.Info(fmt.Sprintf("Updating resource in DB with operation filter: %s", filter))
