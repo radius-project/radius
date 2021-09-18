@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/model/revision"
@@ -258,6 +260,17 @@ type Operation struct {
 	PercentComplete float64                 `bson:"percentComplete"`
 	Properties      map[string]interface{}  `bson:"properties,omitempty"`
 	Error           *armerrors.ErrorDetails `bson:"error"`
+}
+
+func NewOperation(id azresources.ResourceID, status string) Operation {
+	return Operation{
+		ID:     id.ID,
+		Name:   id.Name(),
+		Status: status,
+
+		StartTime:       time.Now().UTC().Format(time.RFC3339),
+		PercentComplete: 0,
+	}
 }
 
 // Marshal implements revision.Marshal for Component.

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"strings"
 
 	"github.com/xeipuuv/gojsonreference"
 	"github.com/xeipuuv/gojsonschema"
@@ -51,8 +52,15 @@ func readManifestOrPanic() Manifest {
 	return manifest
 }
 
+func HasType(resourceType string) bool {
+	// ARM types are compared case-insensitively
+	_, ok := validators[strings.ToLower(resourceType)]
+	return ok
+}
+
 func GetValidator(resourceType string) (Validator, bool) {
-	validator, ok := validators[resourceType]
+	// ARM types are compared case-insensitively
+	validator, ok := validators[strings.ToLower(resourceType)]
 	if ok {
 		return &validator, true
 	}
@@ -96,7 +104,9 @@ func loadOrPanic() map[string]validator {
 		if err != nil {
 			log.Fatalf("Failed to parse JSON Schema %q: %s", ref, err)
 		}
-		validators[resourceType] = validator{
+
+		// ARM types are compared case-insensitively
+		validators[strings.ToLower(resourceType)] = validator{
 			schema:   schema,
 			TypeName: resourceType,
 		}

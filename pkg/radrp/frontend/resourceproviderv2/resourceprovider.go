@@ -91,7 +91,7 @@ func (r *rp) GetApplication(ctx context.Context, id resources.ResourceID) (rest.
 
 	dbitem, err := r.db.GetApplicationByID(ctx, a)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id), nil
+		return rest.NewNotFoundResponse(id.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (r *rp) ListComponents(ctx context.Context, id resources.ResourceID) (rest.
 
 	dbitems, err := r.db.ListComponentsByApplicationID(ctx, app)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(app.ResourceID), nil
+		return rest.NewNotFoundResponse(app.ResourceID.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (r *rp) GetComponent(ctx context.Context, id resources.ResourceID) (rest.Re
 
 	dbitem, err := r.db.GetComponentByApplicationID(ctx, c.App, c.Resource.Name())
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id), nil
+		return rest.NewNotFoundResponse(id.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (r *rp) UpdateComponent(ctx context.Context, c *rest.Component) (rest.Respo
 	created, err := r.db.PatchComponentByApplicationID(ctx, id.App, id.Resource.Name(), newdbitem)
 	if err == db.ErrNotFound {
 		// If we get a not found here there's no application
-		return rest.NewNotFoundResponse(id.App.ResourceID), nil
+		return rest.NewNotFoundResponse(id.App.ResourceID.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func (r *rp) ListDeployments(ctx context.Context, id resources.ResourceID) (rest
 
 	dbitems, err := r.db.ListDeploymentsByApplicationID(ctx, app)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(app.ResourceID), nil
+		return rest.NewNotFoundResponse(app.ResourceID.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (r *rp) GetDeployment(ctx context.Context, id resources.ResourceID) (rest.R
 
 	dbitem, err := r.db.GetDeploymentByApplicationID(ctx, d.App, d.Resource.Name())
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id), nil
+		return rest.NewNotFoundResponse(id.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -354,7 +354,7 @@ func (r *rp) UpdateDeployment(ctx context.Context, d *rest.Deployment) (rest.Res
 	newdbitem := newDBDeploymentFromREST(d)
 	app, err := r.db.GetApplicationByID(ctx, id.App)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id.App.ResourceID), nil
+		return rest.NewNotFoundResponse(id.App.ResourceID.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -688,7 +688,7 @@ func (r *rp) ListScopes(ctx context.Context, id resources.ResourceID) (rest.Resp
 
 	dbitems, err := r.db.ListScopesByApplicationID(ctx, app)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(app.ResourceID), nil
+		return rest.NewNotFoundResponse(app.ResourceID.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -710,7 +710,7 @@ func (r *rp) GetScope(ctx context.Context, id resources.ResourceID) (rest.Respon
 
 	dbitem, err := r.db.GetScopeByApplicationID(ctx, s.App, s.Resource.Name())
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id), nil
+		return rest.NewNotFoundResponse(id.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -735,7 +735,7 @@ func (r *rp) UpdateScope(ctx context.Context, s *rest.Scope) (rest.Response, err
 	dbitem := newDBScopeFromREST(s)
 	created, err := r.db.PatchScopeByApplicationID(ctx, id.App, id.Resource.Name(), dbitem)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id.App.ResourceID), nil
+		return rest.NewNotFoundResponse(id.App.ResourceID.ResourceID), nil
 	} else if err != nil {
 		return nil, err
 	}

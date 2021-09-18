@@ -251,3 +251,35 @@ func Test_MakeResourceURITemplate(t *testing.T) {
 		})
 	}
 }
+
+func Test_Append_Collection(t *testing.T) {
+	id, err := Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	require.NoError(t, err)
+
+	appended := id.Append(ResourceType{Name: "", Type: "test-resource"})
+	require.Equal(t, "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/test-resource", appended.ID)
+}
+
+func Test_Append_NamedResource(t *testing.T) {
+	id, err := Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	require.NoError(t, err)
+
+	appended := id.Append(ResourceType{Name: "test-name", Type: "test-resource"})
+	require.Equal(t, "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/test-resource/test-name", appended.ID)
+}
+
+func Test_Truncate_Success(t *testing.T) {
+	id, err := Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius", truncated.ID)
+}
+
+func Test_Truncate_ReturnsSelfForTopLevelResource(t *testing.T) {
+	id, err := Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius", truncated.ID)
+}

@@ -11,8 +11,9 @@ import (
 	"net/http"
 
 	"github.com/Azure/radius/pkg/model/azure"
+	deploymentv3 "github.com/Azure/radius/pkg/radrp/backend/deployment"
 	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/deployment"
+	deploymentv2 "github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/radrp/frontend/handlerv2"
 	"github.com/Azure/radius/pkg/radrp/frontend/handlerv3"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv2"
@@ -54,9 +55,8 @@ func (s *Service) Run(ctx context.Context) error {
 	appmodel := azure.NewAzureModel(*s.Options.Arm, k8s)
 
 	db := db.NewRadrpDB(dbclient)
-	deploy := deployment.NewDeploymentProcessor(appmodel, &s.Options.HealthChannels)
-	rp2 := resourceproviderv2.NewResourceProvider(db, deploy)
-	rp3 := resourceproviderv3.NewResourceProvider()
+	rp2 := resourceproviderv2.NewResourceProvider(db, deploymentv2.NewDeploymentProcessor(appmodel, &s.Options.HealthChannels))
+	rp3 := resourceproviderv3.NewResourceProvider(db, deploymentv3.NewDeploymentProcessor(), nil)
 
 	ctx = logr.NewContext(ctx, logger)
 	server := server.NewServer(ctx, server.ServerOptions{

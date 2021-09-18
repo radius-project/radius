@@ -28,10 +28,37 @@ func Test_GetValidator_AllResourceTypesAreLoadable(t *testing.T) {
 	}
 }
 
+func Test_GetValidator_KnownTypeReturnsTrue(t *testing.T) {
+	validator, ok := GetValidator("Application")
+	require.True(t, ok)
+	require.NotNil(t, validator)
+}
+
+func Test_GetValidator_KnownTypeReturnsTrue_CaseInvariant(t *testing.T) {
+	validator, ok := GetValidator("application")
+	require.True(t, ok)
+	require.NotNil(t, validator)
+}
+
 func Test_GetValidator_UnknownTypeReturnsFalse(t *testing.T) {
 	validator, ok := GetValidator("FakeType")
 	require.False(t, ok)
 	require.Nil(t, validator)
+}
+
+func Test_HasType_KnownTypeReturnsTrue(t *testing.T) {
+	ok := HasType("Application")
+	require.True(t, ok)
+}
+
+func Test_HasType_KnownTypeReturnsTrue_CaseInvariant(t *testing.T) {
+	ok := HasType("application")
+	require.True(t, ok)
+}
+
+func Test_HasType_UnknownTypeReturnsFalse(t *testing.T) {
+	ok := HasType("FakeType")
+	require.False(t, ok)
 }
 
 type testcase struct {

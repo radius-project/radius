@@ -50,6 +50,15 @@ func (ri ResourceID) Type() string {
 }
 
 // Name gets the resource name.
+func (ri ResourceID) QualifiedName() string {
+	names := make([]string, len(ri.Types))
+	for i, t := range ri.Types {
+		names[i] = t.Name
+	}
+	return strings.Join(names, "/")
+}
+
+// Name gets the resource name.
 func (ri ResourceID) Name() string {
 	if len(ri.Types) == 0 {
 		return ""
@@ -100,6 +109,31 @@ func (ri ResourceID) ValidateResourceType(t KnownType) error {
 	}
 
 	return nil
+}
+
+// Append appends a type/name pair to the ResourceID.
+func (ri ResourceID) Append(resourceType ResourceType) ResourceID {
+	types := append(ri.Types, resourceType)
+	result, err := Parse(MakeID(ri.SubscriptionID, ri.ResourceGroup, ri.Types[0], types[1:]...))
+	if err != nil {
+		panic(err) // Should not be possible.
+	}
+
+	return result
+}
+
+// Truncate removes the last type/name pair of the ResourceID. Calling truncate on a top level resource has no effect.
+func (ri ResourceID) Truncate() ResourceID {
+	if len(ri.Types) < 2 {
+		return ri
+	}
+
+	result, err := Parse(MakeID(ri.SubscriptionID, ri.ResourceGroup, ri.Types[0], ri.Types[1:len(ri.Types)-1]...))
+	if err != nil {
+		panic(err) // Should not be possible.
+	}
+
+	return result
 }
 
 func invalidType(id string) error {
@@ -257,16 +291,4 @@ func MakeResourceURITemplate(t KnownType) string {
 	}
 
 	return "/" + strings.Join(segments, "/")
-}
-
-// Truncate removes the last type/name pair of the ResourceID. Calling truncate on a top level resource has no effect.
-func (ri ResourceID) Truncate() ResourceID {
-	if len(ri.Types) < 2 {
-		return ri
-	}
-	result, err := Parse(MakeID(ri.SubscriptionID, ri.ResourceGroup, ri.Types[0], ri.Types[1:len(ri.Types)-1]...))
-	if err != nil {
-		panic(err) // Should not be possible.
-	}
-	return result
 }
