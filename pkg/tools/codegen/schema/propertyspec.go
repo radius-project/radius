@@ -9,7 +9,7 @@ import "encoding/json"
 
 // PropertySpec contains the specifications of a type's property.
 type PropertySpec struct {
-	Enum                 []string
+	Enum                 []interface{}
 	AdditionalProperties map[string]interface{}
 }
 
@@ -39,7 +39,7 @@ func (p *PropertySpec) UnmarshalJSON(b []byte) error {
 	//
 	// This isn't ideal, so don't use this code on a performance sensitive path.
 	inner := struct {
-		Enum []string `json:"enum"`
+		Enum []interface{} `json:"enum"`
 	}{}
 	if err := json.Unmarshal(b, &inner); err != nil {
 		return err

@@ -38,14 +38,14 @@
               "enum": [
                 true
               ],
-              "examples": [
+              "example": [
                 true
               ]
             },
             "connectionString": {
               "description": "The Redis connection string used to connect to the redis cache",
               "type": "string",
-              "examples": [
+              "example": [
                 "myrediscache.redis.cache.windows.net:6380",
                 "redis.default.svc.cluster.local:6379"
               ]
@@ -53,7 +53,7 @@
             "host": {
               "description": "The host name of the redis cache to which you are connecting",
               "type": "string",
-              "examples": [
+              "example": [
                 "myrediscache.redis.cache.windows.net",
                 "redis.default.svc.cluster.local"
               ]
@@ -61,7 +61,7 @@
             "port": {
               "description": "The port value of the redis cache to which you are connecting",
               "type": "integer",
-              "examples": [
+              "example": [
                 6380,
                 6379
               ]

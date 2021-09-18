@@ -1,0 +1,211 @@
+{
+  "definitions": {
+    "{{ .ListType }}": {
+      "properties": {
+        "value": {
+          "items": {
+            "$ref": "{{ .ResourcePath }}"
+          },
+          "description": "List of {{ .QualifiedName }} resources.",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object",
+      "description": "List of {{ .QualifiedName }} resources."
+    }
+  },
+  "parameters": {
+    "{{ .NameParameterType }}": {
+      "x-ms-parameter-location": "method",
+      "description": "The name of the {{ .QualifiedName }} resource.",
+      "type": "string",
+      "required": true,
+      "in": "path",
+      "name": "{{ .NameParameterName }}"
+    }
+  },
+  "paths": {
+    "{{ .BasePath }}/{{ .QualifiedName }}": {
+      "get": {
+        "tags": [
+          "{{ .QualifiedName }}"
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of {{ .QualifiedName }} resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/{{ .ListType }}"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+	  {{ if not .IsApplication }}
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+	  {{ end }}
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "operationId": "{{ .QualifiedName }}_List",
+        "description": "List the {{ .QualifiedName }} resources deployed in the application."
+      }
+    },
+    "{{ .BasePath }}/{{ .QualifiedName }}/{{ print `{` (.NameParameterName) `}` }}": {
+      "get": {
+        "operationId": "{{ .QualifiedName }}_Get",
+        "tags": [
+          "{{ .QualifiedName }}"
+        ],
+        "description": "Gets a {{ .QualifiedName }} resource by name.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+	  {{ if not .IsApplication }}
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+	  {{ end }}
+	  {
+            "$ref": "#/parameters/{{ .NameParameterType }}"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The {{ .QualifiedName }} resource was retrieved successfully.",
+            "schema": {
+              "$ref": "{{ .ResourcePath }}"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "{{ .QualifiedName }}_CreateOrUpdate",
+        "tags": [
+          "{{ .QualifiedName }}"
+        ],
+        "description": "Creates or updates a {{ .QualifiedName }} resource.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+	  {{ if not .IsApplication }}
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+	  {{ end }}
+	  {
+            "$ref": "#/parameters/{{ .NameParameterType }}"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a {{ .QualifiedName }} resource.",
+            "schema": {
+              "$ref": "{{ .ResourcePath }}"
+            },
+            "required": true,
+            "in": "body",
+            "name": "parameters"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing {{ .QualifiedName }} resource was successfully updated.",
+            "schema": {
+              "$ref": "{{ .ResourcePath }}"
+            }
+          },
+          "201": {
+            "description": "The new {{ .QualifiedName }} resource was successfully created.",
+            "schema": {
+              "$ref": "{{ .ResourcePath }}"
+            }
+          },
+          "202": {
+            "description": "The existing {{ .QualifiedName }} resource was successfully updated.",
+            "schema": {
+              "$ref": "{{ .ResourcePath }}"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deletes a {{ .QualifiedName }} resource.",
+        "operationId": "{{ .QualifiedName }}_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+	  {{ if not .IsApplication }}
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+	  {{ end }}
+	  {
+            "$ref": "#/parameters/{{ .NameParameterType }}"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The {{ .QualifiedName }} resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "{{ .QualifiedName }}"
+        ]
+      }
+    }
+  }
+}

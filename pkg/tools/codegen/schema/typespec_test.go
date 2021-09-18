@@ -48,7 +48,7 @@ func TestTypeSpecUnmarshalJSON(t *testing.T) {
 		expected: TypeSpec{
 			Properties: map[string]*PropertySpec{
 				"kind": &PropertySpec{
-					Enum: []string{"dapr.io/App@v1alpha1"},
+					Enum: []interface{}{"dapr.io/App@v1alpha1"},
 					AdditionalProperties: map[string]interface{}{
 						"type":        "string",
 						"description": "Trait kind",

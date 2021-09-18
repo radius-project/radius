@@ -70,7 +70,7 @@ func TestSchemaUnmarshalJSON(t *testing.T) {
 				"DaprTrait": &TypeSpec{
 					Properties: map[string]*PropertySpec{
 						"kind": &PropertySpec{
-							Enum: []string{"dapr.io/App@v1alpha1"},
+							Enum: []interface{}{"dapr.io/App@v1alpha1"},
 							AdditionalProperties: map[string]interface{}{
 								"type":        "string",
 								"description": "Trait kind",

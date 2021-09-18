@@ -27,7 +27,7 @@ func TestPropertySpecUnmarshalJSON(t *testing.T) {
                   "enum": ["dapr.io/App@v1alpha1"]
                 }`,
 		expected: PropertySpec{
-			Enum: []string{"dapr.io/App@v1alpha1"},
+			Enum: []interface{}{"dapr.io/App@v1alpha1"},
 			AdditionalProperties: map[string]interface{}{
 				"type":        "string",
 				"description": "Trait kind",
@@ -52,10 +52,6 @@ func TestPropertySpecUnmarshalJSON(t *testing.T) {
 	}, {
 		name:      "wrong enum type",
 		input:     `{ "enum": 42 }`,
-		expectErr: true,
-	}, {
-		name:      "wrong enum[i] type",
-		input:     `{ "enum": [42] }`,
 		expectErr: true,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

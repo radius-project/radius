@@ -14,10 +14,10 @@
 # Auto-generated cli docs files
 docs/content/reference/cli/rad*
 
-# Dependency directories (remove the comment below to include it)
+# Dependency directories
 vendor/
 
-# Build Output 
+# Build Output
 bin/
 dist/
 radius-rp
@@ -32,3 +32,7 @@ rad.exe
 creds.json
 __debug_bin
 __debug_bin.exe
+
+# Editor backup files
+*~
+*#
