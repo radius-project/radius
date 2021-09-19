@@ -35,12 +35,12 @@ var (
 )
 
 // manifest is the format of the 'resource-types.json' manifest.
-type manifest struct {
+type Manifest struct {
 	Resources map[string]string `json:"resources"`
 }
 
-func readManifestOrPanic() manifest {
-	manifest := manifest{}
+func readManifestOrPanic() Manifest {
+	manifest := Manifest{}
 	err := json.Unmarshal([]byte(manifestFile), &manifest)
 	if err != nil {
 		log.Fatal("Failed to load resource manifest:", err)

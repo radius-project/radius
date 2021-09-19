@@ -404,6 +404,14 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 		return false, "", err
 	}
 
+	_, err = cpc.Get(ctx, resourceGroup, "radiusv3")
+	if clients.Is404Error(err) {
+		// not found - will need to be created
+		return false, "", nil
+	} else if err != nil {
+		return false, "", err
+	}
+
 	// Custom Provider already exists, find the cluster...
 	mcc := clients.NewManagedClustersClient(subscriptionID, authorizer)
 
