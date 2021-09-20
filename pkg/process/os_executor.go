@@ -14,7 +14,7 @@ import (
 
 type OSExecutor struct{}
 
-func NewOSExecutor() IExecutor {
+func NewOSExecutor() Executor {
 	return &OSExecutor{}
 }
 

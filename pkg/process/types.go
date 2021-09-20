@@ -9,8 +9,10 @@ import (
 	"context"
 )
 
-type IExecutor interface {
+type Executor interface {
+	// CONSIDER making this call accept a exec.Cmd instance instead
 	StartProcess(ctx context.Context, exe string, args []string, env []string, exitHandler ProcessExitHandler) (pid int, startWaitForProcessExit func(), err error)
+
 	StopProcess(pid int) error
 }
 

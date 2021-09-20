@@ -52,7 +52,7 @@ type ExecutableReconciler struct {
 	// A PID-to-runningProcessStatus map used to track changes to the replicas of an executable.
 	processStatus *sync.Map
 
-	ProcessExecutor process.IExecutor
+	ProcessExecutor process.Executor
 }
 
 var (
