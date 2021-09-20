@@ -14,9 +14,6 @@ import (
 )
 
 func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, error) {
-	// Calculate the resource name from the full resource name
-	// name := strings.ReplaceAll(resource.Name, "/", "-")
-
 	annotations := map[string]string{}
 
 	// Compute annotations to capture the name segments
@@ -27,17 +24,24 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	if err != nil {
 		return nil, err
 	}
+	spec := map[string]interface{}{}
 
+	var applicationName string
+	var resourceName string
 	if len(nameParts) > 1 {
-		annotations["radius.dev/application"] = nameParts[1]
+		applicationName = nameParts[1]
+		annotations["radius.dev/application"] = applicationName
+		spec = map[string]interface{}{
+			"template":    runtime.RawExtension{Raw: data},
+			"application": applicationName,
+		}
+
 		if len(nameParts) > 2 {
-			annotations["radius.dev/resource"] = nameParts[2]
+			resourceName = nameParts[2]
+			annotations["radius.dev/resource"] = resourceName
+			spec["resource"] = resourceName
 		}
 	}
-
-	// for i, tp := range typeParts[1:] {
-	// 	annotations[fmt.Sprintf("radius.dev/%s", strings.ToLower(tp))] = strings.ToLower(nameParts[i])
-	// }
 
 	uns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -48,9 +52,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 				"namespace": namespace,
 			},
 
-			"spec": map[string]interface{}{
-				"template": runtime.RawExtension{Raw: data},
-			},
+			"spec": spec,
 		},
 	}
 

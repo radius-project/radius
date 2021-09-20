@@ -17,7 +17,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/discovery"
@@ -55,19 +54,6 @@ func init() {
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 	_ = scheme.AddConversionFunc(&radiusv1alpha3.Resource{}, &resourcesv1alpha3.GenericResource{}, converters.ConvertComponentToInternal)
-}
-
-func extractOwnerKey(obj client.Object) []string {
-	owner := metav1.GetControllerOf(obj)
-	if owner == nil {
-		return nil
-	}
-
-	if owner.APIVersion != radiusv1alpha3.GroupVersion.String() || owner.Kind != "Component" {
-		return nil
-	}
-
-	return []string{owner.Name}
 }
 
 func main() {
@@ -216,4 +202,17 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func extractOwnerKey(obj client.Object) []string {
+	owner := metav1.GetControllerOf(obj)
+	if owner == nil {
+		return nil
+	}
+
+	if owner.APIVersion != radiusv1alpha3.GroupVersion.String() || owner.Kind != "Component" {
+		return nil
+	}
+
+	return []string{owner.Name}
 }

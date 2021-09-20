@@ -34,16 +34,16 @@ type DeploymentTemplate struct {
 
 // Resource represents a (parsed) resource within an ARM template.
 type Resource struct {
-	ID         string
-	Type       string
-	APIVersion string
-	Name       string
-	DependsOn  []string
+	ID         string   `json:"id"`
+	Type       string   `json:"type"`
+	APIVersion string   `json:"apiVersion"`
+	Name       string   `json:"name"`
+	DependsOn  []string `json:"dependsOn"`
 
 	// Contains the actual payload that should be submitted (properties, kind, etc)
 	// note that properties like type, name, and apiversion are present in deployment
 	// templates but not in raw ARM requests. They are not in Body either.
-	Body map[string]interface{}
+	Body map[string]interface{} `json:"body"`
 }
 
 func (r Resource) Convert(obj interface{}) error {
