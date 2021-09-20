@@ -123,7 +123,7 @@ func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applic
 	converted := []*radclient.ComponentResource{}
 	for _, item := range components.Items {
 		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName {
-			component, err := ConvertK8sComponentToARM(item)
+			component, err := ConvertK8sResourceToARM(item)
 			if err != nil {
 				return nil, err
 			}
@@ -152,7 +152,7 @@ func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applica
 	for _, item := range components.Items {
 		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName &&
 			item.Annotations[kubernetes.AnnotationsComponent] == componentName {
-			component, err := ConvertK8sComponentToARM(item)
+			component, err := ConvertK8sResourceToARM(item)
 			if err != nil {
 				return nil, err
 			}
