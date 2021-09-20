@@ -1,1 +1,30 @@
-{"apiVersion":"radius.dev/v1alpha3","kind":"HttpRoute","metadata":{"annotations":{"radius.dev/application":"azure-resources-container-httpbinding","radius.dev/resource":"frontend"},"name":"frontend","namespace":"default"},"spec":{"application":"azure-resources-container-httpbinding","resource":"frontend","template":{"id":"/subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding/HttpRoute/frontend","type":"Microsoft.CustomProviders/resourceProviders/Application/HttpRoute","apiVersion":"2018-09-01-preview","name":"radiusv3/azure-resources-container-httpbinding/frontend","dependsOn":["/subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding"],"body":{"properties":{"port":80}}}}}
+{
+    "apiVersion": "radius.dev/v1alpha3",
+    "kind": "HttpRoute",
+    "metadata": {
+        "annotations": {
+            "radius.dev/application": "azure-resources-container-httpbinding",
+            "radius.dev/resource": "frontend"
+        },
+        "name": "frontend",
+        "namespace": "default"
+    },
+    "spec": {
+        "application": "azure-resources-container-httpbinding",
+        "resource": "frontend",
+        "template": {
+            "id": "/subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding/HttpRoute/frontend",
+            "type": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute",
+            "apiVersion": "2018-09-01-preview",
+            "name": "radiusv3/azure-resources-container-httpbinding/frontend",
+            "dependsOn": [
+                "/subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding"
+            ],
+            "body": {
+                "properties": {
+                    "port": 80
+                }
+            }
+        }
+    }
+}
