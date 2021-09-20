@@ -16,14 +16,11 @@ type ResourceSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
 	Template *runtime.RawExtension `json:"template,omitempty"`
-}
 
-// kubectl get routes -> these all work correctly.
-// kubectl get components -> these all work correctly.
-// HttpRoute, GrpcRoute, dapr.io/Invoke -> route
-// "bindings":  dapr.io/PubSubTopic, dapr.io/StateStore, redislabs.com/Redis, mongo.com/MongoDB, microsoft.com/SQL
-// azure.com/KeyVault, azure.com/ServiceBusQueue
-// Compnents,
+	Application string `json:"application,omitempty"`
+
+	Resource string `json:"resource,omitempty"`
+}
 
 // ResourceStatus defines the observed state of Resource
 type ResourceStatus struct {
@@ -40,9 +37,8 @@ type ResourceStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:categories={"all","radius"}
 //+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.hierarchy[1]"
-//+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.hierarchy[2]"
-//+kubebuilder:printcolumn:name="Kind",type="string",JSONPath=".spec.kind"
+//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.application"
+//+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.resource"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
 
 // Resource is the Schema for the components API

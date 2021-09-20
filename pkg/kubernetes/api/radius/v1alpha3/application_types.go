@@ -15,6 +15,8 @@ type ApplicationSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
 	Template *runtime.RawExtension `json:"template,omitempty"`
+
+	Applciation string `json:"application,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -12,9 +12,8 @@ import (
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:categories={"all","radius"}
 //+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.hierarchy[1]"
-//+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.hierarchy[2]"
-//+kubebuilder:printcolumn:name="Kind",type="string",JSONPath=".spec.kind"
+//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.application"
+//+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.resource"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
 type HttpRoute struct {
 	metav1.TypeMeta   `json:",inline"`

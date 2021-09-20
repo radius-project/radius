@@ -12,11 +12,10 @@ import (
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:categories={"all","radius"}
 //+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.hierarchy[1]"
-//+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.hierarchy[2]"
-//+kubebuilder:printcolumn:name="Kind",type="string",JSONPath=".spec.kind"
+//+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.application"
+//+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.resource"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
-type DaprInvokeRoute struct {
+type DaprIOInvokeRoute struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -25,12 +24,12 @@ type DaprInvokeRoute struct {
 }
 
 //+kubebuilder:object:root=true
-type DaprInvokeRouteList struct {
+type DaprIOInvokeRouteList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DaprInvokeRoute `json:"items"`
+	Items           []DaprIOInvokeRoute `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&DaprInvokeRoute{}, &DaprInvokeRouteList{})
+	SchemeBuilder.Register(&DaprIOInvokeRoute{}, &DaprIOInvokeRouteList{})
 }

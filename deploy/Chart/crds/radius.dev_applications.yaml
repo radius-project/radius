@@ -72,6 +72,8 @@ spec:
           spec:
             description: ApplicationSpec defines the desired state of Application
             properties:
+              application:
+                type: string
               template:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true

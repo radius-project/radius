@@ -20,14 +20,11 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.hierarchy[1]
+    - jsonPath: .spec.application
       name: Application
       type: string
-    - jsonPath: .spec.hierarchy[2]
+    - jsonPath: .spec.resource
       name: Resource
-      type: string
-    - jsonPath: .spec.kind
-      name: Kind
       type: string
     - jsonPath: .status.phrase
       name: Status
@@ -51,6 +48,10 @@ spec:
           spec:
             description: ResourceSpec defines the desired state of Resource
             properties:
+              application:
+                type: string
+              resource:
+                type: string
               template:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true

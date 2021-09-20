@@ -6,28 +6,25 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: daprinvokeroutes.radius.dev
+  name: daprioinvokeroutes.radius.dev
 spec:
   group: radius.dev
   names:
     categories:
     - all
     - radius
-    kind: DaprInvokeRoute
-    listKind: DaprInvokeRouteList
-    plural: daprinvokeroutes
-    singular: daprinvokeroute
+    kind: DaprIOInvokeRoute
+    listKind: DaprIOInvokeRouteList
+    plural: daprioinvokeroutes
+    singular: daprioinvokeroute
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.hierarchy[1]
+    - jsonPath: .spec.application
       name: Application
       type: string
-    - jsonPath: .spec.hierarchy[2]
+    - jsonPath: .spec.resource
       name: Resource
-      type: string
-    - jsonPath: .spec.kind
-      name: Kind
       type: string
     - jsonPath: .status.phrase
       name: Status
@@ -51,6 +48,10 @@ spec:
           spec:
             description: ResourceSpec defines the desired state of Resource
             properties:
+              application:
+                type: string
+              resource:
+                type: string
               template:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
