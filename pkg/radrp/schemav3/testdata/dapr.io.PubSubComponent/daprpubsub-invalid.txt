@@ -1,0 +1,1 @@
+(root).properties.config: Additional property extra is not allowed

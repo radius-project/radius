@@ -1,0 +1,10 @@
+{
+  "id": "id", "name": "name",
+  "kind": "dapr.io/StateStore@v1alpha1",
+  "properties": {
+    "config": {
+      "managed": true,
+      "kind": "dapr.io/RedisState"
+    }
+  }
+}
