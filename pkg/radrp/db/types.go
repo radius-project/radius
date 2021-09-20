@@ -6,12 +6,15 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/fatih/structs"
 )
 
@@ -142,13 +145,37 @@ type ComponentTrait struct {
 type OutputResource struct {
 	LocalID            string               `bson:"id"`
 	HealthID           string               `bson:"healthId"`
-	ResourceID         string               `bson:"resourceId"`
 	ResourceKind       string               `bson:"resourceKind"`
 	OutputResourceInfo interface{}          `bson:"outputResourceInfo"`
 	Managed            bool                 `bson:"managed"`
 	OutputResourceType string               `bson:"outputResourceType"`
 	Resource           interface{}          `bson:"resource"`
 	Status             OutputResourceStatus `bson:"status"`
+}
+
+// GetResourceID returns the identifier of the entity/resource to be queried by the health service
+func (resource OutputResource) GetResourceID() string {
+	if resource.OutputResourceInfo == nil {
+		return ""
+	}
+
+	if resource.OutputResourceType == outputresource.TypeARM {
+		return resource.OutputResourceInfo.(outputresource.ARMInfo).ID
+	} else if resource.OutputResourceType == outputresource.TypeAADPodIdentity {
+		return resource.OutputResourceInfo.(outputresource.AADPodIdentityInfo).AKSClusterName + "-" + resource.OutputResourceInfo.(outputresource.AADPodIdentityInfo).Name
+	} else if resource.OutputResourceType == outputresource.TypeKubernetes {
+		kID := healthcontract.KubernetesID{
+			Kind:      resource.OutputResourceInfo.(outputresource.K8sInfo).Kind,
+			Namespace: resource.OutputResourceInfo.(outputresource.K8sInfo).Namespace,
+			Name:      resource.OutputResourceInfo.(outputresource.K8sInfo).Name,
+		}
+		id, err := json.Marshal(kID)
+		if err != nil {
+			return ""
+		}
+		return string(id)
+	}
+	return ""
 }
 
 // OutputResourceStatus represents the status of the Output Resource

@@ -318,7 +318,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 func addDBOutputResource(resource outputresource.OutputResource, dbOutputResources *[]db.OutputResource) {
 	// Save the output resource to DB
 	dbr := db.OutputResource{
-		ResourceID:         resource.GetResourceID(),
 		Managed:            resource.Managed,
 		HealthID:           resource.HealthID,
 		LocalID:            resource.LocalID,
@@ -471,7 +470,7 @@ func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, appI
 	errs := []error{}
 	for _, or := range component.Properties.Status.OutputResources {
 		outputResourceInfo := healthcontract.ResourceDetails{
-			ResourceID:     or.ResourceID,
+			ResourceID:     or.GetResourceID(),
 			ResourceKind:   or.ResourceKind,
 			ApplicationID:  appID,
 			ComponentID:    component.Name,

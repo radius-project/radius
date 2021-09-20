@@ -89,17 +89,25 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 				OutputResources: []db.OutputResource{
 					{
 						LocalID:            "L1",
-						ResourceID:         "ResourceID_1",
 						HealthID:           "HealthID_1",
 						OutputResourceType: outputresource.TypeARM,
 						ResourceKind:       "Kind1",
+						OutputResourceInfo: outputresource.ARMInfo{
+							ID:           "ResourceID_1",
+							ResourceType: "Dummy1",
+							APIVersion:   "2021-01-01",
+						},
 					},
 					{
 						LocalID:            "L2",
-						ResourceID:         "ResourceID_2",
 						HealthID:           "HealthID_2",
 						OutputResourceType: outputresource.TypeARM,
 						ResourceKind:       "Kind1",
+						OutputResourceInfo: outputresource.ARMInfo{
+							ID:           "ResourceID_2",
+							ResourceType: "Dummy2",
+							APIVersion:   "2021-01-01",
+						},
 					},
 				},
 			},
