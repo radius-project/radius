@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"github.com/Azure/radius/pkg/cli/kubernetes"
@@ -38,9 +39,12 @@ import (
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/discovery"
+	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/restmapper"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -119,13 +123,48 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize application reconciler: %w", err)
 	}
 
-	err = (&radcontroller.ResourceReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr)
+	componentTypes := []struct {
+		client.Object
+		client.ObjectList
+	}{ // TODO GetListType
+		{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
+		{&radiusv1alpha3.DaprIOPubSubComponent{}, &radiusv1alpha3.DaprIOPubSubComponentList{}},
+		{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
+		{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
+	}
+
+	dc, err := discovery.NewDiscoveryClientForConfig(ctrl.GetConfigOrDie())
 	if err != nil {
-		return fmt.Errorf("failed to initialize component reconciler: %w", err)
+		return fmt.Errorf("failed to create discovery client: %w", err)
+	}
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+
+	for _, componentType := range componentTypes {
+		gvks, _, err := scheme.ObjectKinds(componentType.Object)
+		if err != nil {
+			return fmt.Errorf("failed to initialize find objects : %w", err)
+		}
+		for _, gvk := range gvks {
+			if gvk.GroupVersion() != radiusv1alpha3.GroupVersion {
+				continue
+			}
+			// Get GVR for corresponding component.
+			gvr, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+
+			if err != nil {
+				return fmt.Errorf("can't find gvr: %w", err)
+			}
+
+			if err = (&radcontroller.ResourceReconciler{
+				Client:  mgr.GetClient(),
+				Log:     ctrl.Log.WithName("controllers").WithName(componentType.GetName()),
+				Scheme:  mgr.GetScheme(),
+				Dynamic: dynamicClient,
+				GVR:     gvr.Resource,
+			}).SetupWithManager(mgr, componentType.Object, componentType.ObjectList); err != nil {
+				return fmt.Errorf("can't create controller: %w", err)
+			}
+		}
 	}
 
 	if err = (&bicepcontroller.DeploymentTemplateReconciler{
@@ -140,6 +179,7 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize application webhook: %w", err)
 	}
+	// TODO webhook manager needs to be per controller
 	err = (&radiusv1alpha3.Resource{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize component webhook: %w", err)
@@ -194,7 +234,11 @@ func (ct ControllerTest) Test(t *testing.T) error {
 		unst, err := GetUnstructured(path.Join(ct.ControllerStep.TemplateFolder, item.Name()))
 		require.NoError(t, err, "failed to get unstructured")
 
-		gvr, err := gvr(unst)
+		gvr := schema.GroupVersionResource{
+			Group:    "bicep.dev",
+			Version:  "v1alpha3",
+			Resource: "deploymenttemplates",
+		}
 		require.NoError(t, err, "failed to get gvr")
 
 		data, err := unst.MarshalJSON()
@@ -230,36 +274,6 @@ func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
 	uns := &unstructured.Unstructured{}
 	err = json.Unmarshal(content, uns)
 	return uns, err
-}
-
-func gvr(unst *unstructured.Unstructured) (schema.GroupVersionResource, error) {
-	if unst.GroupVersionKind().Kind == "Application" {
-		return schema.GroupVersionResource{
-			Group:    "radius.dev",
-			Version:  "v1alpha1",
-			Resource: "applications",
-		}, nil
-	} else if unst.GroupVersionKind().Kind == "Component" {
-		return schema.GroupVersionResource{
-			Group:    "radius.dev",
-			Version:  "v1alpha1",
-			Resource: "components",
-		}, nil
-	} else if unst.GroupVersionKind().Kind == "Deployment" {
-		return schema.GroupVersionResource{
-			Group:    "radius.dev",
-			Version:  "v1alpha1",
-			Resource: "deployments",
-		}, nil
-	} else if unst.GroupVersionKind().Kind == "DeploymentTemplate" {
-		return schema.GroupVersionResource{
-			Group:    "bicep.dev",
-			Version:  "v1alpha1",
-			Resource: "deploymenttemplates",
-		}, nil
-	}
-
-	return schema.GroupVersionResource{}, fmt.Errorf("unsupported resource  '%s'", unst.GroupVersionKind().Kind)
 }
 
 func getEnvTestBinaryPath() (string, error) {
