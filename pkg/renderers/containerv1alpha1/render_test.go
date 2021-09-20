@@ -533,8 +533,13 @@ func TestRenderUsesEnvVars_SecretReference(t *testing.T) {
 
 	t.Run("verify deployment", func(t *testing.T) {
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
-		require.Equal(t, testEnvVarName1, envVars[0].ValueFrom.SecretKeyRef.Key)
-		require.Equal(t, testEnvVarName2, envVars[1].ValueFrom.SecretKeyRef.Key)
+		if envVars[0].Name == testEnvVarName1 {
+			require.Equal(t, testEnvVarName1, envVars[0].ValueFrom.SecretKeyRef.Key)
+			require.Equal(t, testEnvVarName2, envVars[1].ValueFrom.SecretKeyRef.Key)
+		} else {
+			require.Equal(t, testEnvVarName1, envVars[1].ValueFrom.SecretKeyRef.Key)
+			require.Equal(t, testEnvVarName2, envVars[0].ValueFrom.SecretKeyRef.Key)
+		}
 	})
 
 	t.Run("verify secret", func(t *testing.T) {
