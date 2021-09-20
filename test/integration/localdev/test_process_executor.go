@@ -8,6 +8,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,6 +32,7 @@ type ProcessExecution struct {
 type TestProcessExecutor struct {
 	nextPID    int32
 	Executions []ProcessExecution
+	m          *sync.RWMutex
 }
 
 const (
@@ -41,6 +43,7 @@ const (
 func NewTestProcessExecutor() *TestProcessExecutor {
 	return &TestProcessExecutor{
 		Executions: make([]ProcessExecution, 0),
+		m:          &sync.RWMutex{},
 	}
 }
 
@@ -53,6 +56,9 @@ func (e *TestProcessExecutor) StartProcess(ctx context.Context, exe string, args
 	copy(newEnv, env)
 
 	pid = int(atomic.AddInt32(&e.nextPID, 1))
+	e.m.Lock()
+	defer e.m.Unlock()
+
 	pe := ProcessExecution{
 		PID:         pid,
 		Executable:  exe,
@@ -73,37 +79,23 @@ func (e *TestProcessExecutor) StartProcess(ctx context.Context, exe string, args
 	return
 }
 
+// Called by the controller (via Executor interface)
 func (e *TestProcessExecutor) StopProcess(pid int) error {
-	i := e.findByPid(pid)
-	if i == NotFound {
-		return fmt.Errorf("No process with PID %d found", pid)
-	}
-	pe := e.Executions[i]
-	pe.ExitCode = KilledProcessExitCode
-	pe.EndedAt = time.Now()
-	e.Executions[i] = pe
-	if pe.ExitHandler != nil {
-		pe.ExitHandler.OnProcessExited(pid, KilledProcessExitCode, nil)
-	}
-	return nil
+	return e.stopProcessImpl(pid, KilledProcessExitCode)
 }
 
+// Called by tests
 func (e *TestProcessExecutor) SimulateProcessExit(t *testing.T, pid int, exitCode int) {
-	i := e.findByPid(pid)
-	if i == NotFound {
-		require.Failf(t, "invalid PID", "no process with PID %d found (test issue)", pid)
-	}
-	pe := e.Executions[i]
-	pe.ExitCode = exitCode
-	pe.EndedAt = time.Now()
-	e.Executions[i] = pe
-	if pe.ExitHandler != nil {
-		pe.ExitHandler.OnProcessExited(pid, exitCode, nil)
+	err := e.stopProcessImpl(pid, exitCode)
+	if err != nil {
+		require.Failf(t, "invalid PID (test issue)", err.Error())
 	}
 }
 
 func (e *TestProcessExecutor) FindAll(exeName string, cond func(pe ProcessExecution) bool) []ProcessExecution {
 	retval := make([]ProcessExecution, 0)
+	e.m.RLock()
+	defer e.m.RUnlock()
 
 	for _, pe := range e.Executions {
 		if pe.Executable == exeName {
@@ -129,4 +121,22 @@ func (e *TestProcessExecutor) findByPid(pid int) int {
 	}
 
 	return NotFound
+}
+
+func (e *TestProcessExecutor) stopProcessImpl(pid, exitCode int) error {
+	e.m.Lock()
+	defer e.m.Unlock()
+
+	i := e.findByPid(pid)
+	if i == NotFound {
+		return fmt.Errorf("No process with PID %d found", pid)
+	}
+	pe := e.Executions[i]
+	pe.ExitCode = exitCode
+	pe.EndedAt = time.Now()
+	e.Executions[i] = pe
+	if pe.ExitHandler != nil {
+		pe.ExitHandler.OnProcessExited(pid, exitCode, nil)
+	}
+	return nil
 }
