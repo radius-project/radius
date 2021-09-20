@@ -6,7 +6,15 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-radclient generate-go generate-k8s-manifests generate-controller ## Generates all targets.
+generate: generate-rp-manifest generate-radclient generate-go generate-k8s-manifests generate-controller ## Generates all targets.
+
+.PHONY: generate-rp-manifest
+generate-rp-manifest: ## Generates Custom RP manifest that registers our resource types.
+	@echo "$(ARROW) Updating manifest..."
+	go run cmd/rp-manifest-gen/main.go \
+		--input deploy/rp-full.input.json \
+		--output deploy/rp-full.json \
+		--resources pkg/radrp/schemav3/resource-types.json
 
 .PHONY: generate-node-installed
 generate-node-installed:
