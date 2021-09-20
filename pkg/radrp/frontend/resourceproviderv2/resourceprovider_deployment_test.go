@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/deployment"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha1"
 	"github.com/go-logr/logr"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -179,6 +180,54 @@ func Test_DeploymentCreated_MultipleComponents(t *testing.T) {
 	require.Equal(t, app.Components["C"], *action.Definition)
 	require.Equal(t, revision.Revision(""), action.OldRevision)
 	require.Equal(t, revision.Revision("1"), action.NewRevision)
+}
+
+func Test_DeploymentUpdate_RegistersForHealthChecks(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockDeploymentProcessor := deployment.NewMockDeploymentProcessor(ctrl)
+	mockDeploymentProcessor.EXPECT().RegisterForHealthChecks(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(nil)
+
+	rp := rp{
+		deploy: mockDeploymentProcessor,
+	}
+
+	actions := map[string]deployment.ComponentAction{
+		"C1": {
+			ApplicationName: "A",
+			ComponentName:   "C1",
+			Operation: deployment.UpdateWorkload,
+			Definition: &db.Component{
+				Kind:       containerv1alpha1.Kind,
+				Revision:   revision.Revision("1"),
+				Properties: *db.NewComponentProperties(),
+			},
+		},
+		"C2": {
+			ApplicationName: "A",
+			ComponentName:   "C2",
+			Operation: deployment.UpdateWorkload,
+			Definition: &db.Component{
+				Kind:       containerv1alpha1.Kind,
+				Revision:   revision.Revision("1"),
+				Properties: *db.NewComponentProperties(),
+			},
+		},
+		"C3": {
+			ApplicationName: "A",
+			ComponentName:   "C3",
+			Operation: deployment.UpdateWorkload,
+			Definition: &db.Component{
+				Kind:       containerv1alpha1.Kind,
+				Revision:   revision.Revision("1"),
+				Properties: *db.NewComponentProperties(),
+			},
+		},
+	}
+
+	ctx := createContext(t)
+	err := rp.registerForHealthChecks(ctx, actions)
+	require.NoError(t, err)
+
 }
 
 func Test_DeploymentUpdated_OneComponent_Deleted(t *testing.T) {

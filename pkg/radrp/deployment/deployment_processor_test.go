@@ -7,7 +7,6 @@ package deployment
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/Azure/radius/pkg/handlers"
@@ -66,33 +65,9 @@ func Test_DeploymentProcessor_OrderActions(t *testing.T) {
 func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockResourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(2).Return(map[string]string{}, nil)
 	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
 	mockHealthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(2).Return(healthcontract.HealthCheckOptions{})
 	mockRendererKind := renderers.NewMockWorkloadRenderer(ctrl)
-	mockRendererKind.EXPECT().Render(gomock.Any(), gomock.Any()).AnyTimes().Return([]outputresource.OutputResource{
-		{
-			LocalID:  "abc",
-			Kind:     "Kind1",
-			HealthID: "HealthID_1",
-			Type:     outputresource.TypeARM,
-			Info: outputresource.ARMInfo{
-				ID: "ResourceID_1",
-			},
-		},
-		{
-			LocalID:  "xyz",
-			Kind:     "Kind1",
-			HealthID: "HealthID_2",
-			Type:     outputresource.TypeKubernetes,
-			Info: outputresource.K8sInfo{
-				Name:      "name1",
-				Namespace: "ns1",
-				Kind:      "Deployment",
-			},
-		},
-	}, nil)
-	mockRendererKind.EXPECT().AllocateBindings(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(map[string]components.BindingState{}, nil)
 	model := model.NewModel(map[string]workloads.WorkloadRenderer{
 		"Dummy1": mockRendererKind,
 	}, map[string]model.Handlers{
@@ -107,23 +82,37 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}}
 
-	actions := map[string]ComponentAction{
-		"C": {
-			ComponentName: "C",
-			Operation:     CreateWorkload,
-			Component: &components.GenericComponent{
-				Kind: "Dummy1",
-			},
-			Definition: &db.Component{
-				Kind: "Kind1",
-				Properties: db.ComponentProperties{
-					Uses: []db.ComponentDependency{},
+	c := db.Component{
+		Kind: "Kind1",
+		Properties: db.ComponentProperties{
+			Status: db.ComponentStatus{
+				OutputResources: []db.OutputResource{
+					{
+						LocalID:            "L1",
+						HealthID:           "HealthID_1",
+						OutputResourceType: outputresource.TypeARM,
+						ResourceKind:       "Kind1",
+						OutputResourceInfo: outputresource.ARMInfo{
+							ID:           "ResourceID_1",
+							ResourceType: "Dummy1",
+							APIVersion:   "2021-01-01",
+						},
+					},
+					{
+						LocalID:            "L2",
+						HealthID:           "HealthID_2",
+						OutputResourceType: outputresource.TypeARM,
+						ResourceKind:       "Kind1",
+						OutputResourceInfo: outputresource.ARMInfo{
+							ID:           "ResourceID_2",
+							ResourceType: "Dummy2",
+							APIVersion:   "2021-01-01",
+						},
+					},
 				},
 			},
 		},
 	}
-
-	deployStatus := db.DeploymentStatus{}
 
 	var ctx context.Context
 	logger, err := radlogger.NewTestLogger(t)
@@ -133,7 +122,7 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 	} else {
 		ctx = logr.NewContext(context.Background(), logger)
 	}
-	err = dp.UpdateDeployment(ctx, "A", "A", &deployStatus, actions)
+	err = dp.RegisterForHealthChecks(ctx, "A", c)
 	require.NoError(t, err, "Update Deployment failed")
 
 	// Registration for first output resource
@@ -141,33 +130,14 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 	require.Equal(t, healthcontract.ActionRegister, msg1.Action)
 	require.Equal(t, "ResourceID_1", msg1.ResourceInfo.ResourceID)
 	require.Equal(t, "Kind1", msg1.ResourceInfo.ResourceKind)
-	outputResourceInfo1 := healthcontract.ResourceDetails{
-		ResourceID:    "ResourceID_1",
-		ResourceKind:  "Kind1",
-		ApplicationID: "A",
-		ComponentID:   "C",
-	}
-	require.Equal(t, outputResourceInfo1.GetHealthID(), msg1.ResourceInfo.HealthID)
+	require.Equal(t, "HealthID_1", msg1.ResourceInfo.HealthID)
 
 	// Registration for second output resource
 	msg2 := <-registrationChannel
 	require.Equal(t, healthcontract.ActionRegister, msg2.Action)
 	require.Equal(t, "Kind1", msg2.ResourceInfo.ResourceKind)
-
-	kID := healthcontract.KubernetesID{
-		Kind:      "Deployment",
-		Namespace: "ns1",
-		Name:      "name1",
-	}
-	resourceID, _ := json.Marshal(kID)
-	require.Equal(t, string(resourceID), msg2.ResourceInfo.ResourceID)
-	outputResourceInfo2 := healthcontract.ResourceDetails{
-		ResourceID:    string(resourceID),
-		ResourceKind:  "Kind1",
-		ApplicationID: "A",
-		ComponentID:   "C",
-	}
-	require.Equal(t, outputResourceInfo2.GetHealthID(), msg2.ResourceInfo.HealthID)
+	require.Equal(t, "ResourceID_2", msg2.ResourceInfo.ResourceID)
+	require.Equal(t, "HealthID_2", msg2.ResourceInfo.HealthID)
 }
 
 func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *testing.T) {
@@ -190,7 +160,7 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 			LocalID:  "xyz",
 			Kind:     "Kind1",
 			HealthID: "HealthID_2",
-			Type:     outputresource.TypeKubernetes,
+			Type:     "Kind1",
 			Info: outputresource.K8sInfo{
 				Name:      "name1",
 				Namespace: "ns1",

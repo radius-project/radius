@@ -49,6 +49,20 @@ func (mr *MockDeploymentProcessorMockRecorder) DeleteDeployment(arg0, arg1, arg2
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeployment", reflect.TypeOf((*MockDeploymentProcessor)(nil).DeleteDeployment), arg0, arg1, arg2, arg3)
 }
 
+// RegisterForHealthChecks mocks base method.
+func (m *MockDeploymentProcessor) RegisterForHealthChecks(arg0 context.Context, arg1 string, arg2 db.Component) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RegisterForHealthChecks", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RegisterForHealthChecks indicates an expected call of RegisterForHealthChecks.
+func (mr *MockDeploymentProcessorMockRecorder) RegisterForHealthChecks(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterForHealthChecks", reflect.TypeOf((*MockDeploymentProcessor)(nil).RegisterForHealthChecks), arg0, arg1, arg2)
+}
+
 // UpdateDeployment mocks base method.
 func (m *MockDeploymentProcessor) UpdateDeployment(arg0 context.Context, arg1, arg2 string, arg3 *db.DeploymentStatus, arg4 map[string]ComponentAction) error {
 	m.ctrl.T.Helper()

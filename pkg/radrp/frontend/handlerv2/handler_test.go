@@ -1626,6 +1626,7 @@ func Test_UpdateDeployment_FailureCanBeRetried(t *testing.T) {
 				return errors.New("Timeout!")
 			}
 		})
+	test.deploy.EXPECT().RegisterForHealthChecks(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().AnyTimes()
 
 	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
 	rev := test.DBCreateComponent(TestApplicationName, "A", "radius.dev/Test@v1alpha1", db.ComponentProperties{})
@@ -1725,6 +1726,7 @@ func Test_UpdateDeployment_UpdateSuccess(t *testing.T) {
 				return errors.New("timed out")
 			}
 		})
+	test.deploy.EXPECT().RegisterForHealthChecks(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().AnyTimes()
 
 	test.DBCreateApplication(TestApplicationName, db.ApplicationProperties{})
 	test.DBCreateDeployment(TestApplicationName, "default", db.DeploymentProperties{})
