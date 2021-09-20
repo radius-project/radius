@@ -23,6 +23,12 @@ import (
 
 const testAppName = "test-app"
 const testContainerComponentName = "test-container"
+const testEnvVarName1 = "TEST_VAR_1"
+const testEnvVarName2 = "TEST_VAR_2"
+const testProperty1 = "uri"
+const testPropertyValue1 = "https://foo.bar"
+const testProperty2 = "port"
+const testPropertyValue2 = "8000"
 
 func createContext(t *testing.T) context.Context {
 	logger, err := radlogger.NewTestLogger(t)
@@ -466,5 +472,79 @@ func TestRenderWithKeyVault_Success(t *testing.T) {
 		dependencies := serviceOutputResource.Dependencies
 		require.Len(t, dependencies, 1)
 		require.Equal(t, dependencies[0].LocalID, outputresource.LocalIDDeployment)
+	})
+}
+
+func TestRenderUsesEnvVars_SecretReference(t *testing.T) {
+	ctx := createContext(t)
+	renderer := &Renderer{}
+
+	w := workloads.InstantiatedWorkload{
+		Application: testAppName,
+		Name:        testContainerComponentName,
+		Workload: components.GenericComponent{
+			Name: testContainerComponentName,
+			Kind: Kind,
+			Run: map[string]interface{}{
+				"container": map[string]interface{}{
+					"image": "test/test-image:latest",
+				},
+			},
+			Bindings: map[string]components.GenericBinding{
+				"web": {
+					Kind: "http",
+					AdditionalProperties: map[string]interface{}{
+						"port": 80,
+					},
+				},
+			},
+			Uses: []components.GenericDependency{
+				{
+					Binding: components.NewComponentBindingExpression(testAppName, "test-component", "default", testProperty1),
+					Env: map[string]components.BindingExpression{
+						testEnvVarName1: components.NewComponentBindingExpression(testAppName, "test-component", "default", testProperty1),
+						testEnvVarName2: components.NewComponentBindingExpression(testAppName, "test-component", "default", testProperty2),
+					},
+				},
+			},
+		},
+		BindingValues: map[components.BindingKey]components.BindingState{
+			{Component: "test-component", Binding: "default"}: {
+				Component: "test-component",
+				Binding:   "default",
+				Kind:      Kind,
+				Properties: map[string]interface{}{
+					testProperty1: testPropertyValue1,
+					testProperty2: testPropertyValue2,
+				},
+			},
+		},
+	}
+
+	resources, err := renderer.Render(ctx, w)
+	require.NoError(t, err)
+	require.Len(t, resources, 3)
+
+	kubernetes.FindService(resources)
+	deployment, _ := kubernetes.FindDeployment(resources)
+	secret, secretOutputResource := kubernetes.FindSecret(resources)
+
+	labels := kubernetes.MakeDescriptiveLabels(testAppName, testContainerComponentName)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		envVars := deployment.Spec.Template.Spec.Containers[0].Env
+		require.Equal(t, testEnvVarName1, envVars[0].ValueFrom.SecretKeyRef.Key)
+		require.Equal(t, testEnvVarName2, envVars[1].ValueFrom.SecretKeyRef.Key)
+	})
+
+	t.Run("verify secret", func(t *testing.T) {
+		require.Equal(t, testContainerComponentName, secret.Name)
+		require.Equal(t, testAppName, secret.Namespace)
+		require.Equal(t, labels, secret.Labels)
+		require.Empty(t, secret.Annotations)
+
+		require.Equal(t, secretOutputResource.LocalID, outputresource.LocalIDSecret)
+		require.Equal(t, string(secret.Data[testEnvVarName1]), testPropertyValue1)
+		require.Equal(t, string(secret.Data[testEnvVarName2]), testPropertyValue2)
 	})
 }
