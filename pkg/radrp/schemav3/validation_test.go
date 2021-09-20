@@ -85,12 +85,9 @@ func Test_Validation(t *testing.T) {
 					sort.Strings(serialized)
 					expectedText, err := ioutil.ReadFile(tc.ErrorsFullPath)
 					require.NoError(t, err)
-
+					expectedText = []byte(strings.TrimSpace(string(expectedText)))
 					expected := strings.Split(strings.ReplaceAll(string(expectedText), "\r\n", "\n"), "\n")
-
-					sort.Strings(expected)
-					sort.Strings(serialized)
-					require.Equal(t, expected, serialized)
+					require.ElementsMatch(t, expected, serialized)
 				})
 			}
 		})
@@ -105,8 +102,8 @@ func findTests(t *testing.T) map[string][]testcase {
 	//  .+-invalid.jsont
 	//
 	// And invalid test should have a matching .*-invalid.txt
-	validTestRegex := regexp.MustCompile(".+-valid.json")
-	invalidTestRegex := regexp.MustCompile(".+-invalid.json")
+	validTestRegex := regexp.MustCompile(".+-valid.json$")
+	invalidTestRegex := regexp.MustCompile(".+-invalid.json$")
 
 	directories, err := ioutil.ReadDir("testdata")
 	require.NoError(t, err)
@@ -129,7 +126,7 @@ func findTests(t *testing.T) map[string][]testcase {
 			}
 
 			if invalidTestRegex.Match([]byte(file.Name())) {
-				errorsFullPath := path.Join(directoryPath, file.Name()[0:len(file.Name())-len(".json")]+".txt")
+				errorsFullPath := path.Join(directoryPath, strings.TrimSuffix(file.Name(), ".json")+".txt")
 				_, err := os.Stat(errorsFullPath)
 				if err == os.ErrExist {
 					err = fmt.Errorf("expected to find a file at %q. Invalid tests must provide a list of errors", errorsFullPath)
