@@ -16,6 +16,23 @@ on:
       - main
       - release/*
 jobs:
+  # The pre_check job determined whether we should skip some workflow
+  # jobs.  Currently, it seems that for Required jobs, only the
+  # un-parameterized jobs can be skipped while meeting the
+  # requirements. For example, `kubernetes_tests` and `deploy_tests`
+  # jobs can be skipped while `build` and `image` can't
+  # be. Fortunately, these two jobs are the longest longing as well as
+  # the most resource intensive.
+  #
+  # The reason for this pecularity seems to be that if a job is
+  # skipped entirely, the parameter expansion logic did not kick in
+  # and did not generate the parameterized job. Once this is confirmed
+  # we can probably workaround by adding a dependent "Done" job for
+  # parameterized jobs, and only consider those as required.
+  #
+  # However, the `build` and `images` jobs are considerably less
+  # expensive than the `kubernetes_tests` and `deploy_tests` steps, so
+  # it may not be worth complicating our workflow for small gain.
   pre_check:
     runs-on: ubuntu-latest
     outputs:
@@ -184,7 +201,7 @@ jobs:
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz --force
   kubernetes_tests:
     name: Run Kubernetes tests
-    needs: [ 'build', 'images' ]
+    needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
     env:
