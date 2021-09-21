@@ -185,7 +185,7 @@ jobs:
   kubernetes_tests:
     name: Run Kubernetes tests
     needs: [ 'build', 'images' ]
-    if: startsWith(github.ref, 'refs/pull/') # run on PR
+    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.17'
