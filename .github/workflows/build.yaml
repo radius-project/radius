@@ -29,8 +29,6 @@ jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ${{ matrix.os }}
-    needs: pre_check
-    if: ${{ needs.pre_check.outputs.should_skip != 'true' }}
     env:
       GOVER: '^1.17'
       GOOS: ${{ matrix.target_os }}
@@ -88,8 +86,6 @@ jobs:
   images:
     name: Container image build
     runs-on: ubuntu-latest
-    needs: pre_check
-    if: ${{ needs.pre_check.outputs.should_skip != 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -256,8 +252,8 @@ jobs:
         path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
   deploy_tests:
     name: Run deployment tests
-    needs: [ 'build', 'images' ]
-    if: startsWith(github.ref, 'refs/pull/') # run on PR
+    needs: [ 'build', 'images', 'pre_check' ]
+    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.17'
