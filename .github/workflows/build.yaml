@@ -17,6 +17,7 @@ on:
       - release/*
 jobs:
   pre_check:
+    runs-on: ubuntu-latest
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
