@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/certs"
 	"github.com/Azure/radius/pkg/version"
@@ -34,10 +35,11 @@ func NewServer(ctx context.Context, options ServerOptions) *http.Server {
 
 	r.Path("/version").Methods("GET").HandlerFunc(reportVersion)
 
-	app := rewrite(ctx, r)
+	app := rewrite(r)
+	app = appendLogValues(app)
 
 	if options.Authenticate {
-		app = authenticateCert(ctx, app)
+		app = authenticateCert(app)
 	}
 
 	return &http.Server{
@@ -69,9 +71,9 @@ func reportVersion(w http.ResponseWriter, req *http.Request) {
 //
 // This middleware allows us to use the traditional resource provider URL space and use a router
 // to parse URLs.
-func rewrite(ctx context.Context, h http.Handler) http.Handler {
+func rewrite(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		logger := radlogger.GetLogger(ctx)
+		logger := radlogger.GetLogger(r.Context())
 		header := r.Header.Get("X-MS-CustomProviders-RequestPath")
 		if header != "" {
 			logger.V(radlogger.Verbose).Info(fmt.Sprintf("Rewriting URL Path to: '%s'", header))
@@ -84,9 +86,33 @@ func rewrite(ctx context.Context, h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func authenticateCert(ctx context.Context, h http.Handler) http.Handler {
+// Append logging values to the context based on the Resource ID (if present).
+func appendLogValues(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		logger := radlogger.GetLogger(ctx)
+		id, err := azresources.Parse(r.URL.Path)
+		if err != nil {
+			// This just means the request is for an ARM resource. Not an error.
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		values := []interface{}{}
+		values = append(values, radlogger.LogFieldResourceID, id.ID)
+		values = append(values, radlogger.LogFieldSubscriptionID, id.SubscriptionID)
+		values = append(values, radlogger.LogFieldResourceGroup, id.ResourceGroup)
+		values = append(values, radlogger.LogFieldResourceType, id.Type())
+		values = append(values, radlogger.LogFieldResourceName, id.QualifiedName())
+
+		r = r.WithContext(radlogger.WrapLogContext(r.Context(), values...))
+		h.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(fn)
+}
+
+func authenticateCert(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		logger := radlogger.GetLogger(r.Context())
 		if !strings.HasPrefix(r.URL.Path, "/subscriptions/") {
 			logger.V(radlogger.Verbose).Info("request is not for a sensitive URL - allowing")
 			h.ServeHTTP(w, r)

@@ -9,7 +9,6 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/model/revision"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/resources"
 )
 
@@ -187,21 +186,6 @@ type DeploymentComponent struct {
 	ComponentName string            `json:"componentName,omitempty"`
 	ID            string            `json:"id,omitempty"`
 	Revision      revision.Revision `json:"revision"`
-}
-
-// See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations
-type Operation struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
-
-	// These should be in ISO8601 format
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
-
-	PercentComplete float64                 `json:"percentComplete"`
-	Properties      map[string]interface{}  `json:"properties,omitempty"`
-	Error           *armerrors.ErrorDetails `json:"error"`
 }
 
 // See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations

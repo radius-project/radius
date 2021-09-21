@@ -36,6 +36,9 @@ const scopeResourceType = "Scopes"
 // use to do versioning at the RP level since Custom RP does not support different resources per-api-version.
 const appmodelv2RPName = "radius"
 
+const V3ApplicationResourceType = "Application"
+const V3OperationResourceType = operationResourceType
+
 // ApplicationCollectionType can be used to validate resource IDs with ValidateResourceType.
 var ApplicationCollectionType = azresources.KnownType{
 	Types: []azresources.ResourceType{

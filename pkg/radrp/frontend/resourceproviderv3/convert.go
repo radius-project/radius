@@ -18,7 +18,7 @@ func NewDBApplicationResource(id azresources.ResourceID, application Application
 		Type:            id.Type(),
 		SubscriptionID:  id.SubscriptionID,
 		ResourceGroup:   id.ResourceGroup,
-		ApplicationName: id.Types[0].Name,
+		ApplicationName: id.Types[1].Name,
 		Tags:            application.Tags,
 		Location:        application.Location,
 
@@ -33,8 +33,8 @@ func NewDBRadiusResource(id azresources.ResourceID, resource RadiusResource) db.
 		Type:            id.Type(),
 		SubscriptionID:  id.SubscriptionID,
 		ResourceGroup:   id.ResourceGroup,
-		ApplicationName: id.Types[0].Name,
-		ResourceName:    id.Types[1].Name,
+		ApplicationName: id.Types[1].Name,
+		ResourceName:    id.Types[2].Name,
 		Definition:      resource.Properties,
 		Status:          db.RadiusResourceStatus{},
 
