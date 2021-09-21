@@ -707,6 +707,31 @@
                 "name": "Application/azure.com.ServiceBusQueueComponent",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
+                "name": "Application/dapr.io.PubSubComponent",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
+                "name": "Application/dapr.io.StateStoreComponent",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
+                "name": "Application/mongodb.com.MongoDBComponent",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
+                "name": "Application/rabbitmq.com.MessageQueue",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
+                "name": "Application/redislabs.com.Redis",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             }
         ],
         "rpDeploymentName": "[concat('rad-rp-', guid(parameters('resourceGroup')))]"
