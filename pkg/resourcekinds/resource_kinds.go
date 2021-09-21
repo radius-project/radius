@@ -24,4 +24,5 @@ const (
 	AzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
 	AzureRoleAssignment              = "azure.roleassignment"
 	AzureRedis                       = "azure.redis"
+	Volume                           = "volume"
 )

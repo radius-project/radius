@@ -32,4 +32,5 @@ const (
 	LocalIDService                       = "Service"
 	LocalIDStatefulSet                   = "StatefulSet"
 	LocalIDUserAssignedManagedIdentityKV = "UserAssignedManagedIdentity-KV"
+	LocalIDVolume                        = "Volume"
 )
