@@ -78,7 +78,7 @@ func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWo
 		AdditionalProperties: map[string]interface{}{ // TODO make this accept jsonpointer
 			"host":   w.Name,
 			"port":   fmt.Sprint(route.GetEffectivePort()),
-			"url":    "",
+			"url":    fmt.Sprintf("http://%s:%d", w.Name, route.GetEffectivePort()),
 			"scheme": "http",
 		},
 	}

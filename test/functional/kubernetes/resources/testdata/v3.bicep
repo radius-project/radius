@@ -30,6 +30,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
           SERVICE__BACKEND__PORT: '${backend_http.properties.port}'
         }
       }
+      traits: [
+        {
+          kind: 'radius.dev/InboundRoute@v1alpha1'
+          binding: 'web'
+        }
+      ]
     }
   }
   

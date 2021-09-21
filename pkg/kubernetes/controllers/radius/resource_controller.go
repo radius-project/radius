@@ -226,7 +226,6 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 			Kind:    resourceType,
 		})
 
-		// TODO filter by application as well.
 		err = r.Client.Get(ctx, client.ObjectKey{
 			Namespace: req.Namespace,
 			Name:      resourceName,

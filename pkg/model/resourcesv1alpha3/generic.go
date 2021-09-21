@@ -66,11 +66,15 @@ func (generic GenericResource) AsRequired(kind string, specific interface{}) err
 }
 
 func (generic GenericResource) FindTrait(kind string, trait interface{}) (bool, error) {
-	// for _, t := range generic.Template.Body.([]GenericTrait) {
-	// 	if kind == t.Kind {
-	// 		return t.As(kind, trait)
-	// 	}
-	// }
+	traits := generic.AdditionalProperties["traits"]
+	if traits == nil {
+		return false, nil
+	}
+	for _, t := range traits.([]GenericTrait) {
+		if kind == t.Kind {
+			return t.As(kind, trait)
+		}
+	}
 
 	return false, nil
 }
