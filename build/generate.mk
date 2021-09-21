@@ -34,8 +34,10 @@ generate-openapi-specs-v3:
 
 	go run cmd/autorest-schema-gen/main.go \
 		--output schemas/rest-api-specs-v3/radius.json \
-		`# We can't just do *.json because of resource-types.json` \
-		pkg/radrp/schemav3/{common-types,application,traits}.json \
+		`# We can't just do pkg/radrp/schemav3/*.json because we want to exclude resource-types.json` \
+		pkg/radrp/schemav3/common-types.json \
+		pkg/radrp/schemav3/application.json \
+		pkg/radrp/schemav3/traits.json \
 		pkg/radrp/schemav3/*/*.json
 
 .PHONY: generate-radclient-v3
