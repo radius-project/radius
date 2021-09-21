@@ -222,7 +222,7 @@ func (r Renderer) getPodIdentityAndDependencies(ctx context.Context, workload wo
 	return "", nil, nil
 }
 
-func (r Renderer) makeSecrets(options kubernetesOptions, secrets map[string][]byte) *corev1.Secret {
+func (r Renderer) makeSecrets(options kubernetesSecretOptions, secrets map[string][]byte) *corev1.Secret {
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -238,7 +238,7 @@ func (r Renderer) makeSecrets(options kubernetesOptions, secrets map[string][]by
 	}
 }
 
-type kubernetesOptions struct {
+type kubernetesSecretOptions struct {
 	DescriptiveLabels map[string]string
 	SelectorLabels    map[string]string
 	Namespace         string
@@ -274,7 +274,7 @@ func (r Renderer) makeDeployment(ctx context.Context, workload workloads.Instant
 		}
 
 		if len(dep.Env) > 0 {
-			opts := kubernetesOptions{
+			opts := kubernetesSecretOptions{
 				Name:              component.Name,
 				Namespace:         workload.Application,
 				DescriptiveLabels: kubernetes.MakeDescriptiveLabels(workload.Application, workload.Name),
@@ -296,9 +296,6 @@ func (r Renderer) makeDeployment(ctx context.Context, workload workloads.Instant
 					Namespace:  bindingSecret.ObjectMeta.Namespace,
 				},
 			})
-
-			// Add a deployment dependency so that the secret is cleaned up along with the deployment
-			deploymentDependencies = append(deploymentDependencies, outputresource.Dependency{LocalID: outputresource.LocalIDSecret})
 
 			// Set environment variables in the container
 			for k := range dep.Env {
