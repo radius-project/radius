@@ -123,14 +123,19 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize application reconciler: %w", err)
 	}
 
-	componentTypes := []struct {
+	resourceTypes := []struct {
 		client.Object
 		client.ObjectList
-	}{ // TODO GetListType
+	}{
 		{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
+		{&radiusv1alpha3.DaprIOInvokeRoute{}, &radiusv1alpha3.DaprIOInvokeRouteList{}},
 		{&radiusv1alpha3.DaprIOPubSubComponent{}, &radiusv1alpha3.DaprIOPubSubComponentList{}},
 		{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
+		{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
 		{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
+		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
+		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
+		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
 	}
 
 	dc, err := discovery.NewDiscoveryClientForConfig(ctrl.GetConfigOrDie())
@@ -139,8 +144,8 @@ func StartController() error {
 	}
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 
-	for _, componentType := range componentTypes {
-		gvks, _, err := scheme.ObjectKinds(componentType.Object)
+	for _, resourceType := range resourceTypes {
+		gvks, _, err := scheme.ObjectKinds(resourceType.Object)
 		if err != nil {
 			return fmt.Errorf("failed to initialize find objects : %w", err)
 		}
@@ -157,11 +162,11 @@ func StartController() error {
 
 			if err = (&radcontroller.ResourceReconciler{
 				Client:  mgr.GetClient(),
-				Log:     ctrl.Log.WithName("controllers").WithName(componentType.GetName()),
+				Log:     ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
 				Scheme:  mgr.GetScheme(),
 				Dynamic: dynamicClient,
 				GVR:     gvr.Resource,
-			}).SetupWithManager(mgr, componentType.Object, componentType.ObjectList); err != nil {
+			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList); err != nil {
 				return fmt.Errorf("can't create controller: %w", err)
 			}
 		}
