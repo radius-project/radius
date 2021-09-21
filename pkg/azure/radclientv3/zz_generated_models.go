@@ -517,6 +517,59 @@ type ContainerPort struct {
 	Provides *string `json:"provides,omitempty"`
 }
 
+// DaprIoPubSubComponentCreateOrUpdateOptions contains the optional parameters for the DaprIoPubSubComponent.CreateOrUpdate method.
+type DaprIoPubSubComponentCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoPubSubComponentDeleteOptions contains the optional parameters for the DaprIoPubSubComponent.Delete method.
+type DaprIoPubSubComponentDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoPubSubComponentGetOptions contains the optional parameters for the DaprIoPubSubComponent.Get method.
+type DaprIoPubSubComponentGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoPubSubComponentListOptions contains the optional parameters for the DaprIoPubSubComponent.List method.
+type DaprIoPubSubComponentListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoStateStoreComponentCreateOrUpdateOptions contains the optional parameters for the DaprIoStateStoreComponent.CreateOrUpdate method.
+type DaprIoStateStoreComponentCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoStateStoreComponentDeleteOptions contains the optional parameters for the DaprIoStateStoreComponent.Delete method.
+type DaprIoStateStoreComponentDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoStateStoreComponentGetOptions contains the optional parameters for the DaprIoStateStoreComponent.Get method.
+type DaprIoStateStoreComponentGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoStateStoreComponentListOptions contains the optional parameters for the DaprIoStateStoreComponent.List method.
+type DaprIoStateStoreComponentListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprPubSubComponentList - List of dapr.io.PubSubComponent resources.
+type DaprPubSubComponentList struct {
+	// REQUIRED; List of dapr.io.PubSubComponent resources.
+	Value []*DaprPubSubComponentResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubComponentList.
+func (d DaprPubSubComponentList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
 type DaprPubSubComponentProperties struct {
 	BasicComponentProperties
 	// REQUIRED
@@ -551,6 +604,19 @@ type DaprPubSubComponentResource struct {
 
 	// REQUIRED
 	Properties *DaprPubSubComponentProperties `json:"properties,omitempty"`
+}
+
+// DaprStateStoreComponentList - List of dapr.io.StateStoreComponent resources.
+type DaprStateStoreComponentList struct {
+	// REQUIRED; List of dapr.io.StateStoreComponent resources.
+	Value []*DaprStateStoreComponentResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentList.
+func (d DaprStateStoreComponentList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
 }
 
 type DaprStateStoreComponentProperties struct {
@@ -793,6 +859,19 @@ func (m *ManualScalingTrait) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MongoDBComponentList - List of mongodb.com.MongoDBComponent resources.
+type MongoDBComponentList struct {
+	// REQUIRED; List of mongodb.com.MongoDBComponent resources.
+	Value []*MongoDBComponentResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDBComponentList.
+func (m MongoDBComponentList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", m.Value)
+	return json.Marshal(objectMap)
+}
+
 type MongoDBComponentProperties struct {
 	BasicComponentProperties
 	// REQUIRED
@@ -821,6 +900,26 @@ type MongoDBComponentResource struct {
 
 	// REQUIRED
 	Properties *MongoDBComponentProperties `json:"properties,omitempty"`
+}
+
+// MongodbComMongoDBComponentCreateOrUpdateOptions contains the optional parameters for the MongodbComMongoDBComponent.CreateOrUpdate method.
+type MongodbComMongoDBComponentCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongodbComMongoDBComponentDeleteOptions contains the optional parameters for the MongodbComMongoDBComponent.Delete method.
+type MongodbComMongoDBComponentDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongodbComMongoDBComponentGetOptions contains the optional parameters for the MongodbComMongoDBComponent.Get method.
+type MongodbComMongoDBComponentGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongodbComMongoDBComponentListOptions contains the optional parameters for the MongodbComMongoDBComponent.List method.
+type MongodbComMongoDBComponentListOptions struct {
+	// placeholder for future optional parameters
 }
 
 // Operation - Details of a REST API operation, returned from the Resource Provider Operations API
@@ -984,6 +1083,19 @@ type ProxyResource struct {
 	Resource
 }
 
+// RabbitMQComponentList - List of rabbitmq.com.MessageQueue resources.
+type RabbitMQComponentList struct {
+	// REQUIRED; List of rabbitmq.com.MessageQueue resources.
+	Value []*RabbitMQComponentResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentList.
+func (r RabbitMQComponentList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", r.Value)
+	return json.Marshal(objectMap)
+}
+
 type RabbitMQComponentProperties struct {
 	BasicComponentProperties
 	// REQUIRED
@@ -1012,6 +1124,39 @@ type RabbitMQComponentResource struct {
 
 	// REQUIRED
 	Properties *RabbitMQComponentProperties `json:"properties,omitempty"`
+}
+
+// RabbitmqComMessageQueueCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueue.CreateOrUpdate method.
+type RabbitmqComMessageQueueCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitmqComMessageQueueDeleteOptions contains the optional parameters for the RabbitmqComMessageQueue.Delete method.
+type RabbitmqComMessageQueueDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitmqComMessageQueueGetOptions contains the optional parameters for the RabbitmqComMessageQueue.Get method.
+type RabbitmqComMessageQueueGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitmqComMessageQueueListOptions contains the optional parameters for the RabbitmqComMessageQueue.List method.
+type RabbitmqComMessageQueueListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedisComponentList - List of redislabs.com.Redis resources.
+type RedisComponentList struct {
+	// REQUIRED; List of redislabs.com.Redis resources.
+	Value []*RedisComponentResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisComponentList.
+func (r RedisComponentList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", r.Value)
+	return json.Marshal(objectMap)
 }
 
 type RedisComponentProperties struct {
@@ -1048,6 +1193,26 @@ type RedisComponentResource struct {
 
 	// REQUIRED
 	Properties *RedisComponentProperties `json:"properties,omitempty"`
+}
+
+// RedislabsComRedisCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedis.CreateOrUpdate method.
+type RedislabsComRedisCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedislabsComRedisDeleteOptions contains the optional parameters for the RedislabsComRedis.Delete method.
+type RedislabsComRedisDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedislabsComRedisGetOptions contains the optional parameters for the RedislabsComRedis.Get method.
+type RedislabsComRedisGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedislabsComRedisListOptions contains the optional parameters for the RedislabsComRedis.List method.
+type RedislabsComRedisListOptions struct {
+	// placeholder for future optional parameters
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources

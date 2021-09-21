@@ -117,3 +117,93 @@ type ContainerComponentResourceResponse struct {
 	RawResponse *http.Response
 }
 
+// DaprPubSubComponentListResponse is the response envelope for operations that return a DaprPubSubComponentList type.
+type DaprPubSubComponentListResponse struct {
+	// List of dapr.io.PubSubComponent resources.
+	DaprPubSubComponentList *DaprPubSubComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubComponentResourceResponse is the response envelope for operations that return a DaprPubSubComponentResource type.
+type DaprPubSubComponentResourceResponse struct {
+	// Component for Dapr Pub/Sub
+	DaprPubSubComponentResource *DaprPubSubComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoreComponentListResponse is the response envelope for operations that return a DaprStateStoreComponentList type.
+type DaprStateStoreComponentListResponse struct {
+	// List of dapr.io.StateStoreComponent resources.
+	DaprStateStoreComponentList *DaprStateStoreComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoreComponentResourceResponse is the response envelope for operations that return a DaprStateStoreComponentResource type.
+type DaprStateStoreComponentResourceResponse struct {
+	// Component for Dapr state store
+	DaprStateStoreComponentResource *DaprStateStoreComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongoDBComponentListResponse is the response envelope for operations that return a MongoDBComponentList type.
+type MongoDBComponentListResponse struct {
+	// List of mongodb.com.MongoDBComponent resources.
+	MongoDBComponentList *MongoDBComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongoDBComponentResourceResponse is the response envelope for operations that return a MongoDBComponentResource type.
+type MongoDBComponentResourceResponse struct {
+	// The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
+	MongoDBComponentResource *MongoDBComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQComponentListResponse is the response envelope for operations that return a RabbitMQComponentList type.
+type RabbitMQComponentListResponse struct {
+	// List of rabbitmq.com.MessageQueue resources.
+	RabbitMQComponentList *RabbitMQComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQComponentResourceResponse is the response envelope for operations that return a RabbitMQComponentResource type.
+type RabbitMQComponentResourceResponse struct {
+	// The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
+	RabbitMQComponentResource *RabbitMQComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisComponentListResponse is the response envelope for operations that return a RedisComponentList type.
+type RedisComponentListResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+
+	// List of redislabs.com.Redis resources.
+	RedisComponentList *RedisComponentList
+}
+
+// RedisComponentResourceResponse is the response envelope for operations that return a RedisComponentResource type.
+type RedisComponentResourceResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+
+	// The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
+	RedisComponentResource *RedisComponentResource
+}
+
