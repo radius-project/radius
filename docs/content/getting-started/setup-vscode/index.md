@@ -17,7 +17,7 @@ Radius can be used with any text editor, but Radius-specific optimizations are a
 
 ## Install Radius extension
 
-1. Download the stable version of the [custom VSCode extension file](https://radiuspublic.blob.core.windows.net/tools/vscode/stable/rad-vscode-bicep.vsix)
+1. Download the stable version of the [custom VSCode extension file](https://get.radapp.dev/tools/vscode/stable/rad-vscode-bicep.vsix)
 
 1. Install the `.vsix` file
    - In VSCode, manually install the extension using the *Install from VSIX* command in the Extensions view command drop-down.
@@ -38,6 +38,6 @@ Radius can be used with any text editor, but Radius-specific optimizations are a
 
 You can access other versions of the Radius extension from the following URLs:
 
-- [Latest unstable](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix)
+- [Latest unstable](https://get.radapp.dev/tools/vscode/edge/rad-vscode-bicep.vsix)
 
 {{< button text="Next: Create environment" page="create-environment.md" >}}

@@ -1,0 +1,2 @@
+(root).properties.config.managed: properties.config.managed must be one of the following: true
+(root).properties.config: queue is required

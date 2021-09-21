@@ -203,7 +203,7 @@ func (handler *azureServiceBusBaseHandler) LookupSharedManagedNamespaceFromResou
 func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, application string) (*servicebus.SBNamespace, error) {
 	sbc := clients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	location, err := getResourceGroupLocation(ctx, handler.arm)
+	location, err := clients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
 		return nil, err
 	}

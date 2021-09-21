@@ -13,9 +13,9 @@ import (
 	"net/textproto"
 	"net/url"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -276,7 +276,7 @@ type NotFoundResponse struct {
 	Body armerrors.ErrorResponse
 }
 
-func NewNotFoundResponse(id resources.ResourceID) Response {
+func NewNotFoundResponse(id azresources.ResourceID) Response {
 	return &NotFoundResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{

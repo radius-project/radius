@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "AzureKeyVaultComponentResource": {
+      "description": "Component for Azure KeyVault",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AzureKeyVaultComponentProperties"
+        }
+      }
+    },
+    "AzureKeyVaultComponentProperties": {
+      "allOf": [
+        {
+          "$ref": "basic-component.json#/definitions/BasicComponentProperties"
+        }
+      ],
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)",
+          "type": "boolean",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ]
+        }
+      }
+    }
+  }
+}

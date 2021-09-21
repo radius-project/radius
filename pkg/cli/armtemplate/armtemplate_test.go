@@ -49,7 +49,7 @@ func Test_DeploymentTemplate(t *testing.T) {
 					"bindings": map[string]interface{}{
 						"web": map[string]interface{}{
 							"kind":       "http",
-							"targetPort": 80.0,
+							"targetPort": 81.0,
 						},
 					},
 					"run": map[string]interface{}{
@@ -84,10 +84,9 @@ func Test_DeploymentTemplate(t *testing.T) {
 					},
 					"uses": []interface{}{
 						map[string]interface{}{
-							"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web]",
+							"binding": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web]",
 							"env": map[string]interface{}{
-								"SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.host]",
-								"SERVICE__BACKEND__PORT": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.port]",
+								"SERVICE__BACKEND__TARGETPORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.targetPort]",
 							},
 						},
 					},

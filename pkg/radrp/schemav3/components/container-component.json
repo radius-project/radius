@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "ContainerComponentResource": {
+      "description": "The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform",
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ContainerComponentProperties"
+        }
+      }
+    },
+    "ContainerComponentProperties": {
+      "allOf": [
+        {
+          "$ref": "basic-component.json#/definitions/BasicComponentProperties"
+        }
+      ],
+      "properties": {
+        "connections": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerConnection"
+          }
+        },
+        "container": {
+          "type": "object",
+          "required": [
+            "image"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "image": {
+              "description": "The registry and image to download and run in your container",
+              "type": "string"
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "ports": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/ContainerPort"
+              }
+            }
+          }
+        },
+	"traits": {
+          "type": "array",
+          "description": "Traits spec of the component",
+          "items": {
+            "$ref": "../traits.json#/definitions/ComponentTrait"
+          }
+	}
+      }
+    },
+    "ContainerPort": {
+      "description": "Specifies a listening port for the container",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containerPort"
+      ],
+      "properties": {
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "number"
+        },
+        "protocol": {
+          "description": "Protocol in use by the port",
+          "type": "string",
+          "enum": [
+            "TCP",
+            "UDP"
+          ]
+        },
+        "provides": {
+          "description": "Specifies a route provided by this port",
+          "type": "string"
+        }
+      }
+    },
+    "ContainerConnection": {
+      "description": "Specifies a connection from the container to another resource",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "The kind of connection",
+          "type": "string",
+          "enum": [
+            "azure.com/KeyVault",
+            "azure.com/ServiceBusQueue",
+            "dapr.io/Invoke",
+            "dapr.io/PubSubTopic",
+            "dapr.io/StateStore",
+            "Grpc",
+            "Http",
+            "microsoft.com/SQL",
+            "mongo.com/MongoDB",
+            "redislabs.com/Redis"
+          ]
+        },
+        "source": {
+          "description": "The source of the connection",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -71,8 +71,9 @@ func Parse(template string) (DeploymentTemplate, error) {
 }
 
 type TemplateOptions struct {
-	SubscriptionID string
-	ResourceGroup  string
+	SubscriptionID         string
+	ResourceGroup          string
+	EvaluatePropertiesNode bool
 }
 
 type evaluator struct {
@@ -81,7 +82,8 @@ type evaluator struct {
 	Resources []Resource
 
 	// Intermediate expression evaluation state
-	Value string
+	Value               string
+	PreserveExpressions bool
 }
 
 func Eval(template DeploymentTemplate, options TemplateOptions) ([]Resource, error) {
@@ -111,24 +113,34 @@ func Eval(template DeploymentTemplate, options TemplateOptions) ([]Resource, err
 func (eva *evaluator) VisitResource(input map[string]interface{}) (Resource, error) {
 	// In order to produce a resource we need to process ARM expressions using the "loosely-typed" representation
 	// and then read it into an object.
-	evaluated, err := eva.VisitMap(input)
-	if err != nil {
-		return Resource{}, err
+
+	// Special case for evaluating resource bodies
+	evaluated := map[string]interface{}{}
+	for k, v := range input {
+		eva.PreserveExpressions = !eva.Options.EvaluatePropertiesNode && k == "properties"
+
+		v, err := eva.VisitValue(v)
+		if err != nil {
+			return Resource{}, err
+		}
+
+		evaluated[k] = v
+		eva.PreserveExpressions = false
 	}
 
 	name, ok := evaluated["name"].(string)
 	if !ok {
-		return Resource{}, fmt.Errorf("resource does not contain a name.")
+		return Resource{}, errors.New("resource does not contain a name.")
 	}
 
 	t, ok := evaluated["type"].(string)
 	if !ok {
-		return Resource{}, fmt.Errorf("resource does not contain a type.")
+		return Resource{}, errors.New("resource does not contain a type.")
 	}
 
 	apiVersion, ok := evaluated["apiVersion"].(string)
 	if !ok {
-		return Resource{}, fmt.Errorf("resource does not contain an apiVersion.")
+		return Resource{}, errors.New("resource does not contain an apiVersion.")
 	}
 
 	dependsOn := []string{}
@@ -188,6 +200,16 @@ func (eva *evaluator) VisitValue(input interface{}) (interface{}, error) {
 		return str, err
 	}
 
+	m, ok := input.(map[string]interface{})
+	if ok {
+		m, err := eva.VisitMap(m)
+		if err != nil {
+			return nil, err
+		}
+
+		return m, err
+	}
+
 	slice, ok := input.([]interface{})
 	if ok {
 		slice, err := eva.VisitSlice(slice)
@@ -231,6 +253,10 @@ func (eva *evaluator) VisitSlice(input []interface{}) ([]interface{}, error) {
 }
 
 func (eva *evaluator) VisitString(input string) (string, error) {
+	if eva.PreserveExpressions {
+		return input, nil
+	}
+
 	isExpr, err := armexpr.IsStandardARMExpression(input)
 	if err != nil {
 		return "", err
@@ -241,12 +267,12 @@ func (eva *evaluator) VisitString(input string) (string, error) {
 
 	syntaxTree, err := armexpr.Parse(input)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	err = syntaxTree.Expression.Accept(eva)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	return eva.Value, nil
@@ -310,6 +336,13 @@ func (eva *evaluator) EvaluateFormat(format string, values []string) string {
 }
 
 func (eva *evaluator) EvaluateResourceID(resourceType string, names []string) (string, error) {
+	// for extensibility types they contain the version as part of the type string
+	// exclude this when we build a resource id.
+	index := strings.Index(resourceType, "@")
+	if index >= 0 {
+		resourceType = resourceType[0:index]
+	}
+
 	typeSegments := strings.Split(resourceType, "/")
 
 	if len(typeSegments)-1 != len(names) {
@@ -353,29 +386,44 @@ func orderResources(resources map[string]Resource) ([]Resource, error) {
 	members := map[string]bool{}
 
 	for _, id := range sortedIds {
-		resource := resources[id]
-		ordered = ensurePresent(resources, ordered, members, resource)
+		resource, ok := resources[id]
+		if !ok {
+			return nil, fmt.Errorf("could not find resource with id: %s", id)
+		}
+
+		var err error
+		ordered, err = ensurePresent(resources, ordered, members, resource)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return ordered, nil
 }
 
-func ensurePresent(resources map[string]Resource, ordered []Resource, members map[string]bool, res Resource) []Resource {
+func ensurePresent(resources map[string]Resource, ordered []Resource, members map[string]bool, res Resource) ([]Resource, error) {
 	_, ok := members[res.ID]
 	if ok {
 		// already in the set
-		return ordered
+		return ordered, nil
 	}
 
 	for _, id := range res.DependsOn {
-		d := resources[id]
+		d, ok := resources[id]
+		if !ok {
+			return nil, fmt.Errorf("could not find resource with id: %s", id)
+		}
 
 		// Add dependencies
-		ordered = ensurePresent(resources, ordered, members, d)
+		var err error
+		ordered, err = ensurePresent(resources, ordered, members, d)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// requirements satisfied, add this one
 	ordered = append(ordered, res)
 	members[res.ID] = true
-	return ordered
+	return ordered, nil
 }

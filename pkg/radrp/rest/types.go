@@ -9,7 +9,6 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/model/revision"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/resources"
 )
 
@@ -190,21 +189,6 @@ type DeploymentComponent struct {
 }
 
 // See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations
-type Operation struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
-
-	// These should be in ISO8601 format
-	StartTime string `json:"startTime"`
-	EndTime   string `json:"endTime"`
-
-	PercentComplete float64                 `json:"percentComplete"`
-	Properties      map[string]interface{}  `json:"properties,omitempty"`
-	Error           *armerrors.ErrorDetails `json:"error"`
-}
-
-// See: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#asynchronous-operations
 type OperationStatus string
 
 const (
@@ -244,7 +228,7 @@ func (app *Application) SetID(resource resources.ResourceID) {
 	app.ResourceBase.Name = resource.Name()
 	app.ResourceBase.SubscriptionID = resource.SubscriptionID
 	app.ResourceBase.ResourceGroup = resource.ResourceGroup
-	app.ResourceBase.Type = resource.Kind()
+	app.ResourceBase.Type = resource.Type()
 }
 
 // GetID produces a ResourceID from a resource.
@@ -269,7 +253,7 @@ func (c *Component) SetID(resource resources.ResourceID) {
 	c.ResourceBase.Name = resource.Name()
 	c.ResourceBase.SubscriptionID = resource.SubscriptionID
 	c.ResourceBase.ResourceGroup = resource.ResourceGroup
-	c.ResourceBase.Type = resource.Kind()
+	c.ResourceBase.Type = resource.Type()
 }
 
 // GetID produces a ResourceID from a resource.
@@ -294,7 +278,7 @@ func (d *Deployment) SetID(resource resources.ResourceID) {
 	d.ResourceBase.Name = resource.Name()
 	d.ResourceBase.SubscriptionID = resource.SubscriptionID
 	d.ResourceBase.ResourceGroup = resource.ResourceGroup
-	d.ResourceBase.Type = resource.Kind()
+	d.ResourceBase.Type = resource.Type()
 }
 
 // GetID produces a ResourceID from a resource.
@@ -319,5 +303,5 @@ func (s *Scope) SetID(resource resources.ResourceID) {
 	s.ResourceBase.Name = resource.Name()
 	s.ResourceBase.SubscriptionID = resource.SubscriptionID
 	s.ResourceBase.ResourceGroup = resource.ResourceGroup
-	s.ResourceBase.Type = resource.Kind()
+	s.ResourceBase.Type = resource.Type()
 }

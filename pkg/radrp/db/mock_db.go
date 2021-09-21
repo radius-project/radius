@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	azresources "github.com/Azure/radius/pkg/azure/azresources"
 	resources "github.com/Azure/radius/pkg/radrp/resources"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -78,7 +79,7 @@ func (mr *MockRadrpDBMockRecorder) DeleteDeploymentByApplicationID(arg0, arg1, a
 }
 
 // DeleteOperationByID mocks base method.
-func (m *MockRadrpDB) DeleteOperationByID(arg0 context.Context, arg1 resources.ResourceID) error {
+func (m *MockRadrpDB) DeleteOperationByID(arg0 context.Context, arg1 azresources.ResourceID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteOperationByID", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -103,6 +104,34 @@ func (m *MockRadrpDB) DeleteScopeByApplicationID(arg0 context.Context, arg1 reso
 func (mr *MockRadrpDBMockRecorder) DeleteScopeByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScopeByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).DeleteScopeByApplicationID), arg0, arg1, arg2)
+}
+
+// DeleteV3Application mocks base method.
+func (m *MockRadrpDB) DeleteV3Application(arg0 context.Context, arg1 azresources.ResourceID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteV3Application", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteV3Application indicates an expected call of DeleteV3Application.
+func (mr *MockRadrpDBMockRecorder) DeleteV3Application(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteV3Application", reflect.TypeOf((*MockRadrpDB)(nil).DeleteV3Application), arg0, arg1)
+}
+
+// DeleteV3Resource mocks base method.
+func (m *MockRadrpDB) DeleteV3Resource(arg0 context.Context, arg1 azresources.ResourceID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteV3Resource", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteV3Resource indicates an expected call of DeleteV3Resource.
+func (mr *MockRadrpDBMockRecorder) DeleteV3Resource(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteV3Resource", reflect.TypeOf((*MockRadrpDB)(nil).DeleteV3Resource), arg0, arg1)
 }
 
 // GetApplicationByID mocks base method.
@@ -151,7 +180,7 @@ func (mr *MockRadrpDBMockRecorder) GetDeploymentByApplicationID(arg0, arg1, arg2
 }
 
 // GetOperationByID mocks base method.
-func (m *MockRadrpDB) GetOperationByID(arg0 context.Context, arg1 resources.ResourceID) (*Operation, error) {
+func (m *MockRadrpDB) GetOperationByID(arg0 context.Context, arg1 azresources.ResourceID) (*Operation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOperationByID", arg0, arg1)
 	ret0, _ := ret[0].(*Operation)
@@ -178,6 +207,36 @@ func (m *MockRadrpDB) GetScopeByApplicationID(arg0 context.Context, arg1 resourc
 func (mr *MockRadrpDBMockRecorder) GetScopeByApplicationID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScopeByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).GetScopeByApplicationID), arg0, arg1, arg2)
+}
+
+// GetV3Application mocks base method.
+func (m *MockRadrpDB) GetV3Application(arg0 context.Context, arg1 azresources.ResourceID) (ApplicationResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetV3Application", arg0, arg1)
+	ret0, _ := ret[0].(ApplicationResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetV3Application indicates an expected call of GetV3Application.
+func (mr *MockRadrpDBMockRecorder) GetV3Application(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetV3Application", reflect.TypeOf((*MockRadrpDB)(nil).GetV3Application), arg0, arg1)
+}
+
+// GetV3Resource mocks base method.
+func (m *MockRadrpDB) GetV3Resource(arg0 context.Context, arg1 azresources.ResourceID) (RadiusResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetV3Resource", arg0, arg1)
+	ret0, _ := ret[0].(RadiusResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetV3Resource indicates an expected call of GetV3Resource.
+func (mr *MockRadrpDBMockRecorder) GetV3Resource(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetV3Resource", reflect.TypeOf((*MockRadrpDB)(nil).GetV3Resource), arg0, arg1)
 }
 
 // ListApplicationsByResourceGroup mocks base method.
@@ -240,6 +299,36 @@ func (mr *MockRadrpDBMockRecorder) ListScopesByApplicationID(arg0, arg1 interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListScopesByApplicationID", reflect.TypeOf((*MockRadrpDB)(nil).ListScopesByApplicationID), arg0, arg1)
 }
 
+// ListV3Applications mocks base method.
+func (m *MockRadrpDB) ListV3Applications(arg0 context.Context, arg1 azresources.ResourceID) ([]ApplicationResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListV3Applications", arg0, arg1)
+	ret0, _ := ret[0].([]ApplicationResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListV3Applications indicates an expected call of ListV3Applications.
+func (mr *MockRadrpDBMockRecorder) ListV3Applications(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListV3Applications", reflect.TypeOf((*MockRadrpDB)(nil).ListV3Applications), arg0, arg1)
+}
+
+// ListV3Resources mocks base method.
+func (m *MockRadrpDB) ListV3Resources(arg0 context.Context, arg1 azresources.ResourceID) ([]RadiusResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListV3Resources", arg0, arg1)
+	ret0, _ := ret[0].([]RadiusResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListV3Resources indicates an expected call of ListV3Resources.
+func (mr *MockRadrpDBMockRecorder) ListV3Resources(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListV3Resources", reflect.TypeOf((*MockRadrpDB)(nil).ListV3Resources), arg0, arg1)
+}
+
 // PatchApplication mocks base method.
 func (m *MockRadrpDB) PatchApplication(arg0 context.Context, arg1 *ApplicationPatch) (bool, error) {
 	m.ctrl.T.Helper()
@@ -286,7 +375,7 @@ func (mr *MockRadrpDBMockRecorder) PatchDeploymentByApplicationID(arg0, arg1, ar
 }
 
 // PatchOperationByID mocks base method.
-func (m *MockRadrpDB) PatchOperationByID(arg0 context.Context, arg1 resources.ResourceID, arg2 *Operation) (bool, error) {
+func (m *MockRadrpDB) PatchOperationByID(arg0 context.Context, arg1 azresources.ResourceID, arg2 *Operation) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PatchOperationByID", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
@@ -328,4 +417,48 @@ func (m *MockRadrpDB) UpdateApplication(arg0 context.Context, arg1 *Application)
 func (mr *MockRadrpDBMockRecorder) UpdateApplication(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateApplication", reflect.TypeOf((*MockRadrpDB)(nil).UpdateApplication), arg0, arg1)
+}
+
+// UpdateV3ApplicationDefinition mocks base method.
+func (m *MockRadrpDB) UpdateV3ApplicationDefinition(arg0 context.Context, arg1 ApplicationResource) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateV3ApplicationDefinition", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateV3ApplicationDefinition indicates an expected call of UpdateV3ApplicationDefinition.
+func (mr *MockRadrpDBMockRecorder) UpdateV3ApplicationDefinition(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateV3ApplicationDefinition", reflect.TypeOf((*MockRadrpDB)(nil).UpdateV3ApplicationDefinition), arg0, arg1)
+}
+
+// UpdateV3ResourceDefinition mocks base method.
+func (m *MockRadrpDB) UpdateV3ResourceDefinition(arg0 context.Context, arg1 azresources.ResourceID, arg2 RadiusResource) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateV3ResourceDefinition", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateV3ResourceDefinition indicates an expected call of UpdateV3ResourceDefinition.
+func (mr *MockRadrpDBMockRecorder) UpdateV3ResourceDefinition(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateV3ResourceDefinition", reflect.TypeOf((*MockRadrpDB)(nil).UpdateV3ResourceDefinition), arg0, arg1, arg2)
+}
+
+// UpdateV3ResourceStatus mocks base method.
+func (m *MockRadrpDB) UpdateV3ResourceStatus(arg0 context.Context, arg1 azresources.ResourceID, arg2 RadiusResource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateV3ResourceStatus", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateV3ResourceStatus indicates an expected call of UpdateV3ResourceStatus.
+func (mr *MockRadrpDBMockRecorder) UpdateV3ResourceStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateV3ResourceStatus", reflect.TypeOf((*MockRadrpDB)(nil).UpdateV3ResourceStatus), arg0, arg1, arg2)
 }

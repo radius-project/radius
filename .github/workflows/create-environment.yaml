@@ -14,7 +14,7 @@ jobs:
     name: Create Environment
     runs-on: ubuntu-latest
     env:
-      GOVER: '1.16.8'
+      GOVER: '^1.17'
       GOPROXY: https://proxy.golang.org
 
       # Radius Test subscription
@@ -51,7 +51,7 @@ jobs:
           script: |
             const locations = [
               "eastus",
-              // northeurope has been causing capacity problems for us and has been unrelable. 
+              // northeurope has been causing capacity problems for us and has been unrelable.
               //"northeurope",
               "westeurope",
               "westus2",
@@ -113,4 +113,3 @@ jobs:
             --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
             --yes \
             --verbose
-          

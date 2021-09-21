@@ -76,7 +76,7 @@ func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontra
 
 	resourceID, err := azresources.Parse(id)
 	if err != nil {
-		logger.Error(err, "Invalid resource ID")
+		logger.Error(err, fmt.Sprintf("Invalid resource ID: %s", id))
 		return false
 	}
 	cid := resources.ResourceID{ResourceID: resourceID}

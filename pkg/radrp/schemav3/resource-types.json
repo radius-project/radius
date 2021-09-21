@@ -1,0 +1,16 @@
+{
+  "_comment": "A mapping from resource type -> schema location for the types we need to validate.",
+  "resources": {
+    "Application": "application.json#/definitions/ApplicationResource",
+    "ContainerComponent": "components/container-component.json#/definitions/ContainerComponentResource",
+    "azure.com.CosmosDBMongoComponent": "components/azure-cosmosdb-mongo.json#/definitions/AzureCosmosDBMongoComponentResource",
+    "azure.com.CosmosDBSQLComponent": "components/azure-cosmosdb-sql.json#/definitions/AzureCosmosDBSQLComponentResource",
+    "azure.com.KeyVaultComponent": "components/azure-keyvault.json#/definitions/AzureKeyVaultComponentResource",
+    "azure.com.ServiceBusQueueComponent": "components/azure-servicebus.json#/definitions/AzureServiceBusComponentResource",
+    "dapr.io.PubSubComponent": "components/dapr-pubsub.json#/definitions/DaprPubSubComponentResource",
+    "dapr.io.StateStoreComponent": "components/dapr-statestore.json#/definitions/DaprStateStoreComponentResource",
+    "mongodb.com.MongoDBComponent": "components/mongodb.json#/definitions/MongoDBComponentResource",
+    "rabbitmq.com.MessageQueue": "components/rabbitmq.json#/definitions/RabbitMQComponentResource",
+    "redislabs.com.Redis": "components/redis.json#/definitions/RedisComponentResource"
+  }
+}

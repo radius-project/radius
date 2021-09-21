@@ -7,102 +7,22 @@ package db
 
 import (
 	"context"
+	"errors"
 	"sync"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	resources "github.com/Azure/radius/pkg/radrp/resources"
-	"github.com/golang/mock/gomock"
 )
 
 // NewInMemoryRadrpDB returns an in-memory implementation of RadrpDB
-func NewInMemoryRadrpDB(ctrl *gomock.Controller) *MockRadrpDB {
-	base := NewMockRadrpDB(ctrl)
-
+func NewInMemoryRadrpDB() RadrpDB {
 	store := &store{
 		applications: map[applicationKey]*map[string]*Application{},
 		operations:   map[string]*Operation{},
 		mutex:        sync.Mutex{},
 	}
 
-	base.EXPECT().
-		ListApplicationsByResourceGroup(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.ListApplicationsByResourceGroup)
-
-	base.EXPECT().
-		GetApplicationByID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.GetApplicationByID)
-
-	base.EXPECT().
-		PatchApplication(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.PatchApplication)
-
-	base.EXPECT().
-		UpdateApplication(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.UpdateApplication)
-
-	base.EXPECT().
-		DeleteApplicationByID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.DeleteApplicationByID)
-
-	base.EXPECT().
-		ListComponentsByApplicationID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.ListComponentsByApplicationID)
-
-	base.EXPECT().
-		GetComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.GetComponentByApplicationID)
-
-	base.EXPECT().
-		PatchComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.PatchComponentByApplicationID)
-
-	base.EXPECT().
-		DeleteComponentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.DeleteComponentByApplicationID)
-
-	base.EXPECT().
-		ListDeploymentsByApplicationID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.ListDeploymentsByApplicationID)
-
-	base.EXPECT().
-		GetDeploymentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.GetDeploymentByApplicationID)
-
-	base.EXPECT().
-		PatchDeploymentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.PatchDeploymentByApplicationID)
-
-	base.EXPECT().
-		DeleteDeploymentByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.DeleteDeploymentByApplicationID)
-
-	base.EXPECT().
-		ListScopesByApplicationID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.ListScopesByApplicationID)
-
-	base.EXPECT().
-		GetScopeByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.GetScopeByApplicationID)
-
-	base.EXPECT().
-		PatchScopeByApplicationID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.PatchScopeByApplicationID)
-
-	base.EXPECT().
-		DeleteScopeByApplicationID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.DeleteScopeByApplicationID)
-
-	base.EXPECT().
-		GetOperationByID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.GetOperationByID)
-
-	base.EXPECT().
-		PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.PatchOperationByID)
-
-	base.EXPECT().
-		DeleteOperationByID(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(store.DeleteOperationByID)
-	return base
+	return store
 }
 
 type applicationKey struct {
@@ -416,7 +336,7 @@ func (s *store) DeleteScopeByApplicationID(ctx context.Context, id resources.App
 	return nil
 }
 
-func (s *store) GetOperationByID(ctx context.Context, id resources.ResourceID) (*Operation, error) {
+func (s *store) GetOperationByID(ctx context.Context, id azresources.ResourceID) (*Operation, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -428,7 +348,7 @@ func (s *store) GetOperationByID(ctx context.Context, id resources.ResourceID) (
 	return op, nil
 }
 
-func (s *store) PatchOperationByID(ctx context.Context, id resources.ResourceID, patch *Operation) (bool, error) {
+func (s *store) PatchOperationByID(ctx context.Context, id azresources.ResourceID, patch *Operation) (bool, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -437,10 +357,46 @@ func (s *store) PatchOperationByID(ctx context.Context, id resources.ResourceID,
 	return !ok, nil
 }
 
-func (s *store) DeleteOperationByID(ctx context.Context, id resources.ResourceID) error {
+func (s *store) DeleteOperationByID(ctx context.Context, id azresources.ResourceID) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	delete(s.operations, id.ID)
 	return nil
+}
+
+func (s *store) ListV3Applications(ctx context.Context, id azresources.ResourceID) ([]ApplicationResource, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s *store) GetV3Application(ctx context.Context, id azresources.ResourceID) (ApplicationResource, error) {
+	return ApplicationResource{}, errors.New("not implemented")
+}
+
+func (s *store) UpdateV3ApplicationDefinition(ctx context.Context, application ApplicationResource) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (s *store) DeleteV3Application(ctx context.Context, id azresources.ResourceID) error {
+	return errors.New("not implemented")
+}
+
+func (s *store) ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s *store) GetV3Resource(ctx context.Context, id azresources.ResourceID) (RadiusResource, error) {
+	return RadiusResource{}, errors.New("not implemented")
+}
+
+func (s *store) UpdateV3ResourceDefinition(ctx context.Context, id azresources.ResourceID, resource RadiusResource) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (s *store) UpdateV3ResourceStatus(ctx context.Context, id azresources.ResourceID, resource RadiusResource) error {
+	return errors.New("not implemented")
+}
+
+func (s *store) DeleteV3Resource(ctx context.Context, id azresources.ResourceID) error {
+	return errors.New("not implemented")
 }

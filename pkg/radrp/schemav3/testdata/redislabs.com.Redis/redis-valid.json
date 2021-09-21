@@ -1,0 +1,12 @@
+{
+  "id": "id", "name": "name",
+  "kind": "redislabs.com/Redis@v1alpha1",
+  "properties": {
+    "config": {
+      "managed": true,
+      "connectionString": "connection-string",
+      "host": "localhost",
+      "port": 6380
+    }
+  }
+}

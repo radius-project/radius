@@ -32,10 +32,17 @@ const operationResourceType = "OperationResults"
 // scopeResourceType declares the resource type for a Scope.
 const scopeResourceType = "Scopes"
 
+// We always deploy the Radius RP for appmodelv2 using the resource name 'radius'. This allows
+// use to do versioning at the RP level since Custom RP does not support different resources per-api-version.
+const appmodelv2RPName = "radius"
+
+const V3ApplicationResourceType = "Application"
+const V3OperationResourceType = operationResourceType
+
 // ApplicationCollectionType can be used to validate resource IDs with ValidateResourceType.
 var ApplicationCollectionType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType},
 	},
 }
@@ -43,7 +50,7 @@ var ApplicationCollectionType = azresources.KnownType{
 // ApplicationResourceType can be used to validate resource IDs with ValidateResourceType.
 var ApplicationResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType, Name: "*"},
 	},
 }
@@ -51,7 +58,7 @@ var ApplicationResourceType = azresources.KnownType{
 // ComponentCollectionType can be used to validate resource IDs with ValidateResourceType.
 var ComponentCollectionType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: componentResourceType},
 	},
@@ -60,7 +67,7 @@ var ComponentCollectionType = azresources.KnownType{
 // ComponentResourceType can be used to validate resource IDs with ValidateResourceType.
 var ComponentResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: componentResourceType, Name: "*"},
 	},
@@ -69,7 +76,7 @@ var ComponentResourceType = azresources.KnownType{
 // DeploymentCollectionType can be used to validate resource IDs with ValidateResourceType.
 var DeploymentCollectionType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: deploymentResourceType},
 	},
@@ -78,7 +85,7 @@ var DeploymentCollectionType = azresources.KnownType{
 // DeploymentResourceType can be used to validate resource IDs with ValidateResourceType.
 var DeploymentResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: deploymentResourceType, Name: "*"},
 	},
@@ -87,7 +94,7 @@ var DeploymentResourceType = azresources.KnownType{
 // DeploymentResourceType can be used to validate resource IDs with ValidateResourceType.
 var DeploymentOperationResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: deploymentResourceType, Name: "*"},
 		{Type: operationResourceType, Name: "*"},
@@ -97,7 +104,7 @@ var DeploymentOperationResourceType = azresources.KnownType{
 // ScopeCollectionType can be used to validate resource IDs with ValidateResourceType.
 var ScopeCollectionType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: scopeResourceType},
 	},
@@ -106,7 +113,7 @@ var ScopeCollectionType = azresources.KnownType{
 // ScopeResourceType can be used to validate resource IDs with ValidateResourceType.
 var ScopeResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
-		{Type: baseResourceType, Name: "*"},
+		{Type: baseResourceType, Name: appmodelv2RPName},
 		{Type: applicationResourceType, Name: "*"},
 		{Type: scopeResourceType, Name: "*"},
 	},

@@ -16,8 +16,6 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/certs"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/gorilla/mux"
 )
@@ -25,49 +23,23 @@ import (
 type ServerOptions struct {
 	Address      string
 	Authenticate bool
-	RP           resourceprovider.ResourceProvider
+	Configure    func(*mux.Router)
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
 func NewServer(ctx context.Context, options ServerOptions) *http.Server {
-	h := &handler{options.RP}
-
 	r := mux.NewRouter()
-	var s *mux.Router
-
-	r.Path(azresources.MakeCollectionURITemplate(resources.ApplicationCollectionType)).Methods("GET").HandlerFunc(h.listApplications)
-	s = r.Path(azresources.MakeResourceURITemplate(resources.ApplicationResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getApplication)
-	s.Methods("PUT").HandlerFunc(h.updateApplication)
-	s.Methods("DELETE").HandlerFunc(h.deleteApplication)
-
-	r.Path(azresources.MakeCollectionURITemplate(resources.ComponentCollectionType)).Methods("GET").HandlerFunc(h.listComponents)
-	s = r.Path(azresources.MakeResourceURITemplate(resources.ComponentResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getComponent)
-	s.Methods("PUT").HandlerFunc(h.updateComponent)
-	s.Methods("DELETE").HandlerFunc(h.deleteComponent)
-
-	r.Path(azresources.MakeCollectionURITemplate(resources.DeploymentCollectionType)).Methods("GET").HandlerFunc(h.listDeployments)
-	s = r.Path(azresources.MakeResourceURITemplate(resources.DeploymentResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getDeployment)
-	s.Methods("PUT").HandlerFunc(h.updateDeployment)
-	s.Methods("DELETE").HandlerFunc(h.deleteDeployment)
-
-	s = r.Path(azresources.MakeResourceURITemplate(resources.DeploymentOperationResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getDeploymentOperation)
-
-	r.Path(azresources.MakeCollectionURITemplate(resources.ScopeCollectionType)).Methods("GET").HandlerFunc(h.listScopes)
-	s = r.Path(azresources.MakeResourceURITemplate(resources.ScopeResourceType)).Subrouter()
-	s.Methods("GET").HandlerFunc(h.getScope)
-	s.Methods("PUT").HandlerFunc(h.updateScope)
-	s.Methods("DELETE").HandlerFunc(h.deleteScope)
+	if options.Configure != nil {
+		options.Configure(r)
+	}
 
 	r.Path("/version").Methods("GET").HandlerFunc(reportVersion)
 
-	app := rewrite(ctx, r)
+	app := rewrite(r)
+	app = appendLogValues(app)
 
 	if options.Authenticate {
-		app = authenticateCert(ctx, app)
+		app = authenticateCert(app)
 	}
 
 	return &http.Server{
@@ -99,9 +71,9 @@ func reportVersion(w http.ResponseWriter, req *http.Request) {
 //
 // This middleware allows us to use the traditional resource provider URL space and use a router
 // to parse URLs.
-func rewrite(ctx context.Context, h http.Handler) http.Handler {
+func rewrite(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		logger := radlogger.GetLogger(ctx)
+		logger := radlogger.GetLogger(r.Context())
 		header := r.Header.Get("X-MS-CustomProviders-RequestPath")
 		if header != "" {
 			logger.V(radlogger.Verbose).Info(fmt.Sprintf("Rewriting URL Path to: '%s'", header))
@@ -114,9 +86,33 @@ func rewrite(ctx context.Context, h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func authenticateCert(ctx context.Context, h http.Handler) http.Handler {
+// Append logging values to the context based on the Resource ID (if present).
+func appendLogValues(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		logger := radlogger.GetLogger(ctx)
+		id, err := azresources.Parse(r.URL.Path)
+		if err != nil {
+			// This just means the request is for an ARM resource. Not an error.
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		values := []interface{}{}
+		values = append(values, radlogger.LogFieldResourceID, id.ID)
+		values = append(values, radlogger.LogFieldSubscriptionID, id.SubscriptionID)
+		values = append(values, radlogger.LogFieldResourceGroup, id.ResourceGroup)
+		values = append(values, radlogger.LogFieldResourceType, id.Type())
+		values = append(values, radlogger.LogFieldResourceName, id.QualifiedName())
+
+		r = r.WithContext(radlogger.WrapLogContext(r.Context(), values...))
+		h.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(fn)
+}
+
+func authenticateCert(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		logger := radlogger.GetLogger(r.Context())
 		if !strings.HasPrefix(r.URL.Path, "/subscriptions/") {
 			logger.V(radlogger.Verbose).Info("request is not for a sensitive URL - allowing")
 			h.ServeHTTP(w, r)

@@ -14,7 +14,7 @@
         "bindings": {
             "web": {
                 "kind": "http",
-                "targetPort": 80
+                "targetPort": 81
             }
         },
         "hierarchy": [

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "BasicComponentProperties": {
+      "description": "Basic properties of a component.",
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string",
+          "description": "Revision of the component"
+        },
+        "status": {
+          "type": "object",
+          "$ref": "#/definitions/ComponentStatus",
+          "description": "Status of the component"
+        }
+      }
+    },
+    "ComponentStatus": {
+      "description": "Status of a component.",
+      "type": "object",
+      "properties": {
+        "provisioningState": {
+          "type": "string",
+          "description": "Provisioning state of the component"
+        },
+        "healthState": {
+          "type": "string",
+          "description": "Health state of the component"
+        },
+        "outputResources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ComponentOutputResource"
+          }
+        }
+      }
+    },
+    "ComponentOutputResource": {
+      "description": "Properties of a component.",
+      "type": "object",
+      "properties": {}
+    }
+  }
+}

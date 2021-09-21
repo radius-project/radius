@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "AzureCosmosDBMongoComponentResource": {
+      "description": "Component for Azure CosmosDB with Mongo",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/TrackedResource"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AzureCosmosDBMongoComponentProperties"
+        }
+      }
+    },
+    "AzureCosmosDBMongoComponentProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "basic-component.json#/definitions/BasicComponentProperties"
+        }
+      ],
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
+          "type": "boolean"
+        },
+        "resource": {
+          "description": "The ID of the user-managed CosmosDB with Mongo API to use for this Component",
+          "type": "string",
+          "example": [
+            "account::mongodb.id"
+          ]
+        }
+      }
+    }
+  }
+}

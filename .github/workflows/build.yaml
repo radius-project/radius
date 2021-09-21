@@ -20,7 +20,7 @@ jobs:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ${{ matrix.os }}
     env:
-      GOVER: '1.16.8'
+      GOVER: '^1.17'
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
@@ -181,7 +181,7 @@ jobs:
     if: startsWith(github.ref, 'refs/pull/') # run on PR
     runs-on: ubuntu-latest
     env:
-      GOVER: '1.16.8'
+      GOVER: '^1.17'
       DOCKER_REGISTRY: radius.azurecr.io
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 60m
@@ -249,7 +249,7 @@ jobs:
     if: startsWith(github.ref, 'refs/pull/') # run on PR
     runs-on: ubuntu-latest
     env:
-      GOVER: '1.16.8'
+      GOVER: '^1.17'
 
       # Timeout used for Azure functional tests
       AZURE_FUNCTIONALTEST_TIMEOUT: 60m
