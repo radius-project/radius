@@ -132,6 +132,9 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 	err = r.db.DeleteV3Application(ctx, id)
 	if err == db.ErrConflict {
 		return rest.NewConflictResponse(err.Error()), nil
+	} else if err == db.ErrNotFound {
+		// Ignore not found for a delete: the resource is already gone.
+		return rest.NewNoContentResponse(), nil
 	} else if err != nil {
 		return nil, err
 	}

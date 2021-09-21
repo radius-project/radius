@@ -223,6 +223,28 @@ func Test_AllEndpoints_AllEndpoints_ReadonlyEndpoints_HandleDBNotFound(t *testin
 	}
 }
 
+func Test_AllEndpoints_AllEndpoints_DeleteEndpoints_AllowDBNotFound(t *testing.T) {
+	ctx := createContext(t)
+
+	for _, testcase := range testcases {
+		if testcase.verb != "Delete" {
+			continue
+		}
+
+		t.Run(testcase.description, func(t *testing.T) {
+			test := createRPTest(t)
+
+			// configure the mock to return not found
+			testcase.setupDB(test.db, db.ErrNotFound)
+
+			response, err := testcase.invoke(test.rp, ctx, testcase.id)
+			require.NoError(t, err)
+
+			require.Equal(t, rest.NewNoContentResponse(), response)
+		})
+	}
+}
+
 func Test_AllEndpoints_PropagateUnexpectedError(t *testing.T) {
 	ctx := createContext(t)
 
