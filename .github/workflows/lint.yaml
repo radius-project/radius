@@ -21,7 +21,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     env:
-      GOVER: '1.16.8'
+      GOVER: '^1.17'
       GOPROXY: https://proxy.golang.org
     steps:
       - name: Check out repo
@@ -40,7 +40,7 @@ jobs:
     name: Check generated code
     runs-on: ubuntu-latest
     env:
-      GOVER: '1.16.8'
+      GOVER: '^1.17'
       GOPROXY: https://proxy.golang.org
     steps:
       - name: Check out repo
@@ -65,4 +65,3 @@ jobs:
         run: |
           echo "Generated code is not up to date, run 'make generate' to update generated code."
           exit 1
-
