@@ -52,28 +52,5 @@ func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.S
 		}
 	}
 
-	// if armResource != nil {
-	// 	bytes, err := template.MarshalJSON()
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	err = json.Unmarshal(bytes, &result)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	// container
-	//   image
-	//   ports
-	//     name
-	//       containerPort
-	//       provides
-
-	// connections
-	//   name
-	//     Kind
-	//     source
-
 	return nil
 }

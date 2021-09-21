@@ -60,7 +60,7 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="apps",resources=statefulsets,verbs=get;watch;list;create;update;patch;delete
-//+kubebuilder:rbac:groups="dapr.io",resources=resources,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="dapr.io",resources=components,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/status,verbs=get;update;patch
@@ -106,7 +106,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	desired, rendered, err := r.RenderResource(ctx, log, application, resource, applicationName, resourceName)
+	desired, rendered, err := r.RenderResource(ctx, req, log, application, resource, applicationName, resourceName)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -168,8 +168,7 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	return results, nil
 }
 
-// Make this work for generic
-func (r *ResourceReconciler) RenderResource(ctx context.Context, log logr.Logger, application *radiusv1alpha3.Application, resource *radiusv1alpha3.Resource, applicationName string, resourceName string) ([]outputresource.OutputResource, bool, error) {
+func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Request, log logr.Logger, application *radiusv1alpha3.Application, resource *radiusv1alpha3.Resource, applicationName string, resourceName string) ([]outputresource.OutputResource, bool, error) {
 	// If the application hasn't been defined yet, then just produce no output.
 	if application == nil {
 		r.recorder.Eventf(resource, "Normal", "Waiting", "Resource is waiting for application: %s", applicationName)
@@ -191,7 +190,6 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, log logr.Logger
 		return nil, false, err
 	}
 
-	// TODO fill out depends on
 	w := workloadsv1alpha3.InstantiatedWorkload{
 		Application: applicationName,
 		Name:        resourceName,
@@ -199,90 +197,65 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, log logr.Logger
 		Workload:    *generic,
 	}
 
-	// TODO get bindings from resources based off depends on
-
-	// Check provides and connections to make sure they exist
-	missing, err := GetMissingBindings(generic, r, ctx, resource, log, applicationName, w)
+	references, err := resourceKind.Renderer().GetDependencies(ctx, w)
 	if err != nil {
+		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies: %v", err)
+		log.Error(err, "failed to render resource")
 		return nil, false, err
 	}
 
-	resources := []outputresource.OutputResource{}
-	if len(missing) > 0 {
-		missingNames := []string{}
-		for _, key := range missing {
-			missingNames = append(missingNames, fmt.Sprintf("%s:%s", key.Resource, key.Binding))
+	w.References = map[string]map[string]string{}
+
+	for _, reference := range references {
+		// Get resource filtered on application type.
+		parts := strings.Split(reference, "/")
+
+		// Last two parts should be resource type and resource name
+		if len(parts) < 4 {
+			// This should never happen but just to be safe
+			continue
 		}
-		r.recorder.Eventf(resource, "Normal", "Waiting", "Resource is waiting for bindings: %s", strings.Join(missingNames, ", "))
-		log.Info("resource is waiting for bindings", "missing", missing)
-	} else {
-		resources, err = resourceKind.Renderer().Render(ctx, w)
+		resourceName := parts[len(parts)-1]
+		resourceType := parts[len(parts)-2]
+		unst := &unstructured.Unstructured{}
+
+		// TODO determine this correctly
+		unst.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "radius.dev",
+			Version: "v1alpha3",
+			Kind:    resourceType,
+		})
+
+		// TODO filter by application as well.
+		err = r.Client.Get(ctx, client.ObjectKey{
+			Namespace: req.Namespace,
+			Name:      resourceName,
+		}, unst)
 		if err != nil {
-			r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
-			log.Error(err, "failed to render resources for resource")
 			return nil, false, err
 		}
+
+		k8sResource := &radiusv1alpha3.Resource{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, k8sResource)
+		if err != nil {
+			return nil, false, err
+		}
+
+		w.References[reference] = k8sResource.Status.Properties
 	}
 
-	// TODO add ProvidesValues
-	// bindingStates, err := resourceKind.Renderer().ProvideBindings(ctx, w, []workloadsv1alpha3.WorkloadResourceProperties{})
-	// if err != nil {
-	// 	r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
-	// 	log.Error(err, "failed to render bindings for resource")
-	// 	return nil, nil, false, err
-	// }
-
-	// for name, binding := range bindingStates {
-	// 	kind := binding.Kind
-
-	// 	b, err := json.Marshal(binding.Properties)
-	// 	if err != nil {
-	// 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
-	// 		log.Error(err, "failed to render bindings for resource")
-	// 		return nil, nil, false, err
-	// 	}
-
-	// 	bindings = append(bindings, radiusv1alpha3.ResourceStatusBinding{
-	// 		Name:   name,
-	// 		Kind:   kind,
-	// 		Values: runtime.RawExtension{Raw: b},
-	// 	})
-	// }
+	// TODO: Check provides and connections to make sure they exist?
+	// This isn't required atm but may be required for correctness.
+	// Whatever we decide, let's match what the Azure RP does.
+	resources, err := resourceKind.Renderer().Render(ctx, w)
+	if err != nil {
+		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
+		log.Error(err, "failed to render resources for resource")
+		return nil, false, err
+	}
 
 	log.Info("rendered output resources", "count", len(resources))
-	return resources, len(missing) == 0, nil
-}
-
-// Checks to see if all bindings are present.
-// Eventually this will return an error as it should be guaranteed that all
-// bindings are present.
-func GetMissingBindings(generic *resourcesv1alpha3.GenericResource, r *ResourceReconciler, ctx context.Context, resource *radiusv1alpha3.Resource, log logr.Logger, applicationName string, w workloadsv1alpha3.InstantiatedWorkload) ([]resourcesv1alpha3.BindingKey, error) {
-	missing := []resourcesv1alpha3.BindingKey{}
-	// body := generic.Template.Body
-	// if body == nil {
-	// 	return missing, nil
-	// }
-	// properties := body["properties"]
-	// if properties == nil {
-	// 	return missing, nil
-	// }
-
-	// Check connections for missing ones, provides?
-
-	// for key, dependency := range properties.(map[string]interface{}) {
-	// 	if key == "connections" {
-	// 		// look into connection and grab sources, verifying they exist
-	// 		for _, connection := range dependency.(map[string]interface{}) {
-	// 			source := connection["source"]
-	// 			if source == nil {
-	// 				continue
-	// 			}
-	// 			// required binding is in source, make sure it exists
-	// 		}
-	// 	}
-	// 	// Check provides as well, as we can't provide something that doesn't exist
-	// }
-	return missing, nil
+	return resources, true, nil
 }
 
 func (r *ResourceReconciler) ApplyState(

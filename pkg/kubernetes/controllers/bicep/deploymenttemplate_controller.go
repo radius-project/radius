@@ -43,7 +43,6 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	// Need to do a diff on currently running crds.
 	arm.Status.Operations = nil
 
 	result, err := r.ApplyState(ctx, req, arm)
@@ -56,6 +55,8 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	return result, err
 }
 
+// Parses the arm template and deploys individual resources to the cluster
+// TODO: Can we avoid parsing resources multiple times by caching?
 func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.Request, arm *bicepv1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	template, err := armtemplate.Parse(string(arm.Spec.Content.Raw))
 	if err != nil {
@@ -67,6 +68,9 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
+	// All previously deployed resources to be used by other resources
+	// to fill in variables ex: ([reference(...)])
 	deployed := map[string]map[string]interface{}{}
 	evaluator := &armtemplate.DeploymentEvaluator{
 		Template:  template,
@@ -100,10 +104,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		}
 		k8sInfos = append(k8sInfos, k8sInfo)
 
-		// TODO resources are already ordered here,
-		// Apply one at a time, waiting for each to finish.
-		// Think it's time to do a deep dive into status.
-		// The status should be representative of when we need to start the next operation.
+		// TODO track progress of operations (count of deployed resources) in Status.
 		arm.Status.Operations = append(arm.Status.Operations, bicepv1alpha3.DeploymentTemplateOperation{
 			Name:      k8sInfo.GetName(),
 			Namespace: k8sInfo.GetNamespace(),
@@ -118,7 +119,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			return ctrl.Result{}, err
 		}
 
-		// k8sInfo
 		if apierrors.IsNotFound(err) {
 			err = r.Client.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 			if err != nil {

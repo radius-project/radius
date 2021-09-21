@@ -19,9 +19,8 @@ type InstantiatedWorkload struct {
 	Application string
 	Name        string
 	Workload    resourcesv1alpha3.GenericResource
-	// TODO binding values should instead be resources
-	// DependsOn map[string]resourcesv1alpha3.GenericResource
-	Namespace string
+	References  map[string]map[string]string
+	Namespace   string
 }
 
 // WorkloadRenderer defines the interface for rendering a Kubernetes workload definition
@@ -34,8 +33,8 @@ type WorkloadRenderer interface {
 	// Render is called for the component to provide its output resources.
 	Render(ctx context.Context, workload InstantiatedWorkload) ([]outputresource.OutputResource, error)
 
-	// Get dependencies returns a list of resource ids to track
-	// GetDependencies(ctx context.Context, workload InstantiatedWorkload) ([]string, error)
+	// Get dependencies returns a list of resource ids that are required to render the workload.
+	GetDependencies(ctx context.Context, workload InstantiatedWorkload) ([]string, error)
 }
 
 // WorkloadResourceProperties represents the properties output by deploying a resource.

@@ -19,11 +19,13 @@ import (
 func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 	renderers := map[string]workloads.WorkloadRenderer{
 		containerv1alpha3.Kind: &containerv1alpha3.Renderer{Arm: armauth.ArmConfig{}},
+		// daprstatestorev1alpha3.Kind: &daprstatestorev1alpha3.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
+		// mongodbv1alpha3.Kind:        &mongodbv1alpha3.KubernetesRenderer{},
+		// rabbitmqv1alpha3.Kind:       &rabbitmqv1alpha3.Renderer{},
+		// redisv1alpha3.Kind:          &redisv1alpha3.KubernetesRenderer{},
 		httproutev1alpha3.Kind: &httproutev1alpha3.Renderer{},
-		// daprstatestorev1alpha1.Kind: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
-		// mongodbv1alpha1.Kind:        &mongodbv1alpha1.KubernetesRenderer{},
-		// rabbitmqv1alpha1.Kind:       &rabbitmqv1alpha1.Renderer{},
-		// redisv1alpha1.Kind:          &redisv1alpha1.KubernetesRenderer{},
+		// httproutev1alpha3.Kind:      &httproutev1alpha3.Renderer{},
+		// httproutev1alpha3.Kind:      &httproutev1alpha3.Renderer{},
 	}
 
 	handlers := map[string]model.Handlers{

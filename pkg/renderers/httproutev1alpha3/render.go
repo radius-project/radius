@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloadsv1alpha3"
@@ -19,7 +18,9 @@ import (
 type Renderer struct {
 }
 
-func (r Renderer) ProvideBindings(ctx context.Context, workload workloadsv1alpha3.InstantiatedWorkload, resources []workloadsv1alpha3.WorkloadResourceProperties) (map[string]resourcesv1alpha3.BindingState, error) {
+// Need a step to take rendered routes to be usable by component
+func (r Renderer) GetDependencies(ctx context.Context, workload workloadsv1alpha3.InstantiatedWorkload) ([]string, error) {
+
 	return nil, nil
 }
 
