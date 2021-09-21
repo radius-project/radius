@@ -39,7 +39,7 @@
             "resource": {
               "description": "The ID of the user-managed DB with Mongo API to use for this Component",
               "type": "string",
-              "examples": [
+              "example": [
                 "account::mongodb.id"
               ]
             }

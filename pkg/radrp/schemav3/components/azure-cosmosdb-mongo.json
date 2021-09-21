@@ -35,7 +35,7 @@
         "resource": {
           "description": "The ID of the user-managed CosmosDB with Mongo API to use for this Component",
           "type": "string",
-          "examples": [
+          "example": [
             "account::mongodb.id"
           ]
         }

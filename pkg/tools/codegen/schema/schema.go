@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"reflect"
 )
 
 // Schema represents a OpenAPI schema spec.
@@ -85,7 +86,7 @@ func (s *Schema) UnmarshalJSON(b []byte) error {
 		Definitions map[string]*TypeSpec `json:",omitempty"`
 	}{}
 	if err := json.Unmarshal(b, &inner); err != nil {
-		return err
+		return fmt.Errorf("failed parsing Schema: %w", err)
 	}
 	additionalProperties := make(map[string]interface{})
 	if err := json.Unmarshal(b, &additionalProperties); err != nil {
@@ -118,9 +119,12 @@ func (s *Schema) Merge(o *Schema) (*Schema, error) {
 		srcMap, srcIsMap := src.(map[string]interface{})
 		destMap, destIsMap := dest.(map[string]interface{})
 
-		// Only allow merging of maps.
+		// For map, we merge, but for non-maps we only accept exact matches.
 		if !srcIsMap || !destIsMap {
-			return nil, fmt.Errorf("duplicate non-map property %q at the top level", k)
+			if !reflect.DeepEqual(src, dest) {
+				return nil, fmt.Errorf("duplicate non-map property %q at the top level", k)
+			}
+			continue
 		}
 		for kk, vv := range srcMap {
 			destMap[kk] = vv
@@ -129,15 +133,19 @@ func (s *Schema) Merge(o *Schema) (*Schema, error) {
 	return &out, nil
 }
 
+func LoadBytes(b []byte) (*Schema, error) {
+	s := Schema{}
+	if err := json.Unmarshal(b, &s); err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
+
 // Load loads a Schema from a given file.
 func Load(filename string) (*Schema, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	s := Schema{}
-	if err := json.Unmarshal(b, &s); err != nil {
-		return nil, err
-	}
-	return &s, nil
+	return LoadBytes(b)
 }

@@ -42,7 +42,7 @@
               "enum": [
                 true
               ],
-              "examples": [
+              "example": [
                 true
               ]
             },

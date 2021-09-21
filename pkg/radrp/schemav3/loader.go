@@ -32,6 +32,8 @@ var (
 	manifestFile string
 
 	validators map[string]validator = loadOrPanic()
+
+	ResourceManifest Manifest = readManifestOrPanic()
 )
 
 // manifest is the format of the 'resource-types.json' manifest.
@@ -78,9 +80,8 @@ func loadOrPanic() map[string]validator {
 		log.Fatal("Failed to load schemas:", err)
 	}
 
-	manifest := readManifestOrPanic()
 	validators := map[string]validator{}
-	for resourceType, ref := range manifest.Resources {
+	for resourceType, ref := range ResourceManifest.Resources {
 
 		// The default logic of the schema loader for references is pretty obtuse. If you give
 		// it a reference then it can load from the pool, this is what we want. None of the built-in
