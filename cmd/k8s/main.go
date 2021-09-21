@@ -100,32 +100,38 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Index deployments by the owner (component)
+	// Index deployments by the owner (any resource besides application)
 	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Application")
+		setupLog.Error(err, "unable to create ownership of deployments", "controller")
 		os.Exit(1)
 	}
 
-	// Index services by the owner (component)
+	// Index services by the owner (any resource besides application)
 	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Application")
+		setupLog.Error(err, "unable to create ownership of services", "controller")
 		os.Exit(1)
 	}
 
-	componentTypes := []struct {
+	resourceTypes := []struct {
 		client.Object
 		client.ObjectList
-	}{ // TODO GetListType
+	}{
 		{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
+		{&radiusv1alpha3.DaprIOInvokeRoute{}, &radiusv1alpha3.DaprIOInvokeRouteList{}},
 		{&radiusv1alpha3.DaprIOPubSubComponent{}, &radiusv1alpha3.DaprIOPubSubComponentList{}},
 		{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
+		{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
 		{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
+		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
+		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
+		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
 	}
 
 	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
 
+	// Use discovery client to determine GVR for each resource type
 	dc, err := discovery.NewDiscoveryClientForConfig(ctrl.GetConfigOrDie())
 	if err != nil {
 		setupLog.Error(err, "unable to create discovery client")
@@ -133,16 +139,18 @@ func main() {
 	}
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 
-	for _, componentType := range componentTypes {
-		gvks, _, err := scheme.ObjectKinds(componentType.Object)
+	for _, resourceType := range resourceTypes {
+		gvks, _, err := scheme.ObjectKinds(resourceType.Object)
 		if err != nil {
-			setupLog.Error(err, "unable to get GVK for component type", "componentType", componentType.Object)
+			setupLog.Error(err, "unable to get GVK for component type", "componentType", resourceType.Object)
 			os.Exit(1)
 		}
+
 		for _, gvk := range gvks {
 			if gvk.GroupVersion() != radiusv1alpha3.GroupVersion {
 				continue
 			}
+
 			// Get GVR for corresponding component.
 			gvr, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 
@@ -153,11 +161,11 @@ func main() {
 
 			if err = (&radcontroller.ResourceReconciler{
 				Client:  mgr.GetClient(),
-				Log:     ctrl.Log.WithName("controllers").WithName(componentType.GetName()),
+				Log:     ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
 				Scheme:  mgr.GetScheme(),
 				Dynamic: unstructuredClient,
 				GVR:     gvr.Resource,
-			}).SetupWithManager(mgr, componentType.Object, componentType.ObjectList); err != nil {
+			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Component")
 				os.Exit(1)
 			}
@@ -173,6 +181,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// TODO webhook per resource type, currently doesn't work.
 	if os.Getenv("SKIP_WEBHOOKS") != "true" {
 		if err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Application")
@@ -211,7 +220,8 @@ func extractOwnerKey(obj client.Object) []string {
 		return nil
 	}
 
-	if owner.APIVersion != radiusv1alpha3.GroupVersion.String() || owner.Kind != "Component" {
+	// Assume all other types besides Application are owned by us with radius.
+	if owner.APIVersion != radiusv1alpha3.GroupVersion.String() || owner.Kind == "Application" {
 		return nil
 	}
 
