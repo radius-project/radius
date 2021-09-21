@@ -24,7 +24,7 @@ All components need to have a page under [Components]({{< ref components >}}). E
 
 ### Adding a new Component schema
 
-1. Under the directory `radrp/schemav3/components`, add a JSON Schema file for your Component. See existing Components for example, and also take a look at [https://json-schema.org/specification-links.html#draft-4](JSON Schema Draft 4) for more information.
+1. Under the directory `radrp/schemav3/components`, add a JSON Schema file for your Component. See existing Components for example, and also take a look at [JSON Schema Draft 4](https://json-schema.org/specification-links.html#draft-4) for more information.
 1. Register your schema in the manifest file at `pkg/radrp/schemav3/resource-types.json`.
 1. Add some tests to confirm your JSON schema in the `pkg/radrp/schemav3/testdata/{componentName}` directory. Any JSON file with `*-valid.json` suffix should be accepted by your new schema. Any JSON file with `*-invalid.json` suffix should be rejected by your new schema, with errors matching the content of `*-invalid.txt` file in the same directory.
 
