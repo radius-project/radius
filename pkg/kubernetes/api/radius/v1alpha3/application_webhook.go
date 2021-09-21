@@ -21,8 +21,6 @@ func (r *Application) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
 //+kubebuilder:webhook:path=/validate-radius-dev-v1alpha1-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=applications,verbs=create;update;delete,versions=v1alpha1,name=application-validation.radius.dev,admissionReviewVersions={v1,v1beta1}
 
 var _ webhook.Validator = &Application{}
