@@ -261,9 +261,10 @@ func TestExitCodeCaptured(t *testing.T) {
 	t.Log("Replicas started, shutting them down...")
 	replicas := executor.FindAll(exe.Spec.Executable, nil)
 	require.Equal(t, 2, len(replicas))
-	const r0_ec, r1_ec = 12, 14
-	executor.SimulateProcessExit(t, replicas[0].PID, r0_ec)
-	executor.SimulateProcessExit(t, replicas[1].PID, r1_ec)
+	expectedEC := []int{12, 14}
+	for i := range replicas {
+		executor.SimulateProcessExit(t, replicas[i].PID, expectedEC[i])
+	}
 
 	waitExitCodeCaptured := func() (bool, error) {
 		t.Log("Checking replica exit codes...")
@@ -277,20 +278,17 @@ func TestExitCodeCaptured(t *testing.T) {
 			return false, nil
 		}
 
-		rs, err := find(updatedExe.Status.Replicas, replicas[0].PID)
-		if err != nil {
-			return false, nil
-		}
-		if rs.ExitCode != r0_ec {
-			return false, fmt.Errorf("Unexpected exit code from first replica: expected %d actual %d", r0_ec, rs.ExitCode)
-		}
-
-		rs, err = find(updatedExe.Status.Replicas, replicas[1].PID)
-		if err != nil {
-			return false, nil
-		}
-		if rs.ExitCode != r1_ec {
-			return false, fmt.Errorf("Unexpected exit code from second replica: expected %d actual %d", r1_ec, rs.ExitCode)
+		for i := range replicas {
+			rs, err := find(updatedExe.Status.Replicas, replicas[i].PID)
+			if err != nil {
+				return false, nil
+			}
+			if rs.ExitCode == radcontroller.ExitCodeRunning {
+				return false, nil // Controller had no chance to update the replica status yet
+			}
+			if rs.ExitCode != expectedEC[i] {
+				return false, fmt.Errorf("Unexpected exit code from first replica: expected %d actual %d", expectedEC[i], rs.ExitCode)
+			}
 		}
 
 		return true, nil
