@@ -211,7 +211,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 	}
 
 	oid := id.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
-	operation := db.NewOperation(oid, string(rest.DeployingStatus))
+	operation := db.NewOperation(oid, db.OperationKindUpdate, string(rest.DeployingStatus))
 	_, err = r.db.PatchOperationByID(ctx, oid, &operation)
 	if err != nil {
 		return nil, err
@@ -248,7 +248,7 @@ func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (res
 	}
 
 	oid := id.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
-	operation := db.NewOperation(oid, string(rest.DeletingStatus))
+	operation := db.NewOperation(oid, db.OperationKindDelete, string(rest.DeletingStatus))
 	_, err = r.db.PatchOperationByID(ctx, oid, &operation)
 	if err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 	// guaranteed to be a RadiusResource.
 	targetID := id.Truncate()
 	item, err := r.db.GetV3Resource(ctx, targetID)
-	if err == db.ErrNotFound {
+	if err == db.ErrNotFound && operation.OperationKind == db.OperationKindDelete {
 		// 2. As a special case: the original resource will be *gone* for a successful deletion.
 		//
 		// We need to return a 204 for this case.

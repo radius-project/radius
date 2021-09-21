@@ -547,6 +547,7 @@ func Test_UpdateResource_Success(t *testing.T) {
 	test.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).
 		DoAndReturn(func(ctx context.Context, id azresources.ResourceID, operation *db.Operation) (bool, error) {
 			// Operations have some generated things like the time. Don't validate deeply.
+			require.Equal(t, db.OperationKindUpdate, operation.OperationKind)
 			require.Equal(t, string(rest.DeployingStatus), operation.Status)
 			oid = id
 			return true, nil
@@ -620,6 +621,7 @@ func Test_DeleteResource_Success(t *testing.T) {
 	test.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).
 		DoAndReturn(func(ctx context.Context, id azresources.ResourceID, operation *db.Operation) (bool, error) {
 			// Operations have some generated things like the time. Don't validate deeply.
+			require.Equal(t, db.OperationKindDelete, operation.OperationKind)
 			require.Equal(t, string(rest.DeletingStatus), operation.Status)
 			oid = id
 			return true, nil
@@ -705,8 +707,12 @@ func Test_GetOperation_SuccessfulDelete(t *testing.T) {
 	ctx := createContext(t)
 	test := createRPTest(t)
 
+	operation := &db.Operation{
+		OperationKind: db.OperationKindDelete,
+		Status:        string(rest.SuccededStatus),
+	}
 	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
-	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(operation, nil)
 	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, db.ErrNotFound)
 
 	response, err := test.rp.GetOperation(ctx, id)
@@ -718,8 +724,12 @@ func Test_GetOperation_SuccessfulDeploy(t *testing.T) {
 	ctx := createContext(t)
 	test := createRPTest(t)
 
+	operation := &db.Operation{
+		OperationKind: db.OperationKindUpdate,
+		Status:        string(rest.SuccededStatus),
+	}
 	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
-	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(operation, nil)
 
 	data := db.RadiusResource{
 		ID:                id.Truncate().ID,

@@ -49,7 +49,7 @@ func (ri ResourceID) Type() string {
 	return strings.Join(types, "/")
 }
 
-// Name gets the resource name.
+// QualifiedName gets the fully-qualify resource name (eg. `radiusv3/myapp/mycontainer`).
 func (ri ResourceID) QualifiedName() string {
 	names := make([]string, len(ri.Types))
 	for i, t := range ri.Types {
