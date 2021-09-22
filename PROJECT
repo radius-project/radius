@@ -57,4 +57,17 @@ resources:
     defaulting: true
     validation: true
     webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: radius.dev
+  group: applications
+  kind: Executable
+  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1
+  version: v1alpha1
+  webhooks:
+    defaulting: false
+    validation: false
+    webhookVersion: v1
 version: "3"

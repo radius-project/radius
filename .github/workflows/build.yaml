@@ -88,6 +88,9 @@ jobs:
       - name: Run make test-controller (controller tests)
         if: matrix.target_arch != 'arm' && matrix.target_os != 'windows'
         run: make test-controller
+      - name: Run make test-localdev (local development tests)
+        if: matrix.target_arch != 'arm' && matrix.target_os != 'windows'
+        run: make test-localdev
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:

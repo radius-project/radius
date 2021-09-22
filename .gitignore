@@ -32,6 +32,7 @@ rad.exe
 creds.json
 __debug_bin
 __debug_bin.exe
+default.profraw
 
 # Editor backup files
 *~
