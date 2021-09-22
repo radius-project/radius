@@ -56,7 +56,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	db := db.NewRadrpDB(dbclient)
 	rp2 := resourceproviderv2.NewResourceProvider(db, deploymentv2.NewDeploymentProcessor(appmodel, &s.Options.HealthChannels))
-	rp3 := resourceproviderv3.NewResourceProvider(db, deploymentv3.NewDeploymentProcessor(), nil)
+	rp3 := resourceproviderv3.NewResourceProvider(db, deploymentv3.NewDeploymentProcessor(appmodel), nil)
 
 	ctx = logr.NewContext(ctx, logger)
 	server := server.NewServer(ctx, server.ServerOptions{
