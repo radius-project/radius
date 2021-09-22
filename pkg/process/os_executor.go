@@ -18,14 +18,7 @@ func NewOSExecutor() Executor {
 	return &OSExecutor{}
 }
 
-func (e *OSExecutor) StartProcess(ctx context.Context, exe string, args []string, env []string, handler ProcessExitHandler) (int, func(), error) {
-	cmd := exec.CommandContext(ctx, exe)
-	cmdArgs := make([]string, 1)
-	cmdArgs[0] = exe
-	cmdArgs = append(cmdArgs, args...)
-	cmd.Args = cmdArgs
-	cmd.Env = env
-
+func (e *OSExecutor) StartProcess(ctx context.Context, cmd *exec.Cmd, handler ProcessExitHandler) (int, func(), error) {
 	if err := cmd.Start(); err != nil {
 		return 0, nil, err
 	}

@@ -8,6 +8,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -19,9 +20,7 @@ import (
 
 type ProcessExecution struct {
 	PID                int
-	Executable         string
-	Args               []string
-	Env                []string
+	Cmd                *exec.Cmd
 	StartWaitingCalled bool
 	StartedAt          time.Time
 	EndedAt            time.Time
@@ -47,13 +46,8 @@ func NewTestProcessExecutor() *TestProcessExecutor {
 	}
 }
 
-func (e *TestProcessExecutor) StartProcess(ctx context.Context, exe string, args []string, env []string, handler process.ProcessExitHandler) (pid int, startWaitingForExit func(), err error) {
+func (e *TestProcessExecutor) StartProcess(ctx context.Context, cmd *exec.Cmd, handler process.ProcessExitHandler) (pid int, startWaitingForExit func(), err error) {
 	err = nil
-
-	newArgs := make([]string, len(args))
-	copy(newArgs, args)
-	newEnv := make([]string, len(env))
-	copy(newEnv, env)
 
 	pid = int(atomic.AddInt32(&e.nextPID, 1))
 	e.m.Lock()
@@ -61,9 +55,7 @@ func (e *TestProcessExecutor) StartProcess(ctx context.Context, exe string, args
 
 	pe := ProcessExecution{
 		PID:         pid,
-		Executable:  exe,
-		Args:        newArgs,
-		Env:         newEnv,
+		Cmd:         cmd,
 		StartedAt:   time.Now(),
 		ExitHandler: handler,
 	}
@@ -98,7 +90,7 @@ func (e *TestProcessExecutor) FindAll(exeName string, cond func(pe ProcessExecut
 	defer e.m.RUnlock()
 
 	for _, pe := range e.Executions {
-		if pe.Executable == exeName {
+		if pe.Cmd.Path == exeName {
 			include := true
 			if cond != nil {
 				include = cond(pe)
