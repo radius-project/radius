@@ -7,15 +7,14 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -122,7 +121,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	err = r.ApplyState(ctx, log, req, application, resource, actual, desired)
+	err = r.ApplyState(ctx, log, req, application, resource, actual, *desired)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -167,7 +166,7 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	return results, nil
 }
 
-func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Request, log logr.Logger, application *radiusv1alpha3.Application, resource *radiusv1alpha3.Resource, applicationName string, resourceName string) ([]outputresource.OutputResource, bool, error) {
+func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Request, log logr.Logger, application *radiusv1alpha3.Application, resource *radiusv1alpha3.Resource, applicationName string, resourceName string) (*renderers.RendererOutput, bool, error) {
 	// If the application hasn't been defined yet, then just produce no output.
 	if application == nil {
 		r.recorder.Eventf(resource, "Normal", "Waiting", "Resource is waiting for application: %s", applicationName)
@@ -189,33 +188,25 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
-	references, err := resourceKind.Renderer().GetDependencies(ctx, w)
+	references, err := resourceKind.Renderer().GetDependencyIDs(ctx, *w)
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies: %v", err)
 		log.Error(err, "failed to render resource")
 		return nil, false, err
 	}
 
-	w.References = map[string]map[string]string{}
+	var deps map[string]renderers.RendererDependency
 
 	for _, reference := range references {
 		// Get resource filtered on application type.
-		parts := strings.Split(reference, "/")
-
-		// Last two parts should be resource type and resource name
-		if len(parts) < 4 {
-			// This should never happen but just to be safe
-			continue
-		}
-		resourceName := parts[len(parts)-1]
-		resourceType := parts[len(parts)-2]
+		resourceType := reference.Types[len(reference.Types)-1]
 		unst := &unstructured.Unstructured{}
 
 		// TODO determine this correctly
 		unst.SetGroupVersionKind(schema.GroupVersionKind{
 			Group:   "radius.dev",
 			Version: "v1alpha3",
-			Kind:    resourceType,
+			Kind:    resourceType.Type,
 		})
 
 		err = r.Client.Get(ctx, client.ObjectKey{
@@ -232,21 +223,37 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 			return nil, false, err
 		}
 
-		w.References[reference] = k8sResource.Status.Properties
+		computedValues := map[string]renderers.ComputedValue{}
+		for k, v := range k8sResource.Status.ComputedValues {
+			val := renderers.ComputedValue{}
+			err = json.Unmarshal(v.Raw, &val)
+			if err != nil {
+				// TODO maybe just ignore?
+				return nil, false, err
+			}
+
+			computedValues[k] = val
+		}
+
+		deps[reference.ID] = renderers.RendererDependency{
+			ComputedValues: computedValues,
+			ResourceID:     reference,
+			Definition:     unst.Object,
+		}
 	}
 
 	// TODO: Check provides and connections to make sure they exist?
 	// This isn't required atm but may be required for correctness.
 	// Whatever we decide, let's match what the Azure RP does.
-	resources, err := resourceKind.Renderer().Render(ctx, w)
+	resources, err := resourceKind.Renderer().Render(ctx, *w, deps)
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")
 		return nil, false, err
 	}
 
-	log.Info("rendered output resources", "count", len(resources))
-	return resources, true, nil
+	log.Info("rendered output resources", "count", len(resources.Resources))
+	return &resources, true, nil
 }
 
 func (r *ResourceReconciler) ApplyState(
@@ -256,7 +263,7 @@ func (r *ResourceReconciler) ApplyState(
 	application *radiusv1alpha3.Application,
 	resource *radiusv1alpha3.Resource,
 	actual []client.Object,
-	desired []outputresource.OutputResource) error {
+	desired renderers.RendererOutput) error {
 
 	// First we go through the desired state and apply all of those resources.
 	//
@@ -267,7 +274,7 @@ func (r *ResourceReconciler) ApplyState(
 
 	resource.Status.Resources = map[string]corev1.ObjectReference{}
 
-	for _, cr := range desired {
+	for _, cr := range desired.Resources {
 		obj, ok := cr.Resource.(client.Object)
 		if !ok {
 			err := fmt.Errorf("resource is not a kubernetes resource, was: %T", cr.Resource)
@@ -341,19 +348,19 @@ func (r *ResourceReconciler) ApplyState(
 		log.Info("deleted unused resource")
 	}
 
-	properties := map[string]string{}
+	properties := map[string]*runtime.RawExtension{}
 
-	for _, or := range desired {
-		for key, value := range or.AdditionalProperties {
-			// Only support strings for now
-			str, ok := value.(string)
-			if ok {
-				properties[key] = str
-			}
+	for key, value := range desired.ComputedValues {
+		// Only support strings for now
+		data, err := json.Marshal(value)
+		if err != nil {
+			return err
 		}
+
+		properties[key] = &runtime.RawExtension{Raw: data}
 	}
 
-	resource.Status.Properties = properties
+	resource.Status.ComputedValues = properties
 
 	// Can't use resource type to update as it will assume the wrong type
 	unst, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
@@ -366,7 +373,7 @@ func (r *ResourceReconciler) ApplyState(
 		return err
 	}
 
-	log.Info("applied output resources", "count", len(desired), "deleted", len(actual))
+	log.Info("applied output resources", "count", len(desired.Resources), "deleted", len(actual))
 	return nil
 }
 

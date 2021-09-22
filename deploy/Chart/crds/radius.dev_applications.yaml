@@ -52,7 +52,7 @@ spec:
                 type: string
               properties:
                 additionalProperties:
-                  type: string
+                  type: object
                 type: object
               resources:
                 additionalProperties:

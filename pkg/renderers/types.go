@@ -34,7 +34,7 @@ type RendererResource struct {
 type RendererDependency struct {
 	ResourceID     azresources.ResourceID
 	Definition     map[string]interface{}
-	ComputedValues map[string]interface{}
+	ComputedValues map[string]ComputedValue
 }
 
 type RendererOutput struct {

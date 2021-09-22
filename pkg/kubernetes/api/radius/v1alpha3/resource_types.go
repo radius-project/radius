@@ -25,7 +25,7 @@ type ResourceSpec struct {
 // ResourceStatus defines the observed state of Resource
 type ResourceStatus struct {
 	// +optional
-	Properties map[string]string `json:"properties,omitempty"`
+	ComputedValues map[string]*runtime.RawExtension `json:"properties,omitempty"`
 
 	// +optional
 	Resources map[string]corev1.ObjectReference `json:"resources,omitempty"`

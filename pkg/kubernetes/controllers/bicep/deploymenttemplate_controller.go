@@ -7,6 +7,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -21,6 +22,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
 )
 
 // DeploymentTemplateReconciler reconciles a Arm object
@@ -140,8 +142,15 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		// Reference additional properties of the status.
 		deployed[resource.ID] = map[string]interface{}{}
 
-		for key, value := range k8sResource.Status.Properties {
-			deployed[resource.ID][key] = value
+		for key, value := range k8sResource.Status.ComputedValues {
+			val := renderers.ComputedValue{}
+			err = json.Unmarshal(value.Raw, &val)
+			if err != nil {
+				// TODO maybe just ignore?
+				return ctrl.Result{}, err
+			}
+
+			deployed[resource.ID][key] = val
 		}
 
 		if k8sResource.Status.Phrase != "Ready" {

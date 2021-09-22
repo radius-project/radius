@@ -8,7 +8,6 @@ package inboundroutev1alpha3
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -58,16 +57,6 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return resources, fmt.Errorf("the binding field is required for trait '%s'", Kind)
 	}
 
-	// TODO this needs to get the HttpRoute, right?
-	properties, ok := dependencies[trait.Binding]
-	if !ok {
-		// Even if the operation fails, return the output resources created so far
-		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
-		// we no longer need to track the output resources on error
-		// See: https://github.com/Azure/radius/issues/499
-		return resources, fmt.Errorf("cannot find referenced resource '%s' referenced by '%s' trait", trait.Binding, Kind)
-	}
-
 	ingress := &networkingv1.Ingress{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Ingress",
@@ -75,23 +64,31 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resource.ResourceName,
-			Namespace: resource.ResourceNamespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
+			Namespace: resource.ApplicationName,
+			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 	}
 
-	port, ok := properties["port"]
+	resourceProperties, ok := dependencies[trait.Binding]
+	if !ok {
+		return resources, fmt.Errorf("cannot find referenced resource '%s' referenced by '%s' trait", trait.Binding, Kind)
+	}
+
+	port, ok := resourceProperties.ComputedValues["port"]
 	if !ok {
 		return resources, fmt.Errorf("cannot find port property on '%s' for trait '%s'", trait.Binding, Kind)
 	}
 
-	portInt, err := strconv.Atoi(port)
+	portInt, ok := port.GetValue().(int32)
+	if !ok {
+		return resources, fmt.Errorf("port cannot be treated as int in '%s' for trait '%s'", trait.Binding, Kind)
+	}
 
 	backend := networkingv1.IngressBackend{
 		Service: &networkingv1.IngressServiceBackend{
-			Name: w.Name,
+			Name: resource.ResourceName,
 			Port: networkingv1.ServiceBackendPort{
-				Number: int32(portInt),
+				Number: portInt,
 			},
 		},
 	}
@@ -123,7 +120,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		ingress.Spec = spec
 	}
 
-	resource := outputresource.OutputResource{
+	outputResource := outputresource.OutputResource{
 		Kind:     resourcekinds.Kubernetes,
 		LocalID:  outputresource.LocalIDIngress,
 		Deployed: false,
@@ -137,6 +134,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		},
 		Resource: ingress,
 	}
-	resources = append(resources, resource)
+
+	resources.Resources = append(resources.Resources, outputResource)
 	return resources, nil
 }
