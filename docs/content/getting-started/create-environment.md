@@ -30,7 +30,7 @@ Note that while the custom resource provider and container runtime are optimized
 
    This will prompt you for several inputs and then go create assets in your subscription (~5-10 mins). 
 
-   For more info about what's being created as part of an environment, see [Azure environments]({{< ref azure-environments >}}).
+   For more info about what's being created as part of an environment, see [Azure environments]({{< ref azure>}}).
 
 1. Verify creation of your new environment:
 
@@ -52,7 +52,7 @@ Note that while the custom resource provider and container runtime are optimized
    rad env init kubernetes
    ```
 
-   For more info about what's being created as part of an environment, see [Kubernetes environments]({{< ref kubernetes-environments >}}).
+   For more info about what's being created as part of an environment, see [Kubernetes environments]({{< ref kubernetes >}}).
 
 1. Verify creation of your new environment:
 

@@ -1,5 +1,5 @@
 resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'webapp'
+  name: 'webapp2'
 
   //CONTAINER
   resource todoapplication 'Components' = {
