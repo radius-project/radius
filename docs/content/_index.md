@@ -29,7 +29,7 @@ Author and deploy your first appliction in minutes with Radius:
   
   Radius codifies and automates the best practives for your hosting platform. We take care of things like connection strings, managed identities, role-based access control, and more.
 
-  [**See what Radius components can do**]({{< ref components >}})
+  [**See what Radius components can do**]({{< ref components-model >}})
 {{< /card >}}
 
 {{< /cardpane >}}
@@ -81,7 +81,7 @@ Author and deploy your first appliction in minutes with Radius:
   
   It includes a **control-plane** which communicates with with the rad CLI and a **runtime** to which applications are deployed.
   
-  [**Initialize Radius on your platform**]({{< ref environments.md >}})
+  [**Initialize Radius on your platform**]({{< ref platforms >}})
 {{< /card >}}
 
 {{< card header="**🔌 Extendable components**" title="Deploy your applications to cloud and edge with zero code changes" >}}

@@ -29,6 +29,6 @@ Conceptually Radius can and will support all hosting platforms, from major publi
 
 For now our focus is on delivering good support for the following platforms:
 
-- [Microsoft Azure]({{< ref azure-environments >}}) as a managed-application serverless PaaS
-- [Kubernetes]({{< ref kubernetes-environments >}}) in all flavors and form-factors
+- [Microsoft Azure]({{< ref azure>}}) as a managed-application serverless PaaS
+- [Kubernetes]({{< ref kubernetes >}}) in all flavors and form-factors
 - Local development with Docker as part of a developer inner-loop

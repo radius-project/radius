@@ -12,7 +12,7 @@ This page is still under construction. Please come back soon once the Radius tea
 
 ## Documentation
 
-All components need to have a page under [Components]({{< ref components >}}). Each page needs to have:
+All components need to have a page under [Components]({{< ref components-model >}}). Each page needs to have:
 
 - An overview that begins the page, describing what the components does and why people would use it
 - Configuration section that describes every value which you could provide when defining a component, along with example values for each field.
