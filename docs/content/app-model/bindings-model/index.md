@@ -27,7 +27,7 @@ For example: the [`azure.com/CosmosDBMongo`]({{< ref cosmos-mongodb.md >}}) Comp
 
 {{< rad file="snippets/providing.bicep" embed=true marker="//COSMOS" >}}
 
-You can learn about what default bindings are provided inside the respective [component docs]({{< ref components >}}).
+You can learn about what default bindings are provided inside the respective [component docs]({{< ref components-model >}}).
 
 ### User-defined bindings
 
@@ -37,7 +37,7 @@ For example, the [`radius.dev/container`]({{< ref container >}}) component can h
 
 {{< rad file="snippets/providing.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
 
-You can learn about what defined bindings are provided inside the respective [component docs]({{< ref components >}}).
+You can learn about what defined bindings are provided inside the respective [component docs]({{< ref components-model >}}).
 
 ## Consumiung bindings
 
@@ -45,7 +45,7 @@ The `properties.uses` section contains references to [bindings]({{< ref bindings
 
 Without any supplemental information, a `uses` relationship tells Radius about a logical dependency between components. With additional configuration, Radius can use [actions](#actions) to do things like set environment variables, place secrets within secret stores, and add additional intelligence to your application.
 
-Only runnable [components]({{< ref components >}}) (e.g. containers) can consume bindings with `uses`:
+Only runnable [components]({{< ref components-model >}}) (e.g. containers) can consume bindings with `uses`:
 
 {{< rad file="snippets/consuming.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
 
@@ -57,7 +57,7 @@ For example, you can take a uri provided by a Key Vault binding and pass it in t
 
 {{< rad file="snippets/full.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
 
-You can learn about what actions are provided inside the respective [component docs]({{< ref components >}}).
+You can learn about what actions are provided inside the respective [component docs]({{< ref components-model >}}).
 
 ## Next step
 

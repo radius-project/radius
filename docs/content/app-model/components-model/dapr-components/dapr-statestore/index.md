@@ -45,7 +45,7 @@ The following resources can act as a `dapr.io/StateStore` state store:
 
 ### any (determined by platform)
 
-The `any` kind lets the platform choose the best state store for the given platform. This provides portability across the various [Radius platforms]({{< ref environments >}}).
+The `any` kind lets the platform choose the best state store for the given platform. This provides portability across the various [Radius platforms]({{< ref platforms >}}).
 
 {{% alert title="Warning" color="warning" %}}
 The `any` kind is meant for dev/test purposes only. It is not recommended for production use.
@@ -53,8 +53,8 @@ The `any` kind is meant for dev/test purposes only. It is not recommended for pr
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Table Storage](#azure-table-storage) |
-| [Kubernetes]({{< ref kubernetes-environments >}}) | [Redis]({{< ref redis >}})]
+| [Microsoft Azure]({{< ref azure>}}) | [Azure Table Storage](#azure-table-storage) |
+| [Kubernetes]({{< ref kubernetes >}}) | [Redis]({{< ref redis >}})]
 
 ```sh
 resource orderstore 'Components' = {
@@ -74,8 +74,8 @@ The `state.azure.tablestorage` kind represents an [Azure Table Storage](https://
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Table Storage](https://azure.microsoft.com/en-us/services/storage/tables/)
-| [Kubernetes]({{< ref kubernetes-environments >}}) | Not supported
+| [Microsoft Azure]({{< ref azure>}}) | [Azure Table Storage](https://azure.microsoft.com/en-us/services/storage/tables/)
+| [Kubernetes]({{< ref kubernetes >}}) | Not supported
 
 ```sh
 resource orderstore 'Components' = {
@@ -96,8 +96,8 @@ The `state.sqlserver` represents an [Azure SQL Server](https://azure.microsoft.c
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure SQL Server](https://azure.microsoft.com/en-us/services/sql-database/campaign/)
-| [Kubernetes]({{< ref kubernetes-environments >}}) | Not supported
+| [Microsoft Azure]({{< ref azure>}}) | [Azure SQL Server](https://azure.microsoft.com/en-us/services/sql-database/campaign/)
+| [Kubernetes]({{< ref kubernetes >}}) | Not supported
 
 ```sh
 resource pubsub 'Components' = {

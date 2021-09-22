@@ -32,8 +32,8 @@ The Radius KeyVault component `azure.com/KeyVault` offers to the user:
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Key Vault](https://docs.microsoft.com/en-us/azure/key-vault/general/)
-| [Kubernetes]({{< ref kubernetes-environments >}}) | Not compatible
+| [Microsoft Azure]({{< ref azure>}}) | [Azure Key Vault](https://docs.microsoft.com/en-us/azure/key-vault/general/)
+| [Kubernetes]({{< ref kubernetes >}}) | Not compatible
 
 ## Configuration
 

@@ -6,14 +6,14 @@ description: "Learn about the Radius container component"
 weight: 1000
 ---
 
-The `radius.dev/Container` component provides an abstraction for a container workload that can be run on any [Radius platform]({{< ref environments >}}).
+The `radius.dev/Container` component provides an abstraction for a container workload that can be run on any [Radius platform]({{< ref platforms >}}).
 
 ## Platform resources
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | Kubernetes Deployment on AKS |
-| [Kubernetes]({{< ref kubernetes-environments >}}) | Kubernetes Deployment |
+| [Microsoft Azure]({{< ref azure>}}) | Kubernetes Deployment on AKS |
+| [Kubernetes]({{< ref kubernetes >}}) | Kubernetes Deployment |
 
 
 ## Configuration

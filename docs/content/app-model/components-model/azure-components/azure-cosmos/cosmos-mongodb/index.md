@@ -1,18 +1,19 @@
 ---
 type: docs
-title: "MongoDB database component"
-linkTitle: "MongoDB"
-description: "Learn how to use a MongoDB component in your application"
+title: "Azure CosmosDB Mongo"
+linkTitle: "MongoDB API"
+description: "Sample application running MongoDB through Azure CosmosDB API"
+weight: 200
 ---
 
-The `mongodb.com/MongoDB` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref environments >}}).
+The `azure.com/CosmosDBMongo` Component defines an [Azure CosmosDB](https://azure.microsoft.com/en-us/services/cosmos-db/) configured with a MongoDB API.
 
 ## Platform resources
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure CosmosDB API for MongoDB](https://docs.microsoft.com/en-us/azure/cosmos-db/mongodb-introduction)
-| [Kubernetes]({{< ref kubernetes-environments >}}) | [MongoDB Docker image](https://hub.docker.com/_/mongo/)
+| [Microsoft Azure]({{< ref azure>}}) | [Azure CosmosDB API for MongoDB](https://docs.microsoft.com/en-us/azure/cosmos-db/mongodb-introduction)
+| [Kubernetes]({{< ref kubernetes >}}) | Not compatible
 
 ## Configuration
 
@@ -23,11 +24,7 @@ The `mongodb.com/MongoDB` component is a [portable component]({{< ref components
 
 ## Resource lifecycle
 
-A `mongodb.com/MongoDB` component can be Radius-managed and user-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
-
-{{% alert title="Warning" color="warning" %}}
-At this time user-managed MongoDB components are only supported in Azure environments.
-{{% /alert %}}
+An `azure.com/CosmosDBMongo` can be either Radius-managed or user-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}})
 
 ### Radius managed
 
@@ -44,6 +41,15 @@ At this time user-managed MongoDB components are only supported in Azure environ
 {{< rad file="snippets/user-managed.bicep" embed=true marker="//BICEP" >}}
 
 ## Bindings
+
+### cosmos
+
+The `cosmos` Binding of kind `azure.com/CosmosDBMongo` represents the the CosmosDB resource itself, and all APIs it offers.
+
+| Property | Description |
+|----------|-------------|
+| `connectionString` | The MongoDB connection string used to connect to the database.
+| `database` | The name of the database to which you are connecting.
 
 ### mongo
 

@@ -53,8 +53,8 @@ The `pubsub.azure.servicebus` kind represents an [Azure Service Bus](https://doc
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Service Bus](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)
-| [Kubernetes]({{< ref kubernetes-environments >}}) | Not compatible
+| [Microsoft Azure]({{< ref azure>}}) | [Azure Service Bus](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)
+| [Kubernetes]({{< ref kubernetes >}}) | Not compatible
 
 #### Using a Radius-managed ServiceBus topic
 

@@ -18,8 +18,8 @@ The Azure ServiceBus Queue component offers to the user:
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Service Bus Queue](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)
-| [Kubernetes]({{< ref kubernetes-environments >}}) | Not compatible
+| [Microsoft Azure]({{< ref azure>}}) | [Azure Service Bus Queue](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)
+| [Kubernetes]({{< ref kubernetes >}}) | Not compatible
 
 ## Configuration
 

@@ -5,14 +5,14 @@ linkTitle: "Redis"
 description: "Learn how to use a Redis component in your application"
 ---
 
-The `redislabs.com/Redis` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref environments >}}).
+The `redislabs.com/Redis` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref platforms >}}).
 
 ## Platform resources
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure Cache for Redis](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-overview)
-| [Kubernetes]({{< ref kubernetes-environments >}}) | Redis service
+| [Microsoft Azure]({{< ref azure>}}) | [Azure Cache for Redis](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-overview)
+| [Kubernetes]({{< ref kubernetes >}}) | Redis service
 
 ## Configuration
 

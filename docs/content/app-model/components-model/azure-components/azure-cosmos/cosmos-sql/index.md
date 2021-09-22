@@ -12,8 +12,8 @@ This application showcases how Radius can use a managed Azure CosmosDB with SQL 
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | [Azure CosmosDB API with Core/SQL API](https://docs.microsoft.com/en-us/azure/cosmos-db/choose-api#coresql-api)
-| [Kubernetes]({{< ref kubernetes-environments >}}) | Not compatible
+| [Microsoft Azure]({{< ref azure>}}) | [Azure CosmosDB API with Core/SQL API](https://docs.microsoft.com/en-us/azure/cosmos-db/choose-api#coresql-api)
+| [Kubernetes]({{< ref kubernetes >}}) | Not compatible
 
 ## Configuration
 

@@ -36,7 +36,7 @@ Radius components can be deployed and managed by either Radius (managed) or by a
 
 ### Radius managed
 
-When `properties.config.managed` is set to `true`, Radius will manage the lifecycle of the underlying resource, meaning it will deploy and manage the resource itself on the [hosting platform]({{< ref environments >}}).
+When `properties.config.managed` is set to `true`, Radius will manage the lifecycle of the underlying resource, meaning it will deploy and manage the resource itself on the [hosting platform]({{< ref platforms >}}).
 
 {{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
 
@@ -61,7 +61,7 @@ When `properties.config.managed` is set to `false` or omitted, you can explicitl
 | properties.uses | List of [bindings]({{< ref bindings-model.md >}}) which your runnable Component depends on for APIs and/or data.
 | properties.config | Configuration of the Radius component, such as `managed` and `resource`.
 
-Different [component types]({{< ref components >}}) may also have additional properties and configuration which can be set as part of the component definition.
+Different [component types]({{< ref components-model >}}) may also have additional properties and configuration which can be set as part of the component definition.
 
 ## Next step
 

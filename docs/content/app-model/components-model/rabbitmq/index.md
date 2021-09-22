@@ -11,8 +11,8 @@ The `rabbitmq.com/MessageQueue` component is a Kubernetes specific component for
 
 | Platform | Resource |
 |----------|----------|
-| [Microsoft Azure]({{< ref azure-environments >}}) | Not compatible |
-| [Kubernetes]({{< ref kubernetes-environments >}}) | [RabbitMQ](https://hub.docker.com/_/rabbitmq/) service |
+| [Microsoft Azure]({{< ref azure>}}) | Not compatible |
+| [Kubernetes]({{< ref kubernetes >}}) | [RabbitMQ](https://hub.docker.com/_/rabbitmq/) service |
 
 ## Configuration
 
