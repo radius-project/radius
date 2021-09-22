@@ -9,30 +9,30 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloadsv1alpha3"
 )
 
 type Renderer struct {
 }
 
 // Need a step to take rendered routes to be usable by component
-func (r Renderer) GetDependencies(ctx context.Context, workload workloadsv1alpha3.InstantiatedWorkload) ([]string, error) {
-
+func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
 	return nil, nil
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, w renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	// This should return a service as an output resource
 	outputResources := []outputresource.OutputResource{}
 
 	route := &HttpRoute{}
-	err := w.Workload.AsRequired(Kind, route)
+	err := w.AsRequired(Kind, route)
 	if err != nil {
-		return nil, err
+		return renderers.RendererOutput{}, err
 	}
 
 	service := &corev1.Service{
@@ -41,12 +41,12 @@ func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWo
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      w.Name,
-			Namespace: w.Application, // TODO why is this a different namespace
-			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
+			Name:      w.ResourceName,
+			Namespace: w.ApplicationName, // TODO why is this a different namespace
+			Labels:    kubernetes.MakeDescriptiveLabels(w.ApplicationName, w.ResourceName),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeSelectorLabels(w.Application, w.Name),
+			Selector: kubernetes.MakeSelectorLabels(w.ApplicationName, w.ResourceName),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports:    []corev1.ServicePort{},
 		},
@@ -54,7 +54,7 @@ func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWo
 
 	// TODO set protocol and host
 	port := corev1.ServicePort{
-		Name:       w.Name,
+		Name:       w.ResourceName,
 		Port:       int32(route.GetEffectivePort()),
 		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(route.ID)),
 		Protocol:   corev1.ProtocolTCP,
@@ -75,15 +75,32 @@ func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWo
 			Namespace:  service.ObjectMeta.Namespace,
 		},
 		Resource: service,
-		AdditionalProperties: map[string]interface{}{ // TODO make this accept jsonpointer
-			"host":   w.Name,
-			"port":   fmt.Sprint(route.GetEffectivePort()),
-			"url":    fmt.Sprintf("http://%s:%d", w.Name, route.GetEffectivePort()),
-			"scheme": "http",
+	}
+
+	computedValues := map[string]renderers.ComputedValue{ // TODO make this accept jsonpointer
+		"host": {
+			Kind:    renderers.KindStatic,
+			LocalID: outputresource.LocalIDService,
+			Value:   w.ResourceName, // TODO the url isn't stored on the output resource atm?
+		},
+		"port": {
+			Kind:    renderers.KindStatic,
+			LocalID: outputresource.LocalIDService,
+			Value:   route.GetEffectivePort(), // TODO the url isn't stored on the output resource atm?
+		},
+		"url": {
+			Kind:    renderers.KindStatic,
+			LocalID: outputresource.LocalIDService,
+			Value:   fmt.Sprintf("http://%s:%d", w.ResourceName, route.GetEffectivePort()), // TODO the url isn't stored on the output resource atm?
+		},
+		"scheme": {
+			Kind:    renderers.KindStatic,
+			LocalID: outputresource.LocalIDService,
+			Value:   "http", // TODO the url isn't stored on the output resource atm?
 		},
 	}
 
 	outputResources = append(outputResources, res)
 
-	return outputResources, nil
+	return renderers.RendererOutput{Resources: outputResources, ComputedValues: computedValues}, nil
 }

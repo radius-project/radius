@@ -11,15 +11,16 @@ import (
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
 	"k8s.io/apimachinery/pkg/conversion"
 )
 
 func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.Scope) error {
 	original := a.(*radiusv1alpha3.Resource)
-	result := b.(*resourcesv1alpha3.GenericResource)
-	result.Name = original.Name
-	result.Kind = original.Kind
+	result := b.(*renderers.RendererResource)
+	result.ResourceName = original.Name
+	result.ResourceType = original.Kind
+	result.ApplicationName = original.Spec.Application
 
 	template := original.Spec.Template
 
@@ -35,8 +36,6 @@ func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.S
 		return err
 	}
 
-	result.ID = armResource.ID
-
 	if armResource.Body != nil {
 		properties, ok := armResource.Body["properties"]
 		if ok {
@@ -45,7 +44,7 @@ func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.S
 				return err
 			}
 
-			err = json.Unmarshal(data, &result.AdditionalProperties)
+			err = json.Unmarshal(data, &result.Definition)
 			if err != nil {
 				return err
 			}

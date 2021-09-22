@@ -14,6 +14,11 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 )
 
+const (
+	KindStatic    = "static"
+	KindReference = "reference"
+)
+
 type Renderer interface {
 	GetDependencyIDs(ctx context.Context, resource RendererResource) ([]azresources.ResourceID, error)
 	Render(ctx context.Context, resource RendererResource, dependencies map[string]RendererDependency) (RendererOutput, error)

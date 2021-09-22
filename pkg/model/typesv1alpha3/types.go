@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/workloadsv1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
 )
 
 // ApplicationModel defines the set of supported resource types and related features.
@@ -23,7 +23,7 @@ type ApplicationModel interface {
 // ResourceKind represents a resource kind supported by the application model.
 type ResourceKind interface {
 	Kind() string
-	Renderer() workloadsv1alpha3.WorkloadRenderer
+	Renderer() renderers.Renderer
 }
 
 // ResourceType represents a type of resource supported by the system.
@@ -64,14 +64,14 @@ func (model *applicationModel) LookupOutputResource(kind string) (OutputResource
 
 type resourceKind struct {
 	kind     string
-	renderer workloadsv1alpha3.WorkloadRenderer
+	renderer renderers.Renderer
 }
 
 func (kind *resourceKind) Kind() string {
 	return kind.kind
 }
 
-func (kind *resourceKind) Renderer() workloadsv1alpha3.WorkloadRenderer {
+func (kind *resourceKind) Renderer() renderers.Renderer {
 	return kind.renderer
 }
 
@@ -102,7 +102,7 @@ type Handlers struct {
 	HealthHandler   handlers.HealthHandler
 }
 
-func NewModel(renderers map[string]workloadsv1alpha3.WorkloadRenderer, handlers map[string]Handlers) ApplicationModel {
+func NewModel(renderers map[string]renderers.Renderer, handlers map[string]Handlers) ApplicationModel {
 	resourceList := []ResourceKind{}
 	resourceLookup := map[string]ResourceKind{}
 	for kind, renderer := range renderers {

@@ -14,10 +14,9 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
-	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/workloadsv1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -175,26 +174,19 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, nil
 	}
 
-	generic := &resourcesv1alpha3.GenericResource{}
-	err := r.Scheme.Convert(resource, generic, ctx)
+	w := &renderers.RendererResource{}
+	err := r.Scheme.Convert(resource, w, ctx)
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not be converted: %v", err)
 		log.Error(err, "failed to convert resource")
 		return nil, false, err
 	}
 
-	resourceKind, err := r.Model.LookupResource(generic.Kind)
+	resourceKind, err := r.Model.LookupResource(w.ResourceType)
 	if err != nil {
-		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource kind '%s' is not supported'", generic.Kind)
+		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource kind '%s' is not supported'", w.ResourceType)
 		log.Error(err, "unsupported kind for resource")
 		return nil, false, err
-	}
-
-	w := workloadsv1alpha3.InstantiatedWorkload{
-		Application: applicationName,
-		Name:        resourceName,
-		Namespace:   resource.Namespace,
-		Workload:    *generic,
 	}
 
 	references, err := resourceKind.Renderer().GetDependencies(ctx, w)

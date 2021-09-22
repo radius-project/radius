@@ -9,15 +9,15 @@ import (
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/handlers"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	workloads "github.com/Azure/radius/pkg/workloadsv1alpha3"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
-	renderers := map[string]workloads.WorkloadRenderer{
+	renderers := map[string]renderers.Renderer{
 		containerv1alpha3.Kind: &containerv1alpha3.Renderer{Arm: armauth.ArmConfig{}},
 		// daprstatestorev1alpha3.Kind: &daprstatestorev1alpha3.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
 		// mongodbv1alpha3.Kind:        &mongodbv1alpha3.KubernetesRenderer{},

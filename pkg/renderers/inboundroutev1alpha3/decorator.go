@@ -10,29 +10,29 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloadsv1alpha3"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Renderer is the WorkloadRenderer implementation for the 'radius.dev/InboundRoute' decorator.
 type Renderer struct {
-	Inner workloadsv1alpha3.WorkloadRenderer
+	Inner renderers.Renderer
 }
 
 // Need a step to take rendered routes to be usable by component
-func (r Renderer) GetDependencies(ctx context.Context, workload workloadsv1alpha3.InstantiatedWorkload) ([]string, error) {
-
-	return r.Inner.GetDependencies(ctx, workload)
+func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
+	return r.Inner.GetDependencyIDs(ctx, workload)
 }
 
 // Render is the WorkloadRenderer implementation for the radius.dev/InboundRoute' decorator.
-func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	// Let the inner renderer do its work
-	resources, err := r.Inner.Render(ctx, w)
+	resources, err := r.Inner.Render(ctx, resource, dependencies)
 	if err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -42,7 +42,7 @@ func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWo
 	}
 
 	trait := Trait{}
-	found, err := w.Workload.FindTrait(Kind, &trait)
+	found, err := resource.FindTrait(Kind, &trait)
 	if !found || err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -59,7 +59,7 @@ func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWo
 	}
 
 	// TODO this needs to get the HttpRoute, right?
-	properties, ok := w.References[trait.Binding]
+	properties, ok := dependencies[trait.Binding]
 	if !ok {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -74,8 +74,8 @@ func (r Renderer) Render(ctx context.Context, w workloadsv1alpha3.InstantiatedWo
 			APIVersion: networkingv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      w.Name,
-			Namespace: w.Application,
+			Name:      resource.ResourceName,
+			Namespace: resource.ResourceNamespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 		},
 	}

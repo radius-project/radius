@@ -14,9 +14,8 @@ import (
 	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloadsv1alpha3"
-	workloads "github.com/Azure/radius/pkg/workloadsv1alpha3"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -25,11 +24,11 @@ import (
 type noop struct {
 }
 
-func (n *noop) GetDependencies(ctx context.Context, workload workloadsv1alpha3.InstantiatedWorkload) ([]string, error) {
+func (n *noop) GetDependencies(ctx context.Context, workload renderers.RendererResource) ([]string, error) {
 	return nil, errors.New("should not be called in this test")
 }
 
-func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+func (n *noop) Render(ctx context.Context, workload renderers.RendererResource) ([]outputresource.OutputResource, error) {
 	return []outputresource.OutputResource{}, nil
 }
 
@@ -147,9 +146,9 @@ func Test_Render_WithHostname(t *testing.T) {
 }
 
 // The inboundroute trait doesn't look at much of the data here, just the provides section.
-func makeContainerComponent(trait resourcesv1alpha3.GenericTrait) workloads.InstantiatedWorkload {
+func makeContainerComponent(trait resourcesv1alpha3.GenericTrait) renderers.RendererResource {
 
-	return workloads.InstantiatedWorkload{
+	return renderers.RendererResource{
 		Application: "test-app",
 		Name:        "test-container",
 		References: map[string]map[string]string{
