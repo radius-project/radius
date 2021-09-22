@@ -84,13 +84,13 @@ func (e *TestProcessExecutor) SimulateProcessExit(t *testing.T, pid int, exitCod
 	}
 }
 
-func (e *TestProcessExecutor) FindAll(exeName string, cond func(pe ProcessExecution) bool) []ProcessExecution {
+func (e *TestProcessExecutor) FindAll(cmdPath string, cond func(pe ProcessExecution) bool) []ProcessExecution {
 	retval := make([]ProcessExecution, 0)
 	e.m.RLock()
 	defer e.m.RUnlock()
 
 	for _, pe := range e.Executions {
-		if pe.Cmd.Path == exeName {
+		if pe.Cmd.Path == cmdPath {
 			include := true
 			if cond != nil {
 				include = cond(pe)
