@@ -16,13 +16,13 @@ on:
       - main
       - release/*
 jobs:
-  # The pre_check job determined whether we should skip some workflow
+  # The pre_check job determines whether we should skip some workflow
   # jobs.  Currently, it seems that for Required jobs, only the
   # un-parameterized jobs can be skipped while meeting the
   # requirements. For example, `kubernetes_tests` and `deploy_tests`
   # jobs can be skipped while `build` and `image` can't
-  # be. Fortunately, these two jobs are the longest longing as well as
-  # the most resource intensive.
+  # be. Fortunately, the former two jobs are the longest longing as
+  # well as the most resource intensive.
   #
   # The reason for this pecularity seems to be that if a job is
   # skipped entirely, the parameter expansion logic did not kick in
@@ -41,7 +41,7 @@ jobs:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@master
         with:
-          paths_ignore: '["**.md", "**.yaml"]'
+          paths_ignore: '["**.md"]'
 
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -202,7 +202,7 @@ jobs:
   kubernetes_tests:
     name: Run Kubernetes tests
     needs: [ 'build', 'images', 'pre_check' ]
-    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }}
+    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.17'
