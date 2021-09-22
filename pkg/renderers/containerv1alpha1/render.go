@@ -222,6 +222,29 @@ func (r Renderer) getPodIdentityAndDependencies(ctx context.Context, workload wo
 	return "", nil, nil
 }
 
+func (r Renderer) makeSecrets(options kubernetesSecretOptions, secrets map[string][]byte) *corev1.Secret {
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: corev1.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      options.Name,
+			Namespace: options.Namespace,
+			Labels:    options.DescriptiveLabels,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: secrets,
+	}
+}
+
+type kubernetesSecretOptions struct {
+	DescriptiveLabels map[string]string
+	SelectorLabels    map[string]string
+	Namespace         string
+	Name              string
+}
+
 func (r Renderer) makeDeployment(ctx context.Context, workload workloads.InstantiatedWorkload, component *ContainerComponent, podIdentityName string) (*appsv1.Deployment, []outputresource.OutputResource, error) {
 	outputResources := []outputresource.OutputResource{}
 	deploymentDependencies := []outputresource.Dependency{}
@@ -241,18 +264,54 @@ func (r Renderer) makeDeployment(ctx context.Context, workload workloads.Instant
 	}
 
 	for _, dep := range component.Uses {
-		// Set environment variables in the container
+		bindingSecrets := make(map[string][]byte)
 		for k, v := range dep.Env {
 			str, err := v.EvaluateString(workload.BindingValues)
 			if err != nil {
 				return nil, nil, err
 			}
-			container.Env = append(container.Env, corev1.EnvVar{
-				Name:  k,
-				Value: str,
-			})
+			bindingSecrets[k] = []byte(str)
 		}
 
+		if len(dep.Env) > 0 {
+			opts := kubernetesSecretOptions{
+				Name:              component.Name,
+				Namespace:         workload.Application,
+				DescriptiveLabels: kubernetes.MakeDescriptiveLabels(workload.Application, workload.Name),
+			}
+			// Create a secret with all the evaluated bindings stored as key-value pairs
+			bindingSecret := r.makeSecrets(opts, bindingSecrets)
+
+			// Create an output resource to track the secret created
+			outputResources = append(outputResources, outputresource.OutputResource{
+				Resource: bindingSecret,
+				Kind:     resourcekinds.Kubernetes,
+				LocalID:  outputresource.LocalIDSecret,
+				Managed:  true,
+				Type:     outputresource.TypeKubernetes,
+				Info: outputresource.K8sInfo{
+					Kind:       bindingSecret.TypeMeta.Kind,
+					APIVersion: bindingSecret.TypeMeta.APIVersion,
+					Name:       bindingSecret.ObjectMeta.Name,
+					Namespace:  bindingSecret.ObjectMeta.Namespace,
+				},
+			})
+
+			// Set environment variables in the container
+			for k := range dep.Env {
+				container.Env = append(container.Env, corev1.EnvVar{
+					Name: k,
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: bindingSecret.GetName(),
+							},
+							Key: k,
+						},
+					},
+				})
+			}
+		}
 		// Evaluate dependencies on keyvault secrets, generate output resource
 		if dep.Secrets == nil {
 			continue
