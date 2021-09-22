@@ -214,6 +214,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 			Name:      resourceName,
 		}, unst)
 		if err != nil {
+			// TODO make this wait without an error?
 			return nil, false, err
 		}
 
@@ -223,7 +224,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 			return nil, false, err
 		}
 
-		computedValues := map[string]renderers.ComputedValue{}
+		computedValues := map[string]interface{}{}
 
 		err = json.Unmarshal(k8sResource.Status.ComputedValues.Raw, &computedValues)
 		if err != nil {
@@ -349,6 +350,7 @@ func (r *ResourceReconciler) ApplyState(
 		if err != nil {
 			return err
 		}
+		// TODO convert from computed value to to interface{}
 		resource.Status.ComputedValues = &runtime.RawExtension{Raw: data}
 	}
 

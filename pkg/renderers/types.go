@@ -23,14 +23,13 @@ type RendererResource struct {
 	ApplicationName string
 	ResourceName    string
 	ResourceType    string
-	ResourceID      azresources.ResourceID
 	Definition      map[string]interface{}
 }
 
 type RendererDependency struct {
 	ResourceID     azresources.ResourceID
 	Definition     map[string]interface{}
-	ComputedValues map[string]ComputedValueReference
+	ComputedValues map[string]interface{}
 }
 
 type RendererOutput struct {

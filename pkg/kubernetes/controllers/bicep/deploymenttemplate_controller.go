@@ -155,6 +155,9 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			}
 		}
 
+		// TODO: merge properties that exist with computed values
+		// Computed values win if conflicts
+
 		if k8sResource.Status.Phrase != "Ready" {
 
 			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
