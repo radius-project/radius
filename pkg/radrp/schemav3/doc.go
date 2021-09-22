@@ -6,25 +6,17 @@
 package schemav3
 
 /*
-Package schema contains the validation logic based on the JSON schema
-of the types defined in Radius Resource Provider's OpenAPI spec.
+Package schemav3 contains the validation logic based on the JSON
+schema of the types defined in Radius Resource Provider's OpenAPI
+spec.
 
-Since our OpenAPI spec should be top-level documents, we want to keep
-them in the "/schemas" directory of the repository. However, we _also_
-want to embed the files into our Go package using go:embed, which does
-not support reference to parent directory or symbolic links.  As a
-result, we keep the real file in this package, and create a symlink in
-the /schemas directory.
+We also use the JSON Schema files in this package to generate our
+OpenAPI spec.
 
 The JSON schema version used is Draft 4, and the OpenAPI version used
-is 2.0. There are incompatiblities between the two specifications,
+is 2.0.  There are incompatiblities between the two specifications,
 therefore we will want to constraint our object schema to be within
-the intersection of the two specs. However, there are instances where
-we need to use features from JSON Schema not supported in OpenAPI spec
-documents (either due to OpenAPI limitations or autorest generator's
-limitation). For example, to handle polymorphic ComponentTraits we
-need to use a different traits.json than the traits.json included in
-the /schema/rest-api-spec directory.
+the intersection of the two specs.
 
 The main types are `Validator` and `ValidationError`. All surfaced
 validation errors are of the type ValidationError. We strive to avoid
