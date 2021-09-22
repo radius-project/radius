@@ -20,12 +20,16 @@ type ResourceSpec struct {
 	Application string `json:"application,omitempty"`
 
 	Resource string `json:"resource,omitempty"`
+
+	ResourceID string `json:"resourceID,omitempty"`
 }
 
 // ResourceStatus defines the observed state of Resource
 type ResourceStatus struct {
 	// +optional
-	ComputedValues map[string]*runtime.RawExtension `json:"properties,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	ComputedValues *runtime.RawExtension `json:"computedValues,omitempty"`
 
 	// +optional
 	Resources map[string]corev1.ObjectReference `json:"resources,omitempty"`

@@ -155,12 +155,12 @@ func Parse(id string) (ResourceID, error) {
 		return ResourceID{}, invalid(id)
 	}
 
-	// Check up front for empty segments
-	for _, s := range segments {
-		if s == "" {
-			return ResourceID{}, invalid(id)
-		}
-	}
+	// // Check up front for empty segments
+	// for _, s := range segments {
+	// 	if s == "" {
+	// 		return ResourceID{}, invalid(id)
+	// 	}
+	// }
 
 	if strings.ToLower(segments[0]) != "subscriptions" {
 		return ResourceID{}, invalid(id)

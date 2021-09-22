@@ -48,12 +48,11 @@ spec:
           status:
             description: ResourceStatus defines the observed state of Resource
             properties:
+              computedValues:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               phrase:
                 type: string
-              properties:
-                additionalProperties:
-                  type: object
-                type: object
               resources:
                 additionalProperties:
                   description: 'ObjectReference contains enough information to let

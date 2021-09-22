@@ -142,15 +142,17 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		// Reference additional properties of the status.
 		deployed[resource.ID] = map[string]interface{}{}
 
-		for key, value := range k8sResource.Status.ComputedValues {
-			val := renderers.ComputedValue{}
-			err = json.Unmarshal(value.Raw, &val)
+		if k8sResource.Status.ComputedValues != nil {
+			computedValues := map[string]renderers.ComputedValue{}
+
+			err = json.Unmarshal(k8sResource.Status.ComputedValues.Raw, &computedValues)
 			if err != nil {
-				// TODO maybe just ignore?
 				return ctrl.Result{}, err
 			}
 
-			deployed[resource.ID][key] = val
+			for key, value := range computedValues {
+				deployed[resource.ID][key] = value.GetValue()
+			}
 		}
 
 		if k8sResource.Status.Phrase != "Ready" {

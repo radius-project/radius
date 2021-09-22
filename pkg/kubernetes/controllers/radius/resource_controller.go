@@ -224,15 +224,10 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		}
 
 		computedValues := map[string]renderers.ComputedValue{}
-		for k, v := range k8sResource.Status.ComputedValues {
-			val := renderers.ComputedValue{}
-			err = json.Unmarshal(v.Raw, &val)
-			if err != nil {
-				// TODO maybe just ignore?
-				return nil, false, err
-			}
 
-			computedValues[k] = val
+		err = json.Unmarshal(k8sResource.Status.ComputedValues.Raw, &computedValues)
+		if err != nil {
+			return nil, false, err
 		}
 
 		deps[reference.ID] = renderers.RendererDependency{
@@ -348,19 +343,14 @@ func (r *ResourceReconciler) ApplyState(
 		log.Info("deleted unused resource")
 	}
 
-	properties := map[string]*runtime.RawExtension{}
-
-	for key, value := range desired.ComputedValues {
-		// Only support strings for now
-		data, err := json.Marshal(value)
+	// Only support strings for now
+	if desired.ComputedValues != nil {
+		data, err := json.Marshal(desired.ComputedValues)
 		if err != nil {
 			return err
 		}
-
-		properties[key] = &runtime.RawExtension{Raw: data}
+		resource.Status.ComputedValues = &runtime.RawExtension{Raw: data}
 	}
-
-	resource.Status.ComputedValues = properties
 
 	// Can't use resource type to update as it will assume the wrong type
 	unst, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)

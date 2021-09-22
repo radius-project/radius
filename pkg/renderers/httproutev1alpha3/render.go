@@ -56,7 +56,7 @@ func (r Renderer) Render(ctx context.Context, w renderers.RendererResource, depe
 	port := corev1.ServicePort{
 		Name:       w.ResourceName,
 		Port:       int32(route.GetEffectivePort()),
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(route.ID)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(route.ResourceID.ID)),
 		Protocol:   corev1.ProtocolTCP,
 	}
 
@@ -79,22 +79,18 @@ func (r Renderer) Render(ctx context.Context, w renderers.RendererResource, depe
 
 	computedValues := map[string]renderers.ComputedValue{ // TODO make this accept jsonpointer
 		"host": {
-			Kind:    renderers.KindStatic,
 			LocalID: outputresource.LocalIDService,
 			Value:   w.ResourceName, // TODO the url isn't stored on the output resource atm?
 		},
 		"port": {
-			Kind:    renderers.KindStatic,
 			LocalID: outputresource.LocalIDService,
 			Value:   route.GetEffectivePort(), // TODO the url isn't stored on the output resource atm?
 		},
 		"url": {
-			Kind:    renderers.KindStatic,
 			LocalID: outputresource.LocalIDService,
 			Value:   fmt.Sprintf("http://%s:%d", w.ResourceName, route.GetEffectivePort()), // TODO the url isn't stored on the output resource atm?
 		},
 		"scheme": {
-			Kind:    renderers.KindStatic,
 			LocalID: outputresource.LocalIDService,
 			Value:   "http", // TODO the url isn't stored on the output resource atm?
 		},

@@ -709,18 +709,8 @@ func (in *ResourceStatus) DeepCopyInto(out *ResourceStatus) {
 	*out = *in
 	if in.ComputedValues != nil {
 		in, out := &in.ComputedValues, &out.ComputedValues
-		*out = make(map[string]*runtime.RawExtension, len(*in))
-		for key, val := range *in {
-			var outVal *runtime.RawExtension
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(runtime.RawExtension)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
-		}
+		*out = new(runtime.RawExtension)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
