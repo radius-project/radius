@@ -1,0 +1,131 @@
+resources:
+  - repo: self
+phases:
+  - phase: Phase_1
+    displayName: Test on MacOS
+
+    dependsOn: Phase_4
+    condition: succeeded()
+    queue:
+      name: Hosted macOS
+      timeoutInMinutes: 60
+
+    steps:
+      - task: GoTool@0
+        displayName: 'Use Go 1.11'
+        inputs:
+          version: 1.11
+
+
+      - task: Go@0
+        displayName: 'go build'
+        inputs:
+          command: build
+
+
+      - task: Go@0
+        displayName: 'go test'
+        inputs:
+          command: test
+
+          arguments: '-v'
+
+
+
+  - phase: Phase_2
+    displayName: Test on Ubuntu 1604
+
+    dependsOn: Phase_4
+    condition: succeeded()
+    queue:
+      name: Hosted Ubuntu 1604
+      timeoutInMinutes: 60
+
+    steps:
+      - task: GoTool@0
+        displayName: 'Use Go 1.11'
+        inputs:
+          version: 1.11
+
+
+      - task: Go@0
+        displayName: 'go build'
+        inputs:
+          command: build
+
+
+      - task: Go@0
+        displayName: 'go test'
+        inputs:
+          command: test
+
+          arguments: '-v'
+
+
+
+  - phase: Phase_3
+    displayName: Test on Windows
+
+    dependsOn: Phase_4
+    condition: succeeded()
+    queue:
+      name: Hosted
+    steps:
+      - task: GoTool@0
+        displayName: 'Use Go 1.11'
+        inputs:
+          version: 1.11
+
+
+      - task: Go@0
+        displayName: 'go build'
+        inputs:
+          command: build
+
+
+      - task: Go@0
+        displayName: 'go test'
+        inputs:
+          command: test
+
+          arguments: '-v'
+
+
+
+  - phase: Phase_4
+    displayName: Lint
+
+    condition: succeeded()
+    queue:
+      name: Hosted Ubuntu 1604
+      timeoutInMinutes: 10
+
+    steps:
+      - bash: 'cat adjectives.txt | perl isAlphabetized.pl'
+        displayName: 'Adjectives Alphabetized'
+
+      - bash: 'cat nouns.txt | perl isAlphabetized.pl'
+        displayName: 'Nouns Alphabetized'
+
+      - task: GoTool@0
+        displayName: 'Use Go 1.11'
+        inputs:
+          version: 1.11
+
+
+      - bash: 'go get -u golang.org/x/lint/golint'
+        displayName: 'install golint'
+
+      - bash: 'test -z "$(golint ./...)"'
+        displayName: 'run golint'
+
+      - task: Go@0
+        displayName: 'go vet'
+        inputs:
+          command: custom
+
+          customCommand: vet
+
+          arguments: ./...
+
+

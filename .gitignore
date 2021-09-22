@@ -14,9 +14,6 @@
 # Auto-generated cli docs files
 docs/content/reference/cli/rad*
 
-# Dependency directories
-vendor/
-
 # Build Output
 bin/
 dist/

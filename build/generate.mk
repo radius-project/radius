@@ -8,8 +8,13 @@
 .PHONY: generate
 generate: generate-rp-manifest generate-radclient generate-radclient-v3 generate-go generate-k8s-manifests generate-controller ## Generates all targets.
 
+.PHONE: generate-vendor
+	@echo "$(ARROW) Updating vendor..."
+	go mod tidy
+	go mod vendor
+
 .PHONY: generate-rp-manifest
-generate-rp-manifest: ## Generates Custom RP manifest that registers our resource types.
+generate-rp-manifest: generate-vendor ## Generates Custom RP manifest that registers our resource types.
 	@echo "$(ARROW) Updating manifest..."
 	go run cmd/rp-manifest-gen/main.go \
 		--input deploy/rp-full.input.json \
@@ -29,7 +34,7 @@ generate-autorest-installed:
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-specs-v3
-generate-openapi-specs-v3:
+generate-openapi-specs-v3: generate-vendor
 	@echo "$(ARROW) Generating OpenAPI schema manifest..."
 
 	go run cmd/autorest-schema-gen/main.go \
