@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Local Radius environments"
-linkTitle: "Local"
+linkTitle: "Local machine"
 description: "Run Radius applications locally on your machinec"
 weight: 20
 ---
