@@ -20,6 +20,9 @@ import (
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -51,7 +54,10 @@ import (
 var options EnvOptions
 var testEnv *envtest.Environment
 
-const retries = 10
+const (
+	retries            = 10
+	CacheKeyController = "metadata.controller"
+)
 
 func StartController() error {
 	assetsDirectory := os.Getenv("KUBEBUILDER_ASSETS")
@@ -121,6 +127,18 @@ func StartController() error {
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application reconciler: %w", err)
+	}
+
+	// Index deployments by the owner (any resource besides application)
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
+	if err != nil {
+		return err
+	}
+
+	// Index services by the owner (any resource besides application)
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
+	if err != nil {
+		return err
 	}
 
 	resourceTypes := []struct {
@@ -310,4 +328,17 @@ type EnvOptions struct {
 
 func NewControllerTest(ctx context.Context, row ControllerStep) ControllerTest {
 	return ControllerTest{options, ctx, row}
+}
+
+func extractOwnerKey(obj client.Object) []string {
+	owner := metav1.GetControllerOf(obj)
+	if owner == nil {
+		return nil
+	}
+
+	if owner.APIVersion != radiusv1alpha3.GroupVersion.String() || owner.Kind == "Application" {
+		return nil
+	}
+
+	return []string{owner.Name}
 }

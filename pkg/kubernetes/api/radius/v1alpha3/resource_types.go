@@ -20,8 +20,6 @@ type ResourceSpec struct {
 	Application string `json:"application,omitempty"`
 
 	Resource string `json:"resource,omitempty"`
-
-	ResourceID string `json:"resourceID,omitempty"`
 }
 
 // ResourceStatus defines the observed state of Resource

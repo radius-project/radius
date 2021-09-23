@@ -14,6 +14,7 @@ import (
 )
 
 func TestInvalidTraitDefinition(t *testing.T) {
+	t.Skip("Need to readd webhook support")
 	t.Parallel()
 
 	ctx, cancel := testcontext.GetContext(t)
@@ -32,6 +33,7 @@ func TestInvalidTraitDefinition(t *testing.T) {
 }
 
 func TestInvalidApplication(t *testing.T) {
+	t.Skip("Need to readd webhook support")
 	t.Parallel()
 
 	ctx, cancel := testcontext.GetContext(t)

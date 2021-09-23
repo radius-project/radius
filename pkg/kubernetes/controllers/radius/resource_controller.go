@@ -211,7 +211,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 
 		err = r.Client.Get(ctx, client.ObjectKey{
 			Namespace: req.Namespace,
-			Name:      resourceName,
+			Name:      resourceType.Name,
 		}, unst)
 		if err != nil {
 			// TODO make this wait without an error?
