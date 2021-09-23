@@ -11,16 +11,9 @@
         }
       ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "mongodb.com/Mongo@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/MongoDBComponentProperties"
         }

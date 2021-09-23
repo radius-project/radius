@@ -11,16 +11,9 @@
         }
       ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "redislabs.com/Redis@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/RedisComponentProperties"
         }

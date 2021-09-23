@@ -11,16 +11,9 @@
         }
       ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "rabbitmq.com/MessageQueue@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/RabbitMQComponentProperties"
         }

@@ -598,18 +598,11 @@
       ],
       "description": "Component for Dapr Pub/Sub",
       "properties": {
-        "kind": {
-          "enum": [
-            "dapr.io/PubSubTopic@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/DaprPubSubComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
       ],
       "type": "object",
@@ -676,18 +669,11 @@
       ],
       "description": "Component for Dapr state store",
       "properties": {
-        "kind": {
-          "enum": [
-            "dapr.io/StateStore@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/DaprStateStoreComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
       ],
       "type": "object",
@@ -909,18 +895,11 @@
       ],
       "description": "The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.",
       "properties": {
-        "kind": {
-          "enum": [
-            "mongodb.com/Mongo@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/MongoDBComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
       ],
       "type": "object",
@@ -1161,18 +1140,11 @@
       ],
       "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
       "properties": {
-        "kind": {
-          "enum": [
-            "rabbitmq.com/MessageQueue@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/RabbitMQComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
       ],
       "type": "object",
@@ -1255,18 +1227,11 @@
       ],
       "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",
       "properties": {
-        "kind": {
-          "enum": [
-            "redislabs.com/Redis@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/RedisComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
       ],
       "type": "object",

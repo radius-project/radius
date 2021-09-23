@@ -11,16 +11,9 @@
         }
       ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "dapr.io/PubSubTopic@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/DaprPubSubComponentProperties"
         }
