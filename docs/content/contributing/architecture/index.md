@@ -139,7 +139,7 @@ On the implementation side, we can use much of `kubectl`s functionality as libra
 
 ### Application Model & Bicep
 
-The application model represents a set of core concepts for deploying and managing cloud-native applications. The application model has extensive coverage via its own [conceptual documentation]({{< ref overview-concept >}}). This section will focus on the technical details of the representation.
+The application model represents a set of core concepts for deploying and managing cloud-native applications. The application model has extensive coverage via its own [conceptual documentation]({{< ref appmodel-concept >}}). This section will focus on the technical details of the representation.
 
 We use Bicep because it's an expressive and productive language for describing infrastructure and deployments. Using Bicep for Azure allows a transparent abstraction over the rest of Azure - Radius can reference ARM types and vice-versa. In the future the same will be possible for Kubernetes, Bicep will support seamless interop between Kubernetes types and Radius types.
 
