@@ -21,7 +21,7 @@ Author and deploy your first appliction in minutes with Radius:
   
   The Radius application model allows you to describe the bindings, dependencies, and traits your app provides. Developers no longer need to describe the infrastructure and connections that make up the underlying platform.
 
-  [**Learn more about the Radius app model**]({{< ref app-model >}})
+  [**Learn more about the Radius app model**]({{< ref appmodel-concept >}})
 {{< /card >}}
 
 {{< card title="**Automate best practices**" >}}
@@ -62,7 +62,7 @@ Author and deploy your first appliction in minutes with Radius:
   
   Radius uses the Bicep language as its file format and structure.
   
-  [**Learn about Radius concepts**]({{< ref overview-concept.md >}})
+  [**Learn about Radius concepts**]({{< ref appmodel-concept >}})
 {{< /card >}}
 
 {{< card header="**⌨ rad CLI**" title="Easily initialize and deploy Radius applications" >}}
@@ -89,7 +89,7 @@ Author and deploy your first appliction in minutes with Radius:
 
   No more platform-specific pipelines and bindings to swap out and maintain.
   
-  [**Check out the Radius components**]({{< ref overview-concept.md >}})
+  [**Check out the Radius components**]({{< ref appmodel-concept >}})
 {{< /card >}}
 
 {{< /cardpane >}}

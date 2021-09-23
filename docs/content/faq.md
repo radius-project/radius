@@ -21,7 +21,7 @@ Users can employ multiple environments to for isolation and organization, for ex
 
 ### Can an Azure resource group be used for more than one environment?
 
-While not supported in the CLI, a Radius `.config.yaml` file can be manually configured such that multiple environments can point to a single Resource Group.
+**Yes**. While not supported in the CLI, a Radius `.config.yaml` file can be manually configured such that multiple environments can point to a single Resource Group.
 
 ### Is environment info saved somewhere besides the config.yaml file?
 
@@ -49,4 +49,6 @@ While updating Radius-managed resources in Azure and Kubernetes is possible outs
 
 This flag tells Radius to manage the lifetime of the component for you. The component will be deleted when you delete the application.
 
-## Other
+### Is Azure App Service supported?
+
+**Not yet**. For now we're focusing on containers, but in the future we plan on expanding to other Azure services such as App Service, Functions, Logic Apps, and others. Stay tuned for more information.
