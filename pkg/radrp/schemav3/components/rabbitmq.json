@@ -3,6 +3,13 @@
   "definitions": {
     "RabbitMQComponentResource": {
       "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/TrackedResource"
+        }
+      ],
       "required": [
         "kind",
         "properties"

@@ -3,6 +3,13 @@
   "definitions": {
     "DaprStateStoreComponentResource": {
       "description": "Component for Dapr state store",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/TrackedResource"
+        }
+      ],
       "required": [
         "kind",
         "properties"

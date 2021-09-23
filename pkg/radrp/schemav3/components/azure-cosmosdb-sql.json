@@ -5,13 +5,13 @@
       "description": "Component for Azure CosmosDB with SQL",
       "type": "object",
       "x-ms-azure-resource": true,
-      "required": [
-        "properties"
-      ],
       "allOf": [
         {
           "$ref": "../common-types.json#/definitions/TrackedResource"
         }
+      ],
+      "required": [
+        "properties"
       ],
       "properties": {
         "properties": {

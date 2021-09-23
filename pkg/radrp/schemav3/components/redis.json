@@ -3,6 +3,13 @@
   "definitions": {
     "RedisComponentResource": {
       "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/TrackedResource"
+        }
+      ],
       "required": [
         "kind",
         "properties"

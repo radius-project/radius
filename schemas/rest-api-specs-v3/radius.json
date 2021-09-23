@@ -591,6 +591,11 @@
       ]
     },
     "DaprPubSubComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/TrackedResource"
+        }
+      ],
       "description": "Component for Dapr Pub/Sub",
       "properties": {
         "kind": {
@@ -606,7 +611,9 @@
       "required": [
         "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "DaprStateStoreComponentList": {
       "description": "List of dapr.io.StateStoreComponent resources.",
@@ -662,6 +669,11 @@
       ]
     },
     "DaprStateStoreComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/TrackedResource"
+        }
+      ],
       "description": "Component for Dapr state store",
       "properties": {
         "kind": {
@@ -677,7 +689,9 @@
       "required": [
         "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "DaprTrait": {
       "additionalProperties": false,
@@ -888,6 +902,11 @@
       ]
     },
     "MongoDBComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/TrackedResource"
+        }
+      ],
       "description": "The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.",
       "properties": {
         "kind": {
@@ -903,7 +922,9 @@
       "required": [
         "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "Operation": {
       "description": "Details of a REST API operation, returned from the Resource Provider Operations API",
@@ -1133,6 +1154,11 @@
       ]
     },
     "RabbitMQComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/TrackedResource"
+        }
+      ],
       "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
       "properties": {
         "kind": {
@@ -1148,7 +1174,9 @@
       "required": [
         "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "RedisComponentList": {
       "description": "List of redislabs.com.Redis resources.",
@@ -1220,6 +1248,11 @@
       ]
     },
     "RedisComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/TrackedResource"
+        }
+      ],
       "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",
       "properties": {
         "kind": {
@@ -1235,7 +1268,9 @@
       "required": [
         "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "Resource": {
       "description": "Common fields that are returned in the response for all Azure Resource Manager resources",

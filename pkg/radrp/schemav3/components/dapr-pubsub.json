@@ -3,6 +3,13 @@
   "definitions": {
     "DaprPubSubComponentResource": {
       "description": "Component for Dapr Pub/Sub",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/TrackedResource"
+        }
+      ],
       "required": [
         "kind",
         "properties"
