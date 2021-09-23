@@ -77,7 +77,7 @@ func (r Renderer) Render(ctx context.Context, w renderers.RendererResource, depe
 		Resource: service,
 	}
 
-	computedValues := map[string]renderers.ComputedValue{ // TODO make this accept jsonpointer
+	computedValues := map[string]renderers.ComputedValueReference{ // TODO make this accept jsonpointer
 		"host": {
 			LocalID: outputresource.LocalIDService,
 			Value:   w.ResourceName, // TODO the url isn't stored on the output resource atm?

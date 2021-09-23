@@ -142,7 +142,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		deployed[resource.ID] = map[string]interface{}{}
 
 		if k8sResource.Status.ComputedValues != nil {
-			computedValues := map[string]renderers.ComputedValue{}
+			computedValues := map[string]renderers.ComputedValueReference{}
 
 			err = json.Unmarshal(k8sResource.Status.ComputedValues.Raw, &computedValues)
 			if err != nil {
