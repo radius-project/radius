@@ -13,12 +13,14 @@ aliases:
 
 Radius hosting platforms are where you can deploy and host Radius applications. For more background on environments and hosting platforms visit the [concepts section]({{< ref environments-concept >}}).
 
-## Supported platforms
+## Platforms
 
 {{< cardpane >}}
 {{< card >}}
 <div class="text-center">
-  <h2>Local</h2>
+  <a href="./local">
+    <h2>Local</h2>
+  </a>
 </div>
 {{< /card >}}
 {{< card >}}
