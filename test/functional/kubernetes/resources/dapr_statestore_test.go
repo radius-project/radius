@@ -16,6 +16,8 @@ import (
 )
 
 func Test_DaprStateStore(t *testing.T) {
+	t.Skip("Need to readd dapr state store support")
+
 	template := "testdata/kubernetes-resources-statestore-managed.bicep"
 	application := "kubernetes-resources-statestore-managed"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{

@@ -56,6 +56,8 @@ func TestInvalidApplication(t *testing.T) {
 // For example, we validate the the type `kind` is a string, but not that
 // the trait can only be oneof any trait type.
 func TestBasicInvalid(t *testing.T) {
+	t.Skip("Need to readd webhook support")
+
 	t.Parallel()
 
 	ctx, cancel := testcontext.GetContext(t)

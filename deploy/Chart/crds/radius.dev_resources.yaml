@@ -53,8 +53,6 @@ spec:
                 type: string
               resource:
                 type: string
-              resourceID:
-                type: string
               template:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true

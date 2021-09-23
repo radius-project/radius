@@ -1,46 +1,54 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'kubernetes-resources-container-httpbinding'
-
-  resource frontend 'Components' = {
+resource app 'radius.dev/Application@v1alpha3' = {
+  name: 'azure-resources-container-httpbinding'
+  resource frontend_http 'HttpRoute' = {
     name: 'frontend'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'rynowak/frontend:0.5.0-dev'
-        }
-      }
-      uses: [
-        {
-          binding: backend.properties.bindings.web
-          env: {
-            SERVICE__BACKEND__HOST: backend.properties.bindings.web.host
-            SERVICE__BACKEND__PORT: backend.properties.bindings.web.port
-          }
-        }
-      ]
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 80
-        }
-      }
+      port: 80
     }
   }
-
-  resource backend 'Components' = {
-    name: 'backend'
-    kind: 'radius.dev/Container@v1alpha1'
+  resource frontend 'ContainerComponent' = {
+    name: 'frontend'
     properties: {
-      run: {
-        container: {
-          image: 'rynowak/backend:0.5.0-dev'
+      connections: {
+        backend: {
+          kind: 'Http'
+          source: backend_http.id
         }
       }
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 80
+      container: {
+        image: 'rynowak/frontend:0.5.0-dev'
+        ports: {
+          web: {
+            containerPort: 80
+            provides: frontend_http.id
+          }
+        }
+        env: {
+          SERVICE__BACKEND__HOST: backend_http.properties.host
+          SERVICE__BACKEND__PORT: '${backend_http.properties.port}'
+        }
+      }
+      traits: [
+        {
+          kind: 'radius.dev/InboundRoute@v1alpha1'
+          binding: 'web'
+        }
+      ]
+    }
+  }
+  resource backend_http 'HttpRoute' = {
+    name: 'backend'
+  }
+  resource backend 'ContainerComponent' = {
+    name: 'backend'
+    properties: {
+      container: {
+        image: 'rynowak/backend:0.5.0-dev'
+        ports: {
+          web: {
+            containerPort: 80
+            provides: backend_http.id
+          }
         }
       }
     }

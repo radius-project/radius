@@ -57,6 +57,8 @@ func Test_ContainerHttpBinding(t *testing.T) {
 }
 
 func Test_ContainerManualScale(t *testing.T) {
+	t.Skip("Need to readd manual scale support")
+
 	template := "testdata/kubernetes-resources-container-manualscale.bicep"
 	application := "kubernetes-resources-container-manualscale"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{

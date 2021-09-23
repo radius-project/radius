@@ -16,6 +16,8 @@ import (
 )
 
 func Test_RabbitMQ(t *testing.T) {
+	t.Skip("Need to readd rabbitmq support")
+
 	template := "testdata/kubernetes-resources-rabbitmq-managed.bicep"
 	application := "kubernetes-resources-rabbitmq-managed"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{

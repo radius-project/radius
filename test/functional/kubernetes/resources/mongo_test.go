@@ -16,6 +16,8 @@ import (
 )
 
 func Test_Mongo(t *testing.T) {
+	t.Skip("Need to readd mongo support")
+
 	template := "testdata/kubernetes-resources-mongo.bicep"
 	application := "kubernetes-resources-mongo"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
