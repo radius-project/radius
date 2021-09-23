@@ -1,7 +1,6 @@
 {
   "name": "name",
   "id": "id",
-  "kind": "dapr.io/PubSubTopic@v1alpha1",
   "properties": {
     "config": {
       "kind": "dapr.io/pubsub/ServiceBusQueue",
