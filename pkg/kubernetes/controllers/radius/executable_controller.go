@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/process"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -85,7 +85,7 @@ Deletion handling:
 func (r *ExecutableReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("Executable", req.NamespacedName)
 
-	var executable radiusv1alpha1.Executable
+	var executable radiusv1alpha3.Executable
 	err := r.Get(ctx, req.NamespacedName, &executable)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// The Executable has been deleted
@@ -130,7 +130,7 @@ func (r *ExecutableReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 }
 
-func (r *ExecutableReconciler) updateReplicaState(executable *radiusv1alpha1.Executable, log logr.Logger) bool {
+func (r *ExecutableReconciler) updateReplicaState(executable *radiusv1alpha3.Executable, log logr.Logger) bool {
 	replicas := executable.Status.Replicas
 	var changed bool
 
@@ -160,7 +160,7 @@ func (r *ExecutableReconciler) updateReplicaState(executable *radiusv1alpha1.Exe
 	return changed
 }
 
-func (r *ExecutableReconciler) manageReplicas(ctx context.Context, executable *radiusv1alpha1.Executable, log logr.Logger) bool {
+func (r *ExecutableReconciler) manageReplicas(ctx context.Context, executable *radiusv1alpha3.Executable, log logr.Logger) bool {
 	replicas := executable.Status.Replicas
 	count := len(replicas)
 	pidsRunning := make([]int, 0)
@@ -218,9 +218,9 @@ func (r *ExecutableReconciler) manageReplicas(ctx context.Context, executable *r
 	return false
 }
 
-func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *radiusv1alpha1.Executable, log logr.Logger) {
+func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *radiusv1alpha3.Executable, log logr.Logger) {
 	var err error
-	var rs radiusv1alpha1.ReplicaStatus
+	var rs radiusv1alpha3.ReplicaStatus
 	env := toEnvArray(executable.Spec.Env)
 
 	log.Info("starting replica...",
@@ -250,7 +250,7 @@ func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *rad
 	}
 }
 
-func (r *ExecutableReconciler) checkDone(executable *radiusv1alpha1.Executable, log logr.Logger) (done bool, changed bool) {
+func (r *ExecutableReconciler) checkDone(executable *radiusv1alpha3.Executable, log logr.Logger) (done bool, changed bool) {
 	if !executable.Status.FinishTimestamp.IsZero() {
 		return true, false
 	}
@@ -368,6 +368,6 @@ func (r *ExecutableReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&radiusv1alpha1.Executable{}).
+		For(&radiusv1alpha3.Executable{}).
 		Complete(r)
 }

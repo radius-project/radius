@@ -9,7 +9,7 @@ import (
 	"flag"
 	"os"
 
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -27,7 +27,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	// Probably don't need all the Radius CRDs for local development... but for now this will do
-	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 }
 
 func main() {
