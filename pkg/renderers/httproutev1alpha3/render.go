@@ -56,7 +56,7 @@ func (r Renderer) Render(ctx context.Context, w renderers.RendererResource, depe
 	port := corev1.ServicePort{
 		Name:       w.ResourceName,
 		Port:       int32(route.GetEffectivePort()),
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(route.ResourceID.ID)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(w.ResourceType + w.ResourceName)),
 		Protocol:   corev1.ProtocolTCP,
 	}
 

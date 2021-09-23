@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
@@ -23,12 +22,6 @@ func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.S
 	result.ResourceType = original.Kind
 	result.ApplicationName = original.Spec.Application
 
-	id, err := azresources.Parse(original.Spec.ResourceID)
-	if err != nil {
-		return err
-	}
-	result.ResourceID = id
-
 	template := original.Spec.Template
 
 	// Get arm template from template part
@@ -37,7 +30,7 @@ func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.S
 	}
 
 	armResource := &armtemplate.Resource{}
-	err = json.Unmarshal(template.Raw, armResource)
+	err := json.Unmarshal(template.Raw, armResource)
 
 	if err != nil {
 		return err

@@ -151,7 +151,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			}
 
 			for key, value := range computedValues {
-				deployed[resource.ID][key] = value.GetValue()
+				deployed[resource.ID][key] = value.Value
 			}
 		}
 

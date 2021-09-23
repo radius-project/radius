@@ -39,9 +39,18 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		// See: https://github.com/Azure/radius/issues/499
 		return resources, err
 	}
+	traits := resource.Definition["traits"]
+	if traits == nil {
+		return resources, fmt.Errorf("InboundRoute decorator requires a 'traits' field")
+	}
 
-	trait := Trait{}
-	found, err := resource.FindTrait(Kind, &trait)
+	casted, ok := traits.([]interface{})
+	if !ok {
+		return resources, fmt.Errorf("InboundRoute decorator requires a 'traits' field of type []interface{}")
+	}
+
+	trait := InboundRouteTrait{}
+	found, err := FindTrait(casted, Kind, &trait)
 	if !found || err != nil {
 		// Even if the operation fails, return the output resources created so far
 		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -79,7 +88,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return resources, fmt.Errorf("cannot find port property on '%s' for trait '%s'", trait.Binding, Kind)
 	}
 
-	portInt, ok := port.GetValue().(int32)
+	portInt, ok := port.(int32)
 	if !ok {
 		return resources, fmt.Errorf("port cannot be treated as int in '%s' for trait '%s'", trait.Binding, Kind)
 	}

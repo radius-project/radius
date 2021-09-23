@@ -195,7 +195,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
-	var deps map[string]renderers.RendererDependency
+	deps := map[string]renderers.RendererDependency{}
 
 	for _, reference := range references {
 		// Get resource filtered on application type.
