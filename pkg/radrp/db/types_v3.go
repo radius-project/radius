@@ -32,7 +32,8 @@ type RadiusResource struct {
 	ApplicationName string `bson:"applicationName"`
 	ResourceName    string `bson:"resourceName"`
 
-	Definition map[string]interface{} `bson:"definition"`
+	Definition     map[string]interface{} `bson:"definition"`
+	ComputedValues map[string]interface{} `bson:"computedValues"`
 
 	Status            RadiusResourceStatus `bson:"status"`
 	ProvisioningState string               `bson:"provisioningState"`

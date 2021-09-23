@@ -78,6 +78,11 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 			properties[k] = v
 		}
 	}
+	if resource.ComputedValues != nil {
+		for k, v := range resource.ComputedValues {
+			properties[k] = v
+		}
+	}
 	properties["provisioningState"] = resource.ProvisioningState
 
 	return RadiusResource{
