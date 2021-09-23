@@ -46,7 +46,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 
 	casted, ok := traits.([]interface{})
 	if !ok {
-		return resources, fmt.Errorf("InboundRoute decorator requires a 'traits' field of type []interface{}")
+		return resources, fmt.Errorf("InboundRoute trait requires a 'traits' field of type []interface{}")
 	}
 
 	trait := InboundRouteTrait{}
@@ -88,7 +88,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return resources, fmt.Errorf("cannot find port property on '%s' for trait '%s'", trait.Binding, Kind)
 	}
 
-	portInt, ok := port.(int32)
+	portInt, ok := port.(int)
 	if !ok {
 		return resources, fmt.Errorf("port cannot be treated as int in '%s' for trait '%s'", trait.Binding, Kind)
 	}
@@ -97,7 +97,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		Service: &networkingv1.IngressServiceBackend{
 			Name: resource.ResourceName,
 			Port: networkingv1.ServiceBackendPort{
-				Number: portInt,
+				Number: int32(portInt),
 			},
 		},
 	}

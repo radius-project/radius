@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -65,7 +64,10 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	options := armtemplate.TemplateOptions{}
+	options := armtemplate.TemplateOptions{
+		SubscriptionID: "kubernetes",
+		ResourceGroup:  req.Namespace,
+	}
 	resources, err := armtemplate.Eval(template, options)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -90,8 +92,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		evaluator.Variables[name] = value
 	}
 
-	var k8sInfos []*unstructured.Unstructured
-
 	for i, resource := range resources {
 		body, err := evaluator.VisitMap(resource.Body)
 		if err != nil {
@@ -104,7 +104,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		k8sInfos = append(k8sInfos, k8sInfo)
 
 		// TODO track progress of operations (count of deployed resources) in Status.
 		arm.Status.Operations = append(arm.Status.Operations, bicepv1alpha3.DeploymentTemplateOperation{

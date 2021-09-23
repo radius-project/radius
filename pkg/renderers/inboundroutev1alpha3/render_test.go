@@ -10,8 +10,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
@@ -24,12 +24,12 @@ import (
 type noop struct {
 }
 
-func (n *noop) GetDependencies(ctx context.Context, workload renderers.RendererResource) ([]string, error) {
+func (n *noop) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
 	return nil, errors.New("should not be called in this test")
 }
 
-func (n *noop) Render(ctx context.Context, workload renderers.RendererResource) ([]outputresource.OutputResource, error) {
-	return []outputresource.OutputResource{}, nil
+func (n *noop) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+	return renderers.RendererOutput{Resources: []outputresource.OutputResource{}}, nil
 }
 
 func createContext(t *testing.T) context.Context {
@@ -48,7 +48,7 @@ func Test_Render_Simple(t *testing.T) {
 		Inner: &noop{},
 	}
 
-	trait := resourcesv1alpha3.GenericTrait{
+	trait := Trait{
 		Kind: Kind,
 		AdditionalProperties: map[string]interface{}{
 			"binding": "web",
@@ -56,11 +56,19 @@ func Test_Render_Simple(t *testing.T) {
 	}
 	w := makeContainerComponent(trait)
 
-	resources, err := renderer.Render(ctx, w)
-	require.NoError(t, err)
-	require.Len(t, resources, 1)
+	dependencies := map[string]renderers.RendererDependency{
+		"web": {
+			ComputedValues: map[string]interface{}{
+				"port": 5000,
+			},
+		},
+	}
 
-	ingress, resource := findIngress(resources)
+	output, err := renderer.Render(ctx, w, dependencies)
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+
+	ingress, resource := findIngress(output.Resources)
 	require.NotNil(t, ingress)
 	require.NotNil(t, resource)
 
@@ -94,7 +102,7 @@ func Test_Render_WithHostname(t *testing.T) {
 		Inner: &noop{},
 	}
 
-	trait := resourcesv1alpha3.GenericTrait{
+	trait := Trait{
 		Kind: Kind,
 		AdditionalProperties: map[string]interface{}{
 			"hostname": "example.com",
@@ -102,13 +110,21 @@ func Test_Render_WithHostname(t *testing.T) {
 		},
 	}
 
+	dependencies := map[string]renderers.RendererDependency{
+		"web": {
+			ComputedValues: map[string]interface{}{
+				"port": 5000,
+			},
+		},
+	}
+
 	w := makeContainerComponent(trait)
 
-	resources, err := renderer.Render(ctx, w)
+	output, err := renderer.Render(ctx, w, dependencies)
 	require.NoError(t, err)
-	require.Len(t, resources, 1)
+	require.Len(t, output.Resources, 1)
 
-	ingress, resource := findIngress(resources)
+	ingress, resource := findIngress(output.Resources)
 	require.NotNil(t, ingress)
 	require.NotNil(t, resource)
 
@@ -146,23 +162,16 @@ func Test_Render_WithHostname(t *testing.T) {
 }
 
 // The inboundroute trait doesn't look at much of the data here, just the provides section.
-func makeContainerComponent(trait resourcesv1alpha3.GenericTrait) renderers.RendererResource {
-
+func makeContainerComponent(trait Trait) renderers.RendererResource {
 	return renderers.RendererResource{
-		Application: "test-app",
-		Name:        "test-container",
-		References: map[string]map[string]string{
-			"web": {
-				"port": "5000",
-			},
-		},
-		Workload: resourcesv1alpha3.GenericResource{
-			Name: "test-container",
-			Kind: "ContainerComponent",
-			ID:   "test-container",
-			AdditionalProperties: map[string]interface{}{
-				"traits": []resourcesv1alpha3.GenericTrait{
-					trait,
+		ApplicationName: "test-app",
+		ResourceName:    "test-container",
+		ResourceType:    "test",
+		Definition: map[string]interface{}{
+			"traits": []interface{}{
+				Trait{
+					Kind:                 trait.Kind,
+					AdditionalProperties: trait.AdditionalProperties,
 				},
 			},
 		},

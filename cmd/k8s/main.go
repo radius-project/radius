@@ -130,6 +130,10 @@ func main() {
 	}
 
 	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		setupLog.Error(err, "unable to create dynamic client")
+		os.Exit(1)
+	}
 
 	// Use discovery client to determine GVR for each resource type
 	dc, err := discovery.NewDiscoveryClientForConfig(ctrl.GetConfigOrDie())

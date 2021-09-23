@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/model/resourcesv1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,12 +24,12 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 	err = json.Unmarshal(original, &resource)
 	require.NoError(t, err)
 
-	actual := resourcesv1alpha3.GenericResource{}
-	expected := resourcesv1alpha3.GenericResource{
-		Name: "frontend",
-		Kind: "ContainerComponent",
-		ID:   "/subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding/ContainerComponent/frontend",
-		AdditionalProperties: map[string]interface{}{
+	actual := renderers.RendererResource{}
+	expected := renderers.RendererResource{
+		ResourceName:    "frontend",
+		ApplicationName: "azure-resources-container-httpbinding",
+		ResourceType:    "ContainerComponent",
+		Definition: map[string]interface{}{
 			"connections": map[string]interface{}{
 				"backend": map[string]interface{}{
 					"kind":   "Http",

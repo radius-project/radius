@@ -356,6 +356,10 @@ func (r *ResourceReconciler) ApplyState(
 
 	// Can't use resource type to update as it will assume the wrong type
 	unst, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
+	if err != nil {
+		return err
+	}
+
 	u := &unstructured.Unstructured{Object: unst}
 
 	_, err = r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).UpdateStatus(ctx, u, v1.UpdateOptions{})
