@@ -32,10 +32,10 @@ func Test_ArmToK8sConversion(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := map[string]*unstructured.Unstructured{
+		"HttpRoute-frontend": frontendRouteUnstructured,
 		"Application-azure-resources-container-httpbinding": applicationUnstructured,
 		"HttpRoute-backend":           backendRouteUnstructured,
 		"ContainerComponent-backend":  backendUnstructured,
-		"HttpRoute-frontend":          frontendRouteUnstructured,
 		"ContainerComponent-frontend": frontendUnstructured,
 	}
 

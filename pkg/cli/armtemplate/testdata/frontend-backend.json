@@ -15,25 +15,7 @@
       "apiVersion": "2018-09-01-preview",
       "name": "[format('{0}/{1}/{2}', 'radiusv3', 'azure-resources-container-httpbinding', 'frontend')]",
       "properties": {
-        "run": {
-          "container": {
-            "image": "rynowak/frontend:0.5.0-dev"
-          }
-        },
-        "uses": [
-          {
-            "binding": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web]",
-            "env": {
-              "SERVICE__BACKEND__TARGETPORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'backend')).bindings.web.targetPort]"
-            }
-          }
-        ],
-        "bindings": {
-          "web": {
-            "kind": "http",
-            "targetPort": 80
-          }
-        }
+        "port": 80
       },
       "dependsOn": [
         "[resourceId('Microsoft.CustomProviders/resourceProviders/Application', 'radiusv3', 'azure-resources-container-httpbinding')]"
@@ -59,7 +41,6 @@
             }
           },
           "env": {
-            "SERVICE__BACKEND__HOST": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')).host]",
             "SERVICE__BACKEND__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')).port]"
           }
         }
@@ -74,6 +55,9 @@
       "type": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute",
       "apiVersion": "2018-09-01-preview",
       "name": "[format('{0}/{1}/{2}', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]",
+      "properties": {
+        "port": 80
+      },
       "dependsOn": [
         "[resourceId('Microsoft.CustomProviders/resourceProviders/Application', 'radiusv3', 'azure-resources-container-httpbinding')]"
       ]

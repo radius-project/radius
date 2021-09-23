@@ -20,7 +20,11 @@
             "dependsOn": [
                 "/subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding"
             ],
-            "body": {}
+            "body": {
+                "properties": {
+                    "port": 80
+                }
+            }
         }
     }
 }

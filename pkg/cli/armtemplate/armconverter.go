@@ -40,8 +40,6 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 			resourceName = nameParts[2]
 			annotations["radius.dev/resource"] = resourceName
 			spec["resource"] = resourceName
-
-			spec["resourceID"] = resource.ID
 		}
 	}
 
