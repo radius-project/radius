@@ -5,3 +5,4 @@
 (root).properties.container.image: Invalid type. Expected: string, given: integer
 (root).properties.container.ports.grpc.protocol: properties.container.ports.grpc.protocol must be one of the following: "TCP", "UDP"
 (root).properties.container.ports.web: containerPort is required
+(root).properties.container.readinessProbe: probeDetails is required

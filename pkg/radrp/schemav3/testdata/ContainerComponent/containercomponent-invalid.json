@@ -30,6 +30,11 @@
           "provides": "something",
           "protocol": "GRPCLOL"
         }
+      },
+      "readinessProbe": {
+        "initialDelaySeconds": 3,
+        "failureThreshold": 30,
+        "periodSeconds": 3
       }
     }
   },

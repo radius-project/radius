@@ -54,16 +54,24 @@
               "additionalProperties": {
                 "$ref": "#/definitions/ContainerPort"
               }
+            },
+            "readinessProbe": {
+              "type": "object",
+              "$ref": "#/definitions/HealthProbeProperties"
+            },
+            "livenessProbe": {
+              "type": "object",
+              "$ref": "#/definitions/HealthProbeProperties"
             }
           }
         },
-	"traits": {
+	    "traits": {
           "type": "array",
           "description": "Traits spec of the component",
           "items": {
             "$ref": "../traits.json#/definitions/ComponentTrait"
           }
-	}
+	      }
       }
     },
     "ContainerPort": {
@@ -118,6 +126,122 @@
           "type": "string"
         }
       }
+    },
+    "HealthProbeProperties": {
+      "description": "Properties for readiness/liveness probe",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "probeDetails": {
+          "type": "object",
+          "description": "Details of the probe",
+          "items": {
+            "$ref": "#/definitions/HealthProbeDetails"
+          }
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "probeDetails"
+      ]
+    },
+    "HealthProbeDetails": {
+      "description": "Properties for readiness/liveness probe",
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "$ref": "#/definitions/HttpGetHealthProbeProperties"
+        },
+        {
+          "type": "object",
+          "$ref": "#/definitions/TcpHealthProbeProperties"
+        },
+        {
+          "type": "object",
+          "$ref": "#/definitions/ExecHealthProbeProperties"
+        }
+      ]
+    },
+    "HttpGetHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["httpGet"]
+        },
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "number"
+        },
+        "path": {
+          "description": "The route to make the HTTP request on",
+          "type": "string"
+        },
+        "headers": {
+          "description": "Custom HTTP headers to add to the get request",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "containerPort",
+        "path"
+      ]
+    },
+    "TcpHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using Tcp",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["tcp"]
+        },
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "containerPort"
+      ]
+    },
+    "ExecHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using an executable",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["exec"]
+        },
+        "command": {
+          "description": "Command to execute to probe readiness/liveness",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "command"
+      ]
     }
   }
 }
