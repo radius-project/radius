@@ -12,7 +12,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         backend: {
           kind: 'Http'
-          source: backend_http.id
+          source: backendhttp.id
         }
       }
       container: {
