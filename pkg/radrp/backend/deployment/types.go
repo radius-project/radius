@@ -216,11 +216,6 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 
 		ProvisioningState: string(rest.SuccededStatus),
 	}
-	_, err = dp.db.UpdateV3ResourceDefinition(ctx, resourceID, updatedRadiusResource)
-	if err != nil {
-		dp.updateOperation(ctx, rest.FailedStatus, operationID)
-		return err
-	}
 	err = dp.db.UpdateV3ResourceStatus(ctx, resourceID, updatedRadiusResource)
 	if err != nil {
 		dp.updateOperation(ctx, rest.FailedStatus, operationID)
@@ -325,8 +320,10 @@ func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.
 	if err == db.ErrNotFound {
 		// Operation entry should have been created in the db before we get here
 		logger.Error(err, fmt.Sprintf("Update operation failed - operation with id %s was not found in the database.", operationResourceID.ID))
+		return
 	} else if err != nil {
 		logger.Error(err, "Failed to update the operation in database.")
+		return
 	}
 
 	operation.EndTime = time.Now().UTC().Format(time.RFC3339)
