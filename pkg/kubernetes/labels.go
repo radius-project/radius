@@ -9,6 +9,7 @@ package kubernetes
 const (
 	LabelRadiusApplication = "radius.dev/application"
 	LabelRadiusComponent   = "radius.dev/component"
+	LabelRadiusResource    = "radius.dev/resource"
 	LabelRadiusRevision    = "radius.dev/revision"
 
 	LabelPartOf            = "app.kubernetes.io/part-of"

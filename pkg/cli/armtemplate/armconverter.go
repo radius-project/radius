@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/Azure/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -30,7 +31,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	var resourceName string
 	if len(nameParts) > 1 {
 		applicationName = nameParts[1]
-		annotations["radius.dev/application"] = applicationName
+		annotations[kubernetes.LabelRadiusApplication] = applicationName
 		spec = map[string]interface{}{
 			"template":    runtime.RawExtension{Raw: data},
 			"application": applicationName,
@@ -38,7 +39,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 		if len(nameParts) > 2 {
 			resourceName = nameParts[2]
-			annotations["radius.dev/resource"] = resourceName
+			annotations[kubernetes.LabelRadiusResource] = resourceName
 			spec["resource"] = resourceName
 		}
 	}
