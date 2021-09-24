@@ -25,6 +25,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const applicationName = "test-app"
@@ -617,4 +618,245 @@ func outputResourcesToKindMap(resources []outputresource.OutputResource) map[str
 	}
 
 	return results
+}
+
+func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
+	properties := ContainerProperties{
+		Container: Container{
+			Image: "someimage:latest",
+			Env: map[string]interface{}{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+			ReadinessProbe: map[string]interface{}{
+				"kind":                "httpGet",
+				"path":                "/healthz",
+				"containerPort":       8080,
+				"headers":             map[string]string{"header1": "value1"},
+				"initialDelaySeconds": to.IntPtr(30),
+				"failureThreshold":    to.IntPtr(10),
+				"periodSeconds":       to.IntPtr(2),
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").ID): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, dependencies)
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		deployment, _ := kubernetes.FindDeployment(output.Resources)
+		require.NotNil(t, deployment)
+
+		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+		require.Equal(t, resourceName, container.Name)
+
+		expectedReadinessProbe := &v1.Probe{
+			InitialDelaySeconds: 30,
+			FailureThreshold:    10,
+			PeriodSeconds:       2,
+			Handler: v1.Handler{
+				HTTPGet: &v1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8080),
+					HTTPHeaders: []v1.HTTPHeader{
+						{
+							Name:  "header1",
+							Value: "value1",
+						},
+					},
+				},
+				TCPSocket: nil,
+				Exec:      nil,
+			},
+		}
+
+		require.Equal(t, expectedReadinessProbe, container.ReadinessProbe)
+	})
+}
+
+func Test_Render_ReadinessProbeTcp(t *testing.T) {
+	properties := ContainerProperties{
+		Container: Container{
+			Image: "someimage:latest",
+			Env:   map[string]interface{}{},
+			ReadinessProbe: map[string]interface{}{
+				"kind":                "tcp",
+				"containerPort":       8080,
+				"initialDelaySeconds": to.IntPtr(30),
+				"failureThreshold":    to.IntPtr(10),
+				"periodSeconds":       to.IntPtr(2),
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").ID): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, dependencies)
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		deployment, _ := kubernetes.FindDeployment(output.Resources)
+		require.NotNil(t, deployment)
+
+		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+		require.Equal(t, resourceName, container.Name)
+
+		expectedReadinessProbe := &v1.Probe{
+			InitialDelaySeconds: 30,
+			FailureThreshold:    10,
+			PeriodSeconds:       2,
+			Handler: v1.Handler{
+				HTTPGet: nil,
+				TCPSocket: &v1.TCPSocketAction{
+					Port: intstr.FromInt(8080),
+				},
+				Exec: nil,
+			},
+		}
+
+		require.Equal(t, expectedReadinessProbe, container.ReadinessProbe)
+	})
+}
+
+func Test_Render_LivenessProbeExec(t *testing.T) {
+	properties := ContainerProperties{
+		Container: Container{
+			Image: "someimage:latest",
+			Env:   map[string]interface{}{},
+			LivenessProbe: map[string]interface{}{
+				"kind":                "exec",
+				"command":             "a b c",
+				"initialDelaySeconds": to.IntPtr(30),
+				"failureThreshold":    to.IntPtr(10),
+				"periodSeconds":       to.IntPtr(2),
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").ID): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, dependencies)
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		deployment, _ := kubernetes.FindDeployment(output.Resources)
+		require.NotNil(t, deployment)
+
+		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+		require.Equal(t, resourceName, container.Name)
+
+		expectedLivenessProbe := &v1.Probe{
+			InitialDelaySeconds: 30,
+			FailureThreshold:    10,
+			PeriodSeconds:       2,
+			Handler: v1.Handler{
+				HTTPGet:   nil,
+				TCPSocket: nil,
+				Exec: &v1.ExecAction{
+					Command: []string{"a", "b", "c"},
+				},
+			},
+		}
+
+		require.Equal(t, expectedLivenessProbe, container.LivenessProbe)
+	})
+}
+
+func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
+	properties := ContainerProperties{
+		Container: Container{
+			Image: "someimage:latest",
+			Env:   map[string]interface{}{},
+			LivenessProbe: map[string]interface{}{
+				"kind":    "exec",
+				"command": "a b c",
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").ID): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, dependencies)
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		deployment, _ := kubernetes.FindDeployment(output.Resources)
+		require.NotNil(t, deployment)
+
+		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+		require.Equal(t, resourceName, container.Name)
+
+		expectedLivenessProbe := &v1.Probe{
+			InitialDelaySeconds: DefaultInitialDelaySeconds,
+			FailureThreshold:    DefaultFailureThreshold,
+			PeriodSeconds:       DefaultPeriodSeconds,
+			Handler: v1.Handler{
+				HTTPGet:   nil,
+				TCPSocket: nil,
+				Exec: &v1.ExecAction{
+					Command: []string{"a", "b", "c"},
+				},
+			},
+		}
+
+		require.Equal(t, expectedLivenessProbe, container.LivenessProbe)
+	})
 }
