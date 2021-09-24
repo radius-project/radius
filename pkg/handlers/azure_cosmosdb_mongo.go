@@ -49,10 +49,9 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 				cosmosDBAccountName = resource.Properties[CosmosDBAccountNameKey]
 			}
 		}
-		for localID, properties := range options.DependencyProperties {
-			if localID == outputresource.LocalIDAzureCosmosMongoAccount {
-				cosmosDBAccountName = properties.(map[string]string)[CosmosDBAccountNameKey]
-			}
+
+		if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureCosmosMongoAccount]; ok {
+			cosmosDBAccountName = properties[CosmosDBAccountNameKey]
 		}
 
 		database, err := handler.CreateDatabase(ctx, cosmosDBAccountName, properties[CosmosDBDatabaseNameKey], *options)

@@ -46,10 +46,9 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 			managedIdentityProperties = resource.Properties
 		}
 	}
-	for localID, properties := range options.DependencyProperties {
-		if localID == outputresource.LocalIDUserAssignedManagedIdentityKV {
-			managedIdentityProperties = properties.(map[string]string)
-		}
+
+	if properties, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentityKV]; ok {
+		managedIdentityProperties = properties
 	}
 
 	if len(managedIdentityProperties) == 0 {

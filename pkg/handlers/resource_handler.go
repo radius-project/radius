@@ -22,8 +22,10 @@ type PutOptions struct {
 	Dependencies []db.DeploymentResource
 
 	// used by app model v3
+	// Current state of the output resource persisted in database
 	ExistingOutputResource *db.OutputResource
-	DependencyProperties   map[string]interface{}
+	// Map of output resource localID to resource properties populated during deployment in the resource handler
+	DependencyProperties map[string]map[string]string
 }
 
 type DeleteOptions struct {

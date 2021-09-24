@@ -668,7 +668,7 @@ func (d radrpDB) UpdateV3ResourceDefinition(ctx context.Context, id azresources.
 		{Key: "type", Value: resource.Type}, {Key: "subscriptionId", Value: resource.SubscriptionID},
 		{Key: "resourceGroup", Value: resource.ResourceGroup}, {Key: "applicationName", Value: resource.ApplicationName},
 		{Key: "resourceName", Value: resource.ResourceName}, {Key: "definition", Value: resource.Definition},
-		{Key: "provisioningState", Value: resource.ProvisioningState}}}}
+		{Key: "computedValues", Value: resource.ComputedValues}, {Key: "provisioningState", Value: resource.ProvisioningState}}}}
 
 	logger.Info(fmt.Sprintf("Updating resource in DB with operation filter: %s", filter))
 	col := d.db.Collection(resourcesCollection)

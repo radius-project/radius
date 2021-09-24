@@ -11,7 +11,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 )
 
-// ApplicationModelV3 defines the set of supported component types and related features.
+// ApplicationModelV3 defines the set of supported resource types and related features.
 type ApplicationModelV3 interface {
 	LookupRenderer(resourceType string) (renderers.Renderer, error)
 	LookupHandlers(resourceKind string) (Handlers, error)

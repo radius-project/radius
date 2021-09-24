@@ -117,8 +117,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 	dbOutputResources := []db.OutputResource{}
 	// values consumed by other Radius resource types through connections
 	computedValues := map[string]interface{}{}
-	// properties consumed by output resources of a radius resource
-	deployedOutputResourceProperties := map[string]interface{}{}
+	// Map of localID to properties deployed for each output resource. Consumed by handler of any output resource with dependencies on other output resources
+	// Example - CosmosDBAccountName consumed by CosmosDBMongo/SQL handler
+	deployedOutputResourceProperties := map[string]map[string]string{}
 	for _, outputResource := range orderedOutputResources {
 		logger.Info(fmt.Sprintf("Deploying output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.Type))
 
@@ -213,7 +214,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 
 		Status: resourceStatus,
 
-		ProvisioningState: db.Provisioned,
+		ProvisioningState: string(rest.SuccededStatus),
 	}
 	_, err = dp.db.UpdateV3ResourceDefinition(ctx, resourceID, updatedRadiusResource)
 	if err != nil {
@@ -318,13 +319,12 @@ func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx conte
 
 // Retrieves and updates existing database entry for the operation
 func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.OperationStatus, operationResourceID azresources.ResourceID) {
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldOperationID, operationResourceID.ID)
+	logger := radlogger.GetLogger(ctx)
 
 	operation, err := dp.db.GetOperationByID(ctx, operationResourceID)
 	if err == db.ErrNotFound {
 		// Operation entry should have been created in the db before we get here
-		panic(err)
+		logger.Error(err, fmt.Sprintf("Update operation failed - operation with id %s was not found in the database.", operationResourceID.ID))
 	} else if err != nil {
 		logger.Error(err, "Failed to update the operation in database.")
 	}
