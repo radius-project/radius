@@ -49,7 +49,7 @@ export function loadBindings(env: any, providers: { [type: string]: BindingProvi
 }
 
 function parseEnvVar(name: string): { type: string; key: string; } | null {
-    if (!name.startsWith('BINDING_')) {
+    if (!name.startsWith('BINDING_') && !name.startsWith('CONNECTION_')) {
         return null
     }
 
