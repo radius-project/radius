@@ -76,7 +76,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 }
 
 func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := map[string]string{}
+	var properties map[string]string
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {

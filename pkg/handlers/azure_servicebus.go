@@ -137,7 +137,7 @@ func (handler *azureServiceBusQueueHandler) GetAPIVersion() string {
 }
 
 func (handler *azureServiceBusQueueHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := map[string]string{}
+	var properties map[string]string
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {

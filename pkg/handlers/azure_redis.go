@@ -88,7 +88,7 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 }
 
 func (handler *azureRedisHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := map[string]string{}
+	var properties map[string]string
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {

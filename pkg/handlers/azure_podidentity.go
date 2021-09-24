@@ -148,7 +148,7 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 
 func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	// Delete AAD Pod Identity created
-	properties := map[string]string{}
+	var properties map[string]string
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {

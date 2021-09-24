@@ -92,7 +92,7 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 }
 
 func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := map[string]string{}
+	var properties map[string]string
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {

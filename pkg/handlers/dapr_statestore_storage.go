@@ -90,7 +90,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := map[string]string{}
+	var properties map[string]string
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {
