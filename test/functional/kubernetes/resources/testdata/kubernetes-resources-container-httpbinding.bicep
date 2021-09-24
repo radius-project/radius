@@ -1,5 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-container-httpbinding'
+  name: 'kubernetes-resources-container-httpbinding'
   resource frontend_http 'HttpRoute' = {
     name: 'frontend'
     properties: {
