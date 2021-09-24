@@ -163,7 +163,7 @@ func StartController() error {
 		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
 	}
 
-	dc, err := discovery.NewDiscoveryClientForConfig(ctrl.GetConfigOrDie())
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create discovery client: %w", err)
 	}
