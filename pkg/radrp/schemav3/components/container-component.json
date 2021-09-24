@@ -54,16 +54,28 @@
               "additionalProperties": {
                 "$ref": "#/definitions/ContainerPort"
               }
+            },
+            "readinessProbe": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/HealthProbeProperties"
+              }
+            },
+            "livenessProbe": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/HealthProbeProperties"
+              }
             }
           }
         },
-	"traits": {
+	    "traits": {
           "type": "array",
           "description": "Traits spec of the component",
           "items": {
             "$ref": "../traits.json#/definitions/ComponentTrait"
           }
-	}
+	      }
       }
     },
     "ContainerPort": {
@@ -118,6 +130,102 @@
           "type": "string"
         }
       }
+    },
+    "HealthProbeProperties": {
+      "description": "Properties for readiness/liveness probe",
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "$ref": "#/definitions/HttpGetHealthProbeProperties"
+        },
+        {
+          "$ref": "#/definitions/TcpHealthProbeProperties"
+        },
+        {
+          "$ref": "#/definitions/ExecHealthProbeProperties"
+        }
+      ],
+      "properties": {
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      }
+    },
+    "HttpGetHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["httpGet"]
+        },
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "number"
+        },
+        "path": {
+          "description": "The route to make the HTTP request on",
+          "type": "string"
+        },
+        "headers": {
+          "description": "Custom HTTP headers to add to the get request",
+          "type": "string"
+        }
+      },
+      "required": [
+        "containerPort",
+        "path"
+      ]
+    },
+    "TcpHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using Tcp",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["tcp"]
+        },
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "number"
+        }
+      },
+      "required": [
+        "containerPort"
+      ]
+    },
+    "ExecHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using an executable",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["exec"]
+        },
+        "command": {
+          "description": "Command to execute to probe readiness/liveness",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
+      ]
     }
   }
 }

@@ -444,6 +444,12 @@
               "description": "The registry and image to download and run in your container",
               "type": "string"
             },
+            "livenessProbe": {
+              "additionalProperties": {
+                "$ref": "#/definitions/HealthProbeProperties"
+              },
+              "type": "object"
+            },
             "ports": {
               "additionalProperties": {
                 "$ref": "#/definitions/ContainerPort"
@@ -451,12 +457,6 @@
               "type": "object"
             },
             "readinessProbe": {
-              "additionalProperties": {
-                "$ref": "#/definitions/HealthProbeProperties"
-              },
-              "type": "object"
-            },
-            "livenessProbe": {
               "additionalProperties": {
                 "$ref": "#/definitions/HealthProbeProperties"
               },
@@ -547,86 +547,6 @@
         "containerPort"
       ],
       "type": "object"
-    },
-    "HealthProbeProperties": {
-      "additionalProperties": false,
-      "description": "Specifies the properties for a readiness/liveness probe",
-      "properties": {
-        "oneOf":[
-          {
-            "$ref": "#/definitions/HttpGetHealthProbeProperties"
-          },
-          {
-            "$ref": "#/definitions/TcpGetHealthProbeProperties"
-          },
-          {
-            "$ref": "#/definitions/ExecGetHealthProbeProperties"
-          }
-        ],
-        "initialDelaySeconds": {
-          "description": "Initial delay in seconds before probing for readiness/liveness",
-          "type": "number"
-        },
-        "failureThreshold": {
-          "description": "Threshold number of times the probe fails after which a failure would be reported",
-          "type": "number"
-        },
-        "periodSeconds": {
-          "description": "Interval for the readiness/liveness probe in seconds",
-          "type": "number"
-        }
-      }
-    },
-    "HttpGetHealthProbeProperties": {
-      "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
-      "properties": {
-        "type": "object",
-        "containerPort": {
-          "description": "The listening port number",
-          "type": "number"
-        },
-        "path": {
-          "description": "The route to make the HTTP request on",
-          "type": "string"
-        },
-        "headers": {
-          "description": "Custom HTTP headers to add to the get request",
-          "type": "string"
-        }
-      },
-      "required": [
-        "containerPort",
-        "path"
-      ],
-      "additionalProperties": false
-    },
-    "TcpHealthProbeProperties": {
-      "description": "Specifies the properties for readiness/liveness probe using Tcp",
-      "properties": {
-        "type": "object",
-        "containerPort": {
-          "description": "The listening port number",
-          "type": "number"
-        }
-      },
-      "required": [
-        "containerPort"
-      ],
-      "additionalProperties": false
-    },
-    "ExecHealthProbeProperties": {
-      "description": "Specifies the properties for readiness/liveness probe using an executable",
-      "properties": {
-        "type": "object",
-        "command": {
-          "description": "Command to execute to probe readiness/liveness",
-          "type": "string"
-        }
-      },
-      "required": [
-        "command"
-      ],
-      "additionalProperties": false
     },
     "DaprPubSubComponentList": {
       "description": "List of dapr.io.PubSubComponent resources.",
@@ -855,6 +775,78 @@
       },
       "title": "Error response",
       "type": "object"
+    },
+    "ExecHealthProbeProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "description": "Specifies the properties for readiness/liveness probe using an executable",
+      "properties": {
+        "command": {
+          "description": "Command to execute to probe readiness/liveness",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "exec"
+    },
+    "HealthProbeProperties": {
+      "additionalProperties": false,
+      "description": "Properties for readiness/liveness probe",
+      "discriminator": "kind",
+      "properties": {
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "HttpGetHealthProbeProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
+      "properties": {
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "number"
+        },
+        "headers": {
+          "description": "Custom HTTP headers to add to the get request",
+          "type": "string"
+        },
+        "path": {
+          "description": "The route to make the HTTP request on",
+          "type": "string"
+        }
+      },
+      "required": [
+        "containerPort",
+        "path"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "httpGet"
     },
     "Identity": {
       "description": "Identity for the resource.",
@@ -1481,6 +1473,26 @@
       "required": [
         "name"
       ]
+    },
+    "TcpHealthProbeProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "description": "Specifies the properties for readiness/liveness probe using Tcp",
+      "properties": {
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "number"
+        }
+      },
+      "required": [
+        "containerPort"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "tcp"
     },
     "TrackedResource": {
       "allOf": [
