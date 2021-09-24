@@ -56,6 +56,13 @@ func NewSubscriptionsClient(authorizer autorest.Authorizer) subscriptions.Client
 	return sc
 }
 
+func NewGenericResourceClient(subscriptionID string, authorizer autorest.Authorizer) resources.Client {
+	rc := resources.NewClient(subscriptionID)
+	rc.Authorizer = authorizer
+	rc.PollingDuration = 0
+	return rc
+}
+
 func NewCustomResourceProviderClient(subscriptionID string, authorizer autorest.Authorizer) customproviders.CustomResourceProviderClient {
 	cpc := customproviders.NewCustomResourceProviderClient(subscriptionID)
 	cpc.Authorizer = authorizer
