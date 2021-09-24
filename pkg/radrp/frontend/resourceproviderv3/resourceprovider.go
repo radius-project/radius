@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 )
 
@@ -296,6 +297,14 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
 			Error: *operation.Error,
 		}), nil
+	} else if operation.Status == string(rest.FailedStatus) {
+		// Operation failed with an uncategorized error
+		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: "internal error",
+			},
+		}), nil
 	}
 
 	// If we get here we'll likely need the resource body for the response, so look it up.
@@ -333,6 +342,10 @@ func (r *rp) ProcessDeploymentBackground(ctx context.Context, operationID azreso
 		panic(err)
 	}
 
+	// We need to create a new context to pass to the background process. We can't use the current
+	// context because it is tied to the request lifecycle.
+	ctx = logr.NewContext(context.Background(), radlogger.GetLogger(ctx))
+
 	go func() {
 		// Signal compeletion of the operation FOR TESTING ONLY
 		defer r.complete()
@@ -355,6 +368,10 @@ func (r *rp) ProcessDeletionBackground(ctx context.Context, id azresources.Resou
 		// if it's not.
 		panic(err)
 	}
+
+	// We need to create a new context to pass to the background process. We can't use the current
+	// context because it is tied to the request lifecycle.
+	ctx = logr.NewContext(context.Background(), radlogger.GetLogger(ctx))
 
 	go func() {
 		// Signal compeletion of the operation FOR TESTING ONLY
