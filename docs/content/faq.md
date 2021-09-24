@@ -52,3 +52,7 @@ This flag tells Radius to manage the lifetime of the component for you. The comp
 ### Is Azure App Service supported?
 
 **Not yet**. For now we're focusing on containers, but in the future we plan on expanding to other Azure services such as App Service, Functions, Logic Apps, and others. Stay tuned for more information.
+
+## Does Radius support all Azure resources?
+
+**Not yet**. We're currently working on changing the way Radius runnable components like containers work with Azure resources. Stay tuned for more information.

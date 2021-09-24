@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Radius component library"
-linkTitle: "Component library"
-description: "Learn about the different components you can use to model your application with"
+title: "Radius resource library"
+linkTitle: "Resource library"
+description: "Learn about the different resources you can use to model your application with"
 weight: 30
 ---
 

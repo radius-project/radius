@@ -75,4 +75,4 @@ version_menu = "Releases"
 # UI Customization
 [params.ui]
 sidebar_menu_compact = true
-ul_show = 1
+ul_show = 2
