@@ -53,10 +53,11 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	appmodel := azure.NewAzureModel(*s.Options.Arm, k8s)
+	appmodelv3 := azure.NewAzureModelV3(*s.Options.Arm, k8s)
 
 	db := db.NewRadrpDB(dbclient)
 	rp2 := resourceproviderv2.NewResourceProvider(db, deploymentv2.NewDeploymentProcessor(appmodel, &s.Options.HealthChannels))
-	rp3 := resourceproviderv3.NewResourceProvider(db, deploymentv3.NewDeploymentProcessor(appmodel), nil)
+	rp3 := resourceproviderv3.NewResourceProvider(db, deploymentv3.NewDeploymentProcessor(appmodelv3, db, &s.Options.HealthChannels), nil)
 
 	ctx = logr.NewContext(ctx, logger)
 	server := server.NewServer(ctx, server.ServerOptions{

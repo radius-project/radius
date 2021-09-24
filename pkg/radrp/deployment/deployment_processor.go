@@ -207,7 +207,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					errs = append(errs, fmt.Errorf("error applying workload for component %v %v: %w", properties, action.ComponentName, err))
 					continue
 				}
-				properties[healthcontract.HealthIDKey] = healthID
 
 				properties[healthcontract.HealthIDKey] = healthID
 				resource.Status.ProvisioningState = db.Provisioned

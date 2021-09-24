@@ -325,8 +325,8 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 	return rest.NewAcceptedAsyncResponse(output, id.ID), nil
 }
 
-func (r *rp) ProcessDeploymentBackground(ctx context.Context, id azresources.ResourceID, resource db.RadiusResource) {
-	err := r.validateOperationType(id)
+func (r *rp) ProcessDeploymentBackground(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) {
+	err := r.validateOperationType(operationID)
 	if err != nil {
 		// These functions should always be passed the resource ID of an operation. This is a programing error
 		// if it's not.
@@ -338,7 +338,7 @@ func (r *rp) ProcessDeploymentBackground(ctx context.Context, id azresources.Res
 		defer r.complete()
 
 		logger := radlogger.GetLogger(ctx)
-		err := r.deploy.Deploy(ctx, id, resource)
+		err := r.deploy.Deploy(ctx, operationID, resource)
 		if err != nil {
 			logger.Error(err, "deployment failed")
 			return

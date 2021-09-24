@@ -8,7 +8,8 @@ package containerv1alpha1
 import "github.com/Azure/radius/pkg/model/components"
 
 const (
-	Kind = "radius.dev/Container@v1alpha1"
+	Kind         = "radius.dev/Container@v1alpha1"
+	ResourceType = "ContainerComponent"
 )
 
 // ContainerComponent is the definition of the container component

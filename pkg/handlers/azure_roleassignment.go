@@ -34,7 +34,7 @@ type azureRoleAssignmentHandler struct {
 
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
-	properties := mergeProperties(*options.Resource, options.Existing)
+	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	roleName := properties[RoleNameKey]
 	keyVaultName := properties[KeyVaultNameKey]
@@ -46,6 +46,12 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 			managedIdentityProperties = resource.Properties
 		}
 	}
+	for localID, properties := range options.DependencyProperties {
+		if localID == outputresource.LocalIDUserAssignedManagedIdentityKV {
+			managedIdentityProperties = properties.(map[string]string)
+		}
+	}
+
 	if len(managedIdentityProperties) == 0 {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}

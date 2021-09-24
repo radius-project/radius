@@ -34,7 +34,7 @@ type azureRedisHandler struct {
 }
 
 func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing)
+	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	if properties[RedisResourceIdKey] == "" {
 		// If we don't have an ID already, then we need to create a new Redis.
@@ -88,7 +88,13 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 }
 
 func (handler *azureRedisHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
+	properties := map[string]string{}
+	if options.ExistingOutputResource == nil {
+		properties = options.Existing.Properties
+	} else {
+		properties = options.ExistingOutputResource.Resource.(map[string]string)
+	}
+
 	if properties[ManagedKey] != "true" {
 		// For an 'unmanaged' resource we don't need to do anything, just forget it.
 		return nil

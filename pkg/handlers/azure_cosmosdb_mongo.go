@@ -34,7 +34,7 @@ type azureCosmosDBMongoHandler struct {
 }
 
 func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing)
+	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBDatabaseIDKey)
@@ -47,6 +47,11 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 		for _, resource := range options.Dependencies {
 			if resource.LocalID == outputresource.LocalIDAzureCosmosMongoAccount {
 				cosmosDBAccountName = resource.Properties[CosmosDBAccountNameKey]
+			}
+		}
+		for localID, properties := range options.DependencyProperties {
+			if localID == outputresource.LocalIDAzureCosmosMongoAccount {
+				cosmosDBAccountName = properties.(map[string]string)[CosmosDBAccountNameKey]
 			}
 		}
 
@@ -71,7 +76,13 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 }
 
 func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
+	properties := map[string]string{}
+	if options.ExistingOutputResource == nil {
+		properties = options.Existing.Properties
+	} else {
+		properties = options.ExistingOutputResource.Resource.(map[string]string)
+	}
+
 	if properties[ManagedKey] != "true" {
 		// User managed resources aren't deleted by radius, skip this step.
 		return nil

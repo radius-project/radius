@@ -13,17 +13,28 @@ import (
 )
 
 type PutOptions struct {
-	Application  string
-	Component    string
-	Resource     *outputresource.OutputResource
+	Application string
+	Component   string
+	Resource    *outputresource.OutputResource
+
+	// used by app model v2
 	Existing     *db.DeploymentResource
 	Dependencies []db.DeploymentResource
+
+	// used by app model v3
+	ExistingOutputResource *db.OutputResource
+	DependencyProperties   map[string]interface{}
 }
 
 type DeleteOptions struct {
 	Application string
 	Component   string
-	Existing    db.DeploymentResource
+
+	// app model v2
+	Existing db.DeploymentResource
+
+	// app model v3
+	ExistingOutputResource *db.OutputResource
 }
 
 // ResourceHandler interface defines the methods that every output resource will implement
