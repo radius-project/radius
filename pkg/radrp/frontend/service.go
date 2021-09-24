@@ -78,7 +78,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.Options.Address))
 	err = server.ListenAndServe()
-	if err != http.ErrServerClosed {
+	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")
 		return nil
