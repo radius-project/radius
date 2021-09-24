@@ -20,6 +20,8 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 )
 
+var _ renderers.AdaptableRenderer = (*Renderer)(nil)
+
 // Renderer is the WorkloadRenderer implementation for the service bus workload.
 type Renderer struct {
 	Arm armauth.ArmConfig
@@ -122,4 +124,35 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// It's already in the correct format
 		return []outputresource.OutputResource{resource}, nil
 	}
+}
+
+func (r *Renderer) GetKind() string {
+	return Kind
+}
+func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.InstantiatedWorkload) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference, error) {
+	computedValues := map[string]renderers.ComputedValueReference{
+		"namespace": {
+			LocalID:           outputresource.LocalIDAzureServiceBusQueue,
+			PropertyReference: handlers.ServiceBusNamespaceNameKey,
+		},
+		"queue": {
+			LocalID:           outputresource.LocalIDAzureServiceBusQueue,
+			PropertyReference: handlers.ServiceBusQueueNameKey,
+		},
+		"connectionString": {
+			LocalID:           outputresource.LocalIDAzureServiceBusQueue,
+			PropertyReference: handlers.ServiceBusNamespaceConnectionStringKey,
+		},
+		"namespaceConnectionString": {
+			LocalID:           outputresource.LocalIDAzureServiceBusQueue,
+			PropertyReference: handlers.ServiceBusNamespaceConnectionStringKey,
+		},
+		"queueConnectionString": {
+			LocalID:           outputresource.LocalIDAzureServiceBusQueue,
+			PropertyReference: handlers.ServiceBusQueueConnectionStringKey,
+		},
+	}
+	secretValues := map[string]renderers.SecretValueReference{}
+
+	return computedValues, secretValues, nil
 }
