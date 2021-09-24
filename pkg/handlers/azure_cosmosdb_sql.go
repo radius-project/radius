@@ -31,7 +31,7 @@ type azureCosmosDBSQLDBHandler struct {
 }
 
 func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing)
+	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
@@ -82,7 +82,13 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options *PutO
 }
 
 func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
+	var properties map[string]string
+	if options.ExistingOutputResource == nil {
+		properties = options.Existing.Properties
+	} else {
+		properties = options.ExistingOutputResource.Resource.(map[string]string)
+	}
+
 	if properties[ManagedKey] != "true" {
 		// For an 'unmanaged' resource we don't need to do anything, just forget it.
 		return nil

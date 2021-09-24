@@ -688,7 +688,8 @@ func (d radrpDB) UpdateV3ResourceStatus(ctx context.Context, id azresources.Reso
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 
-	update := bson.D{{Key: "$set", Value: bson.D{{Key: "status", Value: resource.Status}}}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "status", Value: resource.Status},
+		{Key: "computedValues", Value: resource.ComputedValues}, {Key: "provisioningState", Value: resource.ProvisioningState}}}}
 
 	logger.Info(fmt.Sprintf("Updating resource status in DB with operation filter: %s", filter))
 	col := d.db.Collection(resourcesCollection)

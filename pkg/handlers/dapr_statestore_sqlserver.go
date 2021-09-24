@@ -51,7 +51,7 @@ type daprStateStoreSQLServerHandler struct {
 }
 
 func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing)
+	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	location, err := clients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
@@ -122,7 +122,13 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 }
 
 func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
+	var properties map[string]string
+	if options.ExistingOutputResource == nil {
+		properties = options.Existing.Properties
+	} else {
+		properties = options.ExistingOutputResource.Resource.(map[string]string)
+	}
+
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],
