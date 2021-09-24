@@ -45,12 +45,12 @@ With this simple component definition, Radius handles both creation of the Azure
 
 Radius captures both logical relationships and related operational details. Examples of this include: wiring up connection strings, granting permissions, or restarting components when a dependency changes.
 
-The [`uses` section]({{< ref "bindings-model.md#consumiung-bindings" >}}) is used to configure relationships between a component and bindings provided by other components.
+The [`uses` section]({{< ref "connections-model.md#consumiung-bindings" >}}) is used to configure relationships between a component and bindings provided by other components.
 
 Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from within the `backend` component via a `uses` section. This declares the *intention* from the `backend` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
 
 {{% alert title="💡 Implicit Bindings" color="primary" %}}
-The [`statestore` component]({{< ref dapr-statestore.md >}}) implicitly declares a built-in binding named `default` of type `dapr.io/StateStore`. In general, components that define infrastructure and data-stores will come with [built-in bindings]({{< ref "bindings-model.md#implicit-bindings" >}}) as part of their type declaration. In this example, a Dapr state store component can be used as a state store without extra configuration.
+The [`statestore` component]({{< ref dapr-statestore.md >}}) implicitly declares a built-in binding named `default` of type `dapr.io/StateStore`. In general, components that define infrastructure and data-stores will come with [built-in bindings]({{< ref "connections-model.md#implicit-bindings" >}}) as part of their type declaration. In this example, a Dapr state store component can be used as a state store without extra configuration.
 {{% /alert %}}
 
 {{< rad file="snippets/app.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-statestore="//STATESTORE" replace-value-statestore="resource statestore 'Components' = {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}

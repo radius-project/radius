@@ -37,7 +37,7 @@ An architecture diagram would also include lines connecting the components of th
 
 These lines make up the edges of the diagram, they describe the relationships between components.
 
-## Project Radius concepts
+## Project Radius app model
 
 Radius offers a set of concepts that can be used to describe the application architecture. These concepts are:
 
@@ -48,8 +48,13 @@ The Radius Application is the biggest possible circle you could draw around your
 {{< card header="[**Components**](./components-model)" >}}
 Each node on the diagram maps to one Component and describe the code, data, and infrastructure pieces of an application.
 {{< /card >}}
-{{< card header="[**Bindings**](./bindings-model)" >}}
-Bindings describe a logical unit of communication between Components and model the vertices between nodes in an architecture diagram.
+{{< /cardpane >}}
+{{< cardpane >}}
+{{< card header="[**Connections**](./connections-model)" >}}
+Connections describe a logical unit of communication between Components and model the vertices between nodes in an architecture diagram.
+{{< /card >}}
+{{< card header="[**Traits**](./traits-model)" >}}
+A Trait is a piece of configuration that specifies an operational behavior. Once defined, a trait can be added to Component definitions.
 {{< /card >}}
 {{< /cardpane >}}
 

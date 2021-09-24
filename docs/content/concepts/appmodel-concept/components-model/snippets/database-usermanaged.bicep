@@ -23,7 +23,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
       resource: {
         id: 'mydb'
       }
-      options: { 
+      options: {
         throughput: 400
       }
     }
@@ -31,40 +31,32 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
 }
 //COSMOS
 
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'cosmos-container-usermanaged'
-  
+
   //SAMPLE
-  resource db 'Components' = {
+  resource db 'azure.com.CosmosDBMongoComponent' = {
     name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
-      config: {
-        resource: account::mongodb.id
-      }
+      resource: account::mongodb.id
     }
   }
   //SAMPLE
-  
-  resource webapp 'Components' = {
+
+  resource webapp 'ContainerComponent@v1alpha3' = {
     name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       //HIDE
-      run: {
-        container: {
-          image: 'rynowak/node-todo:latest'
-        }
+      container: {
+        image: 'rynowak/node-todo:latest'
       }
       //HIDE
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
-          }
+      connections: {
+        db: {
+          kind: 'azure.com/CosmosDBMongo'
+          source: db.id
         }
-      ]
+      }
     }
   }
 }

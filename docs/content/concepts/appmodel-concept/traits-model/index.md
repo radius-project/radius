@@ -6,23 +6,22 @@ description: "Learn how to model your application component behavior with Radius
 weight: 400
 ---
 
+{{% alert title="🚧 Under Construction" color="info" %}}
+Traits are still being designed and implemented by the Radius team. Stay tuned for additional traits and updates.
+{{% /alert %}}
+
 ## Moving to production
 
 For a production application you will face additional challenges that go above and beyond just describing the application functionally:
 
 - You might need spread manifests across different code repositories
 - You might need to configure per-deployment or per-environment behaviors
-- You might need to control which things that are deployed together
 
 Radius defines a secondary concept called a **Trait** to add additional flexibility to your Components. For example, a concern like the *number of replicas to create* is usually orthogonal to the requirements and intentions of the application code.
 
-### Traits
+## Definition
 
-{{% alert title="😱 Work in progress" color="warning" %}}
-This has been one of the aspects of confusion for a few folks now. Traits are one of the areas where judgement is necessary. A lot of this is matters of opinion. At this point we haven't built *much*, and we've said a lot. I don't want to say too much until we build more.
-{{% /alert %}}
-
-A **Trait** is a piece of configuration that specifies an operational behavior. Once defined, a trait can be added to Component or Deployment definitions. Traits serve a few purposes:
+A **Trait** is a piece of configuration that specifies an operational behavior. Once defined, a trait can be added to Component definitions. Traits serve a few purposes:
 
 - Separation of concerns: removing operational concerns from the Component defintion *(eg. number of replicas)*
 - Extensibility: expressing configuration that's not defined by the Component's type specification *(eg. specifying Kubernetes labels)*
@@ -36,12 +35,11 @@ A structured piece of orthogonal configuration that can applied to a Component a
 The keys to this definition are that traits:
 
 - Are strongly-typed and can be validated
-- Sometimes part of the Component's definition
-- Sometimes part of the Deployment's definition
+- Are part of the Component's definition
 
-To understand why and when Traits should be part of a Component definition, consider the following use cases.
+## Case studies
 
-#### Case study: Manual scaling
+### Manual scaling
 
 For an example, consider manual scaling for compute resources. The number of replicas desired for a component is usually a per-deployment decision - it is not a requirement or a characteristic of how the code was written.
 
@@ -53,11 +51,11 @@ This use of a manual scalar trait is an example of separation of concerns. The c
 
 Another benefit of traits is that for operational behaviors like the *number of replicas*, Radius provides a consistent vocabulary. The trait definition for manual scaling is the same across a variety of different resource types.
 
-#### Case study: Kubernetes Labels
+### Kubernetes labels
 
 For an example, consider a trait that applies [Kubernetes labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) when a Component is deployed to a Kubernetes environment. For many organizations using Kubernetes in production, they require workloads to be tagged with labels according to an internal convention. This is useful for consistency and governance across the organization.
 
-This could create a problem when using Radius on Kubernetes, because Kubernetes labels are not part of the definition of any type of Radius Component. For instance the *generic container primitive* (`radius.dev/Container@v1alpha1`) does not include Kubernetes concepts like labels.
+This could create a problem when using Radius on Kubernetes, because Kubernetes labels are not part of the definition of any type of Radius Component. For instance the *generic container primitive* (`ContainerComponent`) does not include Kubernetes concepts like labels.
 
 To solve this, you could define a *Kubernetes label trait* that *extends* the definition of a container with additional data. This is desirable because the labels are additional data - the addition of labels does not *change the nature* of the Component - it is still a container.
 
@@ -67,14 +65,14 @@ This use of a *Kubernetes Label trait* is an example of extensibility. The defin
 
 Another benefit of using a trait like this is that you *also* benefit from separation of concerns. It seems likely that a *Kubernetes label trait* would be applied per-deployment rather than as part of the Component definition.
 
-#### Example
+#### Bicep example
 
 Here is a full example of a Radius application that uses multiple components with provided bindings, consumed bindings, and traits.
 
 {{< rad file="snippets/storeapp.bicep" embed=true >}}
 
-## Next step
+## Next steps
 
-Now that you are familiar with Radius traits, the next step is to learn about Radius deployments.
+Now that you understand the Radius app model, head over to the [environments concept page]({{< ref environments-concept >}}) to learn how Radius turns a Bicep file into a running application.
 
-{{< button text="Learn about depoyments" page="deployments-model.md" >}}
+{{< button text="Learn about environments" page="environments-concept" >}}

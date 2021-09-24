@@ -39,7 +39,7 @@ The Dapr state store (`statestore`) stores information about orders. It could be
 
 ## Bindings
 
-The diagrams shown so far document the communication flows, but a Radius application also describes additional details through [Bindings]({{< ref bindings-model.md >}}).
+The diagrams shown so far document the communication flows, but a Radius application also describes additional details through [Bindings]({{< ref connections-model.md >}}).
 
 A Radius template includes Bindings for:
 

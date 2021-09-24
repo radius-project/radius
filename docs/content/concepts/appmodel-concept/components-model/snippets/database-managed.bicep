@@ -1,14 +1,11 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'cosmos-container-managed'
-  
+
   //SAMPLE
-  resource db 'Components' = {
+  resource db 'azure.com.CosmosDBMongoComponent' = {
     name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
-      config: {
-        managed: true
-      }
+      managed: true
     }
   }
   //SAMPLE
