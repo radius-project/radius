@@ -37,13 +37,16 @@ func NewOKResponse(body interface{}) Response {
 }
 
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusOK), radlogger.LogHTTPStatusCode, http.StatusOK)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
@@ -64,13 +67,16 @@ func NewCreatedResponse(body interface{}) Response {
 }
 
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), radlogger.LogHTTPStatusCode, http.StatusCreated)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(201)
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
@@ -92,6 +98,9 @@ func NewCreatedAsyncResponse(body interface{}, location string) Response {
 }
 
 func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), radlogger.LogHTTPStatusCode, http.StatusCreated)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -115,7 +124,7 @@ func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter,
 
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", location.String())
-	w.WriteHeader(201)
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
@@ -138,6 +147,8 @@ func NewAcceptedAsyncResponse(body interface{}, location string) Response {
 
 func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), radlogger.LogHTTPStatusCode, http.StatusAccepted)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -163,7 +174,7 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", location.String())
-	w.WriteHeader(202)
+	w.WriteHeader(http.StatusAccepted)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
@@ -212,13 +223,16 @@ func NewBadRequestARMResponse(body armerrors.ErrorResponse) Response {
 }
 
 func (r *BadRequestResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), radlogger.LogHTTPStatusCode, http.StatusBadRequest)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
@@ -254,13 +268,16 @@ func NewValidationErrorResponse(errors validator.ValidationErrors) Response {
 }
 
 func (r *ValidationErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), radlogger.LogHTTPStatusCode, http.StatusBadRequest)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
@@ -289,13 +306,16 @@ func NewNotFoundResponse(id azresources.ResourceID) Response {
 }
 
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), radlogger.LogHTTPStatusCode, http.StatusNotFound)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(404)
+	w.WriteHeader(http.StatusNotFound)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
@@ -323,13 +343,16 @@ func NewConflictResponse(message string) Response {
 }
 
 func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusConflict), radlogger.LogHTTPStatusCode, http.StatusConflict)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(409)
+	w.WriteHeader(http.StatusConflict)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
@@ -349,13 +372,16 @@ func NewInternalServerErrorARMResponse(body armerrors.ErrorResponse) Response {
 }
 
 func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusInternalServerError), radlogger.LogHTTPStatusCode, http.StatusInternalServerError)
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err = w.Write(bytes)
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
