@@ -197,6 +197,8 @@ func (at ApplicationTest) Test(t *testing.T) {
 				require.Fail(t, "no pod set was specified and SkipPods == false, either specify a pod set or set SkipPods = true ")
 			} else {
 				// ValidatePodsRunning triggers its own assertions, no need to handle errors
+
+				validation.ValidateDeploymentsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
 				t.Logf("validating creation of pods for %s", step.Executor.GetDescription())
 				validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
 				t.Logf("finished creation of validating pods for %s", step.Executor.GetDescription())
