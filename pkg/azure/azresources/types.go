@@ -24,4 +24,7 @@ const (
 	StorageStorageAccountsTables                = "tables"
 	WebServerFarms                              = "Microsoft.Web/serverFarms"
 	WebSites                                    = "Microsoft.Web/sites"
+
+	CustomRPV3Name     = "radiusv3"
+	CustomRPApiVersion = "2018-09-01-preview"
 )

@@ -200,12 +200,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 
 		// Register health checks for the output resource
 		healthResourceDetails := healthcontract.ResourceDetails{
-			ResourceID:     outputResource.GetResourceID(),
-			ResourceKind:   outputResource.Kind,
-			ApplicationID:  resource.ApplicationName,
-			ComponentID:    resource.ResourceName,
-			SubscriptionID: resource.SubscriptionID,
-			ResourceGroup:  resource.ResourceGroup,
+			ResourceID:   outputResource.GetResourceID(),
+			ResourceKind: outputResource.Kind,
+			OwnerID:      resource.ID,
 		}
 		healthID := healthResourceDetails.GetHealthID()
 		outputResource.HealthID = healthID
@@ -337,10 +334,6 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 
 func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resourceDetails healthcontract.ResourceDetails, healthID string, healthCheckOptions healthcontract.HealthCheckOptions) {
 	logger := radlogger.GetLogger(ctx)
-	logger = logger.WithValues(
-		radlogger.LogFieldAppName, resourceDetails.ApplicationID,
-		radlogger.LogFieldResourceName, resourceDetails.ResourceID,
-	)
 
 	if resourceDetails.ResourceID == "" || resourceDetails.ResourceKind == "" || healthID == "" {
 		// This additional check is needed until health check is implemented for all resource types:
