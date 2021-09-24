@@ -21,8 +21,8 @@
       "readinessProbe": {
         "probeDetails": {
           "kind": "httpGet",
-          "path": "/healthz",
           "containerPort": 8080,
+          "path": "/healthz",
           "headers": {
               "Custom-Header": "Hello World"
           }
@@ -30,12 +30,12 @@
         "initialDelaySeconds": 3,
         "failureThreshold": 30,
         "periodSeconds": 3
-      }
-    },
-    "liveness": {
-      "probeDetails": {
-        "kind": "tcp",
-        "containerPort": 8080
+      },
+      "livenessProbe": {
+        "probeDetails": {
+          "kind": "tcp",
+          "containerPort": 8080
+        }
       }
     }
   },

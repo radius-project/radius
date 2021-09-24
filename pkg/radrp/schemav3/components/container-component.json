@@ -135,9 +135,7 @@
         "probeDetails": {
           "type": "object",
           "description": "Details of the probe",
-          "items": {
-            "$ref": "#/definitions/HealthProbeDetails"
-          }
+          "$ref": "#/definitions/HealthProbeDetails"
         },
         "initialDelaySeconds": {
           "description": "Initial delay in seconds before probing for readiness/liveness",
@@ -191,7 +189,10 @@
         },
         "headers": {
           "description": "Custom HTTP headers to add to the get request",
-          "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": [

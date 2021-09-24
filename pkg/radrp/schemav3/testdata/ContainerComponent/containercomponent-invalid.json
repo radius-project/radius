@@ -35,6 +35,15 @@
         "initialDelaySeconds": 3,
         "failureThreshold": 30,
         "periodSeconds": 3
+      },
+      "livenessProbe": {
+        "initialDelaySeconds": 3,
+        "failureThreshold": 30,
+        "periodSeconds": 3,
+        "probeDetails": {
+          "kind": "httpGet",
+          "containerPort": 8080
+        }
       }
     }
   },
