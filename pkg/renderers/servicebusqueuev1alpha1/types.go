@@ -9,7 +9,10 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
-const Kind = "azure.com/ServiceBusQueue@v1alpha1"
+const (
+	Kind         = "azure.com/ServiceBusQueue@v1alpha1"
+	ResourceType = "azure.com.ServiceBusQueueComponent"
+)
 
 var QueueResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{

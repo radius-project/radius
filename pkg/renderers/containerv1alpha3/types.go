@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	Kind         = "ContainerComponent"
 	kindProperty = "kind"
+	ResourceType = "ContainerComponent"
 )
 
 // ContainerProperties represents the 'properties' node of a ContainerComponent resource.
