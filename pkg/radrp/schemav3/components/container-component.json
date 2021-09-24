@@ -161,15 +161,12 @@
       "type": "object",
       "oneOf": [
         {
-          "type": "object",
           "$ref": "#/definitions/HttpGetHealthProbeProperties"
         },
         {
-          "type": "object",
           "$ref": "#/definitions/TcpHealthProbeProperties"
         },
         {
-          "type": "object",
           "$ref": "#/definitions/ExecHealthProbeProperties"
         }
       ]

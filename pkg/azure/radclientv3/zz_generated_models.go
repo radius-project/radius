@@ -473,14 +473,14 @@ type ContainerComponentPropertiesContainer struct {
 	// Dictionary of
 	Env map[string]*string `json:"env,omitempty"`
 
-	// Dictionary of
-	LivenessProbe map[string]*HealthProbeProperties `json:"livenessProbe,omitempty"`
+	// Properties for readiness/liveness probe
+	LivenessProbe *HealthProbeProperties `json:"livenessProbe,omitempty"`
 
 	// Dictionary of
 	Ports map[string]*ContainerPort `json:"ports,omitempty"`
 
-	// Dictionary of
-	ReadinessProbe map[string]*HealthProbeProperties `json:"readinessProbe,omitempty"`
+	// Properties for readiness/liveness probe
+	ReadinessProbe *HealthProbeProperties `json:"readinessProbe,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentPropertiesContainer.

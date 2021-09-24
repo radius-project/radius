@@ -452,9 +452,7 @@
               "type": "string"
             },
             "livenessProbe": {
-              "additionalProperties": {
-                "$ref": "#/definitions/HealthProbeProperties"
-              },
+              "$ref": "#/definitions/HealthProbeProperties",
               "type": "object"
             },
             "ports": {
@@ -464,9 +462,7 @@
               "type": "object"
             },
             "readinessProbe": {
-              "additionalProperties": {
-                "$ref": "#/definitions/HealthProbeProperties"
-              },
+              "$ref": "#/definitions/HealthProbeProperties",
               "type": "object"
             }
           },
@@ -1573,6 +1569,7 @@
         }
       },
       "required": [
+        "kind",
         "containerPort"
       ],
       "type": "object",
