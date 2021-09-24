@@ -63,6 +63,33 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=resources,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=containercomponents,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=containercomponents/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=containercomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=rediscomponents,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=rediscomponents/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=rediscomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubcomponents,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubcomponents/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubcomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=httproutes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=httproutes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=httproutes/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents/finalizers,verbs=update
 
 func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("resource", req.NamespacedName)
