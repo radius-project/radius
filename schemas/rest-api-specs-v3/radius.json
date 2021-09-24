@@ -593,7 +593,7 @@
     "DaprPubSubComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Dapr Pub/Sub",
@@ -664,7 +664,7 @@
     "DaprStateStoreComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Dapr state store",
@@ -890,7 +890,7 @@
     "MongoDBComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.",
@@ -1135,7 +1135,7 @@
     "RabbitMQComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
@@ -1222,7 +1222,7 @@
     "RedisComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",

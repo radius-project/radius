@@ -599,14 +599,14 @@ type DaprPubSubComponentPropertiesConfig struct {
 
 // DaprPubSubComponentResource - Component for Dapr Pub/Sub
 type DaprPubSubComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *DaprPubSubComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubComponentResource.
 func (d DaprPubSubComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := d.TrackedResource.marshalInternal()
+	objectMap := d.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
 }
@@ -647,14 +647,14 @@ type DaprStateStoreComponentPropertiesConfig struct {
 
 // DaprStateStoreComponentResource - Component for Dapr state store
 type DaprStateStoreComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *DaprStateStoreComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentResource.
 func (d DaprStateStoreComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := d.TrackedResource.marshalInternal()
+	objectMap := d.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
 }
@@ -905,14 +905,14 @@ type MongoDBComponentPropertiesConfig struct {
 
 // MongoDBComponentResource - The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
 type MongoDBComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *MongoDBComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type MongoDBComponentResource.
 func (m MongoDBComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := m.TrackedResource.marshalInternal()
+	objectMap := m.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", m.Properties)
 	return json.Marshal(objectMap)
 }
@@ -1098,6 +1098,11 @@ type ProxyResource struct {
 	Resource
 }
 
+func (p ProxyResource) marshalInternal() map[string]interface{} {
+	objectMap := p.Resource.marshalInternal()
+	return objectMap
+}
+
 // RabbitMQComponentList - List of rabbitmq.com.MessageQueue resources.
 type RabbitMQComponentList struct {
 	// REQUIRED; List of rabbitmq.com.MessageQueue resources.
@@ -1134,14 +1139,14 @@ type RabbitMQComponentPropertiesConfig struct {
 
 // RabbitMQComponentResource - The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
 type RabbitMQComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *RabbitMQComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentResource.
 func (r RabbitMQComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := r.TrackedResource.marshalInternal()
+	objectMap := r.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", r.Properties)
 	return json.Marshal(objectMap)
 }
@@ -1208,14 +1213,14 @@ type RedisComponentPropertiesConfig struct {
 
 // RedisComponentResource - The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
 type RedisComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *RedisComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisComponentResource.
 func (r RedisComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := r.TrackedResource.marshalInternal()
+	objectMap := r.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", r.Properties)
 	return json.Marshal(objectMap)
 }
