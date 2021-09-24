@@ -30,7 +30,7 @@ func (r Renderer) Render(ctx context.Context, w renderers.RendererResource, depe
 	outputResources := []outputresource.OutputResource{}
 
 	route := &HttpRoute{}
-	err := w.AsRequired(Kind, route)
+	err := w.ConvertDefinition(route)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
