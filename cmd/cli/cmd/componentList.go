@@ -85,7 +85,7 @@ func componentList(ctx context.Context, client clients.ManagementClient, applica
 }
 
 func componentListV3(ctx context.Context, client clients.ManagementClient, applicationName string) ([]*radclientv3.RadiusResource, error) {
-	l, err := client.ListComponentsV3(ctx, applicationName)
+	l, err := client.ListResourcesV3(ctx, applicationName)
 	if err != nil {
 		return nil, err
 	}

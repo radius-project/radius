@@ -60,5 +60,5 @@ type ManagementClient interface {
 	DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error
 
 	// V3 API.
-	ListComponentsV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error)
+	ListResourcesV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error)
 }

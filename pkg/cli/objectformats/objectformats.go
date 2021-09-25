@@ -57,7 +57,7 @@ func GetResourceTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
-				Heading:  "COMPONENT",
+				Heading:  "RESOURCE",
 				JSONPath: "{ .name }",
 			},
 			{

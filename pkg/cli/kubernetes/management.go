@@ -261,6 +261,6 @@ func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applic
 	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }
 
-func (mc *KubernetesManagementClient) ListComponentsV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
-	return nil, errors.New("listing V3 components on Kubenertes is not yet supported")
+func (mc *KubernetesManagementClient) ListResourcesV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
+	return nil, errors.New("listing V3 resources on Kubenertes is not yet supported")
 }

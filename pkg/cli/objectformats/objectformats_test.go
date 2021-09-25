@@ -82,7 +82,7 @@ func Test_FormatResourceTable(t *testing.T) {
 	obj := radclientv3.RadiusResource{
 		ProxyResource: radclientv3.ProxyResource{
 			Resource: radclientv3.Resource{
-				Name: to.StringPtr("test-component"),
+				Name: to.StringPtr("test-resource"),
 				Type: to.StringPtr("my/very/CoolResource"),
 			},
 		},
@@ -98,8 +98,8 @@ func Test_FormatResourceTable(t *testing.T) {
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `COMPONENT       TYPE          PROVISIONING_STATE  HEALTH_STATE
-test-component  CoolResource  Provisioned         Healthy
+	expected := `RESOURCE       TYPE          PROVISIONING_STATE  HEALTH_STATE
+test-resource  CoolResource  Provisioned         Healthy
 `
 	require.Equal(t, expected, buffer.String())
 }

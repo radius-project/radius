@@ -152,7 +152,7 @@ func (dm *ARMManagementClient) ShowDeployment(ctx context.Context, deploymentNam
 	return response.DeploymentResource, err
 }
 
-func (dm *ARMManagementClient) ListComponentsV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
+func (dm *ARMManagementClient) ListResourcesV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
 	radiusResourceClient := radclientv3.NewRadiusResourceClient(dm.Connection, dm.SubscriptionID)
 
 	response, err := radiusResourceClient.List(ctx, dm.ResourceGroup, applicationName, nil)
