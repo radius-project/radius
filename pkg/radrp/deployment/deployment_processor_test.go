@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model"
@@ -183,17 +184,39 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 	}}
 
 	outputResourceInfo1 := healthcontract.ResourceDetails{
-		ResourceID:    "ResourceID_1",
-		ResourceKind:  "Kind1",
-		ApplicationID: "A",
-		ComponentID:   "C",
+		ResourceID:   "ResourceID_1",
+		ResourceKind: "Kind1",
+		OwnerID: azresources.MakeID(
+			"test-subscription",
+			"test-resourcegroup",
+			azresources.ResourceType{
+				Type: azresources.CustomProvidersResourceProviders,
+				Name: "radius",
+			}, azresources.ResourceType{
+				Type: "Applications",
+				Name: "A",
+			}, azresources.ResourceType{
+				Type: "Components",
+				Name: "C",
+			}),
 	}
 
 	outputResourceInfo2 := healthcontract.ResourceDetails{
-		ResourceID:    "ns1-name1",
-		ResourceKind:  "Kind1",
-		ApplicationID: "A",
-		ComponentID:   "C",
+		ResourceID:   "ns1-name1",
+		ResourceKind: "Kind1",
+		OwnerID: azresources.MakeID(
+			"test-subscription",
+			"test-resourcegroup",
+			azresources.ResourceType{
+				Type: azresources.CustomProvidersResourceProviders,
+				Name: "radius",
+			}, azresources.ResourceType{
+				Type: "Applications",
+				Name: "A",
+			}, azresources.ResourceType{
+				Type: "Components",
+				Name: "C",
+			}),
 	}
 
 	deployStatus := db.DeploymentStatus{

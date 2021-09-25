@@ -186,12 +186,9 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				})
 
 				outputResourceInfo := healthcontract.ResourceDetails{
-					ResourceID:     resource.GetResourceID(),
-					ResourceKind:   resource.Kind,
-					ApplicationID:  appName,
-					ComponentID:    action.ComponentName,
-					SubscriptionID: action.Definition.SubscriptionID,
-					ResourceGroup:  action.Definition.ResourceGroup,
+					ResourceID:   resource.GetResourceID(),
+					ResourceKind: resource.Kind,
+					OwnerID:      action.Definition.ID,
 				}
 				// Save the healthID on the resource
 				healthID := outputResourceInfo.GetHealthID()
@@ -469,12 +466,9 @@ func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, appI
 	errs := []error{}
 	for _, or := range component.Properties.Status.OutputResources {
 		outputResourceInfo := healthcontract.ResourceDetails{
-			ResourceID:     or.GetResourceID(),
-			ResourceKind:   or.ResourceKind,
-			ApplicationID:  appID,
-			ComponentID:    component.Name,
-			SubscriptionID: component.SubscriptionID,
-			ResourceGroup:  component.ResourceGroup,
+			ResourceID:   or.GetResourceID(),
+			ResourceKind: or.ResourceKind,
+			OwnerID:      component.ID,
 		}
 		resourceType, err := dp.appmodel.LookupResource(or.ResourceKind)
 		if err != nil {
