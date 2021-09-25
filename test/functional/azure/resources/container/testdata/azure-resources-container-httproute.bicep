@@ -1,5 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-container-manualscale'
+  name: 'azure-resources-container-httproute'
 
   resource frontend 'ContainerComponent' = {
     name: 'frontend'
@@ -36,12 +36,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           }
         }
       }
-      traits: [
-        {
-          kind: 'radius.dev/ManualScaling@v1alpha1'
-          replicas: 2
-        }
-      ]
     }
   }
 }

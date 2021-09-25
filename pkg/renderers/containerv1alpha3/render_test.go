@@ -260,6 +260,10 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
 
+	labels := kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName)
+	podLabels := kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName)
+	podLabels["radius.dev/route-http-a"] = "true"
+
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, _ := kubernetes.FindDeployment(output.Resources)
 		require.NotNil(t, deployment)
@@ -267,13 +271,17 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
 		container := deployment.Spec.Template.Spec.Containers[0]
 
+		// Labels are somewhat specialized when a route is involved
+		require.Equal(t, labels, deployment.Labels)
+		require.Equal(t, podLabels, deployment.Spec.Template.Labels)
+
 		require.Len(t, container.Ports, 1)
 		port := container.Ports[0]
 
 		routeID := makeResourceID(t, "HttpRoute", "A")
 
 		expected := v1.ContainerPort{
-			Name:          kubernetes.GetShortenedTargetPortName(routeID.Type() + routeID.Name()),
+			Name:          kubernetes.GetShortenedTargetPortName(resource.ApplicationName + "HttpRoute" + routeID.Name()),
 			ContainerPort: 5000,
 			Protocol:      v1.ProtocolTCP,
 		}

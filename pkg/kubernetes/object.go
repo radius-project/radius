@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 )
 
 // FindDeployment finds deployment in a list of output resources
@@ -64,6 +65,24 @@ func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outp
 		}
 
 		return secret, r
+	}
+
+	return nil, outputresource.OutputResource{}
+}
+
+// FindSecret finds an Ingress in a list of output resources
+func FindIngress(resources []outputresource.OutputResource) (*networkingv1.Ingress, outputresource.OutputResource) {
+	for _, r := range resources {
+		if r.Kind != resourcekinds.Kubernetes {
+			continue
+		}
+
+		ingress, ok := r.Resource.(*networkingv1.Ingress)
+		if !ok {
+			continue
+		}
+
+		return ingress, r
 	}
 
 	return nil, outputresource.OutputResource{}

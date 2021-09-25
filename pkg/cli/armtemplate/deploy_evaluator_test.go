@@ -52,13 +52,7 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 
 		resource.Body = body
 
-		deployed[resource.ID] = map[string]interface{}{}
-		properties := body["properties"]
-		if properties != nil {
-			for k, v := range properties.(map[string]interface{}) {
-				deployed[resource.ID][k] = v
-			}
-		}
+		deployed[resource.ID] = body
 		evaluated = append(evaluated, resource)
 	}
 

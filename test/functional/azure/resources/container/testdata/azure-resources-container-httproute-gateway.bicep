@@ -1,5 +1,14 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-container-manualscale'
+  name: 'azure-resources-container-httproute-gateway'
+
+  resource frontend_http 'HttpRoute' = {
+    name: 'frontend'
+    properties: {
+      gateway: {
+        hostname: '*'
+      }
+    }
+  }
 
   resource frontend 'ContainerComponent' = {
     name: 'frontend'
@@ -15,6 +24,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
         env: {
           SERVICE__BACKEND__HOST: backend_http.properties.host
           SERVICE__BACKEND__PORT: string(backend_http.properties.port)
+        }
+        ports: {
+          web: {
+            containerPort: 80
+            provides: frontend_http.id
+          }
         }
       }
     }
@@ -36,12 +51,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           }
         }
       }
-      traits: [
-        {
-          kind: 'radius.dev/ManualScaling@v1alpha1'
-          replicas: 2
-        }
-      ]
     }
   }
 }

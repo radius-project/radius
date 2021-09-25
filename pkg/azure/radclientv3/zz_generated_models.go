@@ -895,46 +895,6 @@ type Identity struct {
 	TenantID *string `json:"tenantId,omitempty" azure:"ro"`
 }
 
-// InboundRouteTrait - InboundRoute ComponentTrait
-type InboundRouteTrait struct {
-	// Binding name.
-	Binding *string `json:"binding,omitempty"`
-
-	// Host name.
-	HostName *string `json:"hostName,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type InboundRouteTrait.
-func (i InboundRouteTrait) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "binding", i.Binding)
-	populate(objectMap, "hostName", i.HostName)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type InboundRouteTrait.
-func (i *InboundRouteTrait) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "binding":
-				err = unpopulate(val, &i.Binding)
-				delete(rawMsg, key)
-		case "hostName":
-				err = unpopulate(val, &i.HostName)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type KeyVaultProperties struct {
 	// The client ID of the identity which will be used to access key vault.
 	Identity *string `json:"identity,omitempty"`

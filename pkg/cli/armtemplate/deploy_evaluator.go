@@ -205,6 +205,13 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 
 		eva.Value = result
 		return nil
+	} else if name == "string" {
+		if len(args) != 1 {
+			return fmt.Errorf("exactly 1 argument is required for %s", "string")
+		}
+
+		eva.Value = eva.EvaluateString(args[0])
+		return nil
 	} else if name == "variables" {
 		if len(args) != 1 {
 			return fmt.Errorf("exactle 1 argument is required for %s", "variables")
@@ -235,7 +242,14 @@ func (eva *DeploymentEvaluator) EvaluateReference(id interface{}) (map[string]in
 		return nil, fmt.Errorf("no resource matches id: %s", id)
 	}
 
-	return obj, nil
+	// Note: we assume 'full' mode for references
+	// see: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/template-functions-resource#reference
+	properties, ok := obj["properties"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("value did not contain property '%s', was: %+v", "properties", obj)
+	}
+
+	return properties, nil
 }
 
 func (eva *DeploymentEvaluator) EvaluateResourceID(resourceType interface{}, names []interface{}) (string, error) {
@@ -264,6 +278,10 @@ func (eva *DeploymentEvaluator) EvaluateResourceID(resourceType interface{}, nam
 		head,
 		tail...)
 	return id, nil
+}
+
+func (eva *DeploymentEvaluator) EvaluateString(input interface{}) string {
+	return fmt.Sprintf("%v", input)
 }
 
 func (eva *DeploymentEvaluator) EvaluateVariable(variable interface{}) (interface{}, error) {
