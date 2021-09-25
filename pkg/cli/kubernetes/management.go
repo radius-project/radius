@@ -7,9 +7,11 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
@@ -257,4 +259,8 @@ func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applic
 
 	errorMessage := fmt.Sprintf("Deployment '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
 	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+}
+
+func (mc *KubernetesManagementClient) ListComponentsV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
+	return nil, errors.New("listing V3 components on Kubenertes is not yet supported")
 }

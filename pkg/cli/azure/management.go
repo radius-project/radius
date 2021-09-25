@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/Azure/radius/pkg/cli/clients"
 )
 
@@ -149,6 +150,20 @@ func (dm *ARMManagementClient) ShowDeployment(ctx context.Context, deploymentNam
 	}
 
 	return response.DeploymentResource, err
+}
+
+func (dm *ARMManagementClient) ListComponentsV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
+	radiusResourceClient := radclientv3.NewRadiusResourceClient(dm.Connection, dm.SubscriptionID)
+
+	response, err := radiusResourceClient.List(ctx, dm.ResourceGroup, applicationName, nil)
+	if err != nil {
+		if isNotFound(err) {
+			errorMessage := fmt.Sprintf("Resources not found in application '%s' and environment '%s'", applicationName, dm.EnvironmentName)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
+		return nil, err
+	}
+	return response.RadiusResourceList, err
 }
 
 func isNotFound(err error) bool {

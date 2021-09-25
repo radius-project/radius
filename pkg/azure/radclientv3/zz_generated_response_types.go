@@ -189,6 +189,15 @@ type RabbitMQComponentResourceResponse struct {
 	RawResponse *http.Response
 }
 
+// RadiusResourceListResponse is the response envelope for operations that return a RadiusResourceList type.
+type RadiusResourceListResponse struct {
+	// List of RadiusResource resources.
+	RadiusResourceList *RadiusResourceList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
 // RedisComponentListResponse is the response envelope for operations that return a RedisComponentList type.
 type RedisComponentListResponse struct {
 	// RawResponse contains the underlying HTTP response.

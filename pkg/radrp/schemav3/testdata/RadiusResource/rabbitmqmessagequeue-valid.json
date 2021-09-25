@@ -1,0 +1,9 @@
+{
+  "id": "id", "name": "name",
+  "properties": {
+    "config": {
+      "managed": true,
+      "queue": "queue"
+    }
+  }
+}

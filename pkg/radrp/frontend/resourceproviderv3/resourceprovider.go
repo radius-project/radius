@@ -152,15 +152,20 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	// GET ..../Application/{applicationName}/{resourceType}
 	// GET ..../Application/{applicationName}/{resourceType}/{resourceName}
 
-	// ..../Application/hello/ContainerComponent
-	items, err := r.db.ListV3Resources(ctx, id)
+	// // ..../Application/hello/ContainerComponent
+	lastType := id.Types[len(id.Types)-1].Type
+	var items []db.RadiusResource
+	if schemav3.IsGenericResource(lastType) {
+		items, err = r.db.ListAllV3Resources(ctx, id)
+	} else {
+		items, err = r.db.ListV3Resources(ctx, id)
+	}
 	if err == db.ErrNotFound {
 		// It's possible that the application does not exist.
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
-
 	output := RadiusResourceList{}
 	for _, item := range items {
 		output.Value = append(output.Value, NewRestRadiusResource(item))

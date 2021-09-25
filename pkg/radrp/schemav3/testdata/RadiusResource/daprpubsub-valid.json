@@ -1,0 +1,11 @@
+{
+  "id": "id",
+  "name": "name",
+  "properties": {
+    "config": {
+      "managed": true,
+      "kind": "dapr.io/pubsub/ServiceBusQueue",
+      "topic": "fun coding"
+    }
+  }
+}

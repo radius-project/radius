@@ -119,6 +119,9 @@ func (h *handler) DeleteApplication(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) ListResources(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
+
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("ListResources(%#v)", resourceID(req)))
 	response, err := h.rp.ListResources(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)

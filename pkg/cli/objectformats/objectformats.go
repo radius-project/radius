@@ -5,7 +5,11 @@
 
 package objectformats
 
-import "github.com/Azure/radius/pkg/cli/output"
+import (
+	"strings"
+
+	"github.com/Azure/radius/pkg/cli/output"
+)
 
 func GetApplicationTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
@@ -36,6 +40,33 @@ func GetComponentTableFormat() output.FormatterOptions {
 			{
 				Heading:  "KIND",
 				JSONPath: "{ .kind }",
+			},
+			{
+				Heading:  "PROVISIONING_STATE",
+				JSONPath: "{ .properties.status.provisioningState }",
+			},
+			{
+				Heading:  "HEALTH_STATE",
+				JSONPath: "{ .properties.status.healthState }",
+			},
+		},
+	}
+}
+
+func GetResourceTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "COMPONENT",
+				JSONPath: "{ .name }",
+			},
+			{
+				Heading:  "TYPE",
+				JSONPath: "{ .type }",
+				Transformer: func(t string) string {
+					tokens := strings.Split(t, "/")
+					return tokens[len(tokens)-1]
+				},
 			},
 			{
 				Heading:  "PROVISIONING_STATE",

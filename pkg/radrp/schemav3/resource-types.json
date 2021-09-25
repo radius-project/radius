@@ -2,6 +2,7 @@
   "_comment": "A mapping from resource type -> schema location for the types we need to validate.",
   "resources": {
     "Application": "application.json#/definitions/ApplicationResource",
+    "RadiusResource": "components/radius.json#/definitions/RadiusResource",
     "ContainerComponent": "components/container-component.json#/definitions/ContainerComponentResource",
     "azure.com.CosmosDBMongoComponent": "components/azure-cosmosdb-mongo.json#/definitions/AzureCosmosDBMongoComponentResource",
     "azure.com.CosmosDBSQLComponent": "components/azure-cosmosdb-sql.json#/definitions/AzureCosmosDBSQLComponentResource",

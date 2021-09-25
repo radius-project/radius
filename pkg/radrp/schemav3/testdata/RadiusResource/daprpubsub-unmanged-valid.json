@@ -1,0 +1,10 @@
+{
+  "name": "name",
+  "id": "id",
+  "properties": {
+    "config": {
+      "kind": "dapr.io/pubsub/ServiceBusQueue",
+      "resource": "fun::coding"
+    }
+  }
+}

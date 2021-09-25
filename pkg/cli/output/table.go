@@ -6,6 +6,7 @@
 package output
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -69,6 +70,7 @@ func (f *TableFormatter) Format(obj interface{}, writer io.Writer, options Forma
 
 	headings := []string{}
 	parsers := []*jsonpath.JSONPath{}
+	transformers := []func(string) string{}
 	for _, c := range options.Columns {
 		headings = append(headings, c.Heading)
 
@@ -79,6 +81,7 @@ func (f *TableFormatter) Format(obj interface{}, writer io.Writer, options Forma
 		}
 
 		parsers = append(parsers, p)
+		transformers = append(transformers, c.Transformer)
 	}
 
 	tabs := tabwriter.NewWriter(writer, TableColumnMinWidth, TableTabSize, TablePadSize, TablePadCharacter, TableFlags)
@@ -90,14 +93,26 @@ func (f *TableFormatter) Format(obj interface{}, writer io.Writer, options Forma
 	for _, row := range rows {
 
 		// For each row evaluate the path and write to output using tab as separator
-		for _, p := range parsers {
-			err := p.Execute(tabs, row)
-			if err != nil {
-				return err
+		for i, p := range parsers {
+			transformer := transformers[i]
+			if transformer != nil {
+				buf := bytes.Buffer{}
+				err := p.Execute(&buf, row)
+				if err != nil {
+					return err
+				}
+				tabs.Write([]byte(transformer(buf.String())))
+			} else {
+				err := p.Execute(tabs, row)
+				if err != nil {
+					return err
+				}
 			}
-			_, err = tabs.Write([]byte("\t"))
-			if err != nil {
-				return err
+			if i < len(parsers)-1 {
+				_, err = tabs.Write([]byte("\t"))
+				if err != nil {
+					return err
+				}
 			}
 		}
 

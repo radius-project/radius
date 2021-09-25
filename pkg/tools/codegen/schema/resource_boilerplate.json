@@ -54,11 +54,12 @@
           {
             "$ref": "#/parameters/ResourceGroupNameParameter"
           },
-	  {{ if not .IsApplication }}
+          {{/* Only require ApplicationName when we are a child resource */}}
+          {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
           },
-	  {{ end }}
+          {{ end }}
           {
             "$ref": "#/parameters/ApiVersionParameter"
           }
@@ -66,7 +67,10 @@
         "operationId": "{{ .QualifiedName }}_List",
         "description": "List the {{ .QualifiedName }} resources deployed in the application."
       }
-    },
+    }
+    {{/* Generic RadiusResource can only be listed - no other operations allowed */}}
+    {{ if not .IsGenericResource }}
+    ,
     "{{ .BasePath }}/{{ .QualifiedName }}/{{ print `{` (.NameParameterName) `}` }}": {
       "get": {
         "operationId": "{{ .QualifiedName }}_Get",
@@ -81,12 +85,13 @@
           {
             "$ref": "#/parameters/ResourceGroupNameParameter"
           },
-	  {{ if not .IsApplication }}
+          {{/* Only require ApplicationName when we are a child resource */}}
+          {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
           },
-	  {{ end }}
-	  {
+          {{ end }}
+          {
             "$ref": "#/parameters/{{ .NameParameterType }}"
           },
           {
@@ -121,12 +126,13 @@
           {
             "$ref": "#/parameters/ResourceGroupNameParameter"
           },
-	  {{ if not .IsApplication }}
+          {{/* Only require ApplicationName when we are a child resource */}}
+          {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
           },
-	  {{ end }}
-	  {
+          {{ end }}
+          {
             "$ref": "#/parameters/{{ .NameParameterType }}"
           },
           {
@@ -179,12 +185,13 @@
           {
             "$ref": "#/parameters/ResourceGroupNameParameter"
           },
-	  {{ if not .IsApplication }}
+          {{/* Only require ApplicationName when we are a child resource */}}
+          {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
           },
-	  {{ end }}
-	  {
+          {{ end }}
+          {
             "$ref": "#/parameters/{{ .NameParameterType }}"
           },
           {
@@ -207,5 +214,6 @@
         ]
       }
     }
+    {{ end }}
   }
 }

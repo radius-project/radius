@@ -106,6 +106,14 @@ func RequireOutput(cmd *cobra.Command) (string, error) {
 	return cmd.Flags().GetString("output")
 }
 
+func V3(cmd *cobra.Command) bool {
+	v3, err := cmd.Flags().GetBool("v3")
+	if err != nil {
+		return false
+	}
+	return v3
+}
+
 func required(cmd *cobra.Command, args []string, name string) (string, error) {
 	value, err := cmd.Flags().GetString(name)
 	if err != nil {

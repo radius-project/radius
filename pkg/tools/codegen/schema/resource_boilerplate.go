@@ -11,12 +11,13 @@ import (
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/Azure/radius/pkg/radrp/schemav3"
 )
 
 var (
 	ResourceBasePath    = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}"
 	ApplicationBasePath = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3"
-	ApplicationType     = "Application"
 
 	//go:embed resource_boilerplate.json
 	boilerplateTemplateText string
@@ -24,26 +25,24 @@ var (
 )
 
 type resourceInfo struct {
-	QualifiedName     string
-	ResourcePath      string
-	ListType          string
-	ResourceType      string
-	NameParameterType string
-	NameParameterName string
+	BaseName      string
+	QualifiedName string
+	ResourcePath  string
 }
 
 func newResourceInfo(qualifiedName, resourcePath string) resourceInfo {
 	tokens := strings.Split(resourcePath, "/")
 	resourceType := tokens[len(tokens)-1]
 	base := strings.TrimSuffix(resourceType, "Resource")
-
+	if base == "Radius" {
+		// We want RadiusResourceList, RadiusResourceNameParameter
+		// instead of RadiusList, RadiusNameParameter
+		base = "RadiusResource"
+	}
 	return resourceInfo{
-		QualifiedName:     qualifiedName,
-		ResourcePath:      resourcePath,
-		ListType:          base + "List",
-		ResourceType:      resourceType,
-		NameParameterType: base + "NameParameter",
-		NameParameterName: lowerFirst(base) + "Name",
+		BaseName:      base,
+		QualifiedName: qualifiedName,
+		ResourcePath:  resourcePath,
 	}
 }
 
@@ -67,7 +66,23 @@ func (r resourceInfo) BasePath() string {
 }
 
 func (r resourceInfo) IsApplication() bool {
-	return r.QualifiedName == ApplicationType
+	return schemav3.IsApplicationResource(r.BaseName)
+}
+
+func (r resourceInfo) IsGenericResource() bool {
+	return schemav3.IsGenericResource(r.BaseName)
+}
+
+func (r resourceInfo) ListType() string {
+	return r.BaseName + "List"
+}
+
+func (r resourceInfo) NameParameterType() string {
+	return r.BaseName + "NameParameter"
+}
+
+func (r resourceInfo) NameParameterName() string {
+	return lowerFirst(r.BaseName) + "Name"
 }
 
 // Load a resource boilerplate schema for a given type.
