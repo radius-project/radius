@@ -112,7 +112,7 @@
     "AzureCosmosDBMongoComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure CosmosDB with Mongo",
@@ -165,7 +165,7 @@
     "AzureCosmosDBSQLComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure CosmosDB with SQL",
@@ -237,7 +237,7 @@
     "AzureKeyVaultComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure KeyVault",
@@ -300,7 +300,7 @@
     "AzureServiceBusComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure ServiceBus",
@@ -468,7 +468,7 @@
     "ContainerComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform",

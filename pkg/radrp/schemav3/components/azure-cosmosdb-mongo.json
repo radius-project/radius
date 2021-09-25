@@ -10,7 +10,7 @@
       ],
       "allOf": [
         {
-          "$ref": "../common-types.json#/definitions/TrackedResource"
+          "$ref": "../common-types.json#/definitions/ProxyResource"
         }
       ],
       "properties": {

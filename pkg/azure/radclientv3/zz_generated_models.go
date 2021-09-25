@@ -194,14 +194,14 @@ func (a AzureCosmosDBMongoComponentProperties) MarshalJSON() ([]byte, error) {
 
 // AzureCosmosDBMongoComponentResource - Component for Azure CosmosDB with Mongo
 type AzureCosmosDBMongoComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *AzureCosmosDBMongoComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureCosmosDBMongoComponentResource.
 func (a AzureCosmosDBMongoComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.TrackedResource.marshalInternal()
+	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
@@ -238,14 +238,14 @@ func (a AzureCosmosDBSQLComponentProperties) MarshalJSON() ([]byte, error) {
 
 // AzureCosmosDBSQLComponentResource - Component for Azure CosmosDB with SQL
 type AzureCosmosDBSQLComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *AzureCosmosDBSQLComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureCosmosDBSQLComponentResource.
 func (a AzureCosmosDBSQLComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.TrackedResource.marshalInternal()
+	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
@@ -292,14 +292,14 @@ func (a AzureKeyVaultComponentProperties) MarshalJSON() ([]byte, error) {
 
 // AzureKeyVaultComponentResource - Component for Azure KeyVault
 type AzureKeyVaultComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *AzureKeyVaultComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultComponentResource.
 func (a AzureKeyVaultComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.TrackedResource.marshalInternal()
+	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
@@ -336,14 +336,14 @@ func (a AzureServiceBusComponentProperties) MarshalJSON() ([]byte, error) {
 
 // AzureServiceBusComponentResource - Component for Azure ServiceBus
 type AzureServiceBusComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *AzureServiceBusComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureServiceBusComponentResource.
 func (a AzureServiceBusComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.TrackedResource.marshalInternal()
+	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
@@ -484,14 +484,14 @@ func (c ContainerComponentPropertiesContainer) MarshalJSON() ([]byte, error) {
 
 // ContainerComponentResource - The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform
 type ContainerComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *ContainerComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentResource.
 func (c ContainerComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := c.TrackedResource.marshalInternal()
+	objectMap := c.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", c.Properties)
 	return json.Marshal(objectMap)
 }
