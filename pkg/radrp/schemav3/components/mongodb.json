@@ -3,17 +3,17 @@
   "definitions": {
     "MongoDBComponentResource": {
       "description": "The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "mongodb.com/Mongo@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/MongoDBComponentProperties"
         }

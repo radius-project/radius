@@ -1,7 +1,6 @@
 {
-  "id": "id",
-  "name": "name",
-  "kind": "dapr.io/PubSubTopic@v1alpha1",
+  "id": 42,
+  "name": 42,
   "properties": {
     "config": {
       "managed": true,

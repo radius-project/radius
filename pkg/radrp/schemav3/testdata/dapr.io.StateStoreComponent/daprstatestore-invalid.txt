@@ -1,3 +1,2 @@
-(root).properties.config: Additional property extra is not allowed
 (root).id: Invalid type. Expected: string, given: integer
 (root).name: Invalid type. Expected: string, given: integer

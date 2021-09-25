@@ -24,14 +24,17 @@ All components need to have a page under [Components]({{< ref components >}}). E
 
 ### Adding a new Component schema
 
-1. Under the directory `radrp/schemav3/components`, add a JSON Schema file for your Component. See existing Components for example, and also take a look at [JSON Schema Draft 4](https://json-schema.org/specification-links.html#draft-4) for more information.
-1. Register your schema in the manifest file at `pkg/radrp/schemav3/resource-types.json`.
-1. Add some tests to confirm your JSON schema in the `pkg/radrp/schemav3/testdata/{componentName}` directory. Any JSON file with `*-valid.json` suffix should be accepted by your new schema. Any JSON file with `*-invalid.json` suffix should be rejected by your new schema, with errors matching the content of `*-invalid.txt` file in the same directory.
+- Under the directory `radrp/schemav3/components`, add a JSON Schema file for your Component. See existing Components for example, and also take a look at [JSON Schema Draft 4](https://json-schema.org/specification-links.html#draft-4) for more information.
+- In your JSON schema, make sure that the new Component inherits from TrackedResource or Proxy Resource, look at existing components JSON schema to see how it is done.
+>> `TrackedResource` means that a copy of your resource is stored by centralized servers in Azure. When a GET happens, it will hit the cache. TraceResource also has to support tags and also have to have a location. Generally a top level resource is tracked (Application).
+>> `ProxyResource` means that your RP can change the state dynamically. When a GET happens, it will go through to your RP.
+- Register your schema in the manifest file at `pkg/radrp/schemav3/resource-types.json`.
+- Add some tests to confirm your JSON schema in the `pkg/radrp/schemav3/testdata/{componentName}` directory. Any JSON file with `*-valid.json` suffix should be accepted by your new schema. Any JSON file with `*-invalid.json` suffix should be rejected by your new schema, with errors matching the content of `*-invalid.txt` file in the same directory.
 
 ### Adding a new Trait schema
 
-1. Under the directory `radrp/schemav3/traits`, add a JSON Schema for your new trait. Note that the `kind` field must be an enum string having an exactly one value. See existing JSON Schema in the same directory as examples.
-2. Update `radrp/schemav3/traits.json` to refer to your new Trait.
+- Under the directory `radrp/schemav3/traits`, add a JSON Schema for your new trait. Note that the `kind` field must be an enum string having an exactly one value. See existing JSON Schema in the same directory as examples.
+- Update `radrp/schemav3/traits.json` to refer to your new Trait.
 
 ## OpenAPI spec
 

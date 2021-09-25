@@ -112,7 +112,7 @@
     "AzureCosmosDBMongoComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure CosmosDB with Mongo",
@@ -165,7 +165,7 @@
     "AzureCosmosDBSQLComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure CosmosDB with SQL",
@@ -237,7 +237,7 @@
     "AzureKeyVaultComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure KeyVault",
@@ -300,7 +300,7 @@
     "AzureServiceBusComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure ServiceBus",
@@ -468,7 +468,7 @@
     "ContainerComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform",
@@ -591,22 +591,22 @@
       ]
     },
     "DaprPubSubComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
       "description": "Component for Dapr Pub/Sub",
       "properties": {
-        "kind": {
-          "enum": [
-            "dapr.io/PubSubTopic@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/DaprPubSubComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "DaprStateStoreComponentList": {
       "description": "List of dapr.io.StateStoreComponent resources.",
@@ -662,22 +662,22 @@
       ]
     },
     "DaprStateStoreComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
       "description": "Component for Dapr state store",
       "properties": {
-        "kind": {
-          "enum": [
-            "dapr.io/StateStore@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/DaprStateStoreComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "DaprTrait": {
       "additionalProperties": false,
@@ -888,22 +888,22 @@
       ]
     },
     "MongoDBComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
       "description": "The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.",
       "properties": {
-        "kind": {
-          "enum": [
-            "mongodb.com/Mongo@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/MongoDBComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "Operation": {
       "description": "Details of a REST API operation, returned from the Resource Provider Operations API",
@@ -1133,22 +1133,22 @@
       ]
     },
     "RabbitMQComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
       "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
       "properties": {
-        "kind": {
-          "enum": [
-            "rabbitmq.com/MessageQueue@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/RabbitMQComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "RedisComponentList": {
       "description": "List of redislabs.com.Redis resources.",
@@ -1220,22 +1220,22 @@
       ]
     },
     "RedisComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
       "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",
       "properties": {
-        "kind": {
-          "enum": [
-            "redislabs.com/Redis@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/RedisComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "Resource": {
       "description": "Common fields that are returned in the response for all Azure Resource Manager resources",

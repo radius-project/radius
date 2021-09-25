@@ -3,17 +3,17 @@
   "definitions": {
     "DaprStateStoreComponentResource": {
       "description": "Component for Dapr state store",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "dapr.io/StateStore@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/DaprStateStoreComponentProperties"
         }

@@ -3,17 +3,17 @@
   "definitions": {
     "RedisComponentResource": {
       "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "redislabs.com/Redis@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/RedisComponentProperties"
         }

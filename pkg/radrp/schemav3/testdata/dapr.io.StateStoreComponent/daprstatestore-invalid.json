@@ -1,0 +1,10 @@
+{
+    "id": 42,
+    "name": 42,
+    "properties": {
+        "config": {
+            "managed": true,
+            "kind": "dapr.io/RedisState"
+        }
+    }
+}

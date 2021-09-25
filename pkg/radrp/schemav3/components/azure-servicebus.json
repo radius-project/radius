@@ -5,13 +5,13 @@
       "description": "Component for Azure ServiceBus",
       "type": "object",
       "x-ms-azure-resource": true,
-      "required": [
-        "properties"
-      ],
       "allOf": [
         {
-          "$ref": "../common-types.json#/definitions/TrackedResource"
+          "$ref": "../common-types.json#/definitions/ProxyResource"
         }
+      ],
+      "required": [
+        "properties"
       ],
       "properties": {
         "properties": {

@@ -1,6 +1,6 @@
 {
-  "id": "id", "name": "name",
-  "kind": "rabbitmq.com/MessageQueue@v1alpha1",
+  "id": 42,
+  "name": 42,
   "properties": {
     "config": {
       "managed": false

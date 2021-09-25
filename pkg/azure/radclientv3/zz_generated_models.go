@@ -194,14 +194,14 @@ func (a AzureCosmosDBMongoComponentProperties) MarshalJSON() ([]byte, error) {
 
 // AzureCosmosDBMongoComponentResource - Component for Azure CosmosDB with Mongo
 type AzureCosmosDBMongoComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *AzureCosmosDBMongoComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureCosmosDBMongoComponentResource.
 func (a AzureCosmosDBMongoComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.TrackedResource.marshalInternal()
+	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
@@ -238,14 +238,14 @@ func (a AzureCosmosDBSQLComponentProperties) MarshalJSON() ([]byte, error) {
 
 // AzureCosmosDBSQLComponentResource - Component for Azure CosmosDB with SQL
 type AzureCosmosDBSQLComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *AzureCosmosDBSQLComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureCosmosDBSQLComponentResource.
 func (a AzureCosmosDBSQLComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.TrackedResource.marshalInternal()
+	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
@@ -292,14 +292,14 @@ func (a AzureKeyVaultComponentProperties) MarshalJSON() ([]byte, error) {
 
 // AzureKeyVaultComponentResource - Component for Azure KeyVault
 type AzureKeyVaultComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *AzureKeyVaultComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultComponentResource.
 func (a AzureKeyVaultComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.TrackedResource.marshalInternal()
+	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
@@ -336,14 +336,14 @@ func (a AzureServiceBusComponentProperties) MarshalJSON() ([]byte, error) {
 
 // AzureServiceBusComponentResource - Component for Azure ServiceBus
 type AzureServiceBusComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *AzureServiceBusComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureServiceBusComponentResource.
 func (a AzureServiceBusComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.TrackedResource.marshalInternal()
+	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
@@ -484,14 +484,14 @@ func (c ContainerComponentPropertiesContainer) MarshalJSON() ([]byte, error) {
 
 // ContainerComponentResource - The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform
 type ContainerComponentResource struct {
-	TrackedResource
+	ProxyResource
 	// REQUIRED
 	Properties *ContainerComponentProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentResource.
 func (c ContainerComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := c.TrackedResource.marshalInternal()
+	objectMap := c.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", c.Properties)
 	return json.Marshal(objectMap)
 }
@@ -599,11 +599,16 @@ type DaprPubSubComponentPropertiesConfig struct {
 
 // DaprPubSubComponentResource - Component for Dapr Pub/Sub
 type DaprPubSubComponentResource struct {
-	// REQUIRED
-	Kind *string `json:"kind,omitempty"`
-
+	ProxyResource
 	// REQUIRED
 	Properties *DaprPubSubComponentProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubComponentResource.
+func (d DaprPubSubComponentResource) MarshalJSON() ([]byte, error) {
+	objectMap := d.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", d.Properties)
+	return json.Marshal(objectMap)
 }
 
 // DaprStateStoreComponentList - List of dapr.io.StateStoreComponent resources.
@@ -642,11 +647,16 @@ type DaprStateStoreComponentPropertiesConfig struct {
 
 // DaprStateStoreComponentResource - Component for Dapr state store
 type DaprStateStoreComponentResource struct {
-	// REQUIRED
-	Kind *string `json:"kind,omitempty"`
-
+	ProxyResource
 	// REQUIRED
 	Properties *DaprStateStoreComponentProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentResource.
+func (d DaprStateStoreComponentResource) MarshalJSON() ([]byte, error) {
+	objectMap := d.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", d.Properties)
+	return json.Marshal(objectMap)
 }
 
 // DaprTrait - Dapr ComponentTrait
@@ -895,11 +905,16 @@ type MongoDBComponentPropertiesConfig struct {
 
 // MongoDBComponentResource - The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
 type MongoDBComponentResource struct {
-	// REQUIRED
-	Kind *string `json:"kind,omitempty"`
-
+	ProxyResource
 	// REQUIRED
 	Properties *MongoDBComponentProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDBComponentResource.
+func (m MongoDBComponentResource) MarshalJSON() ([]byte, error) {
+	objectMap := m.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", m.Properties)
+	return json.Marshal(objectMap)
 }
 
 // MongodbComMongoDBComponentCreateOrUpdateOptions contains the optional parameters for the MongodbComMongoDBComponent.CreateOrUpdate method.
@@ -1083,6 +1098,11 @@ type ProxyResource struct {
 	Resource
 }
 
+func (p ProxyResource) marshalInternal() map[string]interface{} {
+	objectMap := p.Resource.marshalInternal()
+	return objectMap
+}
+
 // RabbitMQComponentList - List of rabbitmq.com.MessageQueue resources.
 type RabbitMQComponentList struct {
 	// REQUIRED; List of rabbitmq.com.MessageQueue resources.
@@ -1119,11 +1139,16 @@ type RabbitMQComponentPropertiesConfig struct {
 
 // RabbitMQComponentResource - The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
 type RabbitMQComponentResource struct {
-	// REQUIRED
-	Kind *string `json:"kind,omitempty"`
-
+	ProxyResource
 	// REQUIRED
 	Properties *RabbitMQComponentProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentResource.
+func (r RabbitMQComponentResource) MarshalJSON() ([]byte, error) {
+	objectMap := r.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", r.Properties)
+	return json.Marshal(objectMap)
 }
 
 // RabbitmqComMessageQueueCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueue.CreateOrUpdate method.
@@ -1188,11 +1213,16 @@ type RedisComponentPropertiesConfig struct {
 
 // RedisComponentResource - The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
 type RedisComponentResource struct {
-	// REQUIRED
-	Kind *string `json:"kind,omitempty"`
-
+	ProxyResource
 	// REQUIRED
 	Properties *RedisComponentProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisComponentResource.
+func (r RedisComponentResource) MarshalJSON() ([]byte, error) {
+	objectMap := r.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", r.Properties)
+	return json.Marshal(objectMap)
 }
 
 // RedislabsComRedisCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedis.CreateOrUpdate method.

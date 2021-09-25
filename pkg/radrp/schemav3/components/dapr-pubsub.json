@@ -3,17 +3,17 @@
   "definitions": {
     "DaprPubSubComponentResource": {
       "description": "Component for Dapr Pub/Sub",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "dapr.io/PubSubTopic@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/DaprPubSubComponentProperties"
         }
