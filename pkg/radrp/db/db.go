@@ -36,9 +36,6 @@ const resourcesCollection string = "resources"
 // operationsCollection represents the collection used to store operations in the db.
 const operationsCollection string = "operations"
 
-// genericComponentTypeName is a type
-const genericComponentTypeName string = "Component"
-
 // NewRadrpDB creates a new RadrpDB.
 func NewRadrpDB(m *mongo.Database) RadrpDB {
 	return radrpDB{

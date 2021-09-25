@@ -101,7 +101,10 @@ func (f *TableFormatter) Format(obj interface{}, writer io.Writer, options Forma
 				if err != nil {
 					return err
 				}
-				tabs.Write([]byte(transformer(buf.String())))
+				_, err = tabs.Write([]byte(transformer(buf.String())))
+				if err != nil {
+					return err
+				}
 			} else {
 				err := p.Execute(tabs, row)
 				if err != nil {

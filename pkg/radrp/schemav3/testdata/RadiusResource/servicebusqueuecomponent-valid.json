@@ -1,6 +1,0 @@
-{
-  "properties": {
-    "managed": true,
-    "queue": "some-queue"
-  }
-}
