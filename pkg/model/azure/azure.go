@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha1"
+	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha1"
 	"github.com/Azure/radius/pkg/renderers/cosmosdbsqlv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/dapr"
@@ -61,7 +62,8 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 
 func NewAzureModelV3(arm armauth.ArmConfig, k8s client.Client) model.ApplicationModelV3 {
 	renderers := map[string]renderers.Renderer{
-		// example: containerv1alpha1.ResourceType: , ...
+		containerv1alpha3.ResourceType:       &containerv1alpha3.Renderer{},
+		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
 	}
 
 	handlers := map[string]model.Handlers{

@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
@@ -51,9 +52,14 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 	resourceID := operationID.Truncate()
 
 	logger.Info(fmt.Sprintf("Rendering resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
-	renderer, err := dp.appmodel.LookupRenderer(resource.Type)
+	renderer, err := dp.appmodel.LookupRenderer(resourceID.Types[len(resourceID.Types)-1].Type) // Using the last type segment as key
 	if err != nil {
-		dp.updateOperation(ctx, rest.FailedStatus, operationID)
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 
@@ -68,7 +74,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 	// Get resources that the resource being deployed has connection with.
 	dependencyResourceIDs, err := renderer.GetDependencyIDs(ctx, rendererResource)
 	if err != nil {
-		dp.updateOperation(ctx, rest.FailedStatus, operationID)
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 
@@ -77,7 +88,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		// Fetch resource from db
 		dbDependencyResource, err := dp.db.GetV3Resource(ctx, dependencyResourceID)
 		if err != nil {
-			dp.updateOperation(ctx, rest.FailedStatus, operationID)
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 			return err
 		}
 
@@ -93,13 +109,23 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 	// Render - output resources to be deployed for the radius resource
 	rendererOutput, err := renderer.Render(ctx, rendererResource, rendererDependencies)
 	if err != nil {
-		dp.updateOperation(ctx, rest.FailedStatus, operationID)
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
-		dp.updateOperation(ctx, rest.FailedStatus, operationID)
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 
@@ -108,7 +134,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 	if err == db.ErrNotFound {
 		// no-op - a resource will only exist if this is an update
 	} else if err != nil {
-		dp.updateOperation(ctx, rest.FailedStatus, operationID)
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 	existingDBOutputResources := existingDBResource.Status.OutputResources
@@ -133,7 +164,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 
 		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.Kind)
 		if err != nil {
-			dp.updateOperation(ctx, rest.FailedStatus, operationID)
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 			return err
 		}
 
@@ -145,7 +181,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			DependencyProperties:   deployedOutputResourceProperties,
 		})
 		if err != nil {
-			dp.updateOperation(ctx, rest.FailedStatus, operationID)
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 			return err
 		}
 		deployedOutputResourceProperties[outputResource.LocalID] = properties
@@ -216,14 +257,20 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 
 		ProvisioningState: string(rest.SuccededStatus),
 	}
+
 	err = dp.db.UpdateV3ResourceStatus(ctx, resourceID, updatedRadiusResource)
 	if err != nil {
-		dp.updateOperation(ctx, rest.FailedStatus, operationID)
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 
 	// Update operation
-	dp.updateOperation(ctx, rest.SuccededStatus, operationID)
+	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
 
 	return nil
 }
@@ -233,13 +280,20 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 		radlogger.LogFieldOperationID, operationID.ID,
 	)
 
+	resourceID := operationID.Truncate()
+
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
 	deployedOutputResources := resource.Status.OutputResources
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
 		outputResource := deployedOutputResources[i]
 		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
 		if err != nil {
-			dp.updateOperation(ctx, rest.FailedStatus, operationID)
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 			return err
 		}
 
@@ -250,7 +304,12 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 			ExistingOutputResource: &outputResource,
 		})
 		if err != nil {
-			dp.updateOperation(ctx, rest.FailedStatus, operationID)
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 			return err
 		}
 
@@ -259,15 +318,19 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 	}
 
 	// Delete resource from database
-	resourceID := operationID.Truncate()
 	err := dp.db.DeleteV3Resource(ctx, resourceID)
 	if err != nil {
-		dp.updateOperation(ctx, rest.FailedStatus, operationID)
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 
 	// Update operation
-	dp.updateOperation(ctx, rest.SuccededStatus, operationID)
+	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
 
 	return nil
 }
@@ -313,7 +376,7 @@ func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx conte
 }
 
 // Retrieves and updates existing database entry for the operation
-func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.OperationStatus, operationResourceID azresources.ResourceID) {
+func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.OperationStatus, operationResourceID azresources.ResourceID, armerr *armerrors.ErrorDetails) {
 	logger := radlogger.GetLogger(ctx)
 
 	operation, err := dp.db.GetOperationByID(ctx, operationResourceID)
@@ -329,7 +392,7 @@ func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.
 	operation.EndTime = time.Now().UTC().Format(time.RFC3339)
 	operation.PercentComplete = 100
 	operation.Status = string(status)
-	operation.Error = nil
+	operation.Error = armerr
 
 	_, err = dp.db.PatchOperationByID(ctx, operationResourceID, operation)
 	if err != nil {

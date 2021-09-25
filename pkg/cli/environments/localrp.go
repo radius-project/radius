@@ -62,6 +62,8 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 	connection := armcore.NewConnection(e.URL, azcred, nil)
 
 	return &localrp.LocalRPDeploymentClient{
+		Authorizer:     nil,
+		BaseURL:        e.URL,
 		Connection:     connection,
 		SubscriptionID: e.SubscriptionID,
 		ResourceGroup:  e.ResourceGroup,

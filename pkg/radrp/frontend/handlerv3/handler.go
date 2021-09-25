@@ -277,6 +277,8 @@ func badRequest(ctx context.Context, w http.ResponseWriter, req *http.Request, e
 // Responds with an HTTP 500
 func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := radlogger.GetLogger(ctx)
+	logger.Error(err, "unhandled error")
+
 	// Try to use the ARM format to send back the error info
 	body := armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{

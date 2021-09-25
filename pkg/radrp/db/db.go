@@ -527,7 +527,7 @@ func (d radrpDB) GetV3Application(ctx context.Context, id azresources.ResourceID
 		return item, fmt.Errorf("error querying %v: %w", id, err)
 	}
 
-	err = result.Decode(item)
+	err = result.Decode(&item)
 	if err != nil {
 		return item, fmt.Errorf("error reading %v: %w", id, err)
 	}
@@ -648,7 +648,7 @@ func (d radrpDB) GetV3Resource(ctx context.Context, id azresources.ResourceID) (
 		return item, fmt.Errorf("error querying %v: %w", id, err)
 	}
 
-	err = result.Decode(item)
+	err = result.Decode(&item)
 	if err != nil {
 		return item, fmt.Errorf("error reading %v: %w", id, err)
 	}
