@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -110,51 +109,15 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	//
 	// TODO: for now this is VERY hardcoded.
 	secret := r.MakeSecret(options, "admin", "password")
-	resources = append(resources, outputresource.OutputResource{
-		Resource: secret,
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDSecret,
-		Managed:  true,
-		Type:     outputresource.TypeKubernetes,
-		Info: outputresource.K8sInfo{
-			Kind:       secret.TypeMeta.Kind,
-			APIVersion: secret.TypeMeta.APIVersion,
-			Name:       secret.ObjectMeta.Name,
-			Namespace:  secret.ObjectMeta.Namespace,
-		},
-	})
+	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, secret, secret.ObjectMeta))
 
 	// This is a headless service, clients of Mongo will just use it for DNS.
 	// Mongo is a replicated service and clients need to know the addresses of the replicas.
 	service := r.MakeService(options)
-	resources = append(resources, outputresource.OutputResource{
-		Resource: service,
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDService,
-		Managed:  true,
-		Type:     outputresource.TypeKubernetes,
-		Info: outputresource.K8sInfo{
-			Kind:       service.TypeMeta.Kind,
-			APIVersion: service.TypeMeta.APIVersion,
-			Name:       service.ObjectMeta.Name,
-			Namespace:  service.ObjectMeta.Namespace,
-		},
-	})
+	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta))
 
 	set := r.MakeStatefulSet(options, service.Name, secret.Name)
-	resources = append(resources, outputresource.OutputResource{
-		Resource: set,
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDStatefulSet,
-		Managed:  true,
-		Type:     outputresource.TypeKubernetes,
-		Info: outputresource.K8sInfo{
-			Kind:       set.TypeMeta.Kind,
-			APIVersion: set.TypeMeta.APIVersion,
-			Name:       set.ObjectMeta.Name,
-			Namespace:  set.ObjectMeta.Namespace,
-		},
-	})
+	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDStatefulSet, set, set.ObjectMeta))
 
 	return resources, nil
 }

@@ -63,16 +63,13 @@ func (s *Service) Run(ctx context.Context) error {
 }
 
 func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontract.ResourceHealthDataMessage) bool {
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldResourceID, healthUpdateMsg.Resource.ResourceID,
-		radlogger.LogFieldHealthID, healthUpdateMsg.Resource.HealthID)
+	logger := radlogger.GetLogger(ctx).WithValues(healthUpdateMsg.Resource.Identity.AsLogValues()...)
 	logger.Info("Received health update message")
-	outputResourceDetails := healthcontract.ParseHealthID(healthUpdateMsg.Resource.HealthID)
 
 	// This is the ID of the Radius Resource (Component/Scope/Route) that 'owns' the output resource being updated.
-	resourceID, err := azresources.Parse(outputResourceDetails.OwnerID)
+	resourceID, err := azresources.Parse(healthUpdateMsg.Resource.RadiusResourceID)
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Invalid resource ID: %s", outputResourceDetails.OwnerID))
+		logger.Error(err, fmt.Sprintf("Invalid resource ID: %s", healthUpdateMsg.Resource.RadiusResourceID))
 		return false
 	}
 
@@ -97,7 +94,7 @@ func (s *Service) updateV1Health(ctx context.Context, logger logr.Logger, health
 	}
 
 	for i, o := range c.Properties.Status.OutputResources {
-		if o.HealthID == healthUpdateMsg.Resource.HealthID {
+		if o.Identity.IsSameResource(healthUpdateMsg.Resource.Identity) {
 			// Update the health state
 			c.Properties.Status.OutputResources[i].Status.HealthState = healthUpdateMsg.HealthState
 			c.Properties.Status.OutputResources[i].Status.HealthStateErrorDetails = healthUpdateMsg.HealthStateErrorDetails
@@ -128,7 +125,7 @@ func (s *Service) updateV3Health(ctx context.Context, logger logr.Logger, health
 	}
 
 	for i, o := range resource.Status.OutputResources {
-		if o.HealthID == healthUpdateMsg.Resource.HealthID {
+		if o.Identity.IsSameResource(healthUpdateMsg.Resource.Identity) {
 
 			// Update the health state
 			resource.Status.OutputResources[i].Status.HealthState = healthUpdateMsg.HealthState

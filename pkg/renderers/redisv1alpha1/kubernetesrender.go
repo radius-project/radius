@@ -84,9 +84,9 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 	}
 
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDRedisDeployment,
-		Resource: &deployment})
+		ResourceKind: resourcekinds.Kubernetes,
+		LocalID:      outputresource.LocalIDRedisDeployment,
+		Resource:     &deployment})
 
 	service := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -113,9 +113,9 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 	}
 
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDRedisService,
-		Resource: &service})
+		ResourceKind: resourcekinds.Kubernetes,
+		LocalID:      outputresource.LocalIDRedisService,
+		Resource:     &service})
 
 	return resources, nil
 }

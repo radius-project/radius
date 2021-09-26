@@ -14,7 +14,6 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/health/db"
-	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/healthcontract"
@@ -31,7 +30,7 @@ type HealthInfo struct {
 	handler                 handlers.HealthHandler
 	HealthState             string
 	HealthStateErrorDetails string
-	Resource                healthcontract.ResourceInfo
+	Registration            handlers.HealthRegistration
 	Options                 healthcontract.HealthCheckOptions
 }
 
@@ -40,7 +39,7 @@ type Monitor struct {
 	db                            db.RadHealthDB
 	resourceRegistrationChannel   <-chan healthcontract.ResourceHealthRegistrationMessage
 	healthToRPNotificationChannel chan<- healthcontract.ResourceHealthDataMessage
-	watchHealthChangesChannel     chan healthcontract.ResourceHealthDataMessage
+	watchHealthChangesChannel     chan handlers.HealthState
 	activeHealthProbes            map[string]HealthInfo
 	activeHealthProbesMutex       *sync.RWMutex
 	model                         model.HealthModel
@@ -61,8 +60,8 @@ func (h Monitor) Run(ctx context.Context) error {
 			}
 		case newHealthState := <-h.watchHealthChangesChannel:
 			if newHealthState.HealthState != "" {
-				logger.Info(fmt.Sprintf("Watcher for: %v received a health state change event", newHealthState.Resource.HealthID))
-				h.handleStateChanges(ctx, newHealthState.Resource, newHealthState)
+				logger.Info("Received a health state change event", newHealthState.Registration.Identity.AsLogValues()...)
+				h.handleStateChanges(ctx, newHealthState)
 			}
 		case <-ctx.Done():
 			logger.Info("RadHealth Service stopped...")
@@ -73,12 +72,10 @@ func (h Monitor) Run(ctx context.Context) error {
 
 // RegisterResource is called to register an output resource with the health checker
 // It should be called at the time of creation of the output resource
-func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}) {
-	ctx = radlogger.WrapLogContext(
-		ctx,
-		radlogger.LogFieldResourceID, registerMsg.ResourceInfo.ResourceID,
-		radlogger.LogFieldHealthID, registerMsg.ResourceInfo.HealthID,
-		radlogger.LogFieldResourceType, registerMsg.ResourceInfo.ResourceKind)
+//
+// The return value here is for testing purposes.
+func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}) *handlers.HealthRegistration {
+	ctx = radlogger.WrapLogContext(ctx, registerMsg.Resource.Identity.AsLogValues()...)
 	logger := radlogger.GetLogger(ctx)
 
 	logger.Info("Registering resource with health service")
@@ -86,50 +83,57 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	healthHandler, mode := h.model.LookupHandler(registerMsg)
 	if healthHandler == nil {
 		// TODO: Convert this log to error once health checks are implemented for all resource kinds
-		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %s not monitored by HealthService", registerMsg.ResourceInfo.ResourceKind, registerMsg.ResourceInfo.ResourceID))
-		return
+		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %+v not monitored by HealthService", registerMsg.Resource.ResourceKind, registerMsg.Resource.Identity))
+		return nil
+	}
+
+	registration, err := handlers.NewHealthRegistration(registerMsg.Resource)
+	if err != nil {
+		logger.Error(err, "failed to serialize HealthResource")
+		return nil
 	}
 
 	ho := healthcontract.HealthCheckOptions{}
 	getHealthCheckOptions(&ho, &registerMsg.Options)
 
 	h.activeHealthProbesMutex.RLock()
-	_, ok := h.activeHealthProbes[registerMsg.ResourceInfo.HealthID]
+	_, ok := h.activeHealthProbes[registration.Token]
 	h.activeHealthProbesMutex.RUnlock()
 	if ok {
-		logger.Info("Resource is already registered with the health service. Ignoring this registration message.", registerMsg.ResourceInfo.ResourceID)
-		return
+		logger.Info("Resource is already registered with the health service. Ignoring this registration message.", registerMsg.Resource.Identity)
+		return nil
 	}
 
 	healthInfo := HealthInfo{
 		stopProbeForResource: stopCh,
 		// Create a new ticker for the resource which will start the health check at the specified interval
 		// TODO: Optimize and not create a ticker per resource
-		handler:     healthHandler,
-		HealthState: healthcontract.HealthStateUnhealthy,
-		Resource:    registerMsg.ResourceInfo,
-		Options:     ho,
+		handler:      healthHandler,
+		HealthState:  healthcontract.HealthStateUnhealthy,
+		Registration: registration,
+		Options:      ho,
 	}
 
 	// Lookup whether the health can be watched or needs to be actively probed
-	if mode == handleroptions.HealthHandlerModePush {
+	if mode == handlers.HealthHandlerModePush {
 		h.activeHealthProbesMutex.Lock()
-		h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
+		h.activeHealthProbes[healthInfo.Registration.Token] = healthInfo
 		h.activeHealthProbesMutex.Unlock()
 
-		options := handleroptions.Options{
+		options := handlers.Options{
 			StopChannel:               healthInfo.stopProbeForResource,
 			WatchHealthChangesChannel: h.watchHealthChangesChannel,
 		}
 
 		// Watch health state
-		go healthHandler.GetHealthState(ctx, healthInfo.Resource, options)
-	} else if mode == handleroptions.HealthHandlerModePull {
+		go healthHandler.GetHealthState(ctx, healthInfo.Registration, options)
+	} else if mode == handlers.HealthHandlerModePull {
 		// Need to actively probe the health periodically
 		h.probeHealth(ctx, healthHandler, healthInfo)
 	}
 
 	logger.Info("Registered resource with health service successfully")
+	return &registration
 }
 
 func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthHandler, healthInfo HealthInfo) {
@@ -137,7 +141,7 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 	// Create a ticker with a period as specified in the health options by the resource
 	healthInfo.ticker = time.NewTicker(healthInfo.Options.Interval)
 	h.activeHealthProbesMutex.Lock()
-	h.activeHealthProbes[healthInfo.Resource.HealthID] = healthInfo
+	h.activeHealthProbes[healthInfo.Registration.Token] = healthInfo
 	h.activeHealthProbesMutex.Unlock()
 
 	// Create a new health handler for the resource
@@ -146,11 +150,11 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 			select {
 			case <-ticker.C:
 				logger.Info("Probing health...")
-				options := handleroptions.Options{
+				options := handlers.Options{
 					Interval: healthInfo.Options.Interval,
 				}
-				newHealthState := healthHandler.GetHealthState(ctx, healthInfo.Resource, options)
-				h.handleStateChanges(ctx, healthInfo.Resource, newHealthState)
+				newHealthState := healthHandler.GetHealthState(ctx, healthInfo.Registration, options)
+				h.handleStateChanges(ctx, newHealthState)
 			case <-stopProbeForResource:
 				return
 			}
@@ -158,14 +162,11 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 	}(healthInfo.ticker, healthInfo.handler, healthInfo.stopProbeForResource)
 }
 
-func (h Monitor) handleStateChanges(ctx context.Context, resourceInfo healthcontract.ResourceInfo, newHealthState healthcontract.ResourceHealthDataMessage) {
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldHealthID, resourceInfo.HealthID,
-		radlogger.LogFieldResourceID, resourceInfo.ResourceID,
-		radlogger.LogFieldWorkLoadKind, resourceInfo.ResourceKind)
+func (h Monitor) handleStateChanges(ctx context.Context, newHealthState handlers.HealthState) {
+	logger := radlogger.GetLogger(ctx).WithValues(newHealthState.Registration.Identity.AsLogValues()...)
 	// Save the current health state in memory
 	h.activeHealthProbesMutex.RLock()
-	currentHealthInfo, ok := h.activeHealthProbes[resourceInfo.HealthID]
+	currentHealthInfo, ok := h.activeHealthProbes[newHealthState.Registration.Token]
 	h.activeHealthProbesMutex.RUnlock()
 	if !ok {
 		logger.Error(errors.New("NotFound"), "Unable to find active health probe for resource")
@@ -178,24 +179,36 @@ func (h Monitor) handleStateChanges(ctx context.Context, resourceInfo healthcont
 		currentHealthInfo.HealthState = newHealthState.HealthState
 		currentHealthInfo.HealthStateErrorDetails = newHealthState.HealthStateErrorDetails
 		h.activeHealthProbesMutex.Lock()
-		h.activeHealthProbes[resourceInfo.HealthID] = currentHealthInfo
+		h.activeHealthProbes[newHealthState.Registration.Token] = currentHealthInfo
 		h.activeHealthProbesMutex.Unlock()
 
-		h.SendHealthStateChangeNotification(ctx, resourceInfo, newHealthState)
+		message := healthcontract.ResourceHealthDataMessage{
+			Resource:                newHealthState.Registration.HealthResource,
+			HealthState:             newHealthState.HealthState,
+			HealthStateErrorDetails: newHealthState.HealthStateErrorDetails,
+		}
+
+		h.SendHealthStateChangeNotification(ctx, message)
 		logger.Info(fmt.Sprintf("Health state change notification sent and current health state updated to: %s", newHealthState.HealthState))
 	}
 }
 
 // UnregisterResource should be called when the output resource is deleted
 func (h Monitor) UnregisterResource(ctx context.Context, unregisterMsg healthcontract.ResourceHealthRegistrationMessage) {
-	ctx = radlogger.WrapLogContext(ctx,
-		radlogger.LogFieldHealthID, unregisterMsg.ResourceInfo.HealthID,
-		radlogger.LogFieldResourceType, unregisterMsg.ResourceInfo.ResourceKind)
+	ctx = radlogger.WrapLogContext(ctx, unregisterMsg.Resource.Identity.AsLogValues()...)
 	logger := radlogger.GetLogger(ctx)
+
 	logger.Info("Unregistering resource with health service")
+
+	registration, err := handlers.NewHealthRegistration(unregisterMsg.Resource)
+	if err != nil {
+		logger.Error(err, "failed to serialize HealthResource")
+		return
+	}
+
 	h.activeHealthProbesMutex.Lock()
 	defer h.activeHealthProbesMutex.Unlock()
-	healthProbe, ok := h.activeHealthProbes[unregisterMsg.ResourceInfo.HealthID]
+	healthProbe, ok := h.activeHealthProbes[registration.Token]
 	if ok {
 		if healthProbe.ticker != nil {
 			// The ticker could be nil when the health handler mode is push
@@ -203,47 +216,18 @@ func (h Monitor) UnregisterResource(ctx context.Context, unregisterMsg healthcon
 		}
 		healthProbe.stopProbeForResource <- struct{}{}
 		// Remove entry from active health probe map
-		delete(h.activeHealthProbes, unregisterMsg.ResourceInfo.HealthID)
+		delete(h.activeHealthProbes, registration.Token)
 		logger.Info("Unregistered resource with health service successfully")
 	} else {
 		logger.Info("No active probe found for the resource.")
 	}
 }
 
-// GetHealthState returns the in-memory health state for a resource tracked by the health service
-func (h Monitor) GetHealthState(ctx context.Context, msg healthcontract.ResourceHealthDataMessage) healthcontract.ResourceHealthDataMessage {
-	logger := radlogger.GetLogger(ctx)
-	h.activeHealthProbesMutex.RLock()
-	healthProbe, ok := h.activeHealthProbes[msg.Resource.HealthID]
-	h.activeHealthProbesMutex.RUnlock()
-	var healthStatus healthcontract.ResourceHealthDataMessage
-	if !ok {
-		logger.Error(errors.New("NotFound"), "Unable to find active health probe for resource")
-		healthStatus = healthcontract.ResourceHealthDataMessage{
-			Resource:                msg.Resource,
-			HealthState:             healthcontract.HealthStateUnhealthy,
-			HealthStateErrorDetails: "Resource not tracked by HealthService",
-		}
-	} else {
-		healthStatus = healthcontract.ResourceHealthDataMessage{
-			Resource:                msg.Resource,
-			HealthState:             healthProbe.HealthState,
-			HealthStateErrorDetails: healthProbe.HealthStateErrorDetails,
-		}
-	}
-	return healthStatus
-}
-
 // SendHealthStateChangeNotification sends a health update to the RP whenever the health state for a resource changes
-func (h Monitor) SendHealthStateChangeNotification(ctx context.Context, resource healthcontract.ResourceInfo, healthData healthcontract.ResourceHealthDataMessage) {
+func (h Monitor) SendHealthStateChangeNotification(ctx context.Context, message healthcontract.ResourceHealthDataMessage) {
 	logger := radlogger.GetLogger(ctx)
-	msg := healthcontract.ResourceHealthDataMessage{
-		Resource:                resource,
-		HealthState:             healthData.HealthState,
-		HealthStateErrorDetails: healthData.HealthStateErrorDetails,
-	}
-	h.healthToRPNotificationChannel <- msg
-	logger.Info(fmt.Sprintf("Sent notification for change in health state to new value: %s successfully", healthData.HealthState))
+	h.healthToRPNotificationChannel <- message
+	logger.Info(fmt.Sprintf("Sent notification for change in health state to new value: %s successfully", message.HealthState))
 }
 
 // NewMonitor returns a health probe monitor

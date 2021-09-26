@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,11 +58,14 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		return nil, err
 	}
 
-	options.Resource.Info = outputresource.K8sInfo{
-		Name:       item.GetName(),
-		Namespace:  item.GetNamespace(),
-		Kind:       item.GetKind(),
-		APIVersion: item.GetAPIVersion(),
+	options.Resource.Identity = resourcemodel.ResourceIdentity{
+		Kind: resourcemodel.IdentityKindKubernetes,
+		Data: resourcemodel.KubernetesIdentity{
+			Name:       item.GetName(),
+			Namespace:  item.GetNamespace(),
+			Kind:       item.GetKind(),
+			APIVersion: item.GetAPIVersion(),
+		},
 	}
 
 	return properties, err
@@ -114,7 +118,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 }
 
 func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
-	if resource.Kind != resourcekinds.Kubernetes {
+	if resource.ResourceKind != resourcekinds.Kubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}
 

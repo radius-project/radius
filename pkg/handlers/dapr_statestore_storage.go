@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -75,6 +76,9 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 			return nil, err
 		}
 	}
+
+	// Use the identity of the table storage as the thing to monitor
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*account.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 
 	key, err := handler.FindStorageKey(ctx, *account.Name)
 	if err != nil {

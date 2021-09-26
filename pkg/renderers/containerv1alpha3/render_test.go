@@ -17,7 +17,6 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -158,21 +157,7 @@ func Test_Render_Basic(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
 		require.NotNil(t, deployment)
 
-		expectedOutputResource := outputresource.OutputResource{
-			Kind:     resourcekinds.Kubernetes,
-			LocalID:  outputresource.LocalIDDeployment,
-			Deployed: false,
-			Managed:  true,
-			Type:     outputresource.TypeKubernetes,
-			Info: outputresource.K8sInfo{
-				Kind:       deployment.TypeMeta.Kind,
-				APIVersion: deployment.TypeMeta.APIVersion,
-				Name:       deployment.ObjectMeta.Name,
-				Namespace:  deployment.ObjectMeta.Namespace,
-			},
-			Resource: deployment,
-		}
-
+		expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		// Only real thing to verify here is the image and the labels
@@ -370,20 +355,7 @@ func Test_Render_Connections(t *testing.T) {
 		secret, outputResource := kubernetes.FindSecret(output.Resources)
 		require.NotNil(t, secret)
 
-		expectedOutputResource := outputresource.OutputResource{
-			Kind:     resourcekinds.Kubernetes,
-			LocalID:  outputresource.LocalIDSecret,
-			Deployed: false,
-			Managed:  true,
-			Type:     outputresource.TypeKubernetes,
-			Info: outputresource.K8sInfo{
-				Kind:       secret.TypeMeta.Kind,
-				APIVersion: secret.TypeMeta.APIVersion,
-				Name:       secret.ObjectMeta.Name,
-				Namespace:  secret.ObjectMeta.Namespace,
-			},
-			Resource: secret,
-		}
+		expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, secret, secret.ObjectMeta)
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		require.Equal(t, resourceName, secret.Name)

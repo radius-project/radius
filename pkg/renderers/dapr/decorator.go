@@ -88,7 +88,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 	// dapr detected! Update the deployment
 	for _, resource := range resources {
-		if resource.Kind != resourcekinds.Kubernetes {
+		if resource.ResourceKind != resourcekinds.Kubernetes {
 			// Not a Kubernetes resource
 			continue
 		}

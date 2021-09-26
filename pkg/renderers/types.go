@@ -57,8 +57,14 @@ type SecretValueReference struct {
 	// SecretValueReference always needs to be resolved against a deployed resource. These
 	// are secrets so we don't want to store them.
 
-	LocalID       string
-	Action        string
+	// LocalID is used to resolve the 'target' output resource for retrieving the secret value.
+	LocalID string
+
+	// Action refers to a named custom action used to fetch the secret value. Maybe be empty in the case of Kubernetes since there's
+	// no concept of 'action'. Will always be set for an ARM resource.
+	Action string
+
+	// ValueSelector is a JSONPointer used to resolve the secret value.
 	ValueSelector string
 }
 

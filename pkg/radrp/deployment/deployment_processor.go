@@ -128,7 +128,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 			if err != nil {
 				errs = append(errs, err)
 				for _, resource := range outputResources {
-					logger.WithValues(radlogger.LogFieldLocalID, resource.LocalID).Info(fmt.Sprintf("Rendered output resource - LocalID: %s, type: %s\n", resource.LocalID, resource.Type))
+					logger.WithValues(radlogger.LogFieldLocalID, resource.LocalID).Info(fmt.Sprintf("Rendered output resource - LocalID: %s, type: %s\n", resource.LocalID, resource.ResourceKind))
 
 					// Even if the operation fails, return the output resources created so far
 					// TODO: This is temporary. Once there are no resources actually deployed during render phase,
@@ -159,7 +159,7 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					}
 				}
 
-				resourceType, err := dp.appmodel.LookupResource(resource.Kind)
+				resourceType, err := dp.appmodel.LookupResource(resource.ResourceKind)
 				if err != nil {
 					errs = append(errs, err)
 					continue
@@ -185,15 +185,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					Dependencies: dependencies,
 				})
 
-				outputResourceInfo := healthcontract.ResourceDetails{
-					ResourceID:   resource.GetResourceID(),
-					ResourceKind: resource.Kind,
-					OwnerID:      action.Definition.ID,
-				}
-				// Save the healthID on the resource
-				healthID := outputResourceInfo.GetHealthID()
-				resource.HealthID = healthID
-
 				if err != nil {
 					// Until https://github.com/Azure/radius/issues/614 is resolved, add output resources created so far
 					// to the DB
@@ -205,7 +196,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					continue
 				}
 
-				properties[healthcontract.HealthIDKey] = healthID
 				resource.Status.ProvisioningState = db.Provisioned
 				resource.Status.ProvisioningErrorDetails = ""
 
@@ -214,9 +204,11 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				action.Definition.Properties.Status.OutputResources = dbOutputResources
 
 				dbDeploymentResource := db.DeploymentResource{
-					LocalID:    resource.LocalID,
-					Type:       resource.Kind,
-					Properties: properties,
+					RadiusResourceID: action.Definition.ID,
+					LocalID:          resource.LocalID,
+					Type:             resource.ResourceKind,
+					Identity:         resource.Identity,
+					Properties:       properties,
 				}
 				dbDeploymentWorkload.Resources = append(dbDeploymentWorkload.Resources, dbDeploymentResource)
 			}
@@ -282,9 +274,12 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					Existing:    resource,
 				})
 
-				// Unregister resource from HealthService for health monitoring
-				healthID := resource.Properties[healthcontract.HealthIDKey]
-				dp.UnregisterForHealthChecks(ctx, healthID)
+				healthResource := healthcontract.HealthResource{
+					ResourceKind:     resource.Type,
+					Identity:         resource.Identity,
+					RadiusResourceID: resource.RadiusResourceID,
+				}
+				dp.unregisterOutputResourceForHealthChecks(ctx, healthResource)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("error deleting workload resource %v %v: %w", resource.Properties, action.ComponentName, err))
 					continue
@@ -319,12 +314,13 @@ func addDBOutputResource(resource outputresource.OutputResource, dbOutputResourc
 
 	// Save the output resource to DB
 	dbr := db.OutputResource{
-		Managed:             resource.Managed,
-		HealthID:            resource.HealthID,
-		LocalID:             resource.LocalID,
-		ResourceKind:        resource.Kind,
-		OutputResourceType:  resource.Type,
-		OutputResourceInfo:  resource.Info,
+		Managed:      resource.Managed,
+		LocalID:      resource.LocalID,
+		ResourceKind: resource.ResourceKind,
+		Identity:     resource.Identity,
+
+		// We can persist properties returned from the handler if they are map[string]string. This is
+		// and older pattern that we're trying to migrate away from gradually.
 		PersistedProperties: properties,
 		Status: db.OutputResourceStatus{
 			ProvisioningState:        resource.Status.ProvisioningState,
@@ -384,8 +380,12 @@ func (dp *deploymentProcessor) DeleteDeployment(ctx context.Context, appName str
 				Existing:    resource,
 			})
 
-			healthID := resource.Properties[healthcontract.HealthIDKey]
-			dp.UnregisterForHealthChecks(ctx, healthID)
+			healthResource := healthcontract.HealthResource{
+				ResourceKind:     resource.Type,
+				Identity:         resource.Identity,
+				RadiusResourceID: resource.RadiusResourceID,
+			}
+			dp.unregisterOutputResourceForHealthChecks(ctx, healthResource)
 
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed deleting resource %s of workload %v: %v", resource.Type, wl.ComponentName, err))
@@ -463,27 +463,26 @@ func (dp *deploymentProcessor) processBindings(ctx context.Context, w workloads.
 }
 
 func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, appID string, component db.Component) error {
-	logger := radlogger.GetLogger(ctx)
-	logger = logger.WithValues(
+	ctx = radlogger.WrapLogContext(
+		ctx,
 		radlogger.LogFieldAppID, appID,
 		radlogger.LogFieldComponentName, component.Name,
 	)
 	errs := []error{}
 	for _, or := range component.Properties.Status.OutputResources {
-		outputResourceInfo := healthcontract.ResourceDetails{
-			ResourceID:   or.GetResourceID(),
-			ResourceKind: or.ResourceKind,
-			OwnerID:      component.ID,
-		}
 		resourceType, err := dp.appmodel.LookupResource(or.ResourceKind)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		dp.registerOutputResourceForHealthChecks(ctx, outputResourceInfo, or.HealthID, resourceType.HealthHandler().GetHealthOptions(ctx))
-		logger.WithValues(
-			radlogger.LogFieldLocalID, or.LocalID,
-			radlogger.LogFieldHealthID, or.HealthID).Info(fmt.Sprintf("Registered output resource with HealthID: %s for health checks", or.HealthID))
+
+		healthResource := healthcontract.HealthResource{
+			Identity:         or.Identity,
+			ResourceKind:     or.ResourceKind,
+			RadiusResourceID: component.ID,
+		}
+
+		dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceType.HealthHandler().GetHealthOptions(ctx))
 	}
 
 	if len(errs) > 0 {
@@ -493,40 +492,25 @@ func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, appI
 	return nil
 }
 
-func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, healthInfo healthcontract.ResourceDetails, healthID string, options healthcontract.HealthCheckOptions) {
-	if healthInfo.ResourceID == "" || healthInfo.ResourceKind == "" || healthID == "" {
-		// TODO: Health status is not completely implemented for all resource kinds.
-		// Adding this check for now to bypass this for unimplemented resources
-		return
-	}
+func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) {
+	logger := radlogger.GetLogger(ctx)
 
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldResourceID, healthInfo.ResourceID,
-		radlogger.LogFieldHealthID, healthID,
-		radlogger.LogFieldResourceType, healthInfo.ResourceID)
-
-	logger.Info("Registering resource with the health service...")
-	resourceInfo := healthcontract.ResourceInfo{
-		HealthID:     healthID,
-		ResourceID:   healthInfo.ResourceID,
-		ResourceKind: healthInfo.ResourceKind,
-	}
 	msg := healthcontract.ResourceHealthRegistrationMessage{
-		Action:       healthcontract.ActionRegister,
-		ResourceInfo: resourceInfo,
-		Options:      options,
+		Action:   healthcontract.ActionRegister,
+		Resource: resource,
+		Options:  healthCheckOptions,
 	}
 	dp.health.ResourceRegistrationWithHealthChannel <- msg
+
+	logger.Info("Registered output resource for health checks", resource.Identity.AsLogValues()...)
 }
 
-func (dp *deploymentProcessor) UnregisterForHealthChecks(ctx context.Context, healthID string) {
+func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info("Unregistering resource with the health service...")
+	logger.Info("Unregistering resource with the health service...", resource.Identity.AsLogValues()...)
 	msg := healthcontract.ResourceHealthRegistrationMessage{
-		Action: healthcontract.ActionUnregister,
-		ResourceInfo: healthcontract.ResourceInfo{
-			HealthID: healthID,
-		},
+		Action:   healthcontract.ActionUnregister,
+		Resource: resource,
 	}
 	dp.health.ResourceRegistrationWithHealthChannel <- msg
 }

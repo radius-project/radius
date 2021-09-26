@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 // This package defines the data types that we serialize over the wire - these are different from
@@ -83,13 +84,12 @@ type Component struct {
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	LocalID            string               `json:"localID"`
-	Managed            bool                 `json:"managed"`
-	ResourceKind       string               `json:"resourceKind"`
-	OutputResourceType string               `json:"outputResourceType"`
-	OutputResourceInfo interface{}          `json:"outputResourceInfo"`
-	Status             OutputResourceStatus `json:"status"`
-	HealthID           string               `json:"healthID"`
+	LocalID            string                         `json:"localID"`
+	Managed            bool                           `json:"managed"`
+	ResourceKind       string                         `json:"resourceKind"`
+	OutputResourceType string                         `json:"outputResourceType"`
+	OutputResourceInfo resourcemodel.ResourceIdentity `json:"outputResourceInfo"`
+	Status             OutputResourceStatus           `json:"status"`
 }
 
 // OutputResourceStatus represents the status of the Output Resource

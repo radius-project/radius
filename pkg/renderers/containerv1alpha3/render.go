@@ -279,11 +279,10 @@ func (r Renderer) isIdentitySupported(connection ContainerConnection) bool {
 func (r Renderer) makeManagedIdentity(ctx context.Context, resource renderers.RendererResource) outputresource.OutputResource {
 	managedIdentityName := resource.ApplicationName + "-" + resource.ResourceName + "-msi"
 	identityOutputResource := outputresource.OutputResource{
-		Type:     outputresource.TypeARM,
-		Kind:     resourcekinds.AzureUserAssignedManagedIdentity,
-		LocalID:  outputresource.LocalIDUserAssignedManagedIdentityKV,
-		Deployed: false,
-		Managed:  true,
+		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+		LocalID:      outputresource.LocalIDUserAssignedManagedIdentityKV,
+		Deployed:     false,
+		Managed:      true,
 		Resource: map[string]string{
 			handlers.ManagedKey:                  "true",
 			handlers.UserAssignedIdentityNameKey: managedIdentityName,
@@ -311,11 +310,10 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 	}
 
 	outputResource := outputresource.OutputResource{
-		LocalID:  outputresource.LocalIDAADPodIdentity,
-		Type:     outputresource.TypeAADPodIdentity,
-		Kind:     resourcekinds.AzurePodIdentity,
-		Managed:  true,
-		Deployed: false,
+		LocalID:      outputresource.LocalIDAADPodIdentity,
+		ResourceKind: resourcekinds.AzurePodIdentity,
+		Managed:      true,
+		Deployed:     false,
 		Resource: map[string]string{
 			handlers.ManagedKey:            "true",
 			handlers.PodIdentityNameKey:    podIdentityName,
@@ -338,12 +336,11 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, resource r
 		},
 	}
 	roleAssignment := outputresource.OutputResource{
-		Kind:     resourcekinds.AzureRoleAssignment,
-		LocalID:  outputresource.LocalIDRoleAssignmentKVSecretsCerts,
-		Managed:  true,
-		Deployed: false,
-		Type:     outputresource.TypeARM,
-		Resource: map[string]string{
+		ResourceKind: resourcekinds.AzureRoleAssignment,
+		LocalID:      outputresource.LocalIDRoleAssignmentKVSecretsCerts,
+		Managed:      true,
+		Deployed:     false,
+		Resource:     map[string]string{
 			// TODO
 		},
 		Dependencies: roleAssignmentDependencies,

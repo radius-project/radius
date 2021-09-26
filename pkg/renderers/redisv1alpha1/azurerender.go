@@ -66,10 +66,9 @@ func (r AzureRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkl
 
 	if component.Config.Managed {
 		resource := outputresource.OutputResource{
-			LocalID: outputresource.LocalIDAzureRedis,
-			Kind:    resourcekinds.AzureRedis,
-			Type:    outputresource.TypeARM,
-			Managed: true,
+			LocalID:      outputresource.LocalIDAzureRedis,
+			ResourceKind: resourcekinds.AzureRedis,
+			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:    "true",
 				handlers.RedisBaseName: w.Workload.Name,

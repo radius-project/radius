@@ -14,8 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/health/db"
-	"github.com/Azure/radius/pkg/health/handleroptions"
-	"github.com/Azure/radius/pkg/healthcontract"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) HealthHandler {
@@ -48,8 +47,8 @@ func (handler *azureServiceBusBaseHandler) getQueueByID(ctx context.Context, id 
 	return &queue, nil
 }
 
-func (handler *azureServiceBusBaseHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options handleroptions.Options) healthcontract.ResourceHealthDataMessage {
-	queue, err := handler.getQueueByID(ctx, resourceInfo.ResourceID)
+func (handler *azureServiceBusBaseHandler) GetHealthState(ctx context.Context, registration HealthRegistration, options Options) HealthState {
+	queue, err := handler.getQueueByID(ctx, registration.Identity.Data.(resourcemodel.ARMIdentity).ID)
 	var healthState = db.Healthy
 	var healthStateErrorDetails string
 	if err != nil {
@@ -60,8 +59,8 @@ func (handler *azureServiceBusBaseHandler) GetHealthState(ctx context.Context, r
 		healthStateErrorDetails = fmt.Sprintf("Queue Status: %s", queue.Status)
 	}
 
-	healthData := healthcontract.ResourceHealthDataMessage{
-		Resource:                resourceInfo,
+	healthData := HealthState{
+		Registration:            registration,
 		HealthState:             healthState,
 		HealthStateErrorDetails: healthStateErrorDetails,
 	}

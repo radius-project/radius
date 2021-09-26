@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -57,11 +58,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	properties[UserAssignedIdentityPrincipalIDKey] = identity.PrincipalID.String()
 	properties[UserAssignedIdentityClientIDKey] = identity.ClientID.String()
 
-	options.Resource.Info = outputresource.ARMInfo{
-		ID:           *identity.ID,
-		ResourceType: *identity.Type,
-		APIVersion:   msi.Version(),
-	}
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*identity.ID, clients.GetAPIVersionFromUserAgent(msi.UserAgent()))
 
 	logger.WithValues(
 		radlogger.LogFieldResourceID, *identity.ID,

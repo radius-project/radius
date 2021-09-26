@@ -642,16 +642,14 @@ func Test_GetComponent_OutputResourceUnhealthy(t *testing.T) {
 		Status: db.ComponentStatus{
 			OutputResources: []db.OutputResource{
 				{
-					LocalID:  "A",
-					HealthID: "A",
+					LocalID: "A",
 					Status: db.OutputResourceStatus{
 						ProvisioningState: db.Provisioned,
 						HealthState:       healthcontract.HealthStateUnhealthy,
 					},
 				},
 				{
-					LocalID:  "B",
-					HealthID: "B",
+					LocalID: "B",
 					Status: db.OutputResourceStatus{
 						ProvisioningState: db.Provisioned,
 						HealthState:       healthcontract.HealthStateHealthy,
@@ -685,16 +683,14 @@ func Test_GetComponent_OutputResourceUnhealthy(t *testing.T) {
 				HealthState:       healthcontract.HealthStateUnhealthy,
 				OutputResources: []rest.OutputResource{
 					{
-						LocalID:  "A",
-						HealthID: "A",
+						LocalID: "A",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: db.Provisioned,
 							HealthState:       healthcontract.HealthStateUnhealthy,
 						},
 					},
 					{
-						LocalID:  "B",
-						HealthID: "B",
+						LocalID: "B",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: db.Provisioned,
 							HealthState:       healthcontract.HealthStateHealthy,
@@ -715,16 +711,14 @@ func Test_GetComponent_OutputResourceProvisioning(t *testing.T) {
 		Status: db.ComponentStatus{
 			OutputResources: []db.OutputResource{
 				{
-					LocalID:  "A",
-					HealthID: "A",
+					LocalID: "A",
 					Status: db.OutputResourceStatus{
 						ProvisioningState: db.Provisioning,
 						HealthState:       healthcontract.HealthStateHealthy,
 					},
 				},
 				{
-					LocalID:  "B",
-					HealthID: "B",
+					LocalID: "B",
 					Status: db.OutputResourceStatus{
 						ProvisioningState: db.Provisioned,
 						HealthState:       healthcontract.HealthStateHealthy,
@@ -758,16 +752,14 @@ func Test_GetComponent_OutputResourceProvisioning(t *testing.T) {
 				HealthState:       healthcontract.HealthStateHealthy,
 				OutputResources: []rest.OutputResource{
 					{
-						LocalID:  "A",
-						HealthID: "A",
+						LocalID: "A",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: db.Provisioning,
 							HealthState:       healthcontract.HealthStateHealthy,
 						},
 					},
 					{
-						LocalID:  "B",
-						HealthID: "B",
+						LocalID: "B",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: db.Provisioned,
 							HealthState:       healthcontract.HealthStateHealthy,
@@ -788,16 +780,14 @@ func Test_GetComponent_OutputResourceFailed(t *testing.T) {
 		Status: db.ComponentStatus{
 			OutputResources: []db.OutputResource{
 				{
-					LocalID:  "A",
-					HealthID: "A",
+					LocalID: "A",
 					Status: db.OutputResourceStatus{
 						ProvisioningState: db.Failed,
 						HealthState:       healthcontract.HealthStateHealthy,
 					},
 				},
 				{
-					LocalID:  "B",
-					HealthID: "B",
+					LocalID: "B",
 					Status: db.OutputResourceStatus{
 						ProvisioningState: db.Provisioning,
 						HealthState:       healthcontract.HealthStateHealthy,
@@ -831,16 +821,14 @@ func Test_GetComponent_OutputResourceFailed(t *testing.T) {
 				HealthState:       healthcontract.HealthStateHealthy,
 				OutputResources: []rest.OutputResource{
 					{
-						LocalID:  "A",
-						HealthID: "A",
+						LocalID: "A",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: db.Failed,
 							HealthState:       healthcontract.HealthStateHealthy,
 						},
 					},
 					{
-						LocalID:  "B",
-						HealthID: "B",
+						LocalID: "B",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: db.Provisioning,
 							HealthState:       healthcontract.HealthStateHealthy,
@@ -861,16 +849,14 @@ func Test_GetComponent_OutputResourceNotProvisioned(t *testing.T) {
 		Status: db.ComponentStatus{
 			OutputResources: []db.OutputResource{
 				{
-					LocalID:  "A",
-					HealthID: "A",
+					LocalID: "A",
 					Status: db.OutputResourceStatus{
 						ProvisioningState: db.NotProvisioned,
 						HealthState:       healthcontract.HealthStateHealthy,
 					},
 				},
 				{
-					LocalID:  "B",
-					HealthID: "B",
+					LocalID: "B",
 					Status: db.OutputResourceStatus{
 						ProvisioningState: db.Provisioned,
 						HealthState:       healthcontract.HealthStateHealthy,
@@ -904,16 +890,14 @@ func Test_GetComponent_OutputResourceNotProvisioned(t *testing.T) {
 				HealthState:       healthcontract.HealthStateHealthy,
 				OutputResources: []rest.OutputResource{
 					{
-						LocalID:  "A",
-						HealthID: "A",
+						LocalID: "A",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: db.NotProvisioned,
 							HealthState:       healthcontract.HealthStateHealthy,
 						},
 					},
 					{
-						LocalID:  "B",
-						HealthID: "B",
+						LocalID: "B",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: db.Provisioned,
 							HealthState:       healthcontract.HealthStateHealthy,

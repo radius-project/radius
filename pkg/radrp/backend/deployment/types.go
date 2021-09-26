@@ -83,27 +83,15 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		return err
 	}
 
-	rendererDependencies := map[string]renderers.RendererDependency{}
-	for _, dependencyResourceID := range dependencyResourceIDs {
-		// Fetch resource from db
-		dbDependencyResource, err := dp.db.GetV3Resource(ctx, dependencyResourceID)
-		if err != nil {
-			armerr := &armerrors.ErrorDetails{
-				Code:    armerrors.Internal,
-				Message: err.Error(),
-				Target:  resourceID.ID,
-			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return err
+	rendererDependencies, err := dp.fetchDepenendencies(ctx, dependencyResourceIDs)
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  resourceID.ID,
 		}
-
-		rendererDependency := renderers.RendererDependency{
-			ResourceID:     dependencyResourceID,
-			Definition:     dbDependencyResource.Definition,
-			ComputedValues: dbDependencyResource.ComputedValues,
-		}
-
-		rendererDependencies[dependencyResourceID.ID] = rendererDependency
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+		return err
 	}
 
 	// Render - output resources to be deployed for the radius resource
@@ -152,7 +140,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 	// Example - CosmosDBAccountName consumed by CosmosDBMongo/SQL handler
 	deployedOutputResourceProperties := map[string]map[string]string{}
 	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.Type))
+		logger.Info(fmt.Sprintf("Deploying output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
 
 		var existingOutputResourceState db.OutputResource
 		for _, dbOutputResource := range existingDBOutputResources {
@@ -162,7 +150,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			}
 		}
 
-		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.Kind)
+		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
 		if err != nil {
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
@@ -191,6 +179,16 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		}
 		deployedOutputResourceProperties[outputResource.LocalID] = properties
 
+		if outputResource.Identity.Kind == "" {
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+			return fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler. ", outputResource.LocalID)
+		}
+
 		// Copy deployed output resource property values into corresponding expected computed values
 		for k, v := range rendererOutput.ComputedValues {
 			if outputResource.LocalID == v.LocalID {
@@ -199,25 +197,20 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		}
 
 		// Register health checks for the output resource
-		healthResourceDetails := healthcontract.ResourceDetails{
-			ResourceID:   outputResource.GetResourceID(),
-			ResourceKind: outputResource.Kind,
-			OwnerID:      resource.ID,
+		healthResource := healthcontract.HealthResource{
+			Identity:         outputResource.Identity,
+			ResourceKind:     outputResource.ResourceKind,
+			RadiusResourceID: resource.ID,
 		}
-		healthID := healthResourceDetails.GetHealthID()
-		outputResource.HealthID = healthID
-		properties[healthcontract.HealthIDKey] = healthID
 
-		dp.registerOutputResourceForHealthChecks(ctx, healthResourceDetails, healthID, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
+		dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
 
 		// Build database resource - copy updated properties to Resource field
 		dbOutputResource := db.OutputResource{
 			LocalID:             outputResource.LocalID,
-			HealthID:            outputResource.HealthID,
-			ResourceKind:        outputResource.Kind,
-			OutputResourceInfo:  outputResource.Info,
+			ResourceKind:        outputResource.ResourceKind,
+			Identity:            outputResource.Identity,
 			Managed:             outputResource.Managed,
-			OutputResourceType:  outputResource.Type,
 			PersistedProperties: properties,
 			Status: db.OutputResourceStatus{
 				ProvisioningState:        db.Provisioned,
@@ -294,7 +287,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("Deleting output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.OutputResourceType))
+		logger.Info(fmt.Sprintf("Deleting output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
 		err = resourceHandlers.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
 			Application:            resource.ApplicationName,
 			Component:              resource.ResourceGroup,
@@ -310,8 +303,12 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 			return err
 		}
 
-		healthID := outputResource.PersistedProperties[healthcontract.HealthIDKey]
-		dp.unregisterOutputResourceForHealthChecks(ctx, healthID)
+		healthResource := healthcontract.HealthResource{
+			ResourceKind:     outputResource.ResourceKind,
+			Identity:         outputResource.Identity,
+			RadiusResourceID: resource.ID,
+		}
+		dp.unregisterOutputResourceForHealthChecks(ctx, healthResource)
 	}
 
 	// Delete resource from database
@@ -332,38 +329,25 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 	return nil
 }
 
-func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resourceDetails healthcontract.ResourceDetails, healthID string, healthCheckOptions healthcontract.HealthCheckOptions) {
+func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) {
 	logger := radlogger.GetLogger(ctx)
 
-	if resourceDetails.ResourceID == "" || resourceDetails.ResourceKind == "" || healthID == "" {
-		// This additional check is needed until health check is implemented for all resource types:
-		// https://github.com/Azure/radius/issues/827
-		return
-	}
-
-	resourceInfo := healthcontract.ResourceInfo{
-		HealthID:     healthID,
-		ResourceID:   resourceDetails.ResourceID,
-		ResourceKind: resourceDetails.ResourceKind,
-	}
 	msg := healthcontract.ResourceHealthRegistrationMessage{
-		Action:       healthcontract.ActionRegister,
-		ResourceInfo: resourceInfo,
-		Options:      healthCheckOptions,
+		Action:   healthcontract.ActionRegister,
+		Resource: resource,
+		Options:  healthCheckOptions,
 	}
 	dp.healthChannels.ResourceRegistrationWithHealthChannel <- msg
 
-	logger.Info(fmt.Sprintf("Registered output resource with healthID: %s for health checks", healthID))
+	logger.Info("Registered output resource for health checks", resource.Identity.AsLogValues()...)
 }
 
-func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx context.Context, healthID string) {
+func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info("Unregistering resource with the health service...")
+	logger.Info("Unregistering resource with the health service...", resource.Identity.AsLogValues()...)
 	msg := healthcontract.ResourceHealthRegistrationMessage{
-		Action: healthcontract.ActionUnregister,
-		ResourceInfo: healthcontract.ResourceInfo{
-			HealthID: healthID,
-		},
+		Action:   healthcontract.ActionUnregister,
+		Resource: resource,
 	}
 	dp.healthChannels.ResourceRegistrationWithHealthChannel <- msg
 }
@@ -391,4 +375,25 @@ func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.
 	if err != nil {
 		logger.Error(err, "Failed to update the operation in database.")
 	}
+}
+
+func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependencyResourceIDs []azresources.ResourceID) (map[string]renderers.RendererDependency, error) {
+	rendererDependencies := map[string]renderers.RendererDependency{}
+	for _, dependencyResourceID := range dependencyResourceIDs {
+		// Fetch resource from db
+		dbDependencyResource, err := dp.db.GetV3Resource(ctx, dependencyResourceID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch dependency resource %q: %w", dependencyResourceID.ID, err)
+		}
+
+		rendererDependency := renderers.RendererDependency{
+			ResourceID:     dependencyResourceID,
+			Definition:     dbDependencyResource.Definition,
+			ComputedValues: dbDependencyResource.ComputedValues,
+		}
+
+		rendererDependencies[dependencyResourceID.ID] = rendererDependency
+	}
+
+	return rendererDependencies, nil
 }

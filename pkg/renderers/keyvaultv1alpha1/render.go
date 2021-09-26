@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2019-09-01/keyvault"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
@@ -75,11 +74,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			Resource: map[string]string{
 				handlers.ManagedKey: "true",
 			},
-			Deployed: false,
-			LocalID:  outputresource.LocalIDKeyVault,
-			Managed:  true,
-			Kind:     resourcekinds.AzureKeyVault,
-			Type:     outputresource.TypeARM,
+			Deployed:     false,
+			LocalID:      outputresource.LocalIDKeyVault,
+			Managed:      true,
+			ResourceKind: resourcekinds.AzureKeyVault,
 		}
 
 		// It's already in the correct format
@@ -95,16 +93,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource = outputresource.OutputResource{
-			LocalID:  outputresource.LocalIDKeyVault,
-			Kind:     resourcekinds.AzureKeyVault,
-			Managed:  false,
-			Deployed: true,
-			Type:     outputresource.TypeARM,
-			Info: outputresource.ARMInfo{
-				ID:           vaultID.ID,
-				ResourceType: KeyVaultResourceType.Type(),
-				APIVersion:   keyvault.Version(),
-			},
+			LocalID:      outputresource.LocalIDKeyVault,
+			ResourceKind: resourcekinds.AzureKeyVault,
+			Managed:      false,
+			Deployed:     true,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 

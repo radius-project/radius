@@ -10,7 +10,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 func NewAzureCosmosAccountMongoHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -42,14 +44,17 @@ func (handler *azureCosmosAccountMongoHandler) Put(ctx context.Context, options 
 			return nil, err
 		}
 
+		options.Resource.Identity = resourcemodel.NewARMIdentity(*account.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 		properties[CosmosDBAccountIDKey] = *account.ID
 		properties[CosmosDBAccountNameKey] = *account.Name
 	} else {
 		// This is mostly called for the side-effect of verifying that the account exists.
-		_, err = handler.GetCosmosDBAccountByID(ctx, properties[CosmosDBAccountIDKey])
+		account, err = handler.GetCosmosDBAccountByID(ctx, properties[CosmosDBAccountIDKey])
 		if err != nil {
 			return nil, err
 		}
+
+		options.Resource.Identity = resourcemodel.NewARMIdentity(*account.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 	}
 
 	return properties, nil

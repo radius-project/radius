@@ -22,6 +22,7 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/gofrs/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -72,10 +73,13 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 	properties[serverNameKey] = serverName
 
 	// Create database
-	err = handler.createSQLDB(ctx, location, serverName, dbName, *options)
+	database, err := handler.createSQLDB(ctx, location, serverName, dbName, *options)
 	if err != nil {
 		return nil, err
 	}
+
+	// Use the identity of the database as the thing to monitor.
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(sql.UserAgent()))
 
 	// Generate connection string
 	connectionString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
@@ -237,7 +241,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 	return serverName, nil
 }
 
-func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, location *string, serverName string, dbName string, options PutOptions) error {
+func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, location *string, serverName string, dbName string, options PutOptions) (sql.Database, error) {
 	sqlDBClient := clients.NewDatabasesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	future, err := sqlDBClient.CreateOrUpdate(
@@ -250,15 +254,15 @@ func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, 
 			Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
 		})
 	if err != nil {
-		return fmt.Errorf("failed to create sql database: %w", err)
+		return sql.Database{}, fmt.Errorf("failed to create sql database: %w", err)
 	}
 
 	err = future.WaitForCompletionRef(ctx, sqlDBClient.Client)
 	if err != nil {
-		return fmt.Errorf("failed to create sql database: %w", err)
+		return sql.Database{}, fmt.Errorf("failed to create sql database: %w", err)
 	}
 
-	return nil
+	return future.Result(sqlDBClient)
 }
 
 type PasswordConditions struct {

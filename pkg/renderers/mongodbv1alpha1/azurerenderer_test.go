@@ -54,9 +54,9 @@ func Test_AzureRenderer_Render_Managed_Success(t *testing.T) {
 	databaseResource := resources[1]
 
 	require.Equal(t, outputresource.LocalIDAzureCosmosMongoAccount, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosAccountMongo, accountResource.Kind)
+	require.Equal(t, resourcekinds.AzureCosmosAccountMongo, accountResource.ResourceKind)
 	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.Kind)
+	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.ResourceKind)
 
 	expectedAccount := map[string]string{
 		handlers.ManagedKey:              "true",
@@ -97,9 +97,9 @@ func Test_AzureRenderer_Render_Unmanaged_Success(t *testing.T) {
 	databaseResource := resources[1]
 
 	require.Equal(t, outputresource.LocalIDAzureCosmosMongoAccount, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosAccountMongo, accountResource.Kind)
+	require.Equal(t, resourcekinds.AzureCosmosAccountMongo, accountResource.ResourceKind)
 	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.Kind)
+	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.ResourceKind)
 
 	expectedAccount := map[string]string{
 		handlers.ManagedKey:             "false",

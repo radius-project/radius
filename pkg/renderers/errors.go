@@ -19,7 +19,7 @@ var ErrResourceMissingForUnmanagedResource = errors.New("the 'resource' field is
 func ValidateResourceID(id string, resourceType azresources.KnownType, description string) (resources.ResourceID, error) {
 	parsed, err := azresources.Parse(id)
 	if err != nil {
-		return resources.ResourceID{}, errors.New("the 'resource' field must be a valid resource id.")
+		return resources.ResourceID{}, errors.New("the 'resource' field must be a valid resource id")
 	}
 
 	err = parsed.ValidateResourceType(resourceType)

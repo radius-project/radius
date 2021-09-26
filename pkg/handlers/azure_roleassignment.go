@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -70,12 +71,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	}
 	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, managedIdentityProperties[UserAssignedIdentityIDKey], *keyVault.ID))
 
-	options.Resource.Info = outputresource.ARMInfo{
-		ID:           *roleAssignment.ID,
-		ResourceType: *roleAssignment.Type,
-		APIVersion:   authorization.Version(),
-	}
-
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*roleAssignment.ID, clients.GetAPIVersionFromUserAgent(authorization.UserAgent()))
 	return properties, nil
 }
 

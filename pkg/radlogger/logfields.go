@@ -13,7 +13,6 @@ const (
 	LogFieldComponentName      = "componentName"
 	LogFieldDeploymentID       = "deploymentID"
 	LogFieldDeploymentName     = "deploymentName"
-	LogFieldHealthID           = "healthID"
 	LogFieldLocalID            = "localID"
 	LogFieldOperationID        = "operationID"
 	LogFieldOperationStatus    = "operationStatus"

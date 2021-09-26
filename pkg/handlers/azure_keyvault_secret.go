@@ -8,7 +8,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/mgmt/keyvault"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
@@ -19,6 +18,7 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -44,8 +44,7 @@ func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options *Put
 	keyVaultName := properties[KeyVaultNameKey]
 	keyVaultSecretsResourceType := azresources.KeyVaultVaults + "/" + azresources.KeyVaultVaultsSecrets
 
-	// UserAgent() returns a string of format: Azure-SDK-For-Go/v52.2.0 keyvault/2019-09-01 profiles/latest
-	keyVaultAPIVersion := strings.Split(strings.Split(keyvault.UserAgent(), "keyvault/")[1], " ")[0]
+	keyVaultAPIVersion := clients.GetAPIVersionFromUserAgent(keyvault.UserAgent())
 
 	// KeyVault URI has the format: "https://<kv name>.vault.azure.net"
 	secretFullName := keyVaultName + "/" + secretName
@@ -101,11 +100,7 @@ func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options *Put
 		ResourceName:   secretFullName,
 	}
 
-	options.Resource.Info = outputresource.ARMInfo{
-		ID:           secretResource.String(),
-		ResourceType: keyVaultSecretsResourceType,
-		APIVersion:   keyVaultAPIVersion,
-	}
+	options.Resource.Identity = resourcemodel.NewARMIdentity(secretResource.String(), keyVaultAPIVersion)
 
 	return properties, nil
 }

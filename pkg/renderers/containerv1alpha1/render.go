@@ -114,11 +114,10 @@ func (r Renderer) getManagedIdentityOutput(ctx context.Context, applicationName 
 
 	managedIdentityName := keyVaultName + "-" + componentName + "-msi"
 	identityOutputResource := outputresource.OutputResource{
-		Type:     outputresource.TypeARM,
-		Kind:     resourcekinds.AzureUserAssignedManagedIdentity,
-		LocalID:  outputresource.LocalIDUserAssignedManagedIdentityKV,
-		Deployed: false,
-		Managed:  true,
+		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+		LocalID:      outputresource.LocalIDUserAssignedManagedIdentityKV,
+		Deployed:     false,
+		Managed:      true,
 		Resource: map[string]string{
 			handlers.ManagedKey:                  "true",
 			handlers.KeyVaultNameKey:             keyVaultName,
@@ -156,11 +155,10 @@ func (r Renderer) getRoleAssignmentOutputResources(ctx context.Context, keyVault
 		},
 	}
 	readSecretsRAOutputResource := outputresource.OutputResource{
-		Kind:     resourcekinds.AzureRoleAssignment,
-		LocalID:  outputresource.LocalIDRoleAssignmentKVSecretsCerts,
-		Managed:  true,
-		Deployed: false,
-		Type:     outputresource.TypeARM,
+		ResourceKind: resourcekinds.AzureRoleAssignment,
+		LocalID:      outputresource.LocalIDRoleAssignmentKVSecretsCerts,
+		Managed:      true,
+		Deployed:     false,
 		Resource: map[string]string{
 			handlers.ManagedKey:      "true",
 			handlers.RoleNameKey:     keyVaultSecretsReadRole,
@@ -171,11 +169,10 @@ func (r Renderer) getRoleAssignmentOutputResources(ctx context.Context, keyVault
 	outputResources := []outputresource.OutputResource{readSecretsRAOutputResource}
 
 	cryptoOperationsRAOutputResource := outputresource.OutputResource{
-		Kind:     resourcekinds.AzureRoleAssignment,
-		LocalID:  outputresource.LocalIDRoleAssignmentKVKeys,
-		Managed:  true,
-		Deployed: false,
-		Type:     outputresource.TypeARM,
+		ResourceKind: resourcekinds.AzureRoleAssignment,
+		LocalID:      outputresource.LocalIDRoleAssignmentKVKeys,
+		Managed:      true,
+		Deployed:     false,
 		Resource: map[string]string{
 			handlers.ManagedKey:      "true",
 			handlers.RoleNameKey:     keyVaultCryptoOperationsRole,
@@ -283,19 +280,7 @@ func (r Renderer) makeDeployment(ctx context.Context, workload workloads.Instant
 			bindingSecret := r.makeSecrets(opts, bindingSecrets)
 
 			// Create an output resource to track the secret created
-			outputResources = append(outputResources, outputresource.OutputResource{
-				Resource: bindingSecret,
-				Kind:     resourcekinds.Kubernetes,
-				LocalID:  outputresource.LocalIDSecret,
-				Managed:  true,
-				Type:     outputresource.TypeKubernetes,
-				Info: outputresource.K8sInfo{
-					Kind:       bindingSecret.TypeMeta.Kind,
-					APIVersion: bindingSecret.TypeMeta.APIVersion,
-					Name:       bindingSecret.ObjectMeta.Name,
-					Namespace:  bindingSecret.ObjectMeta.Namespace,
-				},
-			})
+			outputResources = append(outputResources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, bindingSecret, bindingSecret.ObjectMeta))
 
 			// Set environment variables in the container
 			for k := range dep.Env {
@@ -398,21 +383,8 @@ func (r Renderer) makeDeployment(ctx context.Context, workload workloads.Instant
 		deploymentDependencies = append(deploymentDependencies, outputresource.Dependency{LocalID: outputresource.LocalIDAADPodIdentity})
 	}
 
-	deploymentOutputResource := outputresource.OutputResource{
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDDeployment,
-		Deployed: false,
-		Managed:  true,
-		Type:     outputresource.TypeKubernetes,
-		Info: outputresource.K8sInfo{
-			Kind:       deployment.TypeMeta.Kind,
-			APIVersion: deployment.TypeMeta.APIVersion,
-			Name:       deployment.ObjectMeta.Name,
-			Namespace:  deployment.ObjectMeta.Namespace,
-		},
-		Resource:     &deployment,
-		Dependencies: deploymentDependencies,
-	}
+	deploymentOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
+	deploymentOutputResource.Dependencies = deploymentDependencies
 	outputResources = append(outputResources, deploymentOutputResource)
 
 	return &deployment, outputResources, nil
@@ -436,11 +408,10 @@ func (r Renderer) getPodIdentityOutputResource(ctx context.Context, containerNam
 	}
 
 	outputResource := outputresource.OutputResource{
-		LocalID:  outputresource.LocalIDAADPodIdentity,
-		Type:     outputresource.TypeAADPodIdentity,
-		Kind:     resourcekinds.AzurePodIdentity,
-		Managed:  true,
-		Deployed: false,
+		LocalID:      outputresource.LocalIDAADPodIdentity,
+		ResourceKind: resourcekinds.AzurePodIdentity,
+		Managed:      true,
+		Deployed:     false,
 		Resource: map[string]string{
 			handlers.ManagedKey:            "true",
 			handlers.PodIdentityNameKey:    podIdentityName,
@@ -455,11 +426,10 @@ func (r Renderer) getPodIdentityOutputResource(ctx context.Context, containerNam
 
 func (r Renderer) getKeyVaultSecretOutputResource(ctx context.Context, keyVaultName string, secretName string, secretValue string) (outputresource.OutputResource, error) {
 	keyVaultSecretOutputResource := outputresource.OutputResource{
-		LocalID:  outputresource.LocalIDKeyVaultSecret,
-		Type:     outputresource.TypeARM,
-		Kind:     resourcekinds.AzureKeyVaultSecret,
-		Deployed: false,
-		Managed:  true,
+		LocalID:      outputresource.LocalIDKeyVaultSecret,
+		ResourceKind: resourcekinds.AzureKeyVaultSecret,
+		Deployed:     false,
+		Managed:      true,
 		Resource: map[string]string{
 			handlers.ManagedKey:             "true",
 			handlers.KeyVaultNameKey:        keyVaultName,
@@ -517,21 +487,9 @@ func (r Renderer) makeService(ctx context.Context, workload workloads.Instantiat
 			LocalID: outputresource.LocalIDDeployment,
 		},
 	}
-	serviceOutputResource := outputresource.OutputResource{
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDService,
-		Managed:  true,
-		Deployed: false,
-		Type:     outputresource.TypeKubernetes,
-		Info: outputresource.K8sInfo{
-			Kind:       deployment.TypeMeta.Kind,
-			APIVersion: deployment.TypeMeta.APIVersion,
-			Name:       deployment.ObjectMeta.Name,
-			Namespace:  deployment.ObjectMeta.Namespace,
-		},
-		Resource:     &service,
-		Dependencies: serviceDependencies,
-	}
+
+	serviceOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, &service, service.ObjectMeta)
+	serviceOutputResource.Dependencies = serviceDependencies
 
 	return []outputresource.OutputResource{serviceOutputResource}, nil
 }

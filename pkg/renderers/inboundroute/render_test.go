@@ -70,8 +70,7 @@ func Test_Render_Simple(t *testing.T) {
 	require.NotNil(t, resource)
 
 	require.Equal(t, outputresource.LocalIDIngress, resource.LocalID)
-	require.Equal(t, resourcekinds.Kubernetes, resource.Kind)
-	require.Equal(t, outputresource.TypeKubernetes, resource.Type)
+	require.Equal(t, resourcekinds.Kubernetes, resource.ResourceKind)
 	require.True(t, resource.Managed)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
@@ -122,8 +121,7 @@ func Test_Render_WithHostname(t *testing.T) {
 	require.NotNil(t, resource)
 
 	require.Equal(t, outputresource.LocalIDIngress, resource.LocalID)
-	require.Equal(t, resourcekinds.Kubernetes, resource.Kind)
-	require.Equal(t, outputresource.TypeKubernetes, resource.Type)
+	require.Equal(t, resourcekinds.Kubernetes, resource.ResourceKind)
 	require.True(t, resource.Managed)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
@@ -177,7 +175,7 @@ func makeContainerComponent(trait components.GenericTrait, bindings map[string]c
 
 func findIngress(resources []outputresource.OutputResource) (*networkingv1.Ingress, *outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.Kind != resourcekinds.Kubernetes {
+		if r.ResourceKind != resourcekinds.Kubernetes {
 			continue
 		}
 

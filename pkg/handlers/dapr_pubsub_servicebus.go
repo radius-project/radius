@@ -11,8 +11,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/kubernetes"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -71,19 +73,23 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *Pu
 		}
 	}
 
+	var topic *servicebus.SBTopic
 	if properties[ServiceBusTopicIDKey] == "" {
-		queue, err := handler.CreateTopic(ctx, *namespace.Name, topicName)
+		topic, err = handler.CreateTopic(ctx, *namespace.Name, topicName)
 		if err != nil {
 			return nil, err
 		}
-		properties[ServiceBusTopicIDKey] = *queue.ID
+		properties[ServiceBusTopicIDKey] = *topic.ID
 	} else {
 		// This is mostly called for the side-effect of verifying that the servicebus queue exists.
-		_, err := handler.GetTopicByID(ctx, properties[ServiceBusTopicIDKey])
+		topic, err = handler.GetTopicByID(ctx, properties[ServiceBusTopicIDKey])
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	// Use the identity of the topic as the thing to monitor.
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*topic.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.Name)
 	if err != nil {

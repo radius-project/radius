@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/health/db"
+	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model/azure"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -49,7 +50,7 @@ func (s *Service) Run(ctx context.Context) error {
 		DB:                          db,
 		ResourceRegistrationChannel: s.Options.HealthChannels.ResourceRegistrationWithHealthChannel,
 		HealthProbeChannel:          s.Options.HealthChannels.HealthToRPNotificationChannel,
-		WatchHealthChangesChannel:   make(chan healthcontract.ResourceHealthDataMessage, healthcontract.ChannelBufferSize),
+		WatchHealthChangesChannel:   make(chan handlers.HealthState, healthcontract.ChannelBufferSize),
 		HealthModel:                 healthmodel,
 	}
 

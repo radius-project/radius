@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
@@ -93,9 +92,8 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a cosmosdb instance
 		resource := outputresource.OutputResource{
-			Kind:    resourcekinds.AzureCosmosDBSQL,
-			Type:    outputresource.TypeARM,
-			LocalID: outputresource.LocalIDAzureCosmosDBSQL,
+			ResourceKind: resourcekinds.AzureCosmosDBSQL,
+			LocalID:      outputresource.LocalIDAzureCosmosDBSQL,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.CosmosDBAccountBaseName: w.Workload.Name,
@@ -115,15 +113,16 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return nil, err
 	}
 
+	cosmosAccountID := databaseID.Truncate()
+
 	resource := outputresource.OutputResource{
-		Kind:    resourcekinds.AzureCosmosDBSQL,
-		Type:    outputresource.TypeARM,
-		LocalID: outputresource.LocalIDAzureCosmosDBSQL,
+		ResourceKind: resourcekinds.AzureCosmosDBSQL,
+		LocalID:      outputresource.LocalIDAzureCosmosDBSQL,
 		Resource: map[string]string{
 			handlers.ManagedKey: "false",
 
 			// Truncate the database part of the ID to make an ID for the account
-			handlers.CosmosDBAccountIDKey:    azresources.MakeID(databaseID.SubscriptionID, databaseID.ResourceGroup, databaseID.Types[0]),
+			handlers.CosmosDBAccountIDKey:    cosmosAccountID.ID,
 			handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
 			handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,
 			handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,

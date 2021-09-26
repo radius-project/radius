@@ -24,6 +24,9 @@ import (
 	"github.com/Azure/radius/pkg/cli/clients"
 )
 
+// We use a shorted poll interval for local testing to make it faster.
+// It wouldn't have an effect trying to use a shorter poll interval in Azure, because
+// it's server-controlled.
 const PollInterval = 5 * time.Second
 
 type LocalRPDeploymentClient struct {
@@ -98,6 +101,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string) e
 func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connection *armcore.Connection, resource armtemplate.Resource) (*http.Response, map[string]interface{}, error) {
 	client := azclients.NewGenericResourceClient(dc.SubscriptionID, dc.Authorizer)
 	client.BaseURI = strings.TrimSuffix(dc.BaseURL, "/")
+	client.PollingDelay = PollInterval
 
 	converted := resources.GenericResource{}
 	err := resource.Convert(&converted)
