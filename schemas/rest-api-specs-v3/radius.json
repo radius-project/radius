@@ -1820,6 +1820,14 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
+    "RadiusResourceTypeParameter": {
+      "description": "The type of the RadiusResource.",
+      "in": "path",
+      "name": "radiusResourceType",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
     "RedisComponentNameParameter": {
       "description": "The name of the redislabs.com.Redis resource.",
       "in": "path",
@@ -4094,6 +4102,87 @@
         },
         "tags": [
           "redislabs.com.Redis"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}": {
+      "delete": {
+        "description": "Deletes a RadiusResource resource.",
+        "operationId": "RadiusResource_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The RadiusResource resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
+        ]
+      },
+      "get": {
+        "description": "Gets a RadiusResource resource by name.",
+        "operationId": "RadiusResource_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The RadiusResource resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
         ]
       }
     }

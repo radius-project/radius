@@ -1298,6 +1298,16 @@ func (r RadiusResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// RadiusResourceDeleteOptions contains the optional parameters for the RadiusResource.Delete method.
+type RadiusResourceDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RadiusResourceGetOptions contains the optional parameters for the RadiusResource.Get method.
+type RadiusResourceGetOptions struct {
+	// placeholder for future optional parameters
+}
+
 // RadiusResourceList - List of RadiusResource resources.
 type RadiusResourceList struct {
 	// REQUIRED; List of RadiusResource resources.

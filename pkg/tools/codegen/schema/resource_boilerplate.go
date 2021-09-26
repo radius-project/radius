@@ -85,6 +85,14 @@ func (r resourceInfo) NameParameterName() string {
 	return lowerFirst(r.BaseName) + "Name"
 }
 
+func (r resourceInfo) TypeParameterType() string {
+	return schemav3.GenericResourceType + "TypeParameter"
+}
+
+func (r resourceInfo) TypeParameterName() string {
+	return lowerFirst(schemav3.GenericResourceType) + "Type"
+}
+
 // Load a resource boilerplate schema for a given type.
 func LoadResourceBoilerplateSchemaForType(r resourceInfo) (*Schema, error) {
 	b := &bytes.Buffer{}
