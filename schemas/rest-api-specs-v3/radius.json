@@ -595,13 +595,13 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
-    "DaprPubSubComponentList": {
-      "description": "List of dapr.io.PubSubComponent resources.",
+    "DaprPubSubTopicComponentList": {
+      "description": "List of dapr.io.PubSubTopicComponent resources.",
       "properties": {
         "value": {
-          "description": "List of dapr.io.PubSubComponent resources.",
+          "description": "List of dapr.io.PubSubTopicComponent resources.",
           "items": {
-            "$ref": "#/definitions/DaprPubSubComponentResource"
+            "$ref": "#/definitions/DaprPubSubTopicComponentResource"
           },
           "type": "array"
         }
@@ -611,7 +611,7 @@
       ],
       "type": "object"
     },
-    "DaprPubSubComponentProperties": {
+    "DaprPubSubTopicComponentProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -619,37 +619,32 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
-              "description": "Dapr Pub/Sub kind",
-              "type": "string"
-            },
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
-              "type": "boolean"
-            },
-            "resource": {
-              "description": "PubSub resource, for unmanaged",
-              "type": "string"
-            },
-            "topic": {
-              "description": "PubSub topic",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind"
+        "kind": {
+          "description": "The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.",
+          "enum": [
+            "any",
+            "pubsub.azure.servicebus"
           ],
-          "type": "object"
+          "type": "string"
+        },
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
+          "type": "boolean"
+        },
+        "resource": {
+          "description": "PubSub resource, for unmanaged",
+          "type": "string"
+        },
+        "topic": {
+          "description": "PubSub topic",
+          "type": "string"
         }
       },
       "required": [
-        "config"
+        "kind"
       ]
     },
-    "DaprPubSubComponentResource": {
+    "DaprPubSubTopicComponentResource": {
       "allOf": [
         {
           "$ref": "#/definitions/ProxyResource"
@@ -658,7 +653,7 @@
       "description": "Component for Dapr Pub/Sub",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/DaprPubSubComponentProperties"
+          "$ref": "#/definitions/DaprPubSubTopicComponentProperties"
         }
       },
       "required": [
@@ -691,33 +686,29 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
-              "description": "Statestore kind",
-              "type": "string"
-            },
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
-              "enum": [
-                true
-              ],
-              "example": [
-                true
-              ],
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "managed",
-            "kind"
+        "kind": {
+          "description": "The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.",
+          "enum": [
+            "any",
+            "state.sqlserver",
+            "state.azure.tablestorage"
           ],
-          "type": "object"
+          "type": "string"
+        },
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ],
+          "type": "boolean"
         }
       },
       "required": [
-        "config"
+        "managed",
+        "kind"
       ]
     },
     "DaprStateStoreComponentResource": {
@@ -999,27 +990,18 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
-              "type": "boolean"
-            },
-            "resource": {
-              "description": "The ID of the user-managed DB with Mongo API to use for this Component",
-              "example": [
-                "account::mongodb.id"
-              ],
-              "type": "string"
-            }
-          },
-          "type": "object"
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
+          "type": "boolean"
+        },
+        "resource": {
+          "description": "The ID of the user-managed DB with Mongo API to use for this Component",
+          "example": [
+            "account::mongodb.id"
+          ],
+          "type": "string"
         }
-      },
-      "required": [
-        "config"
-      ]
+      }
     },
     "MongoDBComponentResource": {
       "allOf": [
@@ -1033,9 +1015,6 @@
           "$ref": "#/definitions/MongoDBComponentProperties"
         }
       },
-      "required": [
-        "properties"
-      ],
       "type": "object",
       "x-ms-azure-resource": true
     },
@@ -1237,33 +1216,24 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component.",
-              "enum": [
-                true
-              ],
-              "example": [
-                true
-              ],
-              "type": "boolean"
-            },
-            "queue": {
-              "description": "The name of the queue",
-              "type": "string"
-            }
-          },
-          "required": [
-            "managed",
-            "queue"
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component.",
+          "enum": [
+            true
           ],
-          "type": "object"
+          "example": [
+            true
+          ],
+          "type": "boolean"
+        },
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
         }
       },
       "required": [
-        "config"
+        "managed",
+        "queue"
       ]
     },
     "RabbitMQComponentResource": {
@@ -1342,49 +1312,43 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "connectionString": {
-              "description": "The Redis connection string used to connect to the redis cache",
-              "example": [
-                "myrediscache.redis.cache.windows.net:6380",
-                "redis.default.svc.cluster.local:6379"
-              ],
-              "type": "string"
-            },
-            "host": {
-              "description": "The host name of the redis cache to which you are connecting",
-              "example": [
-                "myrediscache.redis.cache.windows.net",
-                "redis.default.svc.cluster.local"
-              ],
-              "type": "string"
-            },
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (Redis currently only supports true)",
-              "enum": [
-                true
-              ],
-              "example": [
-                true
-              ],
-              "type": "boolean"
-            },
-            "port": {
-              "description": "The port value of the redis cache to which you are connecting",
-              "example": [
-                6380,
-                6379
-              ],
-              "type": "integer"
-            }
-          },
-          "type": "object"
+        "connectionString": {
+          "description": "The Redis connection string used to connect to the redis cache",
+          "example": [
+            "myrediscache.redis.cache.windows.net:6380",
+            "redis.default.svc.cluster.local:6379"
+          ],
+          "type": "string"
+        },
+        "host": {
+          "description": "The host name of the redis cache to which you are connecting",
+          "example": [
+            "myrediscache.redis.cache.windows.net",
+            "redis.default.svc.cluster.local"
+          ],
+          "type": "string"
+        },
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (Redis currently only supports true)",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ],
+          "type": "boolean"
+        },
+        "port": {
+          "description": "The port value of the redis cache to which you are connecting",
+          "example": [
+            6380,
+            6379
+          ],
+          "type": "integer"
         }
       },
       "required": [
-        "config"
+        "managed"
       ]
     },
     "RedisComponentResource": {
@@ -1790,10 +1754,10 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "DaprPubSubComponentNameParameter": {
-      "description": "The name of the dapr.io.PubSubComponent resource.",
+    "DaprPubSubTopicComponentNameParameter": {
+      "description": "The name of the dapr.io.PubSubTopicComponent resource.",
       "in": "path",
-      "name": "daprPubSubComponentName",
+      "name": "daprPubSubTopicComponentName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -3278,10 +3242,10 @@
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent": {
       "get": {
-        "description": "List the dapr.io.PubSubComponent resources deployed in the application.",
-        "operationId": "dapr.io.PubSubComponent_List",
+        "description": "List the dapr.io.PubSubTopicComponent resources deployed in the application.",
+        "operationId": "dapr.io.PubSubTopicComponent_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3298,9 +3262,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of dapr.io.PubSubComponent resources was retrieved successfully.",
+            "description": "The list of dapr.io.PubSubTopicComponent resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentList"
+              "$ref": "#/definitions/DaprPubSubTopicComponentList"
             }
           },
           "default": {
@@ -3311,14 +3275,14 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubComponent"
+          "dapr.io.PubSubTopicComponent"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubComponent/{daprPubSubComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent/{daprPubSubTopicComponentName}": {
       "delete": {
-        "description": "Deletes a dapr.io.PubSubComponent resource.",
-        "operationId": "dapr.io.PubSubComponent_Delete",
+        "description": "Deletes a dapr.io.PubSubTopicComponent resource.",
+        "operationId": "dapr.io.PubSubTopicComponent_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3330,7 +3294,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubComponentNameParameter"
+            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3338,7 +3302,7 @@
         ],
         "responses": {
           "204": {
-            "description": "The dapr.io.PubSubComponent resource was successfully deleted."
+            "description": "The dapr.io.PubSubTopicComponent resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -3348,12 +3312,12 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubComponent"
+          "dapr.io.PubSubTopicComponent"
         ]
       },
       "get": {
-        "description": "Gets a dapr.io.PubSubComponent resource by name.",
-        "operationId": "dapr.io.PubSubComponent_Get",
+        "description": "Gets a dapr.io.PubSubTopicComponent resource by name.",
+        "operationId": "dapr.io.PubSubTopicComponent_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3365,7 +3329,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubComponentNameParameter"
+            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3373,9 +3337,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The dapr.io.PubSubComponent resource was retrieved successfully.",
+            "description": "The dapr.io.PubSubTopicComponent resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
             }
           },
           "default": {
@@ -3386,12 +3350,12 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubComponent"
+          "dapr.io.PubSubTopicComponent"
         ]
       },
       "put": {
-        "description": "Creates or updates a dapr.io.PubSubComponent resource.",
-        "operationId": "dapr.io.PubSubComponent_CreateOrUpdate",
+        "description": "Creates or updates a dapr.io.PubSubTopicComponent resource.",
+        "operationId": "dapr.io.PubSubTopicComponent_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3403,15 +3367,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubComponentNameParameter"
+            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.PubSubComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.PubSubTopicComponent resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
             }
           },
           {
@@ -3420,21 +3384,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing dapr.io.PubSubComponent resource was successfully updated.",
+            "description": "The existing dapr.io.PubSubTopicComponent resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
             }
           },
           "201": {
-            "description": "The new dapr.io.PubSubComponent resource was successfully created.",
+            "description": "The new dapr.io.PubSubTopicComponent resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
             }
           },
           "202": {
-            "description": "The existing dapr.io.PubSubComponent resource was successfully updated.",
+            "description": "The existing dapr.io.PubSubTopicComponent resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
             }
           },
           "default": {
@@ -3445,7 +3409,7 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubComponent"
+          "dapr.io.PubSubTopicComponent"
         ]
       }
     },

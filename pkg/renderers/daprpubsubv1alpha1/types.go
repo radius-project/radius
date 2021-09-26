@@ -24,8 +24,8 @@ var TopicResourceType = azresources.KnownType{
 	},
 }
 
-// DaprPubSubComponent is the definition of the container component
-type DaprPubSubComponent struct {
+// DaprPubSubTopicComponent is the definition of the container component
+type DaprPubSubTopicComponent struct {
 	Name     string                   `json:"name"`
 	Kind     string                   `json:"kind"`
 	Config   DaprPubSubConfig         `json:"config,omitempty"`

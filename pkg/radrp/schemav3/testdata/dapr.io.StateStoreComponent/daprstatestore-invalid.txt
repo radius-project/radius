@@ -1,2 +1,3 @@
 (root).id: Invalid type. Expected: string, given: integer
 (root).name: Invalid type. Expected: string, given: integer
+(root).properties.kind: properties.kind must be one of the following: "any", "state.sqlserver", "state.azure.tablestorage"

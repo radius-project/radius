@@ -1,0 +1,8 @@
+{
+  "name": "name",
+  "id": "id",
+  "properties": {
+    "kind": "pubsub.azure.servicebus",
+    "resource": "fun::coding"
+  }
+}

@@ -56,7 +56,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 // Render is the WorkloadRenderer implementation for dapr pubsub workload.
 func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := DaprPubSubComponent{}
+	component := DaprPubSubTopicComponent{}
 	err := w.Workload.AsRequired(Kind, &component)
 	if err != nil {
 		return []outputresource.OutputResource{}, err

@@ -2,9 +2,7 @@
   "id": 42,
   "name": 42,
   "properties": {
-    "config": {
-      "managed": false,
-      "additional": "property"
-    }
+    "managed": false,
+    "additional": "property"
   }
 }

@@ -3,6 +3,7 @@
   "name": "name",
   "properties": {
     "managed": true,
-    "queue": "queue"
+    "kind": "pubsub.azure.servicebus",
+    "topic": "fun coding"
   }
 }

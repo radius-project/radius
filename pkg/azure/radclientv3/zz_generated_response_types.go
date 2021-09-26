@@ -135,19 +135,19 @@ type DaprInvokeRouteResourceResponse struct {
 	RawResponse *http.Response
 }
 
-// DaprPubSubComponentListResponse is the response envelope for operations that return a DaprPubSubComponentList type.
-type DaprPubSubComponentListResponse struct {
-	// List of dapr.io.PubSubComponent resources.
-	DaprPubSubComponentList *DaprPubSubComponentList
+// DaprPubSubTopicComponentListResponse is the response envelope for operations that return a DaprPubSubTopicComponentList type.
+type DaprPubSubTopicComponentListResponse struct {
+	// List of dapr.io.PubSubTopicComponent resources.
+	DaprPubSubTopicComponentList *DaprPubSubTopicComponentList
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprPubSubComponentResourceResponse is the response envelope for operations that return a DaprPubSubComponentResource type.
-type DaprPubSubComponentResourceResponse struct {
+// DaprPubSubTopicComponentResourceResponse is the response envelope for operations that return a DaprPubSubTopicComponentResource type.
+type DaprPubSubTopicComponentResourceResponse struct {
 	// Component for Dapr Pub/Sub
-	DaprPubSubComponentResource *DaprPubSubComponentResource
+	DaprPubSubTopicComponentResource *DaprPubSubTopicComponentResource
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response

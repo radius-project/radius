@@ -1,11 +1,10 @@
 {
-  "id": "id", "name": "name",
+  "id": "id",
+  "name": "name",
   "properties": {
-    "config": {
-      "managed": true,
-      "connectionString": "connection-string",
-      "host": "localhost",
-      "port": 6380
-    }
+    "managed": true,
+    "connectionString": "connection-string",
+    "host": "localhost",
+    "port": 6380
   }
 }

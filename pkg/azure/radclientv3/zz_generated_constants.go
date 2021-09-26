@@ -131,6 +131,50 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
+// DaprPubSubTopicComponentPropertiesKind - The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.
+type DaprPubSubTopicComponentPropertiesKind string
+
+const (
+	DaprPubSubTopicComponentPropertiesKindAny DaprPubSubTopicComponentPropertiesKind = "any"
+	DaprPubSubTopicComponentPropertiesKindPubsubAzureServicebus DaprPubSubTopicComponentPropertiesKind = "pubsub.azure.servicebus"
+)
+
+// PossibleDaprPubSubTopicComponentPropertiesKindValues returns the possible values for the DaprPubSubTopicComponentPropertiesKind const type.
+func PossibleDaprPubSubTopicComponentPropertiesKindValues() []DaprPubSubTopicComponentPropertiesKind {
+	return []DaprPubSubTopicComponentPropertiesKind{	
+		DaprPubSubTopicComponentPropertiesKindAny,
+		DaprPubSubTopicComponentPropertiesKindPubsubAzureServicebus,
+	}
+}
+
+// ToPtr returns a *DaprPubSubTopicComponentPropertiesKind pointing to the current value.
+func (c DaprPubSubTopicComponentPropertiesKind) ToPtr() *DaprPubSubTopicComponentPropertiesKind {
+	return &c
+}
+
+// DaprStateStoreComponentPropertiesKind - The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.
+type DaprStateStoreComponentPropertiesKind string
+
+const (
+	DaprStateStoreComponentPropertiesKindAny DaprStateStoreComponentPropertiesKind = "any"
+	DaprStateStoreComponentPropertiesKindStateAzureTablestorage DaprStateStoreComponentPropertiesKind = "state.azure.tablestorage"
+	DaprStateStoreComponentPropertiesKindStateSqlserver DaprStateStoreComponentPropertiesKind = "state.sqlserver"
+)
+
+// PossibleDaprStateStoreComponentPropertiesKindValues returns the possible values for the DaprStateStoreComponentPropertiesKind const type.
+func PossibleDaprStateStoreComponentPropertiesKindValues() []DaprStateStoreComponentPropertiesKind {
+	return []DaprStateStoreComponentPropertiesKind{	
+		DaprStateStoreComponentPropertiesKindAny,
+		DaprStateStoreComponentPropertiesKindStateAzureTablestorage,
+		DaprStateStoreComponentPropertiesKindStateSqlserver,
+	}
+}
+
+// ToPtr returns a *DaprStateStoreComponentPropertiesKind pointing to the current value.
+func (c DaprStateStoreComponentPropertiesKind) ToPtr() *DaprStateStoreComponentPropertiesKind {
+	return &c
+}
+
 // EncryptionStatus - Indicates whether or not the encryption is enabled for container registry.
 type EncryptionStatus string
 
