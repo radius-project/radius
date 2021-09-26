@@ -86,6 +86,7 @@ func init() {
 	RootCmd.Flags().BoolP("version", "v", false, "version for radius")
 	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default is $HOME/.rad/config.yaml)")
 
+	RootCmd.PersistentFlags().BoolP("v3", "", false, "Use V3 API")
 	outputDescription := fmt.Sprintf("output format (default is %s, supported formats are %s)", output.DefaultFormat, strings.Join(output.SupportedFormats(), ", "))
 	RootCmd.PersistentFlags().StringP("output", "o", "table", outputDescription)
 }

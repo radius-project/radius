@@ -79,6 +79,7 @@ type RadrpDB interface {
 	UpdateV3ApplicationDefinition(ctx context.Context, application ApplicationResource) (bool, error)
 	DeleteV3Application(ctx context.Context, id azresources.ResourceID) error
 
+	ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error)
 	ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error)
 	GetV3Resource(ctx context.Context, id azresources.ResourceID) (RadiusResource, error)
 	UpdateV3ResourceDefinition(ctx context.Context, id azresources.ResourceID, resource RadiusResource) (bool, error)
@@ -563,7 +564,7 @@ func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.Resourc
 		return err
 	}
 
-	items, err := d.listV3ResourcesByApplication(ctx, id, application)
+	items, err := d.listV3ResourcesByApplication(ctx, id, application, false /* all */)
 	if err != nil {
 		return err
 	}
@@ -586,13 +587,13 @@ func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.Resourc
 	return nil
 }
 
-func (d radrpDB) ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
+func (d radrpDB) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
 	application, err := d.GetV3Application(ctx, id.Truncate())
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := d.listV3ResourcesByApplication(ctx, id, application)
+	items, err := d.listV3ResourcesByApplication(ctx, id, application, true /* all */)
 	if err != nil {
 		return nil, err
 	}
@@ -600,13 +601,30 @@ func (d radrpDB) ListV3Resources(ctx context.Context, id azresources.ResourceID)
 	return items, nil
 }
 
-func (d radrpDB) listV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, application ApplicationResource) ([]RadiusResource, error) {
+func (d radrpDB) ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
+	application, err := d.GetV3Application(ctx, id.Truncate())
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := d.listV3ResourcesByApplication(ctx, id, application, false /* all */)
+	if err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+func (d radrpDB) listV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, application ApplicationResource, all bool) ([]RadiusResource, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.ID)
 
 	items := make([]RadiusResource, 0)
-	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup},
-		{Key: "type", Value: id.Type()}, {Key: "applicationName", Value: application.ApplicationName}}
 
+	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup},
+		{Key: "applicationName", Value: application.ApplicationName}}
+	if !all {
+		filter = append(filter, bson.E{Key: "type", Value: id.Type()})
+	}
 	logger.Info(fmt.Sprintf("Listing resources from DB with filter: %s", filter))
 	col := d.db.Collection(resourcesCollection)
 	cursor, err := col.Find(ctx, filter)

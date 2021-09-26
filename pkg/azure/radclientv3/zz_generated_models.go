@@ -1171,6 +1171,38 @@ type RabbitmqComMessageQueueListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// RadiusResource - Interface for generic component -- useful for listing components without specifying a type
+type RadiusResource struct {
+	ProxyResource
+	// REQUIRED; Basic properties of a component.
+	Properties *BasicComponentProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RadiusResource.
+func (r RadiusResource) MarshalJSON() ([]byte, error) {
+	objectMap := r.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", r.Properties)
+	return json.Marshal(objectMap)
+}
+
+// RadiusResourceList - List of RadiusResource resources.
+type RadiusResourceList struct {
+	// REQUIRED; List of RadiusResource resources.
+	Value []*RadiusResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RadiusResourceList.
+func (r RadiusResourceList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", r.Value)
+	return json.Marshal(objectMap)
+}
+
+// RadiusResourceListOptions contains the optional parameters for the RadiusResource.List method.
+type RadiusResourceListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // RedisComponentList - List of redislabs.com.Redis resources.
 type RedisComponentList struct {
 	// REQUIRED; List of redislabs.com.Redis resources.

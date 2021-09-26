@@ -1150,6 +1150,40 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
+    "RadiusResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Interface for generic component -- useful for listing components without specifying a type",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/BasicComponentProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "RadiusResourceList": {
+      "description": "List of RadiusResource resources.",
+      "properties": {
+        "value": {
+          "description": "List of RadiusResource resources.",
+          "items": {
+            "$ref": "#/definitions/RadiusResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
     "RedisComponentList": {
       "description": "List of redislabs.com.Redis resources.",
       "properties": {
@@ -1640,6 +1674,14 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
+    "RadiusResourceNameParameter": {
+      "description": "The name of the RadiusResource resource.",
+      "in": "path",
+      "name": "radiusResourceName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
     "RedisComponentNameParameter": {
       "description": "The name of the redislabs.com.Redis resource.",
       "in": "path",
@@ -1996,6 +2038,43 @@
         },
         "tags": [
           "ContainerComponent"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource": {
+      "get": {
+        "description": "List the RadiusResource resources deployed in the application.",
+        "operationId": "RadiusResource_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of RadiusResource resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
         ]
       }
     },

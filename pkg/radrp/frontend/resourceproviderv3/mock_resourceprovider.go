@@ -111,6 +111,21 @@ func (mr *MockResourceProviderMockRecorder) GetResource(arg0, arg1 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResource", reflect.TypeOf((*MockResourceProvider)(nil).GetResource), arg0, arg1)
 }
 
+// ListAllV3ResourcesByApplication mocks base method.
+func (m *MockResourceProvider) ListAllV3ResourcesByApplication(arg0 context.Context, arg1 azresources.ResourceID) (rest.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllV3ResourcesByApplication", arg0, arg1)
+	ret0, _ := ret[0].(rest.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllV3ResourcesByApplication indicates an expected call of ListAllV3ResourcesByApplication.
+func (mr *MockResourceProviderMockRecorder) ListAllV3ResourcesByApplication(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllV3ResourcesByApplication", reflect.TypeOf((*MockResourceProvider)(nil).ListAllV3ResourcesByApplication), arg0, arg1)
+}
+
 // ListApplications mocks base method.
 func (m *MockResourceProvider) ListApplications(arg0 context.Context, arg1 azresources.ResourceID) (rest.Response, error) {
 	m.ctrl.T.Helper()

@@ -17,8 +17,9 @@ type FormatterOptions struct {
 }
 
 type Column struct {
-	Heading  string
-	JSONPath string
+	Heading     string
+	JSONPath    string
+	Transformer func(string) string
 }
 
 type Formatter interface {

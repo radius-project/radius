@@ -68,6 +68,22 @@
       ],
       "type": "object",
       "description": "List of radius.com.AwesomeComponent resources."
+    },
+    "RadiusResourceList": {
+      "properties": {
+        "value": {
+          "items": {
+            "$ref": "#/definitions/RadiusResource"
+          },
+          "description": "List of RadiusResource resources.",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object",
+      "description": "List of RadiusResource resources."
     }
   },
   "parameters": {
@@ -86,6 +102,14 @@
       "required": true,
       "in": "path",
       "name": "awesomeComponentName"
+    },
+    "RadiusResourceNameParameter": {
+      "x-ms-parameter-location": "method",
+      "description": "The name of the RadiusResource resource.",
+      "type": "string",
+      "required": true,
+      "in": "path",
+      "name": "radiusResourceName"
     }
   },
   "paths": {
@@ -257,6 +281,43 @@
         },
         "tags": [
           "radius.com.AwesomeComponent"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource": {
+      "get": {
+        "description": "List the RadiusResource resources deployed in the application.",
+        "operationId": "RadiusResource_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of RadiusResource resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
         ]
       }
     },

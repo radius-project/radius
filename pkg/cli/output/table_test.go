@@ -7,6 +7,7 @@ package output
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -36,6 +37,11 @@ var tableInputOptions = FormatterOptions{
 			Heading:  "Static",
 			JSONPath: "Some-Value",
 		},
+		{
+			Heading:     "Lowered",
+			JSONPath:    "Some-Value",
+			Transformer: strings.ToLower,
+		},
 	},
 }
 
@@ -62,8 +68,8 @@ func Test_Table_Scalar(t *testing.T) {
 	err := formatter.Format(obj, buffer, tableInputOptions)
 	require.NoError(t, err)
 
-	expected := `Size      Coolness  Unknown   Static
-mega      true                Some-Value  
+	expected := `Size      Coolness  Unknown   Static      Lowered
+mega      true                Some-Value  some-value
 `
 	require.Equal(t, expected, buffer.String())
 }
@@ -86,9 +92,9 @@ func Test_Table_Slice(t *testing.T) {
 	err := formatter.Format(obj, buffer, tableInputOptions)
 	require.NoError(t, err)
 
-	expected := `Size      Coolness  Unknown   Static
-mega      true                Some-Value  
-medium    false               Some-Value  
+	expected := `Size      Coolness  Unknown   Static      Lowered
+mega      true                Some-Value  some-value
+medium    false               Some-Value  some-value
 `
 	require.Equal(t, expected, buffer.String())
 }

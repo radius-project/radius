@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/stretchr/testify/require"
 )
@@ -40,8 +41,9 @@ func Test_FormatApplicationTable(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
-test-app     Provisioned         Healthy   ` + "\n"
-	require.Equal(t, expected, buffer.String())
+test-app     Provisioned         Healthy
+`
+	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }
 
 func Test_FormatComponentTable(t *testing.T) {
@@ -68,8 +70,38 @@ func Test_FormatComponentTable(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := `COMPONENT       KIND                               PROVISIONING_STATE  HEALTH_STATE
-test-component  radius.dev/TestComponent@v1alpha1  Provisioned         Healthy   ` + "\n"
+test-component  radius.dev/TestComponent@v1alpha1  Provisioned         Healthy
+`
 	require.Equal(t, expected, buffer.String())
+}
+
+func Test_FormatResourceTable(t *testing.T) {
+	options := GetResourceTableFormat()
+
+	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
+	obj := radclientv3.RadiusResource{
+		ProxyResource: radclientv3.ProxyResource{
+			Resource: radclientv3.Resource{
+				Name: to.StringPtr("test-resource"),
+				Type: to.StringPtr("my/very/CoolResource"),
+			},
+		},
+		Properties: &radclientv3.BasicComponentProperties{
+			Status: &radclientv3.ComponentStatus{
+				HealthState:       to.StringPtr("Healthy"),
+				ProvisioningState: to.StringPtr("Provisioned"),
+			},
+		},
+	}
+
+	buffer := bytes.Buffer{}
+	err := output.Write(output.FormatTable, &obj, &buffer, options)
+	require.NoError(t, err)
+
+	expected := `RESOURCE       TYPE          PROVISIONING_STATE  HEALTH_STATE
+test-resource  CoolResource  Provisioned         Healthy
+`
+	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }
 
 func Test_FormatDeploymentTable(t *testing.T) {
@@ -100,6 +132,7 @@ func Test_FormatDeploymentTable(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := `DEPLOYMENT       COMPONENTS
-test-deployment  frontend backend  ` + "\n"
-	require.Equal(t, expected, buffer.String())
+test-deployment  frontend backend
+`
+	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }

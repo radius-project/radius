@@ -117,8 +117,25 @@ func (h *handler) DeleteApplication(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (h *handler) ListAllV3ResourcesByApplication(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+
+	response, err := h.rp.ListAllV3ResourcesByApplication(ctx, resourceID(req))
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+
+	err = response.Apply(ctx, w, req)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+}
+
 func (h *handler) ListResources(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
+
 	response, err := h.rp.ListResources(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
