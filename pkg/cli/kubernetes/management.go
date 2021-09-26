@@ -264,3 +264,15 @@ func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applic
 func (mc *KubernetesManagementClient) ListResourcesV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
 	return nil, errors.New("listing V3 resources on Kubenertes is not yet supported")
 }
+
+func (mc *KubernetesManagementClient) ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error) {
+	return nil, errors.New("listing V3 applications on Kubenertes is not yet supported")
+}
+
+func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
+	return nil, errors.New("show V3 applications on Kubenertes is not yet supported")
+}
+
+func (mc *KubernetesManagementClient) DeleteApplicationV3(ctx context.Context, applicationName string) error {
+	return errors.New("delete V3 applications on Kubenertes is not yet supported")
+}
