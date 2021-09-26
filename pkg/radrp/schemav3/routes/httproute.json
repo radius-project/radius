@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "HttpRouteResource": {
+      "description": "Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a component.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/HttpRouteProperties"
+        }
+      }
+    },
+    "HttpRouteProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "basic-route.json#/definitions/BasicRouteProperties"
+        }
+      ],
+      "properties": {
+        "gateway": {
+          "$ref": "#/definitions/HttpRouteGateway"
+        },
+        "hostname": {
+          "description": "The internal hostname accepting traffic for the route. Readonly.",
+          "type": "number"
+        },
+        "port": {
+          "description": "The port number for the route. Defaults to 80.",
+          "type": "number"
+        },
+        "scheme": {
+          "description": "The scheme used for traffic. Readonly.",
+          "type": "number"
+        },
+        "url": {
+          "description": "A stable URL that that can be used to route traffic to a component. Readonly.",
+          "type": "number"
+        }
+      }
+    },
+    "HttpRouteGateway": {
+      "description": "Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hostname"
+      ],
+      "properties": {
+        "hostname": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

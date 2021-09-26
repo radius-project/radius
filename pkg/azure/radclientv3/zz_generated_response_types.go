@@ -153,6 +153,24 @@ type DaprStateStoreComponentResourceResponse struct {
 	RawResponse *http.Response
 }
 
+// HTTPRouteListResponse is the response envelope for operations that return a HTTPRouteList type.
+type HTTPRouteListResponse struct {
+	// List of HttpRoute resources.
+	HTTPRouteList *HTTPRouteList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRouteResourceResponse is the response envelope for operations that return a HTTPRouteResource type.
+type HTTPRouteResourceResponse struct {
+	// Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a component.
+	HTTPRouteResource *HTTPRouteResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
 // MongoDBComponentListResponse is the response envelope for operations that return a MongoDBComponentList type.
 type MongoDBComponentListResponse struct {
 	// List of mongodb.com.MongoDBComponent resources.

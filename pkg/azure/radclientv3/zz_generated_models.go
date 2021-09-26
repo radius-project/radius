@@ -350,9 +350,6 @@ func (a AzureServiceBusComponentResource) MarshalJSON() ([]byte, error) {
 
 // BasicComponentProperties - Basic properties of a component.
 type BasicComponentProperties struct {
-	// Revision of the component
-	Revision *string `json:"revision,omitempty"`
-
 	// Status of the component
 	Status *ComponentStatus `json:"status,omitempty"`
 }
@@ -365,9 +362,14 @@ func (b BasicComponentProperties) MarshalJSON() ([]byte, error) {
 
 func (b BasicComponentProperties) marshalInternal() map[string]interface{} {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "revision", b.Revision)
 	populate(objectMap, "status", b.Status)
 	return objectMap
+}
+
+// BasicRouteProperties - Basic properties of a route.
+type BasicRouteProperties struct {
+	// Status of the component
+	Status *RouteStatus `json:"status,omitempty"`
 }
 
 // CheckNameAvailabilityRequest - The check availability request body.
@@ -759,6 +761,78 @@ type ErrorResponse struct {
 // The contents of the error text are not contractual and subject to change.
 func (e ErrorResponse) Error() string {
 	return e.raw
+}
+
+// HTTPRouteCreateOrUpdateOptions contains the optional parameters for the HTTPRoute.CreateOrUpdate method.
+type HTTPRouteCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRouteDeleteOptions contains the optional parameters for the HTTPRoute.Delete method.
+type HTTPRouteDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRouteGateway - Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from
+// the internet.
+type HTTPRouteGateway struct {
+	// REQUIRED; Specifies the public hostname for the route. Use '*' to listen on all hostnames.
+	Hostname *string `json:"hostname,omitempty"`
+}
+
+// HTTPRouteGetOptions contains the optional parameters for the HTTPRoute.Get method.
+type HTTPRouteGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRouteList - List of HttpRoute resources.
+type HTTPRouteList struct {
+	// REQUIRED; List of HttpRoute resources.
+	Value []*HTTPRouteResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteList.
+func (h HTTPRouteList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", h.Value)
+	return json.Marshal(objectMap)
+}
+
+// HTTPRouteListOptions contains the optional parameters for the HTTPRoute.List method.
+type HTTPRouteListOptions struct {
+	// placeholder for future optional parameters
+}
+
+type HTTPRouteProperties struct {
+	BasicRouteProperties
+	// Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet.
+	Gateway *HTTPRouteGateway `json:"gateway,omitempty"`
+
+	// The internal hostname accepting traffic for the route. Readonly.
+	Hostname *float32 `json:"hostname,omitempty"`
+
+	// The port number for the route. Defaults to 80.
+	Port *float32 `json:"port,omitempty"`
+
+	// The scheme used for traffic. Readonly.
+	Scheme *float32 `json:"scheme,omitempty"`
+
+	// A stable URL that that can be used to route traffic to a component. Readonly.
+	URL *float32 `json:"url,omitempty"`
+}
+
+// HTTPRouteResource - Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal
+// traffic to a component.
+type HTTPRouteResource struct {
+	ProxyResource
+	Properties *HTTPRouteProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResource.
+func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
+	objectMap := h.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", h.Properties)
+	return json.Marshal(objectMap)
 }
 
 // Identity for the resource.
@@ -1369,6 +1443,25 @@ type ResourceModelWithAllowedPropertySetPlan struct {
 
 type ResourceModelWithAllowedPropertySetSKU struct {
 	SKU
+}
+
+// RouteStatus - Status of a route.
+type RouteStatus struct {
+	// Health state of the route
+	HealthState *string `json:"healthState,omitempty"`
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+
+	// Provisioning state of the route
+	ProvisioningState *string `json:"provisioningState,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RouteStatus.
+func (r RouteStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "healthState", r.HealthState)
+	populate(objectMap, "outputResources", r.OutputResources)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	return json.Marshal(objectMap)
 }
 
 // SKU - The resource model definition representing SKU

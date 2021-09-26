@@ -5,10 +5,6 @@
       "description": "Basic properties of a component.",
       "type": "object",
       "properties": {
-        "revision": {
-          "type": "string",
-          "description": "Revision of the component"
-        },
         "status": {
           "type": "object",
           "$ref": "#/definitions/ComponentStatus",
@@ -37,7 +33,7 @@
       }
     },
     "ComponentOutputResource": {
-      "description": "Properties of a component.",
+      "description": "Properties of an output resource.",
       "type": "object",
       "properties": {}
     }
