@@ -43,7 +43,7 @@ func Test_FormatApplicationTable(t *testing.T) {
 	expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
 test-app     Provisioned         Healthy
 `
-	require.Equal(t, expected, buffer.String())
+	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }
 
 func Test_FormatComponentTable(t *testing.T) {
@@ -101,7 +101,7 @@ func Test_FormatResourceTable(t *testing.T) {
 	expected := `RESOURCE       TYPE          PROVISIONING_STATE  HEALTH_STATE
 test-resource  CoolResource  Provisioned         Healthy
 `
-	require.Equal(t, expected, buffer.String())
+	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }
 
 func Test_FormatDeploymentTable(t *testing.T) {
@@ -134,5 +134,5 @@ func Test_FormatDeploymentTable(t *testing.T) {
 	expected := `DEPLOYMENT       COMPONENTS
 test-deployment  frontend backend
 `
-	require.Equal(t, expected, buffer.String())
+	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }
