@@ -42,7 +42,7 @@ func AddRoutes(rp resourceproviderv3.ResourceProvider, router *mux.Router, valid
 	subrouter.Methods("DELETE").HandlerFunc(h.DeleteApplication)
 
 	router.Path(allResourceCollectionPath).Methods("GET").HandlerFunc(h.ListAllV3ResourcesByApplication)
-	subrouter.Path(allResourceItemPath).HandlerFunc(notSupported)
+	router.Path(allResourceItemPath).HandlerFunc(notSupported)
 
 	router.Path(resourceCollectionPath).Methods("GET").HandlerFunc(h.ListResources)
 	subrouter = router.Path(resourceItemPath).Subrouter()
@@ -55,6 +55,6 @@ func AddRoutes(rp resourceproviderv3.ResourceProvider, router *mux.Router, valid
 }
 
 func notSupported(w http.ResponseWriter, req *http.Request) {
-	response := rest.NewBadRequestResponse(fmt.Sprintf("Route not suported: %v", req.URL.Path))
+	response := rest.NewBadRequestResponse(fmt.Sprintf("Route not suported: %s", req.URL.Path))
 	_ = response.Apply(req.Context(), w, req)
 }
