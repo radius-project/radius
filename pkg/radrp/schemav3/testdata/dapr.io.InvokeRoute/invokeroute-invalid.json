@@ -1,0 +1,7 @@
+{
+  "id": "id", 
+  "name": "name",
+  "properties": {
+    "extra1": true
+  }
+}

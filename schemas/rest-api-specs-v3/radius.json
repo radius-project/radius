@@ -543,6 +543,58 @@
       ],
       "type": "object"
     },
+    "DaprInvokeRouteList": {
+      "description": "List of dapr.io.InvokeRoute resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.InvokeRoute resources.",
+          "items": {
+            "$ref": "#/definitions/DaprInvokeRouteResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "DaprInvokeRouteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicRouteProperties"
+        }
+      ],
+      "properties": {
+        "appId": {
+          "description": "The Dapr appId used for the reoute",
+          "type": "string"
+        }
+      },
+      "required": [
+        "appId"
+      ],
+      "type": "object"
+    },
+    "DaprInvokeRouteResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource that specifies an Dapr Service Invocation Route. A Dapr Service Invocation Route describes a pattern of communication between components.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprInvokeRouteProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
     "DaprPubSubComponentList": {
       "description": "List of dapr.io.PubSubComponent resources.",
       "properties": {
@@ -1726,6 +1778,14 @@
       "description": "The name of the ContainerComponent resource.",
       "in": "path",
       "name": "containerComponentName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "DaprInvokeRouteNameParameter": {
+      "description": "The name of the dapr.io.InvokeRoute resource.",
+      "in": "path",
+      "name": "daprInvokeRouteName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -3044,6 +3104,177 @@
         },
         "tags": [
           "azure.com.ServiceBusQueueComponent"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute": {
+      "get": {
+        "description": "List the dapr.io.InvokeRoute resources deployed in the application.",
+        "operationId": "dapr.io.InvokeRoute_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of dapr.io.InvokeRoute resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeRouteList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.InvokeRoute"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute/{daprInvokeRouteName}": {
+      "delete": {
+        "description": "Deletes a dapr.io.InvokeRoute resource.",
+        "operationId": "dapr.io.InvokeRoute_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The dapr.io.InvokeRoute resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.InvokeRoute"
+        ]
+      },
+      "get": {
+        "description": "Gets a dapr.io.InvokeRoute resource by name.",
+        "operationId": "dapr.io.InvokeRoute_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The dapr.io.InvokeRoute resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.InvokeRoute"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a dapr.io.InvokeRoute resource.",
+        "operationId": "dapr.io.InvokeRoute_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.InvokeRoute resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeRouteResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing dapr.io.InvokeRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeRouteResource"
+            }
+          },
+          "201": {
+            "description": "The new dapr.io.InvokeRoute resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeRouteResource"
+            }
+          },
+          "202": {
+            "description": "The existing dapr.io.InvokeRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.InvokeRoute"
         ]
       }
     },

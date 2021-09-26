@@ -519,6 +519,60 @@ type ContainerPort struct {
 	Provides *string `json:"provides,omitempty"`
 }
 
+// DaprInvokeRouteList - List of dapr.io.InvokeRoute resources.
+type DaprInvokeRouteList struct {
+	// REQUIRED; List of dapr.io.InvokeRoute resources.
+	Value []*DaprInvokeRouteResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprInvokeRouteList.
+func (d DaprInvokeRouteList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
+type DaprInvokeRouteProperties struct {
+	BasicRouteProperties
+	// REQUIRED; The Dapr appId used for the reoute
+	AppID *string `json:"appId,omitempty"`
+}
+
+// DaprInvokeRouteResource - Resource that specifies an Dapr Service Invocation Route. A Dapr Service Invocation Route describes a pattern of communication
+// between components.
+type DaprInvokeRouteResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *DaprInvokeRouteProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprInvokeRouteResource.
+func (d DaprInvokeRouteResource) MarshalJSON() ([]byte, error) {
+	objectMap := d.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", d.Properties)
+	return json.Marshal(objectMap)
+}
+
+// DaprIoInvokeRouteCreateOrUpdateOptions contains the optional parameters for the DaprIoInvokeRoute.CreateOrUpdate method.
+type DaprIoInvokeRouteCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoInvokeRouteDeleteOptions contains the optional parameters for the DaprIoInvokeRoute.Delete method.
+type DaprIoInvokeRouteDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoInvokeRouteGetOptions contains the optional parameters for the DaprIoInvokeRoute.Get method.
+type DaprIoInvokeRouteGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoInvokeRouteListOptions contains the optional parameters for the DaprIoInvokeRoute.List method.
+type DaprIoInvokeRouteListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // DaprIoPubSubComponentCreateOrUpdateOptions contains the optional parameters for the DaprIoPubSubComponent.CreateOrUpdate method.
 type DaprIoPubSubComponentCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
