@@ -20,8 +20,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	application := "kubernetes-resources-container-httpbinding"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor:    kubernetestest.NewDeployStepExecutor(template),
-			SkipCleanup: true,
+			Executor: kubernetestest.NewDeployStepExecutor(template),
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
@@ -64,8 +63,7 @@ func Test_ContainerManualScale(t *testing.T) {
 	application := "kubernetes-resources-container-manualscale"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor:    kubernetestest.NewDeployStepExecutor(template),
-			SkipCleanup: true,
+			Executor: kubernetestest.NewDeployStepExecutor(template),
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{
