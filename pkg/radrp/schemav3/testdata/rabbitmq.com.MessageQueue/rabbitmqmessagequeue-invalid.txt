@@ -1,4 +1,4 @@
-(root).properties.config.managed: properties.config.managed must be one of the following: true
-(root).properties.config: queue is required
-(root).name: Invalid type. Expected: string, given: integer
 (root).id: Invalid type. Expected: string, given: integer
+(root).name: Invalid type. Expected: string, given: integer
+(root).properties.managed: properties.managed must be one of the following: true
+(root).properties: queue is required

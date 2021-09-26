@@ -26,35 +26,31 @@
         }
       ],
       "required": [
-        "config"
+        "managed",
+        "kind"
       ],
+      "additionalProperties": false,
       "properties": {
-        "config": {
-          "type": "object",
-          "required": [
-            "managed",
-            "kind"
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
+          "type": "boolean",
+          "enum": [
+            true
           ],
-          "properties": {
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
-              "type": "boolean",
-              "enum": [
-                true
-              ],
-              "example": [
-                true
-              ]
-            },
-            "kind": {
-              "description": "Statestore kind",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+          "example": [
+            true
+          ]
+        },
+        "kind": {
+          "description": "The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.",
+          "type": "string",
+          "enum": [
+            "any",
+            "state.sqlserver",
+            "state.azure.tablestorage"
+          ]
         }
-      },
-      "additionalProperties": false
+      }
     }
   }
 }

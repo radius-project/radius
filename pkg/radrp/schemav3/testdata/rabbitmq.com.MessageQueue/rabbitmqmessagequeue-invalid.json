@@ -2,8 +2,6 @@
   "id": 42,
   "name": 42,
   "properties": {
-    "config": {
-      "managed": false
-    }
+    "managed": false
   }
 }

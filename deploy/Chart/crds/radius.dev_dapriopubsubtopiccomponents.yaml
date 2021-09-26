@@ -6,17 +6,17 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: dapriopubsubcomponents.radius.dev
+  name: dapriopubsubtopiccomponents.radius.dev
 spec:
   group: radius.dev
   names:
     categories:
     - all
     - radius
-    kind: DaprIOPubSubComponent
-    listKind: DaprIOPubSubComponentList
-    plural: dapriopubsubcomponents
-    singular: dapriopubsubcomponent
+    kind: DaprIOPubSubTopicComponent
+    listKind: DaprIOPubSubTopicComponentList
+    plural: dapriopubsubtopiccomponents
+    singular: dapriopubsubtopiccomponent
   scope: Namespaced
   versions:
   - additionalPrinterColumns:

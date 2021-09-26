@@ -18,38 +18,38 @@ import (
 	"strings"
 )
 
-// DaprIoPubSubComponentClient contains the methods for the DaprIoPubSubComponent group.
-// Don't use this type directly, use NewDaprIoPubSubComponentClient() instead.
-type DaprIoPubSubComponentClient struct {
+// DaprIoPubSubTopicComponentClient contains the methods for the DaprIoPubSubTopicComponent group.
+// Don't use this type directly, use NewDaprIoPubSubTopicComponentClient() instead.
+type DaprIoPubSubTopicComponentClient struct {
 	con *armcore.Connection
 	subscriptionID string
 }
 
-// NewDaprIoPubSubComponentClient creates a new instance of DaprIoPubSubComponentClient with the specified values.
-func NewDaprIoPubSubComponentClient(con *armcore.Connection, subscriptionID string) *DaprIoPubSubComponentClient {
-	return &DaprIoPubSubComponentClient{con: con, subscriptionID: subscriptionID}
+// NewDaprIoPubSubTopicComponentClient creates a new instance of DaprIoPubSubTopicComponentClient with the specified values.
+func NewDaprIoPubSubTopicComponentClient(con *armcore.Connection, subscriptionID string) *DaprIoPubSubTopicComponentClient {
+	return &DaprIoPubSubTopicComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
-// CreateOrUpdate - Creates or updates a dapr.io.PubSubComponent resource.
+// CreateOrUpdate - Creates or updates a dapr.io.PubSubTopicComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoPubSubComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubComponentName string, parameters DaprPubSubComponentResource, options *DaprIoPubSubComponentCreateOrUpdateOptions) (DaprPubSubComponentResourceResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, daprPubSubComponentName, parameters, options)
+func (client *DaprIoPubSubTopicComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, parameters DaprPubSubTopicComponentResource, options *DaprIoPubSubTopicComponentCreateOrUpdateOptions) (DaprPubSubTopicComponentResourceResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, daprPubSubTopicComponentName, parameters, options)
 	if err != nil {
-		return DaprPubSubComponentResourceResponse{}, err
+		return DaprPubSubTopicComponentResourceResponse{}, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return DaprPubSubComponentResourceResponse{}, err
+		return DaprPubSubTopicComponentResourceResponse{}, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return DaprPubSubComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return DaprPubSubTopicComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprIoPubSubComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubComponentName string, parameters DaprPubSubComponentResource, options *DaprIoPubSubComponentCreateOrUpdateOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubComponent/{daprPubSubComponentName}"
+func (client *DaprIoPubSubTopicComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, parameters DaprPubSubTopicComponentResource, options *DaprIoPubSubTopicComponentCreateOrUpdateOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent/{daprPubSubTopicComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -62,10 +62,10 @@ func (client *DaprIoPubSubComponentClient) createOrUpdateCreateRequest(ctx conte
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if daprPubSubComponentName == "" {
-		return nil, errors.New("parameter daprPubSubComponentName cannot be empty")
+	if daprPubSubTopicComponentName == "" {
+		return nil, errors.New("parameter daprPubSubTopicComponentName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubComponentName}", url.PathEscape(daprPubSubComponentName))
+	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubTopicComponentName}", url.PathEscape(daprPubSubTopicComponentName))
 	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -79,16 +79,16 @@ func (client *DaprIoPubSubComponentClient) createOrUpdateCreateRequest(ctx conte
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *DaprIoPubSubComponentClient) createOrUpdateHandleResponse(resp *azcore.Response) (DaprPubSubComponentResourceResponse, error) {
-	var val *DaprPubSubComponentResource
+func (client *DaprIoPubSubTopicComponentClient) createOrUpdateHandleResponse(resp *azcore.Response) (DaprPubSubTopicComponentResourceResponse, error) {
+	var val *DaprPubSubTopicComponentResource
 	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprPubSubComponentResourceResponse{}, err
+		return DaprPubSubTopicComponentResourceResponse{}, err
 	}
-return DaprPubSubComponentResourceResponse{RawResponse: resp.Response, DaprPubSubComponentResource: val}, nil
+return DaprPubSubTopicComponentResourceResponse{RawResponse: resp.Response, DaprPubSubTopicComponentResource: val}, nil
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *DaprIoPubSubComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
+func (client *DaprIoPubSubTopicComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -100,10 +100,10 @@ func (client *DaprIoPubSubComponentClient) createOrUpdateHandleError(resp *azcor
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// Delete - Deletes a dapr.io.PubSubComponent resource.
+// Delete - Deletes a dapr.io.PubSubTopicComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoPubSubComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubComponentName string, options *DaprIoPubSubComponentDeleteOptions) (*http.Response, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, daprPubSubComponentName, options)
+func (client *DaprIoPubSubTopicComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentDeleteOptions) (*http.Response, error) {
+	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, daprPubSubTopicComponentName, options)
 	if err != nil {
 		return nil, err
 	}
@@ -118,8 +118,8 @@ func (client *DaprIoPubSubComponentClient) Delete(ctx context.Context, resourceG
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprIoPubSubComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubComponentName string, options *DaprIoPubSubComponentDeleteOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubComponent/{daprPubSubComponentName}"
+func (client *DaprIoPubSubTopicComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentDeleteOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent/{daprPubSubTopicComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -132,10 +132,10 @@ func (client *DaprIoPubSubComponentClient) deleteCreateRequest(ctx context.Conte
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if daprPubSubComponentName == "" {
-		return nil, errors.New("parameter daprPubSubComponentName cannot be empty")
+	if daprPubSubTopicComponentName == "" {
+		return nil, errors.New("parameter daprPubSubTopicComponentName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubComponentName}", url.PathEscape(daprPubSubComponentName))
+	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubTopicComponentName}", url.PathEscape(daprPubSubTopicComponentName))
 	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (client *DaprIoPubSubComponentClient) deleteCreateRequest(ctx context.Conte
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *DaprIoPubSubComponentClient) deleteHandleError(resp *azcore.Response) error {
+func (client *DaprIoPubSubTopicComponentClient) deleteHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -161,26 +161,26 @@ func (client *DaprIoPubSubComponentClient) deleteHandleError(resp *azcore.Respon
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// Get - Gets a dapr.io.PubSubComponent resource by name.
+// Get - Gets a dapr.io.PubSubTopicComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoPubSubComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubComponentName string, options *DaprIoPubSubComponentGetOptions) (DaprPubSubComponentResourceResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, daprPubSubComponentName, options)
+func (client *DaprIoPubSubTopicComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentGetOptions) (DaprPubSubTopicComponentResourceResponse, error) {
+	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, daprPubSubTopicComponentName, options)
 	if err != nil {
-		return DaprPubSubComponentResourceResponse{}, err
+		return DaprPubSubTopicComponentResourceResponse{}, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return DaprPubSubComponentResourceResponse{}, err
+		return DaprPubSubTopicComponentResourceResponse{}, err
 	}
 	if !resp.HasStatusCode(http.StatusOK) {
-		return DaprPubSubComponentResourceResponse{}, client.getHandleError(resp)
+		return DaprPubSubTopicComponentResourceResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprIoPubSubComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubComponentName string, options *DaprIoPubSubComponentGetOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubComponent/{daprPubSubComponentName}"
+func (client *DaprIoPubSubTopicComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentGetOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent/{daprPubSubTopicComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -193,10 +193,10 @@ func (client *DaprIoPubSubComponentClient) getCreateRequest(ctx context.Context,
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if daprPubSubComponentName == "" {
-		return nil, errors.New("parameter daprPubSubComponentName cannot be empty")
+	if daprPubSubTopicComponentName == "" {
+		return nil, errors.New("parameter daprPubSubTopicComponentName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubComponentName}", url.PathEscape(daprPubSubComponentName))
+	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubTopicComponentName}", url.PathEscape(daprPubSubTopicComponentName))
 	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -210,16 +210,16 @@ func (client *DaprIoPubSubComponentClient) getCreateRequest(ctx context.Context,
 }
 
 // getHandleResponse handles the Get response.
-func (client *DaprIoPubSubComponentClient) getHandleResponse(resp *azcore.Response) (DaprPubSubComponentResourceResponse, error) {
-	var val *DaprPubSubComponentResource
+func (client *DaprIoPubSubTopicComponentClient) getHandleResponse(resp *azcore.Response) (DaprPubSubTopicComponentResourceResponse, error) {
+	var val *DaprPubSubTopicComponentResource
 	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprPubSubComponentResourceResponse{}, err
+		return DaprPubSubTopicComponentResourceResponse{}, err
 	}
-return DaprPubSubComponentResourceResponse{RawResponse: resp.Response, DaprPubSubComponentResource: val}, nil
+return DaprPubSubTopicComponentResourceResponse{RawResponse: resp.Response, DaprPubSubTopicComponentResource: val}, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *DaprIoPubSubComponentClient) getHandleError(resp *azcore.Response) error {
+func (client *DaprIoPubSubTopicComponentClient) getHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -231,26 +231,26 @@ func (client *DaprIoPubSubComponentClient) getHandleError(resp *azcore.Response)
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// List - List the dapr.io.PubSubComponent resources deployed in the application.
+// List - List the dapr.io.PubSubTopicComponent resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoPubSubComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoPubSubComponentListOptions) (DaprPubSubComponentListResponse, error) {
+func (client *DaprIoPubSubTopicComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoPubSubTopicComponentListOptions) (DaprPubSubTopicComponentListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return DaprPubSubComponentListResponse{}, err
+		return DaprPubSubTopicComponentListResponse{}, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return DaprPubSubComponentListResponse{}, err
+		return DaprPubSubTopicComponentListResponse{}, err
 	}
 	if !resp.HasStatusCode(http.StatusOK) {
-		return DaprPubSubComponentListResponse{}, client.listHandleError(resp)
+		return DaprPubSubTopicComponentListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *DaprIoPubSubComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoPubSubComponentListOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubComponent"
+func (client *DaprIoPubSubTopicComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoPubSubTopicComponentListOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -276,16 +276,16 @@ func (client *DaprIoPubSubComponentClient) listCreateRequest(ctx context.Context
 }
 
 // listHandleResponse handles the List response.
-func (client *DaprIoPubSubComponentClient) listHandleResponse(resp *azcore.Response) (DaprPubSubComponentListResponse, error) {
-	var val *DaprPubSubComponentList
+func (client *DaprIoPubSubTopicComponentClient) listHandleResponse(resp *azcore.Response) (DaprPubSubTopicComponentListResponse, error) {
+	var val *DaprPubSubTopicComponentList
 	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprPubSubComponentListResponse{}, err
+		return DaprPubSubTopicComponentListResponse{}, err
 	}
-return DaprPubSubComponentListResponse{RawResponse: resp.Response, DaprPubSubComponentList: val}, nil
+return DaprPubSubTopicComponentListResponse{RawResponse: resp.Response, DaprPubSubTopicComponentList: val}, nil
 }
 
 // listHandleError handles the List error response.
-func (client *DaprIoPubSubComponentClient) listHandleError(resp *azcore.Response) error {
+func (client *DaprIoPubSubTopicComponentClient) listHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)

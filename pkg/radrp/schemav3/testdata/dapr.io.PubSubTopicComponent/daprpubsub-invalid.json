@@ -1,9 +1,10 @@
 {
   "id": 42,
   "name": 42,
-  "kind": "mongodb.com/Mongo@v1alpha1",
   "properties": {
     "managed": true,
+    "kind": "dapr.io/pubsub/ServiceBusQueue",
+    "topic": "fun coding",
     "extra": "foo"
   }
 }

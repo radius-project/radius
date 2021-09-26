@@ -573,23 +573,23 @@ type DaprIoInvokeRouteListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubComponentCreateOrUpdateOptions contains the optional parameters for the DaprIoPubSubComponent.CreateOrUpdate method.
-type DaprIoPubSubComponentCreateOrUpdateOptions struct {
+// DaprIoPubSubTopicComponentCreateOrUpdateOptions contains the optional parameters for the DaprIoPubSubTopicComponent.CreateOrUpdate method.
+type DaprIoPubSubTopicComponentCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubComponentDeleteOptions contains the optional parameters for the DaprIoPubSubComponent.Delete method.
-type DaprIoPubSubComponentDeleteOptions struct {
+// DaprIoPubSubTopicComponentDeleteOptions contains the optional parameters for the DaprIoPubSubTopicComponent.Delete method.
+type DaprIoPubSubTopicComponentDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubComponentGetOptions contains the optional parameters for the DaprIoPubSubComponent.Get method.
-type DaprIoPubSubComponentGetOptions struct {
+// DaprIoPubSubTopicComponentGetOptions contains the optional parameters for the DaprIoPubSubTopicComponent.Get method.
+type DaprIoPubSubTopicComponentGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubComponentListOptions contains the optional parameters for the DaprIoPubSubComponent.List method.
-type DaprIoPubSubComponentListOptions struct {
+// DaprIoPubSubTopicComponentListOptions contains the optional parameters for the DaprIoPubSubTopicComponent.List method.
+type DaprIoPubSubTopicComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -613,35 +613,23 @@ type DaprIoStateStoreComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprPubSubComponentList - List of dapr.io.PubSubComponent resources.
-type DaprPubSubComponentList struct {
-	// REQUIRED; List of dapr.io.PubSubComponent resources.
-	Value []*DaprPubSubComponentResource `json:"value,omitempty"`
+// DaprPubSubTopicComponentList - List of dapr.io.PubSubTopicComponent resources.
+type DaprPubSubTopicComponentList struct {
+	// REQUIRED; List of dapr.io.PubSubTopicComponent resources.
+	Value []*DaprPubSubTopicComponentResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type DaprPubSubComponentList.
-func (d DaprPubSubComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicComponentList.
+func (d DaprPubSubTopicComponentList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", d.Value)
 	return json.Marshal(objectMap)
 }
 
-type DaprPubSubComponentProperties struct {
+type DaprPubSubTopicComponentProperties struct {
 	BasicComponentProperties
-	// REQUIRED
-	Config *DaprPubSubComponentPropertiesConfig `json:"config,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprPubSubComponentProperties.
-func (d DaprPubSubComponentProperties) MarshalJSON() ([]byte, error) {
-	objectMap := d.BasicComponentProperties.marshalInternal()
-	populate(objectMap, "config", d.Config)
-	return json.Marshal(objectMap)
-}
-
-type DaprPubSubComponentPropertiesConfig struct {
-	// REQUIRED; Dapr Pub/Sub kind
-	Kind *string `json:"kind,omitempty"`
+	// REQUIRED; The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.
+	Kind *DaprPubSubTopicComponentPropertiesKind `json:"kind,omitempty"`
 
 	// Indicates if the resource is Radius-managed. If false, a resource is required
 	Managed *bool `json:"managed,omitempty"`
@@ -653,15 +641,25 @@ type DaprPubSubComponentPropertiesConfig struct {
 	Topic *string `json:"topic,omitempty"`
 }
 
-// DaprPubSubComponentResource - Component for Dapr Pub/Sub
-type DaprPubSubComponentResource struct {
-	ProxyResource
-	// REQUIRED
-	Properties *DaprPubSubComponentProperties `json:"properties,omitempty"`
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicComponentProperties.
+func (d DaprPubSubTopicComponentProperties) MarshalJSON() ([]byte, error) {
+	objectMap := d.BasicComponentProperties.marshalInternal()
+	populate(objectMap, "kind", d.Kind)
+	populate(objectMap, "managed", d.Managed)
+	populate(objectMap, "resource", d.Resource)
+	populate(objectMap, "topic", d.Topic)
+	return json.Marshal(objectMap)
 }
 
-// MarshalJSON implements the json.Marshaller interface for type DaprPubSubComponentResource.
-func (d DaprPubSubComponentResource) MarshalJSON() ([]byte, error) {
+// DaprPubSubTopicComponentResource - Component for Dapr Pub/Sub
+type DaprPubSubTopicComponentResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *DaprPubSubTopicComponentProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicComponentResource.
+func (d DaprPubSubTopicComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := d.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
@@ -682,23 +680,19 @@ func (d DaprStateStoreComponentList) MarshalJSON() ([]byte, error) {
 
 type DaprStateStoreComponentProperties struct {
 	BasicComponentProperties
-	// REQUIRED
-	Config *DaprStateStoreComponentPropertiesConfig `json:"config,omitempty"`
+	// REQUIRED; The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.
+	Kind *DaprStateStoreComponentPropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component
+	Managed *bool `json:"managed,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentProperties.
 func (d DaprStateStoreComponentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := d.BasicComponentProperties.marshalInternal()
-	populate(objectMap, "config", d.Config)
+	populate(objectMap, "kind", d.Kind)
+	populate(objectMap, "managed", d.Managed)
 	return json.Marshal(objectMap)
-}
-
-type DaprStateStoreComponentPropertiesConfig struct {
-	// REQUIRED; Statestore kind
-	Kind *string `json:"kind,omitempty"`
-
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-	Managed *bool `json:"managed,omitempty"`
 }
 
 // DaprStateStoreComponentResource - Component for Dapr state store
@@ -1012,18 +1006,6 @@ func (m MongoDBComponentList) MarshalJSON() ([]byte, error) {
 
 type MongoDBComponentProperties struct {
 	BasicComponentProperties
-	// REQUIRED
-	Config *MongoDBComponentPropertiesConfig `json:"config,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type MongoDBComponentProperties.
-func (m MongoDBComponentProperties) MarshalJSON() ([]byte, error) {
-	objectMap := m.BasicComponentProperties.marshalInternal()
-	populate(objectMap, "config", m.Config)
-	return json.Marshal(objectMap)
-}
-
-type MongoDBComponentPropertiesConfig struct {
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
 	Managed *bool `json:"managed,omitempty"`
 
@@ -1031,10 +1013,17 @@ type MongoDBComponentPropertiesConfig struct {
 	Resource *string `json:"resource,omitempty"`
 }
 
+// MarshalJSON implements the json.Marshaller interface for type MongoDBComponentProperties.
+func (m MongoDBComponentProperties) MarshalJSON() ([]byte, error) {
+	objectMap := m.BasicComponentProperties.marshalInternal()
+	populate(objectMap, "managed", m.Managed)
+	populate(objectMap, "resource", m.Resource)
+	return json.Marshal(objectMap)
+}
+
 // MongoDBComponentResource - The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
 type MongoDBComponentResource struct {
 	ProxyResource
-	// REQUIRED
 	Properties *MongoDBComponentProperties `json:"properties,omitempty"`
 }
 
@@ -1246,23 +1235,19 @@ func (r RabbitMQComponentList) MarshalJSON() ([]byte, error) {
 
 type RabbitMQComponentProperties struct {
 	BasicComponentProperties
-	// REQUIRED
-	Config *RabbitMQComponentPropertiesConfig `json:"config,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentProperties.
-func (r RabbitMQComponentProperties) MarshalJSON() ([]byte, error) {
-	objectMap := r.BasicComponentProperties.marshalInternal()
-	populate(objectMap, "config", r.Config)
-	return json.Marshal(objectMap)
-}
-
-type RabbitMQComponentPropertiesConfig struct {
 	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
 	Managed *bool `json:"managed,omitempty"`
 
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentProperties.
+func (r RabbitMQComponentProperties) MarshalJSON() ([]byte, error) {
+	objectMap := r.BasicComponentProperties.marshalInternal()
+	populate(objectMap, "managed", r.Managed)
+	populate(objectMap, "queue", r.Queue)
+	return json.Marshal(objectMap)
 }
 
 // RabbitMQComponentResource - The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
@@ -1346,29 +1331,27 @@ func (r RedisComponentList) MarshalJSON() ([]byte, error) {
 
 type RedisComponentProperties struct {
 	BasicComponentProperties
-	// REQUIRED
-	Config *RedisComponentPropertiesConfig `json:"config,omitempty"`
-}
+	// REQUIRED; Indicates if the resource is Radius-managed. If false, a Resource must be specified. (Redis currently only supports true)
+	Managed *bool `json:"managed,omitempty"`
 
-// MarshalJSON implements the json.Marshaller interface for type RedisComponentProperties.
-func (r RedisComponentProperties) MarshalJSON() ([]byte, error) {
-	objectMap := r.BasicComponentProperties.marshalInternal()
-	populate(objectMap, "config", r.Config)
-	return json.Marshal(objectMap)
-}
-
-type RedisComponentPropertiesConfig struct {
 	// The Redis connection string used to connect to the redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
 
 	// The host name of the redis cache to which you are connecting
 	Host *string `json:"host,omitempty"`
 
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified. (Redis currently only supports true)
-	Managed *bool `json:"managed,omitempty"`
-
 	// The port value of the redis cache to which you are connecting
 	Port *int32 `json:"port,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisComponentProperties.
+func (r RedisComponentProperties) MarshalJSON() ([]byte, error) {
+	objectMap := r.BasicComponentProperties.marshalInternal()
+	populate(objectMap, "connectionString", r.ConnectionString)
+	populate(objectMap, "host", r.Host)
+	populate(objectMap, "managed", r.Managed)
+	populate(objectMap, "port", r.Port)
+	return json.Marshal(objectMap)
 }
 
 // RedisComponentResource - The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
