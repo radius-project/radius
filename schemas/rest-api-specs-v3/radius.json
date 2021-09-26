@@ -318,12 +318,19 @@
     "BasicComponentProperties": {
       "description": "Basic properties of a component.",
       "properties": {
-        "revision": {
-          "description": "Revision of the component",
-          "type": "string"
-        },
         "status": {
           "$ref": "#/definitions/ComponentStatus",
+          "description": "Status of the component",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "BasicRouteProperties": {
+      "description": "Basic properties of a route.",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/RouteStatus",
           "description": "Status of the component",
           "type": "object"
         }
@@ -371,7 +378,7 @@
       "type": "object"
     },
     "ComponentOutputResource": {
-      "description": "Properties of a component.",
+      "description": "Properties of an output resource.",
       "type": "object"
     },
     "ComponentStatus": {
@@ -763,6 +770,81 @@
       },
       "title": "Error response",
       "type": "object"
+    },
+    "HttpRouteGateway": {
+      "additionalProperties": false,
+      "description": "Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet.",
+      "properties": {
+        "hostname": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "hostname"
+      ],
+      "type": "object"
+    },
+    "HttpRouteList": {
+      "description": "List of HttpRoute resources.",
+      "properties": {
+        "value": {
+          "description": "List of HttpRoute resources.",
+          "items": {
+            "$ref": "#/definitions/HttpRouteResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "HttpRouteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicRouteProperties"
+        }
+      ],
+      "properties": {
+        "gateway": {
+          "$ref": "#/definitions/HttpRouteGateway"
+        },
+        "hostname": {
+          "description": "The internal hostname accepting traffic for the route. Readonly.",
+          "type": "number"
+        },
+        "port": {
+          "description": "The port number for the route. Defaults to 80.",
+          "type": "number"
+        },
+        "scheme": {
+          "description": "The scheme used for traffic. Readonly.",
+          "type": "number"
+        },
+        "url": {
+          "description": "A stable URL that that can be used to route traffic to a component. Readonly.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "HttpRouteResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a component.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/HttpRouteProperties"
+        }
+      },
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "Identity": {
       "description": "Identity for the resource.",
@@ -1385,6 +1467,30 @@
       },
       "x-ms-azure-resource": true
     },
+    "RouteOutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object"
+    },
+    "RouteStatus": {
+      "description": "Status of a route.",
+      "properties": {
+        "healthState": {
+          "description": "Health state of the route",
+          "type": "string"
+        },
+        "outputResources": {
+          "items": {
+            "$ref": "#/definitions/RouteOutputResource"
+          },
+          "type": "array"
+        },
+        "provisioningState": {
+          "description": "Provisioning state of the route",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "Sku": {
       "description": "The resource model definition representing SKU",
       "properties": {
@@ -1636,6 +1742,14 @@
       "description": "The name of the dapr.io.StateStoreComponent resource.",
       "in": "path",
       "name": "daprStateStoreComponentName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "HttpRouteNameParameter": {
+      "description": "The name of the HttpRoute resource.",
+      "in": "path",
+      "name": "httpRouteName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -2038,6 +2152,177 @@
         },
         "tags": [
           "ContainerComponent"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute": {
+      "get": {
+        "description": "List the HttpRoute resources deployed in the application.",
+        "operationId": "HttpRoute_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of HttpRoute resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}": {
+      "delete": {
+        "description": "Deletes a HttpRoute resource.",
+        "operationId": "HttpRoute_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The HttpRoute resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      },
+      "get": {
+        "description": "Gets a HttpRoute resource by name.",
+        "operationId": "HttpRoute_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The HttpRoute resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a HttpRoute resource.",
+        "operationId": "HttpRoute_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a HttpRoute resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing HttpRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "201": {
+            "description": "The new HttpRoute resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "202": {
+            "description": "The existing HttpRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
         ]
       }
     },

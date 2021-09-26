@@ -26,6 +26,7 @@ var (
 	//go:embed traits/*.json
 	//go:embed traits.json
 	//go:embed components/*.json
+	//go:embed routes/*.json
 	//go:embed application.json
 	schemaFiles embed.FS
 
