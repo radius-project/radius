@@ -329,6 +329,8 @@ func (r *ResourceReconciler) ApplyState(
 			"resourcekind", obj.GetObjectKind().GroupVersionKind().String(),
 			"localid", cr.LocalID)
 
+		// Make sure to NOT use the resource type here, as the resource type
+		// Otherwise, we get into a loop where resources are created and are immediately terminated.
 		err := controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
 		if err != nil {
 			log.Error(err, "failed to set owner reference for resource")
