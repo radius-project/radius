@@ -153,7 +153,8 @@ func (dm *ARMManagementClient) ShowDeployment(ctx context.Context, deploymentNam
 	return response.DeploymentResource, err
 }
 
-func (dm *ARMManagementClient) ListResourcesV3(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
+// V3 API
+func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
 	radiusResourceClient := radclientv3.NewRadiusResourceClient(dm.Connection, dm.SubscriptionID)
 
 	response, err := radiusResourceClient.List(ctx, dm.ResourceGroup, applicationName, nil)
@@ -210,6 +211,15 @@ func (dm *ARMManagementClient) DeleteApplicationV3(ctx context.Context, appName 
 	}
 	_, err = radclientv3.NewApplicationClient(con, sub).Delete(ctx, rg, appName, nil)
 	return err
+}
+
+func (dm *ARMManagementClient) ShowResource(ctx context.Context, appName string, resourceType string, name string) (interface{}, error) {
+	client := radclientv3.NewRadiusResourceClient(dm.Connection, dm.SubscriptionID)
+	result, err := client.Get(ctx, dm.ResourceGroup, appName, resourceType, name, nil)
+	if err != nil {
+		return nil, err
+	}
+	return result.RadiusResource, nil
 }
 
 func isNotFound(err error) bool {
