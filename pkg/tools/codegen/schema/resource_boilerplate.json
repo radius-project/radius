@@ -18,6 +18,16 @@
     }
   },
   "parameters": {
+    {{ if .IsGenericResource }}
+    "{{ .TypeParameterType }}": {
+      "x-ms-parameter-location": "method",
+      "description": "The type of the {{ .QualifiedName }}.",
+      "type": "string",
+      "required": true,
+      "in": "path",
+      "name": "{{ .TypeParameterName }}"
+    },
+    {{ end }}
     "{{ .NameParameterType }}": {
       "x-ms-parameter-location": "method",
       "description": "The name of the {{ .QualifiedName }} resource.",
@@ -67,11 +77,12 @@
         "operationId": "{{ .QualifiedName }}_List",
         "description": "List the {{ .QualifiedName }} resources deployed in the application."
       }
-    }
-    {{/* Generic RadiusResource can only be listed - no other operations allowed */}}
-    {{ if not .IsGenericResource }}
-    ,
+    },
+    {{ if .IsGenericResource }}
+    "{{ .BasePath }}/{{ print `{` (.TypeParameterName) `}` }}/{{ print `{` (.NameParameterName) `}` }}": {
+    {{ else }}
     "{{ .BasePath }}/{{ .QualifiedName }}/{{ print `{` (.NameParameterName) `}` }}": {
+    {{ end }}
       "get": {
         "operationId": "{{ .QualifiedName }}_Get",
         "tags": [
@@ -89,6 +100,11 @@
           {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {{ end }}
+          {{ if .IsGenericResource }}
+          {
+            "$ref": "#/parameters/{{ .TypeParameterType }}"
           },
           {{ end }}
           {
@@ -113,6 +129,7 @@
           }
         }
       },
+      {{ if not .IsGenericResource }}
       "put": {
         "operationId": "{{ .QualifiedName }}_CreateOrUpdate",
         "tags": [
@@ -175,6 +192,7 @@
           }
         }
       },
+      {{ end }}
       "delete": {
         "description": "Deletes a {{ .QualifiedName }} resource.",
         "operationId": "{{ .QualifiedName }}_Delete",
@@ -189,6 +207,11 @@
           {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {{ end }}
+          {{ if .IsGenericResource }}
+          {
+            "$ref": "#/parameters/{{ .TypeParameterType }}"
           },
           {{ end }}
           {
@@ -214,6 +237,5 @@
         ]
       }
     }
-    {{ end }}
   }
 }
