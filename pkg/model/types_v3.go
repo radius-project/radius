@@ -15,17 +15,23 @@ import (
 type ApplicationModelV3 interface {
 	LookupRenderer(resourceType string) (renderers.Renderer, error)
 	LookupHandlers(resourceKind string) (Handlers, error)
+	LookupSecretTransformer(transformerName string) (renderers.SecretValueTransformer, error)
 }
 
 type applicationModelV3 struct {
 	renderersByResourceType map[string]renderers.Renderer
 	handlersByResourceKind  map[string]Handlers
+	transformersByName      map[string]renderers.SecretValueTransformer
 }
 
-func NewModelV3(renderers map[string]renderers.Renderer, handlers map[string]Handlers) ApplicationModelV3 {
+func NewModelV3(
+	renderers map[string]renderers.Renderer,
+	handlers map[string]Handlers,
+	transformers map[string]renderers.SecretValueTransformer) ApplicationModelV3 {
 	return &applicationModelV3{
 		renderersByResourceType: renderers,
 		handlersByResourceKind:  handlers,
+		transformersByName:      transformers,
 	}
 }
 
@@ -45,4 +51,13 @@ func (model *applicationModelV3) LookupHandlers(resourceKind string) (Handlers, 
 	}
 
 	return resourceHandlers, nil
+}
+
+func (model *applicationModelV3) LookupSecretTransformer(transformerName string) (renderers.SecretValueTransformer, error) {
+	transformer, ok := model.transformersByName[transformerName]
+	if !ok {
+		return nil, fmt.Errorf("transformer '%s' is unsupported", transformerName)
+	}
+
+	return transformer, nil
 }

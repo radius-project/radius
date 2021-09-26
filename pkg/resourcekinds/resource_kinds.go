@@ -14,7 +14,7 @@ const (
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
 	DaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
 	DaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
-	AzureCosmosAccountMongo          = "azure.cosmosdb.account.mongo"
+	AzureCosmosAccount               = "azure.cosmosdb.account"
 	AzureCosmosDBMongo               = "azure.cosmosdb.mongo"
 	AzureCosmosDBSQL                 = "azure.cosmosdb.sql"
 	AzureServiceBusQueue             = "azure.servicebus.queue"

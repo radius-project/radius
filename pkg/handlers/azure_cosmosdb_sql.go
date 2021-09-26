@@ -16,6 +16,8 @@ import (
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 func NewAzureCosmosDBSQLHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -39,43 +41,36 @@ func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options *PutO
 		return nil, err
 	}
 
-	var account *documentdb.DatabaseAccountGetResults
-	if properties[CosmosDBAccountIDKey] == "" {
-		// If we don't have an ID already then we will need to create a new one.
-		//
-		// There is no clear documentation on this mapping of GlobalDocumentDB to SQL.
-		// Used this ARM template example as a reference to verify that this is the right option:
-		//   https://docs.microsoft.com/en-us/azure/cosmos-db/how-to-manage-database-account
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindGlobalDocumentDB, *options)
-		if err != nil {
-			return nil, err
-		}
-
-		// store account so we can delete later
-		properties[CosmosDBAccountIDKey] = *account.ID
-		properties[CosmosDBAccountNameKey] = *account.Name
-	} else {
-		// This is mostly called for the side-effect of verifying that the account exists.
-		account, err = handler.GetCosmosDBAccountByID(ctx, properties[CosmosDBAccountIDKey])
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if properties[CosmosDBDatabaseIDKey] == "" {
-		account, err := handler.CreateDatabase(ctx, *account.Name, properties[CosmosDBDatabaseNameKey], *options)
+		var cosmosDBAccountName string
+		for _, resource := range options.Dependencies {
+			if resource.LocalID == outputresource.LocalIDAzureCosmosAccount {
+				cosmosDBAccountName = resource.Properties[CosmosDBAccountNameKey]
+			}
+		}
+
+		if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureCosmosAccount]; ok {
+			cosmosDBAccountName = properties[CosmosDBAccountNameKey]
+		}
+
+		database, err := handler.CreateDatabase(ctx, cosmosDBAccountName, properties[CosmosDBDatabaseNameKey], *options)
 		if err != nil {
 			return nil, err
 		}
 
 		// store db so we can delete later
-		properties[CosmosDBDatabaseIDKey] = *account.ID
+		properties[CosmosDBDatabaseIDKey] = *database.ID
+		properties[CosmosDBDatabaseNameKey] = *database.Name
+		options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
+
 	} else {
 		// This is mostly called for the side-effect of verifying that the database exists.
-		_, err := handler.GetDatabaseByID(ctx, properties[CosmosDBDatabaseIDKey])
+		database, err := handler.GetDatabaseByID(ctx, properties[CosmosDBDatabaseIDKey])
 		if err != nil {
 			return nil, err
 		}
+
+		options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 	}
 
 	return properties, nil
@@ -99,12 +94,6 @@ func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options De
 
 	// Delete SQL database in the CosmosDB account
 	err := handler.DeleteDatabase(ctx, accountName, dbName)
-	if err != nil {
-		return err
-	}
-
-	// Delete CosmosDB account
-	err = handler.DeleteCosmosDBAccount(ctx, accountName)
 	if err != nil {
 		return err
 	}
