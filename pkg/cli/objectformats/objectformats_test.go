@@ -86,8 +86,8 @@ func Test_FormatResourceTable(t *testing.T) {
 				Type: to.StringPtr("my/very/CoolResource"),
 			},
 		},
-		Properties: &radclientv3.BasicComponentProperties{
-			Status: &radclientv3.ComponentStatus{
+		Properties: map[string]interface{}{
+			"status": &radclientv3.ComponentStatus{
 				HealthState:       to.StringPtr("Healthy"),
 				ProvisioningState: to.StringPtr("Provisioned"),
 			},
