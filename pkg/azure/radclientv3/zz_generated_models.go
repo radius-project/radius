@@ -1302,8 +1302,8 @@ type RabbitmqComMessageQueueListOptions struct {
 // RadiusResource - Interface for generic component -- useful for listing components without specifying a type
 type RadiusResource struct {
 	ProxyResource
-	// REQUIRED; Basic properties of a component.
-	Properties *BasicComponentProperties `json:"properties,omitempty"`
+	// REQUIRED; Any object
+	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RadiusResource.

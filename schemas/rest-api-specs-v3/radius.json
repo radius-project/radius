@@ -1293,7 +1293,7 @@
       "description": "Interface for generic component -- useful for listing components without specifying a type",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "type": "object"
         }
       },
       "required": [
