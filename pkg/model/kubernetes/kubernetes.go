@@ -18,7 +18,7 @@ import (
 
 func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 	renderers := map[string]renderers.Renderer{
-		containerv1alpha3.Kind: &containerv1alpha3.Renderer{Arm: armauth.ArmConfig{}},
+		containerv1alpha3.ResourceType: &containerv1alpha3.Renderer{Arm: armauth.ArmConfig{}},
 		// daprstatestorev1alpha3.Kind: &daprstatestorev1alpha3.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
 		// mongodbv1alpha3.Kind:        &mongodbv1alpha3.KubernetesRenderer{},
 		// rabbitmqv1alpha3.Kind:       &rabbitmqv1alpha3.Renderer{},
