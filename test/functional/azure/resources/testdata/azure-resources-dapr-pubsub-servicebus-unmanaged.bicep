@@ -1,24 +1,22 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-dapr-pubsub-servicebus-unmanaged'
 
-  resource publisher 'Components' = {
+  resource publisher 'ContainerComponent' = {
     name: 'publisher'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/magpie:latest'
+      connections: {
+        daprpubsub: {
+          kind: 'dapr.io/PubSubTopic'
+          source: pubsub.id
         }
       }
-      uses: [
-        {
-          binding: pubsub.properties.bindings.default
-          env: {
-            BINDING_DAPRPUBSUB_NAME: pubsub.properties.bindings.default.pubSubName
-            BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.bindings.default.topic
-          }
+      container: {
+        image: 'radius.azurecr.io/magpie:latest'
+        env: {
+          BINDING_DAPRPUBSUB_NAME: pubsub.properties.pubSubName
+          BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic
         }
-      ]
+      }
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
@@ -29,14 +27,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     }
   }
   
-  resource pubsub 'Components' = {
+  resource pubsub 'dapr.io.PubSubTopicComponent' = {
     name: 'pubsub'
-    kind: 'dapr.io/PubSubTopic@v1alpha1'
     properties: {
-      config: {
-        kind: 'pubsub.azure.servicebus'
-        resource: namespace::topic.id
-      }
+      kind: 'pubsub.azure.servicebus'
+      resource: namespace::topic.id
     }
   }
 }

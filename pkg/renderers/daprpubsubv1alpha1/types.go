@@ -9,7 +9,10 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
-const Kind = "dapr.io/PubSubTopic@v1alpha1"
+const (
+	Kind         = "dapr.io/PubSubTopic@v1alpha1"
+	ResourceType = "dapr.io.PubSubTopicComponent"
+)
 
 var TopicResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
