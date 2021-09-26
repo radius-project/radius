@@ -79,7 +79,7 @@ type RadrpDB interface {
 	UpdateV3ApplicationDefinition(ctx context.Context, application ApplicationResource) (bool, error)
 	DeleteV3Application(ctx context.Context, id azresources.ResourceID) error
 
-	ListAllV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error)
+	ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error)
 	ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error)
 	GetV3Resource(ctx context.Context, id azresources.ResourceID) (RadiusResource, error)
 	UpdateV3ResourceDefinition(ctx context.Context, id azresources.ResourceID, resource RadiusResource) (bool, error)
@@ -587,7 +587,7 @@ func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.Resourc
 	return nil
 }
 
-func (d radrpDB) ListAllV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
+func (d radrpDB) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
 	application, err := d.GetV3Application(ctx, id.Truncate())
 	if err != nil {
 		return nil, err

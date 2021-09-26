@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
+	"github.com/Azure/radius/pkg/radrp/schemav3"
 	"github.com/gorilla/mux"
 )
 
@@ -26,6 +27,7 @@ func AddRoutes(rp resourceproviderv3.ResourceProvider, router *mux.Router, valid
 	var applicationItemPath = fmt.Sprintf("%s/{%s}", applicationCollectionPath, azresources.ApplicationNameKey)
 
 	var resourceCollectionPath = fmt.Sprintf("%s/{%s}", applicationItemPath, azresources.ResourceTypeKey)
+	var allResourceCollectionPath = fmt.Sprintf("%s/%s", applicationItemPath, schemav3.GenericResourceType)
 	var resourceItemPath = fmt.Sprintf("%s/{%s}", resourceCollectionPath, azresources.ResourceNameKey)
 	var operationItemPath = fmt.Sprintf("%s/{%s}/{%s}", resourceItemPath, "OperationResults", azresources.OperationIDKey)
 
@@ -35,6 +37,7 @@ func AddRoutes(rp resourceproviderv3.ResourceProvider, router *mux.Router, valid
 	subrouter.Methods("PUT").HandlerFunc(h.UpdateApplication)
 	subrouter.Methods("DELETE").HandlerFunc(h.DeleteApplication)
 
+	router.Path(allResourceCollectionPath).Methods("GET").HandlerFunc(h.ListAllV3ResourcesByApplication)
 	router.Path(resourceCollectionPath).Methods("GET").HandlerFunc(h.ListResources)
 	subrouter = router.Path(resourceItemPath).Subrouter()
 	subrouter.Methods("GET").HandlerFunc(h.GetResource)
