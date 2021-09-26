@@ -20,7 +20,8 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	application := "kubernetes-resources-container-httpbinding"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
+			Executor:    kubernetestest.NewDeployStepExecutor(template),
+			SkipCleanup: true,
 			Components: &validation.ComponentSet{
 				Components: []validation.Component{
 					{

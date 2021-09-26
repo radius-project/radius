@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
@@ -31,7 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -92,63 +92,63 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents/finalizers,verbs=update
 
 func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// log := r.Log.WithValues("resource", req.NamespacedName)
+	log := r.Log.WithValues("resource", req.NamespacedName)
 
-	// unst, err := r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).Get(ctx, req.Name, v1.GetOptions{})
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	// }
+	unst, err := r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).Get(ctx, req.Name, v1.GetOptions{})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-	// resource := &radiusv1alpha3.Resource{}
-	// err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, resource)
-	// if err != nil && client.IgnoreNotFound(err) == nil {
-	// 	// Resource was deleted - we don't need to handle this because it will cascade
-	// 	return ctrl.Result{}, nil
-	// } else if err != nil {
-	// 	log.Error(err, "failed to retrieve resource")
-	// 	return ctrl.Result{}, err
-	// }
+	resource := &radiusv1alpha3.Resource{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, resource)
+	if err != nil && client.IgnoreNotFound(err) == nil {
+		// Resource was deleted - we don't need to handle this because it will cascade
+		return ctrl.Result{}, nil
+	} else if err != nil {
+		log.Error(err, "failed to retrieve resource")
+		return ctrl.Result{}, err
+	}
 
-	// applicationName := resource.Annotations[kubernetes.AnnotationsApplication]
-	// resourceName := resource.Annotations[kubernetes.AnnotationsResource]
+	applicationName := resource.Annotations[kubernetes.AnnotationsApplication]
+	resourceName := resource.Annotations[kubernetes.AnnotationsResource]
 
-	// log = log.WithValues(
-	// 	"application", applicationName,
-	// 	"resource", resourceName)
+	log = log.WithValues(
+		"application", applicationName,
+		"resource", resourceName)
 
-	// application := &radiusv1alpha3.Application{}
-	// key := client.ObjectKey{Namespace: resource.Namespace, Name: applicationName}
-	// err = r.Get(ctx, key, application)
-	// if err != nil && client.IgnoreNotFound(err) == nil {
-	// 	// Application is not found
-	// 	r.recorder.Eventf(resource, "Normal", "Waiting", "Application %s does not exist", applicationName)
-	// 	log.Info("application does not exist... waiting")
+	application := &radiusv1alpha3.Application{}
+	key := client.ObjectKey{Namespace: resource.Namespace, Name: applicationName}
+	err = r.Get(ctx, key, application)
+	if err != nil && client.IgnoreNotFound(err) == nil {
+		// Application is not found
+		r.recorder.Eventf(resource, "Normal", "Waiting", "Application %s does not exist", applicationName)
+		log.Info("application does not exist... waiting")
 
-	// 	// Keep going, we'll turn this into an "empty" render
+		// Keep going, we'll turn this into an "empty" render
 
-	// } else if err != nil {
-	// 	log.Error(err, "failed to retrieve application")
-	// 	return ctrl.Result{}, err
-	// }
+	} else if err != nil {
+		log.Error(err, "failed to retrieve application")
+		return ctrl.Result{}, err
+	}
 
-	// desired, rendered, err := r.RenderResource(ctx, req, log, application, resource, applicationName, resourceName)
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	// }
+	desired, rendered, err := r.RenderResource(ctx, req, log, application, resource, applicationName, resourceName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-	// if rendered {
-	// 	resource.Status.Phrase = "Ready"
-	// } else {
-	// 	resource.Status.Phrase = "Waiting"
-	// }
+	if rendered {
+		resource.Status.Phrase = "Ready"
+	} else {
+		resource.Status.Phrase = "Waiting"
+	}
 
-	// // Now we need to rationalize the set of logical resources (desired state against the actual state)
-	// actual, err := r.FetchKubernetesResources(ctx, log, resource)
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	// }
+	// Now we need to rationalize the set of logical resources (desired state against the actual state)
+	actual, err := r.FetchKubernetesResources(ctx, log, resource)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-	err = r.ApplyState(ctx, log, req, application, resource, actual, *desired)
+	err = r.ApplyState(ctx, log, req, application, resource, unst, actual, *desired)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -159,50 +159,6 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-
-	// ports := []corev1.ContainerPort{}
-	// ports = append(ports, corev1.ContainerPort{
-	// 	ContainerPort: int32(80),
-	// 	Protocol:      corev1.ProtocolTCP,
-	// })
-
-	// container := corev1.Container{
-	// 	Name:  "test",
-	// 	Image: "radius.azurecr.io/magpie:latest",
-	// 	// TODO: use better policies than this when we have a good versioning story
-	// 	ImagePullPolicy: corev1.PullPolicy("Always"),
-	// 	Ports:           ports,
-	// 	Env:             []corev1.EnvVar{},
-	// }
-
-	// deployment := appsv1.Deployment{
-	// 	TypeMeta: metav1.TypeMeta{
-	// 		Kind:       "Deployment",
-	// 		APIVersion: "apps/v1",
-	// 	},
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name:      "test",
-	// 		Namespace: "default",
-	// 		Labels:    kubernetes.MakeDescriptiveLabels("default", "test"),
-	// 	},
-	// 	Spec: appsv1.DeploymentSpec{
-	// 		Selector: &metav1.LabelSelector{
-	// 			MatchLabels: kubernetes.MakeSelectorLabels("default", "test"),
-	// 		},
-	// 		Template: corev1.PodTemplateSpec{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Labels: kubernetes.MakeDescriptiveLabels("default", "test"),
-	// 			},
-	// 			Spec: corev1.PodSpec{
-	// 				Containers: []corev1.Container{container},
-	// 			},
-	// 		},
-	// 	},
-	// }
-
-	// err := r.Client.Patch(ctx, &deployment, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
-
-	// return ctrl.Result{}, err
 }
 
 func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log logr.Logger, resource *radiusv1alpha3.Resource) ([]client.Object, error) {
@@ -329,6 +285,7 @@ func (r *ResourceReconciler) ApplyState(
 	req ctrl.Request,
 	application *radiusv1alpha3.Application,
 	resource *radiusv1alpha3.Resource,
+	inputUnst *unstructured.Unstructured,
 	actual []client.Object,
 	desired renderers.RendererOutput) error {
 
@@ -372,7 +329,7 @@ func (r *ResourceReconciler) ApplyState(
 			"resourcekind", obj.GetObjectKind().GroupVersionKind().String(),
 			"localid", cr.LocalID)
 
-		err := controllerutil.SetControllerReference(resource, obj, r.Scheme)
+		err := controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
 		if err != nil {
 			log.Error(err, "failed to set owner reference for resource")
 			return err
