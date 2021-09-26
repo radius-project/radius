@@ -18,6 +18,7 @@ import (
 )
 
 func Test_CosmosDBMongoManaged(t *testing.T) {
+	t.Parallel()
 	application := "azure-resources-cosmosdb-mongo-managed"
 	template := "testdata/azure-resources-cosmosdb-mongo-managed.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -74,6 +75,7 @@ func Test_CosmosDBMongoManaged(t *testing.T) {
 }
 
 func Test_CosmosDBMongoUnmanaged(t *testing.T) {
+	t.Parallel()
 	application := "azure-resources-cosmosdb-mongo-unmanaged"
 	template := "testdata/azure-resources-cosmosdb-mongo-unmanaged.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

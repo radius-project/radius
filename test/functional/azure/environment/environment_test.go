@@ -22,6 +22,7 @@ import (
 )
 
 func TestAzureEnvironment(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 

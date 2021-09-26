@@ -21,6 +21,7 @@ import (
 )
 
 func Test_ServiceBusManaged(t *testing.T) {
+	t.Parallel()
 	application := "azure-resources-servicebus-managed"
 	template := "testdata/azure-resources-servicebus-managed.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

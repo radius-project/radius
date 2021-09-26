@@ -18,6 +18,7 @@ import (
 )
 
 func Test_DaprPubSubServiceBusManaged(t *testing.T) {
+	t.Parallel()
 	application := "azure-resources-dapr-pubsub-servicebus-managed"
 	template := "testdata/azure-resources-dapr-pubsub-servicebus-managed.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -75,6 +76,7 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 }
 
 func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
+	t.Parallel()
 	application := "azure-resources-dapr-pubsub-servicebus-unmanaged"
 	template := "testdata/azure-resources-dapr-pubsub-servicebus-unmanaged.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

@@ -18,6 +18,7 @@ import (
 )
 
 func Test_TutorialDaprMicroservices(t *testing.T) {
+	t.Parallel()
 	application := "dapr-hello"
 	template := "../../../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -78,6 +79,7 @@ func Test_TutorialDaprMicroservices(t *testing.T) {
 }
 
 func Test_TutorialWebApp(t *testing.T) {
+	t.Parallel()
 	applicationName := "webapp"
 	componentNameWebApp := "todoapp"
 	componentNameKV := "kv"

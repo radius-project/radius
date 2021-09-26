@@ -19,6 +19,7 @@ import (
 // Tests that we can add a component to a deployed application
 // by redeploying with more components.
 func Test_RedeployWithAnotherComponent(t *testing.T) {
+	t.Parallel()
 	application := "azure-mechanics-redeploy-withanothercomponent"
 	templateFmt := "testdata/azure-mechanics-redeploy-withanothercomponent.step%d.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -90,6 +91,7 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 // Tests that we can delete a component from a deployed application
 // by redeploying with fewer components.
 func Test_RedeployWithoutComponent(t *testing.T) {
+	t.Parallel()
 	application := "azure-mechanics-redeploy-withoutcomponent"
 	templateFmt := "testdata/azure-mechanics-redeploy-withoutcomponent.step%d.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

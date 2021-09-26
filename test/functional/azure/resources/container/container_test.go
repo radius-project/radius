@@ -23,6 +23,7 @@ import (
 )
 
 func Test_ContainerHttpBinding(t *testing.T) {
+	t.Parallel()
 	application := "azure-resources-container-httpbinding"
 	template := "testdata/azure-resources-container-httpbinding.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -77,6 +78,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 }
 
 func Test_ContainerInboundRoute(t *testing.T) {
+	t.Parallel()
 	application := "azure-resources-container-inboundroute"
 	template := "testdata/azure-resources-container-inboundroute.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

@@ -29,6 +29,7 @@ const (
 )
 
 func Test_CLI(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
@@ -65,12 +66,13 @@ func Test_CLI(t *testing.T) {
 		output, err := cli.ApplicationShow(ctx, application)
 		require.NoError(t, err)
 		expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
-azure-cli                                  
+azure-cli
 `
 		require.Equal(t, expected, output)
 	})
 
 	t.Run("Validate rad component list", func(t *testing.T) {
+		t.Parallel()
 		output, err := cli.ComponentList(ctx, application)
 		require.NoError(t, err)
 
@@ -80,6 +82,7 @@ azure-cli
 	})
 
 	t.Run("Validate rad component show", func(t *testing.T) {
+		t.Parallel()
 		output, err := cli.ComponentShow(ctx, application, "a")
 		require.NoError(t, err)
 		expected, _ := regexp.Compile(`COMPONENT  KIND                           PROVISIONING_STATE  HEALTH_STATE
@@ -90,6 +93,7 @@ a          radius.dev/Container@v1alpha1  .*Provisioned      .*[h|H]ealthy\s*
 	})
 
 	t.Run("Validate rad component logs", func(t *testing.T) {
+		t.Parallel()
 		output, err := cli.ComponentLogs(ctx, application, "a")
 		require.NoError(t, err)
 
@@ -98,6 +102,7 @@ a          radius.dev/Container@v1alpha1  .*Provisioned      .*[h|H]ealthy\s*
 	})
 
 	t.Run("Validate rad component expose", func(t *testing.T) {
+		t.Parallel()
 		port, err := GetAvailablePort()
 		require.NoError(t, err)
 
