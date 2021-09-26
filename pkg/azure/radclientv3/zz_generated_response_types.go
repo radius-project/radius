@@ -117,6 +117,24 @@ type ContainerComponentResourceResponse struct {
 	RawResponse *http.Response
 }
 
+// DaprInvokeRouteListResponse is the response envelope for operations that return a DaprInvokeRouteList type.
+type DaprInvokeRouteListResponse struct {
+	// List of dapr.io.InvokeRoute resources.
+	DaprInvokeRouteList *DaprInvokeRouteList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeRouteResourceResponse is the response envelope for operations that return a DaprInvokeRouteResource type.
+type DaprInvokeRouteResourceResponse struct {
+	// Resource that specifies an Dapr Service Invocation Route. A Dapr Service Invocation Route describes a pattern of communication between components.
+	DaprInvokeRouteResource *DaprInvokeRouteResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
 // DaprPubSubComponentListResponse is the response envelope for operations that return a DaprPubSubComponentList type.
 type DaprPubSubComponentListResponse struct {
 	// List of dapr.io.PubSubComponent resources.
