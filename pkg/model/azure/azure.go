@@ -63,6 +63,8 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 func NewAzureModelV3(arm armauth.ArmConfig, k8s client.Client) model.ApplicationModelV3 {
 	renderers := map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType:       &containerv1alpha3.Renderer{},
+		daprpubsubv1alpha1.ResourceType:      &renderers.V1RendererAdapter{Inner: &daprpubsubv1alpha1.Renderer{}},
+		daprstatestorev1alpha1.ResourceType:  &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{}},
 		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
 	}
 

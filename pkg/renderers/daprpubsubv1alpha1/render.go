@@ -19,6 +19,8 @@ import (
 	"github.com/Azure/radius/pkg/workloads"
 )
 
+var _ renderers.AdaptableRenderer = (*Renderer)(nil)
+
 // Renderer is the WorkloadRenderer implementation for the dapr pubsub workload.
 type Renderer struct {
 }
@@ -128,4 +130,27 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 		return []outputresource.OutputResource{resource}, nil
 	}
+}
+
+func (r *Renderer) GetKind() string {
+	return Kind
+}
+
+func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.InstantiatedWorkload) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference, error) {
+	values := map[string]renderers.ComputedValueReference{
+		"namespace": {
+			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			PropertyReference: handlers.ServiceBusNamespaceNameKey,
+		},
+		"pubSubName": {
+			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			PropertyReference: handlers.ComponentNameKey,
+		},
+		"topic": {
+			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			PropertyReference: handlers.ServiceBusTopicNameKey,
+		},
+	}
+	secrets := map[string]renderers.SecretValueReference{}
+	return values, secrets, nil
 }
