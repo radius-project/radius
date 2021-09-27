@@ -6,7 +6,7 @@
 package httproutev1alpha3
 
 const (
-	Kind = "HttpRoute"
+	ResourceType = "HttpRoute"
 )
 
 type HttpRoute struct {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/kubernetes/converters"
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
@@ -201,21 +202,21 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 	}
 
 	w := &renderers.RendererResource{}
-	err := r.Scheme.Convert(resource, w, ctx)
+	err := converters.ConvertToRenderResource(resource, w)
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not be converted: %v", err)
 		log.Error(err, "failed to convert resource")
 		return nil, false, err
 	}
 
-	resourceKind, err := r.Model.LookupResource(w.ResourceType)
+	resourceType, err := r.Model.LookupResource(w.ResourceType)
 	if err != nil {
-		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource kind '%s' is not supported'", w.ResourceType)
-		log.Error(err, "unsupported kind for resource")
+		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource type '%s' is not supported'", w.ResourceType)
+		log.Error(err, "unsupported type for resource")
 		return nil, false, err
 	}
 
-	references, err := resourceKind.Renderer().GetDependencyIDs(ctx, *w)
+	references, err := resourceType.Renderer().GetDependencyIDs(ctx, *w)
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies: %v", err)
 		log.Error(err, "failed to render resource")
@@ -265,10 +266,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	// TODO: Check provides and connections to make sure they exist?
-	// This isn't required atm but may be required for correctness.
-	// Whatever we decide, let's match what the Azure RP does.
-	resources, err := resourceKind.Renderer().Render(ctx, *w, deps)
+	resources, err := resourceType.Renderer().Render(ctx, *w, deps)
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")

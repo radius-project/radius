@@ -12,12 +12,9 @@ import (
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
-	"k8s.io/apimachinery/pkg/conversion"
 )
 
-func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.Scope) error {
-	original := a.(*radiusv1alpha3.Resource)
-	result := b.(*renderers.RendererResource)
+func ConvertToRenderResource(original *radiusv1alpha3.Resource, result *renderers.RendererResource) error {
 	result.ResourceName = original.Name
 	result.ResourceType = original.Kind
 	result.ApplicationName = original.Spec.Application

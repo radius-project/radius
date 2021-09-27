@@ -23,7 +23,7 @@ func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 		// mongodbv1alpha3.Kind:        &mongodbv1alpha3.KubernetesRenderer{},
 		// rabbitmqv1alpha3.Kind:       &rabbitmqv1alpha3.Renderer{},
 		// redisv1alpha3.Kind:          &redisv1alpha3.KubernetesRenderer{},
-		httproutev1alpha3.Kind: &httproutev1alpha3.Renderer{},
+		httproutev1alpha3.ResourceType: &httproutev1alpha3.Renderer{},
 		// httproutev1alpha3.Kind:      &httproutev1alpha3.Renderer{},
 		// httproutev1alpha3.Kind:      &httproutev1alpha3.Renderer{},
 	}

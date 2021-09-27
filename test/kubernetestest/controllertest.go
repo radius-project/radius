@@ -38,8 +38,6 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	"github.com/Azure/radius/pkg/kubernetes/converters"
-	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -92,11 +90,6 @@ func StartController() error {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
-
-	err := scheme.AddConversionFunc(&radiusv1alpha3.Resource{}, &renderers.RendererResource{}, converters.ConvertComponentToInternal)
-	if err != nil {
-		return fmt.Errorf("failed to add conversion func: %w", err)
-	}
 
 	cfg, err := testEnv.Start()
 	if err != nil {

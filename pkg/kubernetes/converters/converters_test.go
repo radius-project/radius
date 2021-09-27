@@ -52,7 +52,7 @@ func Test_ConvertComponentToInternal(t *testing.T) {
 		},
 	}
 
-	err = ConvertComponentToInternal(&resource, &actual, nil)
+	err = ConvertToRenderResource(&resource, &actual)
 	require.NoError(t, err, "failed to convert component")
 
 	require.Equal(t, expected, actual)
