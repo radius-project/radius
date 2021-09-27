@@ -190,6 +190,12 @@ func StartController() error {
 		}
 	}
 
+	// TODO webhook manager needs to be per controller
+	err = radiusv1alpha3.SetupWebhookWithManager(mgr, radiusv1alpha3.Generic{})
+	if err != nil {
+		return fmt.Errorf("failed to initialize component webhook: %w", err)
+	}
+
 	if err = (&bicepcontroller.DeploymentTemplateReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("DeploymentTemplate"),
@@ -202,11 +208,7 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize application webhook: %w", err)
 	}
-	// TODO webhook manager needs to be per controller
-	err = (&radiusv1alpha3.Resource{}).SetupWebhookWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to initialize component webhook: %w", err)
-	}
+
 	err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize arm webhook: %w", err)

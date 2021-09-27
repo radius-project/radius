@@ -7,6 +7,8 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 //+kubebuilder:object:root=true
@@ -33,4 +35,24 @@ type ContainerComponentList struct {
 
 func init() {
 	SchemeBuilder.Register(&ContainerComponent{}, &ContainerComponentList{})
+}
+
+var _ webhook.Validator = &ContainerComponent{}
+
+func (r *ContainerComponent) ValidateCreate() error {
+	resourcelog.Info("validate create", "name", r.Name)
+
+	return nil
+}
+
+func (r *ContainerComponent) ValidateUpdate(old runtime.Object) error {
+	resourcelog.Info("validate update", "name", r.Name)
+
+	return nil
+}
+
+func (r *ContainerComponent) ValidateDelete() error {
+	resourcelog.Info("validate delete", "name", r.Name)
+
+	return nil
 }

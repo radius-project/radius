@@ -188,7 +188,7 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Application")
 			os.Exit(1)
 		}
-		if err = (&radiusv1alpha3.Resource{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = radiusv1alpha3.SetupWebhookWithManager(mgr, radiusv1alpha3.Generic{}); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Component")
 			os.Exit(1)
 		}

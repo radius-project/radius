@@ -34,9 +34,9 @@ webhooks:
     service:
       name: webhook-service
       namespace: radius-system
-      path: /validate-radius-dev-v1alpha1-component
+      path: /validate-radius-dev-v1alpha1-resource
   failurePolicy: Fail
-  name: component-validation.radius.dev
+  name: resource-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev
@@ -47,29 +47,15 @@ webhooks:
     - UPDATE
     - DELETE
     resources:
-    - components
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  - v1beta1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: radius-system
-      path: /validate-radius-dev-v1alpha1-deployment
-  failurePolicy: Fail
-  name: deployment-validation.radius.dev
-  rules:
-  - apiGroups:
-    - radius.dev
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    - DELETE
-    resources:
-    - deployments
+    - containercomponents
+    - daprioinvokeroutes
+    - mongodbcomponents
+    - rediscomponents
+    - grpcroutes
+    - dapriopubsubtopiccomponents
+    - rabbitmqcomponents
+    - httproutes
+    - dapriostatestorecomponents
   sideEffects: None
 - admissionReviewVersions:
   - v1
