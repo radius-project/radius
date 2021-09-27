@@ -79,9 +79,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubcomponents,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubcomponents/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubcomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopiccomponents,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopiccomponents/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopiccomponents/finalizers,verbs=update
 //+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents/finalizers,verbs=update
