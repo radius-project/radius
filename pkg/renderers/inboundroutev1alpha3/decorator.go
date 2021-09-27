@@ -74,7 +74,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resource.ResourceName,
 			Namespace: resource.ApplicationName,
-			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+			Labels:    kubernetes.MakeDescriptiveLabelsV3(resource.ApplicationName, resource.ResourceName),
 		},
 	}
 

@@ -151,8 +151,8 @@ func Test_Render_Basic(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
 
-	labels := kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName)
-	matchLabels := kubernetes.MakeSelectorLabels(resource.ApplicationName, resource.ResourceName)
+	labels := kubernetes.MakeDescriptiveLabelsV3(resource.ApplicationName, resource.ResourceName)
+	matchLabels := kubernetes.MakeSelectorLabelsV3(resource.ApplicationName, resource.ResourceName)
 
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)

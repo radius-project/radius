@@ -54,6 +54,17 @@ func MakeDescriptiveLabels(application string, component string) map[string]stri
 	}
 }
 
+// Temporary change for app model v3, remove original once app model v3 is in.
+func MakeDescriptiveLabelsV3(application string, resource string) map[string]string {
+	return map[string]string{
+		LabelRadiusApplication: application,
+		LabelRadiusResource:    resource,
+		LabelName:              resource,
+		LabelPartOf:            application,
+		LabelManagedBy:         LabelManagedByRadiusRP,
+	}
+}
+
 // MakeSelectorLablels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
