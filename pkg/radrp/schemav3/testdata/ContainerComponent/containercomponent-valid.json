@@ -32,6 +32,24 @@
       "livenessProbe": {
         "kind": "tcp",
         "containerPort": 8080
+      },
+      "volumes": {
+        "vol1": {
+          "kind": "ephemeral",
+          "managedStore": "memory",
+          "mountPath": "/tmp"
+        },
+        "vol2": {
+          "kind": "persistent",
+          "source": "afs.id",
+          "rbac": "read",
+          "mountPath": "/mnt/images"
+        },
+        "vol3": {
+          "kind": "ephemeral",
+          "managedStore": "disk",
+          "mountPath": "/tmp"
+        }
       }
     }
   },

@@ -481,6 +481,9 @@ type ContainerComponentPropertiesContainer struct {
 
 	// Any object
 	ReadinessProbe map[string]interface{} `json:"readinessProbe,omitempty"`
+
+	// Dictionary of
+	Volumes map[string]map[string]interface{} `json:"volumes,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentPropertiesContainer.
@@ -491,6 +494,7 @@ func (c ContainerComponentPropertiesContainer) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "livenessProbe", c.LivenessProbe)
 	populate(objectMap, "ports", c.Ports)
 	populate(objectMap, "readinessProbe", c.ReadinessProbe)
+	populate(objectMap, "volumes", c.Volumes)
 	return json.Marshal(objectMap)
 }
 
@@ -768,6 +772,46 @@ type EncryptionProperties struct {
 	Status *EncryptionStatus `json:"status,omitempty"`
 }
 
+// EphemeralVolume - Specifies an ephemeral volume for a container
+type EphemeralVolume struct {
+	// REQUIRED; Backing store for the ephemeral volume
+	ManagedStore *EphemeralVolumeManagedStore `json:"managedStore,omitempty"`
+
+	// REQUIRED; The path where the volume is mounted
+	MountPath *string `json:"mountPath,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type EphemeralVolume.
+func (e EphemeralVolume) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "managedStore", e.ManagedStore)
+	populate(objectMap, "mountPath", e.MountPath)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type EphemeralVolume.
+func (e *EphemeralVolume) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managedStore":
+				err = unpopulate(val, &e.ManagedStore)
+				delete(rawMsg, key)
+		case "mountPath":
+				err = unpopulate(val, &e.MountPath)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.
@@ -1013,18 +1057,6 @@ func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
 	objectMap := h.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", h.Properties)
 	return json.Marshal(objectMap)
-}
-
-// HealthProbeCommonProperties - Properties for readiness/liveness probe
-type HealthProbeCommonProperties struct {
-	// Threshold number of times the probe fails after which a failure would be reported
-	FailureThreshold *float32 `json:"failureThreshold,omitempty"`
-
-	// Initial delay in seconds before probing for readiness/liveness
-	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
-
-	// Interval for the readiness/liveness probe in seconds
-	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
 }
 
 // Identity for the resource.
@@ -1286,6 +1318,53 @@ func (o *OperationStatusResult) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, &o.Status)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// PersistentVolume - Specifies a persistent volume for a container
+type PersistentVolume struct {
+	// REQUIRED; The path where the volume is mounted
+	MountPath *string `json:"mountPath,omitempty"`
+
+	// REQUIRED; The source of the volume
+	Source *string `json:"source,omitempty"`
+
+	// Container read/write access to the volume
+	Rbac *PersistentVolumeRbac `json:"rbac,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type PersistentVolume.
+func (p PersistentVolume) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "mountPath", p.MountPath)
+	populate(objectMap, "rbac", p.Rbac)
+	populate(objectMap, "source", p.Source)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type PersistentVolume.
+func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "mountPath":
+				err = unpopulate(val, &p.MountPath)
+				delete(rawMsg, key)
+		case "rbac":
+				err = unpopulate(val, &p.Rbac)
+				delete(rawMsg, key)
+		case "source":
+				err = unpopulate(val, &p.Source)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1780,6 +1859,74 @@ func (t TrackedResource) marshalInternal() map[string]interface{} {
 	populate(objectMap, "location", t.Location)
 	populate(objectMap, "tags", t.Tags)
 	return objectMap
+}
+
+// VolumeBeginCreateOrUpdateOptions contains the optional parameters for the Volume.BeginCreateOrUpdate method.
+type VolumeBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumeBeginDeleteOptions contains the optional parameters for the Volume.BeginDelete method.
+type VolumeBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumeGetOptions contains the optional parameters for the Volume.Get method.
+type VolumeGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumeList - List of Volume resources.
+type VolumeList struct {
+	// REQUIRED; List of Volume resources.
+	Value []*VolumeResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type VolumeList.
+func (v VolumeList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", v.Value)
+	return json.Marshal(objectMap)
+}
+
+// VolumeListOptions contains the optional parameters for the Volume.List method.
+type VolumeListOptions struct {
+	// placeholder for future optional parameters
+}
+
+type VolumeProperties struct {
+	BasicComponentProperties
+	// REQUIRED; The kind of volume component
+	Kind *string `json:"kind,omitempty"`
+
+	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
+	Managed *bool `json:"managed,omitempty"`
+
+	// The ID of the user-managed volume to use for this component
+	Resource *string `json:"resource,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type VolumeProperties.
+func (v VolumeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := v.BasicComponentProperties.marshalInternal()
+	populate(objectMap, "kind", v.Kind)
+	populate(objectMap, "managed", v.Managed)
+	populate(objectMap, "resource", v.Resource)
+	return json.Marshal(objectMap)
+}
+
+// VolumeResource - The Volume provides an abstraction for a volume that can be mounted to a container
+type VolumeResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *VolumeProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type VolumeResource.
+func (v VolumeResource) MarshalJSON() ([]byte, error) {
+	objectMap := v.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", v.Properties)
+	return json.Marshal(objectMap)
 }
 
 func populate(m map[string]interface{}, k string, v interface{}) {

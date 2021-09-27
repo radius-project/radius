@@ -464,6 +464,12 @@
             "readinessProbe": {
               "$ref": "#/definitions/HealthProbeProperties",
               "type": "object"
+            },
+            "volumes": {
+              "additionalProperties": {
+                "$ref": "#/definitions/Volume"
+              },
+              "type": "object"
             }
           },
           "required": [
@@ -758,6 +764,36 @@
       "type": "object",
       "x-ms-discriminator-value": "dapr.io/App@v1alpha1"
     },
+    "EphemeralVolume": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/Volume"
+        }
+      ],
+      "description": "Specifies an ephemeral volume for a container",
+      "properties": {
+        "managedStore": {
+          "description": "Backing store for the ephemeral volume",
+          "enum": [
+            "memory",
+            "disk"
+          ],
+          "type": "string"
+        },
+        "mountPath": {
+          "description": "The path where the volume is mounted",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mountPath",
+        "kind",
+        "managedStore"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "ephemeral"
+    },
     "ErrorAdditionalInfo": {
       "description": "The resource management error additional info.",
       "properties": {
@@ -854,24 +890,6 @@
       ],
       "type": "object",
       "x-ms-discriminator-value": "exec"
-    },
-    "HealthProbeCommonProperties": {
-      "description": "Properties for readiness/liveness probe",
-      "properties": {
-        "failureThreshold": {
-          "description": "Threshold number of times the probe fails after which a failure would be reported",
-          "type": "number"
-        },
-        "initialDelaySeconds": {
-          "description": "Initial delay in seconds before probing for readiness/liveness",
-          "type": "number"
-        },
-        "periodSeconds": {
-          "description": "Interval for the readiness/liveness probe in seconds",
-          "type": "number"
-        }
-      },
-      "type": "object"
     },
     "HealthProbeProperties": {
       "description": "Properties for readiness/liveness probe",
@@ -1242,6 +1260,40 @@
         "status"
       ],
       "type": "object"
+    },
+    "PersistentVolume": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/Volume"
+        }
+      ],
+      "description": "Specifies a persistent volume for a container",
+      "properties": {
+        "mountPath": {
+          "description": "The path where the volume is mounted",
+          "type": "string"
+        },
+        "rbac": {
+          "description": "Container read/write access to the volume",
+          "enum": [
+            "read",
+            "write"
+          ],
+          "type": "string"
+        },
+        "source": {
+          "description": "The source of the volume",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mountPath",
+        "kind",
+        "source"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "persistent"
     },
     "Plan": {
       "description": "Plan for the resource.",
@@ -1702,6 +1754,76 @@
       "title": "Tracked Resource",
       "type": "object"
     },
+    "Volume": {
+      "description": "Specifies a volume for a container",
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "VolumeList": {
+      "description": "List of Volume resources.",
+      "properties": {
+        "value": {
+          "description": "List of Volume resources.",
+          "items": {
+            "$ref": "#/definitions/VolumeResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "VolumeProperties": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicComponentProperties"
+        }
+      ],
+      "properties": {
+        "kind": {
+          "description": "The kind of volume component",
+          "enum": [
+            "azure.com.fileshare"
+          ],
+          "type": "string"
+        },
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
+          "type": "boolean"
+        },
+        "resource": {
+          "description": "The ID of the user-managed volume to use for this component",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "VolumeResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The Volume provides an abstraction for a volume that can be mounted to a container",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/VolumeProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
     "encryptionProperties": {
       "description": "Configuration of key for data encryption",
       "properties": {
@@ -1978,6 +2100,14 @@
       "name": "subscriptionId",
       "required": true,
       "type": "string"
+    },
+    "VolumeNameParameter": {
+      "description": "The name of the Volume resource.",
+      "in": "path",
+      "name": "volumeName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
     }
   },
   "paths": {
@@ -2550,6 +2680,188 @@
         "tags": [
           "RadiusResource"
         ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume": {
+      "get": {
+        "description": "List the Volume resources deployed in the application.",
+        "operationId": "Volume_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Volume resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/VolumeList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Volume"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}": {
+      "delete": {
+        "description": "Deletes a Volume resource.",
+        "operationId": "Volume_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/VolumeNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Volume will complete asynchronously."
+          },
+          "204": {
+            "description": "The Volume resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Volume"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Volume resource by name.",
+        "operationId": "Volume_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/VolumeNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Volume resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Volume"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Volume resource.",
+        "operationId": "Volume_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/VolumeNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Volume resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Volume resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "201": {
+            "description": "The new Volume resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "202": {
+            "description": "The existing Volume resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Volume"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.CosmosDBMongoComponent": {

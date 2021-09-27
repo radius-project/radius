@@ -1,0 +1,6 @@
+{
+  "properties": {
+    "managed": true,
+    "kind": "azure.com.fileshare"
+  }
+}
