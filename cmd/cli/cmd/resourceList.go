@@ -13,19 +13,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// componentListCmd command to list components in an application
-var componentListCmd = &cobra.Command{
+// resourceListCmd command to list resources in an application
+var resourceListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Lists application components",
-	Long:  "List all the components in the specified application",
-	RunE:  listComponents,
+	Short: "Lists application resources",
+	Long:  "List all the resources in the specified application",
+	RunE:  listResources,
 }
 
 func init() {
-	componentCmd.AddCommand(componentListCmd)
+	resourceCmd.AddCommand(resourceListCmd)
 }
 
-func listComponents(cmd *cobra.Command, args []string) error {
+func listResources(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
@@ -42,7 +42,7 @@ func listComponents(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	list, err := client.ListComponents(cmd.Context(), applicationName)
+	resourceList, err := client.ListAllResourcesByApplication(cmd.Context(), applicationName)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func listComponents(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = output.Write(format, list.Value, cmd.OutOrStdout(), objectformats.GetComponentTableFormat())
+	err = output.Write(format, resourceList.Value, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
 	if err != nil {
 		return err
 	}
