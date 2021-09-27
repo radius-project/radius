@@ -70,7 +70,7 @@ func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outp
 	return nil, outputresource.OutputResource{}
 }
 
-// FindSecret finds an Ingress in a list of output resources
+// FindIngress finds an Ingress in a list of output resources
 func FindIngress(resources []outputresource.OutputResource) (*networkingv1.Ingress, outputresource.OutputResource) {
 	for _, r := range resources {
 		if r.Kind != resourcekinds.Kubernetes {
