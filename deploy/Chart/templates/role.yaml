@@ -192,7 +192,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriopubsubcomponents
+  - dapriopubsubtopiccomponents
   verbs:
   - create
   - delete
@@ -204,13 +204,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriopubsubcomponents/finalizers
+  - dapriopubsubtopiccomponents/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - dapriopubsubcomponents/status
+  - dapriopubsubtopiccomponents/status
   verbs:
   - get
   - patch
