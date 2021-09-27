@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -164,6 +165,51 @@ func (dm *ARMManagementClient) ListResourcesV3(ctx context.Context, applicationN
 		return nil, err
 	}
 	return response.RadiusResourceList, err
+}
+
+func (dm *ARMManagementClient) ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error) {
+	ac := radclientv3.NewApplicationClient(dm.Connection, dm.SubscriptionID)
+	response, err := ac.List(ctx, dm.ResourceGroup, nil)
+	if err != nil {
+		if isNotFound(err) {
+			errorMessage := fmt.Sprintf("Applications not found in environment '%s'", dm.EnvironmentName)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
+		return nil, err
+	}
+	return response.ApplicationList, nil
+}
+
+func (dm *ARMManagementClient) ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
+	ac := radclientv3.NewApplicationClient(dm.Connection, dm.SubscriptionID)
+	response, err := ac.Get(ctx, dm.ResourceGroup, applicationName, nil)
+	if err != nil {
+		if isNotFound(err) {
+			errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
+		return nil, err
+	}
+	return response.ApplicationResource, err
+}
+
+func (dm *ARMManagementClient) DeleteApplicationV3(ctx context.Context, appName string) error {
+	con, sub, rg := dm.Connection, dm.SubscriptionID, dm.ResourceGroup
+	radiusResourceClient := radclientv3.NewRadiusResourceClient(con, sub)
+	resp, err := radiusResourceClient.List(ctx, dm.ResourceGroup, appName, nil)
+	if err != nil && !isNotFound(err) {
+		return err
+	}
+	for _, resource := range resp.RadiusResourceList.Value {
+		types := strings.Split(*resource.Type, "/")
+		resourceType := types[len(types)-1]
+		_, err := radclientv3.NewRadiusResourceClient(con, sub).Delete(ctx, rg, appName, resourceType, *resource.Name, nil)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = radclientv3.NewApplicationClient(con, sub).Delete(ctx, rg, appName, nil)
+	return err
 }
 
 func isNotFound(err error) bool {
