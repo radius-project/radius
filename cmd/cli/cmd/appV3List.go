@@ -16,8 +16,8 @@ import (
 // appV3ListCmd command to list V3 applications deployed in the resource group
 var appV3ListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Lists RADv3 applications",
-	Long:  "Lists RADv3 applications deployed in the resource group associated with the default environment",
+	Short: "Lists RAD applications",
+	Long:  "Lists RAD applications deployed in the resource group associated with the default environment",
 	Args:  cobra.ExactArgs(0),
 	RunE:  listApplicationsV3,
 }

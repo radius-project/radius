@@ -16,8 +16,8 @@ import (
 // appV3ShowCmd command to show properties of a V3 application
 var appV3ShowCmd = &cobra.Command{
 	Use:   "show",
-	Short: "Show RADv3 application details",
-	Long:  "Show RADv3 application details",
+	Short: "Show RAD application details",
+	Long:  "Show RAD application details",
 	RunE:  showApplicationV3,
 }
 

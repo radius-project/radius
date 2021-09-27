@@ -19,8 +19,8 @@ import (
 // appV3DeleteCmd command to delete an applicationV3
 var appV3DeleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "Delete RADv3 application",
-	Long:  "Delete the specified RADv3 application deployed in the default environment",
+	Short: "Delete RAD application",
+	Long:  "Delete the specified RAD application deployed in the default environment",
 	RunE:  deleteApplicationV3,
 }
 
