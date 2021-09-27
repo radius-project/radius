@@ -1,0 +1,20 @@
+{
+  "properties": {
+    "container": {
+      "image": "ab",
+      "readinessProbe": {
+        "kind": "exec",
+        "initialDelaySeconds": 3,
+        "failureThreshold": 30,
+        "periodSeconds": 3
+      },
+      "livenessProbe": {
+        "kind": "httpGet",
+        "path": "/healthz",
+        "initialDelaySeconds": 3,
+        "failureThreshold": 30,
+        "periodSeconds": 3
+      }
+    }
+  }
+}

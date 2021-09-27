@@ -1,0 +1,2 @@
+(root).properties.container.readinessProbe: command is required
+(root).properties.container.livenessProbe: containerPort is required

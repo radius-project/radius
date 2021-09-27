@@ -130,13 +130,22 @@
     "HealthProbeProperties": {
       "description": "Properties for readiness/liveness probe",
       "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "probeDetails": {
-          "type": "object",
-          "description": "Details of the probe",
-          "$ref": "#/definitions/HealthProbeDetails"
+      "oneOf": [
+        {
+          "$ref": "#/definitions/HttpGetHealthProbeProperties"
         },
+        {
+          "$ref": "#/definitions/TcpHealthProbeProperties"
+        },
+        {
+          "$ref": "#/definitions/ExecHealthProbeProperties"
+        }
+      ]
+    },
+    "HealthProbeCommonProperties": {
+      "description": "Properties for readiness/liveness probe",
+      "type": "object",
+      "properties": {
         "initialDelaySeconds": {
           "description": "Initial delay in seconds before probing for readiness/liveness",
           "type": "number"
@@ -149,25 +158,7 @@
           "description": "Interval for the readiness/liveness probe in seconds",
           "type": "number"
         }
-      },
-      "required": [
-        "probeDetails"
-      ]
-    },
-    "HealthProbeDetails": {
-      "description": "Properties for readiness/liveness probe",
-      "type": "object",
-      "oneOf": [
-        {
-          "$ref": "#/definitions/HttpGetHealthProbeProperties"
-        },
-        {
-          "$ref": "#/definitions/TcpHealthProbeProperties"
-        },
-        {
-          "$ref": "#/definitions/ExecHealthProbeProperties"
-        }
-      ]
+      }
     },
     "HttpGetHealthProbeProperties": {
       "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
@@ -193,6 +184,18 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
         }
       },
       "required": [
@@ -202,7 +205,7 @@
       ]
     },
     "TcpHealthProbeProperties": {
-      "description": "Specifies the properties for readiness/liveness probe using Tcp",
+      "description": "Specifies the properties for readiness/liveness probe using TCP",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -213,6 +216,18 @@
         },
         "containerPort": {
           "description": "The listening port number",
+          "type": "number"
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
           "type": "number"
         }
       },
@@ -234,6 +249,18 @@
         "command": {
           "description": "Command to execute to probe readiness/liveness",
           "type": "string"
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
         }
       },
       "required": [

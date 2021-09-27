@@ -32,18 +32,20 @@
         }
       },
       "readinessProbe": {
+        "kind": "tcp",
+        "containerPort": 8080,
+        "kind": "exec",
+        "command": "abc",
         "initialDelaySeconds": 3,
         "failureThreshold": 30,
         "periodSeconds": 3
       },
       "livenessProbe": {
+        "kind": "httpGet",
+        "containerPort": 8080,
         "initialDelaySeconds": 3,
         "failureThreshold": 30,
-        "periodSeconds": 3,
-        "probeDetails": {
-          "kind": "httpGet",
-          "containerPort": 8080
-        }
+        "periodSeconds": 3
       }
     }
   },
