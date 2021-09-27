@@ -96,7 +96,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {
-		properties = options.ExistingOutputResource.Resource.(map[string]string)
+		properties = options.ExistingOutputResource.PersistedProperties
 	}
 
 	item := unstructured.Unstructured{

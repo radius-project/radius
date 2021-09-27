@@ -312,15 +312,20 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 }
 
 func addDBOutputResource(resource outputresource.OutputResource, dbOutputResources *[]db.OutputResource) {
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		properties = nil
+	}
+
 	// Save the output resource to DB
 	dbr := db.OutputResource{
-		Managed:            resource.Managed,
-		HealthID:           resource.HealthID,
-		LocalID:            resource.LocalID,
-		ResourceKind:       resource.Kind,
-		OutputResourceType: resource.Type,
-		OutputResourceInfo: resource.Info,
-		Resource:           resource.Resource,
+		Managed:             resource.Managed,
+		HealthID:            resource.HealthID,
+		LocalID:             resource.LocalID,
+		ResourceKind:        resource.Kind,
+		OutputResourceType:  resource.Type,
+		OutputResourceInfo:  resource.Info,
+		PersistedProperties: properties,
 		Status: db.OutputResourceStatus{
 			ProvisioningState:        resource.Status.ProvisioningState,
 			ProvisioningErrorDetails: resource.Status.ProvisioningErrorDetails,

@@ -94,7 +94,7 @@ func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, op
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {
-		properties = options.ExistingOutputResource.Resource.(map[string]string)
+		properties = options.ExistingOutputResource.PersistedProperties
 	}
 
 	accountName := properties[StorageAccountNameKey]

@@ -86,7 +86,7 @@ func (handler *azureCosmosDBSQLDBHandler) Delete(ctx context.Context, options De
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {
-		properties = options.ExistingOutputResource.Resource.(map[string]string)
+		properties = options.ExistingOutputResource.PersistedProperties
 	}
 
 	if properties[ManagedKey] != "true" {
