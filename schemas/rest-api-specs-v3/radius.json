@@ -1665,7 +1665,7 @@
           "$ref": "#/definitions/HealthProbeProperties"
         }
       ],
-      "description": "Specifies the properties for readiness/liveness probe using Tcp",
+      "description": "Specifies the properties for readiness/liveness probe using TCP",
       "properties": {
         "containerPort": {
           "description": "The listening port number",
