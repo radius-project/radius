@@ -37,3 +37,6 @@ default.profraw
 # Editor backup files
 *~
 *#
+
+# gomock files
+pkg/handlers/gomock_*

@@ -19,39 +19,6 @@ spec:
     singular: application
   scope: Namespaced
   versions:
-  - name: v1alpha1
-    schema:
-      openAPIV3Schema:
-        description: Application is the Schema for the applications API
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: ApplicationSpec defines the desired state of Application
-            properties:
-              hierarchy:
-                items:
-                  type: string
-                type: array
-            type: object
-          status:
-            description: ApplicationStatus defines the observed state of Application
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
   - name: v1alpha3
     schema:
       openAPIV3Schema:
@@ -81,12 +48,11 @@ spec:
           status:
             description: ResourceStatus defines the observed state of Resource
             properties:
+              computedValues:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               phrase:
                 type: string
-              properties:
-                additionalProperties:
-                  type: string
-                type: object
               resources:
                 additionalProperties:
                   description: 'ObjectReference contains enough information to let
@@ -152,7 +118,7 @@ spec:
             type: object
         type: object
     served: true
-    storage: false
+    storage: true
     subresources:
       status: {}
 status:

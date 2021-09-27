@@ -35,6 +35,7 @@ type Step struct {
 	PostStepVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
 	SkipComponents bool
 	SkipPods       bool
+	SkipCleanup    bool
 }
 
 type StepExecutor interface {
@@ -196,6 +197,8 @@ func (at ApplicationTest) Test(t *testing.T) {
 				require.Fail(t, "no pod set was specified and SkipPods == false, either specify a pod set or set SkipPods = true ")
 			} else {
 				// ValidatePodsRunning triggers its own assertions, no need to handle errors
+
+				validation.ValidateDeploymentsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
 				t.Logf("validating creation of pods for %s", step.Executor.GetDescription())
 				validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
 				t.Logf("finished creation of validating pods for %s", step.Executor.GetDescription())
@@ -212,23 +215,25 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	t.Logf("beginning cleanup phase of %s", at.Description)
 
-	// Cleanup code here will run regardless of pass/fail of subtests
-	t.Logf("deleting %s", at.Description)
-	err = cli.ApplicationDelete(ctx, at.Application)
-	require.NoErrorf(t, err, "failed to delete %s", at.Description)
-	t.Logf("finished deleting %s", at.Description)
-
 	// We run the validation code based on the final step
 	last := at.Steps[len(at.Steps)-1]
 
-	if last.SkipPods {
-		t.Logf("skipping validation of pods...")
-	} else {
-		t.Logf("validating deletion of pods for %s", at.Description)
-		for _, ns := range at.CollectAllNamespaces() {
-			validation.ValidateNoPodsInNamespace(ctx, t, at.Options.K8sClient, ns)
+	if !last.SkipCleanup {
+		// Cleanup code here will run regardless of pass/fail of subtests
+		t.Logf("deleting %s", at.Description)
+		err = cli.ApplicationDelete(ctx, at.Application)
+		require.NoErrorf(t, err, "failed to delete %s", at.Description)
+		t.Logf("finished deleting %s", at.Description)
+
+		if last.SkipPods {
+			t.Logf("skipping validation of pods...")
+		} else {
+			t.Logf("validating deletion of pods for %s", at.Description)
+			for _, ns := range at.CollectAllNamespaces() {
+				validation.ValidateNoPodsInNamespace(ctx, t, at.Options.K8sClient, ns)
+			}
+			t.Logf("finished deletion of pods for %s", at.Description)
 		}
-		t.Logf("finished deletion of pods for %s", at.Description)
 	}
 
 	// Custom verification is expected to use `t` to trigger its own assertions

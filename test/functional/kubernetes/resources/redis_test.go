@@ -16,6 +16,7 @@ import (
 )
 
 func Test_Redis(t *testing.T) {
+	t.Skip("Need to readd redis support")
 	template := "testdata/kubernetes-resources-redis-managed.bicep"
 	application := "kubernetes-resources-redis-managed"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{

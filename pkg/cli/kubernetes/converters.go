@@ -6,16 +6,15 @@
 package kubernetes
 
 import (
-	"encoding/json"
-
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/kubernetes"
 )
 
-func ConvertK8sApplicationToARM(input radiusv1alpha1.Application) (*radclient.ApplicationResource, error) {
+func ConvertK8sApplicationToARM(input radiusv1alpha3.Application) (*radclient.ApplicationResource, error) {
 	result := radclient.ApplicationResource{}
 	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsApplication])
 
@@ -25,94 +24,17 @@ func ConvertK8sApplicationToARM(input radiusv1alpha1.Application) (*radclient.Ap
 	return &result, nil
 }
 
-func ConvertK8sComponentToARM(input radiusv1alpha1.Component) (*radclient.ComponentResource, error) {
+func ConvertK8sResourceToARM(input radiusv1alpha3.Resource) (*radclient.ComponentResource, error) {
 	result := radclient.ComponentResource{}
-	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsComponent])
-	result.Kind = &input.Spec.Kind
-	result.Properties = &radclient.ComponentProperties{}
 
-	if input.Spec.Config != nil {
-		bytes, err := input.Spec.Config.MarshalJSON()
-		if err != nil {
-			return nil, err
-		}
-
-		result.Properties.Config = map[string]interface{}{}
-		err = json.Unmarshal(bytes, &result.Properties.Config)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if input.Spec.Run != nil {
-		bytes, err := input.Spec.Run.MarshalJSON()
-		if err != nil {
-			return nil, err
-		}
-
-		result.Properties.Run = map[string]interface{}{}
-		err = json.Unmarshal(bytes, &result.Properties.Run)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	result.Properties.Bindings = map[string]interface{}{}
-
-	bindingBytes, err := input.Spec.Bindings.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(bindingBytes, &result.Properties.Bindings)
-	if err != nil {
-		return nil, err
-	}
-
-	if input.Spec.Uses != nil {
-		for _, raw := range *input.Spec.Uses {
-			bytes, err := raw.MarshalJSON()
-			if err != nil {
-				return nil, err
-			}
-
-			dependency := radclient.ComponentDependency{}
-			err = json.Unmarshal(bytes, &dependency)
-			if err != nil {
-				return nil, err
-			}
-
-			result.Properties.Uses = append(result.Properties.Uses, &dependency)
-		}
-	}
-
-	if input.Spec.Traits != nil {
-		for _, raw := range *input.Spec.Traits {
-			bytes, err := raw.MarshalJSON()
-			if err != nil {
-				return nil, err
-			}
-			t, err := radclient.UnmarshalComponentTraitClassification(json.RawMessage(bytes))
-			if err != nil {
-				return nil, err
-			}
-			result.Properties.Traits = append(result.Properties.Traits, t)
-		}
-	}
-
+	// TODO fix once we deal with client simplification and have RP changes
 	return &result, nil
 }
 
-func ConvertK8sDeploymentToARM(input radiusv1alpha1.Deployment) (*radclient.DeploymentResource, error) {
+func ConvertK8sDeploymentToARM(input bicepv1alpha3.DeploymentTemplate) (*radclient.DeploymentResource, error) {
 	result := radclient.DeploymentResource{}
-	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsDeployment])
 	result.Properties = &radclient.DeploymentProperties{}
 
-	for _, dc := range input.Spec.Components {
-		converted := radclient.DeploymentComponent{
-			ComponentName: to.StringPtr(dc.ComponentName),
-		}
-		result.Properties.Components = append(result.Properties.Components, &converted)
-	}
-
+	// TODO remove once we deal with client simplification and have RP changes
 	return &result, nil
 }

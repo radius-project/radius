@@ -1,46 +1,54 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-container-httpbinding'
-
-  resource frontend 'Components' = {
-    name: 'frontend'
-    kind: 'radius.dev/Container@v1alpha1'
+  resource frontendhttp 'HttpRoute' = {
+    name: 'frontendhttp'
     properties: {
-      run: {
-        container: {
-          image: 'rynowak/frontend:0.5.0-dev'
-        }
-      }
-      uses: [
-        {
-          binding: backend.properties.bindings.web
-          env: {
-            SERVICE__BACKEND__HOST: backend.properties.bindings.web.host
-            SERVICE__BACKEND__PORT: backend.properties.bindings.web.port
-          }
-        }
-      ]
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 80
-        }
-      }
+      port: 80
     }
   }
-
-  resource backend 'Components' = {
-    name: 'backend'
-    kind: 'radius.dev/Container@v1alpha1'
+  resource frontend 'ContainerComponent' = {
+    name: 'frontend'
     properties: {
-      run: {
-        container: {
-          image: 'rynowak/backend:0.5.0-dev'
+      connections: {
+        backend: {
+          kind: 'Http'
+          source: backendhttp.id
         }
       }
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 80
+      container: {
+        image: 'rynowak/frontend:0.5.0-dev'
+        ports: {
+          web: {
+            containerPort: 80
+            provides: frontendhttp.id
+          }
+        }
+        env: {
+          SERVICE__BACKEND__HOST: backendhttp.properties.host
+          SERVICE__BACKEND__PORT: '${backendhttp.properties.port}'
+        }
+      }
+      traits: [
+        {
+          kind: 'radius.dev/InboundRoute@v1alpha1'
+          binding: 'web'
+        }
+      ]
+    }
+  }
+  resource backendhttp 'HttpRoute' = {
+    name: 'backendhttp'
+  }
+  resource backend 'ContainerComponent' = {
+    name: 'backend'
+    properties: {
+      container: {
+        image: 'rynowak/backend:0.5.0-dev'
+        ports: {
+          web: {
+            containerPort: 80
+            provides: backendhttp.id
+          }
         }
       }
     }

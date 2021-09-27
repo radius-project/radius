@@ -7,90 +7,44 @@ package converters
 
 import (
 	"encoding/json"
+	"errors"
 
-	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
-	"github.com/Azure/radius/pkg/model/components"
-	"k8s.io/apimachinery/pkg/conversion"
+	"github.com/Azure/radius/pkg/cli/armtemplate"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
 )
 
-func ConvertComponentToInternal(a interface{}, b interface{}, scope conversion.Scope) error {
-	original := a.(*radiusv1alpha1.Component)
-	result := b.(*components.GenericComponent)
-	result.Name = original.Annotations[kubernetes.AnnotationsComponent]
-	result.Kind = original.Spec.Kind
+func ConvertToRenderResource(original *radiusv1alpha3.Resource, result *renderers.RendererResource) error {
+	result.ResourceName = original.Name
+	result.ResourceType = original.Kind
+	result.ApplicationName = original.Spec.Application
 
-	if original.Spec.Config != nil {
-		b, err := original.Spec.Config.MarshalJSON()
-		if err != nil {
-			return err
-		}
+	template := original.Spec.Template
 
-		result.Config = map[string]interface{}{}
-		err = json.Unmarshal(b, &result.Config)
-		if err != nil {
-			return err
-		}
+	// Get arm template from template part
+	if template == nil {
+		return errors.New("must have template as part of CRD")
 	}
 
-	if original.Spec.Run != nil {
-		b, err := original.Spec.Run.MarshalJSON()
-		if err != nil {
-			return err
-		}
+	armResource := &armtemplate.Resource{}
+	err := json.Unmarshal(template.Raw, armResource)
 
-		result.Run = map[string]interface{}{}
-		err = json.Unmarshal(b, &result.Run)
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
 	}
 
-	result.Bindings = map[string]components.GenericBinding{}
-
-	if original.Spec.Bindings != nil {
-
-		j, err := original.Spec.Bindings.MarshalJSON()
-		if err != nil {
-			return err
-		}
-		err = json.Unmarshal(j, &result.Bindings)
-		if err != nil {
-			return err
-		}
-	}
-
-	if original.Spec.Uses != nil {
-		for _, raw := range *original.Spec.Uses {
-			b, err := raw.MarshalJSON()
+	if armResource.Body != nil {
+		properties, ok := armResource.Body["properties"]
+		if ok {
+			data, err := json.Marshal(properties)
 			if err != nil {
 				return err
 			}
 
-			dependency := components.GenericDependency{}
-			err = json.Unmarshal(b, &dependency)
+			err = json.Unmarshal(data, &result.Definition)
 			if err != nil {
 				return err
 			}
-
-			result.Uses = append(result.Uses, dependency)
-		}
-	}
-
-	if original.Spec.Traits != nil {
-		for _, raw := range *original.Spec.Traits {
-			b, err := raw.MarshalJSON()
-			if err != nil {
-				return err
-			}
-
-			t := components.GenericTrait{}
-			err = json.Unmarshal(b, &t)
-			if err != nil {
-				return err
-			}
-
-			result.Traits = append(result.Traits, t)
 		}
 	}
 
