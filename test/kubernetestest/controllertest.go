@@ -38,6 +38,7 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
+	"github.com/Azure/radius/pkg/kubernetes/webhook"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -191,7 +192,7 @@ func StartController() error {
 	}
 
 	// TODO webhook manager needs to be per controller
-	err = radiusv1alpha3.SetupWebhookWithManager(mgr, radiusv1alpha3.Generic{})
+	err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize component webhook: %w", err)
 	}

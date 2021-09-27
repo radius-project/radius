@@ -6,8 +6,6 @@
 package v1alpha3
 
 import (
-	"errors"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,7 +29,7 @@ var _ webhook.Validator = &DeploymentTemplate{}
 func (r *DeploymentTemplate) ValidateCreate() error {
 	armlog.Info("validate create", "name", r.Name)
 
-	return errors.New("Wow")
+	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
