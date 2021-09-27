@@ -915,27 +915,6 @@
         }
       }
     },
-    "InboundRouteTrait": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/ComponentTrait"
-        }
-      ],
-      "description": "InboundRoute ComponentTrait",
-      "properties": {
-        "binding": {
-          "description": "Binding name.",
-          "type": "string"
-        },
-        "hostName": {
-          "description": "Host name.",
-          "type": "string"
-        }
-      },
-      "type": "object",
-      "x-ms-discriminator-value": "radius.dev/InboundRoute@v1alpha1"
-    },
     "KeyVaultProperties": {
       "properties": {
         "identity": {

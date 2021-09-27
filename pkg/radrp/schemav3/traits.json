@@ -7,8 +7,6 @@
       "oneOf": [{
         "$ref": "traits/dapr.json#/definitions/DaprTrait"
       }, {
-        "$ref": "traits/inbound-route.json#/definitions/InboundRouteTrait"
-      }, {
         "$ref": "traits/manual-scaling.json#/definitions/ManualScalingTrait"
       }]
     }

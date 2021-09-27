@@ -17,9 +17,10 @@ import (
 	"github.com/Azure/radius/pkg/renderers/dapr"
 	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
+	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/inboundroute"
 	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha1"
-	"github.com/Azure/radius/pkg/renderers/manualscale"
+	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha1"
@@ -35,7 +36,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		cosmosdbmongov1alpha1.Kind:   &cosmosdbmongov1alpha1.Renderer{Arm: arm},
 		cosmosdbsqlv1alpha1.Kind:     &cosmosdbsqlv1alpha1.Renderer{Arm: arm},
 		mongodbv1alpha1.Kind:         &mongodbv1alpha1.AzureRenderer{Arm: arm},
-		containerv1alpha1.Kind:       &manualscale.Renderer{Inner: &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}}},
+		containerv1alpha1.Kind:       &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
 		servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
 		redisv1alpha1.Kind:           &redisv1alpha1.AzureRenderer{Arm: arm},
@@ -62,9 +63,15 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 
 func NewAzureModelV3(arm armauth.ArmConfig, k8s client.Client) model.ApplicationModelV3 {
 	renderers := map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType:       &containerv1alpha3.Renderer{},
-		daprpubsubv1alpha1.ResourceType:      &renderers.V1RendererAdapter{Inner: &daprpubsubv1alpha1.Renderer{}},
-		daprstatestorev1alpha1.ResourceType:  &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{}},
+		// Built-in types
+		containerv1alpha3.ResourceType: &manualscalev1alpha3.Renderer{Inner: &containerv1alpha3.Renderer{}},
+		httproutev1alpha3.ResourceType: &httproutev1alpha3.Renderer{},
+
+		// Dapr
+		daprpubsubv1alpha1.ResourceType:     &renderers.V1RendererAdapter{Inner: &daprpubsubv1alpha1.Renderer{}},
+		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{}},
+
+		// Azure
 		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
 	}
 

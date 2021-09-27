@@ -15,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
@@ -116,6 +117,12 @@ func (r Renderer) convert(resource renderers.RendererResource) (*ContainerProper
 }
 
 func (r Renderer) makeDeployment(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency, cc *ContainerProperties) (outputresource.OutputResource, map[string][]byte, error) {
+	// Keep track of the set of routes, we will need these to generate labels later
+	routes := []struct {
+		Name string
+		Type string
+	}{}
+
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
 		if port.Provides != "" {
@@ -123,8 +130,16 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 			if err != nil {
 				return outputresource.OutputResource{}, nil, err
 			}
+			routeName := resourceId.Name()
+			routeType := resourceId.Types[len(resourceId.Types)-1].Type
+			routes = append(routes, struct {
+				Name string
+				Type string
+			}{Name: routeName, Type: routeType})
+
 			ports = append(ports, corev1.ContainerPort{
-				Name:          kubernetes.GetShortenedTargetPortName(resourceId.Type() + resourceId.Name()),
+				// Name generation logic has to match the code in HttpRoute
+				Name:          kubernetes.GetShortenedTargetPortName(resource.ApplicationName + routeType + routeName),
 				ContainerPort: int32(*port.ContainerPort),
 				Protocol:      corev1.ProtocolTCP,
 			})
@@ -198,6 +213,14 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 		container.Env = append(container.Env, env[key])
 	}
 
+	// In addition to the descriptive labels, we need to attach labels for each route
+	// so that the generated services can find these pods
+	podLabels := kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName)
+	for _, routeInfo := range routes {
+		routeLabels := kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, routeInfo.Type, routeInfo.Name)
+		podLabels = labels.Merge(routeLabels, podLabels)
+	}
+
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -214,7 +237,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+					Labels: podLabels,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{container},

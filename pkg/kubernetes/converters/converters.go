@@ -14,6 +14,31 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 )
 
+// Since the resource will be processed by an ARM template we need to convert it to an ARM-like representation.
+func ConvertToARMResource(original *radiusv1alpha3.Resource, body map[string]interface{}) error {
+	properties, ok := body["properties"].(map[string]interface{})
+	if !ok {
+		properties = map[string]interface{}{}
+		body["properties"] = properties
+	}
+
+	// Using the user-provided definition as a 'base' merge in the computed properties
+	if original.Status.ComputedValues != nil {
+		computedValues := map[string]renderers.ComputedValueReference{}
+
+		err := json.Unmarshal(original.Status.ComputedValues.Raw, &computedValues)
+		if err != nil {
+			return err
+		}
+
+		for key, value := range computedValues {
+			properties[key] = value.Value
+		}
+	}
+
+	return nil
+}
+
 func ConvertToRenderResource(original *radiusv1alpha3.Resource, result *renderers.RendererResource) error {
 	result.ResourceName = original.Name
 	result.ResourceType = original.Kind

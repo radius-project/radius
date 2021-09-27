@@ -7,7 +7,7 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -21,7 +21,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/kubernetes/converters"
 )
 
 // DeploymentTemplateReconciler reconciles a Arm object
@@ -138,23 +138,17 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			return ctrl.Result{}, err
 		}
 
-		// Reference additional properties of the status.
-		deployed[resource.ID] = map[string]interface{}{}
-
-		if k8sResource.Status.ComputedValues != nil {
-			computedValues := map[string]renderers.ComputedValueReference{}
-
-			err = json.Unmarshal(k8sResource.Status.ComputedValues.Raw, &computedValues)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			for key, value := range computedValues {
-				deployed[resource.ID][key] = value.Value
-			}
+		// Transform from k8s representation to arm representation
+		//
+		// We need to overlay stateful properties over the original definition.
+		//
+		// For now we just modify the body in place.
+		err = converters.ConvertToARMResource(k8sResource, resource.Body)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to convert to ARM representation: %w", err)
 		}
 
-		// transform from k8s representation to arm representation
+		deployed[resource.ID] = resource.Body
 
 		if k8sResource.Status.Phrase != "Ready" {
 			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil

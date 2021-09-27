@@ -9,16 +9,17 @@ import (
 	"context"
 	"fmt"
 
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
 )
 
 type Renderer struct {
@@ -29,79 +30,121 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.Rende
 	return nil, nil
 }
 
-// Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, w renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	// This should return a service as an output resource
-	outputResources := []outputresource.OutputResource{}
-
-	route := &HttpRoute{}
-	err := w.ConvertDefinition(route)
+func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+	route := HttpRoute{}
+	err := resource.ConvertDefinition(&route)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
+	computedValues := map[string]renderers.ComputedValueReference{
+		"host": {
+			Value: resource.ResourceName,
+		},
+		"port": {
+			Value: route.GetEffectivePort(),
+		},
+		"url": {
+			Value: fmt.Sprintf("http://%s:%d", resource.ResourceName, route.GetEffectivePort()),
+		},
+		"scheme": {
+			Value: "http",
+		},
+	}
+
+	outputs := []outputresource.OutputResource{}
+
+	service := r.makeService(resource, route)
+	outputs = append(outputs, service)
+
+	if route.Gateway != nil {
+		ingress := r.makeIngress(resource, route)
+		outputs = append(outputs, ingress)
+	}
+
+	return renderers.RendererOutput{
+		Resources:      outputs,
+		ComputedValues: computedValues,
+	}, nil
+}
+
+func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {
+	typeParts := strings.Split(resource.ResourceType, "/")
 	service := &corev1.Service{
-		TypeMeta: v1.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      w.ResourceName,
-			Namespace: w.ApplicationName, // TODO why is this a different namespace
-			Labels:    kubernetes.MakeDescriptiveLabels(w.ApplicationName, w.ResourceName),
+			Name:      resource.ResourceName,
+			Namespace: resource.ApplicationName,
+			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeSelectorLabels(w.ApplicationName, w.ResourceName),
+			Selector: kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, typeParts[len(typeParts)-1], resource.ResourceName),
 			Type:     corev1.ServiceTypeClusterIP,
-			Ports:    []corev1.ServicePort{},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       resource.ResourceName,
+					Port:       int32(route.GetEffectivePort()),
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + typeParts[len(typeParts)-1] + resource.ResourceName)),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
 		},
 	}
 
-	// TODO set protocol and host
-	port := corev1.ServicePort{
-		Name:       w.ResourceName,
-		Port:       int32(route.GetEffectivePort()),
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(w.ResourceType + w.ResourceName)),
-		Protocol:   corev1.ProtocolTCP,
-	}
+	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
+}
 
-	service.Spec.Ports = append(service.Spec.Ports, port)
-
-	res := outputresource.OutputResource{
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDService,
-		Deployed: false,
-		Managed:  true,
-		Type:     outputresource.TypeKubernetes,
-		Info: outputresource.K8sInfo{
-			Kind:       service.TypeMeta.Kind,
-			APIVersion: service.TypeMeta.APIVersion,
-			Name:       service.ObjectMeta.Name,
-			Namespace:  service.ObjectMeta.Namespace,
+func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {
+	ingress := &networkingv1.Ingress{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: networkingv1.SchemeGroupVersion.String(),
 		},
-		Resource: service,
-	}
-
-	computedValues := map[string]renderers.ComputedValueReference{ // TODO make this accept jsonpointer
-		"host": {
-			LocalID: outputresource.LocalIDService,
-			Value:   w.ResourceName, // TODO the url isn't stored on the output resource atm?
-		},
-		"port": {
-			LocalID: outputresource.LocalIDService,
-			Value:   route.GetEffectivePort(), // TODO the url isn't stored on the output resource atm?
-		},
-		"url": {
-			LocalID: outputresource.LocalIDService,
-			Value:   fmt.Sprintf("http://%s:%d", w.ResourceName, route.GetEffectivePort()), // TODO the url isn't stored on the output resource atm?
-		},
-		"scheme": {
-			LocalID: outputresource.LocalIDService,
-			Value:   "http", // TODO the url isn't stored on the output resource atm?
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      resource.ResourceName,
+			Namespace: resource.ApplicationName,
+			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 	}
 
-	outputResources = append(outputResources, res)
+	backend := networkingv1.IngressBackend{
+		Service: &networkingv1.IngressServiceBackend{
+			Name: resource.ResourceName,
+			Port: networkingv1.ServiceBackendPort{
+				Number: int32(route.GetEffectivePort()),
+			},
+		},
+	}
 
-	return renderers.RendererOutput{Resources: outputResources, ComputedValues: computedValues}, nil
+	if route.Gateway.Hostname == "*" {
+		spec := networkingv1.IngressSpec{
+			DefaultBackend: &backend,
+		}
+
+		ingress.Spec = spec
+	} else {
+		spec := networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: route.Gateway.Hostname,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Backend: backend,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		ingress.Spec = spec
+	}
+
+	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
 }

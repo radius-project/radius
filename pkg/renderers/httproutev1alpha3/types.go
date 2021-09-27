@@ -10,10 +10,11 @@ const (
 )
 
 type HttpRoute struct {
-	Port   *int   `json:"port"`
-	Url    string `json:"url"`
-	Host   string `json:"host"`
-	Scheme string `json:"scheme"`
+	Port    *int     `json:"port"`
+	Gateway *Gateway `json:"gateway,omitempty"`
+	Url     string   `json:"url"`
+	Host    string   `json:"host"`
+	Scheme  string   `json:"scheme"`
 }
 
 func (h HttpRoute) GetEffectivePort() int {
@@ -22,4 +23,8 @@ func (h HttpRoute) GetEffectivePort() int {
 	} else {
 		return 80
 	}
+}
+
+type Gateway struct {
+	Hostname string `json:"hostname"`
 }
