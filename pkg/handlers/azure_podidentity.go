@@ -151,7 +151,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options Dele
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {
-		properties = options.ExistingOutputResource.Resource.(map[string]string)
+		properties = options.ExistingOutputResource.PersistedProperties
 	}
 
 	podIdentityName := properties[PodIdentityNameKey]

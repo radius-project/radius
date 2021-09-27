@@ -145,14 +145,21 @@ type ComponentTrait struct {
 
 // OutputResource represents an output resource comprising a Radius component.
 type OutputResource struct {
-	LocalID            string               `bson:"id"`
-	HealthID           string               `bson:"healthId"`
-	ResourceKind       string               `bson:"resourceKind"`
-	OutputResourceInfo interface{}          `bson:"outputResourceInfo"`
-	Managed            bool                 `bson:"managed"`
-	OutputResourceType string               `bson:"outputResourceType"`
-	Resource           interface{}          `bson:"resource"`
-	Status             OutputResourceStatus `bson:"status"`
+	LocalID            string      `bson:"id"`
+	HealthID           string      `bson:"healthId"`
+	ResourceKind       string      `bson:"resourceKind"`
+	OutputResourceInfo interface{} `bson:"outputResourceInfo"`
+	Managed            bool        `bson:"managed"`
+	OutputResourceType string      `bson:"outputResourceType"`
+
+	// We persist properties returned from the resource handler for later use when
+	// processing the same resource again.
+	//
+	// This is an old pattern that we're trying to migrate away from because it requires
+	// a resource handler per-resource type. In general any per-resource type processing
+	// should be done in the renderer.
+	PersistedProperties map[string]string    `bson:"persistedProperties"`
+	Status              OutputResourceStatus `bson:"status"`
 }
 
 // GetResourceID returns the identifier of the entity/resource to be queried by the health service

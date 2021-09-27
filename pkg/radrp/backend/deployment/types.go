@@ -212,13 +212,13 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 
 		// Build database resource - copy updated properties to Resource field
 		dbOutputResource := db.OutputResource{
-			LocalID:            outputResource.LocalID,
-			HealthID:           outputResource.HealthID,
-			ResourceKind:       outputResource.Kind,
-			OutputResourceInfo: outputResource.Info,
-			Managed:            outputResource.Managed,
-			OutputResourceType: outputResource.Type,
-			Resource:           properties,
+			LocalID:             outputResource.LocalID,
+			HealthID:            outputResource.HealthID,
+			ResourceKind:        outputResource.Kind,
+			OutputResourceInfo:  outputResource.Info,
+			Managed:             outputResource.Managed,
+			OutputResourceType:  outputResource.Type,
+			PersistedProperties: properties,
 			Status: db.OutputResourceStatus{
 				ProvisioningState:        db.Provisioned,
 				ProvisioningErrorDetails: "",
@@ -310,7 +310,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 			return err
 		}
 
-		healthID := outputResource.Resource.(map[string]string)[healthcontract.HealthIDKey]
+		healthID := outputResource.PersistedProperties[healthcontract.HealthIDKey]
 		dp.unregisterOutputResourceForHealthChecks(ctx, healthID)
 	}
 

@@ -60,7 +60,7 @@ func (handler *azureCosmosAccountMongoHandler) Delete(ctx context.Context, optio
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties
 	} else {
-		properties = options.ExistingOutputResource.Resource.(map[string]string)
+		properties = options.ExistingOutputResource.PersistedProperties
 	}
 
 	if properties[ManagedKey] != "true" {
