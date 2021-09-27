@@ -37,6 +37,7 @@ func init() {
 	SchemeBuilder.Register(&ContainerComponent{}, &ContainerComponentList{})
 }
 
+//+kubebuilder:webhook:path=/validate-radius-dev-v1alpha3-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=applications,verbs=create;update;delete,versions=v1alpha3,name=application-validation.radius.dev,admissionReviewVersions={v1,v1beta1}
 var _ webhook.Validator = &ContainerComponent{}
 
 func (r *ContainerComponent) ValidateCreate() error {
