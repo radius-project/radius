@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // DaprIoPubSubTopicComponentClient contains the methods for the DaprIoPubSubTopicComponent group.
@@ -30,25 +31,73 @@ func NewDaprIoPubSubTopicComponentClient(con *armcore.Connection, subscriptionID
 	return &DaprIoPubSubTopicComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a dapr.io.PubSubTopicComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *DaprIoPubSubTopicComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, parameters DaprPubSubTopicComponentResource, options *DaprIoPubSubTopicComponentBeginCreateOrUpdateOptions) (DaprPubSubTopicComponentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, daprPubSubTopicComponentName, parameters, options)
+	if err != nil {
+		return DaprPubSubTopicComponentResourcePollerResponse{}, err
+	}
+	result := DaprPubSubTopicComponentResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("DaprIoPubSubTopicComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return DaprPubSubTopicComponentResourcePollerResponse{}, err
+	}
+	poller := &daprPubSubTopicComponentResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprPubSubTopicComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new DaprPubSubTopicComponentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to DaprPubSubTopicComponentResourcePoller.ResumeToken().
+func (client *DaprIoPubSubTopicComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (DaprPubSubTopicComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoPubSubTopicComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return DaprPubSubTopicComponentResourcePollerResponse{}, err
+	}
+	poller := &daprPubSubTopicComponentResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return DaprPubSubTopicComponentResourcePollerResponse{}, err
+	}
+	result := DaprPubSubTopicComponentResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprPubSubTopicComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a dapr.io.PubSubTopicComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoPubSubTopicComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, parameters DaprPubSubTopicComponentResource, options *DaprIoPubSubTopicComponentCreateOrUpdateOptions) (DaprPubSubTopicComponentResourceResponse, error) {
+func (client *DaprIoPubSubTopicComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, parameters DaprPubSubTopicComponentResource, options *DaprIoPubSubTopicComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, daprPubSubTopicComponentName, parameters, options)
 	if err != nil {
-		return DaprPubSubTopicComponentResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return DaprPubSubTopicComponentResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return DaprPubSubTopicComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprIoPubSubTopicComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, parameters DaprPubSubTopicComponentResource, options *DaprIoPubSubTopicComponentCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *DaprIoPubSubTopicComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, parameters DaprPubSubTopicComponentResource, options *DaprIoPubSubTopicComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent/{daprPubSubTopicComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *DaprIoPubSubTopicComponentClient) createOrUpdateCreateRequest(ctx 
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *DaprIoPubSubTopicComponentClient) createOrUpdateHandleResponse(resp *azcore.Response) (DaprPubSubTopicComponentResourceResponse, error) {
-	var val *DaprPubSubTopicComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprPubSubTopicComponentResourceResponse{}, err
-	}
-return DaprPubSubTopicComponentResourceResponse{RawResponse: resp.Response, DaprPubSubTopicComponentResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *DaprIoPubSubTopicComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *DaprIoPubSubTopicComponentClient) createOrUpdateHandleError(resp *
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a dapr.io.PubSubTopicComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *DaprIoPubSubTopicComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, daprPubSubTopicComponentName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("DaprIoPubSubTopicComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *DaprIoPubSubTopicComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoPubSubTopicComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a dapr.io.PubSubTopicComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoPubSubTopicComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentDeleteOptions) (*http.Response, error) {
+func (client *DaprIoPubSubTopicComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, daprPubSubTopicComponentName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *DaprIoPubSubTopicComponentClient) Delete(ctx context.Context, reso
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprIoPubSubTopicComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentDeleteOptions) (*azcore.Request, error) {
+func (client *DaprIoPubSubTopicComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicComponentName string, options *DaprIoPubSubTopicComponentBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent/{daprPubSubTopicComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

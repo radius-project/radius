@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // RedislabsComRedisClient contains the methods for the RedislabsComRedis group.
@@ -30,25 +31,73 @@ func NewRedislabsComRedisClient(con *armcore.Connection, subscriptionID string) 
 	return &RedislabsComRedisClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a redislabs.com.Redis resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *RedislabsComRedisClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, parameters RedisComponentResource, options *RedislabsComRedisBeginCreateOrUpdateOptions) (RedisComponentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, redisComponentName, parameters, options)
+	if err != nil {
+		return RedisComponentResourcePollerResponse{}, err
+	}
+	result := RedisComponentResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("RedislabsComRedisClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return RedisComponentResourcePollerResponse{}, err
+	}
+	poller := &redisComponentResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (RedisComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new RedisComponentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to RedisComponentResourcePoller.ResumeToken().
+func (client *RedislabsComRedisClient) ResumeCreateOrUpdate(ctx context.Context, token string) (RedisComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RedislabsComRedisClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return RedisComponentResourcePollerResponse{}, err
+	}
+	poller := &redisComponentResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return RedisComponentResourcePollerResponse{}, err
+	}
+	result := RedisComponentResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (RedisComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a redislabs.com.Redis resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RedislabsComRedisClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, parameters RedisComponentResource, options *RedislabsComRedisCreateOrUpdateOptions) (RedisComponentResourceResponse, error) {
+func (client *RedislabsComRedisClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, parameters RedisComponentResource, options *RedislabsComRedisBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, redisComponentName, parameters, options)
 	if err != nil {
-		return RedisComponentResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return RedisComponentResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return RedisComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *RedislabsComRedisClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, parameters RedisComponentResource, options *RedislabsComRedisCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *RedislabsComRedisClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, parameters RedisComponentResource, options *RedislabsComRedisBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.Redis/{redisComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *RedislabsComRedisClient) createOrUpdateCreateRequest(ctx context.C
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *RedislabsComRedisClient) createOrUpdateHandleResponse(resp *azcore.Response) (RedisComponentResourceResponse, error) {
-	var val *RedisComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return RedisComponentResourceResponse{}, err
-	}
-return RedisComponentResourceResponse{RawResponse: resp.Response, RedisComponentResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *RedislabsComRedisClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *RedislabsComRedisClient) createOrUpdateHandleError(resp *azcore.Re
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a redislabs.com.Redis resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *RedislabsComRedisClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, redisComponentName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("RedislabsComRedisClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *RedislabsComRedisClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RedislabsComRedisClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a redislabs.com.Redis resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RedislabsComRedisClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisDeleteOptions) (*http.Response, error) {
+func (client *RedislabsComRedisClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, redisComponentName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *RedislabsComRedisClient) Delete(ctx context.Context, resourceGroup
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *RedislabsComRedisClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisDeleteOptions) (*azcore.Request, error) {
+func (client *RedislabsComRedisClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.Redis/{redisComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

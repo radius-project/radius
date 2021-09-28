@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // AzureComCosmosDBMongoComponentClient contains the methods for the AzureComCosmosDBMongoComponent group.
@@ -30,25 +31,73 @@ func NewAzureComCosmosDBMongoComponentClient(con *armcore.Connection, subscripti
 	return &AzureComCosmosDBMongoComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a azure.com.CosmosDBMongoComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *AzureComCosmosDBMongoComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, parameters AzureCosmosDBMongoComponentResource, options *AzureComCosmosDBMongoComponentBeginCreateOrUpdateOptions) (AzureCosmosDBMongoComponentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, azureCosmosDBMongoComponentName, parameters, options)
+	if err != nil {
+		return AzureCosmosDBMongoComponentResourcePollerResponse{}, err
+	}
+	result := AzureCosmosDBMongoComponentResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("AzureComCosmosDBMongoComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return AzureCosmosDBMongoComponentResourcePollerResponse{}, err
+	}
+	poller := &azureCosmosDBMongoComponentResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (AzureCosmosDBMongoComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new AzureCosmosDBMongoComponentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to AzureCosmosDBMongoComponentResourcePoller.ResumeToken().
+func (client *AzureComCosmosDBMongoComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (AzureCosmosDBMongoComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("AzureComCosmosDBMongoComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return AzureCosmosDBMongoComponentResourcePollerResponse{}, err
+	}
+	poller := &azureCosmosDBMongoComponentResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return AzureCosmosDBMongoComponentResourcePollerResponse{}, err
+	}
+	result := AzureCosmosDBMongoComponentResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (AzureCosmosDBMongoComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a azure.com.CosmosDBMongoComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComCosmosDBMongoComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, parameters AzureCosmosDBMongoComponentResource, options *AzureComCosmosDBMongoComponentCreateOrUpdateOptions) (AzureCosmosDBMongoComponentResourceResponse, error) {
+func (client *AzureComCosmosDBMongoComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, parameters AzureCosmosDBMongoComponentResource, options *AzureComCosmosDBMongoComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, azureCosmosDBMongoComponentName, parameters, options)
 	if err != nil {
-		return AzureCosmosDBMongoComponentResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return AzureCosmosDBMongoComponentResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return AzureCosmosDBMongoComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *AzureComCosmosDBMongoComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, parameters AzureCosmosDBMongoComponentResource, options *AzureComCosmosDBMongoComponentCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *AzureComCosmosDBMongoComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, parameters AzureCosmosDBMongoComponentResource, options *AzureComCosmosDBMongoComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.CosmosDBMongoComponent/{azureCosmosDBMongoComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *AzureComCosmosDBMongoComponentClient) createOrUpdateCreateRequest(
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *AzureComCosmosDBMongoComponentClient) createOrUpdateHandleResponse(resp *azcore.Response) (AzureCosmosDBMongoComponentResourceResponse, error) {
-	var val *AzureCosmosDBMongoComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return AzureCosmosDBMongoComponentResourceResponse{}, err
-	}
-return AzureCosmosDBMongoComponentResourceResponse{RawResponse: resp.Response, AzureCosmosDBMongoComponentResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *AzureComCosmosDBMongoComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *AzureComCosmosDBMongoComponentClient) createOrUpdateHandleError(re
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a azure.com.CosmosDBMongoComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *AzureComCosmosDBMongoComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, options *AzureComCosmosDBMongoComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, azureCosmosDBMongoComponentName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("AzureComCosmosDBMongoComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *AzureComCosmosDBMongoComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("AzureComCosmosDBMongoComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a azure.com.CosmosDBMongoComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComCosmosDBMongoComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, options *AzureComCosmosDBMongoComponentDeleteOptions) (*http.Response, error) {
+func (client *AzureComCosmosDBMongoComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, options *AzureComCosmosDBMongoComponentBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, azureCosmosDBMongoComponentName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *AzureComCosmosDBMongoComponentClient) Delete(ctx context.Context, 
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *AzureComCosmosDBMongoComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, options *AzureComCosmosDBMongoComponentDeleteOptions) (*azcore.Request, error) {
+func (client *AzureComCosmosDBMongoComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureCosmosDBMongoComponentName string, options *AzureComCosmosDBMongoComponentBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.CosmosDBMongoComponent/{azureCosmosDBMongoComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

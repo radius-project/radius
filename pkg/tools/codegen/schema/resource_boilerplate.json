@@ -135,6 +135,10 @@
         "tags": [
           "{{ .QualifiedName }}"
         ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+          "final-state-via" : "location"
+        },
         "description": "Creates or updates a {{ .QualifiedName }} resource.",
         "parameters": [
           {
@@ -196,6 +200,13 @@
       "delete": {
         "description": "Deletes a {{ .QualifiedName }} resource.",
         "operationId": "{{ .QualifiedName }}_Delete",
+        "tags": [
+          "{{ .QualifiedName }}"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+          "final-state-via" : "location"
+        },
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -231,10 +242,7 @@
               "$ref": "#/definitions/ErrorResponse"
             }
           }
-        },
-        "tags": [
-          "{{ .QualifiedName }}"
-        ]
+        }
       }
     }
   }

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // AzureComServiceBusQueueComponentClient contains the methods for the AzureComServiceBusQueueComponent group.
@@ -30,25 +31,73 @@ func NewAzureComServiceBusQueueComponentClient(con *armcore.Connection, subscrip
 	return &AzureComServiceBusQueueComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a azure.com.ServiceBusQueueComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *AzureComServiceBusQueueComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (AzureServiceBusComponentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, parameters, options)
+	if err != nil {
+		return AzureServiceBusComponentResourcePollerResponse{}, err
+	}
+	result := AzureServiceBusComponentResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("AzureComServiceBusQueueComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return AzureServiceBusComponentResourcePollerResponse{}, err
+	}
+	poller := &azureServiceBusComponentResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (AzureServiceBusComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new AzureServiceBusComponentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to AzureServiceBusComponentResourcePoller.ResumeToken().
+func (client *AzureComServiceBusQueueComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (AzureServiceBusComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("AzureComServiceBusQueueComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return AzureServiceBusComponentResourcePollerResponse{}, err
+	}
+	poller := &azureServiceBusComponentResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return AzureServiceBusComponentResourcePollerResponse{}, err
+	}
+	result := AzureServiceBusComponentResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (AzureServiceBusComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a azure.com.ServiceBusQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComServiceBusQueueComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentCreateOrUpdateOptions) (AzureServiceBusComponentResourceResponse, error) {
+func (client *AzureComServiceBusQueueComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, parameters, options)
 	if err != nil {
-		return AzureServiceBusComponentResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return AzureServiceBusComponentResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return AzureServiceBusComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *AzureComServiceBusQueueComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *AzureComServiceBusQueueComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent/{azureServiceBusComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *AzureComServiceBusQueueComponentClient) createOrUpdateCreateReques
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *AzureComServiceBusQueueComponentClient) createOrUpdateHandleResponse(resp *azcore.Response) (AzureServiceBusComponentResourceResponse, error) {
-	var val *AzureServiceBusComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return AzureServiceBusComponentResourceResponse{}, err
-	}
-return AzureServiceBusComponentResourceResponse{RawResponse: resp.Response, AzureServiceBusComponentResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *AzureComServiceBusQueueComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *AzureComServiceBusQueueComponentClient) createOrUpdateHandleError(
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a azure.com.ServiceBusQueueComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *AzureComServiceBusQueueComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("AzureComServiceBusQueueComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *AzureComServiceBusQueueComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("AzureComServiceBusQueueComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a azure.com.ServiceBusQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComServiceBusQueueComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentDeleteOptions) (*http.Response, error) {
+func (client *AzureComServiceBusQueueComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *AzureComServiceBusQueueComponentClient) Delete(ctx context.Context
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *AzureComServiceBusQueueComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentDeleteOptions) (*azcore.Request, error) {
+func (client *AzureComServiceBusQueueComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent/{azureServiceBusComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

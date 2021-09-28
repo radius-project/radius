@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // RadiusResourceClient contains the methods for the RadiusResource group.
@@ -30,9 +31,57 @@ func NewRadiusResourceClient(con *armcore.Connection, subscriptionID string) *Ra
 	return &RadiusResourceClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginDelete - Deletes a RadiusResource resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *RadiusResourceClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, radiusResourceType string, radiusResourceName string, options *RadiusResourceBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, radiusResourceType, radiusResourceName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("RadiusResourceClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *RadiusResourceClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RadiusResourceClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a RadiusResource resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RadiusResourceClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, radiusResourceType string, radiusResourceName string, options *RadiusResourceDeleteOptions) (*http.Response, error) {
+func (client *RadiusResourceClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, radiusResourceType string, radiusResourceName string, options *RadiusResourceBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, radiusResourceType, radiusResourceName, options)
 	if err != nil {
 		return nil, err
@@ -44,11 +93,11 @@ func (client *RadiusResourceClient) Delete(ctx context.Context, resourceGroupNam
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *RadiusResourceClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, radiusResourceType string, radiusResourceName string, options *RadiusResourceDeleteOptions) (*azcore.Request, error) {
+func (client *RadiusResourceClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, radiusResourceType string, radiusResourceName string, options *RadiusResourceBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

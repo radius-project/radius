@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // MongodbComMongoDBComponentClient contains the methods for the MongodbComMongoDBComponent group.
@@ -30,25 +31,73 @@ func NewMongodbComMongoDBComponentClient(con *armcore.Connection, subscriptionID
 	return &MongodbComMongoDBComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a mongodb.com.MongoDBComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *MongodbComMongoDBComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (MongoDBComponentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, mongoDBComponentName, parameters, options)
+	if err != nil {
+		return MongoDBComponentResourcePollerResponse{}, err
+	}
+	result := MongoDBComponentResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("MongodbComMongoDBComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return MongoDBComponentResourcePollerResponse{}, err
+	}
+	poller := &mongoDBComponentResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (MongoDBComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new MongoDBComponentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to MongoDBComponentResourcePoller.ResumeToken().
+func (client *MongodbComMongoDBComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (MongoDBComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("MongodbComMongoDBComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return MongoDBComponentResourcePollerResponse{}, err
+	}
+	poller := &mongoDBComponentResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return MongoDBComponentResourcePollerResponse{}, err
+	}
+	result := MongoDBComponentResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (MongoDBComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a mongodb.com.MongoDBComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MongodbComMongoDBComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentCreateOrUpdateOptions) (MongoDBComponentResourceResponse, error) {
+func (client *MongodbComMongoDBComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, mongoDBComponentName, parameters, options)
 	if err != nil {
-		return MongoDBComponentResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return MongoDBComponentResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return MongoDBComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *MongodbComMongoDBComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *MongodbComMongoDBComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent/{mongoDBComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *MongodbComMongoDBComponentClient) createOrUpdateCreateRequest(ctx 
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *MongodbComMongoDBComponentClient) createOrUpdateHandleResponse(resp *azcore.Response) (MongoDBComponentResourceResponse, error) {
-	var val *MongoDBComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return MongoDBComponentResourceResponse{}, err
-	}
-return MongoDBComponentResourceResponse{RawResponse: resp.Response, MongoDBComponentResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *MongodbComMongoDBComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *MongodbComMongoDBComponentClient) createOrUpdateHandleError(resp *
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a mongodb.com.MongoDBComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *MongodbComMongoDBComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, mongoDBComponentName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("MongodbComMongoDBComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *MongodbComMongoDBComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("MongodbComMongoDBComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a mongodb.com.MongoDBComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MongodbComMongoDBComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentDeleteOptions) (*http.Response, error) {
+func (client *MongodbComMongoDBComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, mongoDBComponentName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *MongodbComMongoDBComponentClient) Delete(ctx context.Context, reso
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *MongodbComMongoDBComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentDeleteOptions) (*azcore.Request, error) {
+func (client *MongodbComMongoDBComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent/{mongoDBComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

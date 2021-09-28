@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // RabbitmqComMessageQueueClient contains the methods for the RabbitmqComMessageQueue group.
@@ -30,25 +31,73 @@ func NewRabbitmqComMessageQueueClient(con *armcore.Connection, subscriptionID st
 	return &RabbitmqComMessageQueueClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a rabbitmq.com.MessageQueue resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *RabbitmqComMessageQueueClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (RabbitMQComponentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, rabbitMQComponentName, parameters, options)
+	if err != nil {
+		return RabbitMQComponentResourcePollerResponse{}, err
+	}
+	result := RabbitMQComponentResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("RabbitmqComMessageQueueClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return RabbitMQComponentResourcePollerResponse{}, err
+	}
+	poller := &rabbitMQComponentResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (RabbitMQComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new RabbitMQComponentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to RabbitMQComponentResourcePoller.ResumeToken().
+func (client *RabbitmqComMessageQueueClient) ResumeCreateOrUpdate(ctx context.Context, token string) (RabbitMQComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RabbitmqComMessageQueueClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return RabbitMQComponentResourcePollerResponse{}, err
+	}
+	poller := &rabbitMQComponentResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return RabbitMQComponentResourcePollerResponse{}, err
+	}
+	result := RabbitMQComponentResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (RabbitMQComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a rabbitmq.com.MessageQueue resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueCreateOrUpdateOptions) (RabbitMQComponentResourceResponse, error) {
+func (client *RabbitmqComMessageQueueClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, rabbitMQComponentName, parameters, options)
 	if err != nil {
-		return RabbitMQComponentResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return RabbitMQComponentResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return RabbitMQComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx con
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *RabbitmqComMessageQueueClient) createOrUpdateHandleResponse(resp *azcore.Response) (RabbitMQComponentResourceResponse, error) {
-	var val *RabbitMQComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return RabbitMQComponentResourceResponse{}, err
-	}
-return RabbitMQComponentResourceResponse{RawResponse: resp.Response, RabbitMQComponentResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *RabbitmqComMessageQueueClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdateHandleError(resp *azc
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a rabbitmq.com.MessageQueue resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *RabbitmqComMessageQueueClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, rabbitMQComponentName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("RabbitmqComMessageQueueClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *RabbitmqComMessageQueueClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RabbitmqComMessageQueueClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a rabbitmq.com.MessageQueue resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueDeleteOptions) (*http.Response, error) {
+func (client *RabbitmqComMessageQueueClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, rabbitMQComponentName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *RabbitmqComMessageQueueClient) Delete(ctx context.Context, resourc
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *RabbitmqComMessageQueueClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueDeleteOptions) (*azcore.Request, error) {
+func (client *RabbitmqComMessageQueueClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

@@ -125,6 +125,10 @@
       "delete": {
         "description": "Deletes a RadiusResource resource.",
         "operationId": "RadiusResource_Delete",
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+          "final-state-via" : "location"
+        },
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -206,6 +210,10 @@
       "delete": {
         "description": "Deletes a radius.com.AwesomeComponent resource.",
         "operationId": "radius.com.AwesomeComponent_Delete",
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+          "final-state-via" : "location"
+        },
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -279,6 +287,10 @@
       "put": {
         "description": "Creates or updates a radius.com.AwesomeComponent resource.",
         "operationId": "radius.com.AwesomeComponent_CreateOrUpdate",
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+          "final-state-via" : "location"
+        },
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -414,6 +426,10 @@
       "delete": {
         "description": "Deletes a Application resource.",
         "operationId": "Application_Delete",
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+          "final-state-via" : "location"
+        },
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -481,6 +497,10 @@
       "put": {
         "description": "Creates or updates a Application resource.",
         "operationId": "Application_CreateOrUpdate",
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options" : {
+          "final-state-via" : "location"
+        },
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
