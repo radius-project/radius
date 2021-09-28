@@ -1,0 +1,41 @@
+{
+    "apiVersion": "bicep.dev/v1alpha3",
+    "kind": "DeploymentTemplate",
+    "metadata": {
+        "name": "arm",
+        "namespace": "arm"
+    },
+    "spec": {
+        "content": {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "metadata": {
+                "_generator": {
+                    "name": "bicep",
+                    "version": "0.4.721.5481",
+                    "templateHash": "12305972426212226061"
+                }
+            },
+            "functions": [],
+            "resources": [
+                {
+                    "type": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute",
+                    "apiVersion": "2018-09-01-preview",
+                    "name": "[format('{0}/{1}/{2}', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'frontendhttp')]",
+                    "properties": {
+                        "port": 80,
+                        "gateway": "test"
+                    },
+                    "dependsOn": [
+                        "[resourceId('Microsoft.CustomProviders/resourceProviders/Application', 'radiusv3', 'kubernetes-resources-container-httpbinding')]"
+                    ]
+                },
+                {
+                    "type": "Microsoft.CustomProviders/resourceProviders/Application",
+                    "apiVersion": "2018-09-01-preview",
+                    "name": "[format('{0}/{1}', 'radiusv3', 'kubernetes-resources-container-httpbinding')]"
+                }
+            ]
+        }
+    }
+}

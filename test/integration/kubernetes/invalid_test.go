@@ -54,17 +54,15 @@ func TestInvalidApplication(t *testing.T) {
 // the CRD type definitions (component_types.go).
 // For example, we validate the the type `kind` is a string, but not that
 // the trait can only be oneof any trait type.
-func TestBasicInvalid(t *testing.T) {
-	t.Skip("Need to readd webhook support")
-
+func TestInvalidHttpRoute(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
 	controllerStep := kubernetestest.ControllerStep{
-		Namespace:      "invalidbadkind",
-		TemplateFolder: "testdata/invalidbadkind/",
+		Namespace:      "arm",
+		TemplateFolder: "testdata/invalidhttproute/",
 	}
 
 	test := kubernetestest.NewControllerTest(ctx, controllerStep)

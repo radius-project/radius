@@ -2,7 +2,11 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -10,8 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/Azure/radius/pkg/cli/armtemplate"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
+	"github.com/Azure/radius/pkg/radrp/schemav3"
 	"github.com/Azure/radius/pkg/renderers"
 )
 
@@ -37,5 +43,51 @@ func (w *ResourceWebhook) ValidateCreate(ctx context.Context, request admission.
 	renderResource := &renderers.RendererResource{}
 	err = converters.ConvertToRenderResource(resource, renderResource)
 
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+	validator, err := w.findValidator(renderResource.ResourceType)
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	template := resource.Spec.Template
+
+	// Get arm template from template part
+	if template == nil {
+		return admission.Errored(http.StatusBadRequest, errors.New("template is nil"))
+	}
+
+	armResource := &armtemplate.Resource{}
+	err = json.Unmarshal(template.Raw, armResource)
+
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	if armResource.Body != nil {
+		armJson, err := json.Marshal(armResource.Body)
+		if err != nil {
+			return admission.Errored(http.StatusBadRequest, err)
+		}
+
+		validationErrs := validator.ValidateJSON(armJson)
+		if len(validationErrs) > 0 {
+			// Ignore errors on env for now until https://github.com/Azure/bicep/issues/4565 is fixed.
+			// This is temporary.
+			if !strings.HasPrefix(validationErrs[0].Position, "(root).properties.container.env") {
+				return admission.Errored(http.StatusBadRequest, &schemav3.AggregateValidationError{Details: validationErrs})
+			}
+		}
+	}
+
 	return admission.Allowed("")
+}
+
+func (w *ResourceWebhook) findValidator(resourceType string) (schemav3.Validator, error) {
+	validator, ok := schemav3.GetValidator(resourceType)
+	if !ok {
+		return nil, fmt.Errorf("no validator found for resource type %s", resourceType)
+	}
+	return validator, nil
 }
