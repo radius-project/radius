@@ -7,172 +7,113 @@ package converters
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"path"
 	"testing"
 
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
-	"github.com/Azure/radius/pkg/model/components"
+	"github.com/Azure/radius/pkg/cli/armtemplate"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_ConvertComponentToInternal(t *testing.T) {
-	uses := map[string]interface{}{
-		"binding": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
-		"env": map[string]interface{}{
-			"SERVICE__BACKEND__HOST": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default.host]",
-		},
-		"secrets": map[string]interface{}{
-			"store": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
-			"keys": map[string]interface{}{
-				"secret": "[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'frontend-backend', 'frontend')).bindings.default]",
-			},
-		},
-	}
-	usesJson, err := json.Marshal(uses)
-	require.NoError(t, err, "failed to marshal uses json")
+func Test_ConvertToRenderResource(t *testing.T) {
+	original, err := ioutil.ReadFile(path.Join("testdata", "frontend-component.json"))
+	require.NoError(t, err)
 
-	trait := map[string]interface{}{
-		"kind":    "radius.dev/InboundRoute@v1alpha1",
-		"binding": "web",
-	}
+	resource := radiusv1alpha3.Resource{}
+	err = json.Unmarshal(original, &resource)
+	require.NoError(t, err)
 
-	traitJson, err := json.Marshal(trait)
-	require.NoError(t, err, "failed to marshal traits json")
-
-	config := map[string]interface{}{
-		"managed": "true",
-	}
-
-	configJson, err := json.Marshal(config)
-	require.NoError(t, err, "failed to marshal config json")
-
-	bindings := map[string]interface{}{
-		"default": map[string]interface{}{
-			"kind": "http",
-		},
-	}
-
-	bindingJson, err := json.Marshal(bindings)
-	require.NoError(t, err, "failed to marshal bindings json")
-
-	run := map[string]interface{}{
-		"container": map[string]interface{}{
-			"image": "rynowak/frontend:0.5.0-dev",
-		},
-	}
-
-	runJson, err := json.Marshal(run)
-	require.NoError(t, err, "failed to marshal run json")
-
-	original := radiusv1alpha1.Component{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "radius.dev/v1alpha1",
-			Kind:       "Component",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "frontend",
-			Namespace: "default",
-			Annotations: map[string]string{
-				kubernetes.AnnotationsApplication: "frontend-backend",
-				kubernetes.AnnotationsComponent:   "frontend",
-			},
-		},
-		Spec: v1alpha1.ComponentSpec{
-			Kind:      "Component",
-			Run:       &runtime.RawExtension{Raw: runJson},
-			Bindings:  &runtime.RawExtension{Raw: bindingJson},
-			Hierarchy: []string{"frontend-backend", "frontend"},
-			Uses: &[]runtime.RawExtension{
-				{
-					Raw: usesJson,
+	actual := renderers.RendererResource{}
+	expected := renderers.RendererResource{
+		ResourceName:    "frontend",
+		ApplicationName: "azure-resources-container-httpbinding",
+		ResourceType:    "ContainerComponent",
+		Definition: map[string]interface{}{
+			"connections": map[string]interface{}{
+				"backend": map[string]interface{}{
+					"kind":   "Http",
+					"source": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]",
 				},
 			},
-			Traits: &[]runtime.RawExtension{
-				{
-					Raw: traitJson,
-				},
-			},
-			Config: &runtime.RawExtension{Raw: configJson},
-		},
-	}
-
-	actual := components.GenericComponent{}
-	expected := components.GenericComponent{
-		Name: "frontend",
-		Kind: "Component",
-		Config: map[string]interface{}{
-			"managed": "true",
-		},
-		Run: map[string]interface{}{
 			"container": map[string]interface{}{
+				"env": map[string]interface{}{
+					"SERVICE__BACKEND__HOST": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')).host]",
+					"SERVICE__BACKEND__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')).port]",
+				},
 				"image": "rynowak/frontend:0.5.0-dev",
-			},
-		},
-		Bindings: map[string]components.GenericBinding{
-			"default": {
-				Kind:                 "http",
-				AdditionalProperties: map[string]interface{}{},
-			},
-		},
-		Uses: []components.GenericDependency{
-			{
-				Binding: components.BindingExpression{
-					Kind: "component",
-					Value: &components.ComponentBindingValue{
-						Application: "frontend-backend",
-						Component:   "frontend",
-						Binding:     "default",
+				"ports": map[string]interface{}{
+					"web": map[string]interface{}{
+						"containerPort": 80.0,
+						"provides":      "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'frontend')]",
 					},
-				},
-				Env: map[string]components.BindingExpression{
-					"SERVICE__BACKEND__HOST": {
-						Kind: "component",
-						Value: &components.ComponentBindingValue{
-							Application: "frontend-backend",
-							Component:   "frontend",
-							Binding:     "default",
-							Property:    "host",
-						},
-					},
-				},
-				Secrets: &components.GenericDependencySecrets{
-					Store: components.BindingExpression{
-						Kind: "component",
-						Value: &components.ComponentBindingValue{
-							Application: "frontend-backend",
-							Component:   "frontend",
-							Binding:     "default",
-						},
-					},
-					Keys: map[string]components.BindingExpression{
-						"secret": {
-							Kind: "component",
-							Value: &components.ComponentBindingValue{
-								Application: "frontend-backend",
-								Component:   "frontend",
-								Binding:     "default",
-							},
-						},
-					},
-				},
-			},
-		},
-		Traits: []components.GenericTrait{
-			{
-				Kind: "radius.dev/InboundRoute@v1alpha1",
-				AdditionalProperties: map[string]interface{}{
-					"binding": "web",
 				},
 			},
 		},
 	}
 
-	err = ConvertComponentToInternal(&original, &actual, nil)
+	err = ConvertToRenderResource(&resource, &actual)
 	require.NoError(t, err, "failed to convert component")
 
 	require.Equal(t, expected, actual)
+}
+
+func Test_ConvertToARMResource(t *testing.T) {
+	original, err := ioutil.ReadFile(path.Join("testdata", "frontend-component.json"))
+	require.NoError(t, err)
+
+	resource := radiusv1alpha3.Resource{}
+	err = json.Unmarshal(original, &resource)
+	require.NoError(t, err)
+
+	// Our test data has no status defined so add some computed values for testing.
+	computedValues := map[string]renderers.ComputedValueReference{
+		"A": {
+			Value: "A-Value",
+		},
+		"B": {
+			Value: "B-Value",
+		},
+	}
+
+	b, err := json.Marshal(&computedValues)
+	require.NoError(t, err)
+	resource.Status.ComputedValues = &runtime.RawExtension{Raw: b}
+
+	arm := armtemplate.Resource{}
+	err = json.Unmarshal(resource.Spec.Template.Raw, &arm)
+	require.NoError(t, err)
+
+	// Modifies arm.Body in place
+	err = ConvertToARMResource(&resource, arm.Body)
+	require.NoError(t, err)
+
+	expected := map[string]interface{}{
+		"properties": map[string]interface{}{
+			"A": "A-Value",
+			"B": "B-Value",
+			"connections": map[string]interface{}{
+				"backend": map[string]interface{}{
+					"kind":   "Http",
+					"source": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]",
+				},
+			},
+			"container": map[string]interface{}{
+				"env": map[string]interface{}{
+					"SERVICE__BACKEND__HOST": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')).host]",
+					"SERVICE__BACKEND__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')).port]",
+				},
+				"image": "rynowak/frontend:0.5.0-dev",
+				"ports": map[string]interface{}{
+					"web": map[string]interface{}{
+						"containerPort": 80.0,
+						"provides":      "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'frontend')]",
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, expected, arm.Body)
 }

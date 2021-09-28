@@ -12,6 +12,9 @@ import (
 	"github.com/Azure/radius/pkg/algorithm/graph"
 	"github.com/Azure/radius/pkg/health"
 	"github.com/Azure/radius/pkg/healthcontract"
+	"github.com/Azure/radius/pkg/resourcekinds"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // OutputResource represents the output of rendering a resource
@@ -167,4 +170,21 @@ func NewOutputResource(
 	}
 
 	return or
+}
+
+func NewKubernetesOutputResource(localID string, obj runtime.Object, objectMeta metav1.ObjectMeta) OutputResource {
+	return OutputResource{
+		Kind:     resourcekinds.Kubernetes,
+		LocalID:  localID,
+		Deployed: false,
+		Managed:  true,
+		Type:     TypeKubernetes,
+		Info: K8sInfo{
+			Kind:       obj.GetObjectKind().GroupVersionKind().Kind,
+			APIVersion: obj.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+			Name:       objectMeta.Name,
+			Namespace:  objectMeta.Namespace,
+		},
+		Resource: obj,
+	}
 }

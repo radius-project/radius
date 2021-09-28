@@ -112,7 +112,7 @@
     "AzureCosmosDBMongoComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure CosmosDB with Mongo",
@@ -165,7 +165,7 @@
     "AzureCosmosDBSQLComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure CosmosDB with SQL",
@@ -237,7 +237,7 @@
     "AzureKeyVaultComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure KeyVault",
@@ -300,7 +300,7 @@
     "AzureServiceBusComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "Component for Azure ServiceBus",
@@ -318,12 +318,19 @@
     "BasicComponentProperties": {
       "description": "Basic properties of a component.",
       "properties": {
-        "revision": {
-          "description": "Revision of the component",
-          "type": "string"
-        },
         "status": {
           "$ref": "#/definitions/ComponentStatus",
+          "description": "Status of the component",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "BasicRouteProperties": {
+      "description": "Basic properties of a route.",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/RouteStatus",
           "description": "Status of the component",
           "type": "object"
         }
@@ -371,7 +378,7 @@
       "type": "object"
     },
     "ComponentOutputResource": {
-      "description": "Properties of a component.",
+      "description": "Properties of an output resource.",
       "type": "object"
     },
     "ComponentStatus": {
@@ -468,7 +475,7 @@
     "ContainerComponentResource": {
       "allOf": [
         {
-          "$ref": "#/definitions/TrackedResource"
+          "$ref": "#/definitions/ProxyResource"
         }
       ],
       "description": "The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform",
@@ -536,13 +543,13 @@
       ],
       "type": "object"
     },
-    "DaprPubSubComponentList": {
-      "description": "List of dapr.io.PubSubComponent resources.",
+    "DaprInvokeRouteList": {
+      "description": "List of dapr.io.InvokeRoute resources.",
       "properties": {
         "value": {
-          "description": "List of dapr.io.PubSubComponent resources.",
+          "description": "List of dapr.io.InvokeRoute resources.",
           "items": {
-            "$ref": "#/definitions/DaprPubSubComponentResource"
+            "$ref": "#/definitions/DaprInvokeRouteResource"
           },
           "type": "array"
         }
@@ -552,7 +559,59 @@
       ],
       "type": "object"
     },
-    "DaprPubSubComponentProperties": {
+    "DaprInvokeRouteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicRouteProperties"
+        }
+      ],
+      "properties": {
+        "appId": {
+          "description": "The Dapr appId used for the reoute",
+          "type": "string"
+        }
+      },
+      "required": [
+        "appId"
+      ],
+      "type": "object"
+    },
+    "DaprInvokeRouteResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource that specifies an Dapr Service Invocation Route. A Dapr Service Invocation Route describes a pattern of communication between components.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprInvokeRouteProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "DaprPubSubTopicComponentList": {
+      "description": "List of dapr.io.PubSubTopicComponent resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.PubSubTopicComponent resources.",
+          "items": {
+            "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "DaprPubSubTopicComponentProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -560,53 +619,48 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
-              "description": "Dapr Pub/Sub kind",
-              "type": "string"
-            },
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
-              "type": "boolean"
-            },
-            "resource": {
-              "description": "PubSub resource, for unmanaged",
-              "type": "string"
-            },
-            "topic": {
-              "description": "PubSub topic",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        }
-      },
-      "required": [
-        "config"
-      ]
-    },
-    "DaprPubSubComponentResource": {
-      "description": "Component for Dapr Pub/Sub",
-      "properties": {
         "kind": {
+          "description": "The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.",
           "enum": [
-            "dapr.io/PubSubTopic@v1alpha1"
+            "any",
+            "pubsub.azure.servicebus"
           ],
           "type": "string"
         },
-        "properties": {
-          "$ref": "#/definitions/DaprPubSubComponentProperties"
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
+          "type": "boolean"
+        },
+        "resource": {
+          "description": "PubSub resource, for unmanaged",
+          "type": "string"
+        },
+        "topic": {
+          "description": "PubSub topic",
+          "type": "string"
         }
       },
       "required": [
-        "kind",
-        "properties"
+        "kind"
       ]
+    },
+    "DaprPubSubTopicComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Component for Dapr Pub/Sub",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubTopicComponentProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "DaprStateStoreComponentList": {
       "description": "List of dapr.io.StateStoreComponent resources.",
@@ -632,52 +686,48 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
-              "description": "Statestore kind",
-              "type": "string"
-            },
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
-              "enum": [
-                true
-              ],
-              "example": [
-                true
-              ],
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "managed",
-            "kind"
-          ],
-          "type": "object"
-        }
-      },
-      "required": [
-        "config"
-      ]
-    },
-    "DaprStateStoreComponentResource": {
-      "description": "Component for Dapr state store",
-      "properties": {
         "kind": {
+          "description": "The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.",
           "enum": [
-            "dapr.io/StateStore@v1alpha1"
+            "any",
+            "state.sqlserver",
+            "state.azure.tablestorage"
           ],
           "type": "string"
         },
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ],
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "managed",
+        "kind"
+      ]
+    },
+    "DaprStateStoreComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Component for Dapr state store",
+      "properties": {
         "properties": {
           "$ref": "#/definitions/DaprStateStoreComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "DaprTrait": {
       "additionalProperties": false,
@@ -764,6 +814,81 @@
       "title": "Error response",
       "type": "object"
     },
+    "HttpRouteGateway": {
+      "additionalProperties": false,
+      "description": "Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet.",
+      "properties": {
+        "hostname": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "hostname"
+      ],
+      "type": "object"
+    },
+    "HttpRouteList": {
+      "description": "List of HttpRoute resources.",
+      "properties": {
+        "value": {
+          "description": "List of HttpRoute resources.",
+          "items": {
+            "$ref": "#/definitions/HttpRouteResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "HttpRouteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicRouteProperties"
+        }
+      ],
+      "properties": {
+        "gateway": {
+          "$ref": "#/definitions/HttpRouteGateway"
+        },
+        "hostname": {
+          "description": "The internal hostname accepting traffic for the route. Readonly.",
+          "type": "number"
+        },
+        "port": {
+          "description": "The port number for the route. Defaults to 80.",
+          "type": "number"
+        },
+        "scheme": {
+          "description": "The scheme used for traffic. Readonly.",
+          "type": "number"
+        },
+        "url": {
+          "description": "A stable URL that that can be used to route traffic to a component. Readonly.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "HttpRouteResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a component.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/HttpRouteProperties"
+        }
+      },
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
     "Identity": {
       "description": "Identity for the resource.",
       "properties": {
@@ -789,27 +914,6 @@
           }
         }
       }
-    },
-    "InboundRouteTrait": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/ComponentTrait"
-        }
-      ],
-      "description": "InboundRoute ComponentTrait",
-      "properties": {
-        "binding": {
-          "description": "Binding name.",
-          "type": "string"
-        },
-        "hostName": {
-          "description": "Host name.",
-          "type": "string"
-        }
-      },
-      "type": "object",
-      "x-ms-discriminator-value": "radius.dev/InboundRoute@v1alpha1"
     },
     "KeyVaultProperties": {
       "properties": {
@@ -865,45 +969,33 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
-              "type": "boolean"
-            },
-            "resource": {
-              "description": "The ID of the user-managed DB with Mongo API to use for this Component",
-              "example": [
-                "account::mongodb.id"
-              ],
-              "type": "string"
-            }
-          },
-          "type": "object"
-        }
-      },
-      "required": [
-        "config"
-      ]
-    },
-    "MongoDBComponentResource": {
-      "description": "The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.",
-      "properties": {
-        "kind": {
-          "enum": [
-            "mongodb.com/Mongo@v1alpha1"
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
+          "type": "boolean"
+        },
+        "resource": {
+          "description": "The ID of the user-managed DB with Mongo API to use for this Component",
+          "example": [
+            "account::mongodb.id"
           ],
           "type": "string"
-        },
+        }
+      }
+    },
+    "MongoDBComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.",
+      "properties": {
         "properties": {
           "$ref": "#/definitions/MongoDBComponentProperties"
         }
       },
-      "required": [
-        "kind",
-        "properties"
-      ]
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "Operation": {
       "description": "Details of a REST API operation, returned from the Resource Provider Operations API",
@@ -1103,52 +1195,77 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component.",
-              "enum": [
-                true
-              ],
-              "example": [
-                true
-              ],
-              "type": "boolean"
-            },
-            "queue": {
-              "description": "The name of the queue",
-              "type": "string"
-            }
-          },
-          "required": [
-            "managed",
-            "queue"
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component.",
+          "enum": [
+            true
           ],
-          "type": "object"
+          "example": [
+            true
+          ],
+          "type": "boolean"
+        },
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
         }
       },
       "required": [
-        "config"
+        "managed",
+        "queue"
       ]
     },
     "RabbitMQComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
       "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
       "properties": {
-        "kind": {
-          "enum": [
-            "rabbitmq.com/MessageQueue@v1alpha1"
-          ],
-          "type": "string"
-        },
         "properties": {
           "$ref": "#/definitions/RabbitMQComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "RadiusResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Interface for generic component -- useful for listing components without specifying a type",
+      "properties": {
+        "properties": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "RadiusResourceList": {
+      "description": "List of RadiusResource resources.",
+      "properties": {
+        "value": {
+          "description": "List of RadiusResource resources.",
+          "items": {
+            "$ref": "#/definitions/RadiusResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
     },
     "RedisComponentList": {
       "description": "List of redislabs.com.Redis resources.",
@@ -1174,68 +1291,62 @@
         }
       ],
       "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "connectionString": {
-              "description": "The Redis connection string used to connect to the redis cache",
-              "example": [
-                "myrediscache.redis.cache.windows.net:6380",
-                "redis.default.svc.cluster.local:6379"
-              ],
-              "type": "string"
-            },
-            "host": {
-              "description": "The host name of the redis cache to which you are connecting",
-              "example": [
-                "myrediscache.redis.cache.windows.net",
-                "redis.default.svc.cluster.local"
-              ],
-              "type": "string"
-            },
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (Redis currently only supports true)",
-              "enum": [
-                true
-              ],
-              "example": [
-                true
-              ],
-              "type": "boolean"
-            },
-            "port": {
-              "description": "The port value of the redis cache to which you are connecting",
-              "example": [
-                6380,
-                6379
-              ],
-              "type": "integer"
-            }
-          },
-          "type": "object"
-        }
-      },
-      "required": [
-        "config"
-      ]
-    },
-    "RedisComponentResource": {
-      "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",
-      "properties": {
-        "kind": {
-          "enum": [
-            "redislabs.com/Redis@v1alpha1"
+        "connectionString": {
+          "description": "The Redis connection string used to connect to the redis cache",
+          "example": [
+            "myrediscache.redis.cache.windows.net:6380",
+            "redis.default.svc.cluster.local:6379"
           ],
           "type": "string"
         },
+        "host": {
+          "description": "The host name of the redis cache to which you are connecting",
+          "example": [
+            "myrediscache.redis.cache.windows.net",
+            "redis.default.svc.cluster.local"
+          ],
+          "type": "string"
+        },
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (Redis currently only supports true)",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ],
+          "type": "boolean"
+        },
+        "port": {
+          "description": "The port value of the redis cache to which you are connecting",
+          "example": [
+            6380,
+            6379
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "managed"
+      ]
+    },
+    "RedisComponentResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",
+      "properties": {
         "properties": {
           "$ref": "#/definitions/RedisComponentProperties"
         }
       },
       "required": [
-        "kind",
         "properties"
-      ]
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "Resource": {
       "description": "Common fields that are returned in the response for all Azure Resource Manager resources",
@@ -1350,6 +1461,30 @@
         }
       },
       "x-ms-azure-resource": true
+    },
+    "RouteOutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object"
+    },
+    "RouteStatus": {
+      "description": "Status of a route.",
+      "properties": {
+        "healthState": {
+          "description": "Health state of the route",
+          "type": "string"
+        },
+        "outputResources": {
+          "items": {
+            "$ref": "#/definitions/RouteOutputResource"
+          },
+          "type": "array"
+        },
+        "provisioningState": {
+          "description": "Provisioning state of the route",
+          "type": "string"
+        }
+      },
+      "type": "object"
     },
     "Sku": {
       "description": "The resource model definition representing SKU",
@@ -1590,10 +1725,18 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "DaprPubSubComponentNameParameter": {
-      "description": "The name of the dapr.io.PubSubComponent resource.",
+    "DaprInvokeRouteNameParameter": {
+      "description": "The name of the dapr.io.InvokeRoute resource.",
       "in": "path",
-      "name": "daprPubSubComponentName",
+      "name": "daprInvokeRouteName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "DaprPubSubTopicComponentNameParameter": {
+      "description": "The name of the dapr.io.PubSubTopicComponent resource.",
+      "in": "path",
+      "name": "daprPubSubTopicComponentName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -1602,6 +1745,14 @@
       "description": "The name of the dapr.io.StateStoreComponent resource.",
       "in": "path",
       "name": "daprStateStoreComponentName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "HttpRouteNameParameter": {
+      "description": "The name of the HttpRoute resource.",
+      "in": "path",
+      "name": "httpRouteName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -1636,6 +1787,22 @@
       "description": "The name of the rabbitmq.com.MessageQueue resource.",
       "in": "path",
       "name": "rabbitMQComponentName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "RadiusResourceNameParameter": {
+      "description": "The name of the RadiusResource resource.",
+      "in": "path",
+      "name": "radiusResourceName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "RadiusResourceTypeParameter": {
+      "description": "The type of the RadiusResource.",
+      "in": "path",
+      "name": "radiusResourceType",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -1996,6 +2163,214 @@
         },
         "tags": [
           "ContainerComponent"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute": {
+      "get": {
+        "description": "List the HttpRoute resources deployed in the application.",
+        "operationId": "HttpRoute_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of HttpRoute resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}": {
+      "delete": {
+        "description": "Deletes a HttpRoute resource.",
+        "operationId": "HttpRoute_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The HttpRoute resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      },
+      "get": {
+        "description": "Gets a HttpRoute resource by name.",
+        "operationId": "HttpRoute_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The HttpRoute resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a HttpRoute resource.",
+        "operationId": "HttpRoute_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a HttpRoute resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing HttpRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "201": {
+            "description": "The new HttpRoute resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "202": {
+            "description": "The existing HttpRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource": {
+      "get": {
+        "description": "List the RadiusResource resources deployed in the application.",
+        "operationId": "RadiusResource_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of RadiusResource resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
         ]
       }
     },
@@ -2683,10 +3058,10 @@
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute": {
       "get": {
-        "description": "List the dapr.io.PubSubComponent resources deployed in the application.",
-        "operationId": "dapr.io.PubSubComponent_List",
+        "description": "List the dapr.io.InvokeRoute resources deployed in the application.",
+        "operationId": "dapr.io.InvokeRoute_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -2703,9 +3078,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of dapr.io.PubSubComponent resources was retrieved successfully.",
+            "description": "The list of dapr.io.InvokeRoute resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentList"
+              "$ref": "#/definitions/DaprInvokeRouteList"
             }
           },
           "default": {
@@ -2716,14 +3091,14 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubComponent"
+          "dapr.io.InvokeRoute"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubComponent/{daprPubSubComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute/{daprInvokeRouteName}": {
       "delete": {
-        "description": "Deletes a dapr.io.PubSubComponent resource.",
-        "operationId": "dapr.io.PubSubComponent_Delete",
+        "description": "Deletes a dapr.io.InvokeRoute resource.",
+        "operationId": "dapr.io.InvokeRoute_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -2735,7 +3110,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubComponentNameParameter"
+            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -2743,7 +3118,7 @@
         ],
         "responses": {
           "204": {
-            "description": "The dapr.io.PubSubComponent resource was successfully deleted."
+            "description": "The dapr.io.InvokeRoute resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -2753,12 +3128,12 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubComponent"
+          "dapr.io.InvokeRoute"
         ]
       },
       "get": {
-        "description": "Gets a dapr.io.PubSubComponent resource by name.",
-        "operationId": "dapr.io.PubSubComponent_Get",
+        "description": "Gets a dapr.io.InvokeRoute resource by name.",
+        "operationId": "dapr.io.InvokeRoute_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -2770,7 +3145,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubComponentNameParameter"
+            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -2778,9 +3153,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The dapr.io.PubSubComponent resource was retrieved successfully.",
+            "description": "The dapr.io.InvokeRoute resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprInvokeRouteResource"
             }
           },
           "default": {
@@ -2791,12 +3166,12 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubComponent"
+          "dapr.io.InvokeRoute"
         ]
       },
       "put": {
-        "description": "Creates or updates a dapr.io.PubSubComponent resource.",
-        "operationId": "dapr.io.PubSubComponent_CreateOrUpdate",
+        "description": "Creates or updates a dapr.io.InvokeRoute resource.",
+        "operationId": "dapr.io.InvokeRoute_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -2808,15 +3183,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubComponentNameParameter"
+            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.PubSubComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.InvokeRoute resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprInvokeRouteResource"
             }
           },
           {
@@ -2825,21 +3200,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing dapr.io.PubSubComponent resource was successfully updated.",
+            "description": "The existing dapr.io.InvokeRoute resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprInvokeRouteResource"
             }
           },
           "201": {
-            "description": "The new dapr.io.PubSubComponent resource was successfully created.",
+            "description": "The new dapr.io.InvokeRoute resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprInvokeRouteResource"
             }
           },
           "202": {
-            "description": "The existing dapr.io.PubSubComponent resource was successfully updated.",
+            "description": "The existing dapr.io.InvokeRoute resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubComponentResource"
+              "$ref": "#/definitions/DaprInvokeRouteResource"
             }
           },
           "default": {
@@ -2850,7 +3225,178 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubComponent"
+          "dapr.io.InvokeRoute"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent": {
+      "get": {
+        "description": "List the dapr.io.PubSubTopicComponent resources deployed in the application.",
+        "operationId": "dapr.io.PubSubTopicComponent_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of dapr.io.PubSubTopicComponent resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicComponentList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.PubSubTopicComponent"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent/{daprPubSubTopicComponentName}": {
+      "delete": {
+        "description": "Deletes a dapr.io.PubSubTopicComponent resource.",
+        "operationId": "dapr.io.PubSubTopicComponent_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The dapr.io.PubSubTopicComponent resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.PubSubTopicComponent"
+        ]
+      },
+      "get": {
+        "description": "Gets a dapr.io.PubSubTopicComponent resource by name.",
+        "operationId": "dapr.io.PubSubTopicComponent_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The dapr.io.PubSubTopicComponent resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.PubSubTopicComponent"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a dapr.io.PubSubTopicComponent resource.",
+        "operationId": "dapr.io.PubSubTopicComponent_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.PubSubTopicComponent resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing dapr.io.PubSubTopicComponent resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+            }
+          },
+          "201": {
+            "description": "The new dapr.io.PubSubTopicComponent resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+            }
+          },
+          "202": {
+            "description": "The existing dapr.io.PubSubTopicComponent resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.PubSubTopicComponent"
         ]
       }
     },
@@ -3535,6 +4081,87 @@
         },
         "tags": [
           "redislabs.com.Redis"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}": {
+      "delete": {
+        "description": "Deletes a RadiusResource resource.",
+        "operationId": "RadiusResource_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The RadiusResource resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
+        ]
+      },
+      "get": {
+        "description": "Gets a RadiusResource resource by name.",
+        "operationId": "RadiusResource_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The RadiusResource resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
         ]
       }
     }

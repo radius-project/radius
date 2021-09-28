@@ -545,7 +545,7 @@ func (r *rp) registerForHealthChecks(ctx context.Context, actions map[string]dep
 			}
 		}
 	}
-	
+
 	if len(errs) > 0 {
 		return &deployment.CompositeError{Errors: errs}
 	}

@@ -7,6 +7,8 @@ package renderers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -58,4 +60,19 @@ type SecretValueReference struct {
 	LocalID       string
 	Action        string
 	ValueSelector string
+}
+
+// ConvertDefinition can be used to convert `.Definition` to a strongly-typed struct.
+func (r RendererResource) ConvertDefinition(properties interface{}) error {
+	b, err := json.Marshal(r.Definition)
+	if err != nil {
+		return fmt.Errorf("failed to marshal resource definition: %w", err)
+	}
+
+	err = json.Unmarshal(b, properties)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal resource definition: %w", err)
+	}
+
+	return nil
 }

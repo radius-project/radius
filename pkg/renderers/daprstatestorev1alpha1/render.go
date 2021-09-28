@@ -13,6 +13,7 @@ import (
 
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/workloads"
 )
 
@@ -26,6 +27,8 @@ var SupportedKubernetesStateStoreKindValues = map[string]func(workloads.Instanti
 	"any":         GetDaprStateStoreKubernetesRedis,
 	"state.redis": GetDaprStateStoreKubernetesRedis,
 }
+
+var _ renderers.AdaptableRenderer = (*Renderer)(nil)
 
 // Renderer is the WorkloadRenderer implementation for the dapr statestore workload.
 type Renderer struct {
@@ -68,6 +71,20 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		return nil, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, getAlphabeticallySortedKeys(r.StateStores))
 	}
 	return stateStoreFunc(w, component)
+}
+
+func (r *Renderer) GetKind() string {
+	return Kind
+}
+
+func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.InstantiatedWorkload) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference, error) {
+	values := map[string]renderers.ComputedValueReference{
+		"stateStoreName": {
+			Value: workload.Name,
+		},
+	}
+	secrets := map[string]renderers.SecretValueReference{}
+	return values, secrets, nil
 }
 
 func getAlphabeticallySortedKeys(store map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error)) []string {

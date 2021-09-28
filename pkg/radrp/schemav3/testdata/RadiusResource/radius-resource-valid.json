@@ -1,0 +1,29 @@
+{
+  "properties": {
+    "connections": {
+      "backend": {
+        "kind": "Http",
+        "source": "something"
+      }
+    },
+    "container": {
+      "image": "something",
+      "env": {
+        "TEST": "Value"
+      },
+      "ports": {
+        "web": {
+          "containerPort": 80,
+          "provides": "something",
+          "protocol": "TCP"
+        }
+      }
+    }
+  },
+  "traits": [
+    {
+      "kind": "dapr.io/App@v1alpha1",
+      "appId": "cool-app"
+    }
+  ]
+}

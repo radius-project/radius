@@ -25,7 +25,9 @@ var (
 	//go:embed common-types.json
 	//go:embed traits/*.json
 	//go:embed traits.json
+	//go:embed routes/*.json
 	//go:embed components/*.json
+	//go:embed routes/*.json
 	//go:embed application.json
 	schemaFiles embed.FS
 
@@ -35,6 +37,11 @@ var (
 	validators map[string]validator = loadOrPanic()
 
 	ResourceManifest Manifest = readManifestOrPanic()
+)
+
+const (
+	ApplicationResourceType = "Application"
+	GenericResourceType     = "RadiusResource"
 )
 
 // manifest is the format of the 'resource-types.json' manifest.
@@ -56,6 +63,14 @@ func HasType(resourceType string) bool {
 	// ARM types are compared case-insensitively
 	_, ok := validators[strings.ToLower(resourceType)]
 	return ok
+}
+
+func IsGenericResource(resourceType string) bool {
+	return strings.EqualFold(resourceType, GenericResourceType)
+}
+
+func IsApplicationResource(resourceType string) bool {
+	return strings.EqualFold(resourceType, ApplicationResourceType)
 }
 
 func GetValidator(resourceType string) (Validator, bool) {

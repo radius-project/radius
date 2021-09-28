@@ -52,7 +52,7 @@ type azureServiceBusQueueHandler struct {
 func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Inside Put for Kind: %s", options.Resource.Kind))
-	properties := mergeProperties(*options.Resource, options.Existing)
+	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	// queue name must be specified by the user
 	queueName, ok := properties[ServiceBusQueueNameKey]
@@ -137,7 +137,13 @@ func (handler *azureServiceBusQueueHandler) GetAPIVersion() string {
 }
 
 func (handler *azureServiceBusQueueHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
+	var properties map[string]string
+	if options.ExistingOutputResource == nil {
+		properties = options.Existing.Properties
+	} else {
+		properties = options.ExistingOutputResource.PersistedProperties
+	}
+
 	if properties[ManagedKey] != "true" {
 		// For an 'unmanaged' resource we don't need to do anything, just forget it.
 		return nil

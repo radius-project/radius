@@ -7,13 +7,15 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
-	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,8 +31,8 @@ var Scheme = runtime.NewScheme()
 
 func init() {
 	_ = clientgoscheme.AddToScheme(Scheme)
-	_ = radiusv1alpha1.AddToScheme(Scheme)
-	_ = bicepv1alpha1.AddToScheme(Scheme)
+	_ = radiusv1alpha3.AddToScheme(Scheme)
+	_ = bicepv1alpha3.AddToScheme(Scheme)
 }
 
 // NOTE: for now we translate the K8s objects into the ARM format.
@@ -38,7 +40,7 @@ func init() {
 var _ clients.ManagementClient = (*KubernetesManagementClient)(nil)
 
 func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*radclient.ApplicationList, error) {
-	applications := radiusv1alpha1.ApplicationList{}
+	applications := radiusv1alpha3.ApplicationList{}
 	err := mc.Client.List(ctx, &applications, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -65,7 +67,7 @@ func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*ra
 func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error) {
 	// We don't have a guarantee that the application name is the same
 	// as the k8s resource name, so we have to filter on the client.
-	applications := radiusv1alpha1.ApplicationList{}
+	applications := radiusv1alpha3.ApplicationList{}
 	err := mc.Client.List(ctx, &applications, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -89,7 +91,7 @@ func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, appli
 func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, applicationName string) error {
 	// We don't have a guarantee that the application name is the same
 	// as the k8s resource name, so we have to filter on the client.
-	applications := radiusv1alpha1.ApplicationList{}
+	applications := radiusv1alpha3.ApplicationList{}
 	err := mc.Client.List(ctx, &applications, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return err
@@ -112,7 +114,7 @@ func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, app
 }
 
 func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error) {
-	components := radiusv1alpha1.ComponentList{}
+	components := radiusv1alpha3.ResourceList{}
 	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -121,7 +123,7 @@ func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applic
 	converted := []*radclient.ComponentResource{}
 	for _, item := range components.Items {
 		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName {
-			component, err := ConvertK8sComponentToARM(item)
+			component, err := ConvertK8sResourceToARM(item)
 			if err != nil {
 				return nil, err
 			}
@@ -141,7 +143,7 @@ func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applic
 func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applicationName string, componentName string) (*radclient.ComponentResource, error) {
 	// We don't have a guarantee that the component name is the same
 	// as the k8s resource name, so we have to filter on the client.
-	components := radiusv1alpha1.ComponentList{}
+	components := radiusv1alpha3.ResourceList{}
 	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -150,7 +152,7 @@ func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applica
 	for _, item := range components.Items {
 		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName &&
 			item.Annotations[kubernetes.AnnotationsComponent] == componentName {
-			component, err := ConvertK8sComponentToARM(item)
+			component, err := ConvertK8sResourceToARM(item)
 			if err != nil {
 				return nil, err
 			}
@@ -164,7 +166,7 @@ func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applica
 }
 
 func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.Context, applicationName string) error {
-	components := radiusv1alpha1.ComponentList{}
+	components := radiusv1alpha3.ResourceList{}
 	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return err
@@ -185,7 +187,7 @@ func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.
 func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error {
 	// We don't have a guarantee that the deployment name is the same
 	// as the k8s resource name, so we have to filter on the client.
-	deployments := radiusv1alpha1.DeploymentList{}
+	deployments := bicepv1alpha3.DeploymentTemplateList{}
 	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return err
@@ -208,7 +210,7 @@ func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, appl
 }
 
 func (mc *KubernetesManagementClient) ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error) {
-	deployments := radiusv1alpha1.DeploymentList{}
+	deployments := bicepv1alpha3.DeploymentTemplateList{}
 	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -237,7 +239,7 @@ func (mc *KubernetesManagementClient) ListDeployments(ctx context.Context, appli
 func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applicationName string, deploymentName string) (*radclient.DeploymentResource, error) {
 	// We don't have a guarantee that the deployment name is the same
 	// as the k8s resource name, so we have to filter on the client.
-	deployments := radiusv1alpha1.DeploymentList{}
+	deployments := bicepv1alpha3.DeploymentTemplateList{}
 	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
 		return nil, err
@@ -257,4 +259,25 @@ func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applic
 
 	errorMessage := fmt.Sprintf("Deployment '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
 	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+}
+
+// V3 API.
+func (mc *KubernetesManagementClient) ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error) {
+	return nil, errors.New("listing V3 applications on Kubenertes is not yet supported")
+}
+
+func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
+	return nil, errors.New("showing V3 applications on Kubenertes is not yet supported")
+}
+
+func (mc *KubernetesManagementClient) DeleteApplicationV3(ctx context.Context, applicationName string) error {
+	return errors.New("deleting V3 applications on Kubenertes is not yet supported")
+}
+
+func (mc *KubernetesManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
+	return nil, errors.New("listing V3 resources on Kubenertes is not yet supported")
+}
+
+func (mc *KubernetesManagementClient) ShowResource(ctx context.Context, appName string, resourceType string, resourceName string) (interface{}, error) {
+	return nil, errors.New("getting V3 resources on Kubenertes is not yet supported")
 }

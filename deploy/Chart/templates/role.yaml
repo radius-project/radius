@@ -140,7 +140,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - components
+  - containercomponents
   verbs:
   - create
   - delete
@@ -152,13 +152,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - components/finalizers
+  - containercomponents/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - components/status
+  - containercomponents/status
   verbs:
   - get
   - patch
@@ -166,7 +166,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - deployments
+  - daprioinvokeroutes
   verbs:
   - create
   - delete
@@ -178,13 +178,221 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - deployments/finalizers
+  - daprioinvokeroutes/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - deployments/status
+  - daprioinvokeroutes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - dapriopubsubtopiccomponents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - dapriopubsubtopiccomponents/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - dapriopubsubtopiccomponents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - dapriostatestorecomponents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - dapriostatestorecomponents/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - dapriostatestorecomponents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - grpcroutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - grpcroutes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - grpcroutes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - httproutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - httproutes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - httproutes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - mongodbcomponents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - mongodbcomponents/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - mongodbcomponents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - rabbitmqcomponents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - rabbitmqcomponents/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - rabbitmqcomponents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - rediscomponents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - rediscomponents/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - rediscomponents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - resources
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - resources/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - resources/status
   verbs:
   - get
   - patch

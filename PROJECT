@@ -12,8 +12,8 @@ resources:
   domain: radius.dev
   group: applications
   kind: Application
-  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1
-  version: v1alpha1
+  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3
+  version: v1alpha3
   webhooks:
     defaulting: true
     validation: true
@@ -25,21 +25,8 @@ resources:
   domain: radius.dev
   group: applications
   kind: Component
-  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1
-  version: v1alpha1
-  webhooks:
-    defaulting: true
-    validation: true
-    webhookVersion: v1
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  domain: radius.dev
-  group: applications
-  kind: Deployment
-  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1
-  version: v1alpha1
+  path: github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3
+  version: v1alpha3
   webhooks:
     defaulting: true
     validation: true
@@ -51,8 +38,8 @@ resources:
   domain: bicep.dev
   group: bicep
   kind: DeploymentTemplate
-  path: github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1
-  version: v1alpha1
+  path: github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3
+  version: v1alpha3
   webhooks:
     defaulting: true
     validation: true

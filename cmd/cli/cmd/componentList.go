@@ -42,7 +42,7 @@ func listComponents(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	componentList, err := client.ListComponents(cmd.Context(), applicationName)
+	list, err := client.ListComponents(cmd.Context(), applicationName)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func listComponents(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = output.Write(format, componentList.Value, cmd.OutOrStdout(), objectformats.GetComponentTableFormat())
+	err = output.Write(format, list.Value, cmd.OutOrStdout(), objectformats.GetComponentTableFormat())
 	if err != nil {
 		return err
 	}

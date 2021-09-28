@@ -64,14 +64,13 @@ type ResourceInfo struct {
 
 // ResourceDetails represents the information needed to uniquely identify an output resource across applications/components
 type ResourceDetails struct {
-	ResourceID     string
-	ResourceKind   string
-	ApplicationID  string
-	ComponentID    string
-	SubscriptionID string
-	ResourceGroup  string
-	Namespace      string
-	Name           string
+	ResourceID   string
+	ResourceKind string
+
+	// The resource ID of the Radius Resource that 'owns' this output resource.
+	OwnerID   string
+	Namespace string
+	Name      string
 }
 
 // KubernetesID represents the ResourceID format for a Kubernetes resource

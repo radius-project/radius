@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/radius/pkg/cli/objectformats"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/radcli"
 	"github.com/Azure/radius/test/testcontext"
@@ -65,9 +66,9 @@ func Test_CLI(t *testing.T) {
 		output, err := cli.ApplicationShow(ctx, application)
 		require.NoError(t, err)
 		expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
-azure-cli                                  
+azure-cli
 `
-		require.Equal(t, expected, output)
+		require.Equal(t, objectformats.TrimSpaceMulti(expected), objectformats.TrimSpaceMulti(output))
 	})
 
 	t.Run("Validate rad component list", func(t *testing.T) {

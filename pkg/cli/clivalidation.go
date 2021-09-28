@@ -102,26 +102,44 @@ func RequireComponent(cmd *cobra.Command, args []string) (string, error) {
 	return required(cmd, args, "component")
 }
 
+func RequireResource(cmd *cobra.Command, args []string) (resourceType string, resourceName string, err error) {
+	results, err := requiredMultiple(cmd, args, "type", "resource")
+	if err != nil {
+		return "", "", err
+	}
+	return results[0], results[1], nil
+}
+
 func RequireOutput(cmd *cobra.Command) (string, error) {
 	return cmd.Flags().GetString("output")
 }
 
 func required(cmd *cobra.Command, args []string, name string) (string, error) {
-	value, err := cmd.Flags().GetString(name)
+	results, err := requiredMultiple(cmd, args, name)
 	if err != nil {
 		return "", err
 	}
+	return results[0], err
+}
 
-	if len(args) > 0 {
-		if value != "" {
-			return "", fmt.Errorf("cannot specify %v name via both arguments and switch", name)
+func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]string, error) {
+	results := make([]string, len(names))
+	for i, name := range names {
+		value, err := cmd.Flags().GetString(name)
+		if err == nil {
+			results[i] = value
 		}
-		value = args[0]
+		if results[i] != "" {
+			if len(args) > len(names)-i-1 {
+				return nil, fmt.Errorf("cannot specify %v name via both arguments and switch", name)
+			}
+			continue
+		}
+		if len(args) == 0 {
+			return nil, fmt.Errorf("no %v name provided", name)
+		}
+		results[i] = args[0]
+		args = args[1:]
 	}
-
-	if value == "" {
-		return "", fmt.Errorf("no %v name provided", name)
-	}
-
-	return value, nil
+	return results, nil
 }

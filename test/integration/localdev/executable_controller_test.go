@@ -28,7 +28,7 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	radiusv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha1"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/test/testcontext"
 )
@@ -69,7 +69,7 @@ func startController() error {
 	scheme := runtime.NewScheme()
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(radiusv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 
 	cfg, err := testEnv.Start()
 	if err != nil {
@@ -132,14 +132,14 @@ func getKubeAssetsDir() (string, error) {
 	}
 }
 
-func find(replicas []radiusv1alpha1.ReplicaStatus, pid int) (radiusv1alpha1.ReplicaStatus, error) {
+func find(replicas []radiusv1alpha3.ReplicaStatus, pid int) (radiusv1alpha3.ReplicaStatus, error) {
 	for _, rc := range replicas {
 		if rc.PID == pid {
 			return rc, nil
 		}
 	}
 
-	return radiusv1alpha1.ReplicaStatus{}, fmt.Errorf("Not found")
+	return radiusv1alpha3.ReplicaStatus{}, fmt.Errorf("Not found")
 }
 
 func ensureNamespace(ctx context.Context, namespace string) error {
@@ -162,10 +162,10 @@ func ensureReplicasRunning(ctx context.Context, exeName string, n int) error {
 	return wait.PollUntil(time.Second, waitReplicaStarted, ctx.Done())
 }
 
-func updateExecutable(t *testing.T, ctx context.Context, key runtimeclient.ObjectKey, applyChanges func(*radiusv1alpha1.Executable)) error {
+func updateExecutable(t *testing.T, ctx context.Context, key runtimeclient.ObjectKey, applyChanges func(*radiusv1alpha3.Executable)) error {
 	const maxAttempts = 5
 	attempt := 0
-	var exe radiusv1alpha1.Executable
+	var exe radiusv1alpha3.Executable
 
 	for {
 		if attempt == maxAttempts {
@@ -204,12 +204,12 @@ func TestExecutableStartsReplicas(t *testing.T) {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
 
-	exe := radiusv1alpha1.Executable{
+	exe := radiusv1alpha3.Executable{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "executable-starts-replicas",
 		},
-		Spec: radiusv1alpha1.ExecutableSpec{
+		Spec: radiusv1alpha3.ExecutableSpec{
 			Executable: "path/to/executable-starts-replicas",
 			Replicas:   1,
 		},
@@ -237,12 +237,12 @@ func TestExitCodeCaptured(t *testing.T) {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
 
-	exe := radiusv1alpha1.Executable{
+	exe := radiusv1alpha3.Executable{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "exit-code-captured",
 		},
-		Spec: radiusv1alpha1.ExecutableSpec{
+		Spec: radiusv1alpha3.ExecutableSpec{
 			Executable: "path/to/exit-code-captured",
 			Replicas:   2,
 		},
@@ -268,7 +268,7 @@ func TestExitCodeCaptured(t *testing.T) {
 
 	waitExitCodeCaptured := func() (bool, error) {
 		t.Log("Checking replica exit codes...")
-		var updatedExe radiusv1alpha1.Executable
+		var updatedExe radiusv1alpha3.Executable
 		if err := client.Get(ctx, runtimeclient.ObjectKeyFromObject(&exe), &updatedExe); err != nil {
 			t.Fatalf("Unable to fetch updated Executable: %v", err)
 			return false, err
@@ -310,12 +310,12 @@ func TestReplicaScaleUp(t *testing.T) {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
 
-	exe := radiusv1alpha1.Executable{
+	exe := radiusv1alpha3.Executable{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "replica-scale-up",
 		},
-		Spec: radiusv1alpha1.ExecutableSpec{
+		Spec: radiusv1alpha3.ExecutableSpec{
 			Executable: "path/to/replica-scale-up",
 			Replicas:   3,
 		},
@@ -333,7 +333,7 @@ func TestReplicaScaleUp(t *testing.T) {
 
 	const desired = 5
 	t.Logf("Increasing desired replica count to %d...", desired)
-	if err := updateExecutable(t, ctx, runtimeclient.ObjectKeyFromObject(&exe), func(e *radiusv1alpha1.Executable) { e.Spec.Replicas = desired }); err != nil {
+	if err := updateExecutable(t, ctx, runtimeclient.ObjectKeyFromObject(&exe), func(e *radiusv1alpha3.Executable) { e.Spec.Replicas = desired }); err != nil {
 		t.Fatalf("Unable to update Executable: %v", err)
 	}
 
@@ -354,12 +354,12 @@ func TestReplicaScaleDown(t *testing.T) {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
 
-	exe := radiusv1alpha1.Executable{
+	exe := radiusv1alpha3.Executable{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "replica-scale-down",
 		},
-		Spec: radiusv1alpha1.ExecutableSpec{
+		Spec: radiusv1alpha3.ExecutableSpec{
 			Executable: "path/to/replica-scale-down",
 			Replicas:   5,
 		},
@@ -377,7 +377,7 @@ func TestReplicaScaleDown(t *testing.T) {
 
 	const desired = 1
 	t.Logf("Decreasing desired replica count to %d...", desired)
-	if err := updateExecutable(t, ctx, runtimeclient.ObjectKeyFromObject(&exe), func(e *radiusv1alpha1.Executable) { e.Spec.Replicas = desired }); err != nil {
+	if err := updateExecutable(t, ctx, runtimeclient.ObjectKeyFromObject(&exe), func(e *radiusv1alpha3.Executable) { e.Spec.Replicas = desired }); err != nil {
 		t.Fatalf("Unable to update Executable: %v", err)
 	}
 
@@ -398,12 +398,12 @@ func TestExecutableFinishHandling(t *testing.T) {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
 
-	exe := radiusv1alpha1.Executable{
+	exe := radiusv1alpha3.Executable{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "finish-handling",
 		},
-		Spec: radiusv1alpha1.ExecutableSpec{
+		Spec: radiusv1alpha3.ExecutableSpec{
 			Executable: "path/to/finish-handling",
 			Replicas:   3,
 		},
@@ -427,7 +427,7 @@ func TestExecutableFinishHandling(t *testing.T) {
 
 	waitExecutableFinish := func() (bool, error) {
 		t.Log("Checking Executable status...")
-		var updatedExe radiusv1alpha1.Executable
+		var updatedExe radiusv1alpha3.Executable
 		if err := client.Get(ctx, runtimeclient.ObjectKeyFromObject(&exe), &updatedExe); err != nil {
 			t.Fatalf("Unable to fetch updated Executable: %v", err)
 			return false, err
@@ -456,12 +456,12 @@ func TestExecutableFinishAfterScaleDown(t *testing.T) {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
 
-	exe := radiusv1alpha1.Executable{
+	exe := radiusv1alpha3.Executable{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "finish-after-scale-down",
 		},
-		Spec: radiusv1alpha1.ExecutableSpec{
+		Spec: radiusv1alpha3.ExecutableSpec{
 			Executable: "path/to/finish-after-scale-down",
 			Replicas:   5,
 		},
@@ -488,13 +488,13 @@ func TestExecutableFinishAfterScaleDown(t *testing.T) {
 	// 2. remaining replicas should be killed
 	const desired = 2
 	t.Logf("Decreasing desired replica count to %d...", desired)
-	if err := updateExecutable(t, ctx, runtimeclient.ObjectKeyFromObject(&exe), func(e *radiusv1alpha1.Executable) { e.Spec.Replicas = desired }); err != nil {
+	if err := updateExecutable(t, ctx, runtimeclient.ObjectKeyFromObject(&exe), func(e *radiusv1alpha3.Executable) { e.Spec.Replicas = desired }); err != nil {
 		t.Fatalf("Unable to update Executable: %v", err)
 	}
 
 	waitExecutableFinish := func() (bool, error) {
 		t.Log("Checking Executable status...")
-		var updatedExe radiusv1alpha1.Executable
+		var updatedExe radiusv1alpha3.Executable
 		if err := client.Get(ctx, runtimeclient.ObjectKeyFromObject(&exe), &updatedExe); err != nil {
 			t.Fatalf("Unable to fetch updated Executable: %v", err)
 			return false, err
@@ -533,12 +533,12 @@ func TestReplicasTerminatedUponExecutableDeletion(t *testing.T) {
 		t.Fatalf("Could not create namespace for the test: %v", err)
 	}
 
-	exe := radiusv1alpha1.Executable{
+	exe := radiusv1alpha3.Executable{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "executable-deletion",
 		},
-		Spec: radiusv1alpha1.ExecutableSpec{
+		Spec: radiusv1alpha3.ExecutableSpec{
 			Executable: "path/to/executable-deletion",
 			Replicas:   2,
 		},

@@ -29,7 +29,7 @@
           "$ref": "components/dapr-state.json#/definitions/DaprStateStoreComponentResource"
         },
         {
-          "$ref": "components/dapr-pubsub.json#/definitions/DaprPubSubComponentResource"
+          "$ref": "components/dapr-pubsubtopic.json#/definitions/DaprPubSubComponentResource"
         },
         {
           "$ref": "components/mongodb.json#/definitions/MongoDBComponentResource"

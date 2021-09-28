@@ -25,6 +25,7 @@ func TestConverter(t *testing.T) {
 	underTest := converter{
 		resources: []resourceInfo{
 			newResourceInfo("Application", "#/definitions/ApplicationResource"),
+			newResourceInfo("RadiusResource", "#/definitions/RadiusResource"),
 			newResourceInfo("radius.com.AwesomeComponent", "radius.json#/definitions/AwesomeComponentResource"),
 		},
 	}

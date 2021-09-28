@@ -186,12 +186,9 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 				})
 
 				outputResourceInfo := healthcontract.ResourceDetails{
-					ResourceID:     resource.GetResourceID(),
-					ResourceKind:   resource.Kind,
-					ApplicationID:  appName,
-					ComponentID:    action.ComponentName,
-					SubscriptionID: action.Definition.SubscriptionID,
-					ResourceGroup:  action.Definition.ResourceGroup,
+					ResourceID:   resource.GetResourceID(),
+					ResourceKind: resource.Kind,
+					OwnerID:      action.Definition.ID,
 				}
 				// Save the healthID on the resource
 				healthID := outputResourceInfo.GetHealthID()
@@ -207,7 +204,6 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 					errs = append(errs, fmt.Errorf("error applying workload for component %v %v: %w", properties, action.ComponentName, err))
 					continue
 				}
-				properties[healthcontract.HealthIDKey] = healthID
 
 				properties[healthcontract.HealthIDKey] = healthID
 				resource.Status.ProvisioningState = db.Provisioned
@@ -316,15 +312,20 @@ func (dp *deploymentProcessor) UpdateDeployment(ctx context.Context, appName str
 }
 
 func addDBOutputResource(resource outputresource.OutputResource, dbOutputResources *[]db.OutputResource) {
+	properties, ok := resource.Resource.(map[string]string)
+	if !ok {
+		properties = nil
+	}
+
 	// Save the output resource to DB
 	dbr := db.OutputResource{
-		Managed:            resource.Managed,
-		HealthID:           resource.HealthID,
-		LocalID:            resource.LocalID,
-		ResourceKind:       resource.Kind,
-		OutputResourceType: resource.Type,
-		OutputResourceInfo: resource.Info,
-		Resource:           resource.Resource,
+		Managed:             resource.Managed,
+		HealthID:            resource.HealthID,
+		LocalID:             resource.LocalID,
+		ResourceKind:        resource.Kind,
+		OutputResourceType:  resource.Type,
+		OutputResourceInfo:  resource.Info,
+		PersistedProperties: properties,
 		Status: db.OutputResourceStatus{
 			ProvisioningState:        resource.Status.ProvisioningState,
 			ProvisioningErrorDetails: resource.Status.ProvisioningErrorDetails,
@@ -470,12 +471,9 @@ func (dp *deploymentProcessor) RegisterForHealthChecks(ctx context.Context, appI
 	errs := []error{}
 	for _, or := range component.Properties.Status.OutputResources {
 		outputResourceInfo := healthcontract.ResourceDetails{
-			ResourceID:     or.GetResourceID(),
-			ResourceKind:   or.ResourceKind,
-			ApplicationID:  appID,
-			ComponentID:    component.Name,
-			SubscriptionID: component.SubscriptionID,
-			ResourceGroup:  component.ResourceGroup,
+			ResourceID:   or.GetResourceID(),
+			ResourceKind: or.ResourceKind,
+			OwnerID:      component.ID,
 		}
 		resourceType, err := dp.appmodel.LookupResource(or.ResourceKind)
 		if err != nil {

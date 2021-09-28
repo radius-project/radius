@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/azure/radclientv3"
 )
 
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
@@ -57,4 +58,12 @@ type ManagementClient interface {
 	ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error)
 	ShowDeployment(ctx context.Context, applicationName string, deploymentName string) (*radclient.DeploymentResource, error)
 	DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error
+
+	// V3 API.
+	ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error)
+	ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error)
+	DeleteApplicationV3(ctx context.Context, applicationName string) error
+
+	ShowResource(ctx context.Context, applicationName string, resourceType string, resourceName string) (interface{}, error)
+	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error)
 }

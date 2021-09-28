@@ -9,7 +9,10 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
-const Kind = "dapr.io/PubSubTopic@v1alpha1"
+const (
+	Kind         = "dapr.io/PubSubTopic@v1alpha1"
+	ResourceType = "dapr.io.PubSubTopicComponent"
+)
 
 var TopicResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
@@ -24,8 +27,8 @@ var TopicResourceType = azresources.KnownType{
 	},
 }
 
-// DaprPubSubComponent is the definition of the container component
-type DaprPubSubComponent struct {
+// DaprPubSubTopicComponent is the definition of the container component
+type DaprPubSubTopicComponent struct {
 	Name     string                   `json:"name"`
 	Kind     string                   `json:"kind"`
 	Config   DaprPubSubConfig         `json:"config,omitempty"`

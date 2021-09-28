@@ -6,10 +6,14 @@
 package kubernetes
 
 import (
+	"fmt"
+	"hash/fnv"
+
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 )
 
 // FindDeployment finds deployment in a list of output resources
@@ -64,4 +68,32 @@ func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outp
 	}
 
 	return nil, outputresource.OutputResource{}
+}
+
+// FindIngress finds an Ingress in a list of output resources
+func FindIngress(resources []outputresource.OutputResource) (*networkingv1.Ingress, outputresource.OutputResource) {
+	for _, r := range resources {
+		if r.Kind != resourcekinds.Kubernetes {
+			continue
+		}
+
+		ingress, ok := r.Resource.(*networkingv1.Ingress)
+		if !ok {
+			continue
+		}
+
+		return ingress, r
+	}
+
+	return nil, outputresource.OutputResource{}
+}
+
+// GetShortenedTargetPortName is used to generate a unique port name based on a resource id.
+// This is used to link up the a Service and Deployment.
+func GetShortenedTargetPortName(name string) string {
+	// targetPort can only be a maximum of 15 characters long.
+	// 32 bit number should always be less than that.
+	h := fnv.New32a()
+	h.Write([]byte(name))
+	return "a" + fmt.Sprint(h.Sum32())
 }

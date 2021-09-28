@@ -16,7 +16,7 @@ import (
 //+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.resource"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
 
-type DaprIOPubSubComponent struct {
+type DaprIOPubSubTopicComponent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -25,12 +25,12 @@ type DaprIOPubSubComponent struct {
 }
 
 //+kubebuilder:object:root=true
-type DaprIOPubSubComponentList struct {
+type DaprIOPubSubTopicComponentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DaprIOPubSubComponent `json:"items"`
+	Items           []DaprIOPubSubTopicComponent `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&DaprIOPubSubComponent{}, &DaprIOPubSubComponentList{})
+	SchemeBuilder.Register(&DaprIOPubSubTopicComponent{}, &DaprIOPubSubTopicComponentList{})
 }

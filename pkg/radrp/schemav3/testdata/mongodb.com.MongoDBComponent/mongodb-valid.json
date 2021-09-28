@@ -3,9 +3,7 @@
   "name": "name",
   "kind": "mongodb.com/Mongo@v1alpha1",
   "properties": {
-    "config": {
-      "managed": true,
-      "resource": "foo"
-    }
+    "managed": true,
+    "resource": "foo"
   }
 }

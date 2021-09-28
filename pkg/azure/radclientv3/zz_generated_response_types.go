@@ -117,19 +117,37 @@ type ContainerComponentResourceResponse struct {
 	RawResponse *http.Response
 }
 
-// DaprPubSubComponentListResponse is the response envelope for operations that return a DaprPubSubComponentList type.
-type DaprPubSubComponentListResponse struct {
-	// List of dapr.io.PubSubComponent resources.
-	DaprPubSubComponentList *DaprPubSubComponentList
+// DaprInvokeRouteListResponse is the response envelope for operations that return a DaprInvokeRouteList type.
+type DaprInvokeRouteListResponse struct {
+	// List of dapr.io.InvokeRoute resources.
+	DaprInvokeRouteList *DaprInvokeRouteList
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprPubSubComponentResourceResponse is the response envelope for operations that return a DaprPubSubComponentResource type.
-type DaprPubSubComponentResourceResponse struct {
+// DaprInvokeRouteResourceResponse is the response envelope for operations that return a DaprInvokeRouteResource type.
+type DaprInvokeRouteResourceResponse struct {
+	// Resource that specifies an Dapr Service Invocation Route. A Dapr Service Invocation Route describes a pattern of communication between components.
+	DaprInvokeRouteResource *DaprInvokeRouteResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubTopicComponentListResponse is the response envelope for operations that return a DaprPubSubTopicComponentList type.
+type DaprPubSubTopicComponentListResponse struct {
+	// List of dapr.io.PubSubTopicComponent resources.
+	DaprPubSubTopicComponentList *DaprPubSubTopicComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubTopicComponentResourceResponse is the response envelope for operations that return a DaprPubSubTopicComponentResource type.
+type DaprPubSubTopicComponentResourceResponse struct {
 	// Component for Dapr Pub/Sub
-	DaprPubSubComponentResource *DaprPubSubComponentResource
+	DaprPubSubTopicComponentResource *DaprPubSubTopicComponentResource
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
@@ -148,6 +166,24 @@ type DaprStateStoreComponentListResponse struct {
 type DaprStateStoreComponentResourceResponse struct {
 	// Component for Dapr state store
 	DaprStateStoreComponentResource *DaprStateStoreComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRouteListResponse is the response envelope for operations that return a HTTPRouteList type.
+type HTTPRouteListResponse struct {
+	// List of HttpRoute resources.
+	HTTPRouteList *HTTPRouteList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRouteResourceResponse is the response envelope for operations that return a HTTPRouteResource type.
+type HTTPRouteResourceResponse struct {
+	// Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a component.
+	HTTPRouteResource *HTTPRouteResource
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
@@ -184,6 +220,24 @@ type RabbitMQComponentListResponse struct {
 type RabbitMQComponentResourceResponse struct {
 	// The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
 	RabbitMQComponentResource *RabbitMQComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RadiusResourceListResponse is the response envelope for operations that return a RadiusResourceList type.
+type RadiusResourceListResponse struct {
+	// List of RadiusResource resources.
+	RadiusResourceList *RadiusResourceList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RadiusResourceResponse is the response envelope for operations that return a RadiusResource type.
+type RadiusResourceResponse struct {
+	// Interface for generic component -- useful for listing components without specifying a type
+	RadiusResource *RadiusResource
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response

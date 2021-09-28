@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/resources"
+	"github.com/go-logr/logr"
 )
 
 // Radius Resource Types
@@ -67,19 +68,23 @@ func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontra
 		radlogger.LogFieldHealthID, healthUpdateMsg.Resource.HealthID)
 	logger.Info("Received health update message")
 	outputResourceDetails := healthcontract.ParseHealthID(healthUpdateMsg.Resource.HealthID)
-	id := azresources.MakeID(
-		outputResourceDetails.SubscriptionID,
-		outputResourceDetails.ResourceGroup,
-		azresources.ResourceType{Type: azresources.CustomProvidersResourceProviders, Name: RadiusRPName},
-		azresources.ResourceType{Type: ApplicationsResourceType, Name: outputResourceDetails.ApplicationID},
-		azresources.ResourceType{Type: ComponentsResourceType, Name: outputResourceDetails.ComponentID})
 
-	resourceID, err := azresources.Parse(id)
+	// This is the ID of the Radius Resource (Component/Scope/Route) that 'owns' the output resource being updated.
+	resourceID, err := azresources.Parse(outputResourceDetails.OwnerID)
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Invalid resource ID: %s", id))
+		logger.Error(err, fmt.Sprintf("Invalid resource ID: %s", outputResourceDetails.OwnerID))
 		return false
 	}
-	cid := resources.ResourceID{ResourceID: resourceID}
+
+	if resourceID.Types[0].Name == azresources.CustomRPV3Name {
+		return s.updateV3Health(ctx, logger, healthUpdateMsg, resourceID)
+	} else {
+		return s.updateV1Health(ctx, logger, healthUpdateMsg, resourceID)
+	}
+}
+
+func (s *Service) updateV1Health(ctx context.Context, logger logr.Logger, healthUpdateMsg healthcontract.ResourceHealthDataMessage, id azresources.ResourceID) bool {
+	cid := resources.ResourceID{ResourceID: id}
 	a, err := cid.Application()
 	if err != nil {
 		logger.Error(err, "Invalid application ID")
@@ -96,6 +101,7 @@ func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontra
 			// Update the health state
 			c.Properties.Status.OutputResources[i].Status.HealthState = healthUpdateMsg.HealthState
 			c.Properties.Status.OutputResources[i].Status.HealthStateErrorDetails = healthUpdateMsg.HealthStateErrorDetails
+
 			patched, err := s.db.PatchComponentByApplicationID(ctx, a, c.Name, c)
 			if err == db.ErrNotFound {
 				logger.Error(err, "Component not found in DB")
@@ -104,6 +110,40 @@ func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontra
 			}
 
 			return patched
+		}
+	}
+
+	logger.Error(db.ErrNotFound, "No output resource found with matching health ID")
+	return false
+}
+
+func (s *Service) updateV3Health(ctx context.Context, logger logr.Logger, healthUpdateMsg healthcontract.ResourceHealthDataMessage, id azresources.ResourceID) bool {
+	resource, err := s.db.GetV3Resource(ctx, id)
+	if err == db.ErrNotFound {
+		logger.Error(err, "Resource not found in DB")
+		return false
+	} else if err != nil {
+		logger.Error(err, "Unable to update Health state in DB")
+		return false
+	}
+
+	for i, o := range resource.Status.OutputResources {
+		if o.HealthID == healthUpdateMsg.Resource.HealthID {
+
+			// Update the health state
+			resource.Status.OutputResources[i].Status.HealthState = healthUpdateMsg.HealthState
+			resource.Status.OutputResources[i].Status.HealthStateErrorDetails = healthUpdateMsg.HealthStateErrorDetails
+
+			err := s.db.UpdateV3ResourceStatus(ctx, id, resource)
+			if err == db.ErrNotFound {
+				logger.Error(err, "Resource not found in DB")
+				return false
+			} else if err != nil {
+				logger.Error(err, "Unable to update Health state in DB")
+				return false
+			}
+
+			return true
 		}
 	}
 

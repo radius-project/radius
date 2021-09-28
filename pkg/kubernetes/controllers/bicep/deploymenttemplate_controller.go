@@ -7,15 +7,21 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
-	bicepv1alpha1 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha1"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/kubernetes/converters"
 )
 
 // DeploymentTemplateReconciler reconciles a Arm object
@@ -32,41 +38,129 @@ type DeploymentTemplateReconciler struct {
 func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("deploymenttemplate", req.NamespacedName)
 
-	arm := &bicepv1alpha1.DeploymentTemplate{}
+	arm := &bicepv1alpha3.DeploymentTemplate{}
 	err := r.Get(ctx, req.NamespacedName, arm)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	arm.Status.Operations = nil
+
+	result, err := r.ApplyState(ctx, req, arm)
+
+	_ = r.Status().Update(ctx, arm)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return result, err
+}
+
+// Parses the arm template and deploys individual resources to the cluster
+// TODO: Can we avoid parsing resources multiple times by caching?
+func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.Request, arm *bicepv1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	template, err := armtemplate.Parse(string(arm.Spec.Content.Raw))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{})
+	options := armtemplate.TemplateOptions{
+		SubscriptionID: "kubernetes",
+		ResourceGroup:  req.Namespace,
+	}
+	resources, err := armtemplate.Eval(template, options)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	for _, resource := range resources {
+	// All previously deployed resources to be used by other resources
+	// to fill in variables ex: ([reference(...)])
+	deployed := map[string]map[string]interface{}{}
+	evaluator := &armtemplate.DeploymentEvaluator{
+		Template:  template,
+		Options:   options,
+		Deployed:  deployed,
+		Variables: map[string]interface{}{},
+	}
+
+	for name, variable := range template.Variables {
+		value, err := evaluator.VisitValue(variable)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		evaluator.Variables[name] = value
+	}
+
+	for i, resource := range resources {
+		body, err := evaluator.VisitMap(resource.Body)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		resource.Body = body
+
 		k8sInfo, err := armtemplate.ConvertToK8s(resource, req.NamespacedName.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		err = r.Client.Patch(ctx, k8sInfo.Unstructured, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+		// TODO track progress of operations (count of deployed resources) in Status.
+		arm.Status.Operations = append(arm.Status.Operations, bicepv1alpha3.DeploymentTemplateOperation{
+			Name:      k8sInfo.GetName(),
+			Namespace: k8sInfo.GetNamespace(),
+		})
 
+		err = r.Client.Get(ctx, client.ObjectKey{
+			Namespace: k8sInfo.GetNamespace(),
+			Name:      k8sInfo.GetName(),
+		}, k8sInfo)
+
+		if err != nil && client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, err
+		}
+
+		if apierrors.IsNotFound(err) {
+			err = r.Client.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+		}
+
+		arm.Status.Operations[i].Provisioned = true
+
+		// TODO could remove this dependecy on radiusv1alpha3
+		k8sResource := &radiusv1alpha3.Resource{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, k8sResource)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+
+		// Transform from k8s representation to arm representation
+		//
+		// We need to overlay stateful properties over the original definition.
+		//
+		// For now we just modify the body in place.
+		err = converters.ConvertToARMResource(k8sResource, resource.Body)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to convert to ARM representation: %w", err)
+		}
+
+		deployed[resource.ID] = resource.Body
+
+		if k8sResource.Status.Phrase != "Ready" {
+			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+		}
 	}
 
-	return ctrl.Result{}, nil
+	return reconcile.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&bicepv1alpha1.DeploymentTemplate{}).
+		For(&bicepv1alpha3.DeploymentTemplate{}).
 		Complete(r)
 }

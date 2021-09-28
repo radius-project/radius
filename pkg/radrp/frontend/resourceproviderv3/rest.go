@@ -13,7 +13,7 @@ type ApplicationResource struct {
 	Type       string                 `json:"type"`
 	Name       string                 `json:"name"`
 	Tags       map[string]string      `json:"tags,omitempty"`
-	Location   string                 `json:"omitempty"`
+	Location   string                 `json:"location,omitempty"`
 	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 

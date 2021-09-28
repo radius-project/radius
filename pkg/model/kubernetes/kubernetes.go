@@ -8,28 +8,26 @@ package kubernetes
 import (
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha1"
-	"github.com/Azure/radius/pkg/renderers/dapr"
-	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
-	"github.com/Azure/radius/pkg/renderers/inboundroute"
-	"github.com/Azure/radius/pkg/renderers/manualscale"
-	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha1"
-	"github.com/Azure/radius/pkg/renderers/rabbitmqv1alpha1"
-	"github.com/Azure/radius/pkg/renderers/redisv1alpha1"
+	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
+	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloads"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
-	renderers := map[string]workloads.WorkloadRenderer{
-		containerv1alpha1.Kind:      &manualscale.Renderer{Inner: &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: armauth.ArmConfig{}}}}},
-		daprstatestorev1alpha1.Kind: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
-		mongodbv1alpha1.Kind:        &mongodbv1alpha1.KubernetesRenderer{},
-		rabbitmqv1alpha1.Kind:       &rabbitmqv1alpha1.Renderer{},
-		redisv1alpha1.Kind:          &redisv1alpha1.KubernetesRenderer{},
+	renderers := map[string]renderers.Renderer{
+		containerv1alpha3.ResourceType: &containerv1alpha3.Renderer{Arm: armauth.ArmConfig{}},
+		// daprstatestorev1alpha3.Kind: &daprstatestorev1alpha3.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
+		// mongodbv1alpha3.Kind:        &mongodbv1alpha3.KubernetesRenderer{},
+		// rabbitmqv1alpha3.Kind:       &rabbitmqv1alpha3.Renderer{},
+		// redisv1alpha3.Kind:          &redisv1alpha3.KubernetesRenderer{},
+		httproutev1alpha3.ResourceType: &httproutev1alpha3.Renderer{},
+		// httproutev1alpha3.Kind:      &httproutev1alpha3.Renderer{},
+		// httproutev1alpha3.Kind:      &httproutev1alpha3.Renderer{},
 	}
+
 	handlers := map[string]model.Handlers{
 		resourcekinds.Kubernetes: {ResourceHandler: handlers.NewKubernetesHandler(*k8s), HealthHandler: nil},
 	}

@@ -3,15 +3,15 @@
   "definitions": {
     "ContainerComponentResource": {
       "description": "The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform",
-      "required": [
-        "properties"
-      ],
       "type": "object",
       "x-ms-azure-resource": true,
       "allOf": [
         {
-          "$ref": "../common-types.json#/definitions/TrackedResource"
+          "$ref": "../common-types.json#/definitions/ProxyResource"
         }
+      ],
+      "required": [
+        "properties"
       ],
       "properties": {
         "properties": {

@@ -1,0 +1,10 @@
+{
+  "id": 42,
+  "name": 42,
+  "properties": {
+    "managed": true,
+    "kind": "dapr.io/pubsub/ServiceBusQueue",
+    "topic": "fun coding",
+    "extra": "foo"
+  }
+}

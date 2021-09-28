@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 )
 
@@ -40,6 +41,8 @@ type ResourceProvider interface {
 	DeleteResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 
 	GetOperation(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
+
+	ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 }
 
 // NewResourceProvider creates a new ResourceProvider.
@@ -142,6 +145,22 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 	return rest.NewNoContentResponse(), nil
 }
 
+func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+	items, err := r.db.ListAllV3ResourcesByApplication(ctx, id)
+	if err == db.ErrNotFound {
+		// It's possible that the application does not exist.
+		return rest.NewNotFoundResponse(id), nil
+	} else if err != nil {
+		return nil, err
+	}
+	output := RadiusResourceList{}
+	for _, item := range items {
+		output.Value = append(output.Value, NewRestRadiusResource(item))
+	}
+
+	return rest.NewOKResponse(output), nil
+}
+
 func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
 	err := r.validateResourceType(id)
 	if err != nil {
@@ -151,15 +170,15 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	// GET ..../Application/{applicationName}/{resourceType}
 	// GET ..../Application/{applicationName}/{resourceType}/{resourceName}
 
-	// ..../Application/hello/ContainerComponent
+	// // ..../Application/hello/ContainerComponent
 	items, err := r.db.ListV3Resources(ctx, id)
+
 	if err == db.ErrNotFound {
 		// It's possible that the application does not exist.
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
-
 	output := RadiusResourceList{}
 	for _, item := range items {
 		output.Value = append(output.Value, NewRestRadiusResource(item))
@@ -296,6 +315,14 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
 			Error: *operation.Error,
 		}), nil
+	} else if operation.Status == string(rest.FailedStatus) {
+		// Operation failed with an uncategorized error
+		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: "internal error",
+			},
+		}), nil
 	}
 
 	// If we get here we'll likely need the resource body for the response, so look it up.
@@ -325,20 +352,24 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 	return rest.NewAcceptedAsyncResponse(output, id.ID), nil
 }
 
-func (r *rp) ProcessDeploymentBackground(ctx context.Context, id azresources.ResourceID, resource db.RadiusResource) {
-	err := r.validateOperationType(id)
+func (r *rp) ProcessDeploymentBackground(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) {
+	err := r.validateOperationType(operationID)
 	if err != nil {
 		// These functions should always be passed the resource ID of an operation. This is a programing error
 		// if it's not.
 		panic(err)
 	}
 
+	// We need to create a new context to pass to the background process. We can't use the current
+	// context because it is tied to the request lifecycle.
+	ctx = logr.NewContext(context.Background(), radlogger.GetLogger(ctx))
+
 	go func() {
 		// Signal compeletion of the operation FOR TESTING ONLY
 		defer r.complete()
 
 		logger := radlogger.GetLogger(ctx)
-		err := r.deploy.Deploy(ctx, id, resource)
+		err := r.deploy.Deploy(ctx, operationID, resource)
 		if err != nil {
 			logger.Error(err, "deployment failed")
 			return
@@ -355,6 +386,10 @@ func (r *rp) ProcessDeletionBackground(ctx context.Context, id azresources.Resou
 		// if it's not.
 		panic(err)
 	}
+
+	// We need to create a new context to pass to the background process. We can't use the current
+	// context because it is tied to the request lifecycle.
+	ctx = logr.NewContext(context.Background(), radlogger.GetLogger(ctx))
 
 	go func() {
 		// Signal compeletion of the operation FOR TESTING ONLY

@@ -6,8 +6,10 @@
 package armtemplate
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -50,109 +52,47 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 
 		resource.Body = body
 
-		deployed[resource.ID] = map[string]interface{}{}
-		properties := body["properties"]
-		if properties != nil {
-			for k, v := range properties.(map[string]interface{}) {
-				deployed[resource.ID][k] = v
-			}
-		}
+		deployed[resource.ID] = body
 		evaluated = append(evaluated, resource)
 	}
 
-	expected := []Resource{
-		{
-			ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend",
-			Type:       "Microsoft.CustomProviders/resourceProviders/Applications",
-			APIVersion: "2018-09-01-preview",
-			Name:       "radius/frontend-backend",
-			DependsOn:  []string{},
-			Body:       map[string]interface{}{},
-		},
-		{
-			ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/Components/backend",
-			Type:       "Microsoft.CustomProviders/resourceProviders/Applications/Components",
-			APIVersion: "2018-09-01-preview",
-			Name:       "radius/frontend-backend/backend",
-			DependsOn: []string{
-				"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend",
-			},
-			Body: map[string]interface{}{
-				"kind": "radius.dev/Container@v1alpha1",
-				"properties": map[string]interface{}{
-					"bindings": map[string]interface{}{
-						"web": map[string]interface{}{
-							"kind":       "http",
-							"targetPort": 81.0,
-						},
-					},
-					"run": map[string]interface{}{
-						"container": map[string]interface{}{
-							"image": "rynowak/backend:0.5.0-dev",
-						},
-					},
-				},
-			},
-		},
-		{
-			ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/Components/frontend",
-			Type:       "Microsoft.CustomProviders/resourceProviders/Applications/Components",
-			APIVersion: "2018-09-01-preview",
-			Name:       "radius/frontend-backend/frontend",
-			DependsOn: []string{
-				"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend",
-			},
-			Body: map[string]interface{}{
-				"kind": "radius.dev/Container@v1alpha1",
-				"properties": map[string]interface{}{
-					"bindings": map[string]interface{}{
-						"web": map[string]interface{}{
-							"kind":       "http",
-							"targetPort": 80.0,
-						},
-					},
-					"run": map[string]interface{}{
-						"container": map[string]interface{}{
-							"image": "rynowak/frontend:0.5.0-dev",
-						},
-					},
-					"uses": []interface{}{
-						map[string]interface{}{
-							"binding": map[string]interface{}{
-								"kind":       "http",
-								"targetPort": 81.0,
-							},
-							"env": map[string]interface{}{
-								"SERVICE__BACKEND__TARGETPORT": 81.0,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/Deployments/default",
-			Type:       "Microsoft.CustomProviders/resourceProviders/Applications/Deployments",
-			APIVersion: "2018-09-01-preview",
-			Name:       "radius/frontend-backend/default",
-			DependsOn: []string{
-				"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend",
-				"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/Components/backend",
-				"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/Components/frontend",
-			},
-			Body: map[string]interface{}{
-				"properties": map[string]interface{}{
-					"components": []interface{}{
-						map[string]interface{}{
-							"componentName": "backend",
-						},
-						map[string]interface{}{
-							"componentName": "frontend",
-						},
-					},
-				},
-			},
-		},
+	application, err := GetResource(path.Join("testdata", "armevaluated", "Microsoft.CustomProviders-resourceProviders-Applicationradiusv3-azure-resources-container-httpbinding.json"))
+	require.NoError(t, err)
+	backend, err := GetResource(path.Join("testdata", "armevaluated", "Microsoft.CustomProviders-resourceProviders-Application-ContainerComponentradiusv3-azure-resources-container-httpbinding-backend.json"))
+	require.NoError(t, err)
+	frontend, err := GetResource(path.Join("testdata", "armevaluated", "Microsoft.CustomProviders-resourceProviders-Application-ContainerComponentradiusv3-azure-resources-container-httpbinding-frontend.json"))
+	require.NoError(t, err)
+
+	frontendRoute, err := GetResource(path.Join("testdata", "armevaluated", "Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-frontend.json"))
+	require.NoError(t, err)
+	backendRoute, err := GetResource(path.Join("testdata", "armevaluated", "Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-backend.json"))
+	require.NoError(t, err)
+
+	actual := map[string]Resource{}
+
+	for _, resource := range evaluated {
+		actual[strings.ReplaceAll(resource.Type+resource.Name, "/", "-")] = resource
 	}
-	require.Equal(t, expected, evaluated)
+
+	expected := map[string]*Resource{
+		"Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-frontend":          frontendRoute,
+		"Microsoft.CustomProviders-resourceProviders-Applicationradiusv3-azure-resources-container-httpbinding":                             application,
+		"Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-backend":           backendRoute,
+		"Microsoft.CustomProviders-resourceProviders-Application-ContainerComponentradiusv3-azure-resources-container-httpbinding-backend":  backend,
+		"Microsoft.CustomProviders-resourceProviders-Application-ContainerComponentradiusv3-azure-resources-container-httpbinding-frontend": frontend,
+	}
+
+	for k, actualInfo := range actual {
+		expectedInfo := expected[k]
+		// Unstructured comparison causes a comparison between interface{} and a string
+		// so we need to convert to JSON
+		expectedUns, err := json.Marshal(expectedInfo)
+
+		require.NoError(t, err)
+
+		actualUns, err := json.Marshal(actualInfo)
+		require.NoError(t, err)
+
+		require.JSONEq(t, string(expectedUns), string(actualUns))
+	}
 }

@@ -32,7 +32,7 @@ type daprPubSubServiceBusHandler struct {
 }
 
 func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing)
+	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	// topic name must be specified by the user
 	topicName, ok := properties[ServiceBusTopicNameKey]
@@ -99,7 +99,13 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *Pu
 }
 
 func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.Existing.Properties
+	var properties map[string]string
+	if options.ExistingOutputResource == nil {
+		properties = options.Existing.Properties
+	} else {
+		properties = options.ExistingOutputResource.PersistedProperties
+	}
+
 	namespaceName := properties[ServiceBusNamespaceNameKey]
 	topicName := properties[ServiceBusTopicNameKey]
 

@@ -18,6 +18,16 @@
     }
   },
   "parameters": {
+    {{ if .IsGenericResource }}
+    "{{ .TypeParameterType }}": {
+      "x-ms-parameter-location": "method",
+      "description": "The type of the {{ .QualifiedName }}.",
+      "type": "string",
+      "required": true,
+      "in": "path",
+      "name": "{{ .TypeParameterName }}"
+    },
+    {{ end }}
     "{{ .NameParameterType }}": {
       "x-ms-parameter-location": "method",
       "description": "The name of the {{ .QualifiedName }} resource.",
@@ -54,11 +64,12 @@
           {
             "$ref": "#/parameters/ResourceGroupNameParameter"
           },
-	  {{ if not .IsApplication }}
+          {{/* Only require ApplicationName when we are a child resource */}}
+          {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
           },
-	  {{ end }}
+          {{ end }}
           {
             "$ref": "#/parameters/ApiVersionParameter"
           }
@@ -67,7 +78,11 @@
         "description": "List the {{ .QualifiedName }} resources deployed in the application."
       }
     },
+    {{ if .IsGenericResource }}
+    "{{ .BasePath }}/{{ print `{` (.TypeParameterName) `}` }}/{{ print `{` (.NameParameterName) `}` }}": {
+    {{ else }}
     "{{ .BasePath }}/{{ .QualifiedName }}/{{ print `{` (.NameParameterName) `}` }}": {
+    {{ end }}
       "get": {
         "operationId": "{{ .QualifiedName }}_Get",
         "tags": [
@@ -81,12 +96,18 @@
           {
             "$ref": "#/parameters/ResourceGroupNameParameter"
           },
-	  {{ if not .IsApplication }}
+          {{/* Only require ApplicationName when we are a child resource */}}
+          {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
           },
-	  {{ end }}
-	  {
+          {{ end }}
+          {{ if .IsGenericResource }}
+          {
+            "$ref": "#/parameters/{{ .TypeParameterType }}"
+          },
+          {{ end }}
+          {
             "$ref": "#/parameters/{{ .NameParameterType }}"
           },
           {
@@ -108,6 +129,7 @@
           }
         }
       },
+      {{ if not .IsGenericResource }}
       "put": {
         "operationId": "{{ .QualifiedName }}_CreateOrUpdate",
         "tags": [
@@ -121,12 +143,13 @@
           {
             "$ref": "#/parameters/ResourceGroupNameParameter"
           },
-	  {{ if not .IsApplication }}
+          {{/* Only require ApplicationName when we are a child resource */}}
+          {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
           },
-	  {{ end }}
-	  {
+          {{ end }}
+          {
             "$ref": "#/parameters/{{ .NameParameterType }}"
           },
           {
@@ -169,6 +192,7 @@
           }
         }
       },
+      {{ end }}
       "delete": {
         "description": "Deletes a {{ .QualifiedName }} resource.",
         "operationId": "{{ .QualifiedName }}_Delete",
@@ -179,12 +203,18 @@
           {
             "$ref": "#/parameters/ResourceGroupNameParameter"
           },
-	  {{ if not .IsApplication }}
+          {{/* Only require ApplicationName when we are a child resource */}}
+          {{ if not .IsApplication }}
           {
             "$ref": "#/parameters/ApplicationNameParameter"
           },
-	  {{ end }}
-	  {
+          {{ end }}
+          {{ if .IsGenericResource }}
+          {
+            "$ref": "#/parameters/{{ .TypeParameterType }}"
+          },
+          {{ end }}
+          {
             "$ref": "#/parameters/{{ .NameParameterType }}"
           },
           {

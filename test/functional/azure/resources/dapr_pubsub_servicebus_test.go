@@ -12,6 +12,8 @@ import (
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -47,6 +49,7 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 					{
 						ApplicationName: application,
 						ComponentName:   "publisher",
+						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -55,6 +58,7 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
+						ResourceType:    daprpubsubv1alpha1.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, resourcekinds.DaprPubSubTopicAzureServiceBus, true, false, rest.OutputResourceStatus{}),
 						},
@@ -70,6 +74,9 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 			},
 		},
 	})
+
+	test.Version = validation.AppModelV3
+	test.SkipDeletion = true
 
 	test.Test(t)
 }
@@ -103,6 +110,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 					{
 						ApplicationName: application,
 						ComponentName:   "publisher",
+						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -111,6 +119,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 					{
 						ApplicationName: application,
 						ComponentName:   "pubsub",
+						ResourceType:    daprpubsubv1alpha1.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, resourcekinds.DaprPubSubTopicAzureServiceBus, false, false, rest.OutputResourceStatus{}),
 						},
@@ -126,6 +135,9 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 			},
 		},
 	})
+
+	test.Version = validation.AppModelV3
+	test.SkipDeletion = true
 
 	test.Test(t)
 }

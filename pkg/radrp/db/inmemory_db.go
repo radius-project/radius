@@ -381,6 +381,10 @@ func (s *store) DeleteV3Application(ctx context.Context, id azresources.Resource
 	return errors.New("not implemented")
 }
 
+func (s *store) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (s *store) ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
 	return nil, errors.New("not implemented")
 }

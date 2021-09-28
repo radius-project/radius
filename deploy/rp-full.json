@@ -689,6 +689,16 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
+                "name": "Application/HttpRoute",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
+                "name": "Application/RadiusResource",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
                 "name": "Application/azure.com.CosmosDBMongoComponent",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
@@ -709,7 +719,12 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/dapr.io.PubSubComponent",
+                "name": "Application/dapr.io.InvokeRoute",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
+                "name": "Application/dapr.io.PubSubTopicComponent",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
