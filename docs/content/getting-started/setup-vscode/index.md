@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Setup Visual Studio Code with the Radius extension"
-linkTitle: "Setup VSCode"
+linkTitle: "Setup tools"
 description: "How to setup VSCode with the Radius extension for easy application authoring"
 weight: 20
 ---

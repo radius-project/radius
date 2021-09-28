@@ -21,7 +21,7 @@ Author and deploy your first appliction in minutes with Radius:
   
   The Radius application model allows you to describe the bindings, dependencies, and traits your app provides. Developers no longer need to describe the infrastructure and connections that make up the underlying platform.
 
-  [**Learn more about the Radius app model**]({{< ref app-model >}})
+  [**Learn more about the Radius app model**]({{< ref appmodel-concept >}})
 {{< /card >}}
 
 {{< card title="**Automate best practices**" >}}
@@ -29,7 +29,7 @@ Author and deploy your first appliction in minutes with Radius:
   
   Radius codifies and automates the best practives for your hosting platform. We take care of things like connection strings, managed identities, role-based access control, and more.
 
-  [**See what Radius components can do**]({{< ref components >}})
+  [**See what Radius components can do**]({{< ref components-model >}})
 {{< /card >}}
 
 {{< /cardpane >}}
@@ -62,7 +62,7 @@ Author and deploy your first appliction in minutes with Radius:
   
   Radius uses the Bicep language as its file format and structure.
   
-  [**Learn about Radius concepts**]({{< ref overview-concept.md >}})
+  [**Learn about Radius concepts**]({{< ref appmodel-concept >}})
 {{< /card >}}
 
 {{< card header="**⌨ rad CLI**" title="Easily initialize and deploy Radius applications" >}}
@@ -81,7 +81,7 @@ Author and deploy your first appliction in minutes with Radius:
   
   It includes a **control-plane** which communicates with with the rad CLI and a **runtime** to which applications are deployed.
   
-  [**Initialize Radius on your platform**]({{< ref environments.md >}})
+  [**Initialize Radius on your platform**]({{< ref platforms >}})
 {{< /card >}}
 
 {{< card header="**🔌 Extendable components**" title="Deploy your applications to cloud and edge with zero code changes" >}}
@@ -89,7 +89,7 @@ Author and deploy your first appliction in minutes with Radius:
 
   No more platform-specific pipelines and bindings to swap out and maintain.
   
-  [**Check out the Radius components**]({{< ref overview-concept.md >}})
+  [**Check out the Radius components**]({{< ref appmodel-concept >}})
 {{< /card >}}
 
 {{< /cardpane >}}

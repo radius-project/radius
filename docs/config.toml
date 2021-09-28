@@ -46,10 +46,12 @@ disableKinds = ["taxonomy", "term"]
     name = "GitHub"
     weight = 40
     url = "https://github.com/Azure/radius"
+    pre = "<i class='fab fa-github'></i>"
 [[menu.main]]
-    name = "Logout"
+    name = "Community"
     weight = 50
-    url = "/.auth/logout"
+    url = "https://aka.ms/projectradius"
+    pre = "<i class='fas fa-comment'></i>"
 
 [params]
 copyright = "Project Radius"
@@ -73,4 +75,4 @@ version_menu = "Releases"
 # UI Customization
 [params.ui]
 sidebar_menu_compact = true
-
+ul_show = 2
