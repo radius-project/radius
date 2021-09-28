@@ -309,7 +309,7 @@ func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, app
 	}
 
 	for _, item := range applications.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
 			application, err := ConvertK8sApplicationToARMV3(item)
 			if err != nil {
 				return nil, err
@@ -360,7 +360,7 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 				return nil, err
 			}
 			for _, item := range list.Items {
-				if item.GetAnnotations()[kubernetes.AnnotationsApplication] != applicationName {
+				if item.GetAnnotations()[kubernetes.LabelRadiusApplication] != applicationName {
 					continue
 				}
 				resource, err := ConvertK8sResourceToARMV3(item)
