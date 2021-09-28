@@ -17,6 +17,21 @@
           "provides": "something",
           "protocol": "TCP"
         }
+      },
+      "readinessProbe": {
+        "kind": "httpGet",
+        "containerPort": 8080,
+        "path": "/healthz",
+        "headers": {
+            "Custom-Header": "Hello World"
+        },
+        "initialDelaySeconds": 3,
+        "failureThreshold": 30,
+        "periodSeconds": 3
+      },
+      "livenessProbe": {
+        "kind": "tcp",
+        "containerPort": 8080
       }
     }
   },
