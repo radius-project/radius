@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -36,6 +37,20 @@ func ReadKubeConfig() (*api.Config, error) {
 	}
 
 	return config, nil
+}
+
+func CreateExtensionClient(context string) (clientset.Interface, error) {
+	merged, err := GetConfig(context)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := clientset.NewForConfig(merged)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, err
 }
 
 func CreateDynamicClient(context string) (dynamic.Interface, error) {
