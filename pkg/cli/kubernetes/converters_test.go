@@ -7,7 +7,6 @@ package kubernetes
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
@@ -169,7 +168,6 @@ func Test_ConvertK8sResourceToARMV3(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			input := unstructured.Unstructured{}
 			j, _ := json.MarshalIndent(tc.original, "", "  ")
-			fmt.Println(string(j))
 			_ = json.Unmarshal(j, &input.Object)
 			actual, err := ConvertK8sResourceToARMV3(input)
 			if tc.expectedErr == "" {
