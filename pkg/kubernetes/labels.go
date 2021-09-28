@@ -13,7 +13,6 @@ import (
 // Commonly-used and Radius-Specific labels for Kubernetes
 const (
 	LabelRadiusApplication = "radius.dev/application"
-	LabelRadiusComponent   = "radius.dev/component"
 	LabelRadiusResource    = "radius.dev/resource"
 	LabelRadiusRouteFmt    = "radius.dev/route-%s-%s"
 	LabelRadiusRevision    = "radius.dev/revision"
