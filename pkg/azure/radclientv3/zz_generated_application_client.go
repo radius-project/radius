@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // ApplicationClient contains the methods for the Application group.
@@ -30,25 +31,73 @@ func NewApplicationClient(con *armcore.Connection, subscriptionID string) *Appli
 	return &ApplicationClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a Application resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *ApplicationClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (ApplicationResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, parameters, options)
+	if err != nil {
+		return ApplicationResourcePollerResponse{}, err
+	}
+	result := ApplicationResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("ApplicationClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return ApplicationResourcePollerResponse{}, err
+	}
+	poller := &applicationResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (ApplicationResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new ApplicationResourcePoller from the specified resume token.
+// token - The value must come from a previous call to ApplicationResourcePoller.ResumeToken().
+func (client *ApplicationClient) ResumeCreateOrUpdate(ctx context.Context, token string) (ApplicationResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("ApplicationClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return ApplicationResourcePollerResponse{}, err
+	}
+	poller := &applicationResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return ApplicationResourcePollerResponse{}, err
+	}
+	result := ApplicationResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (ApplicationResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a Application resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationCreateOrUpdateOptions) (ApplicationResourceResponse, error) {
+func (client *ApplicationClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, parameters, options)
 	if err != nil {
-		return ApplicationResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return ApplicationResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return ApplicationResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ApplicationClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *ApplicationClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -74,15 +123,6 @@ func (client *ApplicationClient) createOrUpdateCreateRequest(ctx context.Context
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *ApplicationClient) createOrUpdateHandleResponse(resp *azcore.Response) (ApplicationResourceResponse, error) {
-	var val *ApplicationResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return ApplicationResourceResponse{}, err
-	}
-return ApplicationResourceResponse{RawResponse: resp.Response, ApplicationResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *ApplicationClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -96,9 +136,57 @@ func (client *ApplicationClient) createOrUpdateHandleError(resp *azcore.Response
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a Application resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *ApplicationClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("ApplicationClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *ApplicationClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("ApplicationClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a Application resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationDeleteOptions) (*http.Response, error) {
+func (client *ApplicationClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
 		return nil, err
@@ -110,11 +198,11 @@ func (client *ApplicationClient) Delete(ctx context.Context, resourceGroupName s
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ApplicationClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationDeleteOptions) (*azcore.Request, error) {
+func (client *ApplicationClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

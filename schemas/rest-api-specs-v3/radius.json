@@ -2046,7 +2046,11 @@
         },
         "tags": [
           "Application"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a Application resource by name.",
@@ -2137,7 +2141,11 @@
         },
         "tags": [
           "Application"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/ContainerComponent": {
@@ -2211,7 +2219,11 @@
         },
         "tags": [
           "ContainerComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a ContainerComponent resource by name.",
@@ -2308,7 +2320,11 @@
         },
         "tags": [
           "ContainerComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute": {
@@ -2382,7 +2398,11 @@
         },
         "tags": [
           "HttpRoute"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a HttpRoute resource by name.",
@@ -2479,7 +2499,11 @@
         },
         "tags": [
           "HttpRoute"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource": {
@@ -2590,7 +2614,11 @@
         },
         "tags": [
           "azure.com.CosmosDBMongoComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a azure.com.CosmosDBMongoComponent resource by name.",
@@ -2687,7 +2715,11 @@
         },
         "tags": [
           "azure.com.CosmosDBMongoComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.CosmosDBSQLComponent": {
@@ -2761,7 +2793,11 @@
         },
         "tags": [
           "azure.com.CosmosDBSQLComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a azure.com.CosmosDBSQLComponent resource by name.",
@@ -2858,7 +2894,11 @@
         },
         "tags": [
           "azure.com.CosmosDBSQLComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVaultComponent": {
@@ -2932,7 +2972,11 @@
         },
         "tags": [
           "azure.com.KeyVaultComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a azure.com.KeyVaultComponent resource by name.",
@@ -3029,7 +3073,11 @@
         },
         "tags": [
           "azure.com.KeyVaultComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent": {
@@ -3103,7 +3151,11 @@
         },
         "tags": [
           "azure.com.ServiceBusQueueComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a azure.com.ServiceBusQueueComponent resource by name.",
@@ -3200,7 +3252,11 @@
         },
         "tags": [
           "azure.com.ServiceBusQueueComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute": {
@@ -3274,7 +3330,11 @@
         },
         "tags": [
           "dapr.io.InvokeRoute"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a dapr.io.InvokeRoute resource by name.",
@@ -3371,7 +3431,11 @@
         },
         "tags": [
           "dapr.io.InvokeRoute"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent": {
@@ -3445,7 +3509,11 @@
         },
         "tags": [
           "dapr.io.PubSubTopicComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a dapr.io.PubSubTopicComponent resource by name.",
@@ -3542,7 +3610,11 @@
         },
         "tags": [
           "dapr.io.PubSubTopicComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent": {
@@ -3616,7 +3688,11 @@
         },
         "tags": [
           "dapr.io.StateStoreComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a dapr.io.StateStoreComponent resource by name.",
@@ -3713,7 +3789,11 @@
         },
         "tags": [
           "dapr.io.StateStoreComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent": {
@@ -3787,7 +3867,11 @@
         },
         "tags": [
           "mongodb.com.MongoDBComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a mongodb.com.MongoDBComponent resource by name.",
@@ -3884,7 +3968,11 @@
         },
         "tags": [
           "mongodb.com.MongoDBComponent"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue": {
@@ -3958,7 +4046,11 @@
         },
         "tags": [
           "rabbitmq.com.MessageQueue"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a rabbitmq.com.MessageQueue resource by name.",
@@ -4055,7 +4147,11 @@
         },
         "tags": [
           "rabbitmq.com.MessageQueue"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.Redis": {
@@ -4129,7 +4225,11 @@
         },
         "tags": [
           "redislabs.com.Redis"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a redislabs.com.Redis resource by name.",
@@ -4226,7 +4326,11 @@
         },
         "tags": [
           "redislabs.com.Redis"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       }
     },
     "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}": {
@@ -4266,7 +4370,11 @@
         },
         "tags": [
           "RadiusResource"
-        ]
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
       },
       "get": {
         "description": "Gets a RadiusResource resource by name.",

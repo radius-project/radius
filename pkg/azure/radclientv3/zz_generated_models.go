@@ -14,13 +14,13 @@ import (
 	"time"
 )
 
-// ApplicationCreateOrUpdateOptions contains the optional parameters for the Application.CreateOrUpdate method.
-type ApplicationCreateOrUpdateOptions struct {
+// ApplicationBeginCreateOrUpdateOptions contains the optional parameters for the Application.BeginCreateOrUpdate method.
+type ApplicationBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ApplicationDeleteOptions contains the optional parameters for the Application.Delete method.
-type ApplicationDeleteOptions struct {
+// ApplicationBeginDeleteOptions contains the optional parameters for the Application.BeginDelete method.
+type ApplicationBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -82,13 +82,14 @@ type ApplicationStatus struct {
 	ProvisioningState *string `json:"provisioningState,omitempty"`
 }
 
-// AzureComCosmosDBMongoComponentCreateOrUpdateOptions contains the optional parameters for the AzureComCosmosDBMongoComponent.CreateOrUpdate method.
-type AzureComCosmosDBMongoComponentCreateOrUpdateOptions struct {
+// AzureComCosmosDBMongoComponentBeginCreateOrUpdateOptions contains the optional parameters for the AzureComCosmosDBMongoComponent.BeginCreateOrUpdate
+// method.
+type AzureComCosmosDBMongoComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComCosmosDBMongoComponentDeleteOptions contains the optional parameters for the AzureComCosmosDBMongoComponent.Delete method.
-type AzureComCosmosDBMongoComponentDeleteOptions struct {
+// AzureComCosmosDBMongoComponentBeginDeleteOptions contains the optional parameters for the AzureComCosmosDBMongoComponent.BeginDelete method.
+type AzureComCosmosDBMongoComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -102,13 +103,13 @@ type AzureComCosmosDBMongoComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComCosmosDBSQLComponentCreateOrUpdateOptions contains the optional parameters for the AzureComCosmosDBSQLComponent.CreateOrUpdate method.
-type AzureComCosmosDBSQLComponentCreateOrUpdateOptions struct {
+// AzureComCosmosDBSQLComponentBeginCreateOrUpdateOptions contains the optional parameters for the AzureComCosmosDBSQLComponent.BeginCreateOrUpdate method.
+type AzureComCosmosDBSQLComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComCosmosDBSQLComponentDeleteOptions contains the optional parameters for the AzureComCosmosDBSQLComponent.Delete method.
-type AzureComCosmosDBSQLComponentDeleteOptions struct {
+// AzureComCosmosDBSQLComponentBeginDeleteOptions contains the optional parameters for the AzureComCosmosDBSQLComponent.BeginDelete method.
+type AzureComCosmosDBSQLComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -122,13 +123,13 @@ type AzureComCosmosDBSQLComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComKeyVaultComponentCreateOrUpdateOptions contains the optional parameters for the AzureComKeyVaultComponent.CreateOrUpdate method.
-type AzureComKeyVaultComponentCreateOrUpdateOptions struct {
+// AzureComKeyVaultComponentBeginCreateOrUpdateOptions contains the optional parameters for the AzureComKeyVaultComponent.BeginCreateOrUpdate method.
+type AzureComKeyVaultComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComKeyVaultComponentDeleteOptions contains the optional parameters for the AzureComKeyVaultComponent.Delete method.
-type AzureComKeyVaultComponentDeleteOptions struct {
+// AzureComKeyVaultComponentBeginDeleteOptions contains the optional parameters for the AzureComKeyVaultComponent.BeginDelete method.
+type AzureComKeyVaultComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -142,13 +143,14 @@ type AzureComKeyVaultComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComServiceBusQueueComponentCreateOrUpdateOptions contains the optional parameters for the AzureComServiceBusQueueComponent.CreateOrUpdate method.
-type AzureComServiceBusQueueComponentCreateOrUpdateOptions struct {
+// AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions contains the optional parameters for the AzureComServiceBusQueueComponent.BeginCreateOrUpdate
+// method.
+type AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComServiceBusQueueComponentDeleteOptions contains the optional parameters for the AzureComServiceBusQueueComponent.Delete method.
-type AzureComServiceBusQueueComponentDeleteOptions struct {
+// AzureComServiceBusQueueComponentBeginDeleteOptions contains the optional parameters for the AzureComServiceBusQueueComponent.BeginDelete method.
+type AzureComServiceBusQueueComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -412,13 +414,13 @@ func (c ComponentStatus) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// ContainerComponentCreateOrUpdateOptions contains the optional parameters for the ContainerComponent.CreateOrUpdate method.
-type ContainerComponentCreateOrUpdateOptions struct {
+// ContainerComponentBeginCreateOrUpdateOptions contains the optional parameters for the ContainerComponent.BeginCreateOrUpdate method.
+type ContainerComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ContainerComponentDeleteOptions contains the optional parameters for the ContainerComponent.Delete method.
-type ContainerComponentDeleteOptions struct {
+// ContainerComponentBeginDeleteOptions contains the optional parameters for the ContainerComponent.BeginDelete method.
+type ContainerComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -561,13 +563,13 @@ func (d DaprInvokeRouteResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// DaprIoInvokeRouteCreateOrUpdateOptions contains the optional parameters for the DaprIoInvokeRoute.CreateOrUpdate method.
-type DaprIoInvokeRouteCreateOrUpdateOptions struct {
+// DaprIoInvokeRouteBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoInvokeRoute.BeginCreateOrUpdate method.
+type DaprIoInvokeRouteBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoInvokeRouteDeleteOptions contains the optional parameters for the DaprIoInvokeRoute.Delete method.
-type DaprIoInvokeRouteDeleteOptions struct {
+// DaprIoInvokeRouteBeginDeleteOptions contains the optional parameters for the DaprIoInvokeRoute.BeginDelete method.
+type DaprIoInvokeRouteBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -581,13 +583,13 @@ type DaprIoInvokeRouteListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubTopicComponentCreateOrUpdateOptions contains the optional parameters for the DaprIoPubSubTopicComponent.CreateOrUpdate method.
-type DaprIoPubSubTopicComponentCreateOrUpdateOptions struct {
+// DaprIoPubSubTopicComponentBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoPubSubTopicComponent.BeginCreateOrUpdate method.
+type DaprIoPubSubTopicComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubTopicComponentDeleteOptions contains the optional parameters for the DaprIoPubSubTopicComponent.Delete method.
-type DaprIoPubSubTopicComponentDeleteOptions struct {
+// DaprIoPubSubTopicComponentBeginDeleteOptions contains the optional parameters for the DaprIoPubSubTopicComponent.BeginDelete method.
+type DaprIoPubSubTopicComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -601,13 +603,13 @@ type DaprIoPubSubTopicComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoStateStoreComponentCreateOrUpdateOptions contains the optional parameters for the DaprIoStateStoreComponent.CreateOrUpdate method.
-type DaprIoStateStoreComponentCreateOrUpdateOptions struct {
+// DaprIoStateStoreComponentBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoStateStoreComponent.BeginCreateOrUpdate method.
+type DaprIoStateStoreComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoStateStoreComponentDeleteOptions contains the optional parameters for the DaprIoStateStoreComponent.Delete method.
-type DaprIoStateStoreComponentDeleteOptions struct {
+// DaprIoStateStoreComponentBeginDeleteOptions contains the optional parameters for the DaprIoStateStoreComponent.BeginDelete method.
+type DaprIoStateStoreComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -941,13 +943,13 @@ func (h *HTTPGetHealthProbeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// HTTPRouteCreateOrUpdateOptions contains the optional parameters for the HTTPRoute.CreateOrUpdate method.
-type HTTPRouteCreateOrUpdateOptions struct {
+// HTTPRouteBeginCreateOrUpdateOptions contains the optional parameters for the HTTPRoute.BeginCreateOrUpdate method.
+type HTTPRouteBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// HTTPRouteDeleteOptions contains the optional parameters for the HTTPRoute.Delete method.
-type HTTPRouteDeleteOptions struct {
+// HTTPRouteBeginDeleteOptions contains the optional parameters for the HTTPRoute.BeginDelete method.
+type HTTPRouteBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1136,13 +1138,13 @@ func (m MongoDBComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// MongodbComMongoDBComponentCreateOrUpdateOptions contains the optional parameters for the MongodbComMongoDBComponent.CreateOrUpdate method.
-type MongodbComMongoDBComponentCreateOrUpdateOptions struct {
+// MongodbComMongoDBComponentBeginCreateOrUpdateOptions contains the optional parameters for the MongodbComMongoDBComponent.BeginCreateOrUpdate method.
+type MongodbComMongoDBComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MongodbComMongoDBComponentDeleteOptions contains the optional parameters for the MongodbComMongoDBComponent.Delete method.
-type MongodbComMongoDBComponentDeleteOptions struct {
+// MongodbComMongoDBComponentBeginDeleteOptions contains the optional parameters for the MongodbComMongoDBComponent.BeginDelete method.
+type MongodbComMongoDBComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1366,13 +1368,13 @@ func (r RabbitMQComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// RabbitmqComMessageQueueCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueue.CreateOrUpdate method.
-type RabbitmqComMessageQueueCreateOrUpdateOptions struct {
+// RabbitmqComMessageQueueBeginCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueue.BeginCreateOrUpdate method.
+type RabbitmqComMessageQueueBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitmqComMessageQueueDeleteOptions contains the optional parameters for the RabbitmqComMessageQueue.Delete method.
-type RabbitmqComMessageQueueDeleteOptions struct {
+// RabbitmqComMessageQueueBeginDeleteOptions contains the optional parameters for the RabbitmqComMessageQueue.BeginDelete method.
+type RabbitmqComMessageQueueBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1400,8 +1402,8 @@ func (r RadiusResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// RadiusResourceDeleteOptions contains the optional parameters for the RadiusResource.Delete method.
-type RadiusResourceDeleteOptions struct {
+// RadiusResourceBeginDeleteOptions contains the optional parameters for the RadiusResource.BeginDelete method.
+type RadiusResourceBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1480,13 +1482,13 @@ func (r RedisComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// RedislabsComRedisCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedis.CreateOrUpdate method.
-type RedislabsComRedisCreateOrUpdateOptions struct {
+// RedislabsComRedisBeginCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedis.BeginCreateOrUpdate method.
+type RedislabsComRedisBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedislabsComRedisDeleteOptions contains the optional parameters for the RedislabsComRedis.Delete method.
-type RedislabsComRedisDeleteOptions struct {
+// RedislabsComRedisBeginDeleteOptions contains the optional parameters for the RedislabsComRedis.BeginDelete method.
+type RedislabsComRedisBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 

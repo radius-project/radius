@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // DaprIoInvokeRouteClient contains the methods for the DaprIoInvokeRoute group.
@@ -30,25 +31,73 @@ func NewDaprIoInvokeRouteClient(con *armcore.Connection, subscriptionID string) 
 	return &DaprIoInvokeRouteClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a dapr.io.InvokeRoute resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *DaprIoInvokeRouteClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, parameters DaprInvokeRouteResource, options *DaprIoInvokeRouteBeginCreateOrUpdateOptions) (DaprInvokeRouteResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, daprInvokeRouteName, parameters, options)
+	if err != nil {
+		return DaprInvokeRouteResourcePollerResponse{}, err
+	}
+	result := DaprInvokeRouteResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("DaprIoInvokeRouteClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return DaprInvokeRouteResourcePollerResponse{}, err
+	}
+	poller := &daprInvokeRouteResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprInvokeRouteResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new DaprInvokeRouteResourcePoller from the specified resume token.
+// token - The value must come from a previous call to DaprInvokeRouteResourcePoller.ResumeToken().
+func (client *DaprIoInvokeRouteClient) ResumeCreateOrUpdate(ctx context.Context, token string) (DaprInvokeRouteResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoInvokeRouteClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return DaprInvokeRouteResourcePollerResponse{}, err
+	}
+	poller := &daprInvokeRouteResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return DaprInvokeRouteResourcePollerResponse{}, err
+	}
+	result := DaprInvokeRouteResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprInvokeRouteResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a dapr.io.InvokeRoute resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoInvokeRouteClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, parameters DaprInvokeRouteResource, options *DaprIoInvokeRouteCreateOrUpdateOptions) (DaprInvokeRouteResourceResponse, error) {
+func (client *DaprIoInvokeRouteClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, parameters DaprInvokeRouteResource, options *DaprIoInvokeRouteBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, daprInvokeRouteName, parameters, options)
 	if err != nil {
-		return DaprInvokeRouteResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return DaprInvokeRouteResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return DaprInvokeRouteResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprIoInvokeRouteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, parameters DaprInvokeRouteResource, options *DaprIoInvokeRouteCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *DaprIoInvokeRouteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, parameters DaprInvokeRouteResource, options *DaprIoInvokeRouteBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute/{daprInvokeRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *DaprIoInvokeRouteClient) createOrUpdateCreateRequest(ctx context.C
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *DaprIoInvokeRouteClient) createOrUpdateHandleResponse(resp *azcore.Response) (DaprInvokeRouteResourceResponse, error) {
-	var val *DaprInvokeRouteResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprInvokeRouteResourceResponse{}, err
-	}
-return DaprInvokeRouteResourceResponse{RawResponse: resp.Response, DaprInvokeRouteResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *DaprIoInvokeRouteClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *DaprIoInvokeRouteClient) createOrUpdateHandleError(resp *azcore.Re
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a dapr.io.InvokeRoute resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *DaprIoInvokeRouteClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, options *DaprIoInvokeRouteBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, daprInvokeRouteName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("DaprIoInvokeRouteClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *DaprIoInvokeRouteClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoInvokeRouteClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a dapr.io.InvokeRoute resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoInvokeRouteClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, options *DaprIoInvokeRouteDeleteOptions) (*http.Response, error) {
+func (client *DaprIoInvokeRouteClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, options *DaprIoInvokeRouteBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, daprInvokeRouteName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *DaprIoInvokeRouteClient) Delete(ctx context.Context, resourceGroup
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprIoInvokeRouteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, options *DaprIoInvokeRouteDeleteOptions) (*azcore.Request, error) {
+func (client *DaprIoInvokeRouteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeRouteName string, options *DaprIoInvokeRouteBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute/{daprInvokeRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

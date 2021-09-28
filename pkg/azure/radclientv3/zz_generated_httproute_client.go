@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // HTTPRouteClient contains the methods for the HTTPRoute group.
@@ -30,25 +31,73 @@ func NewHTTPRouteClient(con *armcore.Connection, subscriptionID string) *HTTPRou
 	return &HTTPRouteClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a HttpRoute resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *HTTPRouteClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, parameters HTTPRouteResource, options *HTTPRouteBeginCreateOrUpdateOptions) (HTTPRouteResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, httpRouteName, parameters, options)
+	if err != nil {
+		return HTTPRouteResourcePollerResponse{}, err
+	}
+	result := HTTPRouteResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("HTTPRouteClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return HTTPRouteResourcePollerResponse{}, err
+	}
+	poller := &httpRouteResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (HTTPRouteResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new HTTPRouteResourcePoller from the specified resume token.
+// token - The value must come from a previous call to HTTPRouteResourcePoller.ResumeToken().
+func (client *HTTPRouteClient) ResumeCreateOrUpdate(ctx context.Context, token string) (HTTPRouteResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("HTTPRouteClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return HTTPRouteResourcePollerResponse{}, err
+	}
+	poller := &httpRouteResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPRouteResourcePollerResponse{}, err
+	}
+	result := HTTPRouteResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (HTTPRouteResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a HttpRoute resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *HTTPRouteClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, parameters HTTPRouteResource, options *HTTPRouteCreateOrUpdateOptions) (HTTPRouteResourceResponse, error) {
+func (client *HTTPRouteClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, parameters HTTPRouteResource, options *HTTPRouteBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, httpRouteName, parameters, options)
 	if err != nil {
-		return HTTPRouteResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return HTTPRouteResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return HTTPRouteResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *HTTPRouteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, parameters HTTPRouteResource, options *HTTPRouteCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *HTTPRouteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, parameters HTTPRouteResource, options *HTTPRouteBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *HTTPRouteClient) createOrUpdateCreateRequest(ctx context.Context, 
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *HTTPRouteClient) createOrUpdateHandleResponse(resp *azcore.Response) (HTTPRouteResourceResponse, error) {
-	var val *HTTPRouteResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return HTTPRouteResourceResponse{}, err
-	}
-return HTTPRouteResourceResponse{RawResponse: resp.Response, HTTPRouteResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *HTTPRouteClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *HTTPRouteClient) createOrUpdateHandleError(resp *azcore.Response) 
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a HttpRoute resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *HTTPRouteClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, options *HTTPRouteBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, httpRouteName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("HTTPRouteClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *HTTPRouteClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("HTTPRouteClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a HttpRoute resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *HTTPRouteClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, options *HTTPRouteDeleteOptions) (*http.Response, error) {
+func (client *HTTPRouteClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, options *HTTPRouteBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, httpRouteName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *HTTPRouteClient) Delete(ctx context.Context, resourceGroupName str
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *HTTPRouteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, options *HTTPRouteDeleteOptions) (*azcore.Request, error) {
+func (client *HTTPRouteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, options *HTTPRouteBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // DaprIoStateStoreComponentClient contains the methods for the DaprIoStateStoreComponent group.
@@ -30,25 +31,73 @@ func NewDaprIoStateStoreComponentClient(con *armcore.Connection, subscriptionID 
 	return &DaprIoStateStoreComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
+// BeginCreateOrUpdate - Creates or updates a dapr.io.StateStoreComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *DaprIoStateStoreComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (DaprStateStoreComponentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, parameters, options)
+	if err != nil {
+		return DaprStateStoreComponentResourcePollerResponse{}, err
+	}
+	result := DaprStateStoreComponentResourcePollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("DaprIoStateStoreComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return DaprStateStoreComponentResourcePollerResponse{}, err
+	}
+	poller := &daprStateStoreComponentResourcePoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprStateStoreComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeCreateOrUpdate creates a new DaprStateStoreComponentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to DaprStateStoreComponentResourcePoller.ResumeToken().
+func (client *DaprIoStateStoreComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (DaprStateStoreComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoStateStoreComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+	if err != nil {
+		return DaprStateStoreComponentResourcePollerResponse{}, err
+	}
+	poller := &daprStateStoreComponentResourcePoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return DaprStateStoreComponentResourcePollerResponse{}, err
+	}
+	result := DaprStateStoreComponentResourcePollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprStateStoreComponentResourceResponse, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // CreateOrUpdate - Creates or updates a dapr.io.StateStoreComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoStateStoreComponentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentCreateOrUpdateOptions) (DaprStateStoreComponentResourceResponse, error) {
+func (client *DaprIoStateStoreComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, parameters, options)
 	if err != nil {
-		return DaprStateStoreComponentResourceResponse{}, err
+		return nil, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return DaprStateStoreComponentResourceResponse{}, err
+		return nil, err
 	}
 	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
-		return DaprStateStoreComponentResourceResponse{}, client.createOrUpdateHandleError(resp)
+		return nil, client.createOrUpdateHandleError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprIoStateStoreComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *DaprIoStateStoreComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent/{daprStateStoreComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -78,15 +127,6 @@ func (client *DaprIoStateStoreComponentClient) createOrUpdateCreateRequest(ctx c
 	return req, req.MarshalAsJSON(parameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *DaprIoStateStoreComponentClient) createOrUpdateHandleResponse(resp *azcore.Response) (DaprStateStoreComponentResourceResponse, error) {
-	var val *DaprStateStoreComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprStateStoreComponentResourceResponse{}, err
-	}
-return DaprStateStoreComponentResourceResponse{RawResponse: resp.Response, DaprStateStoreComponentResource: val}, nil
-}
-
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
 func (client *DaprIoStateStoreComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
@@ -100,9 +140,57 @@ func (client *DaprIoStateStoreComponentClient) createOrUpdateHandleError(resp *a
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
+// BeginDelete - Deletes a dapr.io.StateStoreComponent resource.
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *DaprIoStateStoreComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, options)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp.Response,
+	}
+	pt, err := armcore.NewLROPoller("DaprIoStateStoreComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
+// ResumeDelete creates a new HTTPPoller from the specified resume token.
+// token - The value must come from a previous call to HTTPPoller.ResumeToken().
+func (client *DaprIoStateStoreComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoStateStoreComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	poller := &httpPoller{
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return HTTPPollerResponse{}, err
+	}
+	result := HTTPPollerResponse{
+		RawResponse: resp,
+	}
+	result.Poller = poller
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
+		return poller.pollUntilDone(ctx, frequency)
+	}
+	return result, nil
+}
+
 // Delete - Deletes a dapr.io.StateStoreComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoStateStoreComponentClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentDeleteOptions) (*http.Response, error) {
+func (client *DaprIoStateStoreComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, options)
 	if err != nil {
 		return nil, err
@@ -114,11 +202,11 @@ func (client *DaprIoStateStoreComponentClient) Delete(ctx context.Context, resou
 	if !resp.HasStatusCode(http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
-	return resp.Response, nil
+	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprIoStateStoreComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentDeleteOptions) (*azcore.Request, error) {
+func (client *DaprIoStateStoreComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (*azcore.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent/{daprStateStoreComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")

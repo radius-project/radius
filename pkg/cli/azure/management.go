@@ -204,12 +204,31 @@ func (dm *ARMManagementClient) DeleteApplicationV3(ctx context.Context, appName 
 	for _, resource := range resp.RadiusResourceList.Value {
 		types := strings.Split(*resource.Type, "/")
 		resourceType := types[len(types)-1]
-		_, err := radclientv3.NewRadiusResourceClient(con, sub).Delete(ctx, rg, appName, resourceType, *resource.Name, nil)
+		poller, err := radclientv3.NewRadiusResourceClient(con, sub).BeginDelete(
+			ctx, rg, appName, resourceType, *resource.Name, nil)
 		if err != nil {
 			return err
 		}
+
+		_, err = poller.PollUntilDone(ctx, radclientv3.PollInterval)
+		if err != nil {
+			if isNotFound(err) {
+				errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
+					resourceType, *resource.Name, appName, dm.EnvironmentName)
+				return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+			}
+			return err
+		}
 	}
-	_, err = radclientv3.NewApplicationClient(con, sub).Delete(ctx, rg, appName, nil)
+	poller, err := radclientv3.NewApplicationClient(con, sub).BeginDelete(ctx, rg, appName, nil)
+	if err != nil {
+		return err
+	}
+	_, err = poller.PollUntilDone(ctx, radclientv3.PollInterval)
+	if isNotFound(err) {
+		errorMessage := fmt.Sprintf("Application  %q not found in environment %q", appName, dm.EnvironmentName)
+		return radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
+	}
 	return err
 }
 
