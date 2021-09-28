@@ -16,7 +16,6 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/dnaeon/go-vcr v1.1.0 // indirect
 	github.com/fatih/structs v1.1.0
-	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gibson042/canonicaljson-go v1.0.3
 	github.com/go-logr/logr v0.4.0
@@ -50,10 +49,11 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.6.1
-	k8s.io/api v0.21.2
-	k8s.io/apimachinery v0.21.2
+	k8s.io/api v0.22.2
+	k8s.io/apiextensions-apiserver v0.22.2
+	k8s.io/apimachinery v0.22.2
 	k8s.io/cli-runtime v0.21.0
-	k8s.io/client-go v0.21.2
+	k8s.io/client-go v0.22.2
 	k8s.io/kubectl v0.21.0
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/controller-runtime v0.9.2

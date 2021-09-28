@@ -71,9 +71,18 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 	if err != nil {
 		return nil, err
 	}
-
+	dynamicClient, err := kubernetes.CreateDynamicClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
+	extensionClient, err := kubernetes.CreateExtensionClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
 	return &kubernetes.KubernetesManagementClient{
 		Client:          client,
+		DynamicClient:   dynamicClient,
+		ExtensionClient: extensionClient,
 		Namespace:       e.Namespace,
 		EnvironmentName: e.Name,
 	}, nil
