@@ -7,8 +7,6 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 //+kubebuilder:object:root=true
@@ -35,24 +33,4 @@ type DaprIOPubSubTopicComponentList struct {
 
 func init() {
 	SchemeBuilder.Register(&DaprIOPubSubTopicComponent{}, &DaprIOPubSubTopicComponentList{})
-}
-
-var _ webhook.Validator = &DaprIOPubSubTopicComponent{}
-
-func (r *DaprIOPubSubTopicComponent) ValidateCreate() error {
-	resourcelog.Info("validate create", "name", r.Name)
-
-	return nil
-}
-
-func (r *DaprIOPubSubTopicComponent) ValidateUpdate(old runtime.Object) error {
-	resourcelog.Info("validate update", "name", r.Name)
-
-	return nil
-}
-
-func (r *DaprIOPubSubTopicComponent) ValidateDelete() error {
-	resourcelog.Info("validate delete", "name", r.Name)
-
-	return nil
 }

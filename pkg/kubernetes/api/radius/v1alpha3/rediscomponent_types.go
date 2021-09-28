@@ -7,8 +7,6 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 //+kubebuilder:object:root=true
@@ -35,26 +33,4 @@ type RedisComponentList struct {
 
 func init() {
 	SchemeBuilder.Register(&RedisComponent{}, &RedisComponentList{})
-}
-
-//+kubebuilder:webhook:path=/validate-radius-dev-v1alpha3-resource,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=rediscomponents,verbs=create;update;delete,versions=v1alpha3,name=resource-validation.radius.dev,admissionReviewVersions={v1,v1beta1}
-
-var _ webhook.Validator = &RedisComponent{}
-
-func (r *RedisComponent) ValidateCreate() error {
-	resourcelog.Info("validate create", "name", r.Name)
-
-	return nil
-}
-
-func (r *RedisComponent) ValidateUpdate(old runtime.Object) error {
-	resourcelog.Info("validate update", "name", r.Name)
-
-	return nil
-}
-
-func (r *RedisComponent) ValidateDelete() error {
-	resourcelog.Info("validate delete", "name", r.Name)
-
-	return nil
 }

@@ -7,8 +7,6 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 //+kubebuilder:object:root=true
@@ -34,24 +32,4 @@ type HttpRouteList struct {
 
 func init() {
 	SchemeBuilder.Register(&HttpRoute{}, &HttpRouteList{})
-}
-
-var _ webhook.Validator = &HttpRoute{}
-
-func (r *HttpRoute) ValidateCreate() error {
-	resourcelog.Info("validate create", "name", r.Name)
-
-	return nil
-}
-
-func (r *HttpRoute) ValidateUpdate(old runtime.Object) error {
-	resourcelog.Info("validate update", "name", r.Name)
-
-	return nil
-}
-
-func (r *HttpRoute) ValidateDelete() error {
-	resourcelog.Info("validate delete", "name", r.Name)
-
-	return nil
 }

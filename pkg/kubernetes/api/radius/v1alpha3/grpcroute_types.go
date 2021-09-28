@@ -7,8 +7,6 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 //+kubebuilder:object:root=true
@@ -34,24 +32,4 @@ type GrpcRouteList struct {
 
 func init() {
 	SchemeBuilder.Register(&GrpcRoute{}, &GrpcRouteList{})
-}
-
-var _ webhook.Validator = &GrpcRoute{}
-
-func (r *GrpcRoute) ValidateCreate() error {
-	resourcelog.Info("validate create", "name", r.Name)
-
-	return nil
-}
-
-func (r *GrpcRoute) ValidateUpdate(old runtime.Object) error {
-	resourcelog.Info("validate update", "name", r.Name)
-
-	return nil
-}
-
-func (r *GrpcRoute) ValidateDelete() error {
-	resourcelog.Info("validate delete", "name", r.Name)
-
-	return nil
 }

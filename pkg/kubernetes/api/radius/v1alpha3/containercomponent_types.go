@@ -7,8 +7,6 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 //+kubebuilder:object:root=true
@@ -35,25 +33,4 @@ type ContainerComponentList struct {
 
 func init() {
 	SchemeBuilder.Register(&ContainerComponent{}, &ContainerComponentList{})
-}
-
-//+kubebuilder:webhook:path=/validate-radius-dev-v1alpha3-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=radius.dev,resources=applications,verbs=create;update;delete,versions=v1alpha3,name=application-validation.radius.dev,admissionReviewVersions={v1,v1beta1}
-var _ webhook.Validator = &ContainerComponent{}
-
-func (r *ContainerComponent) ValidateCreate() error {
-	resourcelog.Info("validate create", "name", r.Name)
-
-	return nil
-}
-
-func (r *ContainerComponent) ValidateUpdate(old runtime.Object) error {
-	resourcelog.Info("validate update", "name", r.Name)
-
-	return nil
-}
-
-func (r *ContainerComponent) ValidateDelete() error {
-	resourcelog.Info("validate delete", "name", r.Name)
-
-	return nil
 }
