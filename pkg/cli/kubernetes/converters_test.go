@@ -62,7 +62,7 @@ func Test_ConvertK8sApplicationToARMV3(t *testing.T) {
 			Name:      "frontend-backend",
 			Namespace: "default",
 			Annotations: map[string]string{
-				kubernetes.AnnotationsApplication: "frontend-backend",
+				kubernetes.LabelRadiusApplication: "frontend-backend",
 			},
 		},
 		Spec: radiusv1alpha3.ApplicationSpec{},
