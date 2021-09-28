@@ -53,7 +53,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       //HIDE
       connections: {
         db: {
-          kind: 'azure.com/CosmosDBMongo'
+          kind: 'mongo.com/MongoDB'
           source: db.id
         }
       }
