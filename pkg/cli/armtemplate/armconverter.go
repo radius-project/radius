@@ -17,7 +17,6 @@ import (
 
 func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, error) {
 	annotations := map[string]string{}
-	labels := map[string]string{}
 
 	// Compute annotations to capture the name segments
 	typeParts := strings.Split(resource.Type, "/")
@@ -45,7 +44,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 		annotations[kubernetes.LabelRadiusResource] = resourceName
 	}
 
-	labels = kubernetes.MakeResourceCRDLabels(applicationName, resourceType, resourceName)
+	labels := kubernetes.MakeResourceCRDLabels(applicationName, resourceType, resourceName)
 
 	uns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
