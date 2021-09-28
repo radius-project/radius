@@ -13,7 +13,6 @@ import (
 // Commonly-used and Radius-Specific labels for Kubernetes
 const (
 	LabelRadiusApplication = "radius.dev/application"
-	LabelRadiusComponent   = "radius.dev/component"
 	LabelRadiusResource    = "radius.dev/resource"
 	LabelRadiusRouteFmt    = "radius.dev/route-%s-%s"
 	LabelRadiusRevision    = "radius.dev/revision"
@@ -44,11 +43,11 @@ const (
 
 // MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes resource associated with a component.
 // The descriptive labels are a superset of the selector labels.
-func MakeDescriptiveLabels(application string, component string) map[string]string {
+func MakeDescriptiveLabels(application string, resource string) map[string]string {
 	return map[string]string{
 		LabelRadiusApplication: application,
-		LabelRadiusComponent:   component,
-		LabelName:              component,
+		LabelRadiusResource:    resource,
+		LabelName:              resource,
 		LabelPartOf:            application,
 		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
@@ -62,7 +61,7 @@ func MakeDescriptiveLabels(application string, component string) map[string]stri
 func MakeSelectorLabels(application string, component string) map[string]string {
 	return map[string]string{
 		LabelRadiusApplication: application,
-		LabelRadiusComponent:   component,
+		LabelRadiusResource:    component,
 	}
 }
 

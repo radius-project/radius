@@ -58,7 +58,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 
 	labels := map[string]string{
 		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusComponent:   "test-component",
+		kubernetes.LabelRadiusResource:    "test-component",
 		kubernetes.LabelName:              "test-component",
 		kubernetes.LabelPartOf:            "test-app",
 		kubernetes.LabelManagedBy:         kubernetes.LabelManagedByRadiusRP,
@@ -66,7 +66,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 
 	matchLabels := map[string]string{
 		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusComponent:   "test-component",
+		kubernetes.LabelRadiusResource:    "test-component",
 	}
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-component", deployment.Name)

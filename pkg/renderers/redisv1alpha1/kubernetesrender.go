@@ -55,32 +55,15 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				kubernetes.LabelRadiusApplication: w.Application,
-				kubernetes.LabelRadiusComponent:   component.Name,
-				// TODO get the component revision here...
-				kubernetes.LabelName:      component.Name,
-				kubernetes.LabelPartOf:    w.Application,
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-			},
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					kubernetes.LabelRadiusApplication: w.Application,
-					kubernetes.LabelRadiusComponent:   component.Name,
-				},
+				MatchLabels: kubernetes.MakeSelectorLabels(w.Application, component.Name),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						kubernetes.LabelRadiusApplication: w.Application,
-						kubernetes.LabelRadiusComponent:   component.Name,
-						// TODO get the component revision here...
-						kubernetes.LabelName:      component.Name,
-						kubernetes.LabelPartOf:    w.Application,
-						kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-					},
+					Labels: kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -113,21 +96,11 @@ func GetKubernetesRedis(w workloads.InstantiatedWorkload, component RedisCompone
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				kubernetes.LabelRadiusApplication: w.Application,
-				kubernetes.LabelRadiusComponent:   component.Name,
-				// TODO get the component revision here...
-				kubernetes.LabelName:      component.Name,
-				kubernetes.LabelPartOf:    w.Application,
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-			},
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				kubernetes.LabelRadiusApplication: w.Application,
-				kubernetes.LabelRadiusComponent:   component.Name,
-			},
-			Type: corev1.ServiceTypeClusterIP,
+			Selector: kubernetes.MakeSelectorLabels(w.Application, component.Name),
+			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "redis",

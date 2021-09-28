@@ -110,8 +110,8 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	applicationName := resource.Annotations[kubernetes.AnnotationsApplication]
-	resourceName := resource.Annotations[kubernetes.AnnotationsResource]
+	applicationName := resource.Annotations[kubernetes.LabelRadiusApplication]
+	resourceName := resource.Annotations[kubernetes.LabelRadiusResource]
 
 	log = log.WithValues(
 		"application", applicationName,
@@ -445,5 +445,5 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Ob
 }
 
 func extractApplicationKey(obj client.Object) []string {
-	return []string{obj.GetAnnotations()[kubernetes.AnnotationsApplication]}
+	return []string{obj.GetAnnotations()[kubernetes.LabelRadiusApplication]}
 }
