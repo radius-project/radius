@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'docs/**'
-      - 'test/**'
       - 'cmd/cli/**'
       - 'cmd/docgen/**'
       - '.github/workflows/**'
@@ -16,7 +15,6 @@ on:
       - main
     paths:
       - 'docs/**'
-      - 'test/**'
       - 'cmd/cli/**'
       - 'cmd/docgen/**'
       - '.github/workflows/**'
