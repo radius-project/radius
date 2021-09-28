@@ -47,45 +47,26 @@ type deploymentProcessor struct {
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldOperationID, operationID.ID,
-	)
-
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, operationID.ID)
 	resourceID := operationID.Truncate()
 
-	logger.Info(fmt.Sprintf("Rendering resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
-	renderer, err := dp.appmodel.LookupRenderer(resourceID.Types[len(resourceID.Types)-1].Type) // Using the last type segment as key
+	// Render
+	rendererOutput, armerr, err := dp.renderResource(ctx, resourceID, resource)
 	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
 		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 
-	// Build inputs for renderer
-	rendererResource := renderers.RendererResource{
-		ApplicationName: resource.ApplicationName,
-		ResourceName:    resource.ResourceName,
-		ResourceType:    resource.Type,
-		Definition:      resource.Definition,
-	}
-
-	// Get resources that the resource being deployed has connection with.
-	dependencyResourceIDs, err := renderer.GetDependencyIDs(ctx, rendererResource)
+	// Deploy
+	logger.Info(fmt.Sprintf("Deploying radius resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
+	deployedRadiusResource, armerr, err := dp.deployRenderedResources(ctx, resourceID, resource, rendererOutput)
 	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
 		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 
-	rendererDependencies, err := dp.fetchDepenendencies(ctx, dependencyResourceIDs)
+	// Persist updated/created resource and operation in the database
+	err = dp.db.UpdateV3ResourceStatus(ctx, resourceID, deployedRadiusResource)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Internal,
@@ -96,183 +77,13 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		return err
 	}
 
-	// Render - output resources to be deployed for the radius resource
-	rendererOutput, err := renderer.Render(ctx, rendererResource, rendererDependencies)
-	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
-	}
-	// Order output resources in deployment dependency order
-	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
-	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Internal,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
-	}
-
-	// Get existing state of the resource from database, if it's an existing resource
-	existingDBResource, err := dp.db.GetV3Resource(ctx, resourceID)
-	if err == db.ErrNotFound {
-		// no-op - a resource will only exist if this is an update
-	} else if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
-	}
-	existingDBOutputResources := existingDBResource.Status.OutputResources
-
-	// Deploy and update the radius resource
-	dbOutputResources := []db.OutputResource{}
-	// values consumed by other Radius resource types through connections
-	computedValues := map[string]interface{}{}
-	// Map of localID to properties deployed for each output resource. Consumed by handler of any output resource with dependencies on other output resources
-	// Example - CosmosDBAccountName consumed by CosmosDBMongo/SQL handler
-	deployedOutputResourceProperties := map[string]map[string]string{}
-	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
-
-		var existingOutputResourceState db.OutputResource
-		for _, dbOutputResource := range existingDBOutputResources {
-			if dbOutputResource.LocalID == outputResource.LocalID {
-				existingOutputResourceState = dbOutputResource
-				break
-			}
-		}
-
-		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
-		if err != nil {
-			armerr := &armerrors.ErrorDetails{
-				Code:    armerrors.Invalid,
-				Message: err.Error(),
-				Target:  resourceID.ID,
-			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return err
-		}
-
-		properties, err := resourceHandlers.ResourceHandler.Put(ctx, &handlers.PutOptions{
-			Application:            resource.ApplicationName,
-			Component:              resource.ResourceName,
-			Resource:               &outputResource,
-			ExistingOutputResource: &existingOutputResourceState,
-			DependencyProperties:   deployedOutputResourceProperties,
-		})
-		if err != nil {
-			armerr := &armerrors.ErrorDetails{
-				Code:    armerrors.Internal,
-				Message: err.Error(),
-				Target:  resourceID.ID,
-			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return err
-		}
-		deployedOutputResourceProperties[outputResource.LocalID] = properties
-
-		if outputResource.Identity.Kind == "" {
-			armerr := &armerrors.ErrorDetails{
-				Code:    armerrors.Internal,
-				Message: err.Error(),
-				Target:  resourceID.ID,
-			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler. ", outputResource.LocalID)
-		}
-
-		// Copy deployed output resource property values into corresponding expected computed values
-		for k, v := range rendererOutput.ComputedValues {
-			if outputResource.LocalID == v.LocalID {
-				computedValues[k] = properties[v.PropertyReference]
-			}
-		}
-
-		// Register health checks for the output resource
-		healthResource := healthcontract.HealthResource{
-			Identity:         outputResource.Identity,
-			ResourceKind:     outputResource.ResourceKind,
-			RadiusResourceID: resource.ID,
-		}
-
-		dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
-
-		// Build database resource - copy updated properties to Resource field
-		dbOutputResource := db.OutputResource{
-			LocalID:             outputResource.LocalID,
-			ResourceKind:        outputResource.ResourceKind,
-			Identity:            outputResource.Identity,
-			Managed:             outputResource.Managed,
-			PersistedProperties: properties,
-			Status: db.OutputResourceStatus{
-				ProvisioningState:        db.Provisioned,
-				ProvisioningErrorDetails: "",
-			},
-		}
-		dbOutputResources = append(dbOutputResources, dbOutputResource)
-	}
-
-	// Update static values for connections
-	for k, computedValue := range rendererOutput.ComputedValues {
-		if computedValue.Value != nil {
-			computedValues[k] = computedValue.Value
-		}
-	}
-
-	// Persist updated/created resource in the database
-	resourceStatus := db.RadiusResourceStatus{
-		ProvisioningState: db.Provisioned,
-		OutputResources:   dbOutputResources,
-	}
-	updatedRadiusResource := db.RadiusResource{
-		ID:              resource.ID,
-		Type:            resource.Type,
-		SubscriptionID:  resource.SubscriptionID,
-		ResourceGroup:   resource.ResourceGroup,
-		ApplicationName: resource.ApplicationName,
-		ResourceName:    resource.ResourceName,
-
-		Definition:     resource.Definition,
-		ComputedValues: computedValues,
-		SecretValues:   convertSecretValues(rendererOutput.SecretValues),
-
-		Status: resourceStatus,
-
-		ProvisioningState: string(rest.SuccededStatus),
-	}
-
-	err = dp.db.UpdateV3ResourceStatus(ctx, resourceID, updatedRadiusResource)
-	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Internal,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
-	}
-
-	// Update operation
 	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
 
 	return nil
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldOperationID, operationID.ID,
-	)
-
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, operationID.ID)
 	resourceID := operationID.Truncate()
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
@@ -314,7 +125,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 		dp.unregisterOutputResourceForHealthChecks(ctx, healthResource)
 	}
 
-	// Delete resource from database
+	// Update resource and operation in the database
 	err := dp.db.DeleteV3Resource(ctx, resourceID)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
@@ -326,10 +137,235 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 		return err
 	}
 
-	// Update operation
 	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
 
 	return nil
+}
+
+func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource) (renderers.RendererOutput, *armerrors.ErrorDetails, error) {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("Rendering resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
+	renderer, err := dp.appmodel.LookupRenderer(resourceID.Types[len(resourceID.Types)-1].Type) // Using the last type segment as key
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		return renderers.RendererOutput{}, armerr, err
+	}
+
+	// Build inputs for renderer
+	rendererResource := renderers.RendererResource{
+		ApplicationName: resource.ApplicationName,
+		ResourceName:    resource.ResourceName,
+		ResourceType:    resource.Type,
+		Definition:      resource.Definition,
+	}
+
+	// Get resources that the resource being deployed has connection with.
+	dependencyResourceIDs, err := renderer.GetDependencyIDs(ctx, rendererResource)
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		return renderers.RendererOutput{}, armerr, err
+	}
+
+	rendererDependencies, err := dp.fetchDepenendencies(ctx, dependencyResourceIDs)
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		return renderers.RendererOutput{}, armerr, err
+	}
+
+	// == replace this with above few lines
+	// rendererDependencies := map[string]renderers.RendererDependency{}
+	// for _, dependencyResourceID := range dependencyResourceIDs {
+	// 	// Fetch resource from db
+	// 	dbDependencyResource, err := dp.db.GetV3Resource(ctx, dependencyResourceID)
+	// 	if err != nil {
+	// 		armerr := &armerrors.ErrorDetails{
+	// 			Code:    armerrors.Internal,
+	// 			Message: err.Error(),
+	// 			Target:  resourceID.ID,
+	// 		}
+	// 		return renderers.RendererOutput{}, armerr, err
+	// 	}
+
+	// 	rendererDependency := renderers.RendererDependency{
+	// 		ResourceID:     dependencyResourceID,
+	// 		Definition:     dbDependencyResource.Definition,
+	// 		ComputedValues: dbDependencyResource.ComputedValues,
+	// 	}
+	// 	rendererDependencies[dependencyResourceID.ID] = rendererDependency
+	// 	// dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+	// 	// return err
+	// }
+	// == replace block ends
+
+	rendererOutput, err := renderer.Render(ctx, rendererResource, rendererDependencies)
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		return renderers.RendererOutput{}, armerr, err
+	}
+
+	return rendererOutput, nil, nil
+}
+
+// Deploys rendered output resources in order of dependencies
+// returns deployedRadiusResource - updated radius resource state that should be persisted in the database
+func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource, rendererOutput renderers.RendererOutput) (deployedRadiusResource db.RadiusResource, armerr *armerrors.ErrorDetails, err error) {
+	logger := radlogger.GetLogger(ctx)
+
+	// Order output resources in deployment dependency order
+	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
+	if err != nil {
+		armerr = &armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		return deployedRadiusResource, armerr, err
+	}
+
+	// Get current state of the resource from database, if it's an existing resource
+	existingDBResource, err := dp.db.GetV3Resource(ctx, resourceID)
+	if err == db.ErrNotFound {
+		// no-op - a resource will only exist if this is an update
+	} else if err != nil {
+		armerr = &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		return deployedRadiusResource, armerr, err
+	}
+	existingDBOutputResources := existingDBResource.Status.OutputResources
+
+	deployedOutputResources := []db.OutputResource{}
+	// Values consumed by other Radius resource types through connections
+	computedValues := map[string]interface{}{}
+	// Map of localID to properties deployed for each output resource. Consumed by handler of any output resource with dependencies on other output resources
+	// Example - CosmosDBAccountName consumed by CosmosDBMongo/SQL handler
+	deployedOutputResourceProperties := map[string]map[string]string{}
+	for _, outputResource := range orderedOutputResources {
+		logger.Info(fmt.Sprintf("Deploying output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
+
+		var existingOutputResourceState db.OutputResource
+		for _, dbOutputResource := range existingDBOutputResources {
+			if dbOutputResource.LocalID == outputResource.LocalID {
+				existingOutputResourceState = dbOutputResource
+				break
+			}
+		}
+
+		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
+		if err != nil {
+			armerr = &armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			return deployedRadiusResource, armerr, err
+		}
+
+		properties, err := resourceHandlers.ResourceHandler.Put(ctx, &handlers.PutOptions{
+			Application:            resource.ApplicationName,
+			Component:              resource.ResourceName,
+			Resource:               &outputResource,
+			ExistingOutputResource: &existingOutputResourceState,
+			DependencyProperties:   deployedOutputResourceProperties,
+		})
+		if err != nil {
+			armerr = &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			return deployedRadiusResource, armerr, err
+		}
+		deployedOutputResourceProperties[outputResource.LocalID] = properties
+
+		if outputResource.Identity.Kind == "" {
+			armerr = &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			// dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+			return deployedRadiusResource, armerr, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler. ", outputResource.LocalID)
+		}
+
+		// Copy deployed output resource property values into corresponding expected computed values
+		for k, v := range rendererOutput.ComputedValues {
+			if outputResource.LocalID == v.LocalID {
+				computedValues[k] = properties[v.PropertyReference]
+			}
+		}
+
+		// Register health checks for the output resource
+		healthResource := healthcontract.HealthResource{
+			Identity:         outputResource.Identity,
+			ResourceKind:     outputResource.ResourceKind,
+			RadiusResourceID: resource.ID,
+		}
+
+		dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
+
+		// Build database resource - copy updated properties to Resource field
+		dbOutputResource := db.OutputResource{
+			LocalID:             outputResource.LocalID,
+			ResourceKind:        outputResource.ResourceKind,
+			Identity:            outputResource.Identity,
+			Managed:             outputResource.Managed,
+			PersistedProperties: properties,
+			Status: db.OutputResourceStatus{
+				ProvisioningState:        db.Provisioned,
+				ProvisioningErrorDetails: "",
+			},
+		}
+		deployedOutputResources = append(deployedOutputResources, dbOutputResource)
+	}
+
+	// Update static values for connections
+	for k, computedValue := range rendererOutput.ComputedValues {
+		if computedValue.Value != nil {
+			computedValues[k] = computedValue.Value
+		}
+	}
+
+	resourceStatus := db.RadiusResourceStatus{
+		ProvisioningState: db.Provisioned,
+		OutputResources:   deployedOutputResources,
+	}
+	deployedRadiusResource = db.RadiusResource{
+		ID:              resource.ID,
+		Type:            resource.Type,
+		SubscriptionID:  resource.SubscriptionID,
+		ResourceGroup:   resource.ResourceGroup,
+		ApplicationName: resource.ApplicationName,
+		ResourceName:    resource.ResourceName,
+
+		Definition:     resource.Definition,
+		ComputedValues: computedValues,
+		SecretValues:   convertSecretValues(rendererOutput.SecretValues),
+
+		Status: resourceStatus,
+
+		ProvisioningState: string(rest.SuccededStatus),
+	}
+
+	return deployedRadiusResource, nil, nil
 }
 
 func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) {
