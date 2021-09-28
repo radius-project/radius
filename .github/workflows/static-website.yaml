@@ -1,4 +1,4 @@
-name: staging-website
+name: static-website
 
 on:
   push:
