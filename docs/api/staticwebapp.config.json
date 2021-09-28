@@ -1,8 +1,12 @@
 {
     "routes": [
         {
+            "route": "/login",
+            "rewrite": "/.auth/login/aad"
+        },
+        {
             "route": "/logout",
-            "serve": "/.auth/logout"
+            "rewrite": "/.auth/logout"
         },
         {
             "route": "/.auth/login/aad",
