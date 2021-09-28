@@ -259,7 +259,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererRes
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resource.ResourceName,
 			Namespace: resource.ApplicationName,
-			Labels:    kubernetes.MakeDescriptiveLabelsV3(resource.ApplicationName, resource.ResourceName),
+			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: secrets,

@@ -77,7 +77,7 @@ func Test_Render_Simple(t *testing.T) {
 	require.Equal(t, outputresource.TypeKubernetes, resource.Type)
 	require.True(t, resource.Managed)
 
-	labels := kubernetes.MakeDescriptiveLabelsV3("test-app", "test-container")
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
 
 	require.Equal(t, "test-container", ingress.Name)
 	require.Equal(t, "test-app", ingress.Namespace)
@@ -133,7 +133,7 @@ func Test_Render_WithHostname(t *testing.T) {
 	require.Equal(t, outputresource.TypeKubernetes, resource.Type)
 	require.True(t, resource.Managed)
 
-	labels := kubernetes.MakeDescriptiveLabelsV3("test-app", "test-container")
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-container")
 
 	require.Equal(t, "test-container", ingress.Name)
 	require.Equal(t, "test-app", ingress.Namespace)

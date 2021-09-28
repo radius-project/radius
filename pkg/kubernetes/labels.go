@@ -44,18 +44,7 @@ const (
 
 // MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes resource associated with a component.
 // The descriptive labels are a superset of the selector labels.
-func MakeDescriptiveLabels(application string, component string) map[string]string {
-	return map[string]string{
-		LabelRadiusApplication: application,
-		LabelRadiusComponent:   component,
-		LabelName:              component,
-		LabelPartOf:            application,
-		LabelManagedBy:         LabelManagedByRadiusRP,
-	}
-}
-
-// Temporary change for app model v3, remove original once app model v3 is in.
-func MakeDescriptiveLabelsV3(application string, resource string) map[string]string {
+func MakeDescriptiveLabels(application string, resource string) map[string]string {
 	return map[string]string{
 		LabelRadiusApplication: application,
 		LabelRadiusResource:    resource,
@@ -73,7 +62,7 @@ func MakeDescriptiveLabelsV3(application string, resource string) map[string]str
 func MakeSelectorLabels(application string, component string) map[string]string {
 	return map[string]string{
 		LabelRadiusApplication: application,
-		LabelRadiusComponent:   component,
+		LabelRadiusResource:    component,
 	}
 }
 

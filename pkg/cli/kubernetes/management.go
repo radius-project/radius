@@ -74,7 +74,7 @@ func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, appli
 	}
 
 	for _, item := range applications.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
 			application, err := ConvertK8sApplicationToARM(item)
 			if err != nil {
 				return nil, err
@@ -98,7 +98,7 @@ func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, app
 	}
 
 	for _, item := range applications.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
 			err = mc.Client.Delete(ctx, &item, &client.DeleteOptions{})
 			if err != nil {
 				return err
@@ -122,7 +122,7 @@ func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applic
 
 	converted := []*radclient.ComponentResource{}
 	for _, item := range components.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
 			component, err := ConvertK8sResourceToARM(item)
 			if err != nil {
 				return nil, err
@@ -150,8 +150,8 @@ func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applica
 	}
 
 	for _, item := range components.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName &&
-			item.Annotations[kubernetes.AnnotationsComponent] == componentName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName &&
+			item.Annotations[kubernetes.LabelRadiusResource] == componentName {
 			component, err := ConvertK8sResourceToARM(item)
 			if err != nil {
 				return nil, err
@@ -173,7 +173,7 @@ func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.
 	}
 
 	for _, item := range components.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
 			err = mc.Client.Delete(ctx, &item, &client.DeleteOptions{})
 			if err != nil {
 				return err
@@ -194,8 +194,8 @@ func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, appl
 	}
 
 	for _, item := range deployments.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName &&
-			item.Annotations[kubernetes.AnnotationsDeployment] == deploymentName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName &&
+			item.Annotations["radius.dev/deployment"] == deploymentName {
 			err = mc.Client.Delete(ctx, &item)
 			if err != nil {
 				return err
@@ -218,7 +218,7 @@ func (mc *KubernetesManagementClient) ListDeployments(ctx context.Context, appli
 
 	converted := []*radclient.DeploymentResource{}
 	for _, item := range deployments.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
 			deployment, err := ConvertK8sDeploymentToARM(item)
 			if err != nil {
 				return nil, err
@@ -246,8 +246,8 @@ func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applic
 	}
 
 	for _, item := range deployments.Items {
-		if item.Annotations[kubernetes.AnnotationsApplication] == applicationName &&
-			item.Annotations[kubernetes.AnnotationsDeployment] == deploymentName {
+		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName &&
+			item.Annotations["radius.dev/deployment"] == deploymentName {
 			deployment, err := ConvertK8sDeploymentToARM(item)
 			if err != nil {
 				return nil, err
