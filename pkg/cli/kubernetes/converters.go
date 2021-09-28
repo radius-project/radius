@@ -31,7 +31,7 @@ func ConvertK8sApplicationToARM(input radiusv1alpha3.Application) (*radclient.Ap
 
 func ConvertK8sApplicationToARMV3(input radiusv1alpha3.Application) (*radclientv3.ApplicationResource, error) {
 	result := radclientv3.ApplicationResource{}
-	result.Name = to.StringPtr(input.Annotations[kubernetes.AnnotationsApplication])
+	result.Name = to.StringPtr(input.Annotations[kubernetes.LabelRadiusApplication])
 
 	// There's nothing in properties for an application
 	result.Properties = &radclientv3.ApplicationProperties{}
