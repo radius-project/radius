@@ -9,11 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-var resourcelog = logf.Log.WithName("resource")
 
 // ResourceSpec defines the desired state of Resource
 type ResourceSpec struct {
@@ -67,8 +63,4 @@ type ResourceList struct {
 
 func init() {
 	SchemeBuilder.Register(&Resource{}, &ResourceList{})
-}
-
-func validate(r client.Object) error {
-	return nil
 }
