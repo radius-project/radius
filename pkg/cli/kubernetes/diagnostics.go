@@ -219,7 +219,7 @@ func runPortforward(restconfig *rest.Config, client *k8s.Clientset, replica *cor
 
 func getAppContainerName(replica *corev1.Pod) string {
 	// The container name will be the component name
-	component := replica.Labels[kubernetes.LabelRadiusComponent]
+	component := replica.Labels[kubernetes.LabelRadiusResource]
 	return component
 }
 
