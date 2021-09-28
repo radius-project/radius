@@ -43,8 +43,6 @@ var (
 	_ clients.ManagementClient = (*KubernetesManagementClient)(nil)
 )
 
-const RadiusV3Version = "v1alpha3"
-
 func init() {
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = radiusv1alpha3.AddToScheme(Scheme)
@@ -340,14 +338,14 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 		resourceSelector += fmt.Sprintf(",metadata.name=%s", resourceName)
 	}
 	for _, crd := range crds.Items {
-		if crd.Spec.Group != "radius.dev" {
+		if crd.Spec.Group != radiusv1alpha3.GroupVersion.Group {
 			continue
 		}
 		if crd.Spec.Names.Kind == schemav3.ApplicationResourceType {
 			continue
 		}
 		for _, version := range crd.Spec.Versions {
-			if version.Name != RadiusV3Version {
+			if version.Name != radiusv1alpha3.GroupVersion.Version {
 				continue
 			}
 			// TODO: consider adding labels for our resources so we can use a label selector here.
