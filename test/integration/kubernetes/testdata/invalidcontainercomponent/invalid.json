@@ -1,26 +1,25 @@
 {
     "apiVersion": "radius.dev/v1alpha3",
-    "kind": "HttpRoute",
+    "kind": "ContainerComponent",
     "metadata": {
-        "name": "httproute",
+        "name": "contianercomponent",
         "namespace": "arm"
     },
     "spec": {
         "template": {
-            "type": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute",
+            "type": "Microsoft.CustomProviders/resourceProviders/Application/ContainerComponent",
             "apiVersion": "2018-09-01-preview",
-            "name": "[format('{0}/{1}/{2}', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'frontendhttp')]",
+            "name": "[format('{0}/{1}/{2}', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'frontend')]",
             "dependsOn": [
                 "[resourceId('Microsoft.CustomProviders/resourceProviders/Application', 'radiusv3', 'kubernetes-resources-container-httpbinding')]"
             ],
             "body": {
                 "properties": {
-                    "port": 80,
-                    "gateway": "test"
+                    "container": "foo"
                 }
             }
         },
         "application": "test",
-        "resource": "myhttproute"
+        "resource": "containercomponent"
     }
 }
