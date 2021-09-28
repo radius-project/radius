@@ -2,8 +2,8 @@
 type: docs
 title: "Dapr components"
 linkTitle: "Dapr"
-description: "Components that integrate Radius with Dapr"
-weight: 400
+description: "Learn what Dapr components are available in your application"
+weight: 600
 ---
 
 Radius provides built-in Dapr hosting, plus integrations with [Radius components]({{< ref "container.md#dapr-sidecar" >}}).

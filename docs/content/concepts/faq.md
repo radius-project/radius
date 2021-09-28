@@ -3,7 +3,7 @@ type: docs
 title: "Project Radius frequently asked questions"
 linkTitle: "FAQ"
 description: "Commonly asked questions and answers about Project Radius"
-weight: 55
+weight: 999
 ---
 
 ## Environments
