@@ -51,6 +51,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 			"metadata": map[string]interface{}{
 				"name":      nameParts[len(nameParts)-1],
 				"namespace": namespace,
+				"labels":    annotations,
 			},
 
 			"spec": spec,
