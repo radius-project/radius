@@ -471,8 +471,14 @@ type ContainerComponentPropertiesContainer struct {
 	// Dictionary of
 	Env map[string]*string `json:"env,omitempty"`
 
+	// Any object
+	LivenessProbe map[string]interface{} `json:"livenessProbe,omitempty"`
+
 	// Dictionary of
 	Ports map[string]*ContainerPort `json:"ports,omitempty"`
+
+	// Any object
+	ReadinessProbe map[string]interface{} `json:"readinessProbe,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentPropertiesContainer.
@@ -480,7 +486,9 @@ func (c ContainerComponentPropertiesContainer) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "env", c.Env)
 	populate(objectMap, "image", c.Image)
+	populate(objectMap, "livenessProbe", c.LivenessProbe)
 	populate(objectMap, "ports", c.Ports)
+	populate(objectMap, "readinessProbe", c.ReadinessProbe)
 	return json.Marshal(objectMap)
 }
 
@@ -811,6 +819,128 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
+// ExecHealthProbeProperties - Specifies the properties for readiness/liveness probe using an executable
+type ExecHealthProbeProperties struct {
+	// REQUIRED; Command to execute to probe readiness/liveness
+	Command *string `json:"command,omitempty"`
+
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *float32 `json:"failureThreshold,omitempty"`
+
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
+
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExecHealthProbeProperties.
+func (e ExecHealthProbeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "command", e.Command)
+	populate(objectMap, "failureThreshold", e.FailureThreshold)
+	populate(objectMap, "initialDelaySeconds", e.InitialDelaySeconds)
+	populate(objectMap, "periodSeconds", e.PeriodSeconds)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExecHealthProbeProperties.
+func (e *ExecHealthProbeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "command":
+				err = unpopulate(val, &e.Command)
+				delete(rawMsg, key)
+		case "failureThreshold":
+				err = unpopulate(val, &e.FailureThreshold)
+				delete(rawMsg, key)
+		case "initialDelaySeconds":
+				err = unpopulate(val, &e.InitialDelaySeconds)
+				delete(rawMsg, key)
+		case "periodSeconds":
+				err = unpopulate(val, &e.PeriodSeconds)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
+type HTTPGetHealthProbeProperties struct {
+	// REQUIRED; The listening port number
+	ContainerPort *float32 `json:"containerPort,omitempty"`
+
+	// REQUIRED; The route to make the HTTP request on
+	Path *string `json:"path,omitempty"`
+
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *float32 `json:"failureThreshold,omitempty"`
+
+	// Custom HTTP headers to add to the get request
+	Headers map[string]*string `json:"headers,omitempty"`
+
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
+
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPGetHealthProbeProperties.
+func (h HTTPGetHealthProbeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "containerPort", h.ContainerPort)
+	populate(objectMap, "failureThreshold", h.FailureThreshold)
+	populate(objectMap, "headers", h.Headers)
+	populate(objectMap, "initialDelaySeconds", h.InitialDelaySeconds)
+	populate(objectMap, "path", h.Path)
+	populate(objectMap, "periodSeconds", h.PeriodSeconds)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type HTTPGetHealthProbeProperties.
+func (h *HTTPGetHealthProbeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "containerPort":
+				err = unpopulate(val, &h.ContainerPort)
+				delete(rawMsg, key)
+		case "failureThreshold":
+				err = unpopulate(val, &h.FailureThreshold)
+				delete(rawMsg, key)
+		case "headers":
+				err = unpopulate(val, &h.Headers)
+				delete(rawMsg, key)
+		case "initialDelaySeconds":
+				err = unpopulate(val, &h.InitialDelaySeconds)
+				delete(rawMsg, key)
+		case "path":
+				err = unpopulate(val, &h.Path)
+				delete(rawMsg, key)
+		case "periodSeconds":
+				err = unpopulate(val, &h.PeriodSeconds)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // HTTPRouteCreateOrUpdateOptions contains the optional parameters for the HTTPRoute.CreateOrUpdate method.
 type HTTPRouteCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -881,6 +1011,18 @@ func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
 	objectMap := h.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", h.Properties)
 	return json.Marshal(objectMap)
+}
+
+// HealthProbeCommonProperties - Properties for readiness/liveness probe
+type HealthProbeCommonProperties struct {
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *float32 `json:"failureThreshold,omitempty"`
+
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
+
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
 }
 
 // Identity for the resource.
@@ -1552,6 +1694,60 @@ func (s *SystemData) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "lastModifiedByType":
 				err = unpopulate(val, &s.LastModifiedByType)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TCPHealthProbeProperties - Specifies the properties for readiness/liveness probe using TCP
+type TCPHealthProbeProperties struct {
+	// REQUIRED; The listening port number
+	ContainerPort *float32 `json:"containerPort,omitempty"`
+
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *float32 `json:"failureThreshold,omitempty"`
+
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
+
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type TCPHealthProbeProperties.
+func (t TCPHealthProbeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "containerPort", t.ContainerPort)
+	populate(objectMap, "failureThreshold", t.FailureThreshold)
+	populate(objectMap, "initialDelaySeconds", t.InitialDelaySeconds)
+	populate(objectMap, "periodSeconds", t.PeriodSeconds)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type TCPHealthProbeProperties.
+func (t *TCPHealthProbeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "containerPort":
+				err = unpopulate(val, &t.ContainerPort)
+				delete(rawMsg, key)
+		case "failureThreshold":
+				err = unpopulate(val, &t.FailureThreshold)
+				delete(rawMsg, key)
+		case "initialDelaySeconds":
+				err = unpopulate(val, &t.InitialDelaySeconds)
+				delete(rawMsg, key)
+		case "periodSeconds":
+				err = unpopulate(val, &t.PeriodSeconds)
 				delete(rawMsg, key)
 		}
 		if err != nil {
