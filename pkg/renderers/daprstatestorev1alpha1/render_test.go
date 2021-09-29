@@ -61,8 +61,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
-	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, resource.Kind)
-	require.Equal(t, outputresource.TypeARM, resource.Type)
+	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, resource.ResourceKind)
 	require.True(t, resource.Managed)
 
 	expected := map[string]string{
@@ -101,8 +100,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, resource.LocalID)
-	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, resource.Kind)
-	require.Equal(t, outputresource.TypeARM, resource.Type)
+	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, resource.ResourceKind)
 	require.False(t, resource.Managed)
 
 	expected := map[string]string{
@@ -187,8 +185,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreSQLServer, resource.LocalID)
-	require.Equal(t, resourcekinds.DaprStateStoreSQLServer, resource.Kind)
-	require.Equal(t, outputresource.TypeARM, resource.Type)
+	require.Equal(t, resourcekinds.DaprStateStoreSQLServer, resource.ResourceKind)
 	require.True(t, resource.Managed)
 
 	expected := map[string]string{
@@ -274,17 +271,17 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 	redisDeployment := resources[0]
 
 	require.Equal(t, outputresource.LocalIDRedisDeployment, redisDeployment.LocalID)
-	require.Equal(t, resourcekinds.Kubernetes, redisDeployment.Kind)
+	require.Equal(t, resourcekinds.Kubernetes, redisDeployment.ResourceKind)
 	resourceDeployment := redisDeployment.Resource.(*appsv1.Deployment)
 
 	redisService := resources[1]
 	require.Equal(t, outputresource.LocalIDRedisService, redisService.LocalID)
-	require.Equal(t, resourcekinds.Kubernetes, redisService.Kind)
+	require.Equal(t, resourcekinds.Kubernetes, redisService.ResourceKind)
 	resourceService := redisService.Resource.(*corev1.Service)
 
 	dapr := resources[2]
 	require.Equal(t, outputresource.LocalIDDaprStateStoreComponent, dapr.LocalID)
-	require.Equal(t, resourcekinds.Kubernetes, dapr.Kind)
+	require.Equal(t, resourcekinds.Kubernetes, dapr.ResourceKind)
 	resourceDapr := dapr.Resource.(*unstructured.Unstructured)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-component")

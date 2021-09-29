@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
@@ -85,30 +86,21 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 
 	c := db.Component{
 		Kind: "Kind1",
+		ResourceBase: db.ResourceBase{
+			ID: "SomeRadiusResourceID",
+		},
 		Properties: db.ComponentProperties{
 			Status: db.ComponentStatus{
 				OutputResources: []db.OutputResource{
 					{
-						LocalID:            "L1",
-						HealthID:           "HealthID_1",
-						OutputResourceType: outputresource.TypeARM,
-						ResourceKind:       "Kind1",
-						OutputResourceInfo: outputresource.ARMInfo{
-							ID:           "ResourceID_1",
-							ResourceType: "Dummy1",
-							APIVersion:   "2021-01-01",
-						},
+						LocalID:      "L1",
+						ResourceKind: "Kind1",
+						Identity:     resourcemodel.NewARMIdentity("ResourceID_1", "2021-01-01"),
 					},
 					{
-						LocalID:            "L2",
-						HealthID:           "HealthID_2",
-						OutputResourceType: outputresource.TypeARM,
-						ResourceKind:       "Kind1",
-						OutputResourceInfo: outputresource.ARMInfo{
-							ID:           "ResourceID_2",
-							ResourceType: "Dummy2",
-							APIVersion:   "2021-01-01",
-						},
+						LocalID:      "L2",
+						ResourceKind: "Kind1",
+						Identity:     resourcemodel.NewARMIdentity("ResourceID_2", "2021-01-01"),
 					},
 				},
 			},
@@ -129,16 +121,16 @@ func Test_DeploymentProcessor_RegistersOutputResourcesWithHealthService(t *testi
 	// Registration for first output resource
 	msg1 := <-registrationChannel
 	require.Equal(t, healthcontract.ActionRegister, msg1.Action)
-	require.Equal(t, "ResourceID_1", msg1.ResourceInfo.ResourceID)
-	require.Equal(t, "Kind1", msg1.ResourceInfo.ResourceKind)
-	require.Equal(t, "HealthID_1", msg1.ResourceInfo.HealthID)
+	require.Equal(t, resourcemodel.NewARMIdentity("ResourceID_1", "2021-01-01"), msg1.Resource.Identity)
+	require.Equal(t, "Kind1", msg1.Resource.ResourceKind)
+	require.Equal(t, "SomeRadiusResourceID", msg1.Resource.RadiusResourceID)
 
 	// Registration for second output resource
 	msg2 := <-registrationChannel
 	require.Equal(t, healthcontract.ActionRegister, msg2.Action)
-	require.Equal(t, "Kind1", msg2.ResourceInfo.ResourceKind)
-	require.Equal(t, "ResourceID_2", msg2.ResourceInfo.ResourceID)
-	require.Equal(t, "HealthID_2", msg2.ResourceInfo.HealthID)
+	require.Equal(t, "Kind1", msg2.Resource.ResourceKind)
+	require.Equal(t, resourcemodel.NewARMIdentity("ResourceID_2", "2021-01-01"), msg2.Resource.Identity)
+	require.Equal(t, "SomeRadiusResourceID", msg2.Resource.RadiusResourceID)
 }
 
 func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *testing.T) {
@@ -149,22 +141,19 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 	mockRendererKind := renderers.NewMockWorkloadRenderer(ctrl)
 	mockRendererKind.EXPECT().Render(gomock.Any(), gomock.Any()).AnyTimes().Return([]outputresource.OutputResource{
 		{
-			LocalID:  "abc",
-			Kind:     "Kind1",
-			HealthID: "HealthID_1",
-			Type:     outputresource.TypeARM,
-			Info: outputresource.ARMInfo{
-				ID: "ResourceID_1",
-			},
+			LocalID:      "abc",
+			ResourceKind: "Kind1",
+			Identity:     resourcemodel.NewARMIdentity("ResourceID_1", "2021-01-01"),
 		},
 		{
-			LocalID:  "xyz",
-			Kind:     "Kind1",
-			HealthID: "HealthID_2",
-			Type:     "Kind1",
-			Info: outputresource.K8sInfo{
-				Name:      "name1",
-				Namespace: "ns1",
+			LocalID:      "xyz",
+			ResourceKind: "Kind1",
+			Identity: resourcemodel.ResourceIdentity{
+				Kind: resourcemodel.IdentityKindKubernetes,
+				Data: resourcemodel.KubernetesIdentity{
+					Name:      "name1",
+					Namespace: "ns1",
+				},
 			},
 		},
 	}, nil)
@@ -178,45 +167,41 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 		},
 	})
 
+	radiusResourceID := azresources.MakeID(
+		"test-subscription",
+		"test-resourcegroup",
+		azresources.ResourceType{
+			Type: azresources.CustomProvidersResourceProviders,
+			Name: "radius",
+		}, azresources.ResourceType{
+			Type: "Applications",
+			Name: "A",
+		}, azresources.ResourceType{
+			Type: "Components",
+			Name: "C",
+		})
+
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
 	dp := deploymentProcessor{model, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}}
 
-	outputResourceInfo1 := healthcontract.ResourceDetails{
-		ResourceID:   "ResourceID_1",
-		ResourceKind: "Kind1",
-		OwnerID: azresources.MakeID(
-			"test-subscription",
-			"test-resourcegroup",
-			azresources.ResourceType{
-				Type: azresources.CustomProvidersResourceProviders,
-				Name: "radius",
-			}, azresources.ResourceType{
-				Type: "Applications",
-				Name: "A",
-			}, azresources.ResourceType{
-				Type: "Components",
-				Name: "C",
-			}),
+	healthResource1 := healthcontract.HealthResource{
+		Identity:         resourcemodel.NewARMIdentity("Resource_1", "2020-01-01"),
+		ResourceKind:     "Kind1",
+		RadiusResourceID: radiusResourceID,
 	}
 
-	outputResourceInfo2 := healthcontract.ResourceDetails{
-		ResourceID:   "ns1-name1",
-		ResourceKind: "Kind1",
-		OwnerID: azresources.MakeID(
-			"test-subscription",
-			"test-resourcegroup",
-			azresources.ResourceType{
-				Type: azresources.CustomProvidersResourceProviders,
-				Name: "radius",
-			}, azresources.ResourceType{
-				Type: "Applications",
-				Name: "A",
-			}, azresources.ResourceType{
-				Type: "Components",
-				Name: "C",
-			}),
+	healthResource2 := healthcontract.HealthResource{
+		Identity: resourcemodel.ResourceIdentity{
+			Kind: resourcemodel.IdentityKindKubernetes,
+			Data: resourcemodel.KubernetesIdentity{
+				Name:      "resource-1",
+				Namespace: "ns1-name1",
+			},
+		},
+		ResourceKind:     "Kind1",
+		RadiusResourceID: radiusResourceID,
 	}
 
 	deployStatus := db.DeploymentStatus{
@@ -226,9 +211,11 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 				Kind:          "Kind1",
 				Resources: []db.DeploymentResource{
 					{
-						LocalID:    "abc",
-						Type:       "Kind1",
-						Properties: map[string]string{healthcontract.HealthIDKey: outputResourceInfo1.GetHealthID()},
+						LocalID:          "abc",
+						Type:             "Kind1",
+						RadiusResourceID: radiusResourceID,
+						Identity:         healthResource1.Identity,
+						Properties:       map[string]string{},
 					},
 				},
 			},
@@ -237,9 +224,11 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 				Kind:          "Kind1",
 				Resources: []db.DeploymentResource{
 					{
-						LocalID:    "xyz",
-						Type:       "Kind1",
-						Properties: map[string]string{healthcontract.HealthIDKey: outputResourceInfo2.GetHealthID()},
+						LocalID:          "xyz",
+						Type:             "Kind1",
+						RadiusResourceID: radiusResourceID,
+						Identity:         healthResource2.Identity,
+						Properties:       map[string]string{},
 					},
 				},
 			},
@@ -260,10 +249,10 @@ func Test_DeploymentProcessor_UnregistersOutputResourcesWithHealthService(t *tes
 	// Unregistration for first output resource
 	msg1 := <-registrationChannel
 	require.Equal(t, healthcontract.ActionUnregister, msg1.Action)
-	require.Equal(t, outputResourceInfo1.GetHealthID(), msg1.ResourceInfo.HealthID)
+	require.Equal(t, healthResource1, msg1.Resource)
 
 	// Registration for second output resource
 	msg2 := <-registrationChannel
 	require.Equal(t, healthcontract.ActionUnregister, msg2.Action)
-	require.Equal(t, outputResourceInfo2.GetHealthID(), msg2.ResourceInfo.HealthID)
+	require.Equal(t, healthResource2, msg2.Resource)
 }

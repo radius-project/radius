@@ -19,7 +19,7 @@ import (
 
 func Test_TutorialDaprMicroservices(t *testing.T) {
 	application := "dapr-hello"
-	template := "../../../../docs/content/getting-started/tutorial/dapr-microservices/dapr-microservices.bicep"
+	template := "../../../../docs/content/user-guides/tutorial/dapr-microservices/dapr-microservices.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
@@ -82,7 +82,7 @@ func Test_TutorialWebApp(t *testing.T) {
 	componentNameWebApp := "todoapp"
 	componentNameKV := "kv"
 	componentNameDB := "db"
-	template := "../../../../docs/content/getting-started/tutorial/webapp/code/template.bicep"
+	template := "../../../../docs/content/user-guides/tutorial/webapp/code/template.bicep"
 	test := azuretest.NewApplicationTest(t, applicationName, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),

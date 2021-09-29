@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Azure/radius/pkg/health/db"
+	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/go-logr/logr"
@@ -47,6 +48,6 @@ type MonitorOptions struct {
 	// HealthProbeChannel is used to send health updates for resources to the RP
 	HealthProbeChannel chan healthcontract.ResourceHealthDataMessage
 	// WatchHealthChangesChannel is used to receive health change notifications from push mode watchers
-	WatchHealthChangesChannel chan healthcontract.ResourceHealthDataMessage
+	WatchHealthChangesChannel chan handlers.HealthState
 	HealthModel               model.HealthModel
 }

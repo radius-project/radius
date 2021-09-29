@@ -52,7 +52,7 @@ func (r *Renderer) Render(ctx context.Context, resource renderers.RendererResour
 
 	// ManualScaling detected, update deployment
 	for _, resource := range output.Resources {
-		if resource.Kind != resourcekinds.Kubernetes {
+		if resource.ResourceKind != resourcekinds.Kubernetes {
 			// Not a Kubernetes resource
 			continue
 		}

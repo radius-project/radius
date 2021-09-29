@@ -19,7 +19,7 @@ import (
 // FindDeployment finds deployment in a list of output resources
 func FindDeployment(resources []outputresource.OutputResource) (*appsv1.Deployment, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.Kind != resourcekinds.Kubernetes {
+		if r.ResourceKind != resourcekinds.Kubernetes {
 			continue
 		}
 
@@ -37,7 +37,7 @@ func FindDeployment(resources []outputresource.OutputResource) (*appsv1.Deployme
 // FindService finds service in a list of output resources
 func FindService(resources []outputresource.OutputResource) (*corev1.Service, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.Kind != resourcekinds.Kubernetes {
+		if r.ResourceKind != resourcekinds.Kubernetes {
 			continue
 		}
 
@@ -55,7 +55,7 @@ func FindService(resources []outputresource.OutputResource) (*corev1.Service, ou
 // FindSecret finds secret in a list of output resources
 func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.Kind != resourcekinds.Kubernetes {
+		if r.ResourceKind != resourcekinds.Kubernetes {
 			continue
 		}
 
@@ -73,7 +73,7 @@ func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outp
 // FindIngress finds an Ingress in a list of output resources
 func FindIngress(resources []outputresource.OutputResource) (*networkingv1.Ingress, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.Kind != resourcekinds.Kubernetes {
+		if r.ResourceKind != resourcekinds.Kubernetes {
 			continue
 		}
 

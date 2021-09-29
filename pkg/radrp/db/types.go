@@ -6,17 +6,15 @@
 package db
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/model/revision"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/fatih/structs"
 )
 
@@ -145,12 +143,14 @@ type ComponentTrait struct {
 
 // OutputResource represents an output resource comprising a Radius component.
 type OutputResource struct {
-	LocalID            string      `bson:"id"`
-	HealthID           string      `bson:"healthId"`
-	ResourceKind       string      `bson:"resourceKind"`
-	OutputResourceInfo interface{} `bson:"outputResourceInfo"`
-	Managed            bool        `bson:"managed"`
-	OutputResourceType string      `bson:"outputResourceType"`
+	LocalID string `bson:"id"`
+
+	// ResourceKind specifies the 'kind' used to look up the resource handler for processing.
+	ResourceKind string `bson:"resourceKind"`
+
+	// Identity specifies the identity of the resource in the underlying platform.
+	Identity resourcemodel.ResourceIdentity `bson:"identity"`
+	Managed  bool                           `bson:"managed"`
 
 	// We persist properties returned from the resource handler for later use when
 	// processing the same resource again.
@@ -160,31 +160,6 @@ type OutputResource struct {
 	// should be done in the renderer.
 	PersistedProperties map[string]string    `bson:"persistedProperties"`
 	Status              OutputResourceStatus `bson:"status"`
-}
-
-// GetResourceID returns the identifier of the entity/resource to be queried by the health service
-func (resource OutputResource) GetResourceID() string {
-	if resource.OutputResourceInfo == nil {
-		return ""
-	}
-
-	if resource.OutputResourceType == outputresource.TypeARM {
-		return resource.OutputResourceInfo.(outputresource.ARMInfo).ID
-	} else if resource.OutputResourceType == outputresource.TypeAADPodIdentity {
-		return resource.OutputResourceInfo.(outputresource.AADPodIdentityInfo).AKSClusterName + "-" + resource.OutputResourceInfo.(outputresource.AADPodIdentityInfo).Name
-	} else if resource.OutputResourceType == outputresource.TypeKubernetes {
-		kID := healthcontract.KubernetesID{
-			Kind:      resource.OutputResourceInfo.(outputresource.K8sInfo).Kind,
-			Namespace: resource.OutputResourceInfo.(outputresource.K8sInfo).Namespace,
-			Name:      resource.OutputResourceInfo.(outputresource.K8sInfo).Name,
-		}
-		id, err := json.Marshal(kID)
-		if err != nil {
-			return ""
-		}
-		return string(id)
-	}
-	return ""
 }
 
 // OutputResourceStatus represents the status of the Output Resource
@@ -236,9 +211,12 @@ type DeploymentWorkload struct {
 
 // DeploymentResource represents a deployed resource by Radius.
 type DeploymentResource struct {
-	LocalID    string            `bson:"id"`
-	Type       string            `bson:"type"`
-	Properties map[string]string `bson:"properties"`
+	// Resource ID of the 'owner' Radius resource.
+	RadiusResourceID string                         `bson:"radiusResourceId"`
+	LocalID          string                         `bson:"id"`
+	Type             string                         `bson:"type"`
+	Identity         resourcemodel.ResourceIdentity `bson:"identity"`
+	Properties       map[string]string              `bson:"properties"`
 }
 
 // DeploymentProperties respresents the properties of a deployment.

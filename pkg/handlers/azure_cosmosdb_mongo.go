@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 func NewAzureCosmosDBMongoHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -62,13 +63,16 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 		// store db so we can delete later
 		properties[CosmosDBDatabaseIDKey] = *database.ID
 		properties[CosmosDBAccountNameKey] = cosmosDBAccountName
+		options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 	} else {
 		// User managed resource
 		// This is mostly called for the side-effect of verifying that the database exists.
-		_, err := handler.GetDatabaseByID(ctx, properties[CosmosDBDatabaseIDKey])
+		database, err := handler.GetDatabaseByID(ctx, properties[CosmosDBDatabaseIDKey])
 		if err != nil {
 			return nil, err
 		}
+
+		options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 	}
 
 	return properties, nil

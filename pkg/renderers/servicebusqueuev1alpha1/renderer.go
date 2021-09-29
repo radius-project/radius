@@ -81,10 +81,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// generate data we can use to manage a servicebus queue
 
 		resource := outputresource.OutputResource{
-			LocalID: outputresource.LocalIDAzureServiceBusQueue,
-			Kind:    resourcekinds.AzureServiceBusQueue,
-			Type:    outputresource.TypeARM,
-			Managed: true,
+			LocalID:      outputresource.LocalIDAzureServiceBusQueue,
+			ResourceKind: resourcekinds.AzureServiceBusQueue,
+			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:             "true",
 				handlers.ServiceBusQueueNameKey: component.Config.Queue,
@@ -106,10 +105,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		// TODO : Need to create an output resource for service bus namespace
 
 		resource := outputresource.OutputResource{
-			LocalID: outputresource.LocalIDAzureServiceBusQueue,
-			Kind:    resourcekinds.AzureServiceBusQueue,
-			Type:    outputresource.TypeARM,
-			Managed: false,
+			LocalID:      outputresource.LocalIDAzureServiceBusQueue,
+			ResourceKind: resourcekinds.AzureServiceBusQueue,
+			Managed:      false,
 			Resource: map[string]string{
 				handlers.ManagedKey: "false",
 

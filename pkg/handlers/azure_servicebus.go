@@ -8,7 +8,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
@@ -18,8 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -51,7 +49,7 @@ type azureServiceBusQueueHandler struct {
 
 func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Inside Put for Kind: %s", options.Resource.Kind))
+	logger.Info(fmt.Sprintf("Inside Put for Kind: %s", options.Resource.ResourceKind))
 	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	// queue name must be specified by the user
@@ -123,17 +121,9 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 	properties[ServiceBusQueueConnectionStringKey] = *queueConnectionString
 
 	// Update the output resource with the info from the deployed Azure resource
-	options.Resource.Info = outputresource.ARMInfo{
-		ID:           queueID,
-		ResourceType: resourcekinds.AzureServiceBusQueue,
-		APIVersion:   handler.GetAPIVersion(),
-	}
+	options.Resource.Identity = resourcemodel.NewARMIdentity(queueID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	return properties, nil
-}
-
-func (handler *azureServiceBusQueueHandler) GetAPIVersion() string {
-	return strings.Split(strings.Split(servicebus.UserAgent(), "servicebus/")[1], " profiles")[0]
 }
 
 func (handler *azureServiceBusQueueHandler) Delete(ctx context.Context, options DeleteOptions) error {

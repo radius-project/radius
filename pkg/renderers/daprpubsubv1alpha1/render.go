@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -80,10 +79,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 
 		// generate data we can use to manage a servicebus topic
 		resource := outputresource.OutputResource{
-			LocalID: outputresource.LocalIDAzureServiceBusTopic,
-			Kind:    resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Type:    outputresource.TypeARM,
-			Managed: true,
+			LocalID:      outputresource.LocalIDAzureServiceBusTopic,
+			ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
+			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -110,10 +108,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		}
 
 		resource := outputresource.OutputResource{
-			LocalID: outputresource.LocalIDAzureServiceBusTopic,
-			Kind:    resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Type:    outputresource.TypeARM,
-			Managed: false,
+			LocalID:      outputresource.LocalIDAzureServiceBusTopic,
+			ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
+			Managed:      false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
 				handlers.ComponentNameKey:        component.Config.Name,
@@ -122,7 +119,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.KubernetesKindKey:       "Component",
 
 				// Truncate the topic part of the ID to make an ID for the namespace
-				handlers.ServiceBusNamespaceIDKey:   azresources.MakeID(topicID.SubscriptionID, topicID.ResourceGroup, topicID.Types[0]),
+				handlers.ServiceBusNamespaceIDKey:   topicID.Truncate().ID,
 				handlers.ServiceBusTopicIDKey:       topicID.ID,
 				handlers.ServiceBusNamespaceNameKey: topicID.Types[0].Name,
 				handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,

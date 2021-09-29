@@ -6,10 +6,10 @@
 package model
 
 import (
-	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 type HealthModel interface {
@@ -22,16 +22,13 @@ type healthModel struct {
 
 func (hm *healthModel) LookupHandler(registerMsg healthcontract.ResourceHealthRegistrationMessage) (handlers.HealthHandler, string) {
 	// For Kubernetes, return Push mode
-	if registerMsg.ResourceInfo.ResourceKind == resourcekinds.Kubernetes {
-		kID, err := healthcontract.ParseK8sResourceID(registerMsg.ResourceInfo.ResourceID)
-		if err != nil {
-			return nil, ""
-		}
-		return hm.handlersList[kID.Kind], handleroptions.HealthHandlerModePush
+	if registerMsg.Resource.ResourceKind == resourcekinds.Kubernetes {
+		kID := registerMsg.Resource.Identity.Data.(resourcemodel.KubernetesIdentity)
+		return hm.handlersList[kID.Kind], handlers.HealthHandlerModePush
 	}
 
 	// For all other resource kinds, the mode is Pull
-	return hm.handlersList[registerMsg.ResourceInfo.ResourceKind], handleroptions.HealthHandlerModePull
+	return hm.handlersList[registerMsg.Resource.ResourceKind], handlers.HealthHandlerModePull
 
 }
 

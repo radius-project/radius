@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -136,10 +137,13 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 		return nil, fmt.Errorf("failed to add pod identity on the cluster: %w", err)
 	}
 
-	options.Resource.Info = outputresource.AADPodIdentityInfo{
-		AKSClusterName: handler.arm.K8sClusterName,
-		Name:           podIdentityName,
-		Namespace:      podNamespace,
+	options.Resource.Identity = resourcemodel.ResourceIdentity{
+		Kind: resourcemodel.IdentityKindAADPodIdentity,
+		Data: resourcemodel.AADPodIdentityIdentity{
+			AKSClusterName: handler.arm.K8sClusterName,
+			Name:           podIdentityName,
+			Namespace:      podNamespace,
+		},
 	}
 
 	return properties, nil

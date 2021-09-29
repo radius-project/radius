@@ -117,9 +117,9 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 	}
 
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDRabbitMQDeployment,
-		Resource: &deployment})
+		ResourceKind: resourcekinds.Kubernetes,
+		LocalID:      outputresource.LocalIDRabbitMQDeployment,
+		Resource:     &deployment})
 
 	service := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -146,9 +146,9 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 	}
 
 	resources = append(resources, outputresource.OutputResource{
-		Kind:     resourcekinds.Kubernetes,
-		LocalID:  outputresource.LocalIDRabbitMQService,
-		Resource: &service})
+		ResourceKind: resourcekinds.Kubernetes,
+		LocalID:      outputresource.LocalIDRabbitMQService,
+		Resource:     &service})
 
 	return resources, nil
 }

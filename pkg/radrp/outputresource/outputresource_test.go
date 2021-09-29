@@ -23,14 +23,12 @@ func TestGetDependencies(t *testing.T) {
 
 func TestGetDependencies_MissingLocalID(t *testing.T) {
 	testResource1 := OutputResource{
-		Type: TypeARM,
-		Kind: resourcekinds.AzureRoleAssignment,
+		ResourceKind: resourcekinds.AzureRoleAssignment,
 	}
 
 	testResource2 := OutputResource{
 		LocalID:      LocalIDRoleAssignmentKVKeys,
-		Type:         TypeARM,
-		Kind:         resourcekinds.AzureRoleAssignment,
+		ResourceKind: resourcekinds.AzureRoleAssignment,
 		Dependencies: []Dependency{{LocalID: testResource1.LocalID}},
 	}
 
@@ -41,9 +39,8 @@ func TestGetDependencies_MissingLocalID(t *testing.T) {
 
 func TestGetDependencies_Empty(t *testing.T) {
 	testOutputResource := OutputResource{
-		LocalID: LocalIDUserAssignedManagedIdentityKV,
-		Type:    TypeARM,
-		Kind:    resourcekinds.AzureUserAssignedManagedIdentity,
+		LocalID:      LocalIDUserAssignedManagedIdentityKV,
+		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
 	}
 
 	dependencies, err := testOutputResource.GetDependencies()
@@ -68,22 +65,19 @@ func TestOrderOutputResources(t *testing.T) {
 // Returns output resource with multiple dependencies and a map of localID/unordered list of output resources
 func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputResource) {
 	managedIdentity := OutputResource{
-		LocalID: LocalIDUserAssignedManagedIdentityKV,
-		Type:    TypeARM,
-		Kind:    resourcekinds.AzureUserAssignedManagedIdentity,
+		LocalID:      LocalIDUserAssignedManagedIdentityKV,
+		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
 	}
 
 	roleAssignmentKeys := OutputResource{
 		LocalID:      LocalIDRoleAssignmentKVKeys,
-		Type:         TypeARM,
-		Kind:         resourcekinds.AzureRoleAssignment,
+		ResourceKind: resourcekinds.AzureRoleAssignment,
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
 	aadPodIdentity := OutputResource{
-		LocalID: LocalIDAADPodIdentity,
-		Type:    TypeAADPodIdentity,
-		Kind:    resourcekinds.AzurePodIdentity,
+		LocalID:      LocalIDAADPodIdentity,
+		ResourceKind: resourcekinds.AzurePodIdentity,
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
 			{LocalID: roleAssignmentKeys.LocalID},

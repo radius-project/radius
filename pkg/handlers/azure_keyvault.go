@@ -16,7 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/gofrs/uuid"
 )
 
@@ -67,12 +67,7 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOption
 		return properties, nil
 	}
 
-	options.Resource.Info = outputresource.ARMInfo{
-		ID:           properties[KeyVaultIDKey],
-		ResourceType: azresources.KeyVaultVaults,
-		APIVersion:   keyvault.Version(),
-	}
-
+	options.Resource.Identity = resourcemodel.NewARMIdentity(properties[KeyVaultIDKey], clients.GetAPIVersionFromUserAgent(keyvault.UserAgent()))
 	return properties, nil
 }
 

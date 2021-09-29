@@ -11,7 +11,6 @@ import (
 	"net/url"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model/components"
@@ -119,10 +118,9 @@ func RenderManaged(component CosmosDBMongoComponent) ([]outputresource.OutputRes
 	}
 
 	cosmosAccountResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureCosmosMongoAccount,
-		Type:    outputresource.TypeARM,
-		Kind:    resourcekinds.AzureCosmosAccountMongo,
-		Managed: true,
+		LocalID:      outputresource.LocalIDAzureCosmosMongoAccount,
+		ResourceKind: resourcekinds.AzureCosmosAccountMongo,
+		Managed:      true,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "true",
 			handlers.CosmosDBAccountBaseName: component.Name,
@@ -131,10 +129,9 @@ func RenderManaged(component CosmosDBMongoComponent) ([]outputresource.OutputRes
 
 	// generate data we can use to manage a cosmosdb instance
 	databaseResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
-		Type:    outputresource.TypeARM,
-		Kind:    resourcekinds.AzureCosmosDBMongo,
-		Managed: true,
+		LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
+		ResourceKind: resourcekinds.AzureCosmosDBMongo,
+		Managed:      true,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "true",
 			handlers.CosmosDBAccountBaseName: component.Name,
@@ -156,26 +153,24 @@ func RenderUnmanaged(component CosmosDBMongoComponent) ([]outputresource.OutputR
 	}
 
 	// Truncate the database part of the ID to make an ID for the account
-	cosmosAccountID := azresources.MakeID(databaseID.SubscriptionID, databaseID.ResourceGroup, databaseID.Types[0])
+	cosmosAccountID := databaseID.Truncate()
 
 	cosmosAccountResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureCosmosMongoAccount,
-		Type:    outputresource.TypeARM,
-		Kind:    resourcekinds.AzureCosmosAccountMongo,
+		LocalID:      outputresource.LocalIDAzureCosmosMongoAccount,
+		ResourceKind: resourcekinds.AzureCosmosAccountMongo,
 		Resource: map[string]string{
 			handlers.ManagedKey:             "false",
-			handlers.CosmosDBAccountIDKey:   cosmosAccountID,
+			handlers.CosmosDBAccountIDKey:   cosmosAccountID.ID,
 			handlers.CosmosDBAccountNameKey: databaseID.Types[0].Name,
 		},
 	}
 
 	databaseResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
-		Kind:    resourcekinds.AzureCosmosDBMongo,
-		Type:    outputresource.TypeARM,
+		LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
+		ResourceKind: resourcekinds.AzureCosmosDBMongo,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "false",
-			handlers.CosmosDBAccountIDKey:    cosmosAccountID,
+			handlers.CosmosDBAccountIDKey:    cosmosAccountID.ID,
 			handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
 			handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,
 			handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,

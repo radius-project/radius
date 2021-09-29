@@ -41,7 +41,7 @@ func Test_Render_Managed_Azure_Success(t *testing.T) {
 	resource := resources[0]
 
 	require.Equal(t, outputresource.LocalIDAzureRedis, resource.LocalID)
-	require.Equal(t, resourcekinds.AzureRedis, resource.Kind)
+	require.Equal(t, resourcekinds.AzureRedis, resource.ResourceKind)
 
 	expected := map[string]string{
 		handlers.ManagedKey:    "true",

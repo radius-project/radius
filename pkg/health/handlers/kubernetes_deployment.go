@@ -9,10 +9,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/health/handleroptions"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -28,16 +27,8 @@ type kubernetesDeploymentHandler struct {
 	k8s kubernetes.Interface
 }
 
-func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, resourceInfo healthcontract.ResourceInfo, options handleroptions.Options) healthcontract.ResourceHealthDataMessage {
-	kID, err := healthcontract.ParseK8sResourceID(resourceInfo.ResourceID)
-	if err != nil {
-		return healthcontract.ResourceHealthDataMessage{
-			Resource:                resourceInfo,
-			HealthState:             healthcontract.HealthStateUnhealthy,
-			HealthStateErrorDetails: err.Error(),
-		}
-	}
-
+func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, registration HealthRegistration, options Options) HealthState {
+	kID := registration.Identity.Data.(resourcemodel.KubernetesIdentity)
 	logger := radlogger.GetLogger(ctx)
 
 	pod, err := handler.k8s.CoreV1().Pods(kID.Namespace).Get(ctx, kID.Name, metav1.GetOptions{})
@@ -57,17 +48,13 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 	// Notify initial health state transition. This needs to be done explicitly since
 	// the pod might already be up and running when the health is first probed and the watcher
 	// will not detect the initial transition
-	msg := healthcontract.ResourceHealthDataMessage{
-		Resource: healthcontract.ResourceInfo{
-			HealthID:     resourceInfo.HealthID,
-			ResourceID:   resourceInfo.ResourceID,
-			ResourceKind: resourcekinds.Kubernetes,
-		},
+	msg := HealthState{
+		Registration:            registration,
 		HealthState:             healthState,
 		HealthStateErrorDetails: healthStateErrorDetails,
 	}
 	options.WatchHealthChangesChannel <- msg
-	logger.Info(fmt.Sprintf("Detected health change event for Resource: %s. Notifying watcher.", resourceInfo.ResourceID))
+	logger.Info(fmt.Sprintf("Detected health change event for Resource: %+v. Notifying watcher.", registration.Identity))
 
 	// Start watching deployment changes
 	w, err := handler.k8s.CoreV1().Pods(kID.Namespace).Watch(ctx, metav1.ListOptions{
@@ -75,8 +62,8 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		LabelSelector: fmt.Sprintf("%s=%s", KubernetesLabelName, kID.Name),
 	})
 	if err != nil {
-		msg := healthcontract.ResourceHealthDataMessage{
-			Resource:                resourceInfo,
+		msg := HealthState{
+			Registration:            registration,
 			HealthState:             healthcontract.HealthStateUnhealthy,
 			HealthStateErrorDetails: err.Error(),
 		}
@@ -106,20 +93,16 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 			}
 
 			// Notify the watcher. Let the watcher determine if an action is needed
-			msg := healthcontract.ResourceHealthDataMessage{
-				Resource: healthcontract.ResourceInfo{
-					HealthID:     resourceInfo.HealthID,
-					ResourceID:   resourceInfo.ResourceID,
-					ResourceKind: resourcekinds.Kubernetes,
-				},
+			msg := HealthState{
+				Registration:            registration,
 				HealthState:             healthState,
 				HealthStateErrorDetails: healthStateErrorDetails,
 			}
 			options.WatchHealthChangesChannel <- msg
-			logger.Info(fmt.Sprintf("Detected health change event for Resource: %s. Notifying watcher.", resourceInfo.ResourceID))
+			logger.Info(fmt.Sprintf("Detected health change event for Resource: %+v. Notifying watcher.", registration.Identity))
 		case <-options.StopChannel:
-			logger.Info(fmt.Sprintf("Stopped health monitoring for namespace: %v", kID.Namespace))
-			return healthcontract.ResourceHealthDataMessage{}
+			logger.Info(fmt.Sprintf("Stopped health monitoring for namespace: %s", kID.Namespace))
+			return HealthState{}
 		}
 	}
 }
