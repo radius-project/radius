@@ -62,6 +62,9 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string) e
 			ResourceGroup:          dc.ResourceGroup,
 			EvaluatePropertiesNode: true,
 		},
+		CustomActionCallback: func(id, apiVersion string, action string, body interface{}) (interface{}, error) {
+			return dc.customAction(ctx, id, apiVersion, action, body)
+		},
 		Deployed:  deployed,
 		Variables: map[string]interface{}{},
 	}
@@ -136,4 +139,16 @@ func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connectio
 	}
 
 	return future.Response(), result, nil
+}
+
+func (dc *LocalRPDeploymentClient) customAction(ctx context.Context, id string, apiVersion string, action string, body interface{}) (map[string]interface{}, error) {
+	client := azclients.NewCustomActionClient(dc.SubscriptionID, dc.Authorizer)
+	client.BaseURI = dc.BaseURL
+
+	response, err := client.InvokeCustomAction(ctx, id, apiVersion, action, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to invoke custom action %q: %w", action, err)
+	}
+
+	return response.Body, nil
 }

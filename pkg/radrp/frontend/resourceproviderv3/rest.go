@@ -38,3 +38,9 @@ type RadiusResourceStatus = rest.ComponentStatus
 type RadiusResourceList struct {
 	Value []RadiusResource `json:"value"`
 }
+
+// ListSecretsInput is used for the RP's 'listSecrets' custom action.
+type ListSecretsInput struct {
+	// TargetID is the resource ID of the Radius resource for which secrets are being listed.
+	TargetID string `json:"targetId"`
+}
