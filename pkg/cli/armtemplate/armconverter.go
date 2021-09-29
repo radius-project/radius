@@ -56,7 +56,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 			"apiVersion": "radius.dev/v1alpha3",
 			"kind":       kind,
 			"metadata": map[string]interface{}{
-				"name":      nameParts[len(nameParts)-1],
+				"name":      applicationName + "." + nameParts[len(nameParts)-1],
 				"namespace": namespace,
 				"labels":    labels,
 			},
