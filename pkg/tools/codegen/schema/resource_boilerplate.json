@@ -233,6 +233,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the {{ .QualifiedName }} will complete asynchronously."
+          },
           "204": {
             "description": "The {{ .QualifiedName }} resource was successfully deleted."
           },

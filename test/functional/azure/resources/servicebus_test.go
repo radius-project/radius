@@ -86,7 +86,6 @@ func Test_ServiceBusManaged(t *testing.T) {
 	})
 
 	test.Version = validation.AppModelV3
-	test.SkipDeletion = true
 
 	test.Test(t)
 }
