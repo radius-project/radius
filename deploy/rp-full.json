@@ -633,6 +633,13 @@
                             "location": "[resourceGroup().location]",
                             "name": "radiusv3",
                             "properties": {
+                                "actions": [
+                                    {
+                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]",
+                                        "name": "listSecrets",
+                                        "routingType": "Proxy"
+                                    }
+                                ],
                                 "resourceTypes": "[parameters('resourceTypes')]"
                             },
                             "tags": "[parameters('resourceTags')]",
