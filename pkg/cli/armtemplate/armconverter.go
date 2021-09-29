@@ -7,6 +7,7 @@ package armtemplate
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -25,24 +26,25 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	if err != nil {
 		return nil, err
 	}
-	spec := map[string]interface{}{}
+	applicationName, resourceName, resourceType := GetParts(nameParts, typeParts)
 
-	var applicationName string
-	var resourceName string
-	if len(nameParts) > 1 {
-		applicationName = nameParts[1]
-		annotations[kubernetes.LabelRadiusApplication] = applicationName
-		spec = map[string]interface{}{
-			"template":    runtime.RawExtension{Raw: data},
-			"application": applicationName,
-		}
-
-		if len(nameParts) > 2 {
-			resourceName = nameParts[2]
-			annotations[kubernetes.LabelRadiusResource] = resourceName
-			spec["resource"] = resourceName
-		}
+	if applicationName == "" {
+		return nil, errors.New("application name is empty")
 	}
+
+	annotations[kubernetes.LabelRadiusApplication] = applicationName
+	spec := map[string]interface{}{
+		"template":    runtime.RawExtension{Raw: data},
+		"application": applicationName,
+	}
+
+	if resourceType != "" && resourceName != "" {
+		spec["resource"] = resourceName
+		annotations[kubernetes.LabelRadiusResourceType] = resourceType
+		annotations[kubernetes.LabelRadiusResource] = resourceName
+	}
+
+	labels := kubernetes.MakeResourceCRDLabels(applicationName, resourceType, resourceName)
 
 	uns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -51,6 +53,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 			"metadata": map[string]interface{}{
 				"name":      nameParts[len(nameParts)-1],
 				"namespace": namespace,
+				"labels":    labels,
 			},
 
 			"spec": spec,
@@ -59,4 +62,15 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 	uns.SetAnnotations(annotations)
 	return uns, nil
+}
+
+func GetParts(nameParts, typeParts []string) (applicationName string, resourceName string, resourceType string) {
+	if len(nameParts) > 1 {
+		applicationName = nameParts[1]
+		if len(nameParts) > 2 {
+			resourceName = nameParts[2]
+			resourceType = typeParts[len(typeParts)-1]
+		}
+	}
+	return
 }

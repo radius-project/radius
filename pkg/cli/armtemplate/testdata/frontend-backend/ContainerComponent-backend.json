@@ -4,7 +4,16 @@
     "metadata": {
         "annotations": {
             "radius.dev/application": "azure-resources-container-httpbinding",
-            "radius.dev/resource": "backend"
+            "radius.dev/resource": "backend",
+            "radius.dev/resource-type": "ContainerComponent"
+        },
+        "labels": {
+            "radius.dev/application": "azure-resources-container-httpbinding",
+            "radius.dev/resource": "backend",
+            "radius.dev/resource-type": "ContainerComponent",
+            "app.kubernetes.io/name": "backend",
+            "app.kubernetes.io/part-of": "azure-resources-container-httpbinding",
+            "app.kubernetes.io/managed-by": "radius-rp"
         },
         "name": "backend",
         "namespace": "default"

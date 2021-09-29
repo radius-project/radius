@@ -4,7 +4,16 @@
     "metadata": {
         "annotations": {
             "radius.dev/application": "azure-resources-container-httpbinding",
-            "radius.dev/resource": "frontend"
+            "radius.dev/resource": "frontend",
+            "radius.dev/resource-type": "HttpRoute"
+        },
+        "labels": {
+            "radius.dev/application": "azure-resources-container-httpbinding",
+            "radius.dev/resource": "frontend",
+            "radius.dev/resource-type": "HttpRoute",
+            "app.kubernetes.io/name": "frontend",
+            "app.kubernetes.io/part-of": "azure-resources-container-httpbinding",
+            "app.kubernetes.io/managed-by": "radius-rp"
         },
         "name": "frontend",
         "namespace": "default"

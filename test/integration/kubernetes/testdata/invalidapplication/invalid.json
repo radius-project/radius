@@ -3,7 +3,7 @@
     "kind": "Application",
     "metadata": {
         "annotations": {
-            "radius.dev/applications": "frontend-backend",
+            "radius.dev/application": "frontend-backend",
             "radius.dev/resourceproviders": "radius"
         },
         "name": "radius-frontend-backend",

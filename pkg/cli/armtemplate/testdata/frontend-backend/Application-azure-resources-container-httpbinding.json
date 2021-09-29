@@ -5,6 +5,11 @@
         "annotations": {
             "radius.dev/application": "azure-resources-container-httpbinding"
         },
+        "labels": {
+            "radius.dev/application": "azure-resources-container-httpbinding",
+            "app.kubernetes.io/name": "azure-resources-container-httpbinding",
+            "app.kubernetes.io/managed-by": "radius-rp"
+        },
         "name": "azure-resources-container-httpbinding",
         "namespace": "default"
     },

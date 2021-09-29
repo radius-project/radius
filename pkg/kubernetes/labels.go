@@ -12,10 +12,11 @@ import (
 
 // Commonly-used and Radius-Specific labels for Kubernetes
 const (
-	LabelRadiusApplication = "radius.dev/application"
-	LabelRadiusResource    = "radius.dev/resource"
-	LabelRadiusRouteFmt    = "radius.dev/route-%s-%s"
-	LabelRadiusRevision    = "radius.dev/revision"
+	LabelRadiusApplication  = "radius.dev/application"
+	LabelRadiusResource     = "radius.dev/resource"
+	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
+	LabelRadiusRevision     = "radius.dev/revision"
+	LabelRadiusResourceType = "radius.dev/resource-type"
 
 	LabelPartOf            = "app.kubernetes.io/part-of"
 	LabelName              = "app.kubernetes.io/name"
@@ -77,5 +78,29 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 		// NOTE: pods can serve multiple routes of different types. Therefore we need to encode the
 		// the route's type and name in the *key* to support multiple matches.
 		fmt.Sprintf(LabelRadiusRouteFmt, strings.ToLower(strings.TrimSuffix(resourceType, "Route")), strings.ToLower(route)): "true",
+	}
+}
+
+// MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
+// Kubernetes object.
+//
+// This function differs from MakeSelectorLablels in that it's intended to *cross* resources. eg: The Service created by
+// an HttpRoute and the Deployment created by a ContainerComponent.
+func MakeResourceCRDLabels(application string, resourceType string, resource string) map[string]string {
+	if resourceType != "" && resource != "" {
+		return map[string]string{
+			LabelRadiusApplication:  application,
+			LabelRadiusResourceType: resourceType,
+			LabelRadiusResource:     resource,
+			LabelName:               resource,
+			LabelPartOf:             application,
+			LabelManagedBy:          LabelManagedByRadiusRP,
+		}
+	}
+
+	return map[string]string{
+		LabelRadiusApplication: application,
+		LabelName:              application,
+		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
 }
