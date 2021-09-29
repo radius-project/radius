@@ -11,6 +11,7 @@ const (
 	StorageKeyValue    = "azurestorageaccountkey"
 	StorageAccountName = "azurestorageaccountname"
 	ResourceType       = "Volume"
+	kindProperty       = "kind"
 )
 
 var AzureFileShareResourceType = azresources.KnownType{

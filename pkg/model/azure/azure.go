@@ -106,6 +106,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 	// key where possible.
 	transformerMap := map[string]renderers.SecretValueTransformer{
 		mongodbv1alpha3.CosmosMongoResourceType.Type(): &mongodbv1alpha3.AzureTransformer{},
+		// azurefilesharev1alpha3.AzureFileShareResourceType.Type(): &cosmosdbmongov1alpha3.Transformer{},
 	}
 
 	return model.NewModel(rendererMap, handlerMap, transformerMap)
