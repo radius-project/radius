@@ -16,7 +16,7 @@ You will be deploying a *To-Do List* website. It will have three Radius *compone
 
 ## Website frontend
 
-The example website (`todoapp`) is a single-page-application (SPA) with a Node.JS backend. The SPA sends requests HTTP requests to the Node.JS backend to read and store *todo* items.
+The example website (`todoapp`) is a containerized single-page-application (SPA) with a Node.JS backend. The SPA sends requests HTTP requests to the Node.JS backend to read and store *todo* items.
 
 The website listens on port 3000 for HTTP requests. 
 
@@ -28,7 +28,9 @@ You can download the source code [here](/tutorial/webapp.zip) if you want to see
 
 ## Database
 
-The database (`db`) is an Azure Cosmos MongoDB database.
+The database (`db`) is a [MongoDB database]({{< ref mongodb >}}).
+
+In Kubernetes environments Radius uses the `mongodb` container image to run the database. In Azure environments Radius uses an Azure Cosmos DB with Mongo API.
 
 ## The Radius mindset
 

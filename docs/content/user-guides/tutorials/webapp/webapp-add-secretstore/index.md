@@ -91,6 +91,6 @@ If you're done with testing, you can use the rad CLI to [delete an environment](
 ## Next steps
 
 - To view the website application code used in this tutorial, download the [zipped application code](/tutorial/webapp.zip).
-- If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorial >}}) page.
+- If you'd like to try another tutorial with your existing environment, go back to the [Radius tutorials]({{< ref tutorials >}}) page.
 
-{{< button text="Try another tutorial" page="tutorial" >}}
+{{< button text="Try another tutorial" page="tutorials" >}}
