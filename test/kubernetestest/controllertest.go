@@ -190,7 +190,6 @@ func StartController() error {
 		}
 	}
 
-	// TODO webhook manager needs to be per controller
 	err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize component webhook: %w", err)

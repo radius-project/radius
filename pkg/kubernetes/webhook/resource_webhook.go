@@ -22,16 +22,17 @@ import (
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
+	"github.com/Azure/radius/pkg/kubernetes/webhook/external"
 	"github.com/Azure/radius/pkg/radrp/schemav3"
 	"github.com/Azure/radius/pkg/renderers"
 )
 
 type ResourceWebhook struct {
-	ValidatingWebhook
+	external.ValidatingWebhook
 }
 
 func (w *ResourceWebhook) SetupWebhookWithManager(mgr manager.Manager) error {
-	return NewGenericWebhookManagedBy(mgr).
+	return external.NewGenericWebhookManagedBy(mgr).
 		WithValidatePath("/validate-radius-dev-v1alpha3-resource").
 		Complete(w)
 }
@@ -78,8 +79,7 @@ func (w *ResourceWebhook) ValidateCreate(ctx context.Context, request admission.
 
 		validationErrs := validator.ValidateJSON(armJson)
 		if len(validationErrs) > 0 {
-			// Ignore errors on env for now until https://github.com/Azure/bicep/issues/4565 is fixed.
-			// This is temporary.
+			// TODO revert https://github.com/Azure/radius/issues/1118
 			if !strings.HasPrefix(validationErrs[0].Position, "(root).properties.container.env") {
 				return admission.Errored(http.StatusBadRequest, &schemav3.AggregateValidationError{Details: validationErrs})
 			}

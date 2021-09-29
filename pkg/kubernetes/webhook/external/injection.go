@@ -1,4 +1,4 @@
-package webhook
+package external
 
 import (
 	"sigs.k8s.io/controller-runtime/pkg/client"

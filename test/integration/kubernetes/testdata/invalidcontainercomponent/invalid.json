@@ -9,10 +9,7 @@
         "template": {
             "type": "Microsoft.CustomProviders/resourceProviders/Application/ContainerComponent",
             "apiVersion": "2018-09-01-preview",
-            "name": "[format('{0}/{1}/{2}', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'frontend')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.CustomProviders/resourceProviders/Application', 'radiusv3', 'kubernetes-resources-container-httpbinding')]"
-            ],
+            "name": "radiusv3/kubernetes-resources-container-httpbinding/frontend",
             "body": {
                 "properties": {
                     "container": "foo"
