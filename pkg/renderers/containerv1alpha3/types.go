@@ -91,6 +91,13 @@ type EphemeralVolume struct {
 	ManagedStore string `json:"managedStore"`
 }
 
+type PersistentVolume struct {
+	Kind      string `json:"kind"`
+	MountPath string `json:"mountPath"`
+	Source    string `json:"source"`
+	Rbac      string `json:"rbac"`
+}
+
 func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) {
 	data, err := json.Marshal(volume)
 	if err != nil {
@@ -102,6 +109,19 @@ func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) 
 		return nil, err
 	}
 	return &ephemeralVolume, nil
+}
+
+func asPersistentVolume(volume map[string]interface{}) (*PersistentVolume, error) {
+	data, err := json.Marshal(volume)
+	if err != nil {
+		return nil, err
+	}
+	var persistentVolume PersistentVolume
+	err = json.Unmarshal(data, &persistentVolume)
+	if err != nil {
+		return nil, err
+	}
+	return &persistentVolume, nil
 }
 
 func (ct ContainerTrait) MarshalJSON() ([]byte, error) {

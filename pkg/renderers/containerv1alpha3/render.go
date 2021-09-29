@@ -88,6 +88,21 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 		deps = append(deps, resourceId)
 	}
 
+	for _, volume := range properties.Container.Volumes {
+		if volume[kindProperty] == VolumeKindEphemeral {
+			continue
+		}
+		persistentVolume, err := asPersistentVolume(volume)
+		if err != nil {
+			return nil, err
+		}
+		resourceID, err := azresources.Parse(persistentVolume.Source)
+		if err != nil {
+			return nil, err
+		}
+		deps = append(deps, resourceID)
+	}
+
 	return deps, nil
 }
 
@@ -268,14 +283,35 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 		if volume[kindProperty] == VolumeKindEphemeral {
 			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, volume)
 			if err != nil {
-				return outputresource.OutputResource{}, nil, err
+				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
 			}
 			// Add the volume mount to the Container spec
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
 			// Add the volume to the list of volumes to be added to the Volumes spec
 			volumes = append(volumes, volumeSpec)
-		} else {
-			return outputresource.OutputResource{}, secretData, fmt.Errorf("Only ephemeral volumes are supported. Got kind: %v", volume[kindProperty])
+		} else if volume[kindProperty] == VolumeKindPersistent {
+			persistentVolume, err := asPersistentVolume(volume)
+			if err != nil {
+				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to deserialize properties for persistent volume: %s - %w", volumeName, err)
+			}
+
+			// Create spec for persistent volume
+			volumeSpec, volumeMountSpec, err := r.makePersistentVolume(volumeName, *persistentVolume, resource, dependencies)
+			if err != nil {
+				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
+			}
+			// Add the volume mount to the Container spec
+			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
+			// Add the volume to the list of volumes to be added to the Volumes spec
+			volumes = append(volumes, volumeSpec)
+
+			// Add azurestorageaccountname and azurestorageaccountkey as secrets
+			// These will be added as key-value pairs to the kubernetes secret created for the container
+			// The key values are as per: https://docs.microsoft.com/en-us/azure/aks/azure-files-volume
+			properties := dependencies[persistentVolume.Source]
+			for key, value := range properties.ComputedValues {
+				secretData[key] = []byte(value.(string))
+			}
 		}
 	}
 
@@ -443,6 +479,30 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	if config.periodSeconds != nil {
 		probeSpec.PeriodSeconds = int32(*config.periodSeconds)
 	}
+}
+
+func (r Renderer) makePersistentVolume(volumeName string, persistentVolume PersistentVolume, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (corev1.Volume, corev1.VolumeMount, error) {
+	// Make volume spec
+	volumeSpec := corev1.Volume{}
+	volumeSpec.VolumeSource = corev1.VolumeSource{}
+	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
+	volumeSpec.Name = volumeName
+	// secret name, share name??
+	volumeSpec.AzureFile.SecretName = resource.ResourceName
+	resourceID, err := azresources.Parse(persistentVolume.Source)
+	if err != nil {
+		return corev1.Volume{}, corev1.VolumeMount{}, err
+	}
+	shareName := resourceID.Types[2].Name
+	volumeSpec.AzureFile.ShareName = shareName
+	// Make volumeMount spec
+	volumeMountSpec := corev1.VolumeMount{}
+	volumeMountSpec.Name = volumeName
+	volumeMountSpec.MountPath = persistentVolume.MountPath
+	if strings.EqualFold(persistentVolume.Rbac, RbacPermissionsRead) {
+		volumeMountSpec.ReadOnly = true
+	}
+	return volumeSpec, volumeMountSpec, nil
 }
 
 func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererResource, secrets map[string][]byte) outputresource.OutputResource {

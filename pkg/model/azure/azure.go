@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/azurefilesharev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/dapr"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
@@ -77,6 +78,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		// Azure
 		keyvaultv1alpha3.ResourceType:        &keyvaultv1alpha3.Renderer{},
 		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
+		azurefilesharev1alpha3.ResourceType:  &azurefilesharev1alpha3.Renderer{},
 	}
 
 	handlerMap := map[string]model.Handlers{
@@ -96,12 +98,15 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		resourcekinds.AzureRoleAssignment:              {ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm), HealthHandler: handlers.NewAzureRoleAssignmentHealthHandler(arm)},
 		resourcekinds.AzureKeyVaultSecret:              {ResourceHandler: handlers.NewAzureKeyVaultSecretHandler(arm), HealthHandler: handlers.NewAzureKeyVaultSecretHealthHandler(arm)},
 		resourcekinds.AzureRedis:                       {ResourceHandler: handlers.NewAzureRedisHandler(arm), HealthHandler: handlers.NewAzureRedisHealthHandler(arm)},
+		resourcekinds.AzureFileShare:                   {ResourceHandler: handlers.NewAzureFileShareHandler(arm), HealthHandler: handlers.NewAzureFileShareHealthHandler(arm)},
+		resourcekinds.AzureFileShareStorageAccount:     {ResourceHandler: handlers.NewAzureFileShareStorageAccountHandler(arm), HealthHandler: handlers.NewAzureFileShareStorageAccountHealthHandler(arm)},
 	}
 
 	// Lookup of transforms to apply to secrets. By-convention the resource type is used as the
 	// key where possible.
 	transformerMap := map[string]renderers.SecretValueTransformer{
 		mongodbv1alpha3.CosmosMongoResourceType.Type(): &mongodbv1alpha3.AzureTransformer{},
+		// azurefilesharev1alpha3.AzureFileShareResourceType.Type(): &cosmosdbmongov1alpha3.Transformer{},
 	}
 
 	return model.NewModel(rendererMap, handlerMap, transformerMap)
