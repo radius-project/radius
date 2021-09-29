@@ -100,7 +100,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	_, ok := h.activeHealthProbes[registration.Token]
 	h.activeHealthProbesMutex.RUnlock()
 	if ok {
-		logger.Info("Resource is already registered with the health service. Ignoring this registration message.", registerMsg.Resource.Identity)
+		logger.Info(fmt.Sprintf("Resource %+v is already registered with the health service. Ignoring this registration message.", registerMsg.Resource.Identity))
 		return nil
 	}
 
