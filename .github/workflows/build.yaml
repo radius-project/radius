@@ -448,21 +448,21 @@ jobs:
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
         with:
           source_dir: rad_cli_linux_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
         with:
           source_dir: rad_cli_windows_amd64
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300'
 
   codespaces:
     name: Codespaces container image build
