@@ -47,7 +47,7 @@ func Test_CLI(t *testing.T) {
 
 	templateFilePath := filepath.Join(cwd, template)
 	t.Logf("deploying %s from file %s", application, template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	cli := radcli.NewCLI(t, options.ConfigFilePath, validation.AppModelV2)
 	err = cli.Deploy(ctx, templateFilePath)
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)

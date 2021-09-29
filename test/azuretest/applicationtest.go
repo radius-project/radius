@@ -79,7 +79,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
 
-	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
+	cli := radcli.NewCLI(t, at.Options.ConfigFilePath, at.Version)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.

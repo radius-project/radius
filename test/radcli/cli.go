@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Azure/radius/test/validation"
 )
 
 const (
@@ -23,12 +25,14 @@ const (
 type CLI struct {
 	T              *testing.T
 	ConfigFilePath string
+	Version        validation.AppModelVersion
 }
 
-func NewCLI(t *testing.T, configFilePath string) *CLI {
+func NewCLI(t *testing.T, configFilePath string, version validation.AppModelVersion) *CLI {
 	return &CLI{
 		T:              t,
 		ConfigFilePath: configFilePath,
+		Version:        version,
 	}
 }
 
@@ -48,8 +52,13 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string) error {
 }
 
 func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
+	command := "application"
+	if cli.Version == validation.AppModelV3 {
+		command = "applicationV3"
+	}
+
 	args := []string{
-		"application",
+		command,
 		"show",
 		"-a", applicationName,
 	}
@@ -58,8 +67,13 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (st
 
 // ApplicationDelete deletes the specified application deployed by Radius.
 func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) error {
+	command := "application"
+	if cli.Version == validation.AppModelV3 {
+		command = "applicationV3"
+	}
+
 	args := []string{
-		"application",
+		command,
 		"delete",
 		"--yes",
 		"-a", applicationName,
