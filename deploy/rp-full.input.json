@@ -638,6 +638,13 @@
                             "location": "[resourceGroup().location]",
                             "tags": "[parameters('resourceTags')]",
                             "properties": {
+                                "actions": [
+                                    {
+                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]",
+                                        "name": "listSecrets",
+                                        "routingType": "Proxy"
+                                    }
+                                ],
                                 "resourceTypes": "[parameters('resourceTypes')]"
                             }
                         },
