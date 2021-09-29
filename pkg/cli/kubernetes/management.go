@@ -7,9 +7,7 @@ package kubernetes
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/azure/radclientv3"
@@ -18,8 +16,11 @@ import (
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/radrp/schemav3"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -293,50 +294,53 @@ func (mc *KubernetesManagementClient) ListApplicationsV3(ctx context.Context) (*
 
 	if len(converted) == 0 {
 		errorMessage := fmt.Sprintf("Applications not found in environment '%s'", mc.EnvironmentName)
-		return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 	}
 
 	return &radclientv3.ApplicationList{Value: converted}, nil
 }
 
 func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
-	// We don't have a guarantee that the application name is the same
-	// as the k8s resource name, so we have to filter on the client.
-	applications := radiusv1alpha3.ApplicationList{}
-	err := mc.Client.List(ctx, &applications, &client.ListOptions{Namespace: mc.Namespace})
+	application, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, item := range applications.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
-			application, err := ConvertK8sApplicationToARMV3(item)
-			if err != nil {
-				return nil, err
-			}
-
-			return application, nil
-		}
-	}
-
-	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, mc.EnvironmentName)
-	return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
+	return ConvertK8sApplicationToARMV3(*application)
 }
 
 func (mc *KubernetesManagementClient) DeleteApplicationV3(ctx context.Context, applicationName string) error {
-	return errors.New("deleting V3 applications on Kubenertes is not yet supported")
+	application, err := mc.mustGetApplication(ctx, applicationName)
+	if err != nil {
+		return err
+	}
+	crds, err := mc.listAllRadiusCRDs(ctx)
+	if err != nil {
+		return err
+	}
+	for _, crd := range crds {
+		resourceClient := mc.DynamicClient.Resource(schema.GroupVersionResource{
+			Group:    radiusv1alpha3.GroupVersion.Group,
+			Version:  radiusv1alpha3.GroupVersion.Version,
+			Resource: crd.Spec.Names.Plural,
+		}).Namespace(mc.Namespace)
+		err := resourceClient.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				kubernetes.LabelRadiusApplication: applicationName,
+			}).String(),
+		})
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	return mc.Client.Delete(ctx, application)
 }
 
-func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (*radclientv3.RadiusResourceList, error) {
+func (mc *KubernetesManagementClient) listAllRadiusCRDs(ctx context.Context) ([]v1.CustomResourceDefinition, error) {
 	crds, err := mc.ExtensionClient.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	results := []*radclientv3.RadiusResource{}
-	resourceSelector := fmt.Sprintf("metadata.namespace=%s", mc.Namespace)
-	if resourceName != "" {
-		resourceSelector += fmt.Sprintf(",metadata.name=%s", resourceName)
-	}
+	results := []v1.CustomResourceDefinition{}
 	for _, crd := range crds.Items {
 		if crd.Spec.Group != radiusv1alpha3.GroupVersion.Group {
 			continue
@@ -348,37 +352,52 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 			if version.Name != radiusv1alpha3.GroupVersion.Version {
 				continue
 			}
-			// TODO: consider adding labels for our resources so we can use a label selector here.
-			list, err := mc.DynamicClient.Resource(schema.GroupVersionResource{
-				Group:    crd.Spec.Group,
-				Version:  version.Name,
-				Resource: crd.Spec.Names.Plural,
-			}).List(ctx, metav1.ListOptions{
-				FieldSelector: resourceSelector,
-			})
+			results = append(results, crd)
+		}
+	}
+	return results, nil
+}
+
+func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (*radclientv3.RadiusResourceList, error) {
+	// First check that the application exist
+	_, err := mc.mustGetApplication(ctx, applicationName)
+	if err != nil {
+		return nil, err
+	}
+	crds, err := mc.listAllRadiusCRDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	fieldSelector := map[string]string{}
+	if resourceName != "" {
+		fieldSelector["metadata.name"] = resourceName
+	}
+	labelSelector := map[string]string{kubernetes.LabelRadiusApplication: applicationName}
+	if resourceType != "" {
+		labelSelector[kubernetes.LabelRadiusResourceType] = resourceType
+	}
+	filter := metav1.ListOptions{
+		FieldSelector: labels.SelectorFromSet(labels.Set(fieldSelector)).String(),
+		LabelSelector: labels.SelectorFromSet(labels.Set(labelSelector)).String(),
+	}
+	results := []*radclientv3.RadiusResource{}
+	for _, crd := range crds {
+		resourceClient := mc.DynamicClient.Resource(schema.GroupVersionResource{
+			Group:    radiusv1alpha3.GroupVersion.Group,
+			Version:  radiusv1alpha3.GroupVersion.Version,
+			Resource: crd.Spec.Names.Plural,
+		}).Namespace(mc.Namespace)
+		list, err := resourceClient.List(ctx, filter)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range list.Items {
+			resource, err := ConvertK8sResourceToARMV3(item)
 			if err != nil {
 				return nil, err
 			}
-			for _, item := range list.Items {
-				if item.GetAnnotations()[kubernetes.LabelRadiusApplication] != applicationName {
-					continue
-				}
-				resource, err := ConvertK8sResourceToARMV3(item)
-				if err != nil {
-					return nil, err
-				}
-				// Ideally we should not filter here, but at the CRD level.
-				// TODO: consider adding metadata to our CRDs to allow earlier filtering.
-				if resourceType == "" || strings.HasSuffix(*resource.Type, "/"+resourceType) {
-					results = append(results, resource)
-				}
-			}
+			results = append(results, resource)
 		}
-	}
-
-	if len(results) == 0 {
-		errorMessage := fmt.Sprintf("Applications not found in environment '%s'", mc.EnvironmentName)
-		return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 	}
 	return &radclientv3.RadiusResourceList{Value: results}, nil
 }
@@ -398,4 +417,27 @@ func (mc *KubernetesManagementClient) ShowResource(ctx context.Context, appName 
 		return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 	}
 	return results.Value[0], nil
+}
+
+func (mc *KubernetesManagementClient) appV3NotFoundError(applicationName string) error {
+	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, mc.EnvironmentName)
+	return radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
+}
+
+// mustGetApplication will return a ResourceNotFound error if no application is found.
+func (mc *KubernetesManagementClient) mustGetApplication(ctx context.Context, applicationName string) (*radiusv1alpha3.Application, error) {
+	applications := radiusv1alpha3.ApplicationList{}
+	err := mc.Client.List(ctx, &applications, &client.ListOptions{
+		Namespace: mc.Namespace,
+		LabelSelector: labels.SelectorFromSet(labels.Set{
+			kubernetes.LabelRadiusApplication: applicationName,
+		}),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(applications.Items) == 0 {
+		return nil, mc.appV3NotFoundError(applicationName)
+	}
+	return &applications.Items[0], nil
 }
