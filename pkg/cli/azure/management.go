@@ -185,10 +185,10 @@ func (dm *ARMManagementClient) ShowApplicationV3(ctx context.Context, applicatio
 	ac := radclientv3.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.Get(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
-		if isNotFound(err) {
-			errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
-			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
-		}
+		// if isNotFound(err) {
+		// 	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
+		// 	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		// }
 		return nil, err
 	}
 	return response.ApplicationResource, err
@@ -198,7 +198,7 @@ func (dm *ARMManagementClient) DeleteApplicationV3(ctx context.Context, appName 
 	con, sub, rg := dm.Connection, dm.SubscriptionID, dm.ResourceGroup
 	radiusResourceClient := radclientv3.NewRadiusResourceClient(con, sub)
 	resp, err := radiusResourceClient.List(ctx, dm.ResourceGroup, appName, nil)
-	if err != nil && !isNotFound(err) {
+	if err != nil {
 		return err
 	}
 	for _, resource := range resp.RadiusResourceList.Value {
