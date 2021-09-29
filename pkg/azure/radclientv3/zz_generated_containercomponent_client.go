@@ -199,7 +199,7 @@ func (client *ContainerComponentClient) deleteOperation(ctx context.Context, res
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusNoContent) {
+	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil

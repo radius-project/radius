@@ -91,6 +91,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the radius.com.AwesomeComponent will complete asynchronously."
+          },
           "204": {
             "description": "The radius.com.AwesomeComponent resource was successfully deleted."
           },

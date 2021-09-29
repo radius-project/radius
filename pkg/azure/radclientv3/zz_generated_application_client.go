@@ -195,7 +195,7 @@ func (client *ApplicationClient) deleteOperation(ctx context.Context, resourceGr
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusNoContent) {
+	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil

@@ -199,7 +199,7 @@ func (client *HTTPRouteClient) deleteOperation(ctx context.Context, resourceGrou
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusNoContent) {
+	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
