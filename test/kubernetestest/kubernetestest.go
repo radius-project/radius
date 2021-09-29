@@ -114,7 +114,7 @@ func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options 
 
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	cli := radcli.NewCLI(t, options.ConfigFilePath, validation.AppModelV3)
 	err = cli.Deploy(ctx, templateFilePath)
 	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
@@ -158,7 +158,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 		t.Errorf("failed to capture logs from radius pods %w", err)
 	}
 
-	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
+	cli := radcli.NewCLI(t, at.Options.ConfigFilePath, validation.AppModelV3)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
