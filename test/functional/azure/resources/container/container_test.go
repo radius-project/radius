@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -206,6 +207,12 @@ func Test_ContainerManualScale(t *testing.T) {
 				})
 				require.NoError(t, err, "failed to list pods")
 				require.Lenf(t, matches.Items, 2, "items should contain two match, instead it had: %+v", matches.Items)
+
+				// Verify ephemeral volume
+				require.Lenf(t, matches.Items[0].Spec.Volumes, 1, "volumes should contain one item, instead it had: %+v", matches.Items[0].Spec.Volumes)
+				volume := matches.Items[0].Spec.Volumes[0]
+				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
+				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
 			},
 		},
 	})

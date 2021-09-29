@@ -23,9 +23,10 @@ type ContainerProperties struct {
 }
 
 type Container struct {
-	Image string                   `json:"image"`
-	Ports map[string]ContainerPort `json:"ports,omitempty"`
-	Env   map[string]interface{}   `json:"env,omitempty"`
+	Image   string                            `json:"image"`
+	Ports   map[string]ContainerPort          `json:"ports,omitempty"`
+	Env     map[string]interface{}            `json:"env,omitempty"`
+	Volumes map[string]map[string]interface{} `json:"volumes,omitempty"`
 }
 
 type ContainerPort struct {
@@ -42,6 +43,19 @@ type ContainerConnection struct {
 type ContainerTrait struct {
 	Kind                 string
 	AdditionalProperties map[string]interface{}
+}
+
+type EphemeralVolume struct {
+	Kind         string `json:"kind"`
+	MountPath    string `json:"mountPath"`
+	ManagedStore string `json:"managedStore"`
+}
+
+type PersistentVolume struct {
+	Kind      string `json:"kind"`
+	MountPath string `json:"mountPath"`
+	Source    string `json:"source"`
+	Rbac      string `json:"rbac"`
 }
 
 func (ct ContainerTrait) MarshalJSON() ([]byte, error) {
