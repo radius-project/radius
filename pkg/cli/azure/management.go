@@ -185,10 +185,10 @@ func (dm *ARMManagementClient) ShowApplicationV3(ctx context.Context, applicatio
 	ac := radclientv3.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.Get(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
-		// if isNotFound(err) {
-		// 	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
-		// 	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
-		// }
+		if isNotFound(err) {
+			errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
 		return nil, err
 	}
 	return response.ApplicationResource, err
