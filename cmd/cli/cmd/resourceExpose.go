@@ -104,7 +104,7 @@ rad resource expose --application icecream-store ContainerComponent orders --por
 func init() {
 	resourceExposeCmd.PersistentFlags().StringP("type", "t", "", "The resource type")
 	resourceExposeCmd.PersistentFlags().StringP("resource", "r", "", "The resource name")
-	resourceExposeCmd.Flags().IntP("remote-port", "R", -1, "specify the remote port")
+	resourceExposeCmd.Flags().IntP("remote-port", "", -1, "specify the remote port")
 	resourceExposeCmd.Flags().String("replica", "", "specify the replica to expose")
 	resourceExposeCmd.Flags().IntP("port", "p", -1, "specify the local port")
 	err := resourceExposeCmd.MarkFlagRequired("port")
