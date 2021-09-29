@@ -8,7 +8,6 @@ package kubernetes
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/azure/radclientv3"
@@ -301,25 +300,8 @@ func (mc *KubernetesManagementClient) ListApplicationsV3(ctx context.Context) (*
 	return &radclientv3.ApplicationList{Value: converted}, nil
 }
 
-func (mc *KubernetesManagementClient) getApplication(ctx context.Context, applicationName string) (*radiusv1alpha3.Application, error) {
-	applications := radiusv1alpha3.ApplicationList{}
-	err := mc.Client.List(ctx, &applications, &client.ListOptions{
-		Namespace: mc.Namespace,
-		LabelSelector: labels.SelectorFromSet(labels.Set{
-			kubernetes.LabelRadiusApplication: applicationName,
-		}),
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(applications.Items) == 0 {
-		return nil, mc.appV3NotFoundError(applicationName)
-	}
-	return &applications.Items[0], nil
-}
-
 func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
-	application, err := mc.getApplication(ctx, applicationName)
+	application, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +309,7 @@ func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, app
 }
 
 func (mc *KubernetesManagementClient) DeleteApplicationV3(ctx context.Context, applicationName string) error {
-	application, err := mc.getApplication(ctx, applicationName)
+	application, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
 		return err
 	}
@@ -342,9 +324,9 @@ func (mc *KubernetesManagementClient) DeleteApplicationV3(ctx context.Context, a
 			Resource: crd.Spec.Names.Plural,
 		}).Namespace(mc.Namespace)
 		err := resourceClient.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: selectorFromMap(map[string]string{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
 				kubernetes.LabelRadiusApplication: applicationName,
-			}),
+			}).String(),
 		})
 		if err != nil && !errors.IsNotFound(err) {
 			return err
@@ -378,13 +360,25 @@ func (mc *KubernetesManagementClient) listAllRadiusCRDs(ctx context.Context) ([]
 
 func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (*radclientv3.RadiusResourceList, error) {
 	// First check that the application exist
-	_, err := mc.getApplication(ctx, applicationName)
+	_, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
 		return nil, err
 	}
 	crds, err := mc.listAllRadiusCRDs(ctx)
 	if err != nil {
 		return nil, err
+	}
+	fieldSelector := map[string]string{}
+	if resourceName != "" {
+		fieldSelector["metadata.name"] = resourceName
+	}
+	labelSelector := map[string]string{kubernetes.LabelRadiusApplication: applicationName}
+	if resourceType != "" {
+		labelSelector[kubernetes.LabelRadiusResourceType] = resourceType
+	}
+	filter := metav1.ListOptions{
+		FieldSelector: labels.SelectorFromSet(labels.Set(fieldSelector)).String(),
+		LabelSelector: labels.SelectorFromSet(labels.Set(labelSelector)).String(),
 	}
 	results := []*radclientv3.RadiusResource{}
 	for _, crd := range crds {
@@ -393,15 +387,7 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 			Version:  radiusv1alpha3.GroupVersion.Version,
 			Resource: crd.Spec.Names.Plural,
 		}).Namespace(mc.Namespace)
-		list, err := resourceClient.List(ctx, metav1.ListOptions{
-			FieldSelector: selectorFromMap(map[string]string{
-				"metadata.name": resourceName,
-			}),
-			LabelSelector: selectorFromMap(map[string]string{
-				kubernetes.LabelRadiusApplication:  applicationName,
-				kubernetes.LabelRadiusResourceType: resourceType,
-			}),
-		})
+		list, err := resourceClient.List(ctx, filter)
 		if err != nil {
 			return nil, err
 		}
@@ -438,12 +424,20 @@ func (mc *KubernetesManagementClient) appV3NotFoundError(applicationName string)
 	return radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 }
 
-func selectorFromMap(m map[string]string) string {
-	selectors := []string{}
-	for k, v := range m {
-		if v != "" {
-			selectors = append(selectors, fmt.Sprintf("%s=%s", k, v))
-		}
+// mustGetApplication will return a ResourceNotFound error if no application is found.
+func (mc *KubernetesManagementClient) mustGetApplication(ctx context.Context, applicationName string) (*radiusv1alpha3.Application, error) {
+	applications := radiusv1alpha3.ApplicationList{}
+	err := mc.Client.List(ctx, &applications, &client.ListOptions{
+		Namespace: mc.Namespace,
+		LabelSelector: labels.SelectorFromSet(labels.Set{
+			kubernetes.LabelRadiusApplication: applicationName,
+		}),
+	})
+	if err != nil {
+		return nil, err
 	}
-	return strings.Join(selectors, ",")
+	if len(applications.Items) == 0 {
+		return nil, mc.appV3NotFoundError(applicationName)
+	}
+	return &applications.Items[0], nil
 }
