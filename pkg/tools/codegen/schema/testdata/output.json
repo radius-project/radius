@@ -150,6 +150,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the RadiusResource will complete asynchronously."
+          },
           "204": {
             "description": "The RadiusResource resource was successfully deleted."
           },
@@ -232,6 +235,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the radius.com.AwesomeComponent will complete asynchronously."
+          },
           "204": {
             "description": "The radius.com.AwesomeComponent resource was successfully deleted."
           },
@@ -445,6 +451,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the Application will complete asynchronously."
+          },
           "204": {
             "description": "The Application resource was successfully deleted."
           },

@@ -198,8 +198,12 @@ func (dm *ARMManagementClient) DeleteApplicationV3(ctx context.Context, appName 
 	con, sub, rg := dm.Connection, dm.SubscriptionID, dm.ResourceGroup
 	radiusResourceClient := radclientv3.NewRadiusResourceClient(con, sub)
 	resp, err := radiusResourceClient.List(ctx, dm.ResourceGroup, appName, nil)
-	if err != nil && !isNotFound(err) {
+	if err != nil {
 		return err
+	}
+	if isNotFound(err) {
+		errorMessage := fmt.Sprintf("Application  %q not found in environment %q", appName, dm.EnvironmentName)
+		return radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 	}
 	for _, resource := range resp.RadiusResourceList.Value {
 		types := strings.Split(*resource.Type, "/")

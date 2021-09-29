@@ -2034,6 +2034,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the Application will complete asynchronously."
+          },
           "204": {
             "description": "The Application resource was successfully deleted."
           },
@@ -2207,6 +2210,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the ContainerComponent will complete asynchronously."
+          },
           "204": {
             "description": "The ContainerComponent resource was successfully deleted."
           },
@@ -2386,6 +2392,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the HttpRoute will complete asynchronously."
+          },
           "204": {
             "description": "The HttpRoute resource was successfully deleted."
           },
@@ -2602,6 +2611,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the azure.com.CosmosDBMongoComponent will complete asynchronously."
+          },
           "204": {
             "description": "The azure.com.CosmosDBMongoComponent resource was successfully deleted."
           },
@@ -2781,6 +2793,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the azure.com.CosmosDBSQLComponent will complete asynchronously."
+          },
           "204": {
             "description": "The azure.com.CosmosDBSQLComponent resource was successfully deleted."
           },
@@ -2960,6 +2975,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the azure.com.KeyVaultComponent will complete asynchronously."
+          },
           "204": {
             "description": "The azure.com.KeyVaultComponent resource was successfully deleted."
           },
@@ -3139,6 +3157,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the azure.com.ServiceBusQueueComponent will complete asynchronously."
+          },
           "204": {
             "description": "The azure.com.ServiceBusQueueComponent resource was successfully deleted."
           },
@@ -3318,6 +3339,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the dapr.io.InvokeRoute will complete asynchronously."
+          },
           "204": {
             "description": "The dapr.io.InvokeRoute resource was successfully deleted."
           },
@@ -3497,6 +3521,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the dapr.io.PubSubTopicComponent will complete asynchronously."
+          },
           "204": {
             "description": "The dapr.io.PubSubTopicComponent resource was successfully deleted."
           },
@@ -3676,6 +3703,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the dapr.io.StateStoreComponent will complete asynchronously."
+          },
           "204": {
             "description": "The dapr.io.StateStoreComponent resource was successfully deleted."
           },
@@ -3855,6 +3885,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the mongodb.com.MongoDBComponent will complete asynchronously."
+          },
           "204": {
             "description": "The mongodb.com.MongoDBComponent resource was successfully deleted."
           },
@@ -4034,6 +4067,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the rabbitmq.com.MessageQueue will complete asynchronously."
+          },
           "204": {
             "description": "The rabbitmq.com.MessageQueue resource was successfully deleted."
           },
@@ -4213,6 +4249,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the redislabs.com.Redis will complete asynchronously."
+          },
           "204": {
             "description": "The redislabs.com.Redis resource was successfully deleted."
           },
@@ -4358,6 +4397,9 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "The request to delete the RadiusResource will complete asynchronously."
+          },
           "204": {
             "description": "The RadiusResource resource was successfully deleted."
           },
