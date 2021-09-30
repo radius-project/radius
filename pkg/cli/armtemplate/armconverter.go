@@ -20,7 +20,6 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	annotations := map[string]string{}
 
 	// Compute annotations to capture the name segments
-	typeParts := strings.Split(resource.Type, "/")
 	nameParts := strings.Split(resource.Name, "/")
 
 	data, err := json.Marshal(resource)
