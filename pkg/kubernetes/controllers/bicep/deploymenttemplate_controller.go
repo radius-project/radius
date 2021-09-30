@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
@@ -121,6 +122,26 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		}
 
 		if apierrors.IsNotFound(err) {
+			appName, _, resourceType := resource.GetParts()
+
+			// make the application own the resource created
+			if resourceType != "Application" {
+				application := &radiusv1alpha3.Application{}
+
+				err = r.Client.Get(ctx, client.ObjectKey{
+					Namespace: k8sInfo.GetNamespace(),
+					Name:      appName,
+				}, application)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
+				err := controllerutil.SetControllerReference(application, k8sInfo, r.Scheme)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+
 			err = r.Client.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 			if err != nil {
 				return ctrl.Result{}, err

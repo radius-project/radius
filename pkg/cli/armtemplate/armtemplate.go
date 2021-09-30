@@ -60,6 +60,20 @@ func (r Resource) Convert(obj interface{}) error {
 	return nil
 }
 
+func (r Resource) GetParts() (applicationName string, resourceName string, resourceType string) {
+	typeParts := strings.Split(r.Type, "/")
+	nameParts := strings.Split(r.Name, "/")
+
+	if len(nameParts) > 1 {
+		applicationName = nameParts[1]
+		resourceType = typeParts[len(typeParts)-1]
+		if len(nameParts) > 2 {
+			resourceName = nameParts[2]
+		}
+	}
+	return
+}
+
 func Parse(template string) (DeploymentTemplate, error) {
 	parsed := DeploymentTemplate{}
 	err := json.Unmarshal([]byte(template), &parsed)

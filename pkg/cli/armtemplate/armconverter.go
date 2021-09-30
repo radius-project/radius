@@ -26,7 +26,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	if err != nil {
 		return nil, err
 	}
-	applicationName, resourceName, resourceType := GetParts(nameParts, typeParts)
+	applicationName, resourceName, resourceType := resource.GetParts()
 
 	if applicationName == "" {
 		return nil, errors.New("application name is empty")
@@ -62,15 +62,4 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 	uns.SetAnnotations(annotations)
 	return uns, nil
-}
-
-func GetParts(nameParts, typeParts []string) (applicationName string, resourceName string, resourceType string) {
-	if len(nameParts) > 1 {
-		applicationName = nameParts[1]
-		if len(nameParts) > 2 {
-			resourceName = nameParts[2]
-			resourceType = typeParts[len(typeParts)-1]
-		}
-	}
-	return
 }
