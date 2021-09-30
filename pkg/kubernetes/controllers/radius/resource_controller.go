@@ -397,7 +397,7 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 
 	err := r.Client.Get(ctx, client.ObjectKey{
 		Namespace: namespace,
-		Name:      resourceType.Name,
+		Name:      kubernetes.MakeResourceName(id.Types[1].Name, id.Types[2].Name),
 	}, unst)
 	if err != nil {
 		// TODO make this wait without an error?
