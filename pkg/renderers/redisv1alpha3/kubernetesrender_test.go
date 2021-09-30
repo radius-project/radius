@@ -56,7 +56,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-redis")
 
 	t.Run("verify deployment", func(t *testing.T) {
-		require.Equal(t, "test-app.test-redis", deployment.Name)
+		require.Equal(t, "test-app-test-redis", deployment.Name)
 		require.Equal(t, labels, deployment.Labels)
 		require.Empty(t, deployment.Annotations)
 
@@ -78,7 +78,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	})
 
 	t.Run("verify service", func(t *testing.T) {
-		require.Equal(t, "test-app.test-redis", service.Name)
+		require.Equal(t, "test-app-test-redis", service.Name)
 		require.Equal(t, labels, service.Labels)
 		require.Empty(t, service.Annotations)
 
@@ -95,7 +95,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: "test-app.test-redis",
+			Value: "test-app-test-redis",
 		},
 		"port": {
 			Value: "6379",
