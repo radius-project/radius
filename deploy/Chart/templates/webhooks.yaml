@@ -35,7 +35,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: radius-system
-      path: /validate-radius-dev-v1alpha1-application
+      path: /validate-radius-dev-v1alpha3-application
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
   name: application-validation.radius.dev
@@ -43,7 +43,7 @@ webhooks:
   - apiGroups:
     - radius.dev
     apiVersions:
-    - v1alpha1
+    - v1alpha3
     operations:
     - CREATE
     - UPDATE
@@ -58,21 +58,29 @@ webhooks:
     service:
       name: webhook-service
       namespace: radius-system
-      path: /validate-radius-dev-v1alpha1-component
+      path: /validate-radius-dev-v1alpha3-resource
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
-  name: component-validation.radius.dev
+  name: resource-validation.radius.dev
   rules:
   - apiGroups:
     - radius.dev
     apiVersions:
-    - v1alpha1
+    - v1alpha3
     operations:
     - CREATE
     - UPDATE
     - DELETE
     resources:
-    - components
+    - containercomponents
+    - daprioinvokeroutes
+    - mongodbcomponents
+    - rediscomponents
+    - grpcroutes
+    - dapriopubsubtopiccomponents
+    - rabbitmqcomponents
+    - httproutes
+    - dapriostatestorecomponents
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -81,30 +89,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: radius-system
-      path: /validate-radius-dev-v1alpha1-deployment
-    caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
-  failurePolicy: Fail
-  name: deployment-validation.radius.dev
-  rules:
-  - apiGroups:
-    - radius.dev
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    - DELETE
-    resources:
-    - deployments
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  - v1beta1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: radius-system
-      path: /validate-bicep-dev-v1alpha1-deploymenttemplate
+      path: /validate-bicep-dev-v1alpha3-deploymenttemplate
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
   name: deploymenttemplate-validation.bicep.dev
@@ -112,7 +97,7 @@ webhooks:
   - apiGroups:
     - bicep.dev
     apiVersions:
-    - v1alpha1
+    - v1alpha3
     operations:
     - CREATE
     - UPDATE

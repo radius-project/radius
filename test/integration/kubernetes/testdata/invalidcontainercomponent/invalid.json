@@ -1,0 +1,22 @@
+{
+    "apiVersion": "radius.dev/v1alpha3",
+    "kind": "ContainerComponent",
+    "metadata": {
+        "name": "contianercomponent",
+        "namespace": "arm"
+    },
+    "spec": {
+        "template": {
+            "type": "Microsoft.CustomProviders/resourceProviders/Application/ContainerComponent",
+            "apiVersion": "2018-09-01-preview",
+            "name": "radiusv3/kubernetes-resources-container-httpbinding/frontend",
+            "body": {
+                "properties": {
+                    "container": "foo"
+                }
+            }
+        },
+        "application": "test",
+        "resource": "containercomponent"
+    }
+}

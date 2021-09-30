@@ -33,6 +33,7 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
+	"github.com/Azure/radius/pkg/kubernetes/webhook"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -188,7 +189,7 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Application")
 			os.Exit(1)
 		}
-		if err = (&radiusv1alpha3.Resource{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Component")
 			os.Exit(1)
 		}

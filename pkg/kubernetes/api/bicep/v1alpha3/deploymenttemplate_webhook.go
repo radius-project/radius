@@ -23,7 +23,7 @@ func (r *DeploymentTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.Validator = &DeploymentTemplate{}
 
-//+kubebuilder:webhook:path=/validate-bicep-dev-v1alpha1-deploymenttemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=bicep.dev,resources=deploymenttemplates,verbs=create;update;delete,versions=v1alpha1,name=deploymenttemplate-validator.bicep.dev,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/validate-bicep-dev-v1alpha3-deploymenttemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=bicep.dev,resources=deploymenttemplates,verbs=create;update;delete,versions=v1alpha3,name=deploymenttemplate-validator.bicep.dev,admissionReviewVersions={v1,v1beta1}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *DeploymentTemplate) ValidateCreate() error {

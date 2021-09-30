@@ -1,0 +1,23 @@
+{
+    "apiVersion": "radius.dev/v1alpha3",
+    "kind": "HttpRoute",
+    "metadata": {
+        "name": "httproute",
+        "namespace": "arm"
+    },
+    "spec": {
+        "template": {
+            "type": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute",
+            "apiVersion": "2018-09-01-preview",
+            "name": "radiusv3/kubernetes-resources-container-httpbinding/frontendhttp",
+            "body": {
+                "properties": {
+                    "port": 80,
+                    "gateway": "test"
+                }
+            }
+        },
+        "application": "test",
+        "resource": "myhttproute"
+    }
+}

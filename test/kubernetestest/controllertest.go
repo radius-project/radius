@@ -26,7 +26,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,6 +37,7 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
+	"github.com/Azure/radius/pkg/kubernetes/webhook"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -190,6 +190,11 @@ func StartController() error {
 		}
 	}
 
+	err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to initialize component webhook: %w", err)
+	}
+
 	if err = (&bicepcontroller.DeploymentTemplateReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("DeploymentTemplate"),
@@ -202,11 +207,7 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize application webhook: %w", err)
 	}
-	// TODO webhook manager needs to be per controller
-	err = (&radiusv1alpha3.Resource{}).SetupWebhookWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to initialize component webhook: %w", err)
-	}
+
 	err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize arm webhook: %w", err)
@@ -236,6 +237,8 @@ func StartController() error {
 	options = EnvOptions{
 		K8s:     k8s,
 		Dynamic: dynamicClient,
+		Scheme:  mgr.GetScheme(),
+		Mapper:  mapper,
 	}
 
 	return nil
@@ -257,27 +260,31 @@ func (ct ControllerTest) Test(t *testing.T) error {
 		unst, err := GetUnstructured(path.Join(ct.ControllerStep.TemplateFolder, item.Name()))
 		require.NoError(t, err, "failed to get unstructured")
 
-		gvr := schema.GroupVersionResource{
-			Group:    "bicep.dev",
-			Version:  "v1alpha3",
-			Resource: "deploymenttemplates",
-		}
-		require.NoError(t, err, "failed to get gvr")
-
-		data, err := unst.MarshalJSON()
-		require.NoError(t, err, "failed to marshal json")
-
-		name := unst.GetName()
-
-		_, err = ct.Options.Dynamic.Resource(gvr).Namespace(ct.ControllerStep.Namespace).Patch(
-			ct.Context,
-			name,
-			types.ApplyPatchType,
-			data,
-			v1.PatchOptions{FieldManager: "rad"})
+		gvks, _, err := ct.Options.Scheme.ObjectKinds(unst)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to initialize find objects : %w", err)
 		}
+		for _, gvk := range gvks {
+			// Get GVR for corresponding component.
+			gvr, err := ct.Options.Mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			require.NoError(t, err, "failed to marshal json")
+
+			data, err := unst.MarshalJSON()
+			require.NoError(t, err, "failed to marshal json")
+
+			name := unst.GetName()
+
+			_, err = ct.Options.Dynamic.Resource(gvr.Resource).Namespace(ct.ControllerStep.Namespace).Patch(
+				ct.Context,
+				name,
+				types.ApplyPatchType,
+				data,
+				v1.PatchOptions{FieldManager: "rad"})
+			if err != nil {
+				return err
+			}
+		}
+
 	}
 	return nil
 }
@@ -324,6 +331,8 @@ type ControllerTest struct {
 type EnvOptions struct {
 	K8s     *k8s.Clientset
 	Dynamic dynamic.Interface
+	Scheme  *runtime.Scheme
+	Mapper  *restmapper.DeferredDiscoveryRESTMapper
 }
 
 func NewControllerTest(ctx context.Context, row ControllerStep) ControllerTest {
