@@ -7,7 +7,7 @@ package redisv1alpha3
 
 const (
 	Port         = 6379
-	ResourceType = "redislabs.com.Redis"
+	ResourceType = "redislabs.com.RedisComponent"
 )
 
 // RedisComponentProperties is the defintion of the config section
