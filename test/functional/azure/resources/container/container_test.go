@@ -74,7 +74,6 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	})
 
 	test.Version = validation.AppModelV3
-	test.SkipDeletion = true
 
 	test.Test(t)
 }
@@ -150,7 +149,6 @@ func Test_ContainerInboundRoute(t *testing.T) {
 	})
 
 	test.Version = validation.AppModelV3
-	test.SkipDeletion = true
 
 	test.Test(t)
 }
@@ -217,7 +215,6 @@ func Test_ContainerManualScale(t *testing.T) {
 	})
 
 	test.Version = validation.AppModelV3
-	test.SkipDeletion = true
 
 	test.Test(t)
 }

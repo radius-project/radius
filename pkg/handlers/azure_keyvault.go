@@ -55,12 +55,15 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOption
 		// store vault so we can use later
 		properties[KeyVaultNameKey] = *kv.Name
 		properties[KeyVaultIDKey] = *kv.ID
+		properties[KeyVaultURIKey] = *kv.Properties.VaultURI
 	} else {
 		// This is mostly called for the side-effect of verifying that the keyvault exists.
-		_, err := handler.GetKeyVaultByID(ctx, properties[KeyVaultIDKey])
+		kv, err := handler.GetKeyVaultByID(ctx, properties[KeyVaultIDKey])
 		if err != nil {
 			return nil, err
 		}
+
+		properties[KeyVaultURIKey] = *kv.Properties.VaultURI
 	}
 
 	if options.Resource.Deployed {

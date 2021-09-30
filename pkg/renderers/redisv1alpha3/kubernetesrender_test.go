@@ -3,16 +3,15 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package redisv1alpha1
+package redisv1alpha3
 
 import (
 	"context"
 	"testing"
 
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -32,45 +31,40 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := KubernetesRenderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": true,
-			},
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-redis",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": true,
 		},
-		Namespace:     "default",
-		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(ctx, workload)
+	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
 	require.NoError(t, err)
-	require.Len(t, resources, 2)
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
 
-	deployment, _ := kubernetes.FindDeployment(resources)
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
-	service, _ := kubernetes.FindService(resources)
+	service, _ := kubernetes.FindService(output.Resources)
 	require.NotNil(t, service)
 
 	labels := map[string]string{
 		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusResource:    "test-component",
-		kubernetes.LabelName:              "test-component",
+		kubernetes.LabelRadiusResource:    "test-redis",
+		kubernetes.LabelName:              "test-redis",
 		kubernetes.LabelPartOf:            "test-app",
 		kubernetes.LabelManagedBy:         kubernetes.LabelManagedByRadiusRP,
 	}
 
 	matchLabels := map[string]string{
 		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusResource:    "test-component",
+		kubernetes.LabelRadiusResource:    "test-redis",
 	}
 	t.Run("verify deployment", func(t *testing.T) {
-		require.Equal(t, "test-component", deployment.Name)
-		require.Equal(t, "default", deployment.Namespace)
+		require.Equal(t, "test-redis", deployment.Name)
 		require.Equal(t, labels, deployment.Labels)
 		require.Empty(t, deployment.Annotations)
 
@@ -92,8 +86,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	})
 
 	t.Run("verify service", func(t *testing.T) {
-		require.Equal(t, "test-component", service.Name)
-		require.Equal(t, "default", service.Namespace)
+		require.Equal(t, "test-redis", service.Name)
 		require.Equal(t, labels, service.Labels)
 		require.Empty(t, service.Annotations)
 
@@ -107,19 +100,42 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		require.Equal(t, int32(6379), port.Port)
 		require.Equal(t, intstr.FromInt(6379), port.TargetPort)
 	})
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		"connectionString": {
+			Value: "test-redis:6379",
+		},
+		"host": {
+			Value: "test-redis",
+		},
+		"port": {
+			Value: "6379",
+		},
+		"primaryKey": {
+			Value: "",
+		},
+		"secondarykey": {
+			Value: "",
+		},
+	}
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
 }
 
-func TestInvalidKubernetesComponentKindFailure(t *testing.T) {
+func Test_Render_KubernetesRedis_Unmanaged_Failure(t *testing.T) {
+	ctx := createContext(t)
 	renderer := KubernetesRenderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Workload: components.GenericComponent{
-			Name: "test-component",
-			Kind: "foo",
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-redis",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": false,
 		},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
 	require.Error(t, err)
-	require.Equal(t, "the component was expected to have kind 'redislabs.com/Redis@v1alpha1', instead it is 'foo'", err.Error())
+	require.Equal(t, "only managed = true is supported for the Kubernetes Redis Component", err.Error())
 }

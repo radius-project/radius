@@ -22,7 +22,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha1"
-	"github.com/Azure/radius/pkg/renderers/redisv1alpha1"
+	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha1"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
@@ -39,7 +39,6 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		containerv1alpha1.Kind:       &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
 		servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
-		redisv1alpha1.Kind:           &redisv1alpha1.AzureRenderer{Arm: arm},
 	}
 
 	handlers := map[string]model.Handlers{
@@ -70,6 +69,9 @@ func NewAzureModelV3(arm armauth.ArmConfig, k8s client.Client) model.Application
 		// Dapr
 		daprpubsubv1alpha1.ResourceType:     &renderers.V1RendererAdapter{Inner: &daprpubsubv1alpha1.Renderer{}},
 		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{}},
+
+		// OSS
+		redisv1alpha3.ResourceType: &redisv1alpha3.AzureRenderer{},
 
 		// Azure
 		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
