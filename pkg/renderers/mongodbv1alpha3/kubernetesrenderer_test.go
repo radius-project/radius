@@ -88,7 +88,7 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		Namespace:         "test-namespace",
 		Name:              "test-name",
 	}
-	secret := renderer.MakeSecret(options, resourceName, "test-username", "test-password")
+	secret := renderer.MakeSecret(options, "test-username", "test-password")
 
 	expected := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
@@ -104,7 +104,7 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		Data: map[string][]byte{
 			SecretKeyMongoDBAdminUsername:    []byte("test-username"),
 			SecretKeyMongoDBAdminPassword:    []byte("test-password"),
-			SecretKeyMongoDBConnectionString: []byte("mongodb://test-username:test-password@test-db:27017/admin"),
+			SecretKeyMongoDBConnectionString: []byte("mongodb://test-username:test-password@test-name:27017/admin"),
 		},
 	}
 

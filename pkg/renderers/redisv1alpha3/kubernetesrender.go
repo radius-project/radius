@@ -81,7 +81,7 @@ func GetKubernetesRedis(resource renderers.RendererResource, properties RedisCom
 			APIVersion: appsv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   resource.ResourceName,
+			Name:   kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Labels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: appsv1.DeploymentSpec{

@@ -104,3 +104,7 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
 }
+
+func MakeResourceName(application string, resource string) string {
+	return application + "." + resource
+}
