@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
+	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
 )
@@ -41,7 +42,7 @@ func ConvertToARMResource(original *radiusv1alpha3.Resource, body map[string]int
 
 func ConvertToRenderResource(original *radiusv1alpha3.Resource, result *renderers.RendererResource) error {
 	result.ResourceName = original.Name
-	result.ResourceType = original.Kind
+	result.ResourceType = original.Annotations[kubernetes.LabelRadiusResourceType]
 	result.ApplicationName = original.Spec.Application
 
 	template := original.Spec.Template
