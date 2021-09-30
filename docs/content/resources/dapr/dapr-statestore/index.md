@@ -4,6 +4,7 @@ title: "Use Dapr State Management with Radius"
 linkTitle: "State store"
 description: "Learn how to use Dapr state management components in Radius"
 weight: 200
+slug: "statestore"
 ---
 
 ## Overview

@@ -4,6 +4,7 @@ title: "Dapr service invocation Route"
 linkTitle: "Invoke Route"
 description: "Learn how to use Dapr service invocation in Radius"
 weight: 400
+slug: "invoke"
 ---
 
 ## Overview

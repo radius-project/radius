@@ -4,6 +4,7 @@ title: "Dapr sidecar Trait"
 linkTitle: "Dapr Trait"
 description: "Learn how to add a Dapr sidecar with a Dapr trait"
 weight: 100
+slug: "trait"
 ---
 
 ## Overview

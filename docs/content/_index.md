@@ -36,7 +36,7 @@ Author and deploy your first appliction in minutes with Radius:
 {{< card header="**🔌 Portable components**" title="Deploy your applications to cloud and edge with zero code changes" >}}
   Radius Components describe the code, data, and infrastructure pieces of an application. They capture behavior and requirements, and make it easy to parameterize and deploy across platforms.
   
-  Portable Components, like [Dapr]({{< ref dapr-components >}}), can be deployed to different Radius platforms with no changes to your code.
+  Portable Components, like [Dapr]({{< ref dapr >}}), can be deployed to different Radius platforms with no changes to your code.
 
   <table style="max-width:600px">
   <tr>

@@ -13,7 +13,7 @@ In this step you will learn how to add a database and connect to it from the app
 
 ## Add a Dapr trait
 
-A [`dapr.io/App` trait]({{< ref "container.md#dapr-sidecar" >}}) on the `backend` component can be used to describe the Dapr configuration:
+A [`dapr.io/App` trait]({{< ref dapr-trait >}}) on the `backend` component can be used to describe the Dapr configuration:
 
 {{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" >}}
 
@@ -23,7 +23,7 @@ The `traits` section is used to configure cross-cutting behaviors of components.
 
 Here you are describing how the `backend` Component will provide the `invoke` Route for other Components to consume.
 
-Add a [`dapr.io.InvokeRoute`]({{< ref "dapr-components" >}}) resource to the app, and specify that the `backend` Component will provide the Route as part of the `orders` port.
+Add a [`dapr.io.InvokeRoute`]({{< ref dapr >}}) resource to the app, and specify that the `backend` Component will provide the Route as part of the `orders` port.
 
 {{< rad file="snippets/invoke.bicep" embed=true marker="//SAMPLE" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
 
