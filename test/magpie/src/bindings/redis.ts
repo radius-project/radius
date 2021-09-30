@@ -7,9 +7,9 @@ bluebird.promisifyAll(redis.RedisClient.prototype);
 bluebird.promisifyAll(redis.Multi.prototype);
 
 // Use this with the three following values:
-// BINDING_REDIS_HOST: the host string
-// BINDING_REDIS_PORT: the port string
-// BINDING_REDIS_PASSWORD: the password string, for azure it's the primary key
+// CONNECTION_REDIS_HOST: the host string
+// CONNECTION_REDIS_PORT: the port string
+// CONNECTION_REDIS_PASSWORD: the password string, for azure it's the primary key
 export class RedisBinding implements Binding {
     private host: string;
     private port: string;

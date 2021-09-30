@@ -1,35 +1,28 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-redis-managed'
   
-  resource webapp 'Components' = {
+  resource webapp 'ContainerComponent' = {
     name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/magpie:latest'
+      container: {
+        image: 'radius.azurecr.io/magpie:latest'
+        env: {
+          
         }
       }
-      uses: [
-        {
-          binding: redis.properties.bindings.redis
-          env: {
-            BINDING_REDIS_HOST: redis.properties.bindings.redis.host
-            BINDING_REDIS_PORT: redis.properties.bindings.redis.port
-            BINDING_REDIS_PASSWORD: redis.properties.bindings.redis.primaryKey
-          }
+      connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redis.id
         }
-      ]
+      }
     }
   }
 
-  resource redis 'Components' = {
+  resource redis 'redislabs.com.RedisComponent' = {
     name: 'redis'
-    kind: 'redislabs.com/Redis@v1alpha1'
     properties: {
-      config: {
-        managed: true
-      }
+      managed: true
     }
   }
 }

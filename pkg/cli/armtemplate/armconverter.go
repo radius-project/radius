@@ -8,6 +8,7 @@ package armtemplate
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -46,10 +47,15 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 	labels := kubernetes.MakeResourceCRDLabels(applicationName, resourceType, resourceName)
 
+	kind := GetKindFromArmType(resourceType)
+	if kind == "" {
+		return nil, fmt.Errorf("must have custom resource type mapping to arm type %s", resourceType)
+	}
+
 	uns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "radius.dev/v1alpha3",
-			"kind":       typeParts[len(typeParts)-1],
+			"kind":       kind,
 			"metadata": map[string]interface{}{
 				"name":      nameParts[len(nameParts)-1],
 				"namespace": namespace,
@@ -62,4 +68,21 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 	uns.SetAnnotations(annotations)
 	return uns, nil
+}
+
+// TODO this should be removed and instead we should use the CR definitions to know about the arm mapping
+func GetKindFromArmType(armType string) string {
+	kindMap := map[string]string{
+		"Application":                  "Application",
+		"ContainerComponent":           "ContainerComponent",
+		"dapr.io.PubSubTopicComponent": "DaprIOPubSubTopicComponent",
+		"dapr.io.StateStoreComponent":  "DaprIOStateStoreComponent",
+		"dapr.io.InvokeRoute":          "DaprIOInvokeRoute",
+		"mongodb.com.MongoDBComponent": "MongoDBComponent",
+		"rabbitmq.com.MessageQueue":    "RabbitMQComponent",
+		"redislabs.com.Redis":          "RedisComponent",
+		"HttpRoute":                    "HttpRoute",
+		"GrpcRoute":                    "GrpcRoute",
+	}
+	return kindMap[armType]
 }
