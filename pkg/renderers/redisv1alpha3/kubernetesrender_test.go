@@ -57,7 +57,6 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-app.test-redis", deployment.Name)
-		require.Equal(t, "default", deployment.Namespace)
 		require.Equal(t, labels, deployment.Labels)
 		require.Empty(t, deployment.Annotations)
 
@@ -80,7 +79,6 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 
 	t.Run("verify service", func(t *testing.T) {
 		require.Equal(t, "test-app.test-redis", service.Name)
-		require.Equal(t, "default", service.Namespace)
 		require.Equal(t, labels, service.Labels)
 		require.Empty(t, service.Annotations)
 
