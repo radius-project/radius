@@ -73,16 +73,16 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 // TODO this should be removed and instead we should use the CR definitions to know about the arm mapping
 func GetKindFromArmType(armType string) string {
 	kindMap := map[string]string{
-		"Application":                  "Application",
-		"ContainerComponent":           "ContainerComponent",
-		"dapr.io.PubSubTopicComponent": "DaprIOPubSubTopicComponent",
-		"dapr.io.StateStoreComponent":  "DaprIOStateStoreComponent",
-		"dapr.io.InvokeRoute":          "DaprIOInvokeRoute",
-		"mongodb.com.MongoDBComponent": "MongoDBComponent",
-		"rabbitmq.com.MessageQueue":    "RabbitMQComponent",
-		"redislabs.com.Redis":          "RedisComponent",
-		"HttpRoute":                    "HttpRoute",
-		"GrpcRoute":                    "GrpcRoute",
+		"Application":                        "Application",
+		"ContainerComponent":                 "ContainerComponent",
+		"dapr.io.PubSubTopicComponent":       "DaprIOPubSubTopicComponent",
+		"dapr.io.StateStoreComponent":        "DaprIOStateStoreComponent",
+		"dapr.io.InvokeRoute":                "DaprIOInvokeRoute",
+		"mongodb.com.MongoDBComponent":       "MongoDBComponent",
+		"rabbitmq.com.MessageQueueComponent": "RabbitMQComponent",
+		"redislabs.com.RedisComponent":       "RedisComponent",
+		"HttpRoute":                          "HttpRoute",
+		"GrpcRoute":                          "GrpcRoute",
 	}
 	return kindMap[armType]
 }
