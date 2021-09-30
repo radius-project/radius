@@ -48,7 +48,7 @@ func MakeDescriptiveLabels(application string, resource string) map[string]strin
 	return map[string]string{
 		LabelRadiusApplication: application,
 		LabelRadiusResource:    resource,
-		LabelName:              application + "." + resource,
+		LabelName:              MakeResourceName(application, resource),
 		LabelPartOf:            application,
 		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
@@ -106,5 +106,5 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 }
 
 func MakeResourceName(application string, resource string) string {
-	return application + "." + resource
+	return application + "-" + resource
 }

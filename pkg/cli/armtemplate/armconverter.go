@@ -40,7 +40,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 		spec["resource"] = resourceName
 		annotations[kubernetes.LabelRadiusResourceType] = resourceType
 		annotations[kubernetes.LabelRadiusResource] = resourceName
-		name = applicationName + "." + resourceName
+		name = applicationName + "-" + resourceName
 	}
 
 	labels := kubernetes.MakeResourceCRDLabels(applicationName, resourceType, resourceName)
