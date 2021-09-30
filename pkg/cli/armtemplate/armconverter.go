@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -18,9 +17,6 @@ import (
 
 func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, error) {
 	annotations := map[string]string{}
-
-	// Compute annotations to capture the name segments
-	nameParts := strings.Split(resource.Name, "/")
 
 	data, err := json.Marshal(resource)
 	if err != nil {
