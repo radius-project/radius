@@ -42,6 +42,8 @@ var (
 const (
 	ApplicationResourceType = "Application"
 	GenericResourceType     = "RadiusResource"
+
+	ContainerComponentType = "ContainerComponent"
 )
 
 // manifest is the format of the 'resource-types.json' manifest.
