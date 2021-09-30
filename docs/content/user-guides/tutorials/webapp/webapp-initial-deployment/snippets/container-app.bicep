@@ -1,21 +1,18 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'webapp'
 
-  resource todoapplication 'Components' = {
+  resource todoapplication 'ContainerComponent' = {
     name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/webapptutorial-todoapp'
-        }
-      }
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
+      container: {
+        image: 'radius.azurecr.io/webapptutorial-todoapp'
+        ports: {
+          web: {
+            containerPort: 3000
+          }
         }
       }
     }
   }
+  
 }

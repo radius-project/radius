@@ -15,15 +15,17 @@ In this step you will learn how to add a database and connect to it from the app
 
 A [`dapr.io/App` trait]({{< ref "container.md#dapr-sidecar" >}}) on the `backend` component can be used to describe the Dapr configuration:
 
-{{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="run: {...}" >}}
+{{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" >}}
 
 The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required Dapr configuration: the `app-id` and `app-port`.
 
-## Add a Dapr Invoke binding
+## Add a Dapr Invoke Route
 
-Add a [`radius.dev/invoke` binding]({{< ref "container.md#dapr-invoke" >}}) on the `backend` component to declare that you intend to accept service invocation requests on this component.
+Here you are describing how the `backend` Component will provide the `invoke` Route for other Components to consume.
 
-{{< rad file="snippets/invoke.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
+Add a [`dapr.io.InvokeRoute`]({{< ref "dapr-components" >}}) resource to the app, and specify that the `backend` Component will provide the Route as part of the `orders` port.
+
+{{< rad file="snippets/invoke.bicep" embed=true marker="//SAMPLE" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
 
 ## Add statestore component
 
@@ -31,9 +33,9 @@ Now that the backend is configured with Dapr, we need to define a state store to
 
 A [`statestore` component]({{< ref dapr-statestore >}}) is used to specify a few properties about the state store:
 
-- `kind: 'dapr.io/StateStore@v1alpha1'` represents a resource that Dapr uses to communicate with a database.
-- `properties.config.kind: 'state.azure.tablestorage'` corresponds to the kind of Dapr state store used for [Azure Table Storage](https://docs.dapr.io/operations/components/setup-state-store/supported-state-stores/setup-azure-tablestorage/)
-- `properties.config.managed: true` tells Radius to manage the lifetime of the component for you. 
+- **kind**: `'dapr.io/StateStore@v1alpha1'` represents a resource that Dapr uses to communicate with a database.
+- **properties.kind**: `'any'` tells Radius to pick the best available statestore for the platform. For Azure this is Table Storage and for Kubernetes this is a Redis container.
+- **properties.managed**: `true` tells Radius to manage the lifetime of the component for you. 
 
 {{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
@@ -45,15 +47,11 @@ With this simple component definition, Radius handles both creation of the Azure
 
 Radius captures both logical relationships and related operational details. Examples of this include: wiring up connection strings, granting permissions, or restarting components when a dependency changes.
 
-The [`uses` section]({{< ref "connections-model.md#consumiung-bindings" >}}) is used to configure relationships between a component and bindings provided by other components.
+The [`connections` section]({{< ref "connections-model" >}}) is used to configure relationships between a component and bindings provided by other components.
 
-Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from within the `backend` component via a `uses` section. This declares the *intention* from the `backend` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
+Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from the `backend` component via the [`connections` section]({{< ref "connections-model" >}}). This declares the *intention* from the `backend` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
 
-{{% alert title="💡 Implicit Bindings" color="primary" %}}
-The [`statestore` component]({{< ref dapr-statestore.md >}}) implicitly declares a built-in binding named `default` of type `dapr.io/StateStore`. In general, components that define infrastructure and data-stores will come with [built-in bindings]({{< ref "connections-model.md#implicit-bindings" >}}) as part of their type declaration. In this example, a Dapr state store component can be used as a state store without extra configuration.
-{{% /alert %}}
-
-{{< rad file="snippets/app.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-statestore="//STATESTORE" replace-value-statestore="resource statestore 'Components' = {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
+{{< rad file="snippets/app.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-statestore="//STATESTORE" replace-value-statestore="resource statestore 'dapr.io.StateStoreComponent' = {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
 
 ## Deploy application with Dapr
 
@@ -78,14 +76,15 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 1. You can confirm that the new `statestore` component was deployed by running:
 
    ```sh
-   rad deployment list --application dapr-tutorial
+   rad component list --application dapr-tutorial
    ```
 
    You should see both `backend` and `statestore` components in your `dapr-tutorial` application. Example output:
 
    ```
-   DEPLOYMENT  COMPONENTS
-   default     backend statestore
+   COMPONENT   KIND
+   backend     ContainerComponent
+   statestore  dapr.io.StateStoreComponent
    ```
 
 1. To test out the state store, open a local tunnel on port 3000 again:

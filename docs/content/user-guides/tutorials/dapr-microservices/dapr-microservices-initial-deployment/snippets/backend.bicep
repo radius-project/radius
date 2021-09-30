@@ -1,15 +1,18 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-tutorial'
 
-  resource backend 'Components' = {
+  resource backend 'ContainerComponent' = {
     name: 'backend'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/daprtutorial-backend'
+      container: {
+        image: 'radius.azurecr.io/daprtutorial-backend'
+        ports: {
+          orders: {
+            containerPort: 3000
+          }
         }
       }
     }
   }
+  
 }

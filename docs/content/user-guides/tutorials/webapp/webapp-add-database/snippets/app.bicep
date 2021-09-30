@@ -1,46 +1,38 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'webapp'
 
   //CONTAINER
-  resource todoapplication 'Components' = {
+  resource todoapplication 'ContainerComponent' = {
     name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      //RUN
-      run: {
         container: {
           image: 'radius.azurecr.io/webapptutorial-todoapp'
-        }
-      }
-      //RUN
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
+          //PORTS
+          ports: {
+            web: {
+              containerPort: 3000
+            }
+          }
+          //PORTS
           env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
+            DBCONNECTION: db.connectionString()
           }
         }
-      ]
-      //BINDINGS
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
+      connections: {
+        itemstore:{
+          kind: 'mongo.com/MongoDB'
+          source: db.id
         }
       }
-      //BINDINGS
     }
   }
   //CONTAINER
 
   //MONGO
-  resource db 'Components' = {
+  resource db 'mongodb.com.MongoComponent' = {
     name: 'db'
-    kind: 'mongodb.com/Mongo@v1alpha1'
     properties: {
-      config: {
-        managed: true
-      }
+      managed: true
     }
   }
   //MONGO

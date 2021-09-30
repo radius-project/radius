@@ -15,10 +15,10 @@ Again, we'll discuss changes to template.bicep and then provide the full, update
 
 Another container component is used to specify a few properties about the order generator:
 
-- `kind: radius.dev/Container@v1alpha1` indicates you are using a generic container.
-- `container image: radius.azurecr.io/daprtutorial-frontend` is a Docker image the container will run.
-- `uses: backend.properties.bindings.invoke` declares the intention for `frontend` to communicate with `backend` using `dapr.io/Invoke` as the protocol.
-- `traits: dapr.io/App` configures Dapr on the container.
+- **kind**: `radius.dev/Container@v1alpha1` indicates you are using a generic container.
+- **container image**: radius.azurecr.io/daprtutorial-frontend` is a Docker image the container will run.
+- **uses**: `backend.properties.bindings.invoke` declares the intention for `frontend` to communicate with `backend` using `dapr.io/Invoke` as the protocol.
+- **traits**: `dapr.io/App` configures Dapr on the container.
 
 {{< rad file="snippets/app.bicep" marker="//FRONTEND" embed=true >}}
   

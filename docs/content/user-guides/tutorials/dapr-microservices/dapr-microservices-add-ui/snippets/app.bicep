@@ -1,22 +1,25 @@
 //SAMPLE
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-tutorial'
 
   //FRONTEND
-  resource frontend 'Components' = {
+  resource frontend 'ContainerComponent' = {
     name: 'frontend'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/daprtutorial-frontend'
+      container: {
+        image: 'radius.azurecr.io/daprtutorial-frontend'
+        ports:{
+          ui: {
+            containerPort: 80
+          }
         }
       }
-      uses: [
-        {
-          binding: backend.properties.bindings.invoke
+      connections: {
+        orders: {
+          kind: 'dapr.io/Invoke'
+          source: invoke.id
         }
-      ]
+      }
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
@@ -27,30 +30,24 @@ resource app 'radius.dev/Applications@v1alpha1' = {
   }
   //FRONTEND
 
-  resource backend 'Components' = {
+  resource backend 'ContainerComponent' = {
     name: 'backend'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      //RUN
-      run: {
-        container: {
-          image: 'radius.azurecr.io/daprtutorial-backend'
+      container: {
+        image: 'radius.azurecr.io/daprtutorial-backend'
+        ports: {
+          orders: {
+            containerPort: 3000
+            provides: invoke.id
+          }
         }
       }
-      //RUN
-      //BINDINGS
-      bindings: {
-        invoke: {
-          kind: 'dapr.io/Invoke'
+      connections: {
+        orders: {
+          kind: 'dapr.io/StateStore'
+          source: statestore.id
         }
       }
-      //BINDINGS
-      uses: [
-        {
-          binding: statestore.properties.bindings.default
-        }
-      ]
-      //TRAITS
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
@@ -58,21 +55,18 @@ resource app 'radius.dev/Applications@v1alpha1' = {
           appPort: 3000
         }
       ]
-      //TRAITS
     }
   }
 
-  //STATESTORE
-  resource statestore 'Components' = {
+  resource invoke 'dapr.io.InvokeRoute' = {
+    name: 'order-invocation'
+  }
+
+  resource statestore 'dapr.io.StateStoreComponent' = {
     name: 'statestore'
-    kind: 'dapr.io/StateStore@v1alpha1'
     properties: {
-      config: {
-        kind: 'any'
-        managed: true
-      }
+      kind: 'any'
+      managed: true
     }
   }
-  //STATESTORE
 }
-//SAMPLE

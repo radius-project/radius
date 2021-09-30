@@ -28,8 +28,7 @@ In this tutorial, you will:
 
 - [Install Radius CLI]({{< ref install-cli.md >}})
 - [Create a Radius environment]({{< ref create-environment.md >}})
-- [(recommended) Install Visual Studio Code](https://code.visualstudio.com/)
-   - The [Radius VSCode extension]({{< ref "install-cli.md#2-install-custom-vscode-extension" >}}) provides syntax highlighting, completion, and linting.
+- [(optional) Setup Visual Studio Code]({{< ref "install-cli.md#2-install-custom-vscode-extension" >}}) for syntax highlighting, completion, and linting.
    - You can also complete this tutorial with any basic text editor.
 
 <br>{{< button text="Application overview" page="dapr-microservices-overview.md" >}}

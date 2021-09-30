@@ -23,8 +23,9 @@ Radius captures the relationships and intentions behind an application, which si
 
 Your `backend` component will specify:
 
-- **kind:** `radius.dev/Container@v1alpha1`, a generic container.
+- **kind:** `ContainerComponent`, a generic container.
 - **container image:** `radius.azurecr.io/daprtutorial-backend`, a Docker image the container will run. This is where your application's backend code lives.
+- **ports**: orders will be received on port 3000.
 
 Update your template.bicep file to match the full application definition:
 
@@ -33,8 +34,6 @@ Update your template.bicep file to match the full application definition:
 ## Deploy the application
 
 Now you are ready to deploy the application for the first time.
-
-> At this point, you should already be logged into the az CLI and have an environment initialized.
 
 1. Deploy to your Radius environment via the rad CLI:
 
@@ -54,7 +53,7 @@ Now you are ready to deploy the application for the first time.
 
    ```
    COMPONENT  KIND
-   backend    radius.dev/Container@v1alpha1
+   backend    ContainerComponent
    ```
 
 1. To test your `dapr-tutorial` application, open a local tunnel to your application:

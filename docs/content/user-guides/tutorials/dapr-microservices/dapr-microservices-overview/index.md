@@ -33,22 +33,19 @@ The order processing microservice (`backend`) accepts HTTP requests to create or
 
 ### Statestore
 
-The Dapr state store (`statestore`) stores information about orders. It could be any compatible [Dapr state store](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/). In this tutorial we will use Azure Table Storage.
+The Dapr state store (`statestore`) stores information about orders. It could be any compatible [Dapr state store](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/). In this tutorial we will use Azure Table Storage for Azure environments and Redis for Kubernetes environments.
 
 <img src="./statestore.png" alt="A diagram of the Dapr state store" width=400 />
 
-## Bindings
+## Routes
 
-The diagrams shown so far document the communication flows, but a Radius application also describes additional details through [Bindings]({{< ref connections-model.md >}}).
+Radius offers communication between runnable Components via [Communication Routes]({{< ref "connections-model#routes" >}}).
 
-A Radius template includes Bindings for:
+### Dapr service invocation
 
-- The logical relationships of an application
-- The operational details associated with those relationships
+In this tutorial, we will be using `dapr.io.InvokeRoute` to model the communication between `frontend` and `backend`.
 
-Here is an updated diagram that shows what the Radius template captures:
-
-<img src="radius-overview.png" alt="A diagram of the overall application with all of the Radius properties" width=800 />
+<img src="./invoke.png" alt="A diagram of the Dapr service invocation" width=500 />
 
 ## Summary
 

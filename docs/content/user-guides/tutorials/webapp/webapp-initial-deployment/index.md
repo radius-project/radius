@@ -4,6 +4,7 @@ title: "Deploy the website tutorial frontend"
 linkTitle: "Deploy frontend"
 description: "Deploy the website tutorial frontend in a container"
 weight: 2000
+slug: "frontend"
 ---
 
 ## Define a Radius app as a .bicep file

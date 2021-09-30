@@ -3,6 +3,7 @@ type: docs
 title: "Add a database to the website tutorial app"
 linkTitle: "Add a database"
 description: "Connect a MongoDB resource to the website tutorial application"
+slug: "database"
 weight: 3000
 ---
 
@@ -15,38 +16,36 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add db component
 A `db` database component is used to specify a few properties about the database: 
 
-- **kind:** `mongodb.com/Mongo@v1alpha1` represents a MongoDB compatible database.
-- **managed:** `true` tells Radius to manage the lifetime of the component for you ([more information]({{< ref "components-model#radius-managed" >}}))
+- **kind:** `mongodb.com.MongoComponent` represents a MongoDB compatible database.
+- **managed:** `true` tells Radius to [manage the lifetime]({{< ref "components-model#radius-managed" >}}) of the component for you.
 
 {{< rad file="snippets/app.bicep" embed=true marker="//MONGO" >}}
 
 {{< tabs "Microsoft Azure" Kubernetes>}}
 
 {{% codetab %}}
-When deploying to an Azure environment, a managed [`mongodb.com/Mongo@v1alpha1`]({{< ref mongodb >}}) component will be bound to an Azure CosmosDB API for MongoDB. By declaring your dependency on a generic *MongoDB-compatible* database, your code is more portable.
-
-You can alternately use the component kind [`azure.com/CosmosDBMongo@v1alpha1`]({{< ref cosmos-mongodb >}}) to explictly declare a component backed by Azure CosmosDB.
+When deploying to an Azure environment, a managed [`mongodb.com.MongoComponent`]({{< ref mongodb >}}) Component will be bound to an Azure CosmosDB API for MongoDB. By declaring your dependency on a generic *MongoDB-compatible* database, your code is more portable.
 {{% /codetab %}}
 
 {{% codetab %}}
-When deploying to a Kubernetes environment, a managed [`mongodb.com/Mongo@v1alpha1`]({{< ref mongodb >}}) will be bound to the [`mongo` Docker image](https://hub.docker.com/_/mongo/) running a lightweight developer configuration. 
+When deploying to a Kubernetes environment, a managed [`mongodb.com.MongoComponent`]({{< ref mongodb >}}) will be bound to the [`mongo` Docker image](https://hub.docker.com/_/mongo/) running a lightweight developer configuration. 
 {{% /codetab %}}
 
 {{< /tabs >}}
 
 ## Reference db from todoapp
 
-Radius captures both logical relationships and related operational details. Examples of this include: wiring up connection strings, granting permissions, or restarting components when a dependency changes.
+Radius captures both logical relationships and related operational details. Examples of this include wiring up connection strings, granting permissions, or restarting components when a dependency changes.
 
-Once the database is defined as a component, you can connect to it by referencing the `db` component from within the `todoapp` component via a `uses` section. 
+Once the database is defined as a Component, you can connect to it by referencing the `db` component from within the `todoapp` Component via the [`connections`]({{< ref connections-model >}}) section. 
 
-The `uses` section is used to configure relationships between a component and bindings provided by other components. The `db` is of kind `mongodb.com/Mongo@v1alpha1`, which supports the MongoDB protocol. `db` automatically provides a binding of kind `mongodb.com/Mongo`. Configuring a dependency on a binding is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db` using `mongodb.com/Mongo` as the protocol.
+[`connections`]({{< ref connections-model >}}) is used to configure relationships between two components. The `db` is of kind `mongodb.com.MongoComponent`, which supports the `mongodb.com/Mongo` MongoDB protocol. Configuring a dependency on this protocal is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db`.
 
-Here's what the `todoapp` component will look like with the `uses` section added within its properties:
+Once you connect to `db` you can now reference the `db.connectionStrings()` method from within the `todoapp` Component's `env` definition. This places the `db` connection string in the `todoapp` Component's environment
 
-{{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" >}}
+Here's what the `todoapp` component will look like with the `connections` section added within its properties and an environment variable defined in `env`:
 
-The `env` section declares operations to perform *based on* the relationship. In this case the `connectionString` value will be retrieved from the database and set as an environment variable on the component. As a result, `todoapp` will be able to use the `DBCONNECTION` environment variable to access to the database connection string.
+{{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" replace-key-ports="//PORTS" replace-value-ports="ports: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" >}}
 
 ## Update your template.bicep file 
 
@@ -67,14 +66,15 @@ Update your `template.bicep` file to match the full application definition:
 1. You can confirm that the new `db` component was deployed by running:
 
    ```sh
-   rad deployment list --application webapp -o json
+   rad component list --application webapp
    ```
 
    You should see both `db` and `todoapp` components in your `webapp` application. Example output: 
 
    ```
-   DEPLOYMENT  COMPONENTS
-   default     db todoapp
+   COMPONENT   KIND                        PROVISIONING_STATE   HEALTH_STATE
+   todoapp     ContainerComponent          Deployed             Healthy
+   db          mongodb.com.MongoComponent  Deployed             Healthy
    ```
 
 1. To test the database, open a local tunnel on port 3000 again:
@@ -102,15 +102,15 @@ After you have deployed the application, you can validate that the data is being
 
 1. Open the CosmosDB resource prefixed with `db-`
 
-   <img src="azure-db.png" width="600" alt="Screenshot of the db CosmosDB instance">
+   <img src="azure-db.png" width="400px" alt="Screenshot of the db CosmosDB instance">
 
 1. Open the Data Explorer to the `todos` collection. You can now see the entries you added in the todo app.
 
-   <img src="db-entries.png" width="800" alt="Screenshot of the db CosmosDB Data Explorer with todo items">
+   <img src="db-entries.png" width="800px" alt="Screenshot of the db CosmosDB Data Explorer with todo items">
 {{% /codetab %}}
 
 {{< /tabs >}}
 
-## Next steps
+## Cleanup
 
-<br>{{< button text="Next: Add a secret store in this application to store the database connection string" page="webapp-add-secretstore.md" >}}
+{{% alert title="Delete application" color="warning" %}} If you're done with testing, you can use the rad CLI to [delete an environment]({{< ref rad_env_delete.md >}}) to prevent additional charges in your subscription. {{% /alert %}}

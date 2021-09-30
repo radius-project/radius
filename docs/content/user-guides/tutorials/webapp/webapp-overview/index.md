@@ -4,13 +4,13 @@ title: "Website tutorial app overview"
 linkTitle: "App overview"
 description: "Overview of the website tutorial application"
 weight: 1000
+slug: "overview"
 ---
 
-You will be deploying a *To-Do List* website. It will have three Radius *components*:
+You will be deploying a *To-Do List* website. It will have two Radius *components*:
 
 1. **todoapp**: A containerized to-do application written in Node.JS
 2. **db**: A MongoDB database to save to-do items in
-3. **kv**: An Azure KeyVault for secret management (Azure environments only)
 
 <img src="todoapp-diagram.png" width=400 alt="Simple app diagram">
 
