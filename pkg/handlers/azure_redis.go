@@ -21,6 +21,11 @@ const (
 	RedisBaseName      = "azureredis"
 	RedisNameKey       = "redisname"
 	RedisResourceIdKey = "redisid"
+	RedisPortKey       = "redisport"
+	RedisHostKey       = "redishost"
+
+	// Note: while this is called a connection string, it **does not** include secrets.
+	RedisConnectionStringKey = "redisconnectionstring"
 )
 
 func NewAzureRedisHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -36,6 +41,7 @@ type azureRedisHandler struct {
 func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
+	var redisResource *redis.ResourceType
 	if properties[RedisResourceIdKey] == "" {
 		// If we don't have an ID already, then we need to create a new Redis.
 		redisName, ok := properties[RedisNameKey]
@@ -72,17 +78,24 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 			return nil, err
 		}
 
-		r, err := handler.CreateRedis(ctx, redisName)
+		redisResource, err = handler.CreateRedis(ctx, redisName)
 		if err != nil {
 			return nil, err
 		}
-		properties[RedisResourceIdKey] = *r.ID
+		properties[RedisResourceIdKey] = *redisResource.ID
 	} else {
-		_, err := handler.GetRedisByID(ctx, properties[RedisResourceIdKey])
+		var err error
+		redisResource, err = handler.GetRedisByID(ctx, properties[RedisResourceIdKey])
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	// Properties that are referenced from the renderer
+	properties[RedisNameKey] = *redisResource.Name
+	properties[RedisHostKey] = *redisResource.HostName
+	properties[RedisPortKey] = fmt.Sprintf("%d", *redisResource.Properties.SslPort)
+	properties[RedisConnectionStringKey] = *redisResource.HostName + ":" + fmt.Sprintf("%d", *redisResource.Properties.SslPort)
 
 	return properties, nil
 }
