@@ -1324,9 +1324,9 @@ func (p ProxyResource) marshalInternal() map[string]interface{} {
 	return objectMap
 }
 
-// RabbitMQComponentList - List of rabbitmq.com.MessageQueue resources.
+// RabbitMQComponentList - List of rabbitmq.com.MessageQueueComponent resources.
 type RabbitMQComponentList struct {
-	// REQUIRED; List of rabbitmq.com.MessageQueue resources.
+	// REQUIRED; List of rabbitmq.com.MessageQueueComponent resources.
 	Value []*RabbitMQComponentResource `json:"value,omitempty"`
 }
 
@@ -1368,23 +1368,24 @@ func (r RabbitMQComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// RabbitmqComMessageQueueBeginCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueue.BeginCreateOrUpdate method.
-type RabbitmqComMessageQueueBeginCreateOrUpdateOptions struct {
+// RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.BeginCreateOrUpdate
+// method.
+type RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitmqComMessageQueueBeginDeleteOptions contains the optional parameters for the RabbitmqComMessageQueue.BeginDelete method.
-type RabbitmqComMessageQueueBeginDeleteOptions struct {
+// RabbitmqComMessageQueueComponentBeginDeleteOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.BeginDelete method.
+type RabbitmqComMessageQueueComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitmqComMessageQueueGetOptions contains the optional parameters for the RabbitmqComMessageQueue.Get method.
-type RabbitmqComMessageQueueGetOptions struct {
+// RabbitmqComMessageQueueComponentGetOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.Get method.
+type RabbitmqComMessageQueueComponentGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitmqComMessageQueueListOptions contains the optional parameters for the RabbitmqComMessageQueue.List method.
-type RabbitmqComMessageQueueListOptions struct {
+// RabbitmqComMessageQueueComponentListOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.List method.
+type RabbitmqComMessageQueueComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1430,9 +1431,9 @@ type RadiusResourceListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedisComponentList - List of redislabs.com.Redis resources.
+// RedisComponentList - List of redislabs.com.RedisComponent resources.
 type RedisComponentList struct {
-	// REQUIRED; List of redislabs.com.Redis resources.
+	// REQUIRED; List of redislabs.com.RedisComponent resources.
 	Value []*RedisComponentResource `json:"value,omitempty"`
 }
 
@@ -1482,23 +1483,23 @@ func (r RedisComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// RedislabsComRedisBeginCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedis.BeginCreateOrUpdate method.
-type RedislabsComRedisBeginCreateOrUpdateOptions struct {
+// RedislabsComRedisComponentBeginCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedisComponent.BeginCreateOrUpdate method.
+type RedislabsComRedisComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedislabsComRedisBeginDeleteOptions contains the optional parameters for the RedislabsComRedis.BeginDelete method.
-type RedislabsComRedisBeginDeleteOptions struct {
+// RedislabsComRedisComponentBeginDeleteOptions contains the optional parameters for the RedislabsComRedisComponent.BeginDelete method.
+type RedislabsComRedisComponentBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedislabsComRedisGetOptions contains the optional parameters for the RedislabsComRedis.Get method.
-type RedislabsComRedisGetOptions struct {
+// RedislabsComRedisComponentGetOptions contains the optional parameters for the RedislabsComRedisComponent.Get method.
+type RedislabsComRedisComponentGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedislabsComRedisListOptions contains the optional parameters for the RedislabsComRedis.List method.
-type RedislabsComRedisListOptions struct {
+// RedislabsComRedisComponentListOptions contains the optional parameters for the RedislabsComRedisComponent.List method.
+type RedislabsComRedisComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 

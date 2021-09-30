@@ -1284,10 +1284,10 @@
       "type": "object"
     },
     "RabbitMQComponentList": {
-      "description": "List of rabbitmq.com.MessageQueue resources.",
+      "description": "List of rabbitmq.com.MessageQueueComponent resources.",
       "properties": {
         "value": {
-          "description": "List of rabbitmq.com.MessageQueue resources.",
+          "description": "List of rabbitmq.com.MessageQueueComponent resources.",
           "items": {
             "$ref": "#/definitions/RabbitMQComponentResource"
           },
@@ -1380,10 +1380,10 @@
       "type": "object"
     },
     "RedisComponentList": {
-      "description": "List of redislabs.com.Redis resources.",
+      "description": "List of redislabs.com.RedisComponent resources.",
       "properties": {
         "value": {
-          "description": "List of redislabs.com.Redis resources.",
+          "description": "List of redislabs.com.RedisComponent resources.",
           "items": {
             "$ref": "#/definitions/RedisComponentResource"
           },
@@ -1929,7 +1929,7 @@
       "x-ms-parameter-location": "method"
     },
     "RabbitMQComponentNameParameter": {
-      "description": "The name of the rabbitmq.com.MessageQueue resource.",
+      "description": "The name of the rabbitmq.com.MessageQueueComponent resource.",
       "in": "path",
       "name": "rabbitMQComponentName",
       "required": true,
@@ -1953,7 +1953,7 @@
       "x-ms-parameter-location": "method"
     },
     "RedisComponentNameParameter": {
-      "description": "The name of the redislabs.com.Redis resource.",
+      "description": "The name of the redislabs.com.RedisComponent resource.",
       "in": "path",
       "name": "redisComponentName",
       "required": true,
@@ -4008,10 +4008,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueueComponent": {
       "get": {
-        "description": "List the rabbitmq.com.MessageQueue resources deployed in the application.",
-        "operationId": "rabbitmq.com.MessageQueue_List",
+        "description": "List the rabbitmq.com.MessageQueueComponent resources deployed in the application.",
+        "operationId": "rabbitmq.com.MessageQueueComponent_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4028,7 +4028,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of rabbitmq.com.MessageQueue resources was retrieved successfully.",
+            "description": "The list of rabbitmq.com.MessageQueueComponent resources was retrieved successfully.",
             "schema": {
               "$ref": "#/definitions/RabbitMQComponentList"
             }
@@ -4041,14 +4041,14 @@
           }
         },
         "tags": [
-          "rabbitmq.com.MessageQueue"
+          "rabbitmq.com.MessageQueueComponent"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueueComponent/{rabbitMQComponentName}": {
       "delete": {
-        "description": "Deletes a rabbitmq.com.MessageQueue resource.",
-        "operationId": "rabbitmq.com.MessageQueue_Delete",
+        "description": "Deletes a rabbitmq.com.MessageQueueComponent resource.",
+        "operationId": "rabbitmq.com.MessageQueueComponent_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4068,10 +4068,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the rabbitmq.com.MessageQueue will complete asynchronously."
+            "description": "The request to delete the rabbitmq.com.MessageQueueComponent will complete asynchronously."
           },
           "204": {
-            "description": "The rabbitmq.com.MessageQueue resource was successfully deleted."
+            "description": "The rabbitmq.com.MessageQueueComponent resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -4081,7 +4081,7 @@
           }
         },
         "tags": [
-          "rabbitmq.com.MessageQueue"
+          "rabbitmq.com.MessageQueueComponent"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4089,8 +4089,8 @@
         }
       },
       "get": {
-        "description": "Gets a rabbitmq.com.MessageQueue resource by name.",
-        "operationId": "rabbitmq.com.MessageQueue_Get",
+        "description": "Gets a rabbitmq.com.MessageQueueComponent resource by name.",
+        "operationId": "rabbitmq.com.MessageQueueComponent_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4110,7 +4110,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The rabbitmq.com.MessageQueue resource was retrieved successfully.",
+            "description": "The rabbitmq.com.MessageQueueComponent resource was retrieved successfully.",
             "schema": {
               "$ref": "#/definitions/RabbitMQComponentResource"
             }
@@ -4123,12 +4123,12 @@
           }
         },
         "tags": [
-          "rabbitmq.com.MessageQueue"
+          "rabbitmq.com.MessageQueueComponent"
         ]
       },
       "put": {
-        "description": "Creates or updates a rabbitmq.com.MessageQueue resource.",
-        "operationId": "rabbitmq.com.MessageQueue_CreateOrUpdate",
+        "description": "Creates or updates a rabbitmq.com.MessageQueueComponent resource.",
+        "operationId": "rabbitmq.com.MessageQueueComponent_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4143,7 +4143,7 @@
             "$ref": "#/parameters/RabbitMQComponentNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a rabbitmq.com.MessageQueue resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a rabbitmq.com.MessageQueueComponent resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
@@ -4157,19 +4157,19 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing rabbitmq.com.MessageQueue resource was successfully updated.",
+            "description": "The existing rabbitmq.com.MessageQueueComponent resource was successfully updated.",
             "schema": {
               "$ref": "#/definitions/RabbitMQComponentResource"
             }
           },
           "201": {
-            "description": "The new rabbitmq.com.MessageQueue resource was successfully created.",
+            "description": "The new rabbitmq.com.MessageQueueComponent resource was successfully created.",
             "schema": {
               "$ref": "#/definitions/RabbitMQComponentResource"
             }
           },
           "202": {
-            "description": "The existing rabbitmq.com.MessageQueue resource was successfully updated.",
+            "description": "The existing rabbitmq.com.MessageQueueComponent resource was successfully updated.",
             "schema": {
               "$ref": "#/definitions/RabbitMQComponentResource"
             }
@@ -4182,7 +4182,7 @@
           }
         },
         "tags": [
-          "rabbitmq.com.MessageQueue"
+          "rabbitmq.com.MessageQueueComponent"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4190,10 +4190,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.Redis": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisComponent": {
       "get": {
-        "description": "List the redislabs.com.Redis resources deployed in the application.",
-        "operationId": "redislabs.com.Redis_List",
+        "description": "List the redislabs.com.RedisComponent resources deployed in the application.",
+        "operationId": "redislabs.com.RedisComponent_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4210,7 +4210,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of redislabs.com.Redis resources was retrieved successfully.",
+            "description": "The list of redislabs.com.RedisComponent resources was retrieved successfully.",
             "schema": {
               "$ref": "#/definitions/RedisComponentList"
             }
@@ -4223,14 +4223,14 @@
           }
         },
         "tags": [
-          "redislabs.com.Redis"
+          "redislabs.com.RedisComponent"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.Redis/{redisComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisComponent/{redisComponentName}": {
       "delete": {
-        "description": "Deletes a redislabs.com.Redis resource.",
-        "operationId": "redislabs.com.Redis_Delete",
+        "description": "Deletes a redislabs.com.RedisComponent resource.",
+        "operationId": "redislabs.com.RedisComponent_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4250,10 +4250,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the redislabs.com.Redis will complete asynchronously."
+            "description": "The request to delete the redislabs.com.RedisComponent will complete asynchronously."
           },
           "204": {
-            "description": "The redislabs.com.Redis resource was successfully deleted."
+            "description": "The redislabs.com.RedisComponent resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -4263,7 +4263,7 @@
           }
         },
         "tags": [
-          "redislabs.com.Redis"
+          "redislabs.com.RedisComponent"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4271,8 +4271,8 @@
         }
       },
       "get": {
-        "description": "Gets a redislabs.com.Redis resource by name.",
-        "operationId": "redislabs.com.Redis_Get",
+        "description": "Gets a redislabs.com.RedisComponent resource by name.",
+        "operationId": "redislabs.com.RedisComponent_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4292,7 +4292,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The redislabs.com.Redis resource was retrieved successfully.",
+            "description": "The redislabs.com.RedisComponent resource was retrieved successfully.",
             "schema": {
               "$ref": "#/definitions/RedisComponentResource"
             }
@@ -4305,12 +4305,12 @@
           }
         },
         "tags": [
-          "redislabs.com.Redis"
+          "redislabs.com.RedisComponent"
         ]
       },
       "put": {
-        "description": "Creates or updates a redislabs.com.Redis resource.",
-        "operationId": "redislabs.com.Redis_CreateOrUpdate",
+        "description": "Creates or updates a redislabs.com.RedisComponent resource.",
+        "operationId": "redislabs.com.RedisComponent_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4325,7 +4325,7 @@
             "$ref": "#/parameters/RedisComponentNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a redislabs.com.Redis resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a redislabs.com.RedisComponent resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
@@ -4339,19 +4339,19 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing redislabs.com.Redis resource was successfully updated.",
+            "description": "The existing redislabs.com.RedisComponent resource was successfully updated.",
             "schema": {
               "$ref": "#/definitions/RedisComponentResource"
             }
           },
           "201": {
-            "description": "The new redislabs.com.Redis resource was successfully created.",
+            "description": "The new redislabs.com.RedisComponent resource was successfully created.",
             "schema": {
               "$ref": "#/definitions/RedisComponentResource"
             }
           },
           "202": {
-            "description": "The existing redislabs.com.Redis resource was successfully updated.",
+            "description": "The existing redislabs.com.RedisComponent resource was successfully updated.",
             "schema": {
               "$ref": "#/definitions/RedisComponentResource"
             }
@@ -4364,7 +4364,7 @@
           }
         },
         "tags": [
-          "redislabs.com.Redis"
+          "redislabs.com.RedisComponent"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
