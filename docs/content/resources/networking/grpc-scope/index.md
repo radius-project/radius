@@ -29,6 +29,12 @@ The following data is available for use from the consuming Component:
 | scheme | The scheme of the gRPC endpoint | `grpc` |
 | url | The full URL of the gRPC endpoint | |
 
+## Component compatibility
+
+| Component | Azure | Kubernetes |
+|-----------|:-----:|:----------:|
+| [`ContainerComponent`]({{< ref container >}}) | ✅ | ✅ |
+
 ## Example: container
 
 ### Providing

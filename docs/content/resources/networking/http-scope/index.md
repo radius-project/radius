@@ -29,6 +29,12 @@ The following data is available for use from the consuming Component:
 | scheme | The scheme of the HTTP endpoint | `http` |
 | url | The full URL of the HTTP endpoint | `http://example.com:80` |
 
+## Component compatibility
+
+| Component | Azure | Kubernetes |
+|-----------|:-----:|:----------:|
+| [`ContainerComponent`]({{< ref container >}}) | ✅ | ✅ |
+
 ## Example: container
 
 ### Providing
