@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Use Dapr Pub/Sub with Radius"
-linkTitle: "Pub/Sub"
+linkTitle: "Pub/sub topic"
 description: "Learn how to use Dapr Pub/Sub components in Radius"
 weight: 300
 ---
