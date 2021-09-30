@@ -42,3 +42,6 @@ Our focus is on delivering good support for the following platforms:
 - [Microsoft Azure]({{< ref azure>}}) as a managed-application serverless PaaS
 - [Kubernetes]({{< ref kubernetes >}}) in all flavors and form-factors
 
+## Next steps
+
+{{< button text="Learn about the app model" page="appmodel-concept" >}}

@@ -69,4 +69,4 @@ You can now deploy your application to [any Radius platform]({{< ref platforms >
 ## Next steps
 
 - Visit the [Components section]({{< ref components-model >}}) to begin using Radius components in your application.
-- Try out a [tutorial]({{< ref tutorial >}}) to learn what capabilities Radius adds to your application.
+- Try out a [tutorial]({{< ref tutorials >}}) to learn what capabilities Radius adds to your application.

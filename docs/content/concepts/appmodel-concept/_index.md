@@ -57,5 +57,10 @@ Connections describe a logical unit of communication between Components and mode
 A Trait is a piece of configuration that specifies an operational behavior. Once defined, a trait can be added to Component definitions.
 {{< /card >}}
 {{< /cardpane >}}
+{{< cardpane width=52% >}}
+{{< card header="[**Scopes**](./scopes-model)" >}}
+A Scope is a shared piece of configuration that applies to one or more Components. It's the circle you draw around Components in your architecture diagram.
+{{< /card >}}
+{{< /cardpane >}}
 
 {{< button page="application-model" text="Learn about the Application" >}}

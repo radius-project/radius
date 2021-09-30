@@ -26,3 +26,7 @@ For example, in [Microsoft Azure]({{< ref azure>}}) the Radius runtime is a Reso
 ## Supported platforms
 
 Visit the [platforms]({{< ref platforms >}}) page for more information on supported environments.
+
+## Next steps
+
+{{< button text="Try a tutorial" page="tutorials" >}}

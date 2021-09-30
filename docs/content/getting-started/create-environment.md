@@ -71,4 +71,4 @@ The rad CLI also has an option to [delete an environment]({{< ref rad_env_delete
 
 Now that you have a Radius environment up and running head over to our tutorials section to walk through some applications and scenarios:
 
-{{< button text="Next: Try a tutorial" page="tutorial" >}}
+{{< button text="Next: Try a tutorial" page="tutorials" >}}

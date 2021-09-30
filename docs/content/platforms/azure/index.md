@@ -98,5 +98,5 @@ rad env delete -e azure --yes
 
 ## Related links
 
-- [Radius tutorials]({{< ref tutorial >}})
+- [Radius tutorials]({{< ref tutorials >}})
 - [rad CLI reference]({{< ref cli >}})
