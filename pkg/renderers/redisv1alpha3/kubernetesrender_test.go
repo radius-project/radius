@@ -97,7 +97,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: "test-redis",
+			Value: "test-app.test-redis",
 		},
 		"port": {
 			Value: "6379",

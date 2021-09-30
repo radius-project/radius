@@ -39,13 +39,13 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: resource.ResourceName,
+			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 		},
 		"port": {
 			Value: route.GetEffectivePort(),
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", resource.ResourceName, route.GetEffectivePort()),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), route.GetEffectivePort()),
 		},
 		"scheme": {
 			Value: "http",
@@ -104,7 +104,7 @@ func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRo
 			APIVersion: networkingv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      resource.ResourceName,
+			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Namespace: resource.ApplicationName,
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
