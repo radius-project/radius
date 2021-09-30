@@ -14,100 +14,46 @@ This component will automatically:
 - Ensure the Dapr control plane is initialized
 - Deploy and manage the underlying resource
 - Setup and configuration of connection strings for consuming components
-- Creation and configuration of the Dapr component spec
+- Create and configure of the Dapr component spec
 
-## Configuration
+## Platform resources
 
-| Property | Description | Example(s) |
-|----------|-------------|---------|
-| name | The name of the state store | `my-state-store` |
-| kind | The kind and version of Radius component, in this case `dapr.io/StateStore@v1alpha1` | `dapr.io/StateStire@v1alpha1`
-| properties.config.kind | The kind of the underlying state store resource. See [State Store kinds](#state-store-kinds) for more information. | `state.azure.tablestorage`
-| properties.config.managed | Indicates if the resource is Radius-managed. For now only true is accepted for this Component. | `true`
+| Platform | Resource | Kind |
+|----------|----------|------|
+| [Microsoft Azure]({{< ref azure>}}) | [Azure Table Storage](#azure-table-storage) | `'state.azure.tablestorage'`
+| [Microsoft Azure]({{< ref azure>}}) | [Azure SQL](#azure-table-storage) | `'state.sqlserver'`
+| [Kubernetes]({{< ref kubernetes >}}) | [Redis]({{< ref redis >}}) | `'state.redis'`
 
-To add a new managed Dapr statestore component, add the following Radius component:
-
-```sh
-resource orderstore 'Components' = {
-  name: 'orderstore'
-  kind: 'dapr.io/StateStore@v1alpha1'
-  properties: {
-    config: {
-      kind: '<STATESTORE_KIND>'
-      managed: true
-    }
-  }
-```
-
-## State Store kinds
-
-The following resources can act as a `dapr.io/StateStore` state store:
-
-### any (determined by platform)
-
-The `any` kind lets the platform choose the best state store for the given platform. This provides portability across the various [Radius platforms]({{< ref platforms >}}).
+Additionally, the `any` kind will automatically choose a resource based on the platform. For Azure it is Table Storage, and for Kubernetes it is Redis.
 
 {{% alert title="Warning" color="warning" %}}
 The `any` kind is meant for dev/test purposes only. It is not recommended for production use.
 {{% /alert %}}
 
-| Platform | Resource |
-|----------|----------|
-| [Microsoft Azure]({{< ref azure>}}) | [Azure Table Storage](#azure-table-storage) |
-| [Kubernetes]({{< ref kubernetes >}}) | [Redis]({{< ref redis >}})]
+## Component spec
 
-```sh
-resource orderstore 'Components' = {
-  name: 'orderstore'
-  kind: 'dapr.io/StateStore@v1alpha1'
-  properties: {
-    config: {
-      kind: 'any'
-      managed: true
-    }
-  }
-```
+{{< tabs Managed User-managed >}}
 
-### Azure Table Storage
+{{% codetab %}}
+In the following example a State Store component is defined, where the underlying resource is provided by the platform.
+{{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
+{{% /codetab %}}
 
-The `state.azure.tablestorage` kind represents an [Azure Table Storage](https://azure.microsoft.com/en-us/services/storage/tables/) account that is configured as a Dapr state store.
+{{% codetab %}}
+{{% alert title="🚧 Under construction" color="warning" %}}
+User-managed resources are not yet supported for Dapr State Stores. Check back soon for updates.
+{{% /alert %}}
+{{% /codetab %}}
 
-| Platform | Resource |
-|----------|----------|
-| [Microsoft Azure]({{< ref azure>}}) | [Azure Table Storage](https://azure.microsoft.com/en-us/services/storage/tables/)
-| [Kubernetes]({{< ref kubernetes >}}) | Not supported
+{{< /tabs >}}
 
-```sh
-resource orderstore 'Components' = {
-  name: 'orderstore'
-  kind: 'dapr.io/StateStore@v1alpha1'
-  properties: {
-    config: {
-      kind: 'state.azure.tablestorage'
-      managed: true
-    }
-  }
-}
-```
+| Property | Description | Example |
+|----------|-------------|---------|
+| name | The name of the state store | `my-state-store` |
 
-### Azure SQL Server
+### Resource lifecycle
 
-The `state.sqlserver` represents an [Azure SQL Server](https://azure.microsoft.com/en-us/services/sql-database/campaign/) that is configured as a Dapr state store.
-
-| Platform | Resource |
-|----------|----------|
-| [Microsoft Azure]({{< ref azure>}}) | [Azure SQL Server](https://azure.microsoft.com/en-us/services/sql-database/campaign/)
-| [Kubernetes]({{< ref kubernetes >}}) | Not supported
-
-```sh
-resource pubsub 'Components' = {
-  name: 'pubsub'
-  kind: 'dapr.io/StateStore@v1alpha1'
-  properties: {
-    config: {
-      kind: 'state.sqlserver'
-      managed: true
-    }
-  }
-}
-```
+| Property | Description | Example |
+|----------|-------------|---------|
+| kind | The kind of the underlying state store resource. See [State Store kinds](#platform-resources) for more information. | `state.azure.tablestorage`
+| managed | Indicates if the resource is Radius-managed. For now only true is accepted for this Component. | `true`

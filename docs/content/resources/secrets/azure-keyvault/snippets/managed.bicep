@@ -1,37 +1,32 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'radius-keyvault'
 
   //SAMPLE
   //KEYVAULT
-  resource kv 'Components' = {
+  resource kv 'azure.com.KeyVaultComponent' = {
     name: 'kv'
-    kind: 'azure.com/KeyVault@v1alpha1'
     properties: {
-      config: {
-        managed: true
-      }
+      managed: true
     }
   }
   //KEYVAULT
 
   //ACCESSOR
-  resource kvaccessor 'Components' = {
+  resource kvaccessor 'ContainerComponent' = {
     name: 'kvaccessor'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radiusteam/azure-keyvault-app:latest'
+      container: {
+        image: 'radiusteam/azure-keyvault-app:latest'
+        env: {
+          KV_URI: kv.properties.uri
         }
       }
-      uses: [
-        {
-          binding: kv.properties.bindings.default
-          env: {
-            KV_URI: kv.properties.bindings.default.uri
-          }
+      connections: {
+        vault: {
+          kind: 'azure.com/KeyVault'
+          source: kv.id
         }
-      ]
+      }
     }
   }
   //ACCESSOR
