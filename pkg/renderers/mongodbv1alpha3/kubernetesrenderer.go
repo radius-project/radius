@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package mongodbv1alpha1
+package mongodbv1alpha3
 
 import (
 	"context"
@@ -11,23 +11,24 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/renderers"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	SecretKeyMongoDBAdminUsername = "MONGO_ROOT_USERNAME"
-	SecretKeyMongoDBAdminPassword = "MONGO_ROOT_PASSWORD"
+	SecretKeyMongoDBAdminUsername    = "MONGO_ROOT_USERNAME"
+	SecretKeyMongoDBAdminPassword    = "MONGO_ROOT_PASSWORD"
+	SecretKeyMongoDBConnectionString = "MONGO_CONNECTIONSTRING"
 )
 
+var _ renderers.Renderer = (*KubernetesRenderer)(nil)
+
 type KubernetesRenderer struct {
-	K8s client.Client
 }
 
 type KubernetesOptions struct {
@@ -37,70 +38,27 @@ type KubernetesOptions struct {
 	Name              string
 }
 
-var _ workloads.WorkloadRenderer = (*KubernetesRenderer)(nil)
-
-func (r KubernetesRenderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	// TODO: right now we need to hardcode this because we can't easily take a dependency on the secret
-	// inside Kubernetes. AllocateBindings does not get access to the secret's state, and the secret
-	// has not been created the first time we render.
-	username := "admin"
-	password := "password"
-
-	// For now this is static, the host and database are just the component name.
-	service := workload.Name
-	database := workload.Name
-	port := 27017
-
-	namespace := workload.Namespace
-	if namespace == "" {
-		namespace = workload.Application
-	}
-
-	// Mongo connection strings look like: 'mongodb://{accountname}:{key}@{endpoint}:{port}/{logindatabase}?...{params}'
-	u := url.URL{
-		Scheme: "mongodb",
-		User:   url.UserPassword(string(username), string(password)),
-		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", service, namespace, port),
-		Path:   "admin", // is the default for the login database
-	}
-
-	bindings := map[string]components.BindingState{
-		BindingMongo: {
-			Component: workload.Name,
-			Binding:   BindingMongo,
-			Kind:      "mongodb.com/Mongo",
-			Properties: map[string]interface{}{
-				"connectionString": u.String(),
-				"database":         database,
-			},
-		},
-	}
-
-	return bindings, nil
+func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+	return nil, nil
 }
 
-func (r KubernetesRenderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := MongoDBComponent{}
-	err := w.Workload.AsRequired(Kind, &component)
+func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+	properties := MongoDBComponentProperties{}
+	err := resource.ConvertDefinition(&properties)
 	if err != nil {
-		return []outputresource.OutputResource{}, err
+		return renderers.RendererOutput{}, err
 	}
 
-	if !component.Config.Managed {
-		return nil, errors.New("only Radius managed resources are supported for MongoDB on Kubernetes")
+	if !properties.Managed {
+		return renderers.RendererOutput{}, errors.New("only Radius managed resources are supported for MongoDB on Kubernetes")
 	}
 
 	options := KubernetesOptions{
-		DescriptiveLabels: kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
-		SelectorLabels:    kubernetes.MakeSelectorLabels(w.Application, w.Name),
+		DescriptiveLabels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+		SelectorLabels:    kubernetes.MakeSelectorLabels(resource.ApplicationName, resource.ResourceName),
 
 		// For now use the component name as the Kubernetes resource name.
-		Name:      w.Name,
-		Namespace: w.Namespace,
-	}
-
-	if options.Namespace == "" {
-		options.Namespace = w.Application
+		Name: resource.ResourceName,
 	}
 
 	resources := []outputresource.OutputResource{}
@@ -108,7 +66,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	// The secret is used to hold the password, just so it's not stored in plaintext.
 	//
 	// TODO: for now this is VERY hardcoded.
-	secret := r.MakeSecret(options, "admin", "password")
+	secret := r.MakeSecret(options, resource.ResourceName, "admin", "password")
 	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, secret, secret.ObjectMeta))
 
 	// This is a headless service, clients of Mongo will just use it for DNS.
@@ -119,10 +77,39 @@ func (r KubernetesRenderer) Render(ctx context.Context, w workloads.Instantiated
 	set := r.MakeStatefulSet(options, service.Name, secret.Name)
 	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDStatefulSet, set, set.ObjectMeta))
 
-	return resources, nil
+	computedValues := map[string]renderers.ComputedValueReference{
+		"database": {
+			Value: resource.ResourceName,
+		},
+	}
+	secretValues := map[string]renderers.SecretValueReference{
+		"connectionString": {
+			LocalID:       outputresource.LocalIDSecret,
+			ValueSelector: fmt.Sprintf("/data/%s", SecretKeyMongoDBConnectionString),
+		},
+	}
+
+	return renderers.RendererOutput{
+		Resources:      resources,
+		ComputedValues: computedValues,
+		SecretValues:   secretValues,
+	}, nil
 }
 
-func (r KubernetesRenderer) MakeSecret(options KubernetesOptions, username string, password string) *corev1.Secret {
+func (r KubernetesRenderer) MakeSecret(options KubernetesOptions, service string, username string, password string) *corev1.Secret {
+	// Make a connection string and use the secret to store it.
+
+	// For now this is static, the host and database are just the component name.
+	port := 27017
+
+	// Mongo connection strings look like: 'mongodb://{accountname}:{key}@{endpoint}:{port}/{logindatabase}?...{params}'
+	u := url.URL{
+		Scheme: "mongodb",
+		User:   url.UserPassword(string(username), string(password)),
+		Host:   fmt.Sprintf("%s:%d", service, port),
+		Path:   "admin", // is the default for the login database
+	}
+
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -135,8 +122,9 @@ func (r KubernetesRenderer) MakeSecret(options KubernetesOptions, username strin
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			SecretKeyMongoDBAdminUsername: []byte(username),
-			SecretKeyMongoDBAdminPassword: []byte(password),
+			SecretKeyMongoDBAdminUsername:    []byte(username),
+			SecretKeyMongoDBAdminPassword:    []byte(password),
+			SecretKeyMongoDBConnectionString: []byte(u.String()),
 		},
 	}
 }

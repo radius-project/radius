@@ -23,6 +23,10 @@ type azureCosmosDBBaseHandler struct {
 
 // CosmosDB metadata is stored in a properties map, the 'key' constants below track keys for different properties in the map
 const (
+	// CosmosDBAccountKindKey is used to specify the account type for creation. It should be a value
+	// of documentdb.DatabaseAccountKind.
+	CosmosDBAccountKindKey = "cosmosaccountkind"
+
 	// CosmosDBAccountBaseName is used as the prefix for generated unique account name
 	CosmosDBAccountBaseName = "cosmosaccountbasename"
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 type Renderer interface {
@@ -66,6 +67,30 @@ type SecretValueReference struct {
 
 	// ValueSelector is a JSONPointer used to resolve the secret value.
 	ValueSelector string
+
+	// Transformer is a reference to a SecretValueTransformer that can be looked up by name.
+	// By-convention this is the Resource Type of the resource (eg: Microsoft.DocumentDB/databaseAccounts).
+	// If there are multiple kinds of transformers per Resource Type, then add a unique suffix.
+	//
+	// NOTE: the transformer is a string key because it has to round-trip from
+	// the database. We don't store the secret value, so we have to be able to process it later.
+	Transformer string
+}
+
+// SecretValueTransformer allows transforming a secret value before passing it on to a Component
+// that wants to access it.
+//
+// This is surprisingly common. For example, it's common for access control/connection strings to apply
+// to an 'account' primitive such as a ServiceBus namespace or CosmosDB account. The actual connection
+// string that application code consumes will include a database name or queue name, etc. Or the different
+// libraries involved might support different connection string formats, and the user has to choose on.
+type SecretValueTransformer interface {
+	Transform(ctx context.Context, dependency RendererDependency, value interface{}) (interface{}, error)
+}
+
+//go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/Azure/radius/pkg/renderers github.com/Azure/radius/pkg/renderers SecretValueClient
+type SecretValueClient interface {
+	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }
 
 // ConvertDefinition can be used to convert `.Definition` to a strongly-typed struct.

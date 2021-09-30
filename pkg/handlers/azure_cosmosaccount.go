@@ -7,6 +7,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/radius/pkg/azure/armauth"
@@ -15,19 +16,19 @@ import (
 	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
-func NewAzureCosmosAccountMongoHandler(arm armauth.ArmConfig) ResourceHandler {
-	return &azureCosmosAccountMongoHandler{
+func NewAzureCosmosAccountHandler(arm armauth.ArmConfig) ResourceHandler {
+	return &azureCosmosAccountHandler{
 		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
 			arm: arm,
 		},
 	}
 }
 
-type azureCosmosAccountMongoHandler struct {
+type azureCosmosAccountHandler struct {
 	azureCosmosDBBaseHandler
 }
 
-func (handler *azureCosmosAccountMongoHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+func (handler *azureCosmosAccountHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
@@ -36,10 +37,15 @@ func (handler *azureCosmosAccountMongoHandler) Put(ctx context.Context, options 
 		return nil, err
 	}
 
+	accountKind, ok := properties[CosmosDBAccountKindKey]
+	if !ok {
+		return nil, fmt.Errorf("property value %q is required", CosmosDBAccountKindKey)
+	}
+
 	var account *documentdb.DatabaseAccountGetResults
 	if properties[CosmosDBAccountIDKey] == "" {
 		// If the account resourceID doesn't exist, then this is a radius managed resource
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKindMongoDB, *options)
+		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKind(accountKind), *options)
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +66,7 @@ func (handler *azureCosmosAccountMongoHandler) Put(ctx context.Context, options 
 	return properties, nil
 }
 
-func (handler *azureCosmosAccountMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *azureCosmosAccountHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	var properties map[string]string
 	if options.ExistingOutputResource == nil {
 		properties = options.Existing.Properties

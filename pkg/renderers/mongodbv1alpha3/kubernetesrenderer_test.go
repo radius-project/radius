@@ -3,146 +3,81 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package mongodbv1alpha1
+package mongodbv1alpha3
 
 import (
 	"sort"
 	"testing"
 
-	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha3"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-func Test_KubernetesRenderer_AllocateBindings(t *testing.T) {
-	ctx := createContext(t)
-
-	// Initialize a fake client with a secret compatible with what we expect
-	builder := fake.NewClientBuilder()
-	builder.WithRuntimeObjects(&corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: corev1.SchemeGroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-secret",
-			Namespace: "test-namespace",
-			Labels:    kubernetes.MakeDescriptiveLabels("test-application", "test-component"),
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{
-			SecretKeyMongoDBAdminUsername: []byte("admin"),
-			SecretKeyMongoDBAdminPassword: []byte("password"),
-		},
-	})
-
-	renderer := KubernetesRenderer{
-		K8s: builder.Build(),
-	}
-
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Namespace:   "test-namespace",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": true,
-			},
-		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
-	}
-
-	resources := []workloads.WorkloadResourceProperties{
-		{
-			LocalID: outputresource.LocalIDSecret,
-			Properties: map[string]string{
-				handlers.KubernetesAPIVersionKey: "v1",
-				handlers.KubernetesKindKey:       "Kind",
-				handlers.KubernetesNameKey:       "test-secret",
-				handlers.KubernetesNamespaceKey:  "test-namespace",
-			},
-		},
-	}
-
-	bindings, err := renderer.AllocateBindings(ctx, workload, resources)
-	require.NoError(t, err)
-
-	require.Len(t, bindings, 1)
-
-	binding, ok := bindings[BindingMongo]
-	require.True(t, ok)
-
-	require.Equal(t, BindingMongo, binding.Binding)
-	require.Equal(t, "test-component", binding.Component)
-	require.Equal(t, "mongodb.com/Mongo", binding.Kind)
-
-	expected := map[string]interface{}{
-		"connectionString": "mongodb://admin:password@test-component.test-namespace.svc.cluster.local:27017/admin",
-		"database":         "test-component",
-	}
-	require.Equal(t, expected, binding.Properties)
-}
 
 func Test_KubernetesRenderer_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := KubernetesRenderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": true,
-			},
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": true,
 		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(ctx, workload)
+	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	require.NoError(t, err)
 	require.NoError(t, err)
 
-	require.Len(t, resources, 3)
+	require.Len(t, output.Resources, 3)
 	ids := []string{}
-	for _, resource := range resources {
+	for _, resource := range output.Resources {
 		ids = append(ids, resource.LocalID)
 	}
 	sort.Strings(ids)
 
 	// Just validating the presence of resources here, we validate the actual resources in separate tests.
 	require.Equal(t, []string{outputresource.LocalIDSecret, outputresource.LocalIDService, outputresource.LocalIDStatefulSet}, ids)
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		"database": {
+			Value: resource.ResourceName,
+		},
+	}
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+
+	expectedSecretValues := map[string]renderers.SecretValueReference{
+		cosmosdbmongov1alpha3.ConnectionStringValue: {
+			LocalID:       outputresource.LocalIDSecret,
+			ValueSelector: "/data/MONGO_CONNECTIONSTRING",
+		},
+	}
+	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
 func Test_KubernetesRenderer_Render_Unmanaged_NotSupported(t *testing.T) {
 	ctx := createContext(t)
 	renderer := KubernetesRenderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": false,
-			},
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": false,
 		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(ctx, workload)
-	require.Empty(t, resources)
+	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
 	require.Error(t, err)
+	require.Empty(t, output.Resources)
 	require.Equal(t, "only Radius managed resources are supported for MongoDB on Kubernetes", err.Error())
 }
 
@@ -154,7 +89,7 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		Namespace:         "test-namespace",
 		Name:              "test-name",
 	}
-	secret := renderer.MakeSecret(options, "test-username", "test-password")
+	secret := renderer.MakeSecret(options, resourceName, "test-username", "test-password")
 
 	expected := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
@@ -168,10 +103,12 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			SecretKeyMongoDBAdminUsername: []byte("test-username"),
-			SecretKeyMongoDBAdminPassword: []byte("test-password"),
+			SecretKeyMongoDBAdminUsername:    []byte("test-username"),
+			SecretKeyMongoDBAdminPassword:    []byte("test-password"),
+			SecretKeyMongoDBConnectionString: []byte("mongodb://test-username:test-password@test-db:27017/admin"),
 		},
 	}
+
 	require.Equal(t, expected, secret)
 }
 

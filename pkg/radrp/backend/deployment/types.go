@@ -32,8 +32,8 @@ type DeploymentProcessor interface {
 	Delete(ctx context.Context, id azresources.ResourceID, resource db.RadiusResource) error
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModelV3, db db.RadrpDB, healthChannels *healthcontract.HealthChannels) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, db: db, healthChannels: healthChannels}
+func NewDeploymentProcessor(appmodel model.ApplicationModelV3, db db.RadrpDB, healthChannels *healthcontract.HealthChannels, secretClient renderers.SecretValueClient) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, db: db, healthChannels: healthChannels, secretClient: secretClient}
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)
@@ -42,6 +42,7 @@ type deploymentProcessor struct {
 	appmodel       model.ApplicationModelV3
 	db             db.RadrpDB
 	healthChannels *healthcontract.HealthChannels
+	secretClient   renderers.SecretValueClient
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
@@ -242,6 +243,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 
 		Definition:     resource.Definition,
 		ComputedValues: computedValues,
+		SecretValues:   convertSecretValues(rendererOutput.SecretValues),
 
 		Status: resourceStatus,
 
@@ -386,14 +388,73 @@ func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependen
 			return nil, fmt.Errorf("failed to fetch dependency resource %q: %w", dependencyResourceID.ID, err)
 		}
 
+		// We already have all of the computed values (stored in our database), but we need to look secrets
+		// (not stored in our database) and add them to the computed values.
+		computedValues := map[string]interface{}{}
+		for k, v := range dbDependencyResource.ComputedValues {
+			computedValues[k] = v
+		}
+
 		rendererDependency := renderers.RendererDependency{
 			ResourceID:     dependencyResourceID,
 			Definition:     dbDependencyResource.Definition,
-			ComputedValues: dbDependencyResource.ComputedValues,
+			ComputedValues: computedValues,
+		}
+
+		for k, secretReference := range dbDependencyResource.SecretValues {
+			secret, err := dp.fetchSecret(ctx, dbDependencyResource, secretReference)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch secret %q of dependency resource %q: %w", k, dependencyResourceID.ID, err)
+			}
+
+			if secretReference.Transformer != "" {
+				transformer, err := dp.appmodel.LookupSecretTransformer(secretReference.Transformer)
+				if err != nil {
+					return nil, err
+				}
+
+				secret, err = transformer.Transform(ctx, rendererDependency, secret)
+				if err != nil {
+					return nil, fmt.Errorf("failed to transform secret %q of dependency resource %q: %W", k, dependencyResourceID.ID, err)
+				}
+			}
+
+			computedValues[k] = secret
 		}
 
 		rendererDependencies[dependencyResourceID.ID] = rendererDependency
 	}
 
 	return rendererDependencies, nil
+}
+
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.RadiusResource, reference db.SecretValueReference) (interface{}, error) {
+	var match *db.OutputResource
+	for _, outputResource := range dependency.Status.OutputResources {
+		if outputResource.LocalID == reference.LocalID {
+			copy := outputResource
+			match = &copy
+			break
+		}
+	}
+
+	if match == nil {
+		return nil, fmt.Errorf("cannot find an output resource matching LocalID %q for dependency %q", reference.LocalID, dependency.ID)
+	}
+
+	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
+}
+
+func convertSecretValues(input map[string]renderers.SecretValueReference) map[string]db.SecretValueReference {
+	output := map[string]db.SecretValueReference{}
+	for k, v := range input {
+		output[k] = db.SecretValueReference{
+			LocalID:       v.LocalID,
+			Action:        v.Action,
+			ValueSelector: v.ValueSelector,
+			Transformer:   v.Transformer,
+		}
+	}
+
+	return output
 }
