@@ -26,7 +26,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	if err != nil {
 		return nil, err
 	}
-	applicationName, resourceName, resourceType := resource.GetParts()
+	applicationName, resourceName, resourceType := resource.GetRadiusResourceParts()
 
 	if applicationName == "" {
 		return nil, errors.New("application name is empty")

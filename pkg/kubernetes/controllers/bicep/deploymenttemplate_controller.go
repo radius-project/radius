@@ -122,9 +122,9 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		}
 
 		if apierrors.IsNotFound(err) {
-			appName, _, resourceType := resource.GetParts()
+			appName, _, resourceType := resource.GetRadiusResourceParts()
 
-			// make the application own the resource created
+			// make sure the application that contains the resource has been created
 			if resourceType != "Application" {
 				application := &radiusv1alpha3.Application{}
 

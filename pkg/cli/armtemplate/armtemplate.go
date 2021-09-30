@@ -60,7 +60,9 @@ func (r Resource) Convert(obj interface{}) error {
 	return nil
 }
 
-func (r Resource) GetParts() (applicationName string, resourceName string, resourceType string) {
+// Gets the application name, resource name, and resource type for a radius resource.
+// Only use on radius resource types.
+func (r Resource) GetRadiusResourceParts() (applicationName string, resourceName string, resourceType string) {
 	typeParts := strings.Split(r.Type, "/")
 	nameParts := strings.Split(r.Name, "/")
 
