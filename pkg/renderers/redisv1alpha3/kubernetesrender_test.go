@@ -51,18 +51,10 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	service, _ := kubernetes.FindService(output.Resources)
 	require.NotNil(t, service)
 
-	labels := map[string]string{
-		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusResource:    "test-redis",
-		kubernetes.LabelName:              "test-redis",
-		kubernetes.LabelPartOf:            "test-app",
-		kubernetes.LabelManagedBy:         kubernetes.LabelManagedByRadiusRP,
-	}
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-redis")
 
-	matchLabels := map[string]string{
-		kubernetes.LabelRadiusApplication: "test-app",
-		kubernetes.LabelRadiusResource:    "test-redis",
-	}
+	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-redis")
+
 	t.Run("verify deployment", func(t *testing.T) {
 		require.Equal(t, "test-app.test-redis", deployment.Name)
 		require.Equal(t, "default", deployment.Namespace)
