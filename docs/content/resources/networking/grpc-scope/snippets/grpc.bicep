@@ -21,6 +21,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //ROUTE
   resource grpc 'GrpcRoute' = {
     name: 'grpcroute'
+    properties: {
+      port: 80
+      gateway: {
+        hostname: '*'
+      }
+    }
   }
   //ROUTE
 

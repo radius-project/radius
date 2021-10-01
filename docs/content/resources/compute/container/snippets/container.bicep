@@ -33,7 +33,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'http'
   }
 
-  resource db 'mongodb.com.MongoComponent' = {
+  resource db 'mongodb.com.MongoDBComponent' = {
     name: 'database'
     properties: {
       managed: true

@@ -8,13 +8,34 @@ weight: 100
 
 ## Overview
 
-`HttpRoute` defines HTTP communication between two [compute Components]({{< ref container >}}).
+`HttpRoute` defines HTTP communication between two [compute Components]({{< ref container >}}), and also provides the ability to specify a gatwey for external users to access the Route.
 
 ## Route format
 
 An HTTP Route is defined as a resource within your Application, defined at the same lavel as the Components providing and consuming the HTTP communication.
 
 {{< rad file="snippets/http.bicep" embed=true marker="//ROUTE" >}}
+
+The following top-level information is available:
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| name | y | The name of your Route. Used to provide status and visualize the component. | `'web'`
+
+### Properties
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| port | n | The port providing communication through the Route. Defaults to 80. | `80`
+| gateway | n | Details on providing the Route to external users. | [See below](#gateway)
+
+#### Gateway
+
+You can optionally define a Gateway for external users to access the Route.
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| hostname | n | The hostname of the Gateway. Wildcards supported | `'example.com'`
 
 ## Provided Data
 

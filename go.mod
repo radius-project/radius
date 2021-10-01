@@ -20,6 +20,7 @@ require (
 	github.com/gibson042/canonicaljson-go v1.0.3
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0
+	github.com/go-openapi/jsonpointer v0.19.5
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-playground/validator/v10 v10.4.1

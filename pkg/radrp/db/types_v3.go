@@ -35,8 +35,20 @@ type RadiusResource struct {
 	Definition     map[string]interface{} `bson:"definition"`
 	ComputedValues map[string]interface{} `bson:"computedValues"`
 
+	// NOTE: this is not part of the output of the RP - this is internal tracking
+	// for how we can look up values that do not store.
+	SecretValues map[string]SecretValueReference `bson:"secretValues"`
+
 	Status            RadiusResourceStatus `bson:"status"`
 	ProvisioningState string               `bson:"provisioningState"`
 }
 
 type RadiusResourceStatus = ComponentStatus
+
+// see renderers.SecretValueReference for description
+type SecretValueReference struct {
+	LocalID       string `bson:"localId"`
+	Action        string `bson:"action,omitempty"`
+	ValueSelector string `bson:"valueSelector"`
+	Transformer   string `bson:"transformer,omitempty"`
+}

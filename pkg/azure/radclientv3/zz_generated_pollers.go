@@ -633,3 +633,48 @@ func (p *redisComponentResourcePoller) pollUntilDone(ctx context.Context, freq t
 	return respType, nil
 }
 
+// VolumeResourcePoller provides polling facilities until the operation reaches a terminal state.
+type VolumeResourcePoller interface {
+	azcore.Poller
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final VolumeResourceResponse will be returned.
+	FinalResponse(ctx context.Context) (VolumeResourceResponse, error)
+}
+
+type volumeResourcePoller struct {
+	pt *armcore.LROPoller
+}
+
+func (p *volumeResourcePoller) Done() bool {
+	return p.pt.Done()
+}
+
+func (p *volumeResourcePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+func (p *volumeResourcePoller) FinalResponse(ctx context.Context) (VolumeResourceResponse, error) {
+	respType := VolumeResourceResponse{VolumeResource: &VolumeResource{}}
+	resp, err := p.pt.FinalResponse(ctx, respType.VolumeResource)
+	if err != nil {
+		return VolumeResourceResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+func (p *volumeResourcePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+
+func (p *volumeResourcePoller) pollUntilDone(ctx context.Context, freq time.Duration) (VolumeResourceResponse, error) {
+	respType := VolumeResourceResponse{VolumeResource: &VolumeResource{}}
+	resp, err := p.pt.PollUntilDone(ctx, freq, respType.VolumeResource)
+	if err != nil {
+		return VolumeResourceResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+

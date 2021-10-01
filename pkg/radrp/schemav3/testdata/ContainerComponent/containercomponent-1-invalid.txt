@@ -7,3 +7,10 @@
 (root).properties.container.ports.web: containerPort is required
 (root).properties.container.readinessProbe: Additional property containerPort is not allowed
 (root).properties.container.livenessProbe: path is required
+(root).properties.container.volumes.vol1: mountPath is required
+(root).properties.container.volumes.vol1: managedStore is required
+(root).properties.container.volumes.vol2: source is required
+(root).properties.container.volumes.vol3.kind: properties.container.volumes.vol3.kind must be one of the following: "ephemeral"
+(root).properties.container.volumes.vol4.rbac: properties.container.volumes.vol4.rbac must be one of the following: "read", "write"
+(root).properties.container.volumes.vol5.managedStore: properties.container.volumes.vol5.managedStore must be one of the following: "memory", "disk"
+(root).properties.container.volumes.vol6: kind is required

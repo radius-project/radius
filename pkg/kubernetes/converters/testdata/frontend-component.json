@@ -4,7 +4,8 @@
     "metadata": {
         "annotations": {
             "radius.dev/application": "azure-resources-container-httpbinding",
-            "radius.dev/resource": "frontend"
+            "radius.dev/resource": "frontend",
+            "radius.dev/resource-type": "ContainerComponent"
         },
         "name": "frontend",
         "namespace": "default"

@@ -60,6 +60,22 @@ func (r Resource) Convert(obj interface{}) error {
 	return nil
 }
 
+// Gets the application name, resource name, and resource type for a radius resource.
+// Only use on radius resource types.
+func (r Resource) GetRadiusResourceParts() (applicationName string, resourceName string, resourceType string) {
+	typeParts := strings.Split(r.Type, "/")
+	nameParts := strings.Split(r.Name, "/")
+
+	if len(nameParts) > 1 {
+		applicationName = nameParts[1]
+		resourceType = typeParts[len(typeParts)-1]
+		if len(nameParts) > 2 {
+			resourceName = nameParts[2]
+		}
+	}
+	return
+}
+
 func Parse(template string) (DeploymentTemplate, error) {
 	parsed := DeploymentTemplate{}
 	err := json.Unmarshal([]byte(template), &parsed)

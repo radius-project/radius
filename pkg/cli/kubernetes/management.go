@@ -18,7 +18,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/schemav3"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -313,25 +312,7 @@ func (mc *KubernetesManagementClient) DeleteApplicationV3(ctx context.Context, a
 	if err != nil {
 		return err
 	}
-	crds, err := mc.listAllRadiusCRDs(ctx)
-	if err != nil {
-		return err
-	}
-	for _, crd := range crds {
-		resourceClient := mc.DynamicClient.Resource(schema.GroupVersionResource{
-			Group:    radiusv1alpha3.GroupVersion.Group,
-			Version:  radiusv1alpha3.GroupVersion.Version,
-			Resource: crd.Spec.Names.Plural,
-		}).Namespace(mc.Namespace)
-		err := resourceClient.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(labels.Set{
-				kubernetes.LabelRadiusApplication: applicationName,
-			}).String(),
-		})
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
-	}
+
 	return mc.Client.Delete(ctx, application)
 }
 

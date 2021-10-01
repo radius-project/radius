@@ -79,7 +79,7 @@ func Test_Validation(t *testing.T) {
 			// Each resource type should define *some* tests...
 			cases, ok := tests[resourceType]
 			if !ok || len(cases) == 0 {
-				require.Failf(t, "tests are missing", "tests are missing for schema type %s", resourceType)
+				require.Failf(t, "tests are missing", "tests are missing for schema type %s. Either update or add the folder name testdata/<RESOURCE_NAME> to match the schema type.", resourceType)
 			}
 
 			for _, tc := range cases {

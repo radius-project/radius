@@ -19,21 +19,21 @@ import (
 	"time"
 )
 
-// RabbitmqComMessageQueueClient contains the methods for the RabbitmqComMessageQueue group.
-// Don't use this type directly, use NewRabbitmqComMessageQueueClient() instead.
-type RabbitmqComMessageQueueClient struct {
+// RabbitmqComMessageQueueComponentClient contains the methods for the RabbitmqComMessageQueueComponent group.
+// Don't use this type directly, use NewRabbitmqComMessageQueueComponentClient() instead.
+type RabbitmqComMessageQueueComponentClient struct {
 	con *armcore.Connection
 	subscriptionID string
 }
 
-// NewRabbitmqComMessageQueueClient creates a new instance of RabbitmqComMessageQueueClient with the specified values.
-func NewRabbitmqComMessageQueueClient(con *armcore.Connection, subscriptionID string) *RabbitmqComMessageQueueClient {
-	return &RabbitmqComMessageQueueClient{con: con, subscriptionID: subscriptionID}
+// NewRabbitmqComMessageQueueComponentClient creates a new instance of RabbitmqComMessageQueueComponentClient with the specified values.
+func NewRabbitmqComMessageQueueComponentClient(con *armcore.Connection, subscriptionID string) *RabbitmqComMessageQueueComponentClient {
+	return &RabbitmqComMessageQueueComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
-// BeginCreateOrUpdate - Creates or updates a rabbitmq.com.MessageQueue resource.
+// BeginCreateOrUpdate - Creates or updates a rabbitmq.com.MessageQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (RabbitMQComponentResourcePollerResponse, error) {
+func (client *RabbitmqComMessageQueueComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions) (RabbitMQComponentResourcePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, rabbitMQComponentName, parameters, options)
 	if err != nil {
 		return RabbitMQComponentResourcePollerResponse{}, err
@@ -41,7 +41,7 @@ func (client *RabbitmqComMessageQueueClient) BeginCreateOrUpdate(ctx context.Con
 	result := RabbitMQComponentResourcePollerResponse{
 		RawResponse: resp.Response,
 	}
-	pt, err := armcore.NewLROPoller("RabbitmqComMessageQueueClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	pt, err := armcore.NewLROPoller("RabbitmqComMessageQueueComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
 	if err != nil {
 		return RabbitMQComponentResourcePollerResponse{}, err
 	}
@@ -57,8 +57,8 @@ func (client *RabbitmqComMessageQueueClient) BeginCreateOrUpdate(ctx context.Con
 
 // ResumeCreateOrUpdate creates a new RabbitMQComponentResourcePoller from the specified resume token.
 // token - The value must come from a previous call to RabbitMQComponentResourcePoller.ResumeToken().
-func (client *RabbitmqComMessageQueueClient) ResumeCreateOrUpdate(ctx context.Context, token string) (RabbitMQComponentResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("RabbitmqComMessageQueueClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+func (client *RabbitmqComMessageQueueComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (RabbitMQComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RabbitmqComMessageQueueComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
 	if err != nil {
 		return RabbitMQComponentResourcePollerResponse{}, err
 	}
@@ -79,9 +79,9 @@ func (client *RabbitmqComMessageQueueClient) ResumeCreateOrUpdate(ctx context.Co
 	return result, nil
 }
 
-// CreateOrUpdate - Creates or updates a rabbitmq.com.MessageQueue resource.
+// CreateOrUpdate - Creates or updates a rabbitmq.com.MessageQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *RabbitmqComMessageQueueComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, rabbitMQComponentName, parameters, options)
 	if err != nil {
 		return nil, err
@@ -97,8 +97,8 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdate(ctx context.Context,
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}"
+func (client *RabbitmqComMessageQueueComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueueComponent/{rabbitMQComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -128,7 +128,7 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx con
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *RabbitmqComMessageQueueClient) createOrUpdateHandleError(resp *azcore.Response) error {
+func (client *RabbitmqComMessageQueueComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -140,9 +140,9 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdateHandleError(resp *azc
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// BeginDelete - Deletes a rabbitmq.com.MessageQueue resource.
+// BeginDelete - Deletes a rabbitmq.com.MessageQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *RabbitmqComMessageQueueComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, rabbitMQComponentName, options)
 	if err != nil {
 		return HTTPPollerResponse{}, err
@@ -150,7 +150,7 @@ func (client *RabbitmqComMessageQueueClient) BeginDelete(ctx context.Context, re
 	result := HTTPPollerResponse{
 		RawResponse: resp.Response,
 	}
-	pt, err := armcore.NewLROPoller("RabbitmqComMessageQueueClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	pt, err := armcore.NewLROPoller("RabbitmqComMessageQueueComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
 	if err != nil {
 		return HTTPPollerResponse{}, err
 	}
@@ -166,8 +166,8 @@ func (client *RabbitmqComMessageQueueClient) BeginDelete(ctx context.Context, re
 
 // ResumeDelete creates a new HTTPPoller from the specified resume token.
 // token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *RabbitmqComMessageQueueClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("RabbitmqComMessageQueueClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+func (client *RabbitmqComMessageQueueComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RabbitmqComMessageQueueComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
 	if err != nil {
 		return HTTPPollerResponse{}, err
 	}
@@ -188,9 +188,9 @@ func (client *RabbitmqComMessageQueueClient) ResumeDelete(ctx context.Context, t
 	return result, nil
 }
 
-// Delete - Deletes a rabbitmq.com.MessageQueue resource.
+// Delete - Deletes a rabbitmq.com.MessageQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (*azcore.Response, error) {
+func (client *RabbitmqComMessageQueueComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueComponentBeginDeleteOptions) (*azcore.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, rabbitMQComponentName, options)
 	if err != nil {
 		return nil, err
@@ -206,8 +206,8 @@ func (client *RabbitmqComMessageQueueClient) deleteOperation(ctx context.Context
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *RabbitmqComMessageQueueClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}"
+func (client *RabbitmqComMessageQueueComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueComponentBeginDeleteOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueueComponent/{rabbitMQComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -237,7 +237,7 @@ func (client *RabbitmqComMessageQueueClient) deleteCreateRequest(ctx context.Con
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *RabbitmqComMessageQueueClient) deleteHandleError(resp *azcore.Response) error {
+func (client *RabbitmqComMessageQueueComponentClient) deleteHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -249,9 +249,9 @@ func (client *RabbitmqComMessageQueueClient) deleteHandleError(resp *azcore.Resp
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// Get - Gets a rabbitmq.com.MessageQueue resource by name.
+// Get - Gets a rabbitmq.com.MessageQueueComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) Get(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueGetOptions) (RabbitMQComponentResourceResponse, error) {
+func (client *RabbitmqComMessageQueueComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueComponentGetOptions) (RabbitMQComponentResourceResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, rabbitMQComponentName, options)
 	if err != nil {
 		return RabbitMQComponentResourceResponse{}, err
@@ -267,8 +267,8 @@ func (client *RabbitmqComMessageQueueClient) Get(ctx context.Context, resourceGr
 }
 
 // getCreateRequest creates the Get request.
-func (client *RabbitmqComMessageQueueClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueGetOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}"
+func (client *RabbitmqComMessageQueueComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueComponentGetOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueueComponent/{rabbitMQComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -298,7 +298,7 @@ func (client *RabbitmqComMessageQueueClient) getCreateRequest(ctx context.Contex
 }
 
 // getHandleResponse handles the Get response.
-func (client *RabbitmqComMessageQueueClient) getHandleResponse(resp *azcore.Response) (RabbitMQComponentResourceResponse, error) {
+func (client *RabbitmqComMessageQueueComponentClient) getHandleResponse(resp *azcore.Response) (RabbitMQComponentResourceResponse, error) {
 	var val *RabbitMQComponentResource
 	if err := resp.UnmarshalAsJSON(&val); err != nil {
 		return RabbitMQComponentResourceResponse{}, err
@@ -307,7 +307,7 @@ return RabbitMQComponentResourceResponse{RawResponse: resp.Response, RabbitMQCom
 }
 
 // getHandleError handles the Get error response.
-func (client *RabbitmqComMessageQueueClient) getHandleError(resp *azcore.Response) error {
+func (client *RabbitmqComMessageQueueComponentClient) getHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -319,9 +319,9 @@ func (client *RabbitmqComMessageQueueClient) getHandleError(resp *azcore.Respons
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// List - List the rabbitmq.com.MessageQueue resources deployed in the application.
+// List - List the rabbitmq.com.MessageQueueComponent resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *RabbitmqComMessageQueueListOptions) (RabbitMQComponentListResponse, error) {
+func (client *RabbitmqComMessageQueueComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *RabbitmqComMessageQueueComponentListOptions) (RabbitMQComponentListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
 		return RabbitMQComponentListResponse{}, err
@@ -337,8 +337,8 @@ func (client *RabbitmqComMessageQueueClient) List(ctx context.Context, resourceG
 }
 
 // listCreateRequest creates the List request.
-func (client *RabbitmqComMessageQueueClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *RabbitmqComMessageQueueListOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue"
+func (client *RabbitmqComMessageQueueComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *RabbitmqComMessageQueueComponentListOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueueComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -364,7 +364,7 @@ func (client *RabbitmqComMessageQueueClient) listCreateRequest(ctx context.Conte
 }
 
 // listHandleResponse handles the List response.
-func (client *RabbitmqComMessageQueueClient) listHandleResponse(resp *azcore.Response) (RabbitMQComponentListResponse, error) {
+func (client *RabbitmqComMessageQueueComponentClient) listHandleResponse(resp *azcore.Response) (RabbitMQComponentListResponse, error) {
 	var val *RabbitMQComponentList
 	if err := resp.UnmarshalAsJSON(&val); err != nil {
 		return RabbitMQComponentListResponse{}, err
@@ -373,7 +373,7 @@ return RabbitMQComponentListResponse{RawResponse: resp.Response, RabbitMQCompone
 }
 
 // listHandleError handles the List error response.
-func (client *RabbitmqComMessageQueueClient) listHandleError(resp *azcore.Response) error {
+func (client *RabbitmqComMessageQueueComponentClient) listHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)

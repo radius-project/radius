@@ -11,10 +11,11 @@
     "dapr.io.PubSubTopicComponent": "components/dapr-pubsubtopic.json#/definitions/DaprPubSubTopicComponentResource",
     "dapr.io.StateStoreComponent": "components/dapr-statestore.json#/definitions/DaprStateStoreComponentResource",
     "mongodb.com.MongoDBComponent": "components/mongodb.json#/definitions/MongoDBComponentResource",
-    "rabbitmq.com.MessageQueue": "components/rabbitmq.json#/definitions/RabbitMQComponentResource",
-    "redislabs.com.Redis": "components/redis.json#/definitions/RedisComponentResource",
+    "rabbitmq.com.MessageQueueComponent": "components/rabbitmq.json#/definitions/RabbitMQComponentResource",
+    "redislabs.com.RedisComponent": "components/redis.json#/definitions/RedisComponentResource",
 
     "HttpRoute": "routes/httproute.json#/definitions/HttpRouteResource",
-    "dapr.io.InvokeRoute": "routes/dapr-invokeroute.json#/definitions/DaprInvokeRouteResource"
+    "dapr.io.InvokeRoute": "routes/dapr-invokeroute.json#/definitions/DaprInvokeRouteResource",
+    "Volume": "components/volume.json#/definitions/VolumeResource"
   }
 }

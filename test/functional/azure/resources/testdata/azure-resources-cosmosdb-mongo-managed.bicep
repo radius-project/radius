@@ -1,33 +1,25 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-cosmosdb-mongo-managed'
-  
-  resource webapp 'Components' = {
+
+  resource webapp 'ContainerComponent' = {
     name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/magpie:latest'
+      connections: {
+        mongodb: {
+          kind: 'mongo.com/MongoDB'
+          source: db.id
         }
       }
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            BINDING_MONGODB_CONNECTIONSTRING: db.properties.bindings.mongo.connectionString
-          }
-        }
-      ]
+      container: {
+        image: 'radius.azurecr.io/magpie:latest'
+      }
     }
   }
 
-  resource db 'Components' = {
+  resource db 'azure.com.CosmosDBMongoComponent' = {
     name: 'db'
-    kind: 'azure.com/CosmosDBMongo@v1alpha1'
     properties: {
-      config: {
-        managed: true
-      }
+      managed: true
     }
   }
 }

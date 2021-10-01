@@ -78,6 +78,8 @@ func Test_TutorialDaprMicroservices(t *testing.T) {
 }
 
 func Test_TutorialWebApp(t *testing.T) {
+	t.Skip("will renable in appmodel v3")
+
 	applicationName := "webapp"
 	componentNameWebApp := "todoapp"
 	componentNameKV := "kv"
@@ -137,8 +139,8 @@ func Test_TutorialWebApp(t *testing.T) {
 						ApplicationName: applicationName,
 						ComponentName:   componentNameDB,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureCosmosMongoAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosMongoAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccountMongo, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureCosmosDBMongo:      validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccount, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{

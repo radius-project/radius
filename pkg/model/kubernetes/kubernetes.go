@@ -12,6 +12,8 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -20,12 +22,10 @@ func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 	renderers := map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: &containerv1alpha3.Renderer{Arm: armauth.ArmConfig{}},
 		// daprstatestorev1alpha3.Kind: &daprstatestorev1alpha3.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
-		// mongodbv1alpha3.Kind:        &mongodbv1alpha3.KubernetesRenderer{},
+		mongodbv1alpha3.ResourceType: &mongodbv1alpha3.KubernetesRenderer{},
 		// rabbitmqv1alpha3.Kind:       &rabbitmqv1alpha3.Renderer{},
-		// redisv1alpha3.Kind:          &redisv1alpha3.KubernetesRenderer{},
+		redisv1alpha3.ResourceType:     &redisv1alpha3.KubernetesRenderer{},
 		httproutev1alpha3.ResourceType: &httproutev1alpha3.Renderer{},
-		// httproutev1alpha3.Kind:      &httproutev1alpha3.Renderer{},
-		// httproutev1alpha3.Kind:      &httproutev1alpha3.Renderer{},
 	}
 
 	handlers := map[string]model.Handlers{

@@ -361,7 +361,7 @@ type MongoDBComponentResourceResponse struct {
 
 // RabbitMQComponentListResponse is the response envelope for operations that return a RabbitMQComponentList type.
 type RabbitMQComponentListResponse struct {
-	// List of rabbitmq.com.MessageQueue resources.
+	// List of rabbitmq.com.MessageQueueComponent resources.
 	RabbitMQComponentList *RabbitMQComponentList
 
 	// RawResponse contains the underlying HTTP response.
@@ -412,7 +412,7 @@ type RedisComponentListResponse struct {
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 
-	// List of redislabs.com.Redis resources.
+	// List of redislabs.com.RedisComponent resources.
 	RedisComponentList *RedisComponentList
 }
 
@@ -435,5 +435,35 @@ type RedisComponentResourceResponse struct {
 
 	// The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
 	RedisComponentResource *RedisComponentResource
+}
+
+// VolumeListResponse is the response envelope for operations that return a VolumeList type.
+type VolumeListResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+
+	// List of Volume resources.
+	VolumeList *VolumeList
+}
+
+// VolumeResourcePollerResponse is the response envelope for operations that asynchronously return a VolumeResource type.
+type VolumeResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (VolumeResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller VolumeResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// VolumeResourceResponse is the response envelope for operations that return a VolumeResource type.
+type VolumeResourceResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+
+	// The Volume provides an abstraction for a volume that can be mounted to a container
+	VolumeResource *VolumeResource
 }
 
