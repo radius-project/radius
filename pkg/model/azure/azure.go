@@ -21,6 +21,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/inboundroute"
 	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
+	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
 
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha1"
@@ -69,7 +70,8 @@ func NewAzureModelV3(arm armauth.ArmConfig, k8s client.Client) model.Application
 		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{}},
 
 		// OSS
-		redisv1alpha3.ResourceType: &redisv1alpha3.AzureRenderer{},
+		mongodbv1alpha3.ResourceType: &mongodbv1alpha3.AzureRenderer{},
+		redisv1alpha3.ResourceType:   &redisv1alpha3.AzureRenderer{},
 
 		// Azure
 		cosmosdbmongov1alpha3.ResourceType:   &cosmosdbmongov1alpha3.Renderer{},
