@@ -7,7 +7,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -356,7 +355,7 @@ func (r *ResourceReconciler) ApplyState(
 	}
 
 	if desired.SecretValues != nil {
-		data, err := json.Marshal(desired.ComputedValues)
+		data, err := json.Marshal(desired.SecretValues)
 		if err != nil {
 			return err
 		}
@@ -477,15 +476,12 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 			return nil, fmt.Errorf("secret did contain expected key: %q", v.ValueSelector)
 		}
 
-		// Right now we just assume the value is a string.
-		//
-		// NOTE: Kubernetes secrets are stored as base64 encoded text.
-		decodedValue, err := base64.RawStdEncoding.DecodeString(string(encodedValue))
+		decodedValue := string(encodedValue)
 		if err != nil {
 			return nil, err
 		}
 
-		values[k] = string(decodedValue)
+		values[k] = decodedValue
 	}
 
 	return &renderers.RendererDependency{
