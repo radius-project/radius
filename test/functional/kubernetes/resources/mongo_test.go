@@ -45,8 +45,8 @@ func Test_Mongo(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForComponent(application, "todoapp"),
-						validation.NewK8sObjectForComponent(application, "db"),
+						validation.NewK8sObjectForComponent(application, "todomongo"),
+						validation.NewK8sObjectForComponent(application, "mongodb"),
 					},
 				},
 			},
