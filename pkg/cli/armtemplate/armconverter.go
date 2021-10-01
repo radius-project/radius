@@ -8,6 +8,7 @@ package armtemplate
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -19,14 +20,13 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	annotations := map[string]string{}
 
 	// Compute annotations to capture the name segments
-	typeParts := strings.Split(resource.Type, "/")
 	nameParts := strings.Split(resource.Name, "/")
 
 	data, err := json.Marshal(resource)
 	if err != nil {
 		return nil, err
 	}
-	applicationName, resourceName, resourceType := GetParts(nameParts, typeParts)
+	applicationName, resourceName, resourceType := resource.GetRadiusResourceParts()
 
 	if applicationName == "" {
 		return nil, errors.New("application name is empty")
@@ -46,10 +46,15 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 	labels := kubernetes.MakeResourceCRDLabels(applicationName, resourceType, resourceName)
 
+	kind := GetKindFromArmType(resourceType)
+	if kind == "" {
+		return nil, fmt.Errorf("must have custom resource type mapping to arm type %s", resourceType)
+	}
+
 	uns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "radius.dev/v1alpha3",
-			"kind":       typeParts[len(typeParts)-1],
+			"kind":       kind,
 			"metadata": map[string]interface{}{
 				"name":      nameParts[len(nameParts)-1],
 				"namespace": namespace,
@@ -64,13 +69,19 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	return uns, nil
 }
 
-func GetParts(nameParts, typeParts []string) (applicationName string, resourceName string, resourceType string) {
-	if len(nameParts) > 1 {
-		applicationName = nameParts[1]
-		if len(nameParts) > 2 {
-			resourceName = nameParts[2]
-			resourceType = typeParts[len(typeParts)-1]
-		}
+// TODO this should be removed and instead we should use the CR definitions to know about the arm mapping
+func GetKindFromArmType(armType string) string {
+	kindMap := map[string]string{
+		"Application":                        "Application",
+		"ContainerComponent":                 "ContainerComponent",
+		"dapr.io.PubSubTopicComponent":       "DaprIOPubSubTopicComponent",
+		"dapr.io.StateStoreComponent":        "DaprIOStateStoreComponent",
+		"dapr.io.InvokeRoute":                "DaprIOInvokeRoute",
+		"mongodb.com.MongoDBComponent":       "MongoDBComponent",
+		"rabbitmq.com.MessageQueueComponent": "RabbitMQComponent",
+		"redislabs.com.RedisComponent":       "RedisComponent",
+		"HttpRoute":                          "HttpRoute",
+		"GrpcRoute":                          "GrpcRoute",
 	}
-	return
+	return kindMap[armType]
 }

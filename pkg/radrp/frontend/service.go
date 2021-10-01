@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv2"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -55,9 +56,11 @@ func (s *Service) Run(ctx context.Context) error {
 	appmodel := azure.NewAzureModel(*s.Options.Arm, k8s)
 	appmodelv3 := azure.NewAzureModelV3(*s.Options.Arm, k8s)
 
+	secretClient := renderers.NewSecretValueClient(*s.Options.Arm)
+
 	db := db.NewRadrpDB(dbclient)
 	rp2 := resourceproviderv2.NewResourceProvider(db, deploymentv2.NewDeploymentProcessor(appmodel, &s.Options.HealthChannels))
-	rp3 := resourceproviderv3.NewResourceProvider(db, deploymentv3.NewDeploymentProcessor(appmodelv3, db, &s.Options.HealthChannels), nil)
+	rp3 := resourceproviderv3.NewResourceProvider(db, deploymentv3.NewDeploymentProcessor(appmodelv3, db, &s.Options.HealthChannels, secretClient), nil)
 
 	ctx = logr.NewContext(ctx, logger)
 	server := server.NewServer(ctx, server.ServerOptions{

@@ -842,6 +842,11 @@ func (in *ResourceStatus) DeepCopyInto(out *ResourceStatus) {
 		*out = new(runtime.RawExtension)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.SecretValues != nil {
+		in, out := &in.SecretValues, &out.SecretValues
+		*out = new(runtime.RawExtension)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
 		*out = make(map[string]v1.ObjectReference, len(*in))

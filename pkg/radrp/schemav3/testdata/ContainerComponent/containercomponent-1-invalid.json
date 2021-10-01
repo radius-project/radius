@@ -46,6 +46,36 @@
         "initialDelaySeconds": 3,
         "failureThreshold": 30,
         "periodSeconds": 3
+      },
+      "volumes": {
+        "vol1": {
+          "kind": "ephemeral"
+        },
+        "vol2": {
+          "kind": "persistent",
+          "rbac": "read",
+          "mountPath": "/mnt/images"
+        },
+        "vol3": {
+          "kind": "bad",
+          "mountPath": "/tmp",
+          "managedStore": "memory"
+        },
+        "vol4": {
+          "kind": "persistent",
+          "rbac": "rw",
+          "source": "a",
+          "mountPath": "/tmp"
+        },
+        "vol5": {
+          "kind": "ephemeral",
+          "mountPath": "/tmp",
+          "managedStore": "bad"
+        },
+        "vol6": {
+          "mountPath": "/tmp",
+          "managedStore": "disk"
+        }
       }
     }
   },

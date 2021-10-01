@@ -8,9 +8,8 @@ package outputresource
 // Represents local IDs used for output resources
 const (
 	LocalIDAADPodIdentity                = "AADPodIdentity"
-	LocalIDAzureCosmosMongoAccount       = "AzureCosmosMongoAccount"
+	LocalIDAzureCosmosAccount            = "AzureCosmosAccount"
 	LocalIDAzureCosmosDBMongo            = "AzureCosmosDBMongo"
-	LocalIDAzureCosmosSQLAccount         = "AzureCosmosSQLAccount"
 	LocalIDAzureCosmosDBSQL              = "AzureCosmosDBSQL"
 	LocalIDAzureRedis                    = "AzureRedis"
 	LocalIDAzureServiceBusTopic          = "AzureServiceBusTopic"

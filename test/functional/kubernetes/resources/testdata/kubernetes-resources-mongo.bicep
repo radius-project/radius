@@ -1,33 +1,25 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-mongo'
   
-  resource webapp 'Components' = {
-    name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
+  resource webapp 'ContainerComponent' = {
+    name: 'todomongo'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/magpie:latest'
+      container: {
+        image: 'radius.azurecr.io/magpie:latest'
+      }
+      connections: {
+        mongodb: {
+          kind: 'mongo.com/MongoDB'
+          source: mongodb.id
         }
       }
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            BINDING_MONGODB_CONNECTIONSTRING: db.properties.bindings.mongo.connectionString
-          }
-        }
-      ]
     }
   }
 
-  resource db 'Components' = {
-    name: 'db'
-    kind: 'mongodb.com/Mongo@v1alpha1'
+  resource mongodb 'mongodb.com.MongoDBComponent' = {
+    name: 'mongodb'
     properties: {
-      config: {
         managed: true
-      }
     }
   }
 }

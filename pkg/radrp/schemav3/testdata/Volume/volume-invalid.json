@@ -1,0 +1,6 @@
+{
+  "properties": {
+    "managed": true,
+    "kind": "bad type"
+  }
+}

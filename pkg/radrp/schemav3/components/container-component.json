@@ -62,6 +62,12 @@
             "livenessProbe": {
               "type": "object",
               "$ref": "#/definitions/HealthProbeProperties"
+            },
+            "volumes": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/Volume"
+              }
             }
           }
         },
@@ -96,6 +102,80 @@
         },
         "provides": {
           "description": "Specifies a route provided by this port",
+          "type": "string"
+        }
+      }
+    },
+    "Volume": {
+      "description": "Specifies a volume for a container",
+      "type": "object",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/EphemeralVolume"
+        },
+        {
+          "$ref": "#/definitions/PersistentVolume"
+        }
+      ]
+    },
+    "EphemeralVolume": {
+      "description": "Specifies an ephemeral volume for a container",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mountPath",
+        "kind",
+        "managedStore"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Volume kind",
+          "type": "string",
+          "enum": ["ephemeral"]
+        },
+        "mountPath": {
+          "description": "The path where the volume is mounted",
+          "type": "string"
+        },
+        "managedStore": {
+          "description": "Backing store for the ephemeral volume",
+          "type": "string",
+          "enum": [
+            "memory",
+            "disk"
+          ]
+        }
+      }
+    },
+    "PersistentVolume": {
+      "description": "Specifies a persistent volume for a container",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mountPath",
+        "kind",
+        "source"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Volume Kind",
+          "type": "string",
+          "enum": ["persistent"]
+        },
+        "mountPath": {
+          "description": "The path where the volume is mounted",
+          "type": "string"
+        },
+        "rbac": {
+          "description": "Container read/write access to the volume",
+          "type": "string",
+          "enum": [
+            "read",
+            "write"
+          ]
+        },
+        "source": {
+          "description": "The source of the volume",
           "type": "string"
         }
       }
@@ -141,24 +221,6 @@
           "$ref": "#/definitions/ExecHealthProbeProperties"
         }
       ]
-    },
-    "HealthProbeCommonProperties": {
-      "description": "Properties for readiness/liveness probe",
-      "type": "object",
-      "properties": {
-        "initialDelaySeconds": {
-          "description": "Initial delay in seconds before probing for readiness/liveness",
-          "type": "number"
-        },
-        "failureThreshold": {
-          "description": "Threshold number of times the probe fails after which a failure would be reported",
-          "type": "number"
-        },
-        "periodSeconds": {
-          "description": "Interval for the readiness/liveness probe in seconds",
-          "type": "number"
-        }
-      }
     },
     "HttpGetHealthProbeProperties": {
       "description": "Specifies the properties for readiness/liveness probe using HTTP Get",

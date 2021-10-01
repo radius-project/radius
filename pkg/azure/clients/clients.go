@@ -63,6 +63,13 @@ func NewGenericResourceClient(subscriptionID string, authorizer autorest.Authori
 	return rc
 }
 
+func NewCustomActionClient(subscriptionID string, authorizer autorest.Authorizer) CustomActionClient {
+	cac := CustomActionClient{resources.NewWithBaseURI(resources.DefaultBaseURI, subscriptionID)}
+	cac.Authorizer = authorizer
+	cac.PollingDuration = 0
+	return cac
+}
+
 func NewCustomResourceProviderClient(subscriptionID string, authorizer autorest.Authorizer) customproviders.CustomResourceProviderClient {
 	cpc := customproviders.NewCustomResourceProviderClient(subscriptionID)
 	cpc.Authorizer = authorizer

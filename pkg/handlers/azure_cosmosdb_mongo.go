@@ -46,12 +46,12 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 	if properties[CosmosDBDatabaseIDKey] == "" {
 		var cosmosDBAccountName string
 		for _, resource := range options.Dependencies {
-			if resource.LocalID == outputresource.LocalIDAzureCosmosMongoAccount {
+			if resource.LocalID == outputresource.LocalIDAzureCosmosAccount {
 				cosmosDBAccountName = resource.Properties[CosmosDBAccountNameKey]
 			}
 		}
 
-		if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureCosmosMongoAccount]; ok {
+		if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureCosmosAccount]; ok {
 			cosmosDBAccountName = properties[CosmosDBAccountNameKey]
 		}
 

@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
@@ -224,57 +226,27 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 	}
 
 	deps := map[string]renderers.RendererDependency{}
-
 	for _, reference := range references {
-		// Get resource filtered on application type.
-		resourceType := reference.Types[len(reference.Types)-1]
-		unst := &unstructured.Unstructured{}
-
-		// TODO determine this correctly
-		unst.SetGroupVersionKind(schema.GroupVersionKind{
-			Group:   "radius.dev",
-			Version: "v1alpha3",
-			Kind:    resourceType.Type,
-		})
-
-		err = r.Client.Get(ctx, client.ObjectKey{
-			Namespace: req.Namespace,
-			Name:      resourceType.Name,
-		}, unst)
+		dependency, err := r.GetRenderDependency(ctx, req.Namespace, reference)
 		if err != nil {
-			// TODO make this wait without an error?
+			err = fmt.Errorf("failed to fetch rendering dependency %q of resource %q: %w", reference, resource.Name, err)
+			r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies", err)
+			log.Error(err, "failed to render resource")
 			return nil, false, err
 		}
 
-		k8sResource := &radiusv1alpha3.Resource{}
-		err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, k8sResource)
-		if err != nil {
-			return nil, false, err
-		}
-
-		computedValues := map[string]interface{}{}
-
-		err = json.Unmarshal(k8sResource.Status.ComputedValues.Raw, &computedValues)
-		if err != nil {
-			return nil, false, err
-		}
-
-		deps[reference.ID] = renderers.RendererDependency{
-			ComputedValues: computedValues,
-			ResourceID:     reference,
-			Definition:     unst.Object,
-		}
+		deps[reference.ID] = *dependency
 	}
 
-	resources, err := resourceType.Renderer().Render(ctx, *w, deps)
+	output, err := resourceType.Renderer().Render(ctx, *w, deps)
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")
 		return nil, false, err
 	}
 
-	log.Info("rendered output resources", "count", len(resources.Resources))
-	return &resources, true, nil
+	log.Info("rendered output resources", "count", len(output.Resources))
+	return &output, true, nil
 }
 
 func (r *ResourceReconciler) ApplyState(
@@ -382,6 +354,14 @@ func (r *ResourceReconciler) ApplyState(
 		resource.Status.ComputedValues = &runtime.RawExtension{Raw: data}
 	}
 
+	if desired.SecretValues != nil {
+		data, err := json.Marshal(desired.SecretValues)
+		if err != nil {
+			return err
+		}
+		resource.Status.SecretValues = &runtime.RawExtension{Raw: data}
+	}
+
 	// Can't use resource type to update as it will assume the wrong type
 	unst, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
 	if err != nil {
@@ -399,6 +379,116 @@ func (r *ResourceReconciler) ApplyState(
 
 	log.Info("applied output resources", "count", len(desired.Resources), "deleted", len(actual))
 	return nil
+}
+
+func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace string, id azresources.ResourceID) (*renderers.RendererDependency, error) {
+	// Find the Kubernetes resource based on the resourceID.
+	if len(id.Types) < 3 {
+		return nil, fmt.Errorf("dependency %q is not a radius resource", id)
+	}
+
+	resourceType := id.Types[2]
+	unst := &unstructured.Unstructured{}
+
+	// TODO determine this correctly
+	unst.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "radius.dev",
+		Version: "v1alpha3",
+		Kind:    armtemplate.GetKindFromArmType(resourceType.Type),
+	})
+
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Namespace: namespace,
+		Name:      resourceType.Name,
+	}, unst)
+	if err != nil {
+		// TODO make this wait without an error?
+		return nil, err
+	}
+
+	k8sResource := &radiusv1alpha3.Resource{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, k8sResource)
+	if err != nil {
+		return nil, err
+	}
+
+	// The 'Definition' we provide to a dependency is actually the 'properties' node
+	// of the ARM resource. Since 'spec.Template' stores the whole ARM resource we need
+	// to drill down into 'properties'.
+	body := map[string]interface{}{}
+	err = json.Unmarshal(k8sResource.Spec.Template.Raw, &body)
+	if err != nil {
+		return nil, err
+	}
+
+	properties := map[string]interface{}{}
+	obj, ok := body["properties"]
+	if ok {
+		// If properties is present it should be an object. It's not required in all cases.
+		properties, ok = obj.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("expected %q to be a JSON object", "properties")
+		}
+	}
+
+	// The 'ComputedValues' we provide to the dependency are a combination of the computed values
+	// we store in status, and secrets we store separately.
+	values := map[string]interface{}{}
+
+	computedValues := map[string]renderers.ComputedValueReference{}
+	if k8sResource.Status.ComputedValues != nil {
+		err = json.Unmarshal(k8sResource.Status.ComputedValues.Raw, &computedValues)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for k, v := range computedValues {
+		values[k] = v.Value
+	}
+
+	// The 'SecretValues' we store as part of the resource status (from render output) are references
+	// to secrets, we need to fetch the values and pass them to the renderer.
+	secretValues := map[string]renderers.SecretValueReference{}
+	if k8sResource.Status.SecretValues != nil {
+		err = json.Unmarshal(k8sResource.Status.SecretValues.Raw, &secretValues)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for k, v := range secretValues {
+		// Each value needs to be looked up in a secret where it's stored. The reference
+		// to the secret will be in the output resources.
+		secretRef, ok := k8sResource.Status.Resources[v.LocalID]
+		if !ok {
+			return nil, fmt.Errorf("could not find a matching resource for LocalID %q", v.LocalID)
+		}
+
+		secret := corev1.Secret{}
+		err = r.Client.Get(ctx, client.ObjectKey{Namespace: secretRef.Namespace, Name: secretRef.Name}, &secret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve secret of dependency: %w", err)
+		}
+
+		encodedValue, ok := secret.Data[v.ValueSelector]
+		if !ok {
+			return nil, fmt.Errorf("secret did contain expected key: %q", v.ValueSelector)
+		}
+
+		decodedValue := string(encodedValue)
+		if err != nil {
+			return nil, err
+		}
+
+		values[k] = decodedValue
+	}
+
+	return &renderers.RendererDependency{
+		ComputedValues: values,
+		ResourceID:     id,
+		Definition:     properties,
+	}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
