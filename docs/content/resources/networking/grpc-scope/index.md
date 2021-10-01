@@ -16,6 +16,27 @@ A gRPC Route is defined as a resource within your Application, defined at the sa
 
 {{< rad file="snippets/grpc.bicep" embed=true marker="//ROUTE" >}}
 
+The following top-level information is available:
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| name | y | The name of your Route. Used to provide status and visualize the component. | `'web'`
+
+### Properties
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| port | n | The port providing communication through the Route. Defaults to 80. | `80`
+| gateway | n | Details on providing the Route to external users. | [See below](#gateway)
+
+#### Gateway
+
+You can optionally define a Gateway for external users to access the Route.
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| hostname | n | The hostname of the Gateway. Wildcards supported | `'example.com'`
+
 ## Provided Data
 
 The following data is available for use from the consuming Component:
