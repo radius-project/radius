@@ -17,18 +17,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
 type Renderer struct {
-	Arm armauth.ArmConfig
+
+	// RoleAssignmentMap is an optional map of connection kind -> []Role Assignment. Used to configure managed
+	// identity permissions for cloud resources. This will be nil in environments that don't support role assignments.
+	RoleAssignmentMap map[string]RoleAssignmentData
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
@@ -94,11 +97,17 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 			continue
 		}
 
-		roles = append(roles, r.makeRoleAssignmentsForResource(ctx, resource, connection)...)
+		more, err := r.makeRoleAssignmentsForResource(ctx, resource, connection, dependencies)
+		if err != nil {
+			return renderers.RendererOutput{}, nil
+		}
+
+		roles = append(roles, more...)
 	}
 
 	// If we created role assigmments then we will need an identity and the mapping of the identity to AKS.
 	if len(roles) > 0 {
+		outputResources = append(outputResources, roles...)
 		outputResources = append(outputResources, r.makeManagedIdentity(ctx, resource))
 		outputResources = append(outputResources, r.makePodIdentity(ctx, resource, roles))
 	}
@@ -270,9 +279,12 @@ func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererRes
 }
 
 func (r Renderer) isIdentitySupported(connection ContainerConnection) bool {
-	// Right now we don't actually enable identities for any of the resources, but we have the code in place.
-	// Will be re-enabled very soon.
-	return false
+	if r.RoleAssignmentMap == nil {
+		return false
+	}
+
+	_, ok := r.RoleAssignmentMap[connection.Kind]
+	return ok
 }
 
 // Builds a user-assigned managed identity output resource.
@@ -280,7 +292,7 @@ func (r Renderer) makeManagedIdentity(ctx context.Context, resource renderers.Re
 	managedIdentityName := resource.ApplicationName + "-" + resource.ResourceName + "-msi"
 	identityOutputResource := outputresource.OutputResource{
 		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
-		LocalID:      outputresource.LocalIDUserAssignedManagedIdentityKV,
+		LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
 		Deployed:     false,
 		Managed:      true,
 		Resource: map[string]string{
@@ -301,7 +313,7 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 	// Managed identity with required role assignments should be created first
 	dependencies := []outputresource.Dependency{
 		{
-			LocalID: outputresource.LocalIDUserAssignedManagedIdentityKV,
+			LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 		},
 	}
 
@@ -315,10 +327,9 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 		Managed:      true,
 		Deployed:     false,
 		Resource: map[string]string{
-			handlers.ManagedKey:            "true",
-			handlers.PodIdentityNameKey:    podIdentityName,
-			handlers.PodIdentityClusterKey: r.Arm.K8sClusterName,
-			handlers.PodNamespaceKey:       resource.ApplicationName,
+			handlers.ManagedKey:         "true",
+			handlers.PodIdentityNameKey: podIdentityName,
+			handlers.PodNamespaceKey:    resource.ApplicationName,
 		},
 		Dependencies: dependencies,
 	}
@@ -327,27 +338,56 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.
-func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, resource renderers.RendererResource, connection ContainerConnection) []outputresource.OutputResource {
+func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, resource renderers.RendererResource, connection ContainerConnection, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
+	// We're reporting errors in this code path to avoid obscuring a bug in another layer of the system.
+	// None of these error conditions should be caused by invalid user input. They should only be caused
+	// by internal bugs in Radius.
+	roleAssignmentData, ok := r.RoleAssignmentMap[connection.Kind]
+	if !ok {
+		return nil, fmt.Errorf("connection kind %q does not support managed identity", connection.Kind)
+	}
+
+	// The dependency will have already been fetched by the system.
+	dependency, ok := dependencies[connection.Source]
+	if !ok {
+		return nil, fmt.Errorf("connection source %q was not found in the dependencies collection", connection.Source)
+	}
+
+	// Find the matching output resource based on LocalID
+	target, ok := dependency.OutputResources[roleAssignmentData.LocalID]
+	if !ok {
+		return nil, fmt.Errorf("output resource %q was not found in the outputs of dependency %q", roleAssignmentData.LocalID, connection.Source)
+	}
+
+	// Now we know the resource ID to assign roles against.
+	arm, ok := target.Data.(resourcemodel.ARMIdentity)
+	if !ok {
+		return nil, fmt.Errorf("output resource %q must be an ARM resource to support role assignments. Was: %+v", roleAssignmentData.LocalID, target)
+	}
+
 	outputResources := []outputresource.OutputResource{}
+	for _, roleName := range roleAssignmentData.RoleNames {
+		localID := outputresource.GenerateLocalIDForRoleAssignment(arm.ID, roleName)
+		roleAssignment := outputresource.OutputResource{
+			ResourceKind: resourcekinds.AzureRoleAssignment,
+			LocalID:      localID,
+			Managed:      true,
+			Deployed:     false,
+			Resource: map[string]string{
+				handlers.RoleNameKey:             roleName,
+				handlers.RoleAssignmentTargetKey: arm.ID,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+				},
+			},
+		}
 
-	roleAssignmentDependencies := []outputresource.Dependency{
-		{
-			LocalID: outputresource.LocalIDUserAssignedManagedIdentityKV,
-		},
-	}
-	roleAssignment := outputresource.OutputResource{
-		ResourceKind: resourcekinds.AzureRoleAssignment,
-		LocalID:      outputresource.LocalIDRoleAssignmentKVSecretsCerts,
-		Managed:      true,
-		Deployed:     false,
-		Resource:     map[string]string{
-			// TODO
-		},
-		Dependencies: roleAssignmentDependencies,
+		outputResources = append(outputResources, roleAssignment)
 	}
 
-	outputResources = append(outputResources, roleAssignment)
-	return outputResources
+	return outputResources, nil
 }
 
 func getSortedKeys(env map[string]corev1.EnvVar) []string {

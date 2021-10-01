@@ -23,9 +23,8 @@ import (
 )
 
 const (
-	PodIdentityNameKey    = "podidentityname"
-	PodIdentityClusterKey = "podidentitycluster"
-	PodNamespaceKey       = "podnamespace"
+	PodIdentityNameKey = "podidentityname"
+	PodNamespaceKey    = "podnamespace"
 )
 
 func NewAzurePodIdentityHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -47,12 +46,12 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 	// Get dependencies
 	managedIdentityProperties := map[string]string{}
 	for _, resource := range options.Dependencies {
-		if resource.LocalID == outputresource.LocalIDUserAssignedManagedIdentityKV {
+		if resource.LocalID == outputresource.LocalIDUserAssignedManagedIdentity {
 			managedIdentityProperties = resource.Properties
 		}
 	}
 
-	if properties, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentityKV]; ok {
+	if properties, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]; ok {
 		managedIdentityProperties = properties
 	}
 
@@ -150,9 +149,13 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 }
 
 func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.ExistingOutputResource.PersistedProperties
-	podIdentityName := properties[PodIdentityNameKey]
-	podidentityCluster := properties[PodIdentityClusterKey]
+	if options.ExistingOutputResource.Identity.Kind != resourcemodel.IdentityKindAADPodIdentity {
+		return fmt.Errorf("unexpected identity kind %q, needs to be %q", options.ExistingOutputResource.Identity.Kind, resourcemodel.IdentityKindAADPodIdentity)
+	}
+
+	identityData := options.ExistingOutputResource.Identity.Data.(resourcemodel.AADPodIdentityIdentity)
+	podIdentityName := identityData.Name
+	podidentityCluster := identityData.AKSClusterName
 
 	// Conceptually this resource is always 'managed'
 

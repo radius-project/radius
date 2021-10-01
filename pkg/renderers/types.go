@@ -28,10 +28,19 @@ type RendererResource struct {
 	Definition      map[string]interface{}
 }
 
+// Represents a dependency of the resource currently being rendered. Currently dependencies are always Radius resources.
 type RendererDependency struct {
-	ResourceID     azresources.ResourceID
-	Definition     map[string]interface{}
+	// ResourceID is the resource ID of the Radius resource that is the dependency.
+	ResourceID azresources.ResourceID
+
+	// Definition is the definition (`properties` node) of the dependency.
+	Definition map[string]interface{}
+
+	// ComputedValues is a map of the computed values and secrets of the dependency.
 	ComputedValues map[string]interface{}
+
+	// OutputResources is a map of the output resource identities of the dependency. The map is keyed on the LocalID of the output resource.
+	OutputResources map[string]resourcemodel.ResourceIdentity
 }
 
 type RendererOutput struct {

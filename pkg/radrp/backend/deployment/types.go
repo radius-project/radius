@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/Azure/radius/pkg/radrp/backend/deployment github.com/Azure/radius/pkg/radrp/backend/deployment DeploymentProcessor
@@ -400,6 +401,11 @@ func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependen
 			return nil, fmt.Errorf("failed to fetch dependency resource %q: %w", dependencyResourceID.ID, err)
 		}
 
+		dependencyOutputResources := map[string]resourcemodel.ResourceIdentity{}
+		for _, outputResource := range dbDependencyResource.Status.OutputResources {
+			dependencyOutputResources[outputResource.LocalID] = outputResource.Identity
+		}
+
 		// We already have all of the computed values (stored in our database), but we need to look secrets
 		// (not stored in our database) and add them to the computed values.
 		computedValues := map[string]interface{}{}
@@ -417,9 +423,10 @@ func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependen
 		}
 
 		rendererDependency := renderers.RendererDependency{
-			ResourceID:     dependencyResourceID,
-			Definition:     dbDependencyResource.Definition,
-			ComputedValues: computedValues,
+			ResourceID:      dependencyResourceID,
+			Definition:      dbDependencyResource.Definition,
+			ComputedValues:  computedValues,
+			OutputResources: dependencyOutputResources,
 		}
 
 		rendererDependencies[dependencyResourceID.ID] = rendererDependency

@@ -6,7 +6,6 @@
 package kubernetes
 
 import (
-	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/handlers"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
@@ -23,7 +22,7 @@ import (
 
 func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 	renderers := map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType:      &dapr.Renderer{Inner: &containerv1alpha3.Renderer{Arm: armauth.ArmConfig{}}},
+		containerv1alpha3.ResourceType:      &dapr.Renderer{Inner: &containerv1alpha3.Renderer{}},
 		daprhttproutev1alpha3.ResourceType:  &daprhttproutev1alpha3.Renderer{},
 		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues}},
 		mongodbv1alpha3.ResourceType:        &mongodbv1alpha3.KubernetesRenderer{},
