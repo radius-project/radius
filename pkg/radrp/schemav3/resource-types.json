@@ -15,6 +15,7 @@
     "redislabs.com.RedisComponent": "components/redis.json#/definitions/RedisComponentResource",
 
     "HttpRoute": "routes/httproute.json#/definitions/HttpRouteResource",
-    "dapr.io.InvokeRoute": "routes/dapr-invokeroute.json#/definitions/DaprInvokeRouteResource"
+    "dapr.io.InvokeRoute": "routes/dapr-invokeroute.json#/definitions/DaprInvokeRouteResource",
+    "Volume": "components/volume.json#/definitions/VolumeResource"
   }
 }

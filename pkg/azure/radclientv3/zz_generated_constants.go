@@ -196,6 +196,27 @@ func (c EncryptionStatus) ToPtr() *EncryptionStatus {
 	return &c
 }
 
+// EphemeralVolumeManagedStore - Backing store for the ephemeral volume
+type EphemeralVolumeManagedStore string
+
+const (
+	EphemeralVolumeManagedStoreDisk EphemeralVolumeManagedStore = "disk"
+	EphemeralVolumeManagedStoreMemory EphemeralVolumeManagedStore = "memory"
+)
+
+// PossibleEphemeralVolumeManagedStoreValues returns the possible values for the EphemeralVolumeManagedStore const type.
+func PossibleEphemeralVolumeManagedStoreValues() []EphemeralVolumeManagedStore {
+	return []EphemeralVolumeManagedStore{	
+		EphemeralVolumeManagedStoreDisk,
+		EphemeralVolumeManagedStoreMemory,
+	}
+}
+
+// ToPtr returns a *EphemeralVolumeManagedStore pointing to the current value.
+func (c EphemeralVolumeManagedStore) ToPtr() *EphemeralVolumeManagedStore {
+	return &c
+}
+
 // Origin - The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default value is "user,system"
 type Origin string
 
@@ -216,6 +237,27 @@ func PossibleOriginValues() []Origin {
 
 // ToPtr returns a *Origin pointing to the current value.
 func (c Origin) ToPtr() *Origin {
+	return &c
+}
+
+// PersistentVolumeRbac - Container read/write access to the volume
+type PersistentVolumeRbac string
+
+const (
+	PersistentVolumeRbacRead PersistentVolumeRbac = "read"
+	PersistentVolumeRbacWrite PersistentVolumeRbac = "write"
+)
+
+// PossiblePersistentVolumeRbacValues returns the possible values for the PersistentVolumeRbac const type.
+func PossiblePersistentVolumeRbacValues() []PersistentVolumeRbac {
+	return []PersistentVolumeRbac{	
+		PersistentVolumeRbacRead,
+		PersistentVolumeRbacWrite,
+	}
+}
+
+// ToPtr returns a *PersistentVolumeRbac pointing to the current value.
+func (c PersistentVolumeRbac) ToPtr() *PersistentVolumeRbac {
 	return &c
 }
 
