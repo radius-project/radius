@@ -30,6 +30,11 @@ type ResourceStatus struct {
 	ComputedValues *runtime.RawExtension `json:"computedValues,omitempty"`
 
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	SecretValues *runtime.RawExtension `json:"secretValues,omitempty"`
+
+	// +optional
 	Resources map[string]corev1.ObjectReference `json:"resources,omitempty"`
 
 	// +optional
