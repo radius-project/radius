@@ -36,6 +36,10 @@ func NewCLI(t *testing.T, configFilePath string, version validation.AppModelVers
 	}
 }
 
+func (cli *CLI) isV3() bool {
+	return cli.Version == validation.AppModelV3
+}
+
 // Deploy runs the rad deploy command.
 func (cli *CLI) Deploy(ctx context.Context, templateFilePath string) error {
 	// Check if the template file path exists
@@ -47,13 +51,13 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string) error {
 		"deploy",
 		templateFilePath,
 	}
-	_, err := cli.RunCommand(ctx, fmt.Sprintf("rad deploy %s", templateFilePath), args)
+	_, err := cli.RunCommand(ctx, args)
 	return err
 }
 
 func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
 	command := "application"
-	if cli.Version == validation.AppModelV3 {
+	if cli.isV3() {
 		command = "applicationV3"
 	}
 
@@ -62,13 +66,13 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (st
 		"show",
 		"-a", applicationName,
 	}
-	return cli.RunCommand(ctx, fmt.Sprintf("rad application show -a %s", applicationName), args)
+	return cli.RunCommand(ctx, args)
 }
 
 // ApplicationDelete deletes the specified application deployed by Radius.
 func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) error {
 	command := "application"
-	if cli.Version == validation.AppModelV3 {
+	if cli.isV3() {
 		command = "applicationV3"
 	}
 
@@ -78,52 +82,67 @@ func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) e
 		"--yes",
 		"-a", applicationName,
 	}
-	_, err := cli.RunCommand(ctx, fmt.Sprintf("rad application delete -a %s", applicationName), args)
+	_, err := cli.RunCommand(ctx, args)
 	return err
 }
 
-func (cli *CLI) ComponentShow(ctx context.Context, applicationName string, componentName string) (string, error) {
+func (cli *CLI) ComponentShow(ctx context.Context, applicationName string, componentType string, componentName string) (string, error) {
 	args := []string{
-		"component",
 		"show",
 		"-a", applicationName,
-		componentName,
 	}
-	return cli.RunCommand(ctx, fmt.Sprintf("rad component show -a %s %s", applicationName, componentName), args)
+	if cli.isV3() {
+		args = append(append([]string{"resource"}, args...), componentType, componentName)
+	} else {
+		args = append(append([]string{"resource"}, args...), componentName)
+	}
+	return cli.RunCommand(ctx, args)
 }
 
 func (cli *CLI) ComponentList(ctx context.Context, applicationName string) (string, error) {
+	command := "component"
+	if cli.isV3() {
+		command = "resource"
+	}
 	args := []string{
-		"component",
+		command,
 		"list",
 		"-a", applicationName,
 	}
-	return cli.RunCommand(ctx, fmt.Sprintf("rad component list -a %s", applicationName), args)
+	return cli.RunCommand(ctx, args)
 }
 
 func (cli *CLI) ComponentLogs(ctx context.Context, applicationName string, componentName string) (string, error) {
 	args := []string{
-		"component",
 		"logs",
 		"-a", applicationName,
 		componentName,
 	}
-	return cli.RunCommand(ctx, fmt.Sprintf("rad component logs -a %s %s", applicationName, componentName), args)
+	if cli.isV3() {
+		args = append(append([]string{"resource"}, args...), "ContainerComponent", componentName)
+	} else {
+		args = append(append([]string{"component"}, args...), componentName)
+	}
+	return cli.RunCommand(ctx, args)
 }
 
 func (cli *CLI) ComponentExpose(ctx context.Context, applicationName string, componentName string, localPort int, remotePort int) (string, error) {
 	args := []string{
-		"component",
 		"expose",
 		"-a", applicationName,
-		componentName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
 	}
-	return cli.RunCommand(ctx, fmt.Sprintf("rad component expose -a %s %s...", applicationName, componentName), args)
+	if cli.isV3() {
+		args = append(append([]string{"resource"}, args...), "ContainerComponent", componentName)
+	} else {
+		args = append(append([]string{"component"}, args...), componentName)
+	}
+	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RunCommand(ctx context.Context, description string, args []string) (string, error) {
+func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
+	description := "rad " + strings.Join(args, " ")
 	args = cli.appendStandardArgs(args)
 
 	cmd := exec.CommandContext(ctx, "rad", args...)

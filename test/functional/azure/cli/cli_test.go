@@ -81,7 +81,7 @@ azure-cli
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		output, err := cli.ComponentShow(ctx, application, "a")
+		output, err := cli.ComponentShow(ctx, application, "ContainerComponent", "a")
 		require.NoError(t, err)
 		// We are more interested in the content and less about the formatting, which
 		// is already covered by unit tests. The spaces change depending on the input
