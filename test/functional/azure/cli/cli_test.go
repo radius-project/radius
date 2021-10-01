@@ -76,8 +76,8 @@ azure-cli
 		require.NoError(t, err)
 
 		// Resource ordering can vary so we don't assert exact output.
-		require.Contains(t, output, "a          ContainerComponent")
-		require.Contains(t, output, "b          ContainerComponent")
+		require.Regexp(t, `a\s+ContainerComponent`, output)
+		require.Regexp(t, `b\s+ContainerComponent`, output)
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {

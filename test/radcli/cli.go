@@ -116,7 +116,6 @@ func (cli *CLI) ComponentLogs(ctx context.Context, applicationName string, compo
 	args := []string{
 		"logs",
 		"-a", applicationName,
-		componentName,
 	}
 	if cli.isV3() {
 		args = append(append([]string{"resource"}, args...), "ContainerComponent", componentName)
