@@ -47,7 +47,7 @@ func Test_CLI(t *testing.T) {
 
 	templateFilePath := filepath.Join(cwd, template)
 	t.Logf("deploying %s from file %s", application, template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath, validation.AppModelV2)
+	cli := radcli.NewCLI(t, options.ConfigFilePath, validation.AppModelV3)
 	err = cli.Deploy(ctx, templateFilePath)
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)
@@ -62,7 +62,7 @@ func Test_CLI(t *testing.T) {
 		},
 	})
 
-	t.Run("Validate rad application show", func(t *testing.T) {
+	t.Run("Validate rad applicationV3 show", func(t *testing.T) {
 		output, err := cli.ApplicationShow(ctx, application)
 		require.NoError(t, err)
 		expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
@@ -71,26 +71,29 @@ azure-cli
 		require.Equal(t, objectformats.TrimSpaceMulti(expected), objectformats.TrimSpaceMulti(output))
 	})
 
-	t.Run("Validate rad component list", func(t *testing.T) {
+	t.Run("Validate rad resource list", func(t *testing.T) {
 		output, err := cli.ComponentList(ctx, application)
 		require.NoError(t, err)
 
-		// Component ordering can vary so we don't assert exact output.
-		require.Contains(t, output, "a          radius.dev/Container@v1alpha1")
-		require.Contains(t, output, "b          radius.dev/Container@v1alpha1")
+		// Resource ordering can vary so we don't assert exact output.
+		require.Contains(t, output, "a          ContainerComponent")
+		require.Contains(t, output, "b          ContainerComponent")
 	})
 
-	t.Run("Validate rad component show", func(t *testing.T) {
+	t.Run("Validate rad resource show", func(t *testing.T) {
 		output, err := cli.ComponentShow(ctx, application, "a")
 		require.NoError(t, err)
-		expected, _ := regexp.Compile(`COMPONENT  KIND                           PROVISIONING_STATE  HEALTH_STATE
-a          radius.dev/Container@v1alpha1  .*Provisioned      .*[h|H]ealthy\s*
+		// We are more interested in the content and less about the formatting, which
+		// is already covered by unit tests. The spaces change depending on the input
+		// and it takes very long to get a feedback from CI.
+		expected, _ := regexp.Compile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
+a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
 		match := expected.MatchString(output)
 		require.Equal(t, true, match)
 	})
 
-	t.Run("Validate rad component logs", func(t *testing.T) {
+	t.Run("Validate rad resoure logs ContainerComponent", func(t *testing.T) {
 		output, err := cli.ComponentLogs(ctx, application, "a")
 		require.NoError(t, err)
 
@@ -98,7 +101,7 @@ a          radius.dev/Container@v1alpha1  .*Provisioned      .*[h|H]ealthy\s*
 		require.Contains(t, output, "Server running at http://localhost:3000")
 	})
 
-	t.Run("Validate rad component expose", func(t *testing.T) {
+	t.Run("Validate rad resource expose ContainerComponent", func(t *testing.T) {
 		port, err := GetAvailablePort()
 		require.NoError(t, err)
 
