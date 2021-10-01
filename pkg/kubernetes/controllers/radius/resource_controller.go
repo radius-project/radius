@@ -356,7 +356,7 @@ func (r *ResourceReconciler) ApplyState(
 	}
 
 	if desired.SecretValues != nil {
-		data, err := json.Marshal(desired.ComputedValues)
+		data, err := json.Marshal(desired.SecretValues)
 		if err != nil {
 			return err
 		}
