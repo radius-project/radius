@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-mongo'
   
   resource webapp 'ContainerComponent' = {
-    name: 'todoapp'
+    name: 'todomongo'
     properties: {
       container: {
         image: 'radius.azurecr.io/magpie:latest'

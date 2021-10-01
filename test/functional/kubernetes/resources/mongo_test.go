@@ -33,7 +33,7 @@ func Test_Mongo(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "db",
+						ComponentName:   "mongodb",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDSecret:      validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDStatefulSet: validation.NewOutputResource(outputresource.LocalIDStatefulSet, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
