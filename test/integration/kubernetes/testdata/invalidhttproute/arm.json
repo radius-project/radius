@@ -2,6 +2,10 @@
     "apiVersion": "radius.dev/v1alpha3",
     "kind": "HttpRoute",
     "metadata": {
+        "annotations": {
+            "radius.dev/application": "frontend-backend",
+            "radius.dev/resource-type": "HttpRoute"
+        },
         "name": "httproute",
         "namespace": "arm"
     },
