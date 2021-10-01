@@ -85,7 +85,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 	secretValues := map[string]renderers.SecretValueReference{
 		"connectionString": {
 			LocalID:       outputresource.LocalIDSecret,
-			ValueSelector: fmt.Sprintf("/data/%s", SecretKeyMongoDBConnectionString),
+			ValueSelector: SecretKeyMongoDBConnectionString,
 		},
 	}
 

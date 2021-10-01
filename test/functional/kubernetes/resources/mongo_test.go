@@ -16,8 +16,6 @@ import (
 )
 
 func Test_Mongo(t *testing.T) {
-	t.Skip("Need to readd mongo support")
-
 	template := "testdata/kubernetes-resources-mongo.bicep"
 	application := "kubernetes-resources-mongo"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
@@ -27,7 +25,7 @@ func Test_Mongo(t *testing.T) {
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
-						ComponentName:   "todoapp",
+						ComponentName:   "todomongo",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -35,7 +33,7 @@ func Test_Mongo(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "db",
+						ComponentName:   "mongodb",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDSecret:      validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDStatefulSet: validation.NewOutputResource(outputresource.LocalIDStatefulSet, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -47,8 +45,8 @@ func Test_Mongo(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForComponent(application, "todoapp"),
-						validation.NewK8sObjectForComponent(application, "db"),
+						validation.NewK8sObjectForComponent(application, "todomongo"),
+						validation.NewK8sObjectForComponent(application, "mongodb"),
 					},
 				},
 			},

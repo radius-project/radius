@@ -7,7 +7,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -92,7 +91,7 @@ func Test_GetRenderDependency(t *testing.T) {
 			Namespace: Namespace,
 		},
 		Data: map[string][]byte{
-			"secret-key": []byte(base64.RawStdEncoding.EncodeToString([]byte("secret-value"))),
+			"secret-key": []byte("secret-value"),
 		},
 	}
 
