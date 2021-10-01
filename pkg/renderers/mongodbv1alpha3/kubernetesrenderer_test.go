@@ -56,7 +56,7 @@ func Test_KubernetesRenderer_Render_Managed_Success(t *testing.T) {
 	expectedSecretValues := map[string]renderers.SecretValueReference{
 		cosmosdbmongov1alpha3.ConnectionStringValue: {
 			LocalID:       outputresource.LocalIDSecret,
-			ValueSelector: "/data/MONGO_CONNECTIONSTRING",
+			ValueSelector: "MONGO_CONNECTIONSTRING",
 		},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)

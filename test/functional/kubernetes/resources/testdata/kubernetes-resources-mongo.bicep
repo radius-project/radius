@@ -8,7 +8,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         image: 'radius.azurecr.io/magpie:latest'
       }
       connections: {
-        mongo: {
+        mongodb: {
           kind: 'mongo.com/MongoDB'
           source: mongodb.id
         }
