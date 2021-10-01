@@ -25,7 +25,7 @@ func Test_Mongo(t *testing.T) {
 				Components: []validation.Component{
 					{
 						ApplicationName: application,
-						ComponentName:   "todoapp",
+						ComponentName:   "todomongo",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
