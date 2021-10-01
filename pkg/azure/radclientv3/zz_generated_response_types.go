@@ -361,7 +361,7 @@ type MongoDBComponentResourceResponse struct {
 
 // RabbitMQComponentListResponse is the response envelope for operations that return a RabbitMQComponentList type.
 type RabbitMQComponentListResponse struct {
-	// List of rabbitmq.com.MessageQueue resources.
+	// List of rabbitmq.com.MessageQueueComponent resources.
 	RabbitMQComponentList *RabbitMQComponentList
 
 	// RawResponse contains the underlying HTTP response.
@@ -412,7 +412,7 @@ type RedisComponentListResponse struct {
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 
-	// List of redislabs.com.Redis resources.
+	// List of redislabs.com.RedisComponent resources.
 	RedisComponentList *RedisComponentList
 }
 

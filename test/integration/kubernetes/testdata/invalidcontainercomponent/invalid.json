@@ -2,6 +2,10 @@
     "apiVersion": "radius.dev/v1alpha3",
     "kind": "ContainerComponent",
     "metadata": {
+        "annotations": {
+            "radius.dev/application": "frontend-backend",
+            "radius.dev/resource-type": "ContainerComponent"
+        },
         "name": "contianercomponent",
         "namespace": "arm"
     },

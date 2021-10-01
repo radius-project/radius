@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
@@ -234,7 +235,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		unst.SetGroupVersionKind(schema.GroupVersionKind{
 			Group:   "radius.dev",
 			Version: "v1alpha3",
-			Kind:    resourceType.Type,
+			Kind:    armtemplate.GetKindFromArmType(resourceType.Type),
 		})
 
 		err = r.Client.Get(ctx, client.ObjectKey{

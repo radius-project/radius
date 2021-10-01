@@ -19,70 +19,70 @@ import (
 	"time"
 )
 
-// RabbitmqComMessageQueueClient contains the methods for the RabbitmqComMessageQueue group.
-// Don't use this type directly, use NewRabbitmqComMessageQueueClient() instead.
-type RabbitmqComMessageQueueClient struct {
+// RedislabsComRedisComponentClient contains the methods for the RedislabsComRedisComponent group.
+// Don't use this type directly, use NewRedislabsComRedisComponentClient() instead.
+type RedislabsComRedisComponentClient struct {
 	con *armcore.Connection
 	subscriptionID string
 }
 
-// NewRabbitmqComMessageQueueClient creates a new instance of RabbitmqComMessageQueueClient with the specified values.
-func NewRabbitmqComMessageQueueClient(con *armcore.Connection, subscriptionID string) *RabbitmqComMessageQueueClient {
-	return &RabbitmqComMessageQueueClient{con: con, subscriptionID: subscriptionID}
+// NewRedislabsComRedisComponentClient creates a new instance of RedislabsComRedisComponentClient with the specified values.
+func NewRedislabsComRedisComponentClient(con *armcore.Connection, subscriptionID string) *RedislabsComRedisComponentClient {
+	return &RedislabsComRedisComponentClient{con: con, subscriptionID: subscriptionID}
 }
 
-// BeginCreateOrUpdate - Creates or updates a rabbitmq.com.MessageQueue resource.
+// BeginCreateOrUpdate - Creates or updates a redislabs.com.RedisComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (RabbitMQComponentResourcePollerResponse, error) {
-	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, rabbitMQComponentName, parameters, options)
+func (client *RedislabsComRedisComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, parameters RedisComponentResource, options *RedislabsComRedisComponentBeginCreateOrUpdateOptions) (RedisComponentResourcePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, redisComponentName, parameters, options)
 	if err != nil {
-		return RabbitMQComponentResourcePollerResponse{}, err
+		return RedisComponentResourcePollerResponse{}, err
 	}
-	result := RabbitMQComponentResourcePollerResponse{
+	result := RedisComponentResourcePollerResponse{
 		RawResponse: resp.Response,
 	}
-	pt, err := armcore.NewLROPoller("RabbitmqComMessageQueueClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
+	pt, err := armcore.NewLROPoller("RedislabsComRedisComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
 	if err != nil {
-		return RabbitMQComponentResourcePollerResponse{}, err
+		return RedisComponentResourcePollerResponse{}, err
 	}
-	poller := &rabbitMQComponentResourcePoller{
+	poller := &redisComponentResourcePoller{
 		pt: pt,
 	}
 	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (RabbitMQComponentResourceResponse, error) {
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (RedisComponentResourceResponse, error) {
 		return poller.pollUntilDone(ctx, frequency)
 	}
 	return result, nil
 }
 
-// ResumeCreateOrUpdate creates a new RabbitMQComponentResourcePoller from the specified resume token.
-// token - The value must come from a previous call to RabbitMQComponentResourcePoller.ResumeToken().
-func (client *RabbitmqComMessageQueueClient) ResumeCreateOrUpdate(ctx context.Context, token string) (RabbitMQComponentResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("RabbitmqComMessageQueueClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
+// ResumeCreateOrUpdate creates a new RedisComponentResourcePoller from the specified resume token.
+// token - The value must come from a previous call to RedisComponentResourcePoller.ResumeToken().
+func (client *RedislabsComRedisComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (RedisComponentResourcePollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RedislabsComRedisComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
 	if err != nil {
-		return RabbitMQComponentResourcePollerResponse{}, err
+		return RedisComponentResourcePollerResponse{}, err
 	}
-	poller := &rabbitMQComponentResourcePoller{
+	poller := &redisComponentResourcePoller{
 		pt: pt,
 	}
 	resp, err := poller.Poll(ctx)
 	if err != nil {
-		return RabbitMQComponentResourcePollerResponse{}, err
+		return RedisComponentResourcePollerResponse{}, err
 	}
-	result := RabbitMQComponentResourcePollerResponse{
+	result := RedisComponentResourcePollerResponse{
 		RawResponse: resp,
 	}
 	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (RabbitMQComponentResourceResponse, error) {
+	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (RedisComponentResourceResponse, error) {
 		return poller.pollUntilDone(ctx, frequency)
 	}
 	return result, nil
 }
 
-// CreateOrUpdate - Creates or updates a rabbitmq.com.MessageQueue resource.
+// CreateOrUpdate - Creates or updates a redislabs.com.RedisComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (*azcore.Response, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, rabbitMQComponentName, parameters, options)
+func (client *RedislabsComRedisComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, parameters RedisComponentResource, options *RedislabsComRedisComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, redisComponentName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
@@ -97,8 +97,8 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdate(ctx context.Context,
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, parameters RabbitMQComponentResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}"
+func (client *RedislabsComRedisComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, parameters RedisComponentResource, options *RedislabsComRedisComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisComponent/{redisComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -111,10 +111,10 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx con
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if rabbitMQComponentName == "" {
-		return nil, errors.New("parameter rabbitMQComponentName cannot be empty")
+	if redisComponentName == "" {
+		return nil, errors.New("parameter redisComponentName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQComponentName}", url.PathEscape(rabbitMQComponentName))
+	urlPath = strings.ReplaceAll(urlPath, "{redisComponentName}", url.PathEscape(redisComponentName))
 	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx con
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *RabbitmqComMessageQueueClient) createOrUpdateHandleError(resp *azcore.Response) error {
+func (client *RedislabsComRedisComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -140,17 +140,17 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdateHandleError(resp *azc
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// BeginDelete - Deletes a rabbitmq.com.MessageQueue resource.
+// BeginDelete - Deletes a redislabs.com.RedisComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (HTTPPollerResponse, error) {
-	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, rabbitMQComponentName, options)
+func (client *RedislabsComRedisComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, redisComponentName, options)
 	if err != nil {
 		return HTTPPollerResponse{}, err
 	}
 	result := HTTPPollerResponse{
 		RawResponse: resp.Response,
 	}
-	pt, err := armcore.NewLROPoller("RabbitmqComMessageQueueClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
+	pt, err := armcore.NewLROPoller("RedislabsComRedisComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
 	if err != nil {
 		return HTTPPollerResponse{}, err
 	}
@@ -166,8 +166,8 @@ func (client *RabbitmqComMessageQueueClient) BeginDelete(ctx context.Context, re
 
 // ResumeDelete creates a new HTTPPoller from the specified resume token.
 // token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *RabbitmqComMessageQueueClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("RabbitmqComMessageQueueClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
+func (client *RedislabsComRedisComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
+	pt, err := armcore.NewLROPollerFromResumeToken("RedislabsComRedisComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
 	if err != nil {
 		return HTTPPollerResponse{}, err
 	}
@@ -188,10 +188,10 @@ func (client *RabbitmqComMessageQueueClient) ResumeDelete(ctx context.Context, t
 	return result, nil
 }
 
-// Delete - Deletes a rabbitmq.com.MessageQueue resource.
+// Delete - Deletes a redislabs.com.RedisComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (*azcore.Response, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, rabbitMQComponentName, options)
+func (client *RedislabsComRedisComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisComponentBeginDeleteOptions) (*azcore.Response, error) {
+	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, redisComponentName, options)
 	if err != nil {
 		return nil, err
 	}
@@ -206,8 +206,8 @@ func (client *RabbitmqComMessageQueueClient) deleteOperation(ctx context.Context
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *RabbitmqComMessageQueueClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}"
+func (client *RedislabsComRedisComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisComponentBeginDeleteOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisComponent/{redisComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -220,10 +220,10 @@ func (client *RabbitmqComMessageQueueClient) deleteCreateRequest(ctx context.Con
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if rabbitMQComponentName == "" {
-		return nil, errors.New("parameter rabbitMQComponentName cannot be empty")
+	if redisComponentName == "" {
+		return nil, errors.New("parameter redisComponentName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQComponentName}", url.PathEscape(rabbitMQComponentName))
+	urlPath = strings.ReplaceAll(urlPath, "{redisComponentName}", url.PathEscape(redisComponentName))
 	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -237,7 +237,7 @@ func (client *RabbitmqComMessageQueueClient) deleteCreateRequest(ctx context.Con
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *RabbitmqComMessageQueueClient) deleteHandleError(resp *azcore.Response) error {
+func (client *RedislabsComRedisComponentClient) deleteHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -249,26 +249,26 @@ func (client *RabbitmqComMessageQueueClient) deleteHandleError(resp *azcore.Resp
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// Get - Gets a rabbitmq.com.MessageQueue resource by name.
+// Get - Gets a redislabs.com.RedisComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) Get(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueGetOptions) (RabbitMQComponentResourceResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, rabbitMQComponentName, options)
+func (client *RedislabsComRedisComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisComponentGetOptions) (RedisComponentResourceResponse, error) {
+	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, redisComponentName, options)
 	if err != nil {
-		return RabbitMQComponentResourceResponse{}, err
+		return RedisComponentResourceResponse{}, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return RabbitMQComponentResourceResponse{}, err
+		return RedisComponentResourceResponse{}, err
 	}
 	if !resp.HasStatusCode(http.StatusOK) {
-		return RabbitMQComponentResourceResponse{}, client.getHandleError(resp)
+		return RedisComponentResourceResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *RabbitmqComMessageQueueClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQComponentName string, options *RabbitmqComMessageQueueGetOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQComponentName}"
+func (client *RedislabsComRedisComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisComponentName string, options *RedislabsComRedisComponentGetOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisComponent/{redisComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -281,10 +281,10 @@ func (client *RabbitmqComMessageQueueClient) getCreateRequest(ctx context.Contex
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if rabbitMQComponentName == "" {
-		return nil, errors.New("parameter rabbitMQComponentName cannot be empty")
+	if redisComponentName == "" {
+		return nil, errors.New("parameter redisComponentName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQComponentName}", url.PathEscape(rabbitMQComponentName))
+	urlPath = strings.ReplaceAll(urlPath, "{redisComponentName}", url.PathEscape(redisComponentName))
 	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -298,16 +298,16 @@ func (client *RabbitmqComMessageQueueClient) getCreateRequest(ctx context.Contex
 }
 
 // getHandleResponse handles the Get response.
-func (client *RabbitmqComMessageQueueClient) getHandleResponse(resp *azcore.Response) (RabbitMQComponentResourceResponse, error) {
-	var val *RabbitMQComponentResource
+func (client *RedislabsComRedisComponentClient) getHandleResponse(resp *azcore.Response) (RedisComponentResourceResponse, error) {
+	var val *RedisComponentResource
 	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return RabbitMQComponentResourceResponse{}, err
+		return RedisComponentResourceResponse{}, err
 	}
-return RabbitMQComponentResourceResponse{RawResponse: resp.Response, RabbitMQComponentResource: val}, nil
+return RedisComponentResourceResponse{RawResponse: resp.Response, RedisComponentResource: val}, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *RabbitmqComMessageQueueClient) getHandleError(resp *azcore.Response) error {
+func (client *RedislabsComRedisComponentClient) getHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
@@ -319,26 +319,26 @@ func (client *RabbitmqComMessageQueueClient) getHandleError(resp *azcore.Respons
 	return azcore.NewResponseError(&errType, resp.Response)
 }
 
-// List - List the rabbitmq.com.MessageQueue resources deployed in the application.
+// List - List the redislabs.com.RedisComponent resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitmqComMessageQueueClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *RabbitmqComMessageQueueListOptions) (RabbitMQComponentListResponse, error) {
+func (client *RedislabsComRedisComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *RedislabsComRedisComponentListOptions) (RedisComponentListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return RabbitMQComponentListResponse{}, err
+		return RedisComponentListResponse{}, err
 	}
 	resp, err := client.con.Pipeline().Do(req)
 	if err != nil {
-		return RabbitMQComponentListResponse{}, err
+		return RedisComponentListResponse{}, err
 	}
 	if !resp.HasStatusCode(http.StatusOK) {
-		return RabbitMQComponentListResponse{}, client.listHandleError(resp)
+		return RedisComponentListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *RabbitmqComMessageQueueClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *RabbitmqComMessageQueueListOptions) (*azcore.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue"
+func (client *RedislabsComRedisComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *RedislabsComRedisComponentListOptions) (*azcore.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -364,16 +364,16 @@ func (client *RabbitmqComMessageQueueClient) listCreateRequest(ctx context.Conte
 }
 
 // listHandleResponse handles the List response.
-func (client *RabbitmqComMessageQueueClient) listHandleResponse(resp *azcore.Response) (RabbitMQComponentListResponse, error) {
-	var val *RabbitMQComponentList
+func (client *RedislabsComRedisComponentClient) listHandleResponse(resp *azcore.Response) (RedisComponentListResponse, error) {
+	var val *RedisComponentList
 	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return RabbitMQComponentListResponse{}, err
+		return RedisComponentListResponse{}, err
 	}
-return RabbitMQComponentListResponse{RawResponse: resp.Response, RabbitMQComponentList: val}, nil
+return RedisComponentListResponse{RawResponse: resp.Response, RedisComponentList: val}, nil
 }
 
 // listHandleError handles the List error response.
-func (client *RabbitmqComMessageQueueClient) listHandleError(resp *azcore.Response) error {
+func (client *RedislabsComRedisComponentClient) listHandleError(resp *azcore.Response) error {
 	body, err := resp.Payload()
 	if err != nil {
 		return azcore.NewResponseError(err, resp.Response)
