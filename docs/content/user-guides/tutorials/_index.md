@@ -7,7 +7,7 @@ weight: 100
 no_list: true
 ---
 
-{{< cardpane width=500px >}}
+{{< cardpane width=80% >}}
 {{% card header="[Website + Database](./webapp)" footer="Learn how to deploy a simple website container and database" %}}
 <div class="text-center">
   <a href="./webapp">
@@ -19,6 +19,13 @@ no_list: true
 <div class="text-center">
   <a href="./dapr">
     <img src="dapr-microservices.svg" alt="Dapr logo">
+  </a>
+</div>
+{{% /card %}}
+{{% card header="[eShop on Containers](./eshop)" footer="Learn how to model and deploy a production-level cloud-native application with Radius" %}}
+<div class="text-center">
+  <a href="./eshop">
+    <img src="eshop.png" alt="eShop logo">
   </a>
 </div>
 {{% /card %}}
