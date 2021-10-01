@@ -16,7 +16,7 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add db component
 A `db` database component is used to specify a few properties about the database: 
 
-- **kind:** `mongodb.com.MongoComponent` represents a MongoDB compatible database.
+- **kind:** `mongodb.com.MongoDBComponent` represents a MongoDB compatible database.
 - **managed:** `true` tells Radius to [manage the lifetime]({{< ref "components-model#radius-managed" >}}) of the component for you.
 
 {{< rad file="snippets/app.bicep" embed=true marker="//MONGO" >}}
@@ -24,11 +24,11 @@ A `db` database component is used to specify a few properties about the database
 {{< tabs "Microsoft Azure" Kubernetes>}}
 
 {{% codetab %}}
-When deploying to an Azure environment, a managed [`mongodb.com.MongoComponent`]({{< ref mongodb >}}) Component will be bound to an Azure CosmosDB API for MongoDB. By declaring your dependency on a generic *MongoDB-compatible* database, your code is more portable.
+When deploying to an Azure environment, a managed [`mongodb.com.MongoDBComponent`]({{< ref mongodb >}}) Component will be bound to an Azure CosmosDB API for MongoDB. By declaring your dependency on a generic *MongoDB-compatible* database, your code is more portable.
 {{% /codetab %}}
 
 {{% codetab %}}
-When deploying to a Kubernetes environment, a managed [`mongodb.com.MongoComponent`]({{< ref mongodb >}}) will be bound to the [`mongo` Docker image](https://hub.docker.com/_/mongo/) running a lightweight developer configuration. 
+When deploying to a Kubernetes environment, a managed [`mongodb.com.MongoDBComponent`]({{< ref mongodb >}}) will be bound to the [`mongo` Docker image](https://hub.docker.com/_/mongo/) running a lightweight developer configuration. 
 {{% /codetab %}}
 
 {{< /tabs >}}
@@ -39,7 +39,7 @@ Radius captures both logical relationships and related operational details. Exam
 
 Once the database is defined as a Component, you can connect to it by referencing the `db` component from within the `todoapp` Component via the [`connections`]({{< ref connections-model >}}) section. 
 
-[`connections`]({{< ref connections-model >}}) is used to configure relationships between two components. The `db` is of kind `mongodb.com.MongoComponent`, which supports the `mongodb.com/Mongo` MongoDB protocol. Configuring a dependency on this protocal is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db`.
+[`connections`]({{< ref connections-model >}}) is used to configure relationships between two components. The `db` is of kind `mongodb.com.MongoDBComponent`, which supports the `mongodb.com/Mongo` MongoDB protocol. Configuring a dependency on this protocal is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db`.
 
 Once you connect to `db` you can now reference the `db.connectionStrings()` method from within the `todoapp` Component's `env` definition. This places the `db` connection string in the `todoapp` Component's environment
 
@@ -72,9 +72,9 @@ Update your `template.bicep` file to match the full application definition:
    You should see both `db` and `todoapp` components in your `webapp` application. Example output: 
 
    ```
-   COMPONENT   KIND                        PROVISIONING_STATE   HEALTH_STATE
-   todoapp     ContainerComponent          Deployed             Healthy
-   db          mongodb.com.MongoComponent  Deployed             Healthy
+   COMPONENT   KIND                          PROVISIONING_STATE   HEALTH_STATE
+   todoapp     ContainerComponent            Deployed             Healthy
+   db          mongodb.com.MongoDBComponent  Deployed             Healthy
    ```
 
 1. To test the database, open a local tunnel on port 3000 again:

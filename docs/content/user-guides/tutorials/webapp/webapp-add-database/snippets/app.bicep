@@ -29,7 +29,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //CONTAINER
 
   //MONGO
-  resource db 'mongodb.com.MongoComponent' = {
+  resource db 'mongodb.com.MongoDBComponent' = {
     name: 'db'
     properties: {
       managed: true
