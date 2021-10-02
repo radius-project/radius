@@ -22,6 +22,8 @@ import (
 )
 
 func Test_KeyVaultManaged(t *testing.T) {
+	t.Skip("Currently in PR")
+
 	application := "azure-resources-keyvault-managed"
 	template := "testdata/azure-resources-keyvault-managed.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

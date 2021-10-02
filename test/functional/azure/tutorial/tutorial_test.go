@@ -18,6 +18,7 @@ import (
 )
 
 func Test_TutorialDaprMicroservices(t *testing.T) {
+	t.Skip("will renable in appmodel v3")
 	application := "dapr-hello"
 	template := "../../../../docs/content/user-guides/tutorial/dapr-microservices/dapr-microservices.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
