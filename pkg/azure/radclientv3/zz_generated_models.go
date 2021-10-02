@@ -533,6 +533,40 @@ type ContainerPort struct {
 	Provides *string `json:"provides,omitempty"`
 }
 
+// DaprHTTPRouteList - List of dapr.io.DaprHttpRoute resources.
+type DaprHTTPRouteList struct {
+	// REQUIRED; List of dapr.io.DaprHttpRoute resources.
+	Value []*DaprHTTPRouteResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprHTTPRouteList.
+func (d DaprHTTPRouteList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
+type DaprHTTPRouteProperties struct {
+	BasicRouteProperties
+	// REQUIRED; The Dapr appId used for the route
+	AppID *string `json:"appId,omitempty"`
+}
+
+// DaprHTTPRouteResource - Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication
+// between components.
+type DaprHTTPRouteResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *DaprHTTPRouteProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprHTTPRouteResource.
+func (d DaprHTTPRouteResource) MarshalJSON() ([]byte, error) {
+	objectMap := d.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", d.Properties)
+	return json.Marshal(objectMap)
+}
+
 // DaprInvokeRouteList - List of dapr.io.InvokeRoute resources.
 type DaprInvokeRouteList struct {
 	// REQUIRED; List of dapr.io.InvokeRoute resources.
@@ -565,6 +599,26 @@ func (d DaprInvokeRouteResource) MarshalJSON() ([]byte, error) {
 	objectMap := d.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
+}
+
+// DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoDaprHTTPRoute.BeginCreateOrUpdate method.
+type DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoDaprHTTPRouteBeginDeleteOptions contains the optional parameters for the DaprIoDaprHTTPRoute.BeginDelete method.
+type DaprIoDaprHTTPRouteBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoDaprHTTPRouteGetOptions contains the optional parameters for the DaprIoDaprHTTPRoute.Get method.
+type DaprIoDaprHTTPRouteGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoDaprHTTPRouteListOptions contains the optional parameters for the DaprIoDaprHTTPRoute.List method.
+type DaprIoDaprHTTPRouteListOptions struct {
+	// placeholder for future optional parameters
 }
 
 // DaprIoInvokeRouteBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoInvokeRoute.BeginCreateOrUpdate method.
@@ -677,6 +731,53 @@ func (d DaprPubSubTopicComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := d.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
+}
+
+// DaprSidecarTrait - The specifies that the component should have a Dapr sidecar injected
+type DaprSidecarTrait struct {
+	// The Dapr appId. Specifies the identifier used by Dapr for service invocation.
+	AppID *string `json:"appId,omitempty"`
+
+	// The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
+	AppPort *int32 `json:"appPort,omitempty"`
+
+	// Specifies the resource id of a dapr.io.DaprHttpRoute that can route traffic to this component.
+	Provides *string `json:"provides,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSidecarTrait.
+func (d DaprSidecarTrait) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "appId", d.AppID)
+	populate(objectMap, "appPort", d.AppPort)
+	populate(objectMap, "provides", d.Provides)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprSidecarTrait.
+func (d *DaprSidecarTrait) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "appId":
+				err = unpopulate(val, &d.AppID)
+				delete(rawMsg, key)
+		case "appPort":
+				err = unpopulate(val, &d.AppPort)
+				delete(rawMsg, key)
+		case "provides":
+				err = unpopulate(val, &d.Provides)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // DaprStateStoreComponentList - List of dapr.io.StateStoreComponent resources.

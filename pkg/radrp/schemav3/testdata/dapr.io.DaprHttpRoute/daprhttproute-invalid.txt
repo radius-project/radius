@@ -1,0 +1,2 @@
+(root).properties: Additional property extra1 is not allowed
+(root).properties: appId is required
