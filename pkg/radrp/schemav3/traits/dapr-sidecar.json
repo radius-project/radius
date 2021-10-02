@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "DaprSidecarTrait": {
+      "type": "object",
+      "description": "The specifies that the component should have a Dapr sidecar injected",
+      "properties": {
+        "kind": {
+          "description": "Trait kind.",
+          "type": "string",
+          "enum": ["dapr.io/Sidecar@v1alpha1"]
+        },
+        "appPort": {
+          "description": "The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. ",
+          "type": "integer"
+        },
+        "appId": {
+          "description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation.",
+          "type": "string"
+        }, 
+        "provides": {
+          "description": "Specifies the resource id of a dapr.io.DaprHttpRoute that can route traffic to this component.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

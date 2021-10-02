@@ -285,6 +285,51 @@ func (p *containerComponentResourcePoller) pollUntilDone(ctx context.Context, fr
 	return respType, nil
 }
 
+// DaprHTTPRouteResourcePoller provides polling facilities until the operation reaches a terminal state.
+type DaprHTTPRouteResourcePoller interface {
+	azcore.Poller
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final DaprHTTPRouteResourceResponse will be returned.
+	FinalResponse(ctx context.Context) (DaprHTTPRouteResourceResponse, error)
+}
+
+type daprHTTPRouteResourcePoller struct {
+	pt *armcore.LROPoller
+}
+
+func (p *daprHTTPRouteResourcePoller) Done() bool {
+	return p.pt.Done()
+}
+
+func (p *daprHTTPRouteResourcePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+func (p *daprHTTPRouteResourcePoller) FinalResponse(ctx context.Context) (DaprHTTPRouteResourceResponse, error) {
+	respType := DaprHTTPRouteResourceResponse{DaprHTTPRouteResource: &DaprHTTPRouteResource{}}
+	resp, err := p.pt.FinalResponse(ctx, respType.DaprHTTPRouteResource)
+	if err != nil {
+		return DaprHTTPRouteResourceResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+func (p *daprHTTPRouteResourcePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+
+func (p *daprHTTPRouteResourcePoller) pollUntilDone(ctx context.Context, freq time.Duration) (DaprHTTPRouteResourceResponse, error) {
+	respType := DaprHTTPRouteResourceResponse{DaprHTTPRouteResource: &DaprHTTPRouteResource{}}
+	resp, err := p.pt.PollUntilDone(ctx, freq, respType.DaprHTTPRouteResource)
+	if err != nil {
+		return DaprHTTPRouteResourceResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
 // DaprInvokeRouteResourcePoller provides polling facilities until the operation reaches a terminal state.
 type DaprInvokeRouteResourcePoller interface {
 	azcore.Poller

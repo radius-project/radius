@@ -196,6 +196,36 @@ type ContainerComponentResourceResponse struct {
 	RawResponse *http.Response
 }
 
+// DaprHTTPRouteListResponse is the response envelope for operations that return a DaprHTTPRouteList type.
+type DaprHTTPRouteListResponse struct {
+	// List of dapr.io.DaprHttpRoute resources.
+	DaprHTTPRouteList *DaprHTTPRouteList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprHTTPRouteResourcePollerResponse is the response envelope for operations that asynchronously return a DaprHTTPRouteResource type.
+type DaprHTTPRouteResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (DaprHTTPRouteResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller DaprHTTPRouteResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprHTTPRouteResourceResponse is the response envelope for operations that return a DaprHTTPRouteResource type.
+type DaprHTTPRouteResourceResponse struct {
+	// Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between components.
+	DaprHTTPRouteResource *DaprHTTPRouteResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
 // DaprInvokeRouteListResponse is the response envelope for operations that return a DaprInvokeRouteList type.
 type DaprInvokeRouteListResponse struct {
 	// List of dapr.io.InvokeRoute resources.
