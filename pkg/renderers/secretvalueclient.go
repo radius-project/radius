@@ -32,7 +32,7 @@ func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.Resourc
 	}
 
 	custom := clients.NewCustomActionClient(c.ARM.SubscriptionID, c.ARM.Auth)
-	response, err := custom.InvokeCustomAction(ctx, arm.ID, arm.APIVersion, action)
+	response, err := custom.InvokeCustomAction(ctx, arm.ID, arm.APIVersion, action, nil)
 	if err != nil {
 		return nil, err
 	}

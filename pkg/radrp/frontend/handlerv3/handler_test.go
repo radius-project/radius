@@ -33,7 +33,8 @@ import (
 //
 // There's basically no business logic in the handler, all of that is delegated to mocks.
 
-const baseURI = "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application"
+const providerURI = "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3"
+const baseURI = providerURI + "/Application"
 
 type test struct {
 	t         *testing.T
@@ -213,6 +214,18 @@ func Test_Handler(t *testing.T) {
 			},
 		},
 		{
+			Method:      "POST",
+			Description: "ListSecrets",
+			URI:         providerURI + "/listSecrets",
+			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+				return mock.EXPECT().ListSecrets(gomock.Any(), gomock.Any())
+			},
+
+			Body: map[string]interface{}{
+				"targetId": baseURI + "/test-application/test-resource-type/test-resource",
+			},
+		},
+		{
 			Method:      "GET",
 			Description: "GetOperation",
 			URI:         baseURI + "/test-application/test-resource-type/test-resource/OperationResults/test-operation",
@@ -228,6 +241,10 @@ func Test_Handler(t *testing.T) {
 				test := start(t)
 				if testcase.Method == "PUT" {
 					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {
+						return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
+					})
+				} else if testcase.Method == "POST" {
+					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceproviderv3.ListSecretsInput) (rest.Response, error) {
 						return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
 					})
 				} else {
@@ -256,11 +273,15 @@ func Test_Handler(t *testing.T) {
 				test := start(t)
 				if testcase.Method == "PUT" {
 					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {
-						return nil, fmt.Errorf("error!") // Empty JSON
+						return nil, fmt.Errorf("error!")
+					})
+				} else if testcase.Method == "POST" {
+					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceproviderv3.ListSecretsInput) (rest.Response, error) {
+						return nil, fmt.Errorf("error!")
 					})
 				} else {
 					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-						return nil, fmt.Errorf("error!") // Empty JSON
+						return nil, fmt.Errorf("error!")
 					})
 				}
 
@@ -288,6 +309,10 @@ func Test_Handler(t *testing.T) {
 				test := start(t)
 				if testcase.Method == "PUT" {
 					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {
+						return &FaultingResponse{}, nil
+					})
+				} else if testcase.Method == "POST" {
+					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceproviderv3.ListSecretsInput) (rest.Response, error) {
 						return &FaultingResponse{}, nil
 					})
 				} else {

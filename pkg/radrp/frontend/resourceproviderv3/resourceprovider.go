@@ -42,6 +42,8 @@ type ResourceProvider interface {
 
 	GetOperation(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 
+	ListSecrets(ctx context.Context, input ListSecretsInput) (rest.Response, error)
+
 	ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 }
 
@@ -277,6 +279,47 @@ func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (res
 
 	output := NewRestRadiusResource(item)
 	return rest.NewAcceptedAsyncResponse(output, oid.ID), nil
+}
+
+func (r *rp) ListSecrets(ctx context.Context, input ListSecretsInput) (rest.Response, error) {
+	id, err := azresources.Parse(input.TargetID)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
+	err = r.validateResourceType(id)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
+	// This is not optimal but has to be done... Long explanation incoming:
+	//
+	// Custom RP only allows defining custom actions on the RP itself (not on child resources)
+	// so in the case of `db.connectionString()` the operation is *actually* defined on the custom RP
+	// resource, not on 'db'.
+	//
+	// The problem here is that there's no way to make the RP wait for 'db' to complete before trying to
+	// access the connection string. So the best we can do for now is to just treat it as a 500 and expect
+	// the deployment engine to retry.
+	item, err := r.db.GetV3Resource(ctx, id)
+	if err == db.ErrNotFound || item.ProvisioningState != string(rest.SuccededStatus) {
+		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: "resource is not ready yet",
+				Target:  id.ID,
+			},
+		}), nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	output, err := r.deploy.FetchSecrets(ctx, id, item)
+	if err != nil {
+		return nil, err
+	}
+
+	return rest.NewOKResponse(output), nil
 }
 
 func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
