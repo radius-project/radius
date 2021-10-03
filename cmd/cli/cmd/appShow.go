@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// appShowCmd command to show properties of an application
+// appShowCmd command to show properties of a  application
 var appShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show RAD application details",

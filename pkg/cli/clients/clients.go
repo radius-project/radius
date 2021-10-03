@@ -27,7 +27,7 @@ type DiagnosticsClient interface {
 
 type ExposeOptions struct {
 	Application string
-	Component   string
+	Resource    string
 	Port        int
 	RemotePort  int
 	Replica     string
@@ -35,7 +35,7 @@ type ExposeOptions struct {
 
 type LogsOptions struct {
 	Application string
-	Component   string
+	Resource    string
 	Follow      bool
 	Container   string
 	Replica     string

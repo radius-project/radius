@@ -19,13 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type AppModelVersion = string
-
-const (
-	AppModelV2 AppModelVersion = "V2"
-	AppModelV3 AppModelVersion = "V3"
-)
-
 type AzureResourceSet struct {
 	Resources []ExpectedResource
 }

@@ -91,7 +91,6 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 		},
 	})
 
-	test.Version = validation.AppModelV3
 	test.Test(t)
 }
 
@@ -149,8 +148,6 @@ func Test_Secrets_Access(t *testing.T) {
 			},
 		},
 	})
-
-	test.Version = validation.AppModelV3
 
 	test.Test(t)
 }
