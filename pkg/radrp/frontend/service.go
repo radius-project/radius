@@ -11,13 +11,10 @@ import (
 	"net/http"
 
 	"github.com/Azure/radius/pkg/model/azure"
-	deploymentv3 "github.com/Azure/radius/pkg/radrp/backend/deployment"
+	"github.com/Azure/radius/pkg/radrp/backend/deployment"
 	"github.com/Azure/radius/pkg/radrp/db"
-	deploymentv2 "github.com/Azure/radius/pkg/radrp/deployment"
-	"github.com/Azure/radius/pkg/radrp/frontend/handlerv2"
-	"github.com/Azure/radius/pkg/radrp/frontend/handlerv3"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv2"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
+	"github.com/Azure/radius/pkg/radrp/frontend/handler"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
@@ -54,21 +51,18 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	appmodel := azure.NewAzureModel(*s.Options.Arm, k8s)
-	appmodelv3 := azure.NewAzureModelV3(*s.Options.Arm, k8s)
 
 	secretClient := renderers.NewSecretValueClient(*s.Options.Arm)
 
 	db := db.NewRadrpDB(dbclient)
-	rp2 := resourceproviderv2.NewResourceProvider(db, deploymentv2.NewDeploymentProcessor(appmodel, &s.Options.HealthChannels))
-	rp3 := resourceproviderv3.NewResourceProvider(db, deploymentv3.NewDeploymentProcessor(appmodelv3, db, &s.Options.HealthChannels, secretClient), nil)
+	rp := resourceprovider.NewResourceProvider(db, deployment.NewDeploymentProcessor(appmodel, db, &s.Options.HealthChannels, secretClient), nil)
 
 	ctx = logr.NewContext(ctx, logger)
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address:      s.Options.Address,
 		Authenticate: s.Options.Authenticate,
 		Configure: func(router *mux.Router) {
-			handlerv2.AddRoutes(rp2, router)
-			handlerv3.AddRoutes(rp3, router, handlerv3.DefaultValidatorFactory)
+			handler.AddRoutes(rp, router, handler.DefaultValidatorFactory)
 		},
 	})
 

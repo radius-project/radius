@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package handlerv3
+package handler
 
 import (
 	"fmt"

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package handlerv3
+package handler
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schemav3"
@@ -41,7 +41,7 @@ type test struct {
 	ctrl      *gomock.Controller
 	server    *httptest.Server
 	handler   http.Handler
-	rp        *resourceproviderv3.MockResourceProvider
+	rp        *resourceprovider.MockResourceProvider
 	validator *FakeValidator
 }
 
@@ -56,7 +56,7 @@ func createContext(t *testing.T) context.Context {
 
 func start(t *testing.T) *test {
 	ctrl := gomock.NewController(t)
-	rp := resourceproviderv3.NewMockResourceProvider(ctrl)
+	rp := resourceprovider.NewMockResourceProvider(ctrl)
 
 	validator := &FakeValidator{}
 	options := server.ServerOptions{
@@ -130,14 +130,14 @@ func Test_Handler(t *testing.T) {
 		Method      string
 		Description string
 		URI         string
-		Expect      func(*resourceproviderv3.MockResourceProvider) *gomock.Call
+		Expect      func(*resourceprovider.MockResourceProvider) *gomock.Call
 		Body        interface{}
 	}{
 		{
 			Method:      "GET",
 			Description: "ListApplications",
 			URI:         baseURI,
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().ListApplications(gomock.Any(), gomock.Any())
 			},
 		},
@@ -145,7 +145,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "GET",
 			Description: "GetApplication",
 			URI:         baseURI + "/test-application",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().GetApplication(gomock.Any(), gomock.Any())
 			},
 		},
@@ -153,7 +153,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "PUT",
 			Description: "UpdateApplication",
 			URI:         baseURI + "/test-application",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().UpdateApplication(gomock.Any(), gomock.Any(), gomock.Any())
 			},
 
@@ -169,7 +169,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "DELETE",
 			Description: "DeleteApplication",
 			URI:         baseURI + "/test-application",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().DeleteApplication(gomock.Any(), gomock.Any())
 			},
 		},
@@ -177,7 +177,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "GET",
 			Description: "ListResources",
 			URI:         baseURI + "/test-application/test-resource-type",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().ListResources(gomock.Any(), gomock.Any())
 			},
 		},
@@ -185,7 +185,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "GET",
 			Description: "GetResource",
 			URI:         baseURI + "/test-application/test-resource-type/test-resource",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().GetResource(gomock.Any(), gomock.Any())
 			},
 		},
@@ -193,7 +193,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "PUT",
 			Description: "UpdateResource",
 			URI:         baseURI + "/test-application/test-resource-type/test-resource",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any())
 			},
 
@@ -209,7 +209,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "DELETE",
 			Description: "DeleteResource",
 			URI:         baseURI + "/test-application/test-resource-type/test-resource",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().DeleteResource(gomock.Any(), gomock.Any())
 			},
 		},
@@ -217,7 +217,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "POST",
 			Description: "ListSecrets",
 			URI:         providerURI + "/listSecrets",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().ListSecrets(gomock.Any(), gomock.Any())
 			},
 
@@ -229,7 +229,7 @@ func Test_Handler(t *testing.T) {
 			Method:      "GET",
 			Description: "GetOperation",
 			URI:         baseURI + "/test-application/test-resource-type/test-resource/OperationResults/test-operation",
-			Expect: func(mock *resourceproviderv3.MockResourceProvider) *gomock.Call {
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().GetOperation(gomock.Any(), gomock.Any())
 			},
 		},
@@ -244,7 +244,7 @@ func Test_Handler(t *testing.T) {
 						return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
 					})
 				} else if testcase.Method == "POST" {
-					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceproviderv3.ListSecretsInput) (rest.Response, error) {
+					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceprovider.ListSecretsInput) (rest.Response, error) {
 						return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
 					})
 				} else {
@@ -276,7 +276,7 @@ func Test_Handler(t *testing.T) {
 						return nil, fmt.Errorf("error!")
 					})
 				} else if testcase.Method == "POST" {
-					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceproviderv3.ListSecretsInput) (rest.Response, error) {
+					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceprovider.ListSecretsInput) (rest.Response, error) {
 						return nil, fmt.Errorf("error!")
 					})
 				} else {
@@ -312,7 +312,7 @@ func Test_Handler(t *testing.T) {
 						return &FaultingResponse{}, nil
 					})
 				} else if testcase.Method == "POST" {
-					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceproviderv3.ListSecretsInput) (rest.Response, error) {
+					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, input resourceprovider.ListSecretsInput) (rest.Response, error) {
 						return &FaultingResponse{}, nil
 					})
 				} else {
