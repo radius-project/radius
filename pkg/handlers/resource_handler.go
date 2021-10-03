@@ -10,12 +10,21 @@ import (
 
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
+)
+
+type DependencyKind string
+
+const (
+	DepdendencyParent DependencyKind = "parent"
 )
 
 type PutOptions struct {
 	Application string
 	Component   string
 	Resource    *outputresource.OutputResource
+
+	Output interface{}
 
 	Dependencies []Dependency
 
@@ -44,4 +53,6 @@ type ResourceHandler interface {
 type Dependency struct {
 	LocalID    string
 	Properties map[string]string
+	Identity   resourcemodel.ResourceIdentity
+	Kind       DependencyKind
 }
