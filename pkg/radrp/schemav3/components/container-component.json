@@ -191,7 +191,7 @@
           "enum": [
             "azure.com/KeyVault",
             "azure.com/ServiceBusQueue",
-            "dapr.io/Invoke",
+            "dapr.io/DaprHttp",
             "dapr.io/PubSubTopic",
             "dapr.io/StateStore",
             "Grpc",

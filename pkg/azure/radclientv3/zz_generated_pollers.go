@@ -330,51 +330,6 @@ func (p *daprHTTPRouteResourcePoller) pollUntilDone(ctx context.Context, freq ti
 	return respType, nil
 }
 
-// DaprInvokeRouteResourcePoller provides polling facilities until the operation reaches a terminal state.
-type DaprInvokeRouteResourcePoller interface {
-	azcore.Poller
-	// FinalResponse performs a final GET to the service and returns the final response
-	// for the polling operation. If there is an error performing the final GET then an error is returned.
-	// If the final GET succeeded then the final DaprInvokeRouteResourceResponse will be returned.
-	FinalResponse(ctx context.Context) (DaprInvokeRouteResourceResponse, error)
-}
-
-type daprInvokeRouteResourcePoller struct {
-	pt *armcore.LROPoller
-}
-
-func (p *daprInvokeRouteResourcePoller) Done() bool {
-	return p.pt.Done()
-}
-
-func (p *daprInvokeRouteResourcePoller) Poll(ctx context.Context) (*http.Response, error) {
-	return p.pt.Poll(ctx)
-}
-
-func (p *daprInvokeRouteResourcePoller) FinalResponse(ctx context.Context) (DaprInvokeRouteResourceResponse, error) {
-	respType := DaprInvokeRouteResourceResponse{DaprInvokeRouteResource: &DaprInvokeRouteResource{}}
-	resp, err := p.pt.FinalResponse(ctx, respType.DaprInvokeRouteResource)
-	if err != nil {
-		return DaprInvokeRouteResourceResponse{}, err
-	}
-	respType.RawResponse = resp
-	return respType, nil
-}
-
-func (p *daprInvokeRouteResourcePoller) ResumeToken() (string, error) {
-	return p.pt.ResumeToken()
-}
-
-func (p *daprInvokeRouteResourcePoller) pollUntilDone(ctx context.Context, freq time.Duration) (DaprInvokeRouteResourceResponse, error) {
-	respType := DaprInvokeRouteResourceResponse{DaprInvokeRouteResource: &DaprInvokeRouteResource{}}
-	resp, err := p.pt.PollUntilDone(ctx, freq, respType.DaprInvokeRouteResource)
-	if err != nil {
-		return DaprInvokeRouteResourceResponse{}, err
-	}
-	respType.RawResponse = resp
-	return respType, nil
-}
-
 // DaprPubSubTopicComponentResourcePoller provides polling facilities until the operation reaches a terminal state.
 type DaprPubSubTopicComponentResourcePoller interface {
 	azcore.Poller

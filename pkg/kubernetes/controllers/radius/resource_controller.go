@@ -69,9 +69,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=containercomponents,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=containercomponents/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=containercomponents/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes/finalizers,verbs=update
 //+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents/finalizers,verbs=update

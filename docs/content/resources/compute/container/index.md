@@ -68,7 +68,7 @@ The `dapr.io/App` trait adds a [Dapr](https://dapr.io) sidecar to the container,
 
 | Key | Required | Description | Example |
 |-----|:--------:|-------------|---------|
-| kind | y | Defines the trait type. | `'dapr.io/App@v1alpha1'`
+| kind | y | Defines the trait type. | `'dapr.io/Sidecar@v1alpha1'`
 | appId | y | The unique name for your Dapr application. | `frontend`
 | appPort | y | The port that Dapr proxy will use to expose the service to clients | `3000`
 

@@ -17,7 +17,19 @@
         "appId": {
           "description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation.",
           "type": "string"
-        }, 
+        },
+        "config": {
+          "description": "Specifies the Dapr configuration to use for the component.",
+          "type": "string"
+        },
+        "protocol": {
+          "description": "Specifies the Dapr app-protocol to use for the component.",
+          "type": "string",
+          "enum": [
+            "http",
+            "grpc"
+          ]
+        },
         "provides": {
           "description": "Specifies the resource id of a dapr.io.DaprHttpRoute that can route traffic to this component.",
           "type": "string"

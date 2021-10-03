@@ -15,7 +15,7 @@ import (
 //+kubebuilder:printcolumn:name="Application",type="string",JSONPath=".spec.application"
 //+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.resource"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
-type DaprIOInvokeRoute struct {
+type DaprIODaprHttpRoute struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -24,12 +24,12 @@ type DaprIOInvokeRoute struct {
 }
 
 //+kubebuilder:object:root=true
-type DaprIOInvokeRouteList struct {
+type DaprIODaprHttpRouteList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DaprIOInvokeRoute `json:"items"`
+	Items           []DaprIODaprHttpRoute `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&DaprIOInvokeRoute{}, &DaprIOInvokeRouteList{})
+	SchemeBuilder.Register(&DaprIODaprHttpRoute{}, &DaprIODaprHttpRouteList{})
 }

@@ -76,7 +76,7 @@ func GetKindFromArmType(armType string) string {
 		"ContainerComponent":                 "ContainerComponent",
 		"dapr.io.PubSubTopicComponent":       "DaprIOPubSubTopicComponent",
 		"dapr.io.StateStoreComponent":        "DaprIOStateStoreComponent",
-		"dapr.io.InvokeRoute":                "DaprIOInvokeRoute",
+		"dapr.io.DaprHttpRoute":              "DaprIODaprHttpRoute",
 		"mongodb.com.MongoDBComponent":       "MongoDBComponent",
 		"rabbitmq.com.MessageQueueComponent": "RabbitMQComponent",
 		"redislabs.com.RedisComponent":       "RedisComponent",

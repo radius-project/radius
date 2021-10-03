@@ -19,7 +19,7 @@ func unmarshalComponentTraitClassification(rawMsg json.RawMessage) (ComponentTra
 	}
 	var b ComponentTraitClassification
 	switch m["kind"] {
-	case "dapr.io/App@v1alpha1":
+	case "dapr.io/Sidecar@v1alpha1":
 		b = &DaprTrait{}
 	case "radius.dev/InboundRoute@v1alpha1":
 		b = &InboundRouteTrait{}

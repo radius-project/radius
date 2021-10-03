@@ -195,7 +195,7 @@ func Test_DeploymentUpdate_RegistersForHealthChecks(t *testing.T) {
 		"C1": {
 			ApplicationName: "A",
 			ComponentName:   "C1",
-			Operation: deployment.UpdateWorkload,
+			Operation:       deployment.UpdateWorkload,
 			Definition: &db.Component{
 				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
@@ -205,7 +205,7 @@ func Test_DeploymentUpdate_RegistersForHealthChecks(t *testing.T) {
 		"C2": {
 			ApplicationName: "A",
 			ComponentName:   "C2",
-			Operation: deployment.UpdateWorkload,
+			Operation:       deployment.UpdateWorkload,
 			Definition: &db.Component{
 				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
@@ -215,7 +215,7 @@ func Test_DeploymentUpdate_RegistersForHealthChecks(t *testing.T) {
 		"C3": {
 			ApplicationName: "A",
 			ComponentName:   "C3",
-			Operation: deployment.UpdateWorkload,
+			Operation:       deployment.UpdateWorkload,
 			Definition: &db.Component{
 				Kind:       containerv1alpha1.Kind,
 				Revision:   revision.Revision("1"),
@@ -513,7 +513,7 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 			},
 			Traits: []db.ComponentTrait{
 				{
-					Kind: "dapr.io/App@v1alpha1",
+					Kind: "dapr.io/Sidecar@v1alpha1",
 					AdditionalProperties: map[string]interface{}{
 						"appId":   "frontend",
 						"appPort": 80,
@@ -547,7 +547,7 @@ func Test_DeploymentCreated_RenderContainerWithDapr(t *testing.T) {
 	require.Equal(t, "A", action.ComponentName)
 	require.Equal(t, app.Components["A"], *action.Definition)
 
-	require.Equal(t, "dapr.io/App@v1alpha1", action.Component.Traits[0].Kind)
+	require.Equal(t, "dapr.io/Sidecar@v1alpha1", action.Component.Traits[0].Kind)
 	require.Equal(t, map[string]interface{}{
 		"appId":   "frontend",
 		"appPort": 80,

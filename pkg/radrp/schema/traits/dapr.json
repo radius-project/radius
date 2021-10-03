@@ -7,7 +7,7 @@
         "kind": {
           "description": "Trait kind.",
           "type": "string",
-          "enum": ["dapr.io/App@v1alpha1"]
+          "enum": ["dapr.io/Sidecar@v1alpha1"]
         },
         "appPort": {
           "description": "Dapr appPort.",

@@ -73,7 +73,7 @@ webhooks:
     - DELETE
     resources:
     - containercomponents
-    - daprioinvokeroutes
+    - dapriodaprhttproutes
     - mongodbcomponents
     - rediscomponents
     - grpcroutes

@@ -54,7 +54,7 @@ type ContainerConnectionKind string
 const (
 	ContainerConnectionKindAzureComKeyVault ContainerConnectionKind = "azure.com/KeyVault"
 	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
-	ContainerConnectionKindDaprIoInvoke ContainerConnectionKind = "dapr.io/Invoke"
+	ContainerConnectionKindDaprIoDaprHTTP ContainerConnectionKind = "dapr.io/DaprHttp"
 	ContainerConnectionKindDaprIoPubSubTopic ContainerConnectionKind = "dapr.io/PubSubTopic"
 	ContainerConnectionKindDaprIoStateStore ContainerConnectionKind = "dapr.io/StateStore"
 	ContainerConnectionKindGrpc ContainerConnectionKind = "Grpc"
@@ -69,7 +69,7 @@ func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
 	return []ContainerConnectionKind{	
 		ContainerConnectionKindAzureComKeyVault,
 		ContainerConnectionKindAzureComServiceBusQueue,
-		ContainerConnectionKindDaprIoInvoke,
+		ContainerConnectionKindDaprIoDaprHTTP,
 		ContainerConnectionKindDaprIoPubSubTopic,
 		ContainerConnectionKindDaprIoStateStore,
 		ContainerConnectionKindGrpc,
@@ -149,6 +149,27 @@ func PossibleDaprPubSubTopicComponentPropertiesKindValues() []DaprPubSubTopicCom
 
 // ToPtr returns a *DaprPubSubTopicComponentPropertiesKind pointing to the current value.
 func (c DaprPubSubTopicComponentPropertiesKind) ToPtr() *DaprPubSubTopicComponentPropertiesKind {
+	return &c
+}
+
+// DaprSidecarTraitProtocol - Specifies the Dapr app-protocol to use for the component.
+type DaprSidecarTraitProtocol string
+
+const (
+	DaprSidecarTraitProtocolGrpc DaprSidecarTraitProtocol = "grpc"
+	DaprSidecarTraitProtocolHTTP DaprSidecarTraitProtocol = "http"
+)
+
+// PossibleDaprSidecarTraitProtocolValues returns the possible values for the DaprSidecarTraitProtocol const type.
+func PossibleDaprSidecarTraitProtocolValues() []DaprSidecarTraitProtocol {
+	return []DaprSidecarTraitProtocol{	
+		DaprSidecarTraitProtocolGrpc,
+		DaprSidecarTraitProtocolHTTP,
+	}
+}
+
+// ToPtr returns a *DaprSidecarTraitProtocol pointing to the current value.
+func (c DaprSidecarTraitProtocol) ToPtr() *DaprSidecarTraitProtocol {
 	return &c
 }
 

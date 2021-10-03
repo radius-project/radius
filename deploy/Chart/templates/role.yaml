@@ -166,7 +166,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - daprioinvokeroutes
+  - dapriodaprhttproutes
   verbs:
   - create
   - delete
@@ -178,13 +178,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - daprioinvokeroutes/finalizers
+  - dapriodaprhttproutes/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - daprioinvokeroutes/status
+  - dapriodaprhttproutes/status
   verbs:
   - get
   - patch

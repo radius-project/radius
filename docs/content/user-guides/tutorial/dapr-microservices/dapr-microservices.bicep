@@ -1,70 +1,66 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-hello'
 
-  resource nodeapplication 'Components' = {
+  resource nodeapplication_dapr 'dapr.io.DaprHttpRoute' = {
     name: 'nodeapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radiusteam/tutorial-nodeapp'
+      appId: 'nodeapp'
+    }
+  }
+
+  resource nodeapplication 'ContainerComponent' = {
+    name: 'nodeapp'
+    properties: {
+      connections: {
+        statestore: {
+          kind: 'dapr.io/StateStore'
+          source: statestore.id
         }
       }
-      uses: [
-        {
-          binding: statestore.properties.bindings.default
-        }
-      ]
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
-        invoke: {
-          kind: 'dapr.io/Invoke'
+      container: {
+        image: 'radiusteam/tutorial-nodeapp'
+        ports: {
+          web: {
+            containerPort: 3000
+          }
         }
       }
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
-          appId: 'nodeapp'
+          kind: 'dapr.io/Sidecar@v1alpha1'
+          provides: nodeapplication_dapr.id
           appPort: 3000
         }
       ]
     }
   }
 
-  resource pythonapplication 'Components' = {
+  resource pythonapplication 'ContainerComponent' = {
     name: 'pythonapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radiusteam/tutorial-pythonapp'
+      connections: {
+        nodeapp: {
+          kind: 'dapr.io/DaprHttp'
+          source: nodeapplication_dapr.id
         }
       }
-      uses: [
-        {
-          binding: nodeapplication.properties.bindings.invoke
-        }
-      ]
+      container: {
+        image: 'radiusteam/tutorial-pythonapp'
+      }
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
+          kind: 'dapr.io/Sidecar@v1alpha1'
           appId: 'pythonapp'
         }
       ]
     }
   }
 
-  resource statestore 'Components' = {
+  resource statestore 'dapr.io.StateStoreComponent' = {
     name: 'statestore'
-    kind: 'dapr.io/StateStore@v1alpha1'
     properties: {
-      config: {
-        kind: 'any'
-        managed: true
-      }
+      kind: 'any'
+      managed: true
     }
   }
 }

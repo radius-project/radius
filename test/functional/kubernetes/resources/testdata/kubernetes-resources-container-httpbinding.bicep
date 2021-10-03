@@ -1,6 +1,6 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-container-httpbinding'
-  
+
   resource frontendhttp 'HttpRoute' = {
     name: 'frontendhttp'
     properties: {
@@ -10,6 +10,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
     }
   }
+
   resource frontend 'ContainerComponent' = {
     name: 'frontend'
     properties: {
