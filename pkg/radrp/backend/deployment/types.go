@@ -33,14 +33,14 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, id azresources.ResourceID, resource db.RadiusResource) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModelV3, db db.RadrpDB, healthChannels *healthcontract.HealthChannels, secretClient renderers.SecretValueClient) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, db db.RadrpDB, healthChannels *healthcontract.HealthChannels, secretClient renderers.SecretValueClient) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, db: db, healthChannels: healthChannels, secretClient: secretClient}
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 
 type deploymentProcessor struct {
-	appmodel       model.ApplicationModelV3
+	appmodel       model.ApplicationModel
 	db             db.RadrpDB
 	healthChannels *healthcontract.HealthChannels
 	secretClient   renderers.SecretValueClient

@@ -45,7 +45,7 @@ type daprStateStoreAzureStorageHandler struct {
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
+	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, StorageAccountIDKey)
@@ -94,13 +94,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	var properties map[string]string
-	if options.ExistingOutputResource == nil {
-		properties = options.Existing.Properties
-	} else {
-		properties = options.ExistingOutputResource.PersistedProperties
-	}
-
+	properties := options.ExistingOutputResource.PersistedProperties
 	accountName := properties[StorageAccountNameKey]
 
 	err := handler.DeleteDaprStateStore(ctx, properties)

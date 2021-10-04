@@ -37,7 +37,7 @@ type azureKeyVaultSecretHandler struct {
 
 func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
-	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
+	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	secretName := properties[KeyVaultSecretNameKey]
 	secretValue := properties[KeyVaultSecretValueKey]

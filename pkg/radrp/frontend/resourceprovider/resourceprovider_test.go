@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resourceproviderv3
+package resourceprovider
 
 import (
 	context "context"
@@ -440,7 +440,7 @@ func Test_ListResources_Success(t *testing.T) {
 			ApplicationName:   applicationName,
 			ResourceName:      resourceName,
 			ProvisioningState: string(rest.SuccededStatus),
-			Status:            db.ComponentStatus{},
+			Status:            db.RadiusResourceStatus{},
 			Definition: map[string]interface{}{
 				"data": true,
 			},
@@ -485,7 +485,7 @@ func Test_GetResource_Success(t *testing.T) {
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.SuccededStatus),
-		Status:            db.ComponentStatus{},
+		Status:            db.RadiusResourceStatus{},
 		Definition: map[string]interface{}{
 			"data": true,
 		},
@@ -603,7 +603,7 @@ func Test_DeleteResource_Success(t *testing.T) {
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.SuccededStatus),
-		Status:            db.ComponentStatus{},
+		Status:            db.RadiusResourceStatus{},
 		Definition: map[string]interface{}{
 			"data": true,
 		},
@@ -739,7 +739,7 @@ func Test_GetOperation_SuccessfulDeploy(t *testing.T) {
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.SuccededStatus),
-		Status:            db.ComponentStatus{},
+		Status:            db.RadiusResourceStatus{},
 		Definition: map[string]interface{}{
 			"data": true,
 		},
@@ -781,7 +781,7 @@ func Test_GetOperation_DeployInProgress(t *testing.T) {
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.DeployingStatus),
-		Status:            db.ComponentStatus{},
+		Status:            db.RadiusResourceStatus{},
 		Definition: map[string]interface{}{
 			"data": true,
 		},

@@ -3,20 +3,20 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package handlerv3
+package handler
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schemav3"
 	"github.com/gorilla/mux"
 )
 
-func AddRoutes(rp resourceproviderv3.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory) {
+func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory) {
 	// Nothing for now
 
 	h := handler{rp: rp, validatorFactory: validatorFactory}

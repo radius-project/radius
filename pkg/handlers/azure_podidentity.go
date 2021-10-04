@@ -38,7 +38,7 @@ type azurePodIdentityHandler struct {
 
 func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
-	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
+	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	if handler.arm.K8sSubscriptionID == "" || handler.arm.K8sResourceGroup == "" || handler.arm.K8sClusterName == "" {
 		return nil, errors.New("pod identity is not supported because the RP is not configured for AKS")
@@ -150,14 +150,7 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 }
 
 func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	// Delete AAD Pod Identity created
-	var properties map[string]string
-	if options.ExistingOutputResource == nil {
-		properties = options.Existing.Properties
-	} else {
-		properties = options.ExistingOutputResource.PersistedProperties
-	}
-
+	properties := options.ExistingOutputResource.PersistedProperties
 	podIdentityName := properties[PodIdentityNameKey]
 	podidentityCluster := properties[PodIdentityClusterKey]
 

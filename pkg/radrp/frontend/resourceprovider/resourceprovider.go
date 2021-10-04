@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resourceproviderv3
+package resourceprovider
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 
 var ErrUnsupportedResourceType = errors.New("unsupported resource type")
 
-//go:generate mockgen -destination=./mock_resourceprovider.go -package=resourceproviderv3 -self_package github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3 github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3 ResourceProvider
+//go:generate mockgen -destination=./mock_resourceprovider.go -package=resourceprovider -self_package github.com/Azure/radius/pkg/radrp/frontend/resourceprovider github.com/Azure/radius/pkg/radrp/frontend/resourceprovider ResourceProvider
 
 // ResourceProvider defines the business logic of the resource provider for Radius.
 type ResourceProvider interface {
