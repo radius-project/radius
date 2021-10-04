@@ -20,7 +20,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //BACKEND
 
   //ROUTE
-  resource daprBackend 'dapr.io.DaprHttpRoute' = {
+  resource backendDapr 'dapr.io.DaprHttpRoute' = {
     name: 'dapr-backend'
     properties: {
       appId: 'backend'
@@ -35,13 +35,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'registry/container:tag'
         env: {
-          BACKEND_ID: daprBackend.properties.appId
+          BACKEND_ID: backendDapr.properties.appId
         }
       }
       connections: {
         orders: {
           kind: 'dapr.io/DaprHttp'
-          source: daprBackend.id
+          source: backendDapr.id
         }
       }
     }
