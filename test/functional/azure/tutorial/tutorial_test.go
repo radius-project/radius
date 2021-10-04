@@ -79,7 +79,6 @@ func Test_TutorialDaprMicroservices(t *testing.T) {
 		},
 	})
 
-	test.Version = validation.AppModelV3
 	test.Test(t)
 }
 

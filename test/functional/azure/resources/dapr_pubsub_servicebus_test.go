@@ -75,8 +75,6 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 		},
 	})
 
-	test.Version = validation.AppModelV3
-
 	test.Test(t)
 }
 
@@ -134,8 +132,6 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 			},
 		},
 	})
-
-	test.Version = validation.AppModelV3
 
 	test.Test(t)
 }

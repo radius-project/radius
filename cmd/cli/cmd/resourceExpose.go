@@ -73,7 +73,7 @@ rad resource expose --application icecream-store ContainerComponent orders --por
 
 		failed, stop, signals, err := client.Expose(cmd.Context(), clients.ExposeOptions{
 			Application: application,
-			Component:   resourceName,
+			Resource:    resourceName,
 			Port:        localPort,
 			RemotePort:  remotePort,
 			Replica:     replica})

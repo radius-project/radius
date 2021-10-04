@@ -15,7 +15,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,8 +53,7 @@ func NewOutputResource(localID, outputResourceType, resourceKind string, managed
 	}
 }
 
-func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, version AppModelVersion, expected ComponentSet) {
-	componentsClient := radclient.NewComponentClient(armConnection, subscriptionID)
+func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, expected ComponentSet) {
 	genericClient := clients.NewGenericResourceClient(subscriptionID, authorizer)
 
 	failed := false
@@ -64,51 +62,33 @@ func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armCo
 		t.Logf("Validating output resources for component %s...", c.ComponentName)
 
 		all := []rest.OutputResource{}
-		if version == AppModelV2 {
-			t.Logf("Reading component %s...", c.ComponentName)
-			component, err := componentsClient.Get(context.Background(), resourceGroup, c.ApplicationName, c.ComponentName, nil)
-			require.NoError(t, err)
-			t.Logf("Finished reading component %s", c.ComponentName)
+		require.NotEmpty(t, c.ResourceType, "ResourceType must be set for v3")
 
-			for _, v := range component.ComponentResource.Properties.Status.OutputResources {
-				actual, err := convertToRestOutputResource(v)
-				require.NoError(t, err, "failed to convert output resource")
-				all = append(all, actual)
-			}
-		} else if version == AppModelV3 {
-			// TODO tcgnhia :)
+		id := azresources.MakeID(
+			subscriptionID,
+			resourceGroup,
+			azresources.ResourceType{
+				Type: azresources.CustomProvidersResourceProviders,
+				Name: azresources.CustomRPV3Name,
+			},
+			azresources.ResourceType{
+				Type: "Application",
+				Name: c.ApplicationName,
+			},
+			azresources.ResourceType{
+				Type: c.ResourceType,
+				Name: c.ComponentName,
+			})
 
-			require.NotEmpty(t, c.ResourceType, "ResourceType must be set for v3")
+		t.Logf("Reading resource %s %s...", c.ResourceType, c.ComponentName)
+		resource, err := genericClient.GetByID(context.Background(), strings.TrimPrefix(id, "/"), azresources.CustomRPApiVersion)
+		require.NoError(t, err)
+		t.Logf("Finished resource %s %s...", c.ResourceType, c.ComponentName)
 
-			id := azresources.MakeID(
-				subscriptionID,
-				resourceGroup,
-				azresources.ResourceType{
-					Type: azresources.CustomProvidersResourceProviders,
-					Name: azresources.CustomRPV3Name,
-				},
-				azresources.ResourceType{
-					Type: "Application",
-					Name: c.ApplicationName,
-				},
-				azresources.ResourceType{
-					Type: c.ResourceType,
-					Name: c.ComponentName,
-				})
+		actual, err := convertFromGenericToRestOutputResource(resource)
+		require.NoError(t, err)
 
-			t.Logf("Reading resource %s %s...", c.ResourceType, c.ComponentName)
-			resource, err := genericClient.GetByID(context.Background(), strings.TrimPrefix(id, "/"), azresources.CustomRPApiVersion)
-			require.NoError(t, err)
-			t.Logf("Finished resource %s %s...", c.ResourceType, c.ComponentName)
-
-			actual, err := convertFromGenericToRestOutputResource(resource)
-			require.NoError(t, err)
-
-			all = append(all, actual...)
-
-		} else {
-			require.Fail(t, "unsupported version", version)
-		}
+		all = append(all, actual...)
 
 		expected := []ExpectedOutputResource{}
 		t.Logf("Expected resources: ")
@@ -126,7 +106,7 @@ func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armCo
 
 		// Now we have the set of resources, so we can diff them against what's expected. We'll make copies
 		// of the expected and actual resources so we can 'check off' things as we match them.
-		actual := all
+		actual = all
 
 		// Iterating in reverse allows us to remove things without throwing off indexing
 		for actualIndex := len(actual) - 1; actualIndex >= 0; actualIndex-- {
@@ -194,21 +174,6 @@ func convertFromGenericToRestOutputResource(obj resources.GenericResource) ([]re
 	err = json.Unmarshal(b, &result)
 	if err != nil {
 		return nil, err
-	}
-
-	return result, nil
-}
-
-func convertToRestOutputResource(obj interface{}) (rest.OutputResource, error) {
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return rest.OutputResource{}, err
-	}
-
-	result := rest.OutputResource{}
-	err = json.Unmarshal(b, &result)
-	if err != nil {
-		return rest.OutputResource{}, err
 	}
 
 	return result, nil

@@ -74,8 +74,6 @@ func Test_CosmosDBMongoManaged(t *testing.T) {
 		},
 	})
 
-	test.Version = validation.AppModelV3
-
 	test.Test(t)
 }
 
@@ -134,8 +132,6 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 			},
 		},
 	})
-
-	test.Version = validation.AppModelV3
 
 	test.Test(t)
 }
