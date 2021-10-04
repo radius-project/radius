@@ -42,7 +42,7 @@ func showApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	applicationResource, err := client.ShowApplication(cmd.Context(), applicationName)
+	applicationResource, err := client.ShowApplicationV3(cmd.Context(), applicationName)
 	if err != nil {
 		return err
 	}

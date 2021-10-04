@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/azure/radclientv3"
 )
 
@@ -48,18 +47,6 @@ type LogStream struct {
 
 // ManagementClient is used to interface with management features like listing applications and components.
 type ManagementClient interface {
-	ListApplications(ctx context.Context) (*radclient.ApplicationList, error)
-	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
-	DeleteApplication(ctx context.Context, applicationName string) error
-
-	ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error)
-	ShowComponent(ctx context.Context, applicationName string, componentName string) (*radclient.ComponentResource, error)
-
-	ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error)
-	ShowDeployment(ctx context.Context, applicationName string, deploymentName string) (*radclient.DeploymentResource, error)
-	DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error
-
-	// V3 API.
 	ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error)
 	ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error)
 	DeleteApplicationV3(ctx context.Context, applicationName string) error

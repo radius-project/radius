@@ -102,7 +102,7 @@ func deleteAllApplications(ctx context.Context, authorizer autorest.Authorizer, 
 		return err
 	}
 
-	applicationList, err := client.ListApplications(ctx)
+	applicationList, err := client.ListApplicationsV3(ctx)
 	if err != nil {
 		return err
 	}
