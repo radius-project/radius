@@ -9,7 +9,7 @@ weight: 2000
 
 ## Define a Radius app as a .bicep file
 
-Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) as its file-format and structure. In this tutorial you will define an app named `dapr-hello` that will contain the container, statestore, and content generator components - all described in Bicep.
+Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) as its file-format and structure. In this tutorial you will define an app named `dapr-hello` that will contain the container, statestore, and content generator resources - all described in Bicep.
 
 Create a new file named `template.bicep` and paste the following:
 
@@ -17,13 +17,12 @@ Create a new file named `template.bicep` and paste the following:
 
 ## Add backend container
 
-Next you'll add a `backend` component for the website's backend.
+Next you'll add a `backend` resource for the website's backend.
 
-Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `backend` component in your template.bicep file will contain everything needed for the website backend to run.
+Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `backend` resource in your template.bicep file will contain everything needed for the website backend to run.
 
-Your `backend` component will specify:
+Your `backend` resource, which has resource type ContainerComponent, will specify:
 
-- **kind:** `radius.dev/Container@v1alpha1`, a generic container.
 - **container image:** `radius.azurecr.io/daprtutorial-backend`, a Docker image the container will run. This is where your application's backend code lives.
 
 Update your template.bicep file to match the full application definition:
@@ -47,24 +46,24 @@ Now you are ready to deploy the application for the first time.
 1. Confirm that your Radius application was deployed:
 
    ```sh
-   rad component list --application dapr-tutorial
+   rad resource list --application dapr-tutorial
    ```
 
-   You should see your `backend` component. Example output:
+   You should see your `backend` resource. Example output:
 
    ```
-   COMPONENT  KIND
-   backend    radius.dev/Container@v1alpha1
+   RESOURCE   TYPE
+   backend    ContainerComponent
    ```
 
 1. To test your `dapr-tutorial` application, open a local tunnel to your application:
 
    ```sh
-   rad component expose backend --application dapr-tutorial --port 3000
+   rad resource expose ContainerComponent backend --application dapr-tutorial --port 3000
    ```
 
-   {{% alert title="💡 rad component expose" color="primary" %}}
-   The [`rad component expose`]({{< ref rad_component_expose.md >}}) command accepts the component name, and flags for application name and port. If you changed any of these values when deploying, update your command to match.
+   {{% alert title="💡 rad resource expose" color="primary" %}}
+   The [`rad resource expose`]({{< ref rad_resource_expose.md >}}) command accepts the resource type, the resource name, and flags for application name and port. If you changed any of these values when deploying, update your command to match.
    {{% /alert %}}
 
 1. Visit the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. For now you should see a message like:
