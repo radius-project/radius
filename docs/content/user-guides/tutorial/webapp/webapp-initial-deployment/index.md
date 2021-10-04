@@ -8,28 +8,27 @@ weight: 2000
 
 ## Define a Radius app as a .bicep file
 
-Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) as its file-format and structure. In this tutorial you will define an app named `webapp` that will contain the container and database components, all described in Bicep.
+Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) as its file-format and structure. In this tutorial you will define an app named `webapp` that will contain the container and database resources, all described in Bicep.
 
 Create a new file named `template.bicep` and paste the following:
 
 {{< rad file="snippets/empty-app.bicep" embed=true >}}
 
-## Add a container component 
+## Add a container component
 
-Next you'll add a `todoapp` component for the website's frontend.
+Next you'll add a `todoapp` resource for the website's frontend.
 
-Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `todoapp` component in your template.bicep file will contain everything needed for the website frontend to run. 
+Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `todoapp` resource in your template.bicep file will contain everything needed for the website frontend to run.
 
-Your `todoapp` component will specify:  
-- **kind:** `radius.dev/Container@v1alpha1`, a generic container. 
-- **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives. 
+Your `todoapp`, which is a ContainerComponent resource, will specify:
+- **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives.
 - **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).[]
 
 Update your template.bicep file to match the full application definition:
 
 {{< rad file="snippets/container-app.bicep" embed=true >}}
 
-## Deploy the application 
+## Deploy the application
 
 Now you are ready to deploy the application for the first time.
 
@@ -43,35 +42,35 @@ Now you are ready to deploy the application for the first time.
    rad deploy template.bicep
    ```
 
-   This will deploy the application into your environment and launch the container resource for the frontend website. 
+   This will deploy the application into your environment and launch the container resource for the frontend website.
 
 3. Confirm that your Radius application was deployed:
 
    ```sh
-   rad component list --application webapp
+   rad resource list --application webapp
    ```
-   
-   You should see your `todoapp` component. Example output: 
+
+   You should see your `todoapp` resource. Example output:
    ```
-   COMPONENT  KIND
-   todoapp    radius.dev/Container@v1alpha1 
+   RESOURCE   TYPE
+   todoapp    ContainerComponent
    ```
 
 4. To test your `webapp` application, open a local tunnel to your application:
 
    ```sh
-   rad component expose todoapp --application webapp --port 3000
+   rad resource expose ContainerComponent todoapp --application webapp --port 3000
    ```
 
    {{% alert title="💡 rad expose" color="primary" %}}
-   The [`rad expose`]({{< ref rad_component_expose >}}) command requires the component name, application name flag, and port flag. If you changed any of these names when deploying, update your command to match.
+   The [`rad resource expose`]({{< ref rad_resource_expose >}}) command requires the resource type, resource name, application name flag, and port flag. If you changed any of these names when deploying, update your command to match.
    {{% /alert %}}
 
 5. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. For now you should see a page like:
 
    <img src="todoapp-nodb.png" width="400" alt="screenshot of the todo application with no database">
 
-   If the page you see matches the screenshot, that means the container is running as expected. 
+   If the page you see matches the screenshot, that means the container is running as expected.
 
    You can play around with the application's features features:
    - Add a todo item
