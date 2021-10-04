@@ -184,31 +184,6 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 		return renderers.RendererOutput{}, armerr, err
 	}
 
-	// == replace this with above few lines
-	// rendererDependencies := map[string]renderers.RendererDependency{}
-	// for _, dependencyResourceID := range dependencyResourceIDs {
-	// 	// Fetch resource from db
-	// 	dbDependencyResource, err := dp.db.GetV3Resource(ctx, dependencyResourceID)
-	// 	if err != nil {
-	// 		armerr := &armerrors.ErrorDetails{
-	// 			Code:    armerrors.Internal,
-	// 			Message: err.Error(),
-	// 			Target:  resourceID.ID,
-	// 		}
-	// 		return renderers.RendererOutput{}, armerr, err
-	// 	}
-
-	// 	rendererDependency := renderers.RendererDependency{
-	// 		ResourceID:     dependencyResourceID,
-	// 		Definition:     dbDependencyResource.Definition,
-	// 		ComputedValues: dbDependencyResource.ComputedValues,
-	// 	}
-	// 	rendererDependencies[dependencyResourceID.ID] = rendererDependency
-	// 	// dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-	// 	// return err
-	// }
-	// == replace block ends
-
 	rendererOutput, err := renderer.Render(ctx, rendererResource, rendererDependencies)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
@@ -244,7 +219,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		// no-op - a resource will only exist if this is an update
 	} else if err != nil {
 		armerr = &armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
+			Code:    armerrors.Internal,
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
