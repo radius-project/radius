@@ -3,7 +3,7 @@ param OCHESTRATOR_TYPE string = 'K8S'
 param APPLICATION_INSIGHTS_KEY string = ''
 
 resource eshop 'radius.dev/Application@v1alpha3' = {
-  name: 'eShop'
+  name: 'eshop'
 
   // APIs -----------------------------------------------
 
@@ -36,15 +36,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: identityHttp.id
-            //Port 5105
           }
         }
       }
       traits: [
-        {
-          kind: 'radius.dev/InboundRoute@v1alpha1'
-          binding: 'http'
-        }
       ]
       connections: {
         sql: {
@@ -85,6 +80,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource identityHttp 'HttpRoute' = {
     name: 'identity-http'
+    properties: {
+      port: 5105
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/catalog-api
@@ -111,19 +109,13 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: catalogHttp.id
-            // Port 5101
           }
           grpc: {
             containerPort: 81
-            // Port 9101
           }
         }
       }
       traits: [
-        {
-          kind: 'radius.dev/InboundRoute@v1alpha1'
-          binding: 'http'
-        }
       ]
       connections: {
         sql: {
@@ -140,10 +132,19 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource catalogHttp 'HttpRoute' = {
     name: 'catalog-http'
+    properties: {
+      port: 5101
+      gateway: {
+        hostname: '*'
+      }
+    }
   }
 
-  resource catalogGrpc 'GrpcRoute' = {
+  resource catalogGrpc 'HttpRoute' = {
     name: 'catalog-grpc'
+    properties: {
+      port: 9101
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/ordering-api
@@ -158,8 +159,8 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'UseCustomizationData': 'False'
           'AzureServiceBusEnabled': 'True'
           'CheckUpdateTime': '30000'
-          'ApplicationInsights__InstrumentationKey': '${APPLICATION_INSIGHTS_KEY}'
-          'OrchestratorType': '${OCHESTRATOR_TYPE}'
+          'ApplicationInsights__InstrumentationKey': APPLICATION_INSIGHTS_KEY
+          'OrchestratorType': OCHESTRATOR_TYPE
           'UseLoadTest': 'False'
           'Serilog__MinimumLevel__Override__Microsoft.eShopOnContainers.BuildingBlocks.EventBusRabbitMQ': 'Verbose'
           'Serilog__MinimumLevel__Override__ordering-api': 'Verbose'
@@ -175,12 +176,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: orderingHttp.id
-            //Port 5102
           }
           grpc: {
             containerPort: 81
             provides: orderingGrpc.id
-            //Port 9102
           }
         }
       }
@@ -204,10 +203,16 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource orderingHttp 'HttpRoute' = {
     name: 'ordering-http'
+    properties: {
+      port: 5102
+    }
   }
 
-  resource orderingGrpc 'GrpcRoute' = {
+  resource orderingGrpc 'HttpRoute' = {
     name: 'ordering-grpc'
+    properties: {
+      port: 9102
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/basket-api
@@ -235,12 +240,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: basketHttp.id
-            //Port 5103
           }
           grpc: {
             containerPort: 81
             provides: basketGrpc.id
-            //Port 9103
           }
         }
       }
@@ -264,10 +267,16 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource basketHttp 'HttpRoute' = {
     name: 'basket-http'
+    properties: {
+      port: 5103
+    }
   }
 
-  resource basketGrpc 'GrpcRoute' = {
+  resource basketGrpc 'HttpRoute' = {
     name: 'basket-grpc'
+    properties: {
+      port: 9103
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webhooks-api
@@ -290,7 +299,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: webhooksHttp.id
-            //Port 5113
           }
         }
       }
@@ -314,6 +322,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource webhooksHttp 'HttpRoute' = {
     name: 'webhooks-http'
+    properties: {
+      port: 5113
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/payment-api
@@ -330,13 +341,12 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'Serilog__MinimumLevel__Override__Microsoft.eShopOnContainers.BuildingBlocks.EventBusRabbitMQ': 'Verbose'
           'OrchestratorType': OCHESTRATOR_TYPE
           'AzureServiceBusEnabled': 'True'
-          'EventBusConnection': servicebus.connectionString()
+          'EventBusConnection': servicebus.properties.queueConnectionString
         }
         ports: {
           http: {
             containerPort: 80
             provides: paymentHttp.id
-            //Port 5108
           }
         }
       }
@@ -352,6 +362,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource paymentHttp 'HttpRoute' = {
     name: 'payment-http'
+    properties: {
+      port: 5108
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/ordering-backgroundtasks
@@ -378,7 +391,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: orderbgtasksHttp.id
-            //Port 5111
           }
         }
       }
@@ -398,6 +410,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource orderbgtasksHttp 'HttpRoute' = {
     name: 'orderbgtasks-http'
+    properties: {
+      port: 5111
+    }
   }
 
   // Other ---------------------------------------------
@@ -428,7 +443,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: webshoppingaggHttp.id
-            //Port 5121
           }
         }
       }
@@ -460,6 +474,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource webshoppingaggHttp 'HttpRoute' = {
     name: 'webshoppingagg-http'
+    properties: {
+      port: 5121
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/apigwws
@@ -473,12 +490,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: webshoppingapigwHttp.id
-            //Port 5202
           }
           http2: {
             containerPort: 8001
             provides: webshoppingapigwHttp2.id
-            //Port 15202
           }
         }
       }
@@ -489,16 +504,21 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource webshoppingapigwHttp 'HttpRoute' = {
     name: 'webshoppingapigw-http'
+    properties: {
+      port: 5202
+    }
   }
 
   resource webshoppingapigwHttp2 'HttpRoute' = {
     name: 'webshoppingapigw-http-2'
+    properties: {
+      port: 15202
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/ordering-signalrhub
   resource orderingsignalrhub 'ContainerComponent' = {
     name: 'ordering-signalrhub'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       container: {
         image: 'eshop/ordering.signalrhub:latest'
@@ -517,7 +537,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: orderingsignalrhubHttp.id
-            //Port 5112
           }
         }
       }
@@ -549,6 +568,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource orderingsignalrhubHttp 'HttpRoute' = {
     name: 'orderingsignalrhub-http'
+    properties: {
+      port: 5112
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webhooks-web
@@ -569,7 +591,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: webhooksclientHttp.id
-            //Port 5114
           }
         }
       }
@@ -589,6 +610,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource webhooksclientHttp 'HttpRoute' = {
     name: 'webhooksclient-http'
+    properties: {
+      port: 5114
+    }
   }
 
   // Sites ----------------------------------------------
@@ -631,7 +655,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: webstatusHttp.id
-            //Port 8107
           }
         }
       }
@@ -642,6 +665,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource webstatusHttp 'HttpRoute' = {
     name: 'webstatus-http'
+    properties: {
+      port: 8107
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webspa
@@ -666,7 +692,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: webspaHttp.id
-            //Port 5104
           }
         }
       }
@@ -694,6 +719,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource webspaHttp 'HttpRoute' = {
     name: 'webspa-http'
+    properties: {
+      port: 5104
+    }
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webmvc
@@ -719,7 +747,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           http: {
             containerPort: 80
             provides: webmvcHttp.id
-            //Port 5100
           }
         }
       }
@@ -747,6 +774,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource webmvcHttp 'HttpRoute' = {
     name: 'webmvc-http'
+    properties: {
+      port: 5100
+    }
   }
 
   // Logging --------------------------------------------
@@ -763,7 +793,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           web: {
             containerPort: 80
             provides:seqHttp.id
-            //Ports 5340
           }
         }
       }
@@ -774,6 +803,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource seqHttp 'HttpRoute' = {
     name: 'seq-http'
+    properties: {
+      port: 5340
+    }
   }
 
   // Resources ------------------------------------------
@@ -821,7 +853,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource mongodb 'mongodb.com.MongoComponent' = {
+  resource mongodb 'mongodb.com.MongoDBComponent' = {
     name: 'mongodb'
     properties: {
       managed: true
