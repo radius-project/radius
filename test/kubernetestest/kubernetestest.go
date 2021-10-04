@@ -148,11 +148,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	radiusControllerLogSync.Do(func() {
 		err := validation.SaveLogsForController(ctx, at.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
-<<<<<<< HEAD
 			t.Errorf("failed to capture logs from radius controller: %v", err)
-=======
-			t.Errorf("failed to capture logs from radius controller: %v:", err)
->>>>>>> 1420c6df (First round of code deletion)
 		}
 	})
 
