@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "DaprInvokeRouteResource": {
-      "description": "Resource that specifies an Dapr Service Invocation Route. A Dapr Service Invocation Route describes a pattern of communication between components.",
+    "DaprHttpRouteResource": {
+      "description": "Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between components.",
       "type": "object",
       "x-ms-azure-resource": true,
       "allOf": [
@@ -15,11 +15,11 @@
       ],
       "properties": {
         "properties": {
-          "$ref": "#/definitions/DaprInvokeRouteProperties"
+          "$ref": "#/definitions/DaprHttpRouteProperties"
         }
       }
     },
-    "DaprInvokeRouteProperties": {
+    "DaprHttpRouteProperties": {
       "type": "object",
       "additionalProperties": false,
       "allOf": [
@@ -32,7 +32,7 @@
       ],
       "properties": {
         "appId": {
-          "description": "The Dapr appId used for the reoute",
+          "description": "The Dapr appId used for the route",
           "type": "string"
         }
       }

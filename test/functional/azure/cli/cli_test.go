@@ -47,7 +47,7 @@ func Test_CLI(t *testing.T) {
 
 	templateFilePath := filepath.Join(cwd, template)
 	t.Logf("deploying %s from file %s", application, template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath, validation.AppModelV3)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	err = cli.Deploy(ctx, templateFilePath)
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)
@@ -72,7 +72,7 @@ azure-cli
 	})
 
 	t.Run("Validate rad resource list", func(t *testing.T) {
-		output, err := cli.ComponentList(ctx, application)
+		output, err := cli.ResourceList(ctx, application)
 		require.NoError(t, err)
 
 		// Resource ordering can vary so we don't assert exact output.
@@ -81,12 +81,12 @@ azure-cli
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		output, err := cli.ComponentShow(ctx, application, "ContainerComponent", "a")
+		output, err := cli.ResourceShow(ctx, application, "ContainerComponent", "a")
 		require.NoError(t, err)
 		// We are more interested in the content and less about the formatting, which
 		// is already covered by unit tests. The spaces change depending on the input
 		// and it takes very long to get a feedback from CI.
-		expected, _ := regexp.Compile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
+		expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
 a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
 		match := expected.MatchString(output)
@@ -94,7 +94,7 @@ a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 	})
 
 	t.Run("Validate rad resoure logs ContainerComponent", func(t *testing.T) {
-		output, err := cli.ComponentLogs(ctx, application, "a")
+		output, err := cli.ResourceLogs(ctx, application, "a")
 		require.NoError(t, err)
 
 		// We don't want to be too fragile so we're not validating the logs in depth
@@ -110,7 +110,7 @@ a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 
 		done := make(chan error)
 		go func() {
-			_, err = cli.ComponentExpose(child, application, "a", port, 3000)
+			_, err = cli.ResourceExpose(child, application, "a", port, 3000)
 			done <- err
 		}()
 
@@ -121,7 +121,7 @@ a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 			if err != nil {
 				if i == retries-1 {
 					// last retry failed, report failure
-					require.NoError(t, err, "failed to get connect to component after %d retries", retries)
+					require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
 				}
 				t.Logf("got error %s", err.Error())
 				time.Sleep(1 * time.Second)

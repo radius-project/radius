@@ -291,7 +291,7 @@ func TestComponentValidator(t *testing.T) {
                       }
                     },
                     "traits": [{
-                      "kind":   "dapr.io/App@v1alpha1",
+                      "kind":   "dapr.io/Sidecar@v1alpha1",
                       "appId":   "appId",
                       "appPort": 9090
                     }]

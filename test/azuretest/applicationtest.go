@@ -35,7 +35,6 @@ type ApplicationTest struct {
 	Options          TestOptions
 	Application      string
 	Description      string
-	Version          validation.AppModelVersion
 	SkipDeletion     bool
 	Steps            []Step
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
@@ -46,7 +45,6 @@ func NewApplicationTest(t *testing.T, application string, steps []Step) Applicat
 		Options:     NewTestOptions(t),
 		Application: application,
 		Description: application,
-		Version:     validation.AppModelV2, // Assume V3 unless overridden
 		Steps:       steps,
 	}
 }
@@ -79,7 +77,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
 
-	cli := radcli.NewCLI(t, at.Options.ConfigFilePath, at.Version)
+	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
@@ -116,7 +114,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				validation.ValidateOutputResources(t, at.Options.ARMAuthorizer, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Version, *step.Components)
+				validation.ValidateOutputResources(t, at.Options.ARMAuthorizer, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.Components)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 

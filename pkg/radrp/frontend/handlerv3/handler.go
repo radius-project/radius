@@ -7,6 +7,7 @@ package handlerv3
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -216,6 +217,34 @@ func (h *handler) DeleteResource(w http.ResponseWriter, req *http.Request) {
 func (h *handler) GetOperation(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	response, err := h.rp.GetOperation(ctx, resourceID(req))
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+
+	err = response.Apply(ctx, w, req)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+}
+
+func (h *handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	body, err := readJSONBody(req)
+	if err != nil {
+		badRequest(ctx, w, req, err)
+		return
+	}
+
+	input := resourceproviderv3.ListSecretsInput{}
+	err = json.Unmarshal(body, &input)
+	if err != nil {
+		badRequest(ctx, w, req, err)
+		return
+	}
+
+	response, err := h.rp.ListSecrets(ctx, input)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return

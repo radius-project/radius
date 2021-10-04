@@ -23,8 +23,8 @@ type CustomActionResponse struct {
 	Response autorest.Response
 }
 
-func (client CustomActionClient) InvokeCustomAction(ctx context.Context, id string, apiVersion string, action string) (result CustomActionResponse, err error) {
-	req, err := client.InvokeCustomActionPreparer(ctx, id, apiVersion, action)
+func (client CustomActionClient) InvokeCustomAction(ctx context.Context, id string, apiVersion string, action string, body interface{}) (result CustomActionResponse, err error) {
+	req, err := client.InvokeCustomActionPreparer(ctx, id, apiVersion, action, body)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "CustomActionClient", "InvokeCustomAction", nil, "Failure preparing request")
 		return
@@ -45,9 +45,9 @@ func (client CustomActionClient) InvokeCustomAction(ctx context.Context, id stri
 	return
 }
 
-func (client CustomActionClient) InvokeCustomActionPreparer(ctx context.Context, id string, apiVersion string, action string) (*http.Request, error) {
+func (client CustomActionClient) InvokeCustomActionPreparer(ctx context.Context, id string, apiVersion string, action string, body interface{}) (*http.Request, error) {
 	pathParameters := map[string]interface{}{
-		"id":     autorest.Encode("path", id),
+		"id":     autorest.Encode("none", id),
 		"action": autorest.Encode("path", action),
 	}
 
@@ -61,6 +61,10 @@ func (client CustomActionClient) InvokeCustomActionPreparer(ctx context.Context,
 		autorest.WithBaseURL(client.BaseURI),
 		autorest.WithPathParameters("{id}/{action}", pathParameters),
 		autorest.WithQueryParameters(queryParameters))
+	if body != nil {
+		preparer = autorest.DecoratePreparer(preparer, autorest.WithJSON(body))
+	}
+
 	return preparer.Prepare((&http.Request{}).WithContext(ctx))
 }
 

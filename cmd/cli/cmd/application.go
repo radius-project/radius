@@ -11,8 +11,8 @@ import (
 
 var applicationCmd = &cobra.Command{
 	Use:   "application",
-	Short: "Manage applications",
-	Long:  `Manage applications`,
+	Short: "Manage RAD applications",
+	Long:  `Manage RAD applications`,
 }
 
 func init() {

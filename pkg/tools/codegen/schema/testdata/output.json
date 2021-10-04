@@ -627,7 +627,7 @@
         }
       },
       "type": "object",
-      "x-ms-discriminator-value": "dapr.io/App@v1alpha1"
+      "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
     },
     "InboundRouteTrait": {
       "additionalProperties": false,

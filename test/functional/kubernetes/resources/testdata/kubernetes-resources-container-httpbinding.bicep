@@ -1,11 +1,16 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-container-httpbinding'
+
   resource frontendhttp 'HttpRoute' = {
     name: 'frontendhttp'
     properties: {
       port: 80
+      gateway: {
+        hostname: '*'
+      }
     }
   }
+
   resource frontend 'ContainerComponent' = {
     name: 'frontend'
     properties: {
@@ -28,12 +33,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           SERVICE__BACKEND__PORT: '${backendhttp.properties.port}'
         }
       }
-      traits: [
-        {
-          kind: 'radius.dev/InboundRoute@v1alpha1'
-          binding: 'web'
-        }
-      ]
     }
   }
   resource backendhttp 'HttpRoute' = {

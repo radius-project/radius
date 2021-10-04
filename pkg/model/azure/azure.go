@@ -14,11 +14,10 @@ import (
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha3"
 	"github.com/Azure/radius/pkg/renderers/cosmosdbsqlv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/dapr"
+	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/inboundroute"
 	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
@@ -34,7 +33,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 	renderers := map[string]workloads.WorkloadRenderer{
 		daprstatestorev1alpha1.Kind:  &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues},
 		daprpubsubv1alpha1.Kind:      &daprpubsubv1alpha1.Renderer{},
-		containerv1alpha1.Kind:       &inboundroute.Renderer{Inner: &dapr.Renderer{Inner: &containerv1alpha1.Renderer{Arm: arm}}},
+		containerv1alpha1.Kind:       &containerv1alpha1.Renderer{Arm: arm},
 		servicebusqueuev1alpha1.Kind: &servicebusqueuev1alpha1.Renderer{Arm: arm},
 		keyvaultv1alpha1.Kind:        &keyvaultv1alpha1.Renderer{Arm: arm},
 	}
@@ -66,8 +65,13 @@ func NewAzureModelV3(arm armauth.ArmConfig, k8s client.Client) model.Application
 		httproutev1alpha3.ResourceType: &httproutev1alpha3.Renderer{},
 
 		// Dapr
-		daprpubsubv1alpha1.ResourceType:     &renderers.V1RendererAdapter{Inner: &daprpubsubv1alpha1.Renderer{}},
-		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{}},
+		daprhttproutev1alpha3.ResourceType: &daprhttproutev1alpha3.Renderer{},
+		daprpubsubv1alpha1.ResourceType:    &renderers.V1RendererAdapter{Inner: &daprpubsubv1alpha1.Renderer{}},
+		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{
+			Inner: &daprstatestorev1alpha1.Renderer{
+				StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues,
+			},
+		},
 
 		// OSS
 		mongodbv1alpha3.ResourceType: &mongodbv1alpha3.AzureRenderer{},

@@ -156,6 +156,21 @@ func (mr *MockResourceProviderMockRecorder) ListResources(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResources", reflect.TypeOf((*MockResourceProvider)(nil).ListResources), arg0, arg1)
 }
 
+// ListSecrets mocks base method.
+func (m *MockResourceProvider) ListSecrets(arg0 context.Context, arg1 ListSecretsInput) (rest.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSecrets", arg0, arg1)
+	ret0, _ := ret[0].(rest.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSecrets indicates an expected call of ListSecrets.
+func (mr *MockResourceProviderMockRecorder) ListSecrets(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSecrets", reflect.TypeOf((*MockResourceProvider)(nil).ListSecrets), arg0, arg1)
+}
+
 // UpdateApplication mocks base method.
 func (m *MockResourceProvider) UpdateApplication(arg0 context.Context, arg1 azresources.ResourceID, arg2 []byte) (rest.Response, error) {
 	m.ctrl.T.Helper()

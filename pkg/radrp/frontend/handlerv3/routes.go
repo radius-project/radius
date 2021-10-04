@@ -22,10 +22,14 @@ func AddRoutes(rp resourceproviderv3.ResourceProvider, router *mux.Router, valid
 	h := handler{rp: rp, validatorFactory: validatorFactory}
 	var subrouter *mux.Router
 
-	var applicationCollectionPath = fmt.Sprintf(
-		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application",
+	var providerPath = fmt.Sprintf(
+		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
+
+	router.Path(fmt.Sprintf("%s/listSecrets", providerPath)).Methods("POST").HandlerFunc(h.ListSecrets)
+
+	var applicationCollectionPath = fmt.Sprintf("%s/Application", providerPath)
 	var applicationItemPath = fmt.Sprintf("%s/{%s}", applicationCollectionPath, azresources.ApplicationNameKey)
 
 	var resourceCollectionPath = fmt.Sprintf("%s/{%s}", applicationItemPath, azresources.ResourceTypeKey)

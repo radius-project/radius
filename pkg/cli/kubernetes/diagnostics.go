@@ -44,9 +44,9 @@ func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clien
 	var replica *corev1.Pod
 
 	if options.Replica != "" {
-		replica, err = getSpecificReplica(ctx, dc.Client, namespace, options.Component, options.Replica)
+		replica, err = getSpecificReplica(ctx, dc.Client, namespace, options.Resource, options.Replica)
 	} else {
-		replica, err = getRunningReplica(ctx, dc.Client, namespace, options.Application, options.Component)
+		replica, err = getRunningReplica(ctx, dc.Client, namespace, options.Application, options.Resource)
 	}
 
 	if err != nil {
@@ -79,13 +79,13 @@ func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients
 	var err error
 
 	if options.Replica != "" {
-		replica, err := getSpecificReplica(ctx, dc.Client, namespace, options.Component, options.Replica)
+		replica, err := getSpecificReplica(ctx, dc.Client, namespace, options.Resource, options.Replica)
 		if err != nil {
 			return nil, err
 		}
 		replicas = append(replicas, *replica)
 	} else {
-		replicas, err = getRunningReplicas(ctx, dc.Client, namespace, options.Application, options.Component)
+		replicas, err = getRunningReplicas(ctx, dc.Client, namespace, options.Application, options.Resource)
 		if err != nil {
 			return nil, err
 		}
@@ -116,13 +116,13 @@ func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *Kube
 			// We don't really expect this to fail, but let's do something reasonable if it does...
 			container = getAppContainerName(&replica)
 			if container == "" {
-				return streams, fmt.Errorf("failed to find the default container for component '%s'. use '--container <name>' to specify the name", options.Component)
+				return streams, fmt.Errorf("failed to find the default container for resource '%s'. use '--container <name>' to specify the name", options.Resource)
 			}
 		}
 
 		stream, err := streamLogs(ctx, dc.RestConfig, dc.Client, &replica, container, follow)
 		if err != nil {
-			return streams, fmt.Errorf("failed to open log stream to %s: %w", options.Component, err)
+			return streams, fmt.Errorf("failed to open log stream to %s: %w", options.Resource, err)
 		}
 		streams = append(streams, clients.LogStream{Name: replica.Name, Stream: stream})
 	}

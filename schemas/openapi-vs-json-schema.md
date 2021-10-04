@@ -67,7 +67,7 @@ Take a look at `/schemas/rest-api-spec/radius.json`'s `"definitions"` section to
 ### What is it?
 
 It is a simple way of allowing polymorphism using a "discriminator" field. For examples, we will have different spec of a `ComponentTrait` depending on the `ComponentTrait#Kind` field:
-- Kind == "dapr.io/App@v1alpha1" => assuming `DaprComponentTrait`
+- Kind == "dapr.io/Sidecar@v1alpha1" => assuming `DaprComponentTrait`
 - Kind == "radius.dev/ManualScaling@v1alpha1" => assuming `ManualScalingTrait`.
 
 ### Discrimated union in JSON Schema
@@ -89,7 +89,7 @@ This is very often done using the `oneOf` syntax, which is supported in both Ope
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["dapr.io/App@v1alpha1"]
+          "enum": ["dapr.io/Sidecar@v1alpha1"]
         },
       },
     },
@@ -135,7 +135,7 @@ This is very often done using the `oneOf` syntax, which is supported in both Ope
     "DaprTrait": {
       "type": "object",
       "allOf": [{"$ref": "#/definitions/ComponentTrait"}],
-      "x-ms-discriminator-value": "dapr.io/App@v1alpha1",
+      "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1",
     },
     "ManualScalingTrait": {
       "type": "object",

@@ -113,7 +113,7 @@ func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options 
 
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath, validation.AppModelV3)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	err = cli.Deploy(ctx, templateFilePath)
 	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
@@ -148,16 +148,16 @@ func (at ApplicationTest) Test(t *testing.T) {
 	radiusControllerLogSync.Do(func() {
 		err := validation.SaveLogsForController(ctx, at.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %w", err)
+			t.Errorf("failed to capture logs from radius controller: %v", err)
 		}
 	})
 
 	err := validation.SaveLogsForApplication(ctx, at.Options.K8sClient, "default", logPrefix+"/"+at.Application, at.Application)
 	if err != nil {
-		t.Errorf("failed to capture logs from radius pods %w", err)
+		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
 
-	cli := radcli.NewCLI(t, at.Options.ConfigFilePath, validation.AppModelV3)
+	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.

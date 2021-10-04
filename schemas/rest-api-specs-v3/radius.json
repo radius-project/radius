@@ -513,7 +513,7 @@
           "enum": [
             "azure.com/KeyVault",
             "azure.com/ServiceBusQueue",
-            "dapr.io/Invoke",
+            "dapr.io/DaprHttp",
             "dapr.io/PubSubTopic",
             "dapr.io/StateStore",
             "Grpc",
@@ -557,13 +557,13 @@
       ],
       "type": "object"
     },
-    "DaprInvokeRouteList": {
-      "description": "List of dapr.io.InvokeRoute resources.",
+    "DaprHttpRouteList": {
+      "description": "List of dapr.io.DaprHttpRoute resources.",
       "properties": {
         "value": {
-          "description": "List of dapr.io.InvokeRoute resources.",
+          "description": "List of dapr.io.DaprHttpRoute resources.",
           "items": {
-            "$ref": "#/definitions/DaprInvokeRouteResource"
+            "$ref": "#/definitions/DaprHttpRouteResource"
           },
           "type": "array"
         }
@@ -573,7 +573,7 @@
       ],
       "type": "object"
     },
-    "DaprInvokeRouteProperties": {
+    "DaprHttpRouteProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -582,7 +582,7 @@
       ],
       "properties": {
         "appId": {
-          "description": "The Dapr appId used for the reoute",
+          "description": "The Dapr appId used for the route",
           "type": "string"
         }
       },
@@ -591,16 +591,16 @@
       ],
       "type": "object"
     },
-    "DaprInvokeRouteResource": {
+    "DaprHttpRouteResource": {
       "allOf": [
         {
           "$ref": "#/definitions/ProxyResource"
         }
       ],
-      "description": "Resource that specifies an Dapr Service Invocation Route. A Dapr Service Invocation Route describes a pattern of communication between components.",
+      "description": "Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between components.",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/DaprInvokeRouteProperties"
+          "$ref": "#/definitions/DaprHttpRouteProperties"
         }
       },
       "required": [
@@ -676,6 +676,43 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
+    "DaprSidecarTrait": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/ComponentTrait"
+        }
+      ],
+      "description": "The specifies that the component should have a Dapr sidecar injected",
+      "properties": {
+        "appId": {
+          "description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation.",
+          "type": "string"
+        },
+        "appPort": {
+          "description": "The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. ",
+          "type": "integer"
+        },
+        "config": {
+          "description": "Specifies the Dapr configuration to use for the component.",
+          "type": "string"
+        },
+        "protocol": {
+          "description": "Specifies the Dapr app-protocol to use for the component.",
+          "enum": [
+            "http",
+            "grpc"
+          ],
+          "type": "string"
+        },
+        "provides": {
+          "description": "Specifies the resource id of a dapr.io.DaprHttpRoute that can route traffic to this component.",
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
+    },
     "DaprStateStoreComponentList": {
       "description": "List of dapr.io.StateStoreComponent resources.",
       "properties": {
@@ -742,27 +779,6 @@
       ],
       "type": "object",
       "x-ms-azure-resource": true
-    },
-    "DaprTrait": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/ComponentTrait"
-        }
-      ],
-      "description": "Dapr ComponentTrait",
-      "properties": {
-        "appId": {
-          "description": "Dapr appId.",
-          "type": "string"
-        },
-        "appPort": {
-          "description": "Dapr appPort.",
-          "type": "integer"
-        }
-      },
-      "type": "object",
-      "x-ms-discriminator-value": "dapr.io/App@v1alpha1"
     },
     "EphemeralVolume": {
       "additionalProperties": false,
@@ -1992,10 +2008,10 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "DaprInvokeRouteNameParameter": {
-      "description": "The name of the dapr.io.InvokeRoute resource.",
+    "DaprHttpRouteNameParameter": {
+      "description": "The name of the dapr.io.DaprHttpRoute resource.",
       "in": "path",
-      "name": "daprInvokeRouteName",
+      "name": "daprHttpRouteName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -3592,10 +3608,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.DaprHttpRoute": {
       "get": {
-        "description": "List the dapr.io.InvokeRoute resources deployed in the application.",
-        "operationId": "dapr.io.InvokeRoute_List",
+        "description": "List the dapr.io.DaprHttpRoute resources deployed in the application.",
+        "operationId": "dapr.io.DaprHttpRoute_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3612,9 +3628,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of dapr.io.InvokeRoute resources was retrieved successfully.",
+            "description": "The list of dapr.io.DaprHttpRoute resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprInvokeRouteList"
+              "$ref": "#/definitions/DaprHttpRouteList"
             }
           },
           "default": {
@@ -3625,14 +3641,14 @@
           }
         },
         "tags": [
-          "dapr.io.InvokeRoute"
+          "dapr.io.DaprHttpRoute"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeRoute/{daprInvokeRouteName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.DaprHttpRoute/{daprHttpRouteName}": {
       "delete": {
-        "description": "Deletes a dapr.io.InvokeRoute resource.",
-        "operationId": "dapr.io.InvokeRoute_Delete",
+        "description": "Deletes a dapr.io.DaprHttpRoute resource.",
+        "operationId": "dapr.io.DaprHttpRoute_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3644,7 +3660,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
+            "$ref": "#/parameters/DaprHttpRouteNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3652,10 +3668,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the dapr.io.InvokeRoute will complete asynchronously."
+            "description": "The request to delete the dapr.io.DaprHttpRoute will complete asynchronously."
           },
           "204": {
-            "description": "The dapr.io.InvokeRoute resource was successfully deleted."
+            "description": "The dapr.io.DaprHttpRoute resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -3665,7 +3681,7 @@
           }
         },
         "tags": [
-          "dapr.io.InvokeRoute"
+          "dapr.io.DaprHttpRoute"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3673,8 +3689,8 @@
         }
       },
       "get": {
-        "description": "Gets a dapr.io.InvokeRoute resource by name.",
-        "operationId": "dapr.io.InvokeRoute_Get",
+        "description": "Gets a dapr.io.DaprHttpRoute resource by name.",
+        "operationId": "dapr.io.DaprHttpRoute_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3686,7 +3702,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
+            "$ref": "#/parameters/DaprHttpRouteNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3694,9 +3710,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The dapr.io.InvokeRoute resource was retrieved successfully.",
+            "description": "The dapr.io.DaprHttpRoute resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprInvokeRouteResource"
+              "$ref": "#/definitions/DaprHttpRouteResource"
             }
           },
           "default": {
@@ -3707,12 +3723,12 @@
           }
         },
         "tags": [
-          "dapr.io.InvokeRoute"
+          "dapr.io.DaprHttpRoute"
         ]
       },
       "put": {
-        "description": "Creates or updates a dapr.io.InvokeRoute resource.",
-        "operationId": "dapr.io.InvokeRoute_CreateOrUpdate",
+        "description": "Creates or updates a dapr.io.DaprHttpRoute resource.",
+        "operationId": "dapr.io.DaprHttpRoute_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3724,15 +3740,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprInvokeRouteNameParameter"
+            "$ref": "#/parameters/DaprHttpRouteNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.InvokeRoute resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.DaprHttpRoute resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/DaprInvokeRouteResource"
+              "$ref": "#/definitions/DaprHttpRouteResource"
             }
           },
           {
@@ -3741,21 +3757,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing dapr.io.InvokeRoute resource was successfully updated.",
+            "description": "The existing dapr.io.DaprHttpRoute resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprInvokeRouteResource"
+              "$ref": "#/definitions/DaprHttpRouteResource"
             }
           },
           "201": {
-            "description": "The new dapr.io.InvokeRoute resource was successfully created.",
+            "description": "The new dapr.io.DaprHttpRoute resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/DaprInvokeRouteResource"
+              "$ref": "#/definitions/DaprHttpRouteResource"
             }
           },
           "202": {
-            "description": "The existing dapr.io.InvokeRoute resource was successfully updated.",
+            "description": "The existing dapr.io.DaprHttpRoute resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprInvokeRouteResource"
+              "$ref": "#/definitions/DaprHttpRouteResource"
             }
           },
           "default": {
@@ -3766,7 +3782,7 @@
           }
         },
         "tags": [
-          "dapr.io.InvokeRoute"
+          "dapr.io.DaprHttpRoute"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {

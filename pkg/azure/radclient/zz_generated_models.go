@@ -337,7 +337,7 @@ type DaprTrait struct {
 
 // MarshalJSON implements the json.Marshaller interface for type DaprTrait.
 func (d DaprTrait) MarshalJSON() ([]byte, error) {
-	objectMap := d.ComponentTrait.marshalInternal("dapr.io/App@v1alpha1")
+	objectMap := d.ComponentTrait.marshalInternal("dapr.io/Sidecar@v1alpha1")
 	populate(objectMap, "appId", d.AppID)
 	populate(objectMap, "appPort", d.AppPort)
 	return json.Marshal(objectMap)

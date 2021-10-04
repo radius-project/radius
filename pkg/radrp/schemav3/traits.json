@@ -5,7 +5,7 @@
       "description": "Trait of a component.",
       "type": "object",
       "oneOf": [{
-        "$ref": "traits/dapr.json#/definitions/DaprTrait"
+        "$ref": "traits/dapr-sidecar.json#/definitions/DaprSidecarTrait"
       }, {
         "$ref": "traits/manual-scaling.json#/definitions/ManualScalingTrait"
       }]
