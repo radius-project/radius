@@ -23,6 +23,7 @@ In this example, a [container Component]({{< ref container >}}) adds a Dapr trai
 |----------|:--------:|-------------|---------|
 | appId | n | The appId of the Dapr sidecar | `backend` |
 | appPort | n | The port your Component exposes to Dapr | `3500`
+| provides | n | The [Dapr Route]({{< ref dapr-http >}}) provided by the Trait | `daprHttp.id`
 
 ## Component compatibility
 

@@ -7,27 +7,22 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: 'radius.azurecr.io/daprtutorial-backend'
-        ports: {
-          orders: {
-            containerPort: 3000
-            provides: invoke.id
-          }
-        }
       }
-      //TRAITS
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          appId: 'backend'
           appPort: 3000
+          provides: daprBackend.id
         }
       ]
-      //TRAITS
     }
   }
 
-  resource invoke 'dapr.io.InvokeRoute' = {
-    name: 'order-invocation'
+  resource daprBackend 'dapr.io.DaprHttpRoute' = {
+    name: 'dapr-backend'
+    properties: {
+      appId: 'backend'
+    }
   }
 }
 //SAMPLE

@@ -13,7 +13,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          appId: 'backend'
           appPort: 3000
         }
       ]

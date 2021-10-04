@@ -7,18 +7,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: 'registry/container:tag'
-        ports: {
-          orders: {
-            containerPort: 80
-            provides: invoke.id
-          }
-        }
       }
       traits: [
         {
           kind: 'dapr.io/App@v1alpha1'
-          appId: 'backend'
-          appPort: 3000
+          appPort: 80
+          provides: backendDapr.id
         }
       ]
     }
@@ -26,8 +20,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //BACKEND
 
   //ROUTE
-  resource invoke 'dapr.io.InvokeRoute' = {
-    name: 'invokeroute'
+  resource daprBackend 'dapr.io.DaprHttpRoute' = {
+    name: 'dapr-backend'
+    properties: {
+      appId: 'backend'
+    }
   }
   //ROUTE
 
@@ -38,13 +35,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'registry/container:tag'
         env: {
-          BACKEND_ID: invoke.properties.appId
+          BACKEND_ID: daprBackend.properties.appId
         }
       }
       connections: {
         orders: {
-          kind: 'dapr.io/Invoke'
-          source: invoke.id
+          kind: 'dapr.io/DaprHttp'
+          source: daprBackend.id
         }
       }
     }

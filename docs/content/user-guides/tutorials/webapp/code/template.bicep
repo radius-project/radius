@@ -13,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
           }
         }
         env: {
-          DBCONNECTION: db.properties.connectionString()
+          DBCONNECTION: db.connectionString()
         }
       }
       connections: {
