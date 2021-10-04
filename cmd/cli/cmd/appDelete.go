@@ -80,7 +80,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 
 // appDeleteInner deletes an application without argument/flag validation.
 func appDeleteInner(ctx context.Context, client clients.ManagementClient, applicationName string, env environments.Environment) error {
-	err := client.DeleteApplicationV3(ctx, applicationName)
+	err := client.DeleteApplication(ctx, applicationName)
 	if err != nil {
 		return fmt.Errorf("delete application error: %w", err)
 	}

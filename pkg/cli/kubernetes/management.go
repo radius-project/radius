@@ -48,7 +48,7 @@ func init() {
 	_ = bicepv1alpha3.AddToScheme(Scheme)
 }
 
-func (mc *KubernetesManagementClient) ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error) {
+func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*radclientv3.ApplicationList, error) {
 	applications := radiusv1alpha3.ApplicationList{}
 	err := mc.Client.List(ctx, &applications, &client.ListOptions{Namespace: mc.Namespace})
 	if err != nil {
@@ -73,7 +73,7 @@ func (mc *KubernetesManagementClient) ListApplicationsV3(ctx context.Context) (*
 	return &radclientv3.ApplicationList{Value: converted}, nil
 }
 
-func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
+func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
 	application, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, app
 	return ConvertK8sApplicationToARMV3(*application)
 }
 
-func (mc *KubernetesManagementClient) DeleteApplicationV3(ctx context.Context, applicationName string) error {
+func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, applicationName string) error {
 	application, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func (mc *KubernetesManagementClient) ShowResource(ctx context.Context, appName 
 	return results.Value[0], nil
 }
 
-func (mc *KubernetesManagementClient) appV3NotFoundError(applicationName string) error {
+func (mc *KubernetesManagementClient) appNotFoundError(applicationName string) error {
 	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, mc.EnvironmentName)
 	return radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 }
@@ -192,7 +192,7 @@ func (mc *KubernetesManagementClient) mustGetApplication(ctx context.Context, ap
 		return nil, err
 	}
 	if len(applications.Items) == 0 {
-		return nil, mc.appV3NotFoundError(applicationName)
+		return nil, mc.appNotFoundError(applicationName)
 	}
 	return &applications.Items[0], nil
 }
