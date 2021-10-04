@@ -107,3 +107,18 @@ func (r RendererResource) ConvertDefinition(properties interface{}) error {
 
 	return nil
 }
+
+// ConvertDefinition can be used to convert `.Definition` to a strongly-typed struct.
+func (r RendererDependency) ConvertDefinition(properties interface{}) error {
+	b, err := json.Marshal(r.Definition)
+	if err != nil {
+		return fmt.Errorf("failed to marshal resource definition: %w", err)
+	}
+
+	err = json.Unmarshal(b, properties)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal resource definition: %w", err)
+	}
+
+	return nil
+}

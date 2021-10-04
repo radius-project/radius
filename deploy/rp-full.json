@@ -736,11 +736,6 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/dapr.io.InvokeRoute",
-                "routingType": "Proxy",
-                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-            },
-            {
                 "name": "Application/dapr.io.PubSubTopicComponent",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"

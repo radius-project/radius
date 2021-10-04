@@ -9,11 +9,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloads"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -21,11 +22,11 @@ import (
 type noop struct {
 }
 
-func (n *noop) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	return map[string]components.BindingState{}, nil
+func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+	return nil, nil
 }
 
-func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
+func (r *noop) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	// Return a deployment so the Dapr trait can modify it
 	deployment := appsv1.Deployment{}
 
@@ -35,38 +36,40 @@ func (n *noop) Render(ctx context.Context, workload workloads.InstantiatedWorklo
 		LocalID:      outputresource.LocalIDDeployment,
 	}
 
-	return []outputresource.OutputResource{deploymentResource}, nil
+	output := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{deploymentResource},
+	}
+
+	return output, nil
 }
 
 func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
-	w := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Name: "test-component",
-			Kind: "radius.dev/Test@v1alpha1",
-			Run:  map[string]interface{}{},
-			Traits: []components.GenericTrait{
-				{
-					Kind: Kind,
-					AdditionalProperties: map[string]interface{}{
-						"appId":    "testappId",
-						"appPort":  5000,
-						"config":   "test-config",
-						"protocol": "grpc",
-					},
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-container",
+		ResourceType:    containerv1alpha3.ResourceType,
+		Definition: map[string]interface{}{
+			"traits": []interface{}{
+				map[string]interface{}{
+					"kind":     "dapr.io/Sidecar@v1alpha1",
+					"appId":    "testappId",
+					"appPort":  5000,
+					"config":   "test-config",
+					"protocol": "grpc",
 				},
 			},
 		},
 	}
+	dependencies := map[string]renderers.RendererDependency{}
 
-	resources, err := renderer.Render(context.Background(), w)
+	output, err := renderer.Render(context.Background(), resource, dependencies)
 	require.NoError(t, err)
-	require.Len(t, resources, 1)
+	require.Len(t, output.Resources, 1)
+	require.Empty(t, output.SecretValues)
 
-	deployment, _ := kubernetes.FindDeployment(resources)
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
 	expected := map[string]string{
@@ -77,4 +80,82 @@ func Test_Render_Success(t *testing.T) {
 		"dapr.io/config":   "test-config",
 	}
 	require.Equal(t, expected, deployment.Spec.Template.Annotations)
+}
+
+func Test_Render_Success_AppID_FromRoute(t *testing.T) {
+	renderer := &Renderer{Inner: &noop{}}
+
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-container",
+		ResourceType:    containerv1alpha3.ResourceType,
+		Definition: map[string]interface{}{
+			"traits": []interface{}{
+				map[string]interface{}{
+					"kind":     "dapr.io/Sidecar@v1alpha1",
+					"appPort":  5000,
+					"config":   "test-config",
+					"protocol": "grpc",
+					"provides": "test-route-id",
+				},
+			},
+		},
+	}
+	dependencies := map[string]renderers.RendererDependency{
+		"test-route-id": {
+			Definition: map[string]interface{}{
+				"appId": "routeappId",
+			},
+		},
+	}
+
+	output, err := renderer.Render(context.Background(), resource, dependencies)
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+	require.Empty(t, output.SecretValues)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	expected := map[string]string{
+		"dapr.io/enabled":  "true",
+		"dapr.io/app-id":   "routeappId",
+		"dapr.io/app-port": "5000",
+		"dapr.io/protocol": "grpc",
+		"dapr.io/config":   "test-config",
+	}
+	require.Equal(t, expected, deployment.Spec.Template.Annotations)
+}
+
+func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
+	renderer := &Renderer{Inner: &noop{}}
+
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-container",
+		ResourceType:    containerv1alpha3.ResourceType,
+		Definition: map[string]interface{}{
+			"traits": []interface{}{
+				map[string]interface{}{
+					"kind":     "dapr.io/Sidecar@v1alpha1",
+					"appId":    "testappId",
+					"appPort":  5000,
+					"config":   "test-config",
+					"protocol": "grpc",
+					"provides": "test-route-id",
+				},
+			},
+		},
+	}
+	dependencies := map[string]renderers.RendererDependency{
+		"test-route-id": {
+			Definition: map[string]interface{}{
+				"appId": "routeappId",
+			},
+		},
+	}
+
+	_, err := renderer.Render(context.Background(), resource, dependencies)
+	require.Error(t, err)
+	require.Equal(t, "the appId specified on a \"dapr.io.DaprHttpRoute\" must match the appId specified on the \"dapr.io/Sidecar@v1alpha1\" trait. Route: \"routeappId\", Trait: \"testappId\"", err.Error())
 }

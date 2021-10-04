@@ -148,13 +148,13 @@ func (at ApplicationTest) Test(t *testing.T) {
 	radiusControllerLogSync.Do(func() {
 		err := validation.SaveLogsForController(ctx, at.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %w", err)
+			t.Errorf("failed to capture logs from radius controller: %v", err)
 		}
 	})
 
 	err := validation.SaveLogsForApplication(ctx, at.Options.K8sClient, "default", logPrefix+"/"+at.Application, at.Application)
 	if err != nil {
-		t.Errorf("failed to capture logs from radius pods %w", err)
+		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
 
 	cli := radcli.NewCLI(t, at.Options.ConfigFilePath, validation.AppModelV3)

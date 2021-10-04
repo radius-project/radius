@@ -1,32 +1,26 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-statestore-managed'
 
-  resource receiverapplication 'Components' = {
+  resource receiverapplication 'ContainerComponent' = {
     name: 'sender'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/magpie:latest'
+      connections: {
+        daprstatestore: {
+          kind: 'dapr.io/StateStore'
+          source: statestore.id
         }
       }
-      uses: [
-        {
-          binding: statestore.properties.bindings.default
-          env: {
-            BINDING_DAPRSTATESTORE_STATESTORENAME: statestore.properties.bindings.default.stateStoreName
+      container: {
+        image: 'radius.azurecr.io/magpie:latest'
+        ports: {
+          web: {
+            containerPort: 3000
           }
-        }
-      ]
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
         }
       }
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
+          kind: 'dapr.io/Sidecar@v1alpha1'
           appId: 'receiver'
           appPort: 3000
         }
@@ -34,14 +28,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
     }
   }
 
-  resource statestore 'Components' = {
+  resource statestore 'dapr.io.StateStoreComponent' = {
     name: 'statestore'
-    kind: 'dapr.io/StateStore@v1alpha1'
     properties: {
-      config: {
-        kind: 'any'
-        managed: true
-      }
+      kind: 'any'
+      managed: true
     }
   }
 }

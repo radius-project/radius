@@ -28,7 +28,7 @@
           "$ref": "#/definitions/ComponentTrait"
         }
       ],
-      "x-ms-discriminator-value": "dapr.io/App@v1alpha1",
+      "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1",
       "properties": {
         "appPort": {
           "description": "Dapr appPort.",
