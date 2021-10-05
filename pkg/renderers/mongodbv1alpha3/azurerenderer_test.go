@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
@@ -34,7 +33,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_AzureRenderer_Render_Managed_Success(t *testing.T) {
+func Test_Azure_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -82,17 +81,17 @@ func Test_AzureRenderer_Render_Managed_Success(t *testing.T) {
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
 	expectedSecretValues := map[string]renderers.SecretValueReference{
-		cosmosdbmongov1alpha3.ConnectionStringValue: {
-			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+		ConnectionStringValue: {
+			LocalID:       cosmosAccountDependency.LocalID,
 			Action:        "listConnectionStrings",
 			ValueSelector: "/connectionStrings/0/connectionString",
-			Transformer:   cosmosdbmongov1alpha3.MongoResourceType.Type(),
+			Transformer:   CosmosMongoResourceType.Type(),
 		},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_AzureRenderer_Render_Unmanaged_Success(t *testing.T) {
+func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -143,17 +142,17 @@ func Test_AzureRenderer_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
 	expectedSecretValues := map[string]renderers.SecretValueReference{
-		cosmosdbmongov1alpha3.ConnectionStringValue: {
-			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+		ConnectionStringValue: {
+			LocalID:       cosmosAccountDependency.LocalID,
 			Action:        "listConnectionStrings",
 			ValueSelector: "/connectionStrings/0/connectionString",
-			Transformer:   cosmosdbmongov1alpha3.MongoResourceType.Type(),
+			Transformer:   CosmosMongoResourceType.Type(),
 		},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_AzureRenderer_Render_Unmanaged_MissingResource(t *testing.T) {
+func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -171,7 +170,7 @@ func Test_AzureRenderer_Render_Unmanaged_MissingResource(t *testing.T) {
 	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }
 
-func Test_AzureRenderer_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Azure_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 

@@ -1,5 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-cosmosdb-mongo-unmanaged'
+  name: 'azure-resources-mongodb-unmanaged'
   
   resource webapp 'ContainerComponent' = {
     name: 'todoapp'
@@ -16,7 +16,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource db 'azure.com.CosmosDBMongoComponent' = {
+  resource db 'mongodb.com.MongoDBComponent' = {
     name: 'db'
     properties: {
       resource: account::db.id
@@ -29,7 +29,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   location: resourceGroup().location
   kind: 'MongoDB'
   tags: {
-    radiustest: 'azure-resources-cosmosdb-mongo-unmanaged'
+    radiustest: 'azure-resources-mongodb-unmanaged'
   }
   properties: {
     consistencyPolicy: {

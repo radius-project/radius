@@ -11,7 +11,6 @@ import (
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha3"
 	"github.com/Azure/radius/pkg/renderers/cosmosdbsqlv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
@@ -46,7 +45,6 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		redisv1alpha3.ResourceType:   &redisv1alpha3.AzureRenderer{},
 
 		// Azure
-		cosmosdbmongov1alpha3.ResourceType:   &cosmosdbmongov1alpha3.Renderer{},
 		cosmosdbsqlv1alpha3.ResourceType:     &cosmosdbsqlv1alpha3.Renderer{},
 		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
 	}
@@ -71,7 +69,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 	// Lookup of transforms to apply to secrets. By-convention the resource type is used as the
 	// key where possible.
 	transformerMap := map[string]renderers.SecretValueTransformer{
-		cosmosdbmongov1alpha3.MongoResourceType.Type(): &cosmosdbmongov1alpha3.Transformer{},
+		mongodbv1alpha3.CosmosMongoResourceType.Type(): &mongodbv1alpha3.AzureTransformer{},
 	}
 
 	return model.NewModel(rendererMap, handlerMap, transformerMap)

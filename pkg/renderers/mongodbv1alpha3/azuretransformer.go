@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package cosmosdbmongov1alpha3
+package mongodbv1alpha3
 
 import (
 	"context"
@@ -14,12 +14,12 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 )
 
-var _ renderers.SecretValueTransformer = (*Transformer)(nil)
+var _ renderers.SecretValueTransformer = (*AzureTransformer)(nil)
 
-type Transformer struct {
+type AzureTransformer struct {
 }
 
-func (t *Transformer) Transform(ctx context.Context, dependency renderers.RendererDependency, value interface{}) (interface{}, error) {
+func (t *AzureTransformer) Transform(ctx context.Context, dependency renderers.RendererDependency, value interface{}) (interface{}, error) {
 	// Mongo uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
 	//
 	// The connection strings that come back from CosmosDB don't include the database name.
