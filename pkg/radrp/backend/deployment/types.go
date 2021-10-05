@@ -272,13 +272,13 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		deployedOutputResourceProperties[outputResource.LocalID] = properties
 
 		if outputResource.Identity.Kind == "" {
+			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler. ", outputResource.LocalID)
 			armerr = &armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
 				Message: err.Error(),
 				Target:  resourceID.ID,
 			}
-			// dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return deployedRadiusResource, armerr, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler. ", outputResource.LocalID)
+			return deployedRadiusResource, armerr, err
 		}
 
 		// Copy deployed output resource property values into corresponding expected computed values
