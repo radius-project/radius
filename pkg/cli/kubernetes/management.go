@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	radschema "github.com/Azure/radius/pkg/radrp/schema"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -100,7 +100,7 @@ func (mc *KubernetesManagementClient) listAllRadiusCRDs(ctx context.Context) ([]
 		if crd.Spec.Group != radiusv1alpha3.GroupVersion.Group {
 			continue
 		}
-		if crd.Spec.Names.Kind == schemav3.ApplicationResourceType {
+		if crd.Spec.Names.Kind == radschema.ApplicationResourceType {
 			continue
 		}
 		for _, version := range crd.Spec.Versions {

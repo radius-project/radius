@@ -17,7 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 )
 
 // A brief note on error handling... The handler is responsible for all of the direct actions
@@ -257,7 +257,7 @@ func (h *handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) findValidator(id azresources.ResourceID) (schemav3.Validator, error) {
+func (h *handler) findValidator(id azresources.ResourceID) (schema.Validator, error) {
 	resourceType := id.Types[len(id.Types)-1].Type
 	return h.validatorFactory(resourceType)
 }
@@ -272,7 +272,7 @@ func resourceID(req *http.Request) azresources.ResourceID {
 	return id
 }
 
-func validationError(ctx context.Context, w http.ResponseWriter, req *http.Request, validationErrs []schemav3.ValidationError) {
+func validationError(ctx context.Context, w http.ResponseWriter, req *http.Request, validationErrs []schema.ValidationError) {
 	logger := radlogger.GetLogger(ctx)
 
 	body := armerrors.ErrorResponse{
