@@ -16,7 +16,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestUnfoldErrorDetailsV3(t *testing.T) {
+func TestUnfoldErrorDetails(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		input  radclient.ErrorDetail
@@ -97,22 +97,22 @@ func TestUnfoldErrorDetailsV3(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if diff := cmp.Diff(tc.expect, *UnfoldErrorDetailsV3(&tc.input)); diff != "" {
-				t.Errorf("UnfoldErrorDetailsV3: (-want,+got): %v", diff)
+			if diff := cmp.Diff(tc.expect, *UnfoldErrorDetails(&tc.input)); diff != "" {
+				t.Errorf("UnfoldErrorDetails: (-want,+got): %v", diff)
 			}
 		})
 	}
 }
 
-func TestUnfoldServiceErrorV3(t *testing.T) {
+func TestUnfoldServiceError(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		input  azure.ServiceError
-		expect ServiceErrorV3
+		expect ServiceError
 	}{{
 		name:   "empty",
 		input:  azure.ServiceError{},
-		expect: ServiceErrorV3{},
+		expect: ServiceError{},
 	}, {
 		name: "nested once",
 		input: azure.ServiceError{
@@ -121,7 +121,7 @@ func TestUnfoldServiceErrorV3(t *testing.T) {
 				"message": `{"error": { "code": "BadRequest" }}`,
 			}},
 		},
-		expect: ServiceErrorV3{
+		expect: ServiceError{
 			Details: []*radclient.ErrorDetail{{
 				Code: to.StringPtr("DownstreamEndpointError"),
 				Details: []*radclient.ErrorDetail{{
@@ -138,7 +138,7 @@ func TestUnfoldServiceErrorV3(t *testing.T) {
 				"additionalInfo": "bad-info, can't parse",
 			}},
 		},
-		expect: ServiceErrorV3{
+		expect: ServiceError{
 			Details: []*radclient.ErrorDetail{{
 				Code: to.StringPtr("DownstreamEndpointError"),
 				Details: []*radclient.ErrorDetail{{
@@ -148,14 +148,14 @@ func TestUnfoldServiceErrorV3(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if diff := cmp.Diff(tc.expect, *UnfoldServiceErrorV3(&tc.input)); diff != "" {
-				t.Errorf("UnfoldErrorDetailsV3: (-want,+got): %v", diff)
+			if diff := cmp.Diff(tc.expect, *UnfoldServiceError(&tc.input)); diff != "" {
+				t.Errorf("UnfoldErrorDetails: (-want,+got): %v", diff)
 			}
 		})
 	}
 }
 
-func TestTryUnfoldErrorResponseV3(t *testing.T) {
+func TestTryUnfoldErrorResponse(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		input  error
@@ -167,7 +167,7 @@ func TestTryUnfoldErrorResponseV3(t *testing.T) {
 		name:  "wrapped generic err",
 		input: fmt.Errorf("%w", errors.New("generic err")),
 	}, {
-		name: "wrapped *radclient.ErrorResponseV3",
+		name: "wrapped *radclient.ErrorResponse",
 		input: fmt.Errorf("%w", &radclient.ErrorResponse{
 			InnerError: &radclient.ErrorDetail{
 				Code:    to.StringPtr("code"),
@@ -179,18 +179,18 @@ func TestTryUnfoldErrorResponseV3(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if diff := cmp.Diff(tc.expect, TryUnfoldErrorResponseV3(tc.input)); diff != "" {
-				t.Errorf("UnfoldErrorDetailsV3: (-want,+got): %v", diff)
+			if diff := cmp.Diff(tc.expect, TryUnfoldErrorResponse(tc.input)); diff != "" {
+				t.Errorf("UnfoldErrorDetails: (-want,+got): %v", diff)
 			}
 		})
 	}
 }
 
-func TestTryUnfoldServiceErrorV3(t *testing.T) {
+func TestTryUnfoldServiceError(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		input  error
-		expect *ServiceErrorV3
+		expect *ServiceError
 	}{{
 		name:  "generic err",
 		input: errors.New("generic err"),
@@ -205,7 +205,7 @@ func TestTryUnfoldServiceErrorV3(t *testing.T) {
 				"message": `{"error": { "code": "BadRequest" }}`,
 			}},
 		},
-		expect: &ServiceErrorV3{
+		expect: &ServiceError{
 			Details: []*radclient.ErrorDetail{{
 				Code: to.StringPtr("DownstreamEndpointError"),
 				Details: []*radclient.ErrorDetail{{
@@ -215,8 +215,8 @@ func TestTryUnfoldServiceErrorV3(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if diff := cmp.Diff(tc.expect, TryUnfoldServiceErrorV3(tc.input)); diff != "" {
-				t.Errorf("UnfoldErrorDetailsV3: (-want,+got): %v", diff)
+			if diff := cmp.Diff(tc.expect, TryUnfoldServiceError(tc.input)); diff != "" {
+				t.Errorf("UnfoldErrorDetails: (-want,+got): %v", diff)
 			}
 		})
 	}

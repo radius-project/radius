@@ -57,7 +57,7 @@ func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*ra
 
 	converted := []*radclient.ApplicationResource{}
 	for _, item := range applications.Items {
-		application, err := ConvertK8sApplicationToARMV3(item)
+		application, err := ConvertK8sApplicationToARM(item)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +78,7 @@ func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, appli
 	if err != nil {
 		return nil, err
 	}
-	return ConvertK8sApplicationToARMV3(*application)
+	return ConvertK8sApplicationToARM(*application)
 }
 
 func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, applicationName string) error {
@@ -147,7 +147,7 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 			return nil, err
 		}
 		for _, item := range list.Items {
-			resource, err := ConvertK8sResourceToARMV3(item)
+			resource, err := ConvertK8sResourceToARM(item)
 			if err != nil {
 				return nil, err
 			}

@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func Test_ConvertK8sApplicationToARMV3(t *testing.T) {
+func Test_ConvertK8sApplicationToARM(t *testing.T) {
 	original := radiusv1alpha3.Application{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "radius.dev/v1alpha1",
@@ -45,13 +45,13 @@ func Test_ConvertK8sApplicationToARMV3(t *testing.T) {
 		Properties: &radclient.ApplicationProperties{},
 	}
 
-	actual, err := ConvertK8sApplicationToARMV3(original)
+	actual, err := ConvertK8sApplicationToARM(original)
 	require.NoError(t, err, "failed to convert application")
 
 	require.Equal(t, expected, actual)
 }
 
-func Test_ConvertK8sResourceToARMV3(t *testing.T) {
+func Test_ConvertK8sResourceToARM(t *testing.T) {
 
 	for _, tc := range []struct {
 		name        string
@@ -137,7 +137,7 @@ func Test_ConvertK8sResourceToARMV3(t *testing.T) {
 			input := unstructured.Unstructured{}
 			j, _ := json.MarshalIndent(tc.original, "", "  ")
 			_ = json.Unmarshal(j, &input.Object)
-			actual, err := ConvertK8sResourceToARMV3(input)
+			actual, err := ConvertK8sResourceToARM(input)
 			if tc.expectedErr == "" {
 				require.NoError(t, err)
 			} else {

@@ -17,7 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 )
 
-func ConvertK8sApplicationToARMV3(input radiusv1alpha3.Application) (*radclient.ApplicationResource, error) {
+func ConvertK8sApplicationToARM(input radiusv1alpha3.Application) (*radclient.ApplicationResource, error) {
 	result := radclient.ApplicationResource{}
 	result.Name = to.StringPtr(input.Annotations[kubernetes.LabelRadiusApplication])
 
@@ -27,7 +27,7 @@ func ConvertK8sApplicationToARMV3(input radiusv1alpha3.Application) (*radclient.
 	return &result, nil
 }
 
-func ConvertK8sResourceToARMV3(input unstructured.Unstructured) (*radclient.RadiusResource, error) {
+func ConvertK8sResourceToARM(input unstructured.Unstructured) (*radclient.RadiusResource, error) {
 	objRef := fmt.Sprintf("%s/%s/%s", input.GetKind(), input.GetNamespace(), input.GetName())
 	m := input.UnstructuredContent()
 	template, err := mapDeepGetMap(m, "spec", "template")
