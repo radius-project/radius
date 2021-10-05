@@ -14,7 +14,7 @@ generate-rp-manifest: ## Generates Custom RP manifest that registers our resourc
 	go run cmd/rp-manifest-gen/main.go \
 		--input deploy/rp-full.input.json \
 		--output deploy/rp-full.json \
-		--resources pkg/radrp/schemav3/resource-types.json
+		--resources pkg/radrp/schema/resource-types.json
 
 .PHONY: generate-node-installed
 generate-node-installed:
