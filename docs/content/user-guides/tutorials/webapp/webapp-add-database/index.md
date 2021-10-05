@@ -69,10 +69,10 @@ Update your `template.bicep` file to match the full application definition:
    rad resource list --application webapp
    ```
 
-   You should see both `db` and `todoapp` components in your `webapp` application. Example output: 
+   You should see both `db` and `todoapp` components in your `webapp` application. Example output:
 
    ```
-   COMPONENT   KIND                          PROVISIONING_STATE   HEALTH_STATE
+   RESOURCE    KIND                          PROVISIONING_STATE   HEALTH_STATE
    todoapp     ContainerComponent            Deployed             Healthy
    db          mongodb.com.MongoDBComponent  Deployed             Healthy
    ```
