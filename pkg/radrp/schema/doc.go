@@ -3,10 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package schemav3
+package schema
 
 /*
-Package schemav3 contains the validation logic based on the JSON
+Package schema contains the validation logic based on the JSON
 schema of the types defined in Radius Resource Provider's OpenAPI
 spec.
 

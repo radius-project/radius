@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/gorilla/mux"
 )
 
@@ -36,7 +36,7 @@ func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validat
 	var resourceItemPath = fmt.Sprintf("%s/{%s}", resourceCollectionPath, azresources.ResourceNameKey)
 	var operationItemPath = fmt.Sprintf("%s/{%s}/{%s}", resourceItemPath, "OperationResults", azresources.OperationIDKey)
 
-	var allResourceCollectionPath = fmt.Sprintf("%s/%s", applicationItemPath, schemav3.GenericResourceType)
+	var allResourceCollectionPath = fmt.Sprintf("%s/%s", applicationItemPath, schema.GenericResourceType)
 	var allResourceItemPath = fmt.Sprintf("%s/{%s}", allResourceCollectionPath, azresources.ResourceNameKey)
 
 	router.Path(applicationCollectionPath).Methods("GET").HandlerFunc(h.ListApplications)

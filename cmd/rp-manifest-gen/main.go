@@ -13,7 +13,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 
@@ -78,7 +78,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read file %q: %w", resourcesFile, err)
 	}
 
-	manifest := schemav3.Manifest{}
+	manifest := schema.Manifest{}
 	err = json.Unmarshal(resourcesBytes, &manifest)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal JSON %q: %w", inputFile, err)
@@ -120,7 +120,7 @@ func NewResourceTypeEntry(resourceType string) resourceTypeEntry {
 	}
 }
 
-func update(template map[string]interface{}, manifest schemav3.Manifest) error {
+func update(template map[string]interface{}, manifest schema.Manifest) error {
 	// We're going to modify the template by setting the 'resourceTypes' variable at the top level
 	// of scope. This allows us to avoid coupling to the structure of the template, we're just coupled
 	// to two variable names instead: 'siteName' and 'resourceTypes'

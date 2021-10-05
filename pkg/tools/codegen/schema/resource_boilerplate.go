@@ -12,7 +12,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 )
 
 var (
@@ -66,11 +66,11 @@ func (r resourceInfo) BasePath() string {
 }
 
 func (r resourceInfo) IsApplication() bool {
-	return schemav3.IsApplicationResource(r.BaseName)
+	return schema.IsApplicationResource(r.BaseName)
 }
 
 func (r resourceInfo) IsGenericResource() bool {
-	return schemav3.IsGenericResource(r.BaseName)
+	return schema.IsGenericResource(r.BaseName)
 }
 
 func (r resourceInfo) ListType() string {
@@ -86,11 +86,11 @@ func (r resourceInfo) NameParameterName() string {
 }
 
 func (r resourceInfo) TypeParameterType() string {
-	return schemav3.GenericResourceType + "TypeParameter"
+	return schema.GenericResourceType + "TypeParameter"
 }
 
 func (r resourceInfo) TypeParameterName() string {
-	return lowerFirst(schemav3.GenericResourceType) + "Type"
+	return lowerFirst(schema.GenericResourceType) + "Type"
 }
 
 // Load a resource boilerplate schema for a given type.

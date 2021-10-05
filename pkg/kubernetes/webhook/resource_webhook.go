@@ -23,7 +23,7 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/kubernetes/webhook/external"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/Azure/radius/pkg/renderers"
 )
 
@@ -81,7 +81,7 @@ func (w *ResourceWebhook) ValidateCreate(ctx context.Context, request admission.
 		if len(validationErrs) > 0 {
 			// TODO revert https://github.com/Azure/radius/issues/1118
 			if !strings.HasPrefix(validationErrs[0].Position, "(root).properties.container.env") {
-				return admission.Errored(http.StatusBadRequest, &schemav3.AggregateValidationError{Details: validationErrs})
+				return admission.Errored(http.StatusBadRequest, &schema.AggregateValidationError{Details: validationErrs})
 			}
 		}
 	}
@@ -89,8 +89,8 @@ func (w *ResourceWebhook) ValidateCreate(ctx context.Context, request admission.
 	return admission.Allowed("")
 }
 
-func (w *ResourceWebhook) findValidator(resourceType string) (schemav3.Validator, error) {
-	validator, ok := schemav3.GetValidator(resourceType)
+func (w *ResourceWebhook) findValidator(resourceType string) (schema.Validator, error) {
+	validator, ok := schema.GetValidator(resourceType)
 	if !ok {
 		return nil, fmt.Errorf("no validator found for resource type %s", resourceType)
 	}

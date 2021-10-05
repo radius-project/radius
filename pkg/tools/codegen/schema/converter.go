@@ -9,7 +9,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 )
 
 //go:embed boilerplate.json
@@ -24,7 +24,7 @@ type AutorestConverter interface {
 // NewAutorestConverter creates a AutorestConverter.
 func NewAutorestConverter() *converter {
 	resourceTypes := []resourceInfo{}
-	for qualifiedName, resourcePath := range schemav3.ResourceManifest.Resources {
+	for qualifiedName, resourcePath := range schema.ResourceManifest.Resources {
 		resourceTypes = append(resourceTypes, newResourceInfo(qualifiedName, resourcePath))
 	}
 	return &converter{

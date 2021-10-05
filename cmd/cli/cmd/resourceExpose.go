@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 
@@ -42,8 +42,8 @@ rad resource expose --application icecream-store ContainerComponent orders --por
 		if err != nil {
 			return err
 		}
-		if resourceType != schemav3.ContainerComponentType {
-			return fmt.Errorf("only %s is supported", schemav3.ContainerComponentType)
+		if resourceType != schema.ContainerComponentType {
+			return fmt.Errorf("only %s is supported", schema.ContainerComponentType)
 		}
 
 		localPort, err := cmd.Flags().GetInt("port")

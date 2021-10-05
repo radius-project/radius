@@ -14,7 +14,7 @@ generate-rp-manifest: ## Generates Custom RP manifest that registers our resourc
 	go run cmd/rp-manifest-gen/main.go \
 		--input deploy/rp-full.input.json \
 		--output deploy/rp-full.json \
-		--resources pkg/radrp/schemav3/resource-types.json
+		--resources pkg/radrp/schema/resource-types.json
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -34,11 +34,11 @@ generate-openapi-specs:
 
 	go run cmd/autorest-schema-gen/main.go \
 		--output schemas/rest-api-specs/radius.json \
-		`# We can't just do pkg/radrp/schemav3/*.json because we want to exclude resource-types.json` \
-		pkg/radrp/schemav3/common-types.json \
-		pkg/radrp/schemav3/application.json \
-		pkg/radrp/schemav3/traits.json \
-		pkg/radrp/schemav3/*/*.json
+		`# We can't just do pkg/radrp/schema/*.json because we want to exclude resource-types.json` \
+		pkg/radrp/schema/common-types.json \
+		pkg/radrp/schema/application.json \
+		pkg/radrp/schema/traits.json \
+		pkg/radrp/schema/*/*.json
 
 .PHONY: generate-radclient
 generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).
