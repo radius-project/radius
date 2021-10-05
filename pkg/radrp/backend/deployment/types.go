@@ -272,7 +272,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		deployedOutputResourceProperties[outputResource.LocalID] = properties
 
 		if outputResource.Identity.Kind == "" {
-			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler. ", outputResource.LocalID)
+			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler.", outputResource.LocalID)
 			armerr = &armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
 				Message: err.Error(),

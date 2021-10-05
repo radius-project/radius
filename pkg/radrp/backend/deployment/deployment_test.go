@@ -23,6 +23,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -71,6 +72,26 @@ var (
 	}
 )
 
+type SharedMocks struct {
+	db                 *db.MockRadrpDB
+	resourceHandler    *handlers.MockResourceHandler
+	healthHandler      *handlers.MockHealthHandler
+	renderer           *renderers.MockRenderer
+	secretsValueClient *renderers.MockSecretValueClient
+}
+
+func setup(t *testing.T) SharedMocks {
+	ctrl := gomock.NewController(t)
+
+	return SharedMocks{
+		db:                 db.NewMockRadrpDB(ctrl),
+		resourceHandler:    handlers.NewMockResourceHandler(ctrl),
+		healthHandler:      handlers.NewMockHealthHandler(ctrl),
+		renderer:           renderers.NewMockRenderer(ctrl),
+		secretsValueClient: renderers.NewMockSecretValueClient(ctrl),
+	}
+}
+
 func getResourceID(azureID string) azresources.ResourceID {
 	resourceID, err := azresources.Parse(azureID)
 	if err != nil {
@@ -98,72 +119,89 @@ func createContext(t *testing.T) context.Context {
 
 func Test_DeployExistingResource_Success(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
 
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{}, mockSecretsValueClient}
+	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+		ResourceRegistrationWithHealthChannel: registrationChannel,
+	}, mocks.secretsValueClient}
+
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 	expectedDependencyIDs := []azresources.ResourceID{
 		getResourceID(fulyQualifiedAzureID("HttpRoute", "A")),
 		getResourceID(fulyQualifiedAzureID("HttpRoute", "B")),
 	}
 
-	mockRenderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(expectedDependencyIDs, nil)
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(2).Return(db.RadiusResource{}, nil)
-	mockRenderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
-	mockDB.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	testOutputResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDDeployment,
+		ResourceKind: resourcekinds.Kubernetes,
+		Deployed:     false,
+		Managed:      true,
+		Identity: resourcemodel.ResourceIdentity{
+			Kind: resourcemodel.IdentityKindKubernetes,
+			Data: resourcemodel.KubernetesIdentity{
+				Name:      resourceName,
+				Namespace: testApplicationName,
+			},
+		},
+	}
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{testOutputResource},
+	}
+
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(expectedDependencyIDs, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(2).Return(db.RadiusResource{}, nil)
+	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
+	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
+	mocks.healthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(1).Return(healthcontract.HealthCheckOptions{})
+	mocks.db.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err := dp.Deploy(ctx, operationID, testRadiusResource)
 	require.NoError(t, err)
+
+	// Validate registration of the output resource
+	msg1 := <-registrationChannel
+	require.Equal(t, healthcontract.ActionRegister, msg1.Action)
+	require.Equal(t, testRadiusResource.ID, msg1.Resource.RadiusResourceID)
+	require.Equal(t, testOutputResource.ResourceKind, msg1.Resource.ResourceKind)
 }
 
 func Test_DeployNewResource_Success(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{})
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{}, mockSecretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
-	mockRenderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
-	mockRenderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
+	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
 	// validates ErrNotFound is ignored
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, db.ErrNotFound)
-	mockDB.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, db.ErrNotFound)
+	mocks.db.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err := dp.Deploy(ctx, operationID, testRadiusResource)
 	require.NoError(t, err)
@@ -172,49 +210,43 @@ func Test_DeployNewResource_Success(t *testing.T) {
 // Validates operation update is called after failure at any step to set the operation status to failed
 func Test_DeployFailure_OperationUpdated(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{}, mockSecretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
-	mockRenderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, errors.New("failed to get dependencies"))
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, errors.New("failed to get dependencies"))
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err := dp.Deploy(ctx, operationID, testRadiusResource)
 	require.Error(t, err, "failed to get dependencies")
 
-	mockRenderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
-	mockRenderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get the resource from database"))
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
+	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get the resource from database"))
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err = dp.Deploy(ctx, operationID, testRadiusResource)
 	require.Error(t, err, "failed to get the resource from database")
 
-	mockRenderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
-	mockRenderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
-	mockDB.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to update resource status in the database"))
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
+	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
+	mocks.db.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to update resource status in the database"))
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err = dp.Deploy(ctx, operationID, testRadiusResource)
 	require.Error(t, err, "failed to update resource status in the database")
@@ -222,24 +254,18 @@ func Test_DeployFailure_OperationUpdated(t *testing.T) {
 
 func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{}, mockSecretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 
 	azureID := fulyQualifiedAzureID("foo", resourceName)
 	resourceID := getResourceID(azureID)
@@ -269,29 +295,23 @@ func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 
 func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{}, mockSecretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 
 	expectedDependencyIDs := []azresources.ResourceID{getResourceID(fulyQualifiedAzureID("HttpRoute", "A"))}
 
-	mockRenderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(expectedDependencyIDs, nil)
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get resource from database"))
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(expectedDependencyIDs, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get resource from database"))
 
 	_, armerr, err := dp.renderResource(ctx, testResourceID, testRadiusResource)
 	expectedArmErr := armerrors.ErrorDetails{
@@ -305,27 +325,21 @@ func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 
 func Test_RendererFailure_InvalidError(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{}, mockSecretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 
-	mockRenderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
-	mockRenderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render resource"))
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
+	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render resource"))
 
 	_, armerr, err := dp.renderResource(ctx, testResourceID, testRadiusResource)
 	expectedArmErr := armerrors.ErrorDetails{
@@ -339,48 +353,60 @@ func Test_RendererFailure_InvalidError(t *testing.T) {
 
 func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{}, mockSecretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 
 	testOutputResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDDeployment,
 		ResourceKind: resourcekinds.Kubernetes,
 		Deployed:     false,
 		Managed:      true,
-		//*** Type:     outputresource.TypeKubernetes,
 	}
 	rendererOutput := renderers.RendererOutput{
 		Resources: []outputresource.OutputResource{testOutputResource},
 	}
 
-	// Verify db resource not found error does not result into error // TODO Add back
-	// mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, db.ErrNotFound)
-	// mockResourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
-	//*** mockHealthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(1).Return(healthcontract.HealthCheckOptions{})
-
-	// _, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
-	// require.NoError(t, err)
-	// require.Nil(t, armerr)
-
-	// Verify an error to retreive resource from database other than not found should result into internal arm error
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get resource from database"))
+	// Verify missing identity returns internal error
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
+	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
 
 	_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
 	expectedArmErr := armerrors.ErrorDetails{
+		Code:    armerrors.Internal,
+		Message: err.Error(),
+		Target:  testResourceID.ID,
+	}
+	require.Error(t, err, "output resource Kubernetes does not have an identity. This is a bug in the handler.")
+	require.Equal(t, expectedArmErr, *armerr)
+
+	// Verify db resource not found error does not result into error
+	testOutputResource.Identity.Kind = resourcemodel.IdentityKindKubernetes
+	testOutputResource.Identity.Data = resourcemodel.KubernetesIdentity{
+		Name:      resourceName,
+		Namespace: testApplicationName,
+	}
+
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, db.ErrNotFound)
+
+	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, renderers.RendererOutput{})
+	require.NoError(t, err)
+	require.Nil(t, armerr)
+
+	// Verify an error to retreive resource from database other than not found should result into internal arm error
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get resource from database"))
+
+	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
+	expectedArmErr = armerrors.ErrorDetails{
 		Code:    armerrors.Internal,
 		Message: err.Error(),
 		Target:  testResourceID.ID,
@@ -389,8 +415,8 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	require.Equal(t, expectedArmErr, *armerr)
 
 	// Verify handler put failure translates into internal error
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
-	mockResourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, errors.New("handler put failure"))
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
+	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, errors.New("handler put failure"))
 
 	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
 	expectedArmErr = armerrors.ErrorDetails{
@@ -423,14 +449,13 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 		ResourceKind: "foo",
 		Deployed:     false,
 		Managed:      true,
-		//*** Type:         outputresource.TypeKubernetes,
 		Dependencies: []outputresource.Dependency{},
 	}
 	rendererOutput = renderers.RendererOutput{
 		Resources: []outputresource.OutputResource{testOutputResource},
 	}
 
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
 
 	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
 	expectedArmErr = armerrors.ErrorDetails{
@@ -444,35 +469,29 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 
 func Test_Delete_Success(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mockSecretsValueClient}
+	}, mocks.secretsValueClient}
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
-	mockResourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
-	mockDB.EXPECT().DeleteV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
+	mocks.db.EXPECT().DeleteV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err := dp.Delete(ctx, operationID, testRadiusResource)
 	require.NoError(t, err)
@@ -486,44 +505,39 @@ func Test_Delete_Success(t *testing.T) {
 
 func Test_Delete_Error(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mockSecretsValueClient}
+	}, mocks.secretsValueClient}
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
 	// Handler Delete failure
-	mockResourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("handler delete failure"))
+	mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("handler delete failure"))
 	// Validate operation record is updated in the database on failure
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err := dp.Delete(ctx, operationID, testRadiusResource)
 	require.Error(t, err, "handler delete failure")
 
 	// Database delete failure
-	mockResourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
-	mockDB.EXPECT().DeleteV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete resource from db"))
+	mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
+	mocks.db.EXPECT().DeleteV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete resource from db"))
 	// Validate operation record is updated in the database on failure
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err = dp.Delete(ctx, operationID, testRadiusResource)
 	require.Error(t, err, "failed to delete resource from db")
@@ -537,47 +551,40 @@ func Test_Delete_Error(t *testing.T) {
 
 func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mockSecretsValueClient}
+	}, mocks.secretsValueClient}
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
 	localTestResource := testRadiusResource
 	localTestResource.Status.OutputResources = []db.OutputResource{
 		{
-			LocalID: outputresource.LocalIDDeployment,
-			//*** OutputResourceType: outputresource.TypeKubernetes,
+			LocalID:      outputresource.LocalIDDeployment,
 			ResourceKind: resourcekinds.Kubernetes,
 			Managed:      true,
 		},
 		{
-			LocalID: outputresource.LocalIDService,
-			//*** OutputResourceType: outputresource.TypeKubernetes,
+			LocalID:      outputresource.LocalIDService,
 			ResourceKind: "foo",
 			Managed:      true,
 		},
 	}
 
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 	err := dp.Delete(ctx, operationID, localTestResource)
 	require.Error(t, err, "resource kind 'foo' is unsupported")
@@ -586,41 +593,36 @@ func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 // Test failure to update operation does not return error
 func Test_UpdateOperationFailure_NoOp(t *testing.T) {
 	ctx := createContext(t)
-	ctrl := gomock.NewController(t)
-	mockDB := db.NewMockRadrpDB(ctrl)
-	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
-	mockHealthHandler := handlers.NewMockHealthHandler(ctrl)
-	mockRenderer := renderers.NewMockRenderer(ctrl)
-	mockSecretsValueClient := renderers.NewMockSecretValueClient(ctrl)
+	mocks := setup(t)
 	model := model.NewModelV3(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mockRenderer,
+		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
-			ResourceHandler: mockResourceHandler,
-			HealthHandler:   mockHealthHandler,
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
 
-	dp := deploymentProcessor{model, mockDB, &healthcontract.HealthChannels{}, mockSecretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
-	mockRenderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(3).Return([]azresources.ResourceID{}, nil)
-	mockRenderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(renderers.RendererOutput{}, nil)
-	mockDB.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(3).Return(db.RadiusResource{}, nil)
-	mockDB.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(nil)
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(3).Return([]azresources.ResourceID{}, nil)
+	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(renderers.RendererOutput{}, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(3).Return(db.RadiusResource{}, nil)
+	mocks.db.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(nil)
 
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to get operation"))
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to get operation"))
 	err := dp.Deploy(ctx, operationID, testRadiusResource)
 	require.NoError(t, err)
 
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(nil, db.ErrNotFound)
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(nil, db.ErrNotFound)
 	err = dp.Deploy(ctx, operationID, testRadiusResource)
 	require.NoError(t, err)
 
-	mockDB.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mockDB.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(false, errors.New("failed to patch operation"))
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(false, errors.New("failed to patch operation"))
 	err = dp.Deploy(ctx, operationID, testRadiusResource)
 	require.NoError(t, err)
 }
