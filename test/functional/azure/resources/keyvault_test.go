@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/radclientv3"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
@@ -78,7 +78,7 @@ func Test_KeyVaultManaged(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
-				appclient := radclientv3.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
+				appclient := radclient.NewApplicationClient(at.Options.ARMConnection, at.Options.Environment.SubscriptionID)
 
 				// get application and verify name
 				response, err := appclient.Get(ctx, at.Options.Environment.ResourceGroup, application, nil)
