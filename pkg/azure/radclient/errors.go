@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radclientv3
+package radclient
 
 import (
 	"fmt"

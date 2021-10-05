@@ -12,7 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/radius/pkg/azure/radclientv3"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -23,17 +23,17 @@ import (
 // being the Details field having more structure.  We need that structure to unfold the
 // error messages.
 type ServiceErrorV3 struct {
-	Code           string                     `json:"code,omitempty" yaml:"code,omitempty"`
-	Message        string                     `json:"message,omitempty" yaml:"message,omitempty"`
-	Target         *string                    `json:"target,omitempty" yaml:"target,omitempty"`
-	Details        []*radclientv3.ErrorDetail `json:"details,omitempty" yaml:"details,omitempty"`
-	InnerError     map[string]interface{}     `json:"innererror,omitempty" yaml:"innererror,omitempty"`
-	AdditionalInfo []map[string]interface{}   `json:"additionalInfo,omitempty" yaml:"additionalInfo,omitempty"`
+	Code           string                   `json:"code,omitempty" yaml:"code,omitempty"`
+	Message        string                   `json:"message,omitempty" yaml:"message,omitempty"`
+	Target         *string                  `json:"target,omitempty" yaml:"target,omitempty"`
+	Details        []*radclient.ErrorDetail `json:"details,omitempty" yaml:"details,omitempty"`
+	InnerError     map[string]interface{}   `json:"innererror,omitempty" yaml:"innererror,omitempty"`
+	AdditionalInfo []map[string]interface{} `json:"additionalInfo,omitempty" yaml:"additionalInfo,omitempty"`
 }
 
 // UnfoldServiceErrorV3 unfolds the Details field in the given azure.ServiceError,
-// and convert messages which are raw JSON of an radclientv3.ErrorResponse into
-// structured radclientv3.ErrorDetails fields.
+// and convert messages which are raw JSON of an radclient.ErrorResponse into
+// structured radclient.ErrorDetails fields.
 //
 // This is needed because for custom RP, errors are not treated as structured
 // JSON, even if we follow the error format from ARM.
@@ -50,15 +50,15 @@ func UnfoldServiceErrorV3(in *azure.ServiceError) *ServiceErrorV3 {
 	if in.Details == nil {
 		return out
 	}
-	out.Details = make([]*radclientv3.ErrorDetail, len(in.Details))
+	out.Details = make([]*radclient.ErrorDetail, len(in.Details))
 	for i, d := range in.Details {
-		out.Details[i] = &radclientv3.ErrorDetail{}
+		out.Details[i] = &radclient.ErrorDetail{}
 		// First we attempt to deserialize this raw form to the format
-		// of radclientv3.ErrorDetail.
+		// of radclient.ErrorDetail.
 		if err := roundTripJSON(d, out.Details[i]); err != nil {
 			// If the deserialization didn't work, we fall back to
 			// just extracting out the fields using the contract in OData V4 error.
-			*out.Details[i] = radclientv3.ErrorDetail{
+			*out.Details[i] = radclient.ErrorDetail{
 				Code:    extractString(d["code"]),
 				Message: extractString(d["message"]),
 				Target:  extractString(d["target"]),
@@ -72,9 +72,9 @@ func UnfoldServiceErrorV3(in *azure.ServiceError) *ServiceErrorV3 {
 	return out
 }
 
-// UnfoldErrorDetails extract the Message field of a given *radclientv3.ErrorDetail
+// UnfoldErrorDetails extract the Message field of a given *radclient.ErrorDetail
 // into its correspoding Details field, which is structured.
-func UnfoldErrorDetailsV3(d *radclientv3.ErrorDetail) *radclientv3.ErrorDetail {
+func UnfoldErrorDetailsV3(d *radclient.ErrorDetail) *radclient.ErrorDetail {
 	if d == nil {
 		return nil
 	}
@@ -88,9 +88,9 @@ func UnfoldErrorDetailsV3(d *radclientv3.ErrorDetail) *radclientv3.ErrorDetail {
 	if new.Message == nil {
 		return &new
 	}
-	resp := radclientv3.ErrorResponse{}
+	resp := radclient.ErrorResponse{}
 	err := json.Unmarshal([]byte(*d.Message), &resp)
-	if err != nil || cmp.Equal(resp.InnerError, radclientv3.ErrorDetail{}) {
+	if err != nil || cmp.Equal(resp.InnerError, radclient.ErrorDetail{}) {
 		return &new
 	}
 	// We successfully parse an armerrors.ErrorResponse from the message.
@@ -100,12 +100,12 @@ func UnfoldErrorDetailsV3(d *radclientv3.ErrorDetail) *radclientv3.ErrorDetail {
 	return &new
 }
 
-// TryUnfoldErrorResponse takes an error that wrapped a radclientv3.ErrorResponse
-// and unfold nested JSON messages into structured radclientv3.ErrorDetail field.
+// TryUnfoldErrorResponse takes an error that wrapped a radclient.ErrorResponse
+// and unfold nested JSON messages into structured radclient.ErrorDetail field.
 //
-// If the given error isn't wrapping a *radclientv3.ErrorResponse, nil is returned.
-func TryUnfoldErrorResponseV3(err error) *radclientv3.ErrorDetail {
-	inner, ok := errors.Unwrap(err).(*radclientv3.ErrorResponse)
+// If the given error isn't wrapping a *radclient.ErrorResponse, nil is returned.
+func TryUnfoldErrorResponseV3(err error) *radclient.ErrorDetail {
+	inner, ok := errors.Unwrap(err).(*radclient.ErrorResponse)
 	if inner == nil || !ok {
 		return nil
 	}
