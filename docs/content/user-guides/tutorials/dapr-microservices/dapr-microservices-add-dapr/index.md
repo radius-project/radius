@@ -33,9 +33,9 @@ Now that the backend is configured with Dapr, we need to define a state store to
 
 A [`statestore` component]({{< ref dapr-statestore >}}) is used to specify a few properties about the state store:
 
-- **kind**: `'dapr.io/StateStoreComponent'` represents a resource that Dapr uses to communicate with a database.
-- **properties.kind**: `'any'` tells Radius to pick the best available statestore for the platform. For Azure this is Table Storage and for Kubernetes this is a Redis container.
-- **properties.managed**: `true` tells Radius to manage the lifetime of the component for you. 
+- **resource type**: `'dapr.io/StateStoreComponent'` represents a resource that Dapr uses to communicate with a database.
+- **kind**: `'any'` tells Radius to pick the best available statestore for the platform. For Azure this is Table Storage and for Kubernetes this is a Redis container.
+- **managed**: `true` tells Radius to manage the lifetime of the component for you. 
 
 {{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
