@@ -36,7 +36,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
           }
         }
         volumes:{
-          'tempVolume':{
+          'my-volume':{
             kind: 'ephemeral'
             mountPath:'/tmpfs'
             managedStore:'memory'
