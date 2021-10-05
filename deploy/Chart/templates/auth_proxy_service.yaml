@@ -4,7 +4,7 @@ metadata:
   labels:
     control-plane: controller-manager
   name: radius-controller-manager-metrics-service
-  namespace: radius-system
+  namespace: {{ .Release.Namespace }}
 spec:
   ports:
   - name: https
