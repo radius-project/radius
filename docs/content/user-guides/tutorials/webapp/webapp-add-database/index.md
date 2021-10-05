@@ -66,7 +66,7 @@ Update your `template.bicep` file to match the full application definition:
 1. You can confirm that the new `db` component was deployed by running:
 
    ```sh
-   rad component list --application webapp
+   rad resource list --application webapp
    ```
 
    You should see both `db` and `todoapp` components in your `webapp` application. Example output: 
@@ -80,7 +80,7 @@ Update your `template.bicep` file to match the full application definition:
 1. To test the database, open a local tunnel on port 3000 again:
 
    ```sh
-   rad component expose todoapp --application webapp --port 3000
+   rad resource expose todoapp --application webapp --port 3000
    ```
 
 1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. You should see a page like:

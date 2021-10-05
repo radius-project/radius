@@ -76,13 +76,13 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 1. You can confirm that the new `statestore` component was deployed by running:
 
    ```sh
-   rad component list --application dapr-tutorial
+   rad resource list --application dapr-tutorial
    ```
 
    You should see both `backend` and `statestore` components in your `dapr-tutorial` application. Example output:
 
    ```
-   COMPONENT   KIND
+   RESOURCE   KIND
    backend     ContainerComponent
    statestore  dapr.io.StateStoreComponent
    ```
@@ -90,7 +90,7 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 1. To test out the state store, open a local tunnel on port 3000 again:
 
    ```sh
-   rad component expose backend --application dapr-tutorial --port 3000
+   rad resource expose backend --application dapr-tutorial --port 3000
    ```
 
 1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:

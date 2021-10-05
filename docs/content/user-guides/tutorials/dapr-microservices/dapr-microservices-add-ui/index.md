@@ -37,7 +37,7 @@ Another container component is used to specify a few properties about the order 
 1. To test out the frontend microservice, open a local tunnel on port 80:
 
    ```sh
-   rad component expose frontend --application dapr-tutorial --port 5000 --remote-port 80
+   rad resource expose frontend --application dapr-tutorial --port 5000 --remote-port 80
    ```
 
 1. Visit [http://localhost:5000](http://localhost:5000) in your browser and submit orders.
