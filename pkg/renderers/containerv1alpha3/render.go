@@ -289,15 +289,21 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 	return output, secretData, nil
 }
 
-func (r Renderer) makeEphemeralVolume(volumeName string, volume map[string]interface{}) (corev1.Volume, corev1.VolumeMount, error) {
+func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) {
 	data, err := json.Marshal(volume)
+	if err != nil {
+		return nil, err
+	}
+	var ephemeralVolume EphemeralVolume
+	json.Unmarshal(data, &ephemeralVolume)
+	return &ephemeralVolume, nil
+}
+
+func (r Renderer) makeEphemeralVolume(volumeName string, volume map[string]interface{}) (corev1.Volume, corev1.VolumeMount, error) {
+	ephemeralVolume, err := asEphemeralVolume(volume)
 	if err != nil {
 		return corev1.Volume{}, corev1.VolumeMount{}, err
 	}
-
-	var ephemeralVolume EphemeralVolume
-	json.Unmarshal(data, &ephemeralVolume)
-
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
 	volumeSpec.Name = volumeName

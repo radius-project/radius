@@ -51,13 +51,6 @@ type EphemeralVolume struct {
 	ManagedStore string `json:"managedStore"`
 }
 
-type PersistentVolume struct {
-	Kind      string `json:"kind"`
-	MountPath string `json:"mountPath"`
-	Source    string `json:"source"`
-	Rbac      string `json:"rbac"`
-}
-
 func (ct ContainerTrait) MarshalJSON() ([]byte, error) {
 	properties := map[string]interface{}{}
 	for k, v := range ct.AdditionalProperties {
