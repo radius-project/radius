@@ -225,31 +225,37 @@ func Test_DeployFailure_OperationUpdated(t *testing.T) {
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
-	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, errors.New("failed to get dependencies"))
-	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	t.Run("verify get dependencies failure", func(t *testing.T) {
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, errors.New("failed to get dependencies"))
+		mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+		mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
-	err := dp.Deploy(ctx, operationID, testRadiusResource)
-	require.Error(t, err, "failed to get dependencies")
+		err := dp.Deploy(ctx, operationID, testRadiusResource)
+		require.Error(t, err, "failed to get dependencies")
+	})
 
-	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
-	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
-	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get the resource from database"))
-	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	t.Run("verify database get resource failure", func(t *testing.T) {
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get the resource from database"))
+		mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+		mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
-	err = dp.Deploy(ctx, operationID, testRadiusResource)
-	require.Error(t, err, "failed to get the resource from database")
+		err := dp.Deploy(ctx, operationID, testRadiusResource)
+		require.Error(t, err, "failed to get the resource from database")
+	})
 
-	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
-	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
-	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
-	mocks.db.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to update resource status in the database"))
-	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	t.Run("verify database update resource status failure", func(t *testing.T) {
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
+		mocks.db.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to update resource status in the database"))
+		mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+		mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
-	err = dp.Deploy(ctx, operationID, testRadiusResource)
-	require.Error(t, err, "failed to update resource status in the database")
+		err := dp.Deploy(ctx, operationID, testRadiusResource)
+		require.Error(t, err, "failed to update resource status in the database")
+	})
 }
 
 func Test_Render_InvalidResourceTypeErr(t *testing.T) {
@@ -376,95 +382,91 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 		Resources: []outputresource.OutputResource{testOutputResource},
 	}
 
-	// Verify missing identity returns internal error
-	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
-	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
+	t.Run("verify internal error for missing output resource identity", func(t *testing.T) {
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
 
-	_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
-	expectedArmErr := armerrors.ErrorDetails{
-		Code:    armerrors.Internal,
-		Message: err.Error(),
-		Target:  testResourceID.ID,
-	}
-	require.Error(t, err, "output resource Kubernetes does not have an identity. This is a bug in the handler.")
-	require.Equal(t, expectedArmErr, *armerr)
+		_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
+		expectedArmErr := armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  testResourceID.ID,
+		}
+		require.Error(t, err, "output resource Kubernetes does not have an identity. This is a bug in the handler.")
+		require.Equal(t, expectedArmErr, *armerr)
+	})
 
-	// Verify db resource not found error does not result into error
-	testOutputResource.Identity.Kind = resourcemodel.IdentityKindKubernetes
-	testOutputResource.Identity.Data = resourcemodel.KubernetesIdentity{
-		Name:      resourceName,
-		Namespace: testApplicationName,
-	}
+	t.Run("verify no-op for database resource not found error", func(t *testing.T) {
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, db.ErrNotFound)
 
-	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, db.ErrNotFound)
+		_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, renderers.RendererOutput{})
+		require.NoError(t, err)
+		require.Nil(t, armerr)
+	})
 
-	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, renderers.RendererOutput{})
-	require.NoError(t, err)
-	require.Nil(t, armerr)
+	t.Run("verify internal error for non 404 database errors", func(t *testing.T) {
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get resource from database"))
 
-	// Verify an error to retreive resource from database other than not found should result into internal arm error
-	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get resource from database"))
+		_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
+		expectedArmErr := armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  testResourceID.ID,
+		}
+		require.Error(t, err)
+		require.Equal(t, expectedArmErr, *armerr)
+	})
 
-	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
-	expectedArmErr = armerrors.ErrorDetails{
-		Code:    armerrors.Internal,
-		Message: err.Error(),
-		Target:  testResourceID.ID,
-	}
-	require.Error(t, err)
-	require.Equal(t, expectedArmErr, *armerr)
+	t.Run("verify internal error for handler put failure", func(t *testing.T) {
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, errors.New("handler put failure"))
 
-	// Verify handler put failure translates into internal error
-	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
-	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, errors.New("handler put failure"))
+		_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
+		expectedArmErr := armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  testResourceID.ID,
+		}
+		require.Error(t, err)
+		require.Equal(t, expectedArmErr, *armerr)
+	})
 
-	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
-	expectedArmErr = armerrors.ErrorDetails{
-		Code:    armerrors.Internal,
-		Message: err.Error(),
-		Target:  testResourceID.ID,
-	}
-	require.Error(t, err)
-	require.Equal(t, expectedArmErr, *armerr)
+	t.Run("verify internal error for missing output resource localID", func(t *testing.T) {
+		testOutputResource.Dependencies = []outputresource.Dependency{{LocalID: ""}}
+		rendererOutput := renderers.RendererOutput{
+			Resources: []outputresource.OutputResource{testOutputResource},
+		}
+		_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
+		expectedArmErr := armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  testResourceID.ID,
+		}
+		require.Error(t, err)
+		require.Equal(t, expectedArmErr, *armerr)
+	})
 
-	// Verify missing output resource localID translates into internal error (- failure to order output resources)
-	testOutputResource.Dependencies = []outputresource.Dependency{
-		{
-			LocalID: "",
-		},
-	}
-	rendererOutput.Resources = []outputresource.OutputResource{testOutputResource}
+	t.Run("verify invalid for non supported resource kind", func(t *testing.T) {
+		localTestOutputResource := outputresource.OutputResource{
+			ResourceKind: "foo",
+			Deployed:     false,
+			Managed:      true,
+		}
+		localRendererOutput := renderers.RendererOutput{
+			Resources: []outputresource.OutputResource{localTestOutputResource},
+		}
 
-	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
-	expectedArmErr = armerrors.ErrorDetails{
-		Code:    armerrors.Internal,
-		Message: err.Error(),
-		Target:  testResourceID.ID,
-	}
-	require.Error(t, err)
-	require.Equal(t, expectedArmErr, *armerr)
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
 
-	// Verify invalid resource kind results into invalid arm error
-	testOutputResource = outputresource.OutputResource{
-		ResourceKind: "foo",
-		Deployed:     false,
-		Managed:      true,
-		Dependencies: []outputresource.Dependency{},
-	}
-	rendererOutput = renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{testOutputResource},
-	}
-
-	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
-
-	_, armerr, err = dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
-	expectedArmErr = armerrors.ErrorDetails{
-		Code:    armerrors.Invalid,
-		Message: err.Error(),
-		Target:  testResourceID.ID,
-	}
-	require.Error(t, err)
-	require.Equal(t, expectedArmErr, *armerr)
+		_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, localRendererOutput)
+		expectedArmErr := armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  testResourceID.ID,
+		}
+		require.Error(t, err)
+		require.Equal(t, expectedArmErr, *armerr)
+	})
 }
 
 func Test_Delete_Success(t *testing.T) {
@@ -523,30 +525,32 @@ func Test_Delete_Error(t *testing.T) {
 	}, mocks.secretsValueClient}
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
-	// Handler Delete failure
-	mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("handler delete failure"))
-	// Validate operation record is updated in the database on failure
-	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	t.Run("validate error on handler delete failure", func(t *testing.T) {
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("handler delete failure"))
+		// Validate operation record is updated in the database on failure
+		mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+		mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
-	err := dp.Delete(ctx, operationID, testRadiusResource)
-	require.Error(t, err, "handler delete failure")
+		err := dp.Delete(ctx, operationID, testRadiusResource)
+		require.Error(t, err, "handler delete failure")
+	})
 
-	// Database delete failure
-	mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
-	mocks.db.EXPECT().DeleteV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete resource from db"))
-	// Validate operation record is updated in the database on failure
-	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+	t.Run("validate error on database delete failure", func(t *testing.T) {
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
+		mocks.db.EXPECT().DeleteV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete resource from db"))
+		// Validate operation record is updated in the database on failure
+		mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+		mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
-	err = dp.Delete(ctx, operationID, testRadiusResource)
-	require.Error(t, err, "failed to delete resource from db")
+		err := dp.Delete(ctx, operationID, testRadiusResource)
+		require.Error(t, err, "failed to delete resource from db")
 
-	// Remove both the output resources from health check
-	msg1 := <-registrationChannel
-	require.Equal(t, healthcontract.ActionUnregister, msg1.Action)
-	msg2 := <-registrationChannel
-	require.Equal(t, healthcontract.ActionUnregister, msg2.Action)
+		// Remove both the output resources from health check
+		msg1 := <-registrationChannel
+		require.Equal(t, healthcontract.ActionUnregister, msg1.Action)
+		msg2 := <-registrationChannel
+		require.Equal(t, healthcontract.ActionUnregister, msg2.Action)
+	})
 }
 
 func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
@@ -608,21 +612,27 @@ func Test_UpdateOperationFailure_NoOp(t *testing.T) {
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
-	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(3).Return([]azresources.ResourceID{}, nil)
-	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(renderers.RendererOutput{}, nil)
-	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(3).Return(db.RadiusResource{}, nil)
-	mocks.db.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(nil)
+	t.Run("verify database get operation failure", func(t *testing.T) {
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(3).Return([]azresources.ResourceID{}, nil)
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(renderers.RendererOutput{}, nil)
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(3).Return(db.RadiusResource{}, nil)
+		mocks.db.EXPECT().UpdateV3ResourceStatus(gomock.Any(), gomock.Any(), gomock.Any()).Times(3).Return(nil)
 
-	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to get operation"))
-	err := dp.Deploy(ctx, operationID, testRadiusResource)
-	require.NoError(t, err)
+		mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to get operation"))
+		err := dp.Deploy(ctx, operationID, testRadiusResource)
+		require.NoError(t, err)
+	})
 
-	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(nil, db.ErrNotFound)
-	err = dp.Deploy(ctx, operationID, testRadiusResource)
-	require.NoError(t, err)
+	t.Run("verify database get operation not found error", func(t *testing.T) {
+		mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(nil, db.ErrNotFound)
+		err := dp.Deploy(ctx, operationID, testRadiusResource)
+		require.NoError(t, err)
+	})
 
-	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
-	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(false, errors.New("failed to patch operation"))
-	err = dp.Deploy(ctx, operationID, testRadiusResource)
-	require.NoError(t, err)
+	t.Run("verify database patch operation failure", func(t *testing.T) {
+		mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+		mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(false, errors.New("failed to patch operation"))
+		err := dp.Deploy(ctx, operationID, testRadiusResource)
+		require.NoError(t, err)
+	})
 }
