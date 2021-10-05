@@ -1,6 +1,13 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-statestore-managed'
 
+  resource daprroute 'dapr.io.DaprHttpRoute' ={
+    name: 'daprroute'
+    properties: {
+      appId: 'receiver'
+    }
+  }
+  
   resource receiverapplication 'ContainerComponent' = {
     name: 'sender'
     properties: {
@@ -21,7 +28,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       traits: [
         {
           kind: 'dapr.io/Sidecar@v1alpha1'
-          appId: 'receiver'
+          provides: daprroute.id
           appPort: 3000
         }
       ]
@@ -33,33 +40,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       kind: 'any'
       managed: true
-    }
-  }
-}
-
-
-resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'kubernetes-resources-mongo'
-  
-  resource webapp 'ContainerComponent' = {
-    name: 'todomongo'
-    properties: {
-      container: {
-        image: 'radius.azurecr.io/magpie:latest'
-      }
-      connections: {
-        mongodb: {
-          kind: 'mongo.com/MongoDB'
-          source: mongodb.id
-        }
-      }
-    }
-  }
-
-  resource mongodb 'mongodb.com.MongoDBComponent' = {
-    name: 'mongodb'
-    properties: {
-        managed: true
     }
   }
 }
