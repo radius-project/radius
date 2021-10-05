@@ -8,13 +8,13 @@ package handler
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 )
 
-type ValidatorFactory = func(resourceType string) (schemav3.Validator, error)
+type ValidatorFactory = func(resourceType string) (schema.Validator, error)
 
-func DefaultValidatorFactory(resourceType string) (schemav3.Validator, error) {
-	validator, ok := schemav3.GetValidator(resourceType)
+func DefaultValidatorFactory(resourceType string) (schema.Validator, error) {
+	validator, ok := schema.GetValidator(resourceType)
 	if !ok {
 		return nil, fmt.Errorf("unsupported resource type %s", resourceType)
 	}

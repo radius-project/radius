@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azure/radclientv3"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/stretchr/testify/require"
 )
@@ -21,14 +21,14 @@ func Test_FormatApplicationTable(t *testing.T) {
 	options := GetApplicationTableFormat()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	obj := radclientv3.ApplicationResource{
-		TrackedResource: radclientv3.TrackedResource{
-			Resource: radclientv3.Resource{
+	obj := radclient.ApplicationResource{
+		TrackedResource: radclient.TrackedResource{
+			Resource: radclient.Resource{
 				Name: to.StringPtr("test-app"),
 			},
 		},
-		Properties: &radclientv3.ApplicationProperties{
-			Status: &radclientv3.ApplicationStatus{
+		Properties: &radclient.ApplicationProperties{
+			Status: &radclient.ApplicationStatus{
 				HealthState:       to.StringPtr("Healthy"),
 				ProvisioningState: to.StringPtr("Provisioned"),
 			},
@@ -49,15 +49,15 @@ func Test_FormatResourceTable(t *testing.T) {
 	options := GetResourceTableFormat()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	obj := radclientv3.RadiusResource{
-		ProxyResource: radclientv3.ProxyResource{
-			Resource: radclientv3.Resource{
+	obj := radclient.RadiusResource{
+		ProxyResource: radclient.ProxyResource{
+			Resource: radclient.Resource{
 				Name: to.StringPtr("test-resource"),
 				Type: to.StringPtr("my/very/CoolResource"),
 			},
 		},
 		Properties: map[string]interface{}{
-			"status": &radclientv3.ComponentStatus{
+			"status": &radclient.ComponentStatus{
 				HealthState:       to.StringPtr("Healthy"),
 				ProvisioningState: to.StringPtr("Provisioned"),
 			},

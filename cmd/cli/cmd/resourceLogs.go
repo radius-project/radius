@@ -15,7 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 
@@ -57,8 +57,8 @@ rad resource logs ContainerComponent orders --application icecream-store --conta
 		if err != nil {
 			return err
 		}
-		if resourceType != schemav3.ContainerComponentType {
-			return fmt.Errorf("only %s is supported", schemav3.ContainerComponentType)
+		if resourceType != schema.ContainerComponentType {
+			return fmt.Errorf("only %s is supported", schema.ContainerComponentType)
 		}
 		follow, err := cmd.Flags().GetBool("follow")
 		if err != nil {

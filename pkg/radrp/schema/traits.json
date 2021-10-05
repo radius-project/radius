@@ -1,12 +1,11 @@
 {
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
     "ComponentTrait": {
       "description": "Trait of a component.",
       "type": "object",
       "oneOf": [{
-        "$ref": "traits/dapr.json#/definitions/DaprTrait"
-      }, {
-        "$ref": "traits/inbound-route.json#/definitions/InboundRouteTrait"
+        "$ref": "traits/dapr-sidecar.json#/definitions/DaprSidecarTrait"
       }, {
         "$ref": "traits/manual-scaling.json#/definitions/ManualScalingTrait"
       }]

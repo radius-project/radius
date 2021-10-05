@@ -1,18 +1,19 @@
 {
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
     "AzureKeyVaultComponentResource": {
       "description": "Component for Azure KeyVault",
+      "type": "object",
+      "x-ms-azure-resource": true,
       "required": [
-        "kind",
         "properties"
       ],
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "azure.com/KeyVault@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/AzureKeyVaultComponentProperties"
         }
@@ -24,28 +25,20 @@
           "$ref": "basic-component.json#/definitions/BasicComponentProperties"
         }
       ],
-      "required": [
-        "config"
-      ],
+      "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "config": {
-          "type": "object",
-          "properties": {
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)",
-              "type": "boolean",
-              "enum": [
-                true
-              ],
-              "examples": [
-                true
-              ]
-            }
-          },
-          "additionalProperties": false
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)",
+          "type": "boolean",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ]
         }
-      },
-      "additionalProperties": false
+      }
     }
   }
 }

@@ -1,18 +1,19 @@
 {
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
     "RabbitMQComponentResource": {
       "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "rabbitmq.com/MessageQueue@v1alpha1"
-          ]
-        },
         "properties": {
           "$ref": "#/definitions/RabbitMQComponentProperties"
         }
@@ -25,35 +26,26 @@
         }
       ],
       "required": [
-        "config"
+        "managed",
+        "queue"
       ],
+      "additionalProperties": false,
       "properties": {
-        "config": {
-          "type": "object",
-          "required": [
-            "managed",
-            "queue"
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component.",
+          "type": "boolean",
+          "enum": [
+            true
           ],
-          "properties": {
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component.",
-              "type": "boolean",
-              "enum": [
-                true
-              ],
-              "examples": [
-                true
-              ]
-            },
-            "queue": {
-              "description": "The name of the queue",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+          "example": [
+            true
+          ]
+        },
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
         }
-      },
-      "additionalProperties": false
+      }
     }
   }
 }

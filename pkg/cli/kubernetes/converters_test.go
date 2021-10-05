@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azure/radclientv3"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func Test_ConvertK8sApplicationToARMV3(t *testing.T) {
+func Test_ConvertK8sApplicationToARM(t *testing.T) {
 	original := radiusv1alpha3.Application{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "radius.dev/v1alpha1",
@@ -36,27 +36,27 @@ func Test_ConvertK8sApplicationToARMV3(t *testing.T) {
 		Spec: radiusv1alpha3.ApplicationSpec{},
 	}
 
-	expected := &radclientv3.ApplicationResource{
-		TrackedResource: radclientv3.TrackedResource{
-			Resource: radclientv3.Resource{
+	expected := &radclient.ApplicationResource{
+		TrackedResource: radclient.TrackedResource{
+			Resource: radclient.Resource{
 				Name: to.StringPtr("frontend-backend"),
 			},
 		},
-		Properties: &radclientv3.ApplicationProperties{},
+		Properties: &radclient.ApplicationProperties{},
 	}
 
-	actual, err := ConvertK8sApplicationToARMV3(original)
+	actual, err := ConvertK8sApplicationToARM(original)
 	require.NoError(t, err, "failed to convert application")
 
 	require.Equal(t, expected, actual)
 }
 
-func Test_ConvertK8sResourceToARMV3(t *testing.T) {
+func Test_ConvertK8sResourceToARM(t *testing.T) {
 
 	for _, tc := range []struct {
 		name        string
 		original    interface{}
-		expected    *radclientv3.RadiusResource
+		expected    *radclient.RadiusResource
 		expectedErr string
 	}{{
 		name: "has all fields",
@@ -76,9 +76,9 @@ func Test_ConvertK8sResourceToARMV3(t *testing.T) {
 				},
 			},
 		},
-		expected: &radclientv3.RadiusResource{
-			ProxyResource: radclientv3.ProxyResource{
-				Resource: radclientv3.Resource{
+		expected: &radclient.RadiusResource{
+			ProxyResource: radclient.ProxyResource{
+				Resource: radclient.Resource{
 					Name: to.StringPtr("kata-container"),
 					ID:   to.StringPtr("/very/long/path/container-01"),
 					Type: to.StringPtr("/very/long/path/radius.dev/ContainerComponent"),
@@ -101,9 +101,9 @@ func Test_ConvertK8sResourceToARMV3(t *testing.T) {
 				},
 			},
 		},
-		expected: &radclientv3.RadiusResource{
-			ProxyResource: radclientv3.ProxyResource{
-				Resource: radclientv3.Resource{
+		expected: &radclient.RadiusResource{
+			ProxyResource: radclient.ProxyResource{
+				Resource: radclient.Resource{
 					Name: to.StringPtr("route-42"),
 					ID:   to.StringPtr("/the/long/and/winding/route"),
 					Type: to.StringPtr("/very/long/path/radius.dev/HttpRoute"),
@@ -137,7 +137,7 @@ func Test_ConvertK8sResourceToARMV3(t *testing.T) {
 			input := unstructured.Unstructured{}
 			j, _ := json.MarshalIndent(tc.original, "", "  ")
 			_ = json.Unmarshal(j, &input.Object)
-			actual, err := ConvertK8sResourceToARMV3(input)
+			actual, err := ConvertK8sResourceToARM(input)
 			if tc.expectedErr == "" {
 				require.NoError(t, err)
 			} else {

@@ -19,7 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 )
@@ -481,7 +481,7 @@ func (r *rp) validateResourceType(id azresources.ResourceID) error {
 	if len(id.Types) != 3 ||
 		!strings.EqualFold(id.Types[0].Type, azresources.CustomProvidersResourceProviders) ||
 		!strings.EqualFold(id.Types[1].Type, resources.V3ApplicationResourceType) ||
-		!schemav3.HasType(id.Types[2].Type) {
+		!schema.HasType(id.Types[2].Type) {
 		return fmt.Errorf("unsupported resource type")
 	}
 
@@ -494,7 +494,7 @@ func (r *rp) validateOperationType(id azresources.ResourceID) error {
 	if len(id.Types) != 4 ||
 		!strings.EqualFold(id.Types[0].Type, azresources.CustomProvidersResourceProviders) ||
 		!strings.EqualFold(id.Types[1].Type, resources.V3ApplicationResourceType) ||
-		!schemav3.HasType(id.Types[2].Type) ||
+		!schema.HasType(id.Types[2].Type) ||
 		!strings.EqualFold(id.Types[3].Type, resources.V3OperationResourceType) {
 		return fmt.Errorf("unsupported resource type")
 	}

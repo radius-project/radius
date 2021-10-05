@@ -1,27 +1,10 @@
 {
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
     "BasicComponentProperties": {
       "description": "Basic properties of a component.",
       "type": "object",
       "properties": {
-        "revision": {
-          "type": "string",
-          "description": "Revision of the component"
-        },
-        "uses": {
-          "type": "array",
-          "description": "Uses spec of the component",
-          "items": {
-            "$ref": "#/definitions/ComponentDependency"
-          }
-        },
-        "traits": {
-          "type": "array",
-          "description": "Traits spec of the component",
-          "items": {
-            "$ref": "../traits.json#/definitions/ComponentTrait"
-          }
-        },
         "status": {
           "type": "object",
           "$ref": "#/definitions/ComponentStatus",
@@ -50,42 +33,9 @@
       }
     },
     "ComponentOutputResource": {
-      "description": "Properties of a component.",
+      "description": "Properties of an output resource.",
       "type": "object",
       "properties": {}
-    },
-    "ComponentDependency": {
-      "description": "A binding used by an Radius Component",
-      "type": "object",
-      "properties": {
-        "binding": {
-          "type": "string"
-        },
-        "env": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "secrets": {
-          "$ref": "#/definitions/ComponentDependencySecrets"
-        }
-      }
-    },
-    "ComponentDependencySecrets": {
-      "description": "Binding values that are stored in and read from a given secret store",
-      "type": "object",
-      "properties": {
-        "store": {
-          "type": "string"
-        },
-        "keys": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
     }
   }
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
@@ -63,7 +63,7 @@ func start(t *testing.T) *test {
 		Address:      httptest.DefaultRemoteAddr,
 		Authenticate: false,
 		Configure: func(router *mux.Router) {
-			AddRoutes(rp, router, func(resourceType string) (schemav3.Validator, error) {
+			AddRoutes(rp, router, func(resourceType string) (schema.Validator, error) {
 				if validator.RejectType {
 					return nil, errors.New("unsupported type")
 				}
@@ -118,10 +118,10 @@ func (r *FaultingResponse) Apply(ctx context.Context, w http.ResponseWriter, req
 
 type FakeValidator struct {
 	RejectType bool
-	Errors     []schemav3.ValidationError
+	Errors     []schema.ValidationError
 }
 
-func (v *FakeValidator) ValidateJSON(body []byte) []schemav3.ValidationError {
+func (v *FakeValidator) ValidateJSON(body []byte) []schema.ValidationError {
 	return v.Errors
 }
 
@@ -377,7 +377,7 @@ func Test_Handler(t *testing.T) {
 				test := start(t)
 
 				// Simulate a validation failure
-				test.validator.Errors = []schemav3.ValidationError{
+				test.validator.Errors = []schema.ValidationError{
 					{
 						Position: "test-position1",
 						Message:  "test-message1",

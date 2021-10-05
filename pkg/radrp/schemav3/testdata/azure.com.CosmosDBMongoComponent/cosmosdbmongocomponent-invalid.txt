@@ -1,2 +1,0 @@
-(root).properties.managed: Invalid type. Expected: boolean, given: integer
-(root).properties: Additional property someUnknownProperty is not allowed
