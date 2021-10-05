@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package handlerv3
+package handler
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceproviderv3"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schemav3"
 )
@@ -35,7 +35,7 @@ import (
 // within the RP or a bug.
 
 type handler struct {
-	rp               resourceproviderv3.ResourceProvider
+	rp               resourceprovider.ResourceProvider
 	validatorFactory ValidatorFactory
 }
 
@@ -237,7 +237,7 @@ func (h *handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	input := resourceproviderv3.ListSecretsInput{}
+	input := resourceprovider.ListSecretsInput{}
 	err = json.Unmarshal(body, &input)
 	if err != nil {
 		badRequest(ctx, w, req, err)

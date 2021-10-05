@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-rp-manifest generate-radclient generate-radclient-v3 generate-go generate-k8s-manifests generate-controller ## Generates all targets.
+generate: generate-rp-manifest generate-radclient-v3 generate-go generate-k8s-manifests generate-controller ## Generates all targets.
 
 .PHONY: generate-rp-manifest
 generate-rp-manifest: ## Generates Custom RP manifest that registers our resource types.
@@ -48,20 +48,6 @@ generate-radclient-v3: generate-node-installed generate-autorest-installed gener
 		--go  \
 		--gomod-root=. \
 		--output-folder=./pkg/azure/radclientv3 \
-		--modelerfour.lenient-model-deduplication \
-		--license-header=MICROSOFT_MIT_NO_VERSION \
-		--file-prefix=zz_generated_ \
-		--azure-arm \
-		--verbose
-
-.PHONY: generate-radclient
-generate-radclient: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
-	autorest --use=@autorest/go@4.0.0-preview.22 \
-		schemas/rest-api-specs/readme.md \
-		--tag=package-2018-09-01-preview \
-		--go  \
-		--gomod-root=. \
-		--output-folder=./pkg/azure/radclient \
 		--modelerfour.lenient-model-deduplication \
 		--license-header=MICROSOFT_MIT_NO_VERSION \
 		--file-prefix=zz_generated_ \

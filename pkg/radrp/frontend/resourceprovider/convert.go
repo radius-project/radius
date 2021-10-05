@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resourceproviderv3
+package resourceprovider
 
 import (
 	"github.com/Azure/radius/pkg/azure/azresources"

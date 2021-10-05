@@ -8,7 +8,9 @@ package clients
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/google/go-cmp/cmp"
@@ -118,4 +120,25 @@ func TryUnfoldServiceErrorV3(err error) *ServiceErrorV3 {
 		return nil
 	}
 	return UnfoldServiceErrorV3(svcError)
+}
+
+func roundTripJSON(input interface{}, output interface{}) error {
+	b, err := json.Marshal(input)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, output)
+}
+
+func extractString(o interface{}) *string {
+	if o == nil {
+		return nil
+	}
+	if s, ok := o.(string); ok {
+		return &s
+	}
+	if sp, ok := o.(*string); ok {
+		return sp
+	}
+	return to.StringPtr(fmt.Sprintf("%v", o))
 }

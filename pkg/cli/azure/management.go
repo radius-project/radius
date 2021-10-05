@@ -14,7 +14,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/Azure/radius/pkg/cli/clients"
 )
@@ -35,40 +34,40 @@ func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context
 	if err != nil {
 		if isNotFound(err) {
 			errorMessage := fmt.Sprintf("Resources not found in application '%s' and environment '%s'", applicationName, dm.EnvironmentName)
-			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+			return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 		return nil, err
 	}
 	return response.RadiusResourceList, err
 }
 
-func (dm *ARMManagementClient) ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error) {
+func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclientv3.ApplicationList, error) {
 	ac := radclientv3.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.List(ctx, dm.ResourceGroup, nil)
 	if err != nil {
 		if isNotFound(err) {
 			errorMessage := fmt.Sprintf("Applications not found in environment '%s'", dm.EnvironmentName)
-			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+			return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 		return nil, err
 	}
 	return response.ApplicationList, nil
 }
 
-func (dm *ARMManagementClient) ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
+func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
 	ac := radclientv3.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.Get(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
 		if isNotFound(err) {
 			errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
-			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+			return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 		}
 		return nil, err
 	}
 	return response.ApplicationResource, err
 }
 
-func (dm *ARMManagementClient) DeleteApplicationV3(ctx context.Context, appName string) error {
+func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName string) error {
 	con, sub, rg := dm.Connection, dm.SubscriptionID, dm.ResourceGroup
 	radiusResourceClient := radclientv3.NewRadiusResourceClient(con, sub)
 	resp, err := radiusResourceClient.List(ctx, dm.ResourceGroup, appName, nil)
@@ -93,7 +92,7 @@ func (dm *ARMManagementClient) DeleteApplicationV3(ctx context.Context, appName 
 			if isNotFound(err) {
 				errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
 					resourceType, *resource.Name, appName, dm.EnvironmentName)
-				return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+				return radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
 			}
 			return err
 		}

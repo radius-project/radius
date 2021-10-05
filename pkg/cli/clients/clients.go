@@ -47,9 +47,9 @@ type LogStream struct {
 
 // ManagementClient is used to interface with management features like listing applications and components.
 type ManagementClient interface {
-	ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error)
-	ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error)
-	DeleteApplicationV3(ctx context.Context, applicationName string) error
+	ListApplications(ctx context.Context) (*radclientv3.ApplicationList, error)
+	ShowApplication(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error)
+	DeleteApplication(ctx context.Context, applicationName string) error
 
 	ShowResource(ctx context.Context, applicationName string, resourceType string, resourceName string) (interface{}, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error)
