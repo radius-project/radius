@@ -15,4 +15,4 @@ data:
 kind: ConfigMap
 metadata:
   name: radius-manager-config
-  namespace: radius-system
+  namespace: {{ .Release.Namespace }}

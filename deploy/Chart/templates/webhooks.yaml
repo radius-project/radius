@@ -11,6 +11,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: radius-controller-cert
+  namespace: {{ .Release.Namespace }}
   labels:
     app: radius-controller
 data:
@@ -34,7 +35,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-      namespace: radius-system
+      namespace: {{ .Release.Namespace }}
       path: /validate-radius-dev-v1alpha3-application
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
@@ -57,7 +58,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-      namespace: radius-system
+      namespace: {{ .Release.Namespace }}
       path: /validate-radius-dev-v1alpha3-resource
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
@@ -88,7 +89,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-      namespace: radius-system
+      namespace: {{ .Release.Namespace }}
       path: /validate-bicep-dev-v1alpha3-deploymenttemplate
     caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
   failurePolicy: Fail
