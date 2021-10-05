@@ -43,37 +43,6 @@ type ApplicationResourceResponse struct {
 	RawResponse *http.Response
 }
 
-// AzureCosmosDBMongoComponentListResponse is the response envelope for operations that return a AzureCosmosDBMongoComponentList type.
-type AzureCosmosDBMongoComponentListResponse struct {
-	// List of azure.com.CosmosDBMongoComponent resources.
-	AzureCosmosDBMongoComponentList *AzureCosmosDBMongoComponentList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// AzureCosmosDBMongoComponentResourcePollerResponse is the response envelope for operations that asynchronously return a AzureCosmosDBMongoComponentResource
-// type.
-type AzureCosmosDBMongoComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (AzureCosmosDBMongoComponentResourceResponse, error)
-
-	// Poller contains an initialized poller.
-	Poller AzureCosmosDBMongoComponentResourcePoller
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// AzureCosmosDBMongoComponentResourceResponse is the response envelope for operations that return a AzureCosmosDBMongoComponentResource type.
-type AzureCosmosDBMongoComponentResourceResponse struct {
-	// Component for Azure CosmosDB with Mongo
-	AzureCosmosDBMongoComponentResource *AzureCosmosDBMongoComponentResource
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
 // AzureCosmosDBSQLComponentListResponse is the response envelope for operations that return a AzureCosmosDBSQLComponentList type.
 type AzureCosmosDBSQLComponentListResponse struct {
 	// List of azure.com.CosmosDBSQLComponent resources.

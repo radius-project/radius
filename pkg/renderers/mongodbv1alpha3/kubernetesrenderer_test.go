@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha3"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -54,7 +53,7 @@ func Test_KubernetesRenderer_Render_Managed_Success(t *testing.T) {
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
 	expectedSecretValues := map[string]renderers.SecretValueReference{
-		cosmosdbmongov1alpha3.ConnectionStringValue: {
+		ConnectionStringValue: {
 			LocalID:       outputresource.LocalIDSecret,
 			ValueSelector: "MONGO_CONNECTIONSTRING",
 		},

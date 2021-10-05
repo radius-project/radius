@@ -60,51 +60,6 @@ func (p *applicationResourcePoller) pollUntilDone(ctx context.Context, freq time
 	return respType, nil
 }
 
-// AzureCosmosDBMongoComponentResourcePoller provides polling facilities until the operation reaches a terminal state.
-type AzureCosmosDBMongoComponentResourcePoller interface {
-	azcore.Poller
-	// FinalResponse performs a final GET to the service and returns the final response
-	// for the polling operation. If there is an error performing the final GET then an error is returned.
-	// If the final GET succeeded then the final AzureCosmosDBMongoComponentResourceResponse will be returned.
-	FinalResponse(ctx context.Context) (AzureCosmosDBMongoComponentResourceResponse, error)
-}
-
-type azureCosmosDBMongoComponentResourcePoller struct {
-	pt *armcore.LROPoller
-}
-
-func (p *azureCosmosDBMongoComponentResourcePoller) Done() bool {
-	return p.pt.Done()
-}
-
-func (p *azureCosmosDBMongoComponentResourcePoller) Poll(ctx context.Context) (*http.Response, error) {
-	return p.pt.Poll(ctx)
-}
-
-func (p *azureCosmosDBMongoComponentResourcePoller) FinalResponse(ctx context.Context) (AzureCosmosDBMongoComponentResourceResponse, error) {
-	respType := AzureCosmosDBMongoComponentResourceResponse{AzureCosmosDBMongoComponentResource: &AzureCosmosDBMongoComponentResource{}}
-	resp, err := p.pt.FinalResponse(ctx, respType.AzureCosmosDBMongoComponentResource)
-	if err != nil {
-		return AzureCosmosDBMongoComponentResourceResponse{}, err
-	}
-	respType.RawResponse = resp
-	return respType, nil
-}
-
-func (p *azureCosmosDBMongoComponentResourcePoller) ResumeToken() (string, error) {
-	return p.pt.ResumeToken()
-}
-
-func (p *azureCosmosDBMongoComponentResourcePoller) pollUntilDone(ctx context.Context, freq time.Duration) (AzureCosmosDBMongoComponentResourceResponse, error) {
-	respType := AzureCosmosDBMongoComponentResourceResponse{AzureCosmosDBMongoComponentResource: &AzureCosmosDBMongoComponentResource{}}
-	resp, err := p.pt.PollUntilDone(ctx, freq, respType.AzureCosmosDBMongoComponentResource)
-	if err != nil {
-		return AzureCosmosDBMongoComponentResourceResponse{}, err
-	}
-	respType.RawResponse = resp
-	return respType, nil
-}
-
 // AzureCosmosDBSQLComponentResourcePoller provides polling facilities until the operation reaches a terminal state.
 type AzureCosmosDBSQLComponentResourcePoller interface {
 	azcore.Poller

@@ -4,7 +4,6 @@
     "Application": "application.json#/definitions/ApplicationResource",
     "RadiusResource": "components/radius.json#/definitions/RadiusResource",
     "ContainerComponent": "components/container-component.json#/definitions/ContainerComponentResource",
-    "azure.com.CosmosDBMongoComponent": "components/azure-cosmosdb-mongo.json#/definitions/AzureCosmosDBMongoComponentResource",
     "azure.com.CosmosDBSQLComponent": "components/azure-cosmosdb-sql.json#/definitions/AzureCosmosDBSQLComponentResource",
     "azure.com.KeyVaultComponent": "components/azure-keyvault.json#/definitions/AzureKeyVaultComponentResource",
     "azure.com.ServiceBusQueueComponent": "components/azure-servicebus.json#/definitions/AzureServiceBusComponentResource",

@@ -13,15 +13,15 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha3"
+	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 )
 
-func Test_CosmosDBMongoManaged(t *testing.T) {
-	application := "azure-resources-cosmosdb-mongo-managed"
-	template := "testdata/azure-resources-cosmosdb-mongo-managed.bicep"
+func Test_MongoDBManaged(t *testing.T) {
+	application := "azure-resources-mongodb-managed"
+	template := "testdata/azure-resources-mongodb-managed.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
@@ -56,7 +56,7 @@ func Test_CosmosDBMongoManaged(t *testing.T) {
 					{
 						ApplicationName: application,
 						ComponentName:   "db",
-						ResourceType:    cosmosdbmongov1alpha3.ResourceType,
+						ResourceType:    mongodbv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureCosmosAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccount, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
@@ -77,9 +77,9 @@ func Test_CosmosDBMongoManaged(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_CosmosDBMongoUnmanaged(t *testing.T) {
-	application := "azure-resources-cosmosdb-mongo-unmanaged"
-	template := "testdata/azure-resources-cosmosdb-mongo-unmanaged.bicep"
+func Test_MongoDBUnmanaged(t *testing.T) {
+	application := "azure-resources-mongodb-unmanaged"
+	template := "testdata/azure-resources-mongodb-unmanaged.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
@@ -88,7 +88,7 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 					{
 						Type: azresources.DocumentDBDatabaseAccounts,
 						Tags: map[string]string{
-							"radiustest": "azure-resources-cosmosdb-mongo-unmanaged",
+							"radiustest": "azure-resources-mongodb-unmanaged",
 						},
 						Children: []validation.ExpectedChildResource{
 							{
@@ -115,7 +115,7 @@ func Test_CosmosDBMongoUnmanaged(t *testing.T) {
 					{
 						ApplicationName: application,
 						ComponentName:   "db",
-						ResourceType:    cosmosdbmongov1alpha3.ResourceType,
+						ResourceType:    mongodbv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureCosmosAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccount, false, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, false, false, rest.OutputResourceStatus{}),
