@@ -12,7 +12,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       //CONTAINER
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
+          kind: 'dapr.io/Sidecar@v1alpha1'
           appId: 'frontend'
           appPort: 3000
         }

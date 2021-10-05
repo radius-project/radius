@@ -18,7 +18,7 @@ Another container component is used to specify a few properties about the order 
 - **kind**: `ContainerComponent` indicates you are using a generic container.
 - **container image**: `radius.azurecr.io/daprtutorial-frontend` is a Docker image the container will run.
 - **connections**: `backendDapr.id` declares the intention for `frontend` to communicate with `backend` through the `backendDapr` Dapr HTTP Route.
-- **traits**: `dapr.io/App` configures Dapr on the container.
+- **traits**: `dapr.io/Sidecar` configures Dapr on the container.
 
 {{< rad file="snippets/app.bicep" marker="//FRONTEND" embed=true >}}
   

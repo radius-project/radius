@@ -13,7 +13,7 @@ In this step you will learn how to add a database and connect to it from the app
 
 ## Add a Dapr trait
 
-A [`dapr.io/App` trait]({{< ref dapr-trait >}}) on the `backend` component can be used to describe the Dapr configuration:
+A [`dapr.io/Sidecar` trait]({{< ref dapr-trait >}}) on the `backend` component can be used to describe the Dapr configuration:
 
 {{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" >}}
 

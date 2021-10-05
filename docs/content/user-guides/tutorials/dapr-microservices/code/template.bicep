@@ -1,66 +1,66 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-tutorial'
 
-  resource frontend 'Components' = {
+  resource frontend 'ContainerComponent' = {
     name: 'frontend'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/daprtutorial-frontend'
+      container: {
+        image: 'radius.azurecr.io/daprtutorial-frontend'
+        ports:{
+          ui: {
+            containerPort: 80
+          }
         }
       }
-      uses: [
-        {
-          binding: backend.properties.bindings.invoke
+      connections: {
+        backend: {
+          kind: 'dapr.io/DaprHttp'
+          source: backendDapr.id
         }
-      ]
+      }
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
-          appId: 'frontend'
+          kind: 'dapr.io/Sidecar@v1alpha1'
         }
       ]
     }
   }
-
-  resource backend 'Components' = {
+  
+  resource backend 'ContainerComponent' = {
     name: 'backend'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/daprtutorial-backend'
+      container: {
+        image: 'radius.azurecr.io/daprtutorial-backend'
+      }
+      connections: {
+        orders: {
+          kind: 'dapr.io/StateStore'
+          source: statestore.id
         }
       }
-      bindings: {
-        invoke: {
-          kind: 'dapr.io/Invoke'
-        }
-      }
-      uses: [
-        {
-          binding: statestore.properties.bindings.default
-        }
-      ]
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
+          kind: 'dapr.io/Sidecar@v1alpha1'
           appId: 'backend'
           appPort: 3000
+          provides: backendDapr.id
         }
       ]
     }
   }
 
-  resource statestore 'Components' = {
-    name: 'statestore'
-    kind: 'dapr.io/StateStore@v1alpha1'
+  resource backendDapr 'dapr.io.DaprHttpRoute' = {
+    name: 'backend-dapr'
     properties: {
-      config: {
-        kind: 'any'
-        managed: true
-      }
+      appId: 'backend'
+    }
+  }
+
+  resource statestore 'dapr.io.StateStoreComponent' = {
+    name: 'statestore'
+    properties: {
+      kind: 'any'
+      managed: true
     }
   }
 }

@@ -26,7 +26,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       ]
       traits: [
         {
-           kind: 'dapr.io/App@v1alpha1'
+           kind: 'dapr.io/Sidecar@v1alpha1'
            appId: 'storefront'
            appPort: 80
         }
@@ -50,7 +50,7 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       ]
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
+          kind: 'dapr.io/Sidecar@v1alpha1'
           appId: 'cart-api'
         }
       ]

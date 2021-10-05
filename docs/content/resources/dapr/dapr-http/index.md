@@ -3,7 +3,7 @@ type: docs
 title: "Dapr HTTP Route"
 linkTitle: "HTTP Route"
 description: "Learn how to use Dapr's HTTP API in Radius"
-weight: 400
+weight: 150
 slug: "http"
 ---
 
