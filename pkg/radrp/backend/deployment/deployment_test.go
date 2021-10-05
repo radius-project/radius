@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	testAzureID    = fulyQualifiedAzureID(containerv1alpha3.ResourceType, resourceName)
+	testAzureID    = fullyQualifiedAzureID(containerv1alpha3.ResourceType, resourceName)
 	testResourceID = getResourceID(testAzureID)
 
 	testDBOutputResources = []db.OutputResource{
@@ -66,7 +66,7 @@ var (
 			"data": true,
 		},
 		ProvisioningState: string(rest.SuccededStatus),
-		Status: db.ComponentStatus{
+		Status: db.RadiusResourceStatus{
 			OutputResources: testDBOutputResources,
 		},
 	}
@@ -101,7 +101,7 @@ func getResourceID(azureID string) azresources.ResourceID {
 	return resourceID
 }
 
-func fulyQualifiedAzureID(resourceType string, resourceName string) string {
+func fullyQualifiedAzureID(resourceType string, resourceName string) string {
 	return azresources.MakeID(subscriptionID, resourceGroup,
 		azresources.ResourceType{Type: azresources.CustomProvidersResourceProviders, Name: radiusProviderName},
 		azresources.ResourceType{Type: resources.V3ApplicationResourceType, Name: testApplicationName},
@@ -120,7 +120,7 @@ func createContext(t *testing.T) context.Context {
 func Test_DeployExistingResource_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -138,8 +138,8 @@ func Test_DeployExistingResource_Success(t *testing.T) {
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 	expectedDependencyIDs := []azresources.ResourceID{
-		getResourceID(fulyQualifiedAzureID("HttpRoute", "A")),
-		getResourceID(fulyQualifiedAzureID("HttpRoute", "B")),
+		getResourceID(fullyQualifiedAzureID("HttpRoute", "A")),
+		getResourceID(fullyQualifiedAzureID("HttpRoute", "B")),
 	}
 
 	testOutputResource := outputresource.OutputResource{
@@ -182,7 +182,7 @@ func Test_DeployExistingResource_Success(t *testing.T) {
 func Test_DeployNewResource_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -211,7 +211,7 @@ func Test_DeployNewResource_Success(t *testing.T) {
 func Test_DeployFailure_OperationUpdated(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -255,7 +255,7 @@ func Test_DeployFailure_OperationUpdated(t *testing.T) {
 func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -267,7 +267,7 @@ func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 	)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 
-	azureID := fulyQualifiedAzureID("foo", resourceName)
+	azureID := fullyQualifiedAzureID("foo", resourceName)
 	resourceID := getResourceID(azureID)
 	radiusResource := db.RadiusResource{
 		ID:                azureID,
@@ -277,7 +277,7 @@ func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 		ApplicationName:   testApplicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.SuccededStatus),
-		Status:            db.ComponentStatus{},
+		Status:            db.RadiusResourceStatus{},
 		Definition: map[string]interface{}{
 			"data": true,
 		},
@@ -296,7 +296,7 @@ func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -308,7 +308,7 @@ func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 	)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
 
-	expectedDependencyIDs := []azresources.ResourceID{getResourceID(fulyQualifiedAzureID("HttpRoute", "A"))}
+	expectedDependencyIDs := []azresources.ResourceID{getResourceID(fullyQualifiedAzureID("HttpRoute", "A"))}
 
 	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(expectedDependencyIDs, nil)
 	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, errors.New("failed to get resource from database"))
@@ -326,7 +326,7 @@ func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 func Test_RendererFailure_InvalidError(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -354,7 +354,7 @@ func Test_RendererFailure_InvalidError(t *testing.T) {
 func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -470,7 +470,7 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 func Test_Delete_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -506,7 +506,7 @@ func Test_Delete_Success(t *testing.T) {
 func Test_Delete_Error(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -552,7 +552,7 @@ func Test_Delete_Error(t *testing.T) {
 func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
@@ -594,7 +594,7 @@ func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 func Test_UpdateOperationFailure_NoOp(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModelV3(map[string]renderers.Renderer{
+	model := model.NewModel(map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType: mocks.renderer,
 	}, map[string]model.Handlers{
 		resourcekinds.Kubernetes: {
