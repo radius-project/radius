@@ -329,6 +329,36 @@ type HTTPRouteResourceResponse struct {
 	RawResponse *http.Response
 }
 
+// MicrosoftSQLComponentListResponse is the response envelope for operations that return a MicrosoftSQLComponentList type.
+type MicrosoftSQLComponentListResponse struct {
+	// List of microsoft.com.SQLComponent resources.
+	MicrosoftSQLComponentList *MicrosoftSQLComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MicrosoftSQLComponentResourcePollerResponse is the response envelope for operations that asynchronously return a MicrosoftSQLComponentResource type.
+type MicrosoftSQLComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (MicrosoftSQLComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller MicrosoftSQLComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MicrosoftSQLComponentResourceResponse is the response envelope for operations that return a MicrosoftSQLComponentResource type.
+type MicrosoftSQLComponentResourceResponse struct {
+	// Component for a Microsoft SQL compatible database.
+	MicrosoftSQLComponentResource *MicrosoftSQLComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
 // MongoDBComponentListResponse is the response envelope for operations that return a MongoDBComponentList type.
 type MongoDBComponentListResponse struct {
 	// List of mongodb.com.MongoDBComponent resources.

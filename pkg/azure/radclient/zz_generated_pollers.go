@@ -498,6 +498,51 @@ func (p *httpRouteResourcePoller) pollUntilDone(ctx context.Context, freq time.D
 	return respType, nil
 }
 
+// MicrosoftSQLComponentResourcePoller provides polling facilities until the operation reaches a terminal state.
+type MicrosoftSQLComponentResourcePoller interface {
+	azcore.Poller
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final MicrosoftSQLComponentResourceResponse will be returned.
+	FinalResponse(ctx context.Context) (MicrosoftSQLComponentResourceResponse, error)
+}
+
+type microsoftSQLComponentResourcePoller struct {
+	pt *armcore.LROPoller
+}
+
+func (p *microsoftSQLComponentResourcePoller) Done() bool {
+	return p.pt.Done()
+}
+
+func (p *microsoftSQLComponentResourcePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+func (p *microsoftSQLComponentResourcePoller) FinalResponse(ctx context.Context) (MicrosoftSQLComponentResourceResponse, error) {
+	respType := MicrosoftSQLComponentResourceResponse{MicrosoftSQLComponentResource: &MicrosoftSQLComponentResource{}}
+	resp, err := p.pt.FinalResponse(ctx, respType.MicrosoftSQLComponentResource)
+	if err != nil {
+		return MicrosoftSQLComponentResourceResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+func (p *microsoftSQLComponentResourcePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+
+func (p *microsoftSQLComponentResourcePoller) pollUntilDone(ctx context.Context, freq time.Duration) (MicrosoftSQLComponentResourceResponse, error) {
+	respType := MicrosoftSQLComponentResourceResponse{MicrosoftSQLComponentResource: &MicrosoftSQLComponentResource{}}
+	resp, err := p.pt.PollUntilDone(ctx, freq, respType.MicrosoftSQLComponentResource)
+	if err != nil {
+		return MicrosoftSQLComponentResourceResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
 // MongoDBComponentResourcePoller provides polling facilities until the operation reaches a terminal state.
 type MongoDBComponentResourcePoller interface {
 	azcore.Poller

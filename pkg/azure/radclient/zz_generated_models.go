@@ -1148,6 +1148,70 @@ func (m *ManualScalingTrait) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MicrosoftComSQLComponentBeginCreateOrUpdateOptions contains the optional parameters for the MicrosoftComSQLComponent.BeginCreateOrUpdate method.
+type MicrosoftComSQLComponentBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MicrosoftComSQLComponentBeginDeleteOptions contains the optional parameters for the MicrosoftComSQLComponent.BeginDelete method.
+type MicrosoftComSQLComponentBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MicrosoftComSQLComponentGetOptions contains the optional parameters for the MicrosoftComSQLComponent.Get method.
+type MicrosoftComSQLComponentGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MicrosoftComSQLComponentListOptions contains the optional parameters for the MicrosoftComSQLComponent.List method.
+type MicrosoftComSQLComponentListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MicrosoftSQLComponentList - List of microsoft.com.SQLComponent resources.
+type MicrosoftSQLComponentList struct {
+	// REQUIRED; List of microsoft.com.SQLComponent resources.
+	Value []*MicrosoftSQLComponentResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLComponentList.
+func (m MicrosoftSQLComponentList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", m.Value)
+	return json.Marshal(objectMap)
+}
+
+// MicrosoftSQLComponentResource - Component for a Microsoft SQL compatible database.
+type MicrosoftSQLComponentResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *MicrosoftSQLSQLComponentProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLComponentResource.
+func (m MicrosoftSQLComponentResource) MarshalJSON() ([]byte, error) {
+	objectMap := m.ProxyResource.marshalInternal()
+	populate(objectMap, "properties", m.Properties)
+	return json.Marshal(objectMap)
+}
+
+type MicrosoftSQLSQLComponentProperties struct {
+	BasicComponentProperties
+	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
+	Managed *bool `json:"managed,omitempty"`
+
+	// The ID of the user-managed Cosmos DB with SQL API to use for this Component
+	Resource *string `json:"resource,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLSQLComponentProperties.
+func (m MicrosoftSQLSQLComponentProperties) MarshalJSON() ([]byte, error) {
+	objectMap := m.BasicComponentProperties.marshalInternal()
+	populate(objectMap, "managed", m.Managed)
+	populate(objectMap, "resource", m.Resource)
+	return json.Marshal(objectMap)
+}
+
 // MongoDBComponentList - List of mongodb.com.MongoDBComponent resources.
 type MongoDBComponentList struct {
 	// REQUIRED; List of mongodb.com.MongoDBComponent resources.
