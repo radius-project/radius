@@ -199,18 +199,18 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 
 // Deploys rendered output resources in order of dependencies
 // returns deployedRadiusResource - updated radius resource state that should be persisted in the database
-func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource, rendererOutput renderers.RendererOutput) (deployedRadiusResource db.RadiusResource, armerr *armerrors.ErrorDetails, err error) {
+func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource, rendererOutput renderers.RendererOutput) (db.RadiusResource, *armerrors.ErrorDetails, error) {
 	logger := radlogger.GetLogger(ctx)
 
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
-		armerr = &armerrors.ErrorDetails{
+		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Internal,
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		return deployedRadiusResource, armerr, err
+		return db.RadiusResource{}, armerr, err
 	}
 
 	// Get current state of the resource from database, if it's an existing resource
@@ -218,12 +218,12 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 	if err == db.ErrNotFound {
 		// no-op - a resource will only exist if this is an update
 	} else if err != nil {
-		armerr = &armerrors.ErrorDetails{
+		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Internal,
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		return deployedRadiusResource, armerr, err
+		return db.RadiusResource{}, armerr, err
 	}
 	existingDBOutputResources := existingDBResource.Status.OutputResources
 
@@ -246,12 +246,12 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 
 		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
 		if err != nil {
-			armerr = &armerrors.ErrorDetails{
+			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
 				Message: err.Error(),
 				Target:  resourceID.ID,
 			}
-			return deployedRadiusResource, armerr, err
+			return db.RadiusResource{}, armerr, err
 		}
 
 		properties, err := resourceHandlers.ResourceHandler.Put(ctx, &handlers.PutOptions{
@@ -262,23 +262,23 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			DependencyProperties:   deployedOutputResourceProperties,
 		})
 		if err != nil {
-			armerr = &armerrors.ErrorDetails{
+			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
 				Message: err.Error(),
 				Target:  resourceID.ID,
 			}
-			return deployedRadiusResource, armerr, err
+			return db.RadiusResource{}, armerr, err
 		}
 		deployedOutputResourceProperties[outputResource.LocalID] = properties
 
 		if outputResource.Identity.Kind == "" {
 			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler.", outputResource.LocalID)
-			armerr = &armerrors.ErrorDetails{
+			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
 				Message: err.Error(),
 				Target:  resourceID.ID,
 			}
-			return deployedRadiusResource, armerr, err
+			return db.RadiusResource{}, armerr, err
 		}
 
 		// Copy deployed output resource property values into corresponding expected computed values
@@ -323,7 +323,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		ProvisioningState: db.Provisioned,
 		OutputResources:   deployedOutputResources,
 	}
-	deployedRadiusResource = db.RadiusResource{
+	deployedRadiusResource := db.RadiusResource{
 		ID:              resource.ID,
 		Type:            resource.Type,
 		SubscriptionID:  resource.SubscriptionID,
