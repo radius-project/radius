@@ -71,6 +71,19 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					},
 				},
 			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
+				// Verify ephemeral volume
+				labelset := kubernetes.MakeSelectorLabels(application, "backend")
+
+				matches, err := at.Options.K8sClient.CoreV1().Pods(application).List(context.Background(), metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(labelset).String(),
+				})
+				require.NoError(t, err, "failed to list pods")
+				require.Lenf(t, matches.Items[0].Spec.Volumes, 1, "volumes should contain one item, instead it had: %+v", matches.Items[0].Spec.Volumes)
+				volume := matches.Items[0].Spec.Volumes[0]
+				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
+				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
+			},
 		},
 	})
 
@@ -207,12 +220,6 @@ func Test_ContainerManualScale(t *testing.T) {
 				})
 				require.NoError(t, err, "failed to list pods")
 				require.Lenf(t, matches.Items, 2, "items should contain two match, instead it had: %+v", matches.Items)
-
-				// Verify ephemeral volume
-				require.Lenf(t, matches.Items[0].Spec.Volumes, 1, "volumes should contain one item, instead it had: %+v", matches.Items[0].Spec.Volumes)
-				volume := matches.Items[0].Spec.Volumes[0]
-				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
-				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
 			},
 		},
 	})

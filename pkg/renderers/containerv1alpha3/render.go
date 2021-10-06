@@ -295,7 +295,10 @@ func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) 
 		return nil, err
 	}
 	var ephemeralVolume EphemeralVolume
-	json.Unmarshal(data, &ephemeralVolume)
+	err = json.Unmarshal(data, &ephemeralVolume)
+	if err != nil {
+		return nil, err
+	}
 	return &ephemeralVolume, nil
 }
 
