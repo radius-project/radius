@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package cosmosdbsqlv1alpha3
+package microsoftsqlv1alpha3
 
 import (
 	"context"

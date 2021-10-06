@@ -11,13 +11,13 @@ import (
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/cosmosdbsqlv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/dapr"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
+	"github.com/Azure/radius/pkg/renderers/microsoftsqlv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
 
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
@@ -45,12 +45,12 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			},
 		},
 
-		// OSS
-		mongodbv1alpha3.ResourceType: &mongodbv1alpha3.AzureRenderer{},
-		redisv1alpha3.ResourceType:   &redisv1alpha3.AzureRenderer{},
+		// Portable
+		microsoftsqlv1alpha3.ResourceType: &microsoftsqlv1alpha3.Renderer{},
+		mongodbv1alpha3.ResourceType:      &mongodbv1alpha3.AzureRenderer{},
+		redisv1alpha3.ResourceType:        &redisv1alpha3.AzureRenderer{},
 
 		// Azure
-		cosmosdbsqlv1alpha3.ResourceType:     &cosmosdbsqlv1alpha3.Renderer{},
 		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
 	}
 

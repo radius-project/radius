@@ -60,51 +60,6 @@ func (p *applicationResourcePoller) pollUntilDone(ctx context.Context, freq time
 	return respType, nil
 }
 
-// AzureCosmosDBSQLComponentResourcePoller provides polling facilities until the operation reaches a terminal state.
-type AzureCosmosDBSQLComponentResourcePoller interface {
-	azcore.Poller
-	// FinalResponse performs a final GET to the service and returns the final response
-	// for the polling operation. If there is an error performing the final GET then an error is returned.
-	// If the final GET succeeded then the final AzureCosmosDBSQLComponentResourceResponse will be returned.
-	FinalResponse(ctx context.Context) (AzureCosmosDBSQLComponentResourceResponse, error)
-}
-
-type azureCosmosDBSQLComponentResourcePoller struct {
-	pt *armcore.LROPoller
-}
-
-func (p *azureCosmosDBSQLComponentResourcePoller) Done() bool {
-	return p.pt.Done()
-}
-
-func (p *azureCosmosDBSQLComponentResourcePoller) Poll(ctx context.Context) (*http.Response, error) {
-	return p.pt.Poll(ctx)
-}
-
-func (p *azureCosmosDBSQLComponentResourcePoller) FinalResponse(ctx context.Context) (AzureCosmosDBSQLComponentResourceResponse, error) {
-	respType := AzureCosmosDBSQLComponentResourceResponse{AzureCosmosDBSQLComponentResource: &AzureCosmosDBSQLComponentResource{}}
-	resp, err := p.pt.FinalResponse(ctx, respType.AzureCosmosDBSQLComponentResource)
-	if err != nil {
-		return AzureCosmosDBSQLComponentResourceResponse{}, err
-	}
-	respType.RawResponse = resp
-	return respType, nil
-}
-
-func (p *azureCosmosDBSQLComponentResourcePoller) ResumeToken() (string, error) {
-	return p.pt.ResumeToken()
-}
-
-func (p *azureCosmosDBSQLComponentResourcePoller) pollUntilDone(ctx context.Context, freq time.Duration) (AzureCosmosDBSQLComponentResourceResponse, error) {
-	respType := AzureCosmosDBSQLComponentResourceResponse{AzureCosmosDBSQLComponentResource: &AzureCosmosDBSQLComponentResource{}}
-	resp, err := p.pt.PollUntilDone(ctx, freq, respType.AzureCosmosDBSQLComponentResource)
-	if err != nil {
-		return AzureCosmosDBSQLComponentResourceResponse{}, err
-	}
-	respType.RawResponse = resp
-	return respType, nil
-}
-
 // AzureKeyVaultComponentResourcePoller provides polling facilities until the operation reaches a terminal state.
 type AzureKeyVaultComponentResourcePoller interface {
 	azcore.Poller
