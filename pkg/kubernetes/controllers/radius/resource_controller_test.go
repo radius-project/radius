@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcemodel"
@@ -48,7 +49,7 @@ func Test_GetRenderDependency(t *testing.T) {
 			Kind:       "ContainerComponent",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      ResourceName,
+			Name:      kubernetes.MakeResourceName(ApplicationName, ResourceName),
 			Namespace: Namespace,
 		},
 		Spec: radiusv1alpha3.ResourceSpec{
