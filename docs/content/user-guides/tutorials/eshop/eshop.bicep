@@ -103,7 +103,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'ApplicationInsights__InstrumentationKey': APPLICATION_INSIGHTS_KEY
           'AzureServiceBusEnabled': 'True'
           'ConnectionString': sqldbc.connectionString()
-          'EventBusConnection': servicebus.connectionString()
+          'EventBusConnection': servicebus.queueConnectionString()
         }
         ports: {
           http: {
@@ -168,7 +168,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'GRPC_PORT': '81'
           'PORT': '80'
           'ConnectionString': sqldbo.connectionString()
-          'EventBusConnection': servicebus.connectionString()
+          'EventBusConnection': servicebus.queueConnectionString()
           'identityUrl': identityHttp.properties.url
           'IdentityUrlExternal': identityHttp.properties.url
         }
@@ -232,7 +232,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'GRPC_PORT': '81'
           'AzureServiceBusEnabled': 'True'
           'ConnectionString': redis.connectionString()
-          'EventBusConnection': servicebus.connectionString()
+          'EventBusConnection': servicebus.queueConnectionString()
           'identityUrl': identityHttp.properties.url
           'IdentityUrlExternal': identityHttp.properties.url
         }
@@ -291,7 +291,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'OrchestratorType': OCHESTRATOR_TYPE
           'AzureServiceBusEnabled': 'True'
           'ConnectionString': sqldbw.connectionString()
-          'EventBusConnection': servicebus.connectionString()
+          'EventBusConnection': servicebus.queueConnectionString()
           'identityUrl': identityHttp.properties.url
           'IdentityUrlExternal': identityHttp.properties.url
         }
@@ -341,7 +341,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'Serilog__MinimumLevel__Override__Microsoft.eShopOnContainers.BuildingBlocks.EventBusRabbitMQ': 'Verbose'
           'OrchestratorType': OCHESTRATOR_TYPE
           'AzureServiceBusEnabled': 'True'
-          'EventBusConnection': servicebus.properties.queueConnectionString
+          'EventBusConnection': servicebus.queueConnectionString()
         }
         ports: {
           http: {
@@ -385,7 +385,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'OrchestratorType': OCHESTRATOR_TYPE
           'AzureServiceBusEnabled': 'True'
           'ConnectionString': sqldbo.connectionString()
-          'EventBusConnection': servicebus.connectionString()
+          'EventBusConnection': servicebus.queueConnectionString()
         }
         ports: {
           http: {
@@ -529,7 +529,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'OrchestratorType': OCHESTRATOR_TYPE
           'IsClusterEnv': 'True'
           'AzureServiceBusEnabled': 'True'
-          'EventBusConnection': servicebus.connectionString()
+          'EventBusConnection': servicebus.queueConnectionString()
           'identityUrl': identityHttp.properties.url
           'IdentityUrlExternal': identityHttp.properties.url
         }
