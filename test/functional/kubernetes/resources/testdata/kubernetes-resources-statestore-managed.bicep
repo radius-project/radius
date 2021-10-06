@@ -30,6 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
           kind: 'dapr.io/Sidecar@v1alpha1'
           provides: daprroute.id
           appPort: 3000
+          appId: 'receiver'
         }
       ]
     }

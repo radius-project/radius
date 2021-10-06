@@ -25,11 +25,10 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		return []outputresource.OutputResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 
-	// Require namespace for k8s components here.
-	// Should move this check to a more generalized place.
+	// TODO need to figure out how to pass default namespace.
 	namespace := w.Namespace
 	if namespace == "" {
-		namespace = w.Application
+		namespace = "default"
 	}
 
 	resources := []outputresource.OutputResource{}
