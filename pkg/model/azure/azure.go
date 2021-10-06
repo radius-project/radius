@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/cosmosdbsqlv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/dapr"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
@@ -28,7 +29,11 @@ import (
 func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationModel {
 	rendererMap := map[string]renderers.Renderer{
 		// Built-in types
-		containerv1alpha3.ResourceType: &manualscalev1alpha3.Renderer{Inner: &containerv1alpha3.Renderer{}},
+		containerv1alpha3.ResourceType: &dapr.Renderer{
+			Inner: &manualscalev1alpha3.Renderer{
+				Inner: &containerv1alpha3.Renderer{},
+			},
+		},
 		httproutev1alpha3.ResourceType: &httproutev1alpha3.Renderer{},
 
 		// Dapr
