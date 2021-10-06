@@ -47,6 +47,7 @@
           "enum": [
             "any",
             "state.sqlserver",
+            "state.redis",
             "state.azure.tablestorage"
           ]
         }

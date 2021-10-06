@@ -179,6 +179,7 @@ type DaprStateStoreComponentPropertiesKind string
 const (
 	DaprStateStoreComponentPropertiesKindAny DaprStateStoreComponentPropertiesKind = "any"
 	DaprStateStoreComponentPropertiesKindStateAzureTablestorage DaprStateStoreComponentPropertiesKind = "state.azure.tablestorage"
+	DaprStateStoreComponentPropertiesKindStateRedis DaprStateStoreComponentPropertiesKind = "state.redis"
 	DaprStateStoreComponentPropertiesKindStateSqlserver DaprStateStoreComponentPropertiesKind = "state.sqlserver"
 )
 
@@ -187,6 +188,7 @@ func PossibleDaprStateStoreComponentPropertiesKindValues() []DaprStateStoreCompo
 	return []DaprStateStoreComponentPropertiesKind{	
 		DaprStateStoreComponentPropertiesKindAny,
 		DaprStateStoreComponentPropertiesKindStateAzureTablestorage,
+		DaprStateStoreComponentPropertiesKindStateRedis,
 		DaprStateStoreComponentPropertiesKindStateSqlserver,
 	}
 }
