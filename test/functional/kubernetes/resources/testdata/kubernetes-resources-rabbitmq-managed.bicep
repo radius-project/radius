@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-rabbitmq-managed'
   
   resource webapp 'ContainerComponent' = {
-    name: 'todoapp'
+    name: 'todorabbitmq'
     properties: {
       container: {
         image: 'radius.azurecr.io/magpie:latest'
