@@ -341,7 +341,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 					"metadata": []interface{}{
 						map[string]interface{}{
 							"name":  "redisHost",
-							"value": "test-component.default.svc.cluster.local:6379",
+							"value": "test-component:6379",
 						},
 						map[string]interface{}{
 							"name":  "redisPassword",

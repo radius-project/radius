@@ -116,7 +116,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 				"metadata": []interface{}{
 					map[string]interface{}{
 						"name":  "redisHost",
-						"value": fmt.Sprintf("%s.%s.svc.cluster.local:6379", component.Name, namespace),
+						"value": fmt.Sprintf("%s:6379", component.Name),
 					},
 					map[string]interface{}{
 						"name":  "redisPassword",
