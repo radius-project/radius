@@ -25,10 +25,11 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 		return []outputresource.OutputResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 
-	// TODO need to figure out how to pass default namespace.
+	// Require namespace for k8s components here.
+	// Should move this check to a more generalized place.
 	namespace := w.Namespace
 	if namespace == "" {
-		namespace = "default"
+		namespace = w.Application
 	}
 
 	resources := []outputresource.OutputResource{}
@@ -115,7 +116,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 				"metadata": []interface{}{
 					map[string]interface{}{
 						"name":  "redisHost",
-						"value": fmt.Sprintf("%s.%s.svc.cluster.local:6379", component.Name, namespace),
+						"value": fmt.Sprintf("%s:6379", component.Name),
 					},
 					map[string]interface{}{
 						"name":  "redisPassword",
