@@ -52,12 +52,11 @@ func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.Ins
 	return values, secrets, nil
 }
 
-func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	namespace := workload.Namespace
-	if namespace == "" {
-		namespace = workload.Application
-	}
+func (r *Renderer) GetKind() string {
+	return Kind
+}
 
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	// TODO currently we pass in an empty array of resource properties.
 	// Remove once we fix component controller.
 	component := RabbitMQComponent{}
