@@ -79,7 +79,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 				require.NoError(t, err, "failed to list pods")
-				require.Lenf(t, matches.Items[0].Spec.Volumes, 1, "volumes should contain one item, instead it had: %+v", matches.Items[0].Spec.Volumes)
+				require.GreaterOrEqual(t, matches.Items[0].Spec.Volumes, 1, "volumes should contain at least one item, instead it had: %+v", matches.Items[0].Spec.Volumes)
 				volume := matches.Items[0].Spec.Volumes[0]
 				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
 				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
