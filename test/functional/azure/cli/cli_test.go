@@ -65,7 +65,7 @@ func Test_CLI(t *testing.T) {
 	t.Run("Validate rad applicationV3 show", func(t *testing.T) {
 		output, err := cli.ApplicationShow(ctx, application)
 		require.NoError(t, err)
-		expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
+		expected := `APPLICATION
 azure-cli
 `
 		require.Equal(t, objectformats.TrimSpaceMulti(expected), objectformats.TrimSpaceMulti(output))

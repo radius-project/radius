@@ -18,14 +18,6 @@ func GetApplicationTableFormat() output.FormatterOptions {
 				Heading:  "APPLICATION",
 				JSONPath: "{ .name }",
 			},
-			{
-				Heading:  "PROVISIONING_STATE",
-				JSONPath: "{ .properties.status.provisioningState }",
-			},
-			{
-				Heading:  "HEALTH_STATE",
-				JSONPath: "{ .properties.status.healthState }",
-			},
 		},
 	}
 }
