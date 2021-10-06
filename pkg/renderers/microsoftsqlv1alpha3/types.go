@@ -3,14 +3,14 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package cosmosdbsqlv1alpha3
+package microsoftsqlv1alpha3
 
 import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
 const (
-	ResourceType          = "azure.com.CosmosDBSQLComponent"
+	ResourceType          = "microsoft.com.SQLComponent"
 	ConnectionStringValue = "connectionString"
 )
 
@@ -27,7 +27,7 @@ var SQLResourceType = azresources.KnownType{
 	},
 }
 
-type CosmosDBSQLComponentProperties struct {
+type MicrosoftSQLComponentProperties struct {
 	Managed  bool   `json:"managed"`
 	Resource string `json:"resource"`
 }

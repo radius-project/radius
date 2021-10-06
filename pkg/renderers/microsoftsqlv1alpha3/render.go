@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package cosmosdbsqlv1alpha3
+package microsoftsqlv1alpha3
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 }
 
 func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	properties := CosmosDBSQLComponentProperties{}
+	properties := MicrosoftSQLComponentProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -74,7 +74,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	}, nil
 }
 
-func RenderManaged(name string, properties CosmosDBSQLComponentProperties) ([]outputresource.OutputResource, error) {
+func RenderManaged(name string, properties MicrosoftSQLComponentProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
@@ -106,7 +106,7 @@ func RenderManaged(name string, properties CosmosDBSQLComponentProperties) ([]ou
 	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
 
-func RenderUnmanaged(name string, properties CosmosDBSQLComponentProperties) ([]outputresource.OutputResource, error) {
+func RenderUnmanaged(name string, properties MicrosoftSQLComponentProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}

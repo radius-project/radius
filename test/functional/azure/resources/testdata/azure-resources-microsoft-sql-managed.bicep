@@ -3,7 +3,7 @@
 // types because it would massively bloat our runs.
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-cosmosdb-sql-managed'
+  name: 'azure-resources-microsoft-sql-managed'
 
   resource webapp 'ContainerComponent' = {
     name: 'todoapp'
@@ -20,7 +20,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource db 'azure.com.CosmosDBSQLComponent' = {
+  resource db 'microsoft.com.SQLComponent' = {
     name: 'db'
     properties: {
       managed: true

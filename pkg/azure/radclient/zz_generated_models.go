@@ -82,26 +82,6 @@ type ApplicationStatus struct {
 	ProvisioningState *string `json:"provisioningState,omitempty"`
 }
 
-// AzureComCosmosDBSQLComponentBeginCreateOrUpdateOptions contains the optional parameters for the AzureComCosmosDBSQLComponent.BeginCreateOrUpdate method.
-type AzureComCosmosDBSQLComponentBeginCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AzureComCosmosDBSQLComponentBeginDeleteOptions contains the optional parameters for the AzureComCosmosDBSQLComponent.BeginDelete method.
-type AzureComCosmosDBSQLComponentBeginDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AzureComCosmosDBSQLComponentGetOptions contains the optional parameters for the AzureComCosmosDBSQLComponent.Get method.
-type AzureComCosmosDBSQLComponentGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AzureComCosmosDBSQLComponentListOptions contains the optional parameters for the AzureComCosmosDBSQLComponent.List method.
-type AzureComCosmosDBSQLComponentListOptions struct {
-	// placeholder for future optional parameters
-}
-
 // AzureComKeyVaultComponentBeginCreateOrUpdateOptions contains the optional parameters for the AzureComKeyVaultComponent.BeginCreateOrUpdate method.
 type AzureComKeyVaultComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -141,50 +121,6 @@ type AzureComServiceBusQueueComponentGetOptions struct {
 // AzureComServiceBusQueueComponentListOptions contains the optional parameters for the AzureComServiceBusQueueComponent.List method.
 type AzureComServiceBusQueueComponentListOptions struct {
 	// placeholder for future optional parameters
-}
-
-// AzureCosmosDBSQLComponentList - List of azure.com.CosmosDBSQLComponent resources.
-type AzureCosmosDBSQLComponentList struct {
-	// REQUIRED; List of azure.com.CosmosDBSQLComponent resources.
-	Value []*AzureCosmosDBSQLComponentResource `json:"value,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type AzureCosmosDBSQLComponentList.
-func (a AzureCosmosDBSQLComponentList) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "value", a.Value)
-	return json.Marshal(objectMap)
-}
-
-type AzureCosmosDBSQLComponentProperties struct {
-	BasicComponentProperties
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
-	Managed *bool `json:"managed,omitempty"`
-
-	// The ID of the user-managed CosmosDB with SQL API to use for this Component
-	Resource *string `json:"resource,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type AzureCosmosDBSQLComponentProperties.
-func (a AzureCosmosDBSQLComponentProperties) MarshalJSON() ([]byte, error) {
-	objectMap := a.BasicComponentProperties.marshalInternal()
-	populate(objectMap, "managed", a.Managed)
-	populate(objectMap, "resource", a.Resource)
-	return json.Marshal(objectMap)
-}
-
-// AzureCosmosDBSQLComponentResource - Component for Azure CosmosDB with SQL
-type AzureCosmosDBSQLComponentResource struct {
-	ProxyResource
-	// REQUIRED
-	Properties *AzureCosmosDBSQLComponentProperties `json:"properties,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type AzureCosmosDBSQLComponentResource.
-func (a AzureCosmosDBSQLComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := a.ProxyResource.marshalInternal()
-	populate(objectMap, "properties", a.Properties)
-	return json.Marshal(objectMap)
 }
 
 // AzureEntityResource - The resource model definition for an Azure Resource Manager resource with an etag.
