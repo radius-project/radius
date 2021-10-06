@@ -79,8 +79,17 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 				require.NoError(t, err, "failed to list pods")
-				require.GreaterOrEqual(t, matches.Items[0].Spec.Volumes, 1, "volumes should contain at least one item, instead it had: %+v", matches.Items[0].Spec.Volumes)
-				volume := matches.Items[0].Spec.Volumes[0]
+
+				found := false
+				var volIndex int
+				for index, vol := range matches.Items[0].Spec.Volumes {
+					if vol.Name == "my-volume" {
+						found = true
+						volIndex = index
+					}
+				}
+				require.True(t, found, "volumes emptydir did not get mounted")
+				volume := matches.Items[0].Spec.Volumes[volIndex]
 				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
 				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
 			},
