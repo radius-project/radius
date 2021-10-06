@@ -1,64 +1,57 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'radius-servicebus'
 
   //SAMPLE
   //BUS
-  resource sbq 'Components' = {
+  resource sbq 'azure.com.ServiceBusQueueComponent' = {
     name: 'sbq'
-    kind: 'azure.com/ServiceBusQueue@v1alpha1'
     properties: {
-      config: {
-        managed: true
-        queue: 'radius-queue1'
-      }
+      managed: true
+      queue: 'orders'
     }
   }
   //BUS
   //SENDER
-  resource sender 'Components' = {
+  resource sender 'ContainerComponent' = {
     name: 'sender'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radiusteam/servicebus-sender:latest'
+      container: {
+        image: 'radiusteam/servicebus-sender:latest'
+        env: {
+          SB_CONNECTION: sbq.queueConnectionString()
+          SB_NAMESPACE: sbq.properties.namespace
+          SB_QUEUE: sbq.properties.queue
+        }
+      } 
+      connections: {
+        servicebus: {
+          kind: 'azure.com/ServiceBusQueue'
+          source: sbq.id
         }
       }
-      uses: [
-        {
-          binding: sbq.properties.bindings.default
-          env: {
-            SB_CONNECTION: sbq.properties.bindings.default.connectionString
-            SB_NAMESPACE: sbq.properties.bindings.default.namespace
-            SB_QUEUE: sbq.properties.bindings.default.queue
-          }
-        }
-      ]
     }
   }
   //SENDER
   //SAMPLE
 
   //RECEIVER
-  resource receiver 'Components' = {
+  resource receiver 'ContainerComponent' = {
     name: 'receiver'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radiusteam/servicebus-receiver:latest'
+      container: {
+        image: 'radiusteam/servicebus-receiver:latest'
+        env: {
+          SB_CONNECTION: sbq.queueConnectionString()
+          SB_NAMESPACE: sbq.properties.namespace
+          SB_QUEUE: sbq.properties.queue
         }
       }
-      uses: [
-        {
-          binding: sbq.properties.bindings.default
-          env: {
-            SB_CONNECTION: sbq.properties.bindings.default.connectionString
-            SB_NAMESPACE: sbq.properties.bindings.default.namespace
-            SB_QUEUE: sbq.properties.bindings.default.queue
-          }
+      connections: {
+        servicebus: {
+          kind: 'azure.com/ServiceBusQueue'
+          source: sbq.id
         }
-      ]
+      }
     }
   }
   //RECEIVER

@@ -14,43 +14,36 @@ The `mongodb.com/MongoDB` component is a [portable component]({{< ref components
 | [Microsoft Azure]({{< ref azure>}}) | [Azure CosmosDB API for MongoDB](https://docs.microsoft.com/en-us/azure/cosmos-db/mongodb-introduction)
 | [Kubernetes]({{< ref kubernetes >}}) | [MongoDB Docker image](https://hub.docker.com/_/mongo/)
 
-## Configuration
+## Component format
+
+Mongo databases can be either managed by Radius or provided by the user:
+
+{{< tabs Radius-managed User-managed >}}
+
+{{% codetab %}}
+Simply create a 'mongodb.com.MongoDBComponent' and specify `managed: true`:
+
+{{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
+{{% /codetab %}}
+
+{{% codetab %}}
+Begin by defining a CosmosDB with Mongo API in Bicep, either as part of the template or reference an `existing` resource, and then specify it as part of the 'mongodb.com.MongoDBComponent':
+
+{{< rad file="snippets/user-managed.bicep" embed=true marker="//SAMPLE" >}}
+{{% /codetab %}}
+
+{{< /tabs >}}
+
+### Properties
 
 | Property | Description | Example(s) |
 |----------|-------------|---------|
 | managed | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. | `true`, `false`
 | resource | The ID of the user-managed CosmosDB with Mongo API to use for this Component. | `account::mongodb.id`
 
-## Resource lifecycle
 
-A `mongodb.com/MongoDB` component can be Radius-managed and user-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
+## Provided data
 
-{{% alert title="Warning" color="warning" %}}
-At this time user-managed MongoDB components are only supported in Azure environments.
-{{% /alert %}}
-
-### Radius managed
-
-{{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
-
-### User managed
-
-#### Radius component
-
-{{< rad file="snippets/user-managed.bicep" embed=true marker="//SAMPLE" >}}
-
-#### Bicep resource
-
-{{< rad file="snippets/user-managed.bicep" embed=true marker="//BICEP" >}}
-
-## Bindings
-
-### mongo
-
-The `mongo` Binding of kind `mongodb.com/Mongo` represents the Mongo API offered by the CosmosDB resource.
-
-| Property | Description |
-|----------|-------------|
-| `connectionString` | The MongoDB connection string used to connect to the database.
-| `database` | The name of the database to which you are connecting.
-
+| Bicep function | Description | Example |
+|----------------|-------------|---------|
+| connectionString() | Returns the connection string for the MongoDB. | `mongodb.connectionString()` |

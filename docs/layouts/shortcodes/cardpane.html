@@ -1,0 +1,4 @@
+{{ $link := .Get "width" | default "auto" }}
+<div class="card-deck mb-4" style="max-width:{{ $link }}" >
+{{- .Inner -}}
+</div>

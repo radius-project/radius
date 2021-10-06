@@ -1,71 +1,78 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
-  name: 'shopping-app'  
-  
-  resource store 'Components' = {
+resource app 'radius.dev/Application@v1alpha3' = {
+  name: 'shopping-app'
+
+  resource store 'ContainerComponent' = {
     name: 'storefront'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/storefront'
+      container: {
+        image: 'radius.azurecr.io/storefront'
+        ports: {
+          web: {
+            containerPort: 80
+            provides: storefrontHttp.id
+          }
         }
       }
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 80
-        }
-        invoke: {
-          kind: 'dapr.io/Invoke'
+      connections: {
+        inventory: {
+          kind: 'dapr.io/StateStore'
+          source: inventory.id
         }
       }
-      uses: [
-        {
-          binding: inventory.properties.bindings.default
-        }
-      ]
       traits: [
         {
-           kind: 'dapr.io/App@v1alpha1'
-           appId: 'storefront'
-           appPort: 80
+          kind: 'dapr.io/Sidecar@v1alpha1'
+          appPort: 3000
+          provides: storefrontDapr.id
         }
       ]
     }
   }
 
-  resource cart 'Components' = {
+  resource storefrontDapr 'dapr.io.DaprHttpRoute' = {
+    name: 'storefront-dapr'
+    properties: {
+      appId: 'storefront'
+    }
+  }
+
+  resource storefrontHttp 'HttpRoute' = {
+    name: 'storefront-http'
+    properties: {
+      gateway: {
+        hostname: 'example.com'
+      }
+    }
+  }
+
+  resource cart 'ContainerComponent' = {
     name: 'cart-api'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-            image: 'radiusteam/cart-api'
+      container: {
+        image: 'radiusteam/cart-api'
+        env: {
+          STOREFRONT_ID: storefrontDapr.properties.appId
         }
       }
-      uses: [
-        {
-          binding: store.properties.bindings.invoke
+      connections: {
+        store: {
+          kind: 'dapr.io/DaprHttp'
+          source: storefrontDapr.id
         }
-      ]
+      }
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
-          appId: 'cart-api'
+          kind: 'dapr.io/Sidecar@v1alpha1'
         }
       ]
     }
   }
 
-  resource inventory 'Components' = {
+  resource inventory 'dapr.io.StateStoreComponent' = {
     name: 'inventorystore'
-    kind: 'dapr.io/StateStore@v1alpha1'
     properties: {
-      config: {
-        kind: 'state.azure.tablestorage'
-        managed: true
-      }
+      kind: 'state.azure.tablestorage'
+      managed: true
     }
   }
-
 }

@@ -12,7 +12,7 @@ Each node on the diagram maps to one **Component**. Components describe the code
 The description of behavior and requirements for a single unit of software.
 {{% /alert %}}
 
-The Component is documentation for a piece of code, data, or infrastructure. It can capture all of the important behaviors and requirements needed for a runtime to host that software. An application can have both runnable components *(e.g. containers, web applications)* and non-runnable components *(e.g. databases, message queues)*. 
+The Component is documentation for a piece of code, data, or infrastructure. It can capture all of the important behaviors and requirements needed for a runtime to host that software. An application can have both runnable components *(e.g. containers, web applications)* and non-runnable components *(e.g. databases, message queues)*.
 
 ## Component definition
 
@@ -20,7 +20,7 @@ When a Component describes your code, data, or infrastructure it needs to concep
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| **Kind** | What kind of thing is this? | `ContainerComponent`
+| **Resource type** | What type of thing is this? | `ContainerComponent`
 | **Name** | The logical name of the Component, must be unique per-Application | `my-container`
 | **Essentials** | How do I run this? | Container image and tag (`my-container:latest`)
 | **Connections** | What other Components will I interact with? | Need to read from `my-db` 

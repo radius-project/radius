@@ -14,34 +14,34 @@ The `rabbitmq.com/MessageQueue` component is a Kubernetes specific component for
 | [Microsoft Azure]({{< ref azure>}}) | Not compatible |
 | [Kubernetes]({{< ref kubernetes >}}) | [RabbitMQ](https://hub.docker.com/_/rabbitmq/) service |
 
-## Configuration
+## Component format
+
+{{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
+
+### Resource lifecycle
+
+A `rabbitmq.com/MessageQueue` component can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
 
 | Property | Description | Example(s) |
 |----------|-------------|---------|
 | managed | Indicates if the resource is Radius-managed. For now only true is accepted for this Component.| `true`
-| queue | The name of the queue
 
-## Resource lifecycle
-
-A `rabbitmq.com/MessageQueue` component can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
-
-### Radius managed
-
-{{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
-
-### User managed
-
-{{% alert title="Warning" color="warning" %}}
-Currently user-managed RabbitMQ components are not supported.
-{{% /alert %}}
-
-## Bindings
-
-### rabbitmq
-
-The `default` Binding of kind `rabbitmq.com/MessageQueue` represents the the RabbitMQ resource, and all APIs it offers.
+## Queue information
 
 | Property | Description | Example(s) |
-|----------|-------------|------------|
-| `connectionString` | The RabbitMQ connection string used to connect to the resource. | amqp://rabbitmq:5672/ |
-| `queue` | The message queue to which you are connecting.
+|----------|-------------|---------|
+| queue | The name of the queue. | `'orders'` |
+
+## Provided data
+
+### Functions
+
+| Property | Description | Example |
+|----------|-------------|---------|
+| `connectionString()` | The RabbitMQ connection string used to connect to the resource. | amqp://rabbitmq:5672/ |
+
+### Properties
+
+| Property | Description | Example |
+|----------|-------------|---------|
+| `queue` | The message queue to which you are connecting. | `'orders'`

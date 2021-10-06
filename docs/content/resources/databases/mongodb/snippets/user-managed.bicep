@@ -31,40 +31,36 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
 }
 //BICEP
 
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'cosmos-container-usermanaged'
   
   //SAMPLE
-  resource db 'Components' = {
+  resource db 'mongodb.com.MongoDBComponent' = {
     name: 'db'
-    kind: 'mongodb.com/Mongo@v1alpha1'
     properties: {
-      config: {
-        resource: account::mongodb.id
-      }
+      resource: account::mongodb.id
     }
   }
   //SAMPLE
 
-  resource webapp 'Components' = {
+  resource webapp 'ContainerComponent' = {
     name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       //HIDE
-      run: {
-        container: {
-          image: 'rynowak/node-todo:latest'
+      container: {
+        image: 'rynowak/node-todo:latest'
+        env: {
+          DBCONNECTION: db.id
         }
       }
       //HIDE
-      uses: [
-        {
-          binding: db.properties.bindings.mongo
-          env: {
-            DBCONNECTION: db.properties.bindings.mongo.connectionString
-          }
+      connections: {
+        mongo: {
+          kind: 'mongo.com/MongoDB'
+          source: db.id
+          
         }
-      ]
+      }
     }
   }
 }

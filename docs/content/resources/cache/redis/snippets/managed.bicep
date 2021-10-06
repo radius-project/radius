@@ -1,37 +1,32 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'redis-container'
   
   //SAMPLE
-  resource redis 'Components' = {
+  resource redis 'redislabs.com.RedisComponent' = {
     name: 'redis'
-    kind: 'redislabs.com/Redis@v1alpha1'
     properties: {
-      config: {
-        managed: true
-      }
+      managed: true
     }
   }
   //SAMPLE
 
-  resource webapp 'Components' = {
+  resource webapp 'ContainerComponent' = {
     name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       //HIDE
-      run: {
-        container: {
-          image: 'radius.azurecr.io/magpie:latest'
+      container: {
+        image: 'radius.azurecr.io/magpie:latest'
+        env: {
+          CONNECTIONSTRING: redis.connectionString()
         }
       }
       //HIDE
-      uses: [
-        {
-          binding: redis.properties.bindings.redis
-          env: {
-            HOST: redis.properties.bindings.redis.host
-          }
+      connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redis.id
         }
-      ]
+      }
     }
   }
 

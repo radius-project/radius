@@ -6,79 +6,58 @@ description: "Learn about the Radius container component"
 weight: 100
 ---
 
-The `radius.dev/Container` component provides an abstraction for a container workload that can be run on any [Radius platform]({{< ref platforms >}}).
+`ContainerComponent` provides an abstraction for a container workload that can be run on any [Radius platform]({{< ref platforms >}}).
 
 ## Platform resources
+
+Containers are hosted by the following runtimes on each platform:
 
 | Platform | Resource |
 |----------|----------|
 | [Microsoft Azure]({{< ref azure>}}) | Kubernetes Deployment on AKS |
 | [Kubernetes]({{< ref kubernetes >}}) | Kubernetes Deployment |
 
+## Component format
 
-## Configuration
+{{< rad file="snippets/container.bicep" embed=true marker="//CONTAINER" >}}
+
+The following top-level information is available for containers:
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | name | y | The name of your component. Used to provide status and visualize the component. | `frontend`
-| kind | y |The component kind and version. | `radius.dev/Container@v1alpha1`
-| properties.run.container.image | y | The registry and image to download and run in your container. | `radiusteam/frontend`
-| properties.run.container.env | n | The environment variables to be set for the container. | `"ENV_VAR": "value"`
-| properties.bindings |  | Bindings that your container provides to other components. See [bindings](#bindings) for more  information | -
 
-## Bindings
+### Container
 
-### HTTP endpoint
+Deatils on what to run and how to run it are defined in the `container` property:
 
-The `http` binding provides an HTTP endpoint which opens a specified port on a container so that other components can send HTTP traffic to the container.
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| image | y | The registry and image to download and run in your container. | `radiusteam/frontend`
+| env | n | The environment variables to be set for the container. | `"ENV_VAR": "value"`
+| ports | n | Ports the container provides | [See below](#ports).
 
-| Key | Required | Description | Example |
-|-----|:--------:|-------------|---------|
-| kind | y | Defines the binding type. | `http`
-| targetPort | y | The HTTP port your application is listening on inside the container. Defaults to value of `port`. | `3000`
-| port | n | The port to serve the HTTP binding on. Defaults to `80`. | `3500`
+### Ports
 
-{{< rad file="snippets/frontend-backend.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| name | y | A name key for the port. | `http`
+| containerPort | y | The port the container exposes | `80`
+| protocol | n | The protocol the container exposes | `'TCP'`
+| provides | n | The id of the [Route]({{< ref connections-model >}}) the container provides. | `http.id`
 
-## Dapr invoke
+### Volumes
 
-The `dapr.io/Invoke` binding indicates that other components can invoke a service on this container using [Dapr service invocation](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/).
+{{% alert title="🚧 Under construction" color="warning" %}}
+Volumes are currently being developed. Stay tuned for an update.
+{{% /alert %}}
 
-| Key | Required | Description | Example |
-|-----|:--------:|-------------|---------|
-| kind | y | Defines the binding type. | `dapr.io/Invoke`
+### Connections
 
-## Traits
+Connections define how a container connects to [other resources]({{< ref resources >}}).
 
-### Inbound route
-
-The `radius.dev/InboundRoute` trait adds an ingress controller to the container component to accept HTTP traffic from the internet.
-
-| Key | Required | Description | Example |
-|-----|:--------:|-------------|---------|
-| kind | y | Defines the trait type. | `'radius.dev/InboundRoute@v1alpha1'`
-| binding | y | The binding to create an ingress controller on and expose to the internet. | `'frontend'`
-| hostname | n | The hostname to use for the inbound route. | `example.com`
-
-{{< rad file="snippets/inboundroute.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
-
-### Dapr sidecar
-
-The `dapr.io/App` trait adds a [Dapr](https://dapr.io) sidecar to the container, and ensures a Dapr control plane is deployed to the underlying hosting platform. This allows you to use all of the Dapr building blocks and APIs from your container.
-
-| Key | Required | Description | Example |
-|-----|:--------:|-------------|---------|
-| kind | y | Defines the trait type. | `'dapr.io/Sidecar@v1alpha1'`
-| appId | y | The unique name for your Dapr application. | `frontend`
-| appPort | y | The port that Dapr proxy will use to expose the service to clients | `3000`
-
-{{< rad file="snippets/dapr.bicep" embed=true marker="//SAMPLE" replace-key-run="//HIDE" replace-value-run="run: {...}" >}}
-
-### Manual scaling
-
-The `radius.dev/ManualScaling` trait adds the ability to manually scale the number of instances of a container component.
-
-| Key | Required | Description | Example |
-|-----|:--------:|-------------|---------|
-| kind | y | Defines the trait type. | `'radius.dev/ManualScaling@v1alpha1'`
-| replicas | n | The number of replicas to run for a container. | `2`
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| name | y | A name key for the port. | `inventory`
+| kind | y | The type of resource you are connecting to. | `mongo.com/MongoDB`
+| source | y | The id of the [Component]({{< ref components-model >}}) the container is connecting to. | `db.id`
