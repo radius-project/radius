@@ -7,7 +7,6 @@ package containerv1alpha3
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -248,6 +247,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
 			// Add the volume to the list of volumes to be added to the Volumes spec
 			volumes = append(volumes, volumeSpec)
+		} else {
+			return outputresource.OutputResource{}, secretData, fmt.Errorf("Only ephemeral volumes are supported. Got kind: %v", volume[kindProperty])
 		}
 	}
 
@@ -289,19 +290,6 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 	return output, secretData, nil
 }
 
-func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) {
-	data, err := json.Marshal(volume)
-	if err != nil {
-		return nil, err
-	}
-	var ephemeralVolume EphemeralVolume
-	err = json.Unmarshal(data, &ephemeralVolume)
-	if err != nil {
-		return nil, err
-	}
-	return &ephemeralVolume, nil
-}
-
 func (r Renderer) makeEphemeralVolume(volumeName string, volume map[string]interface{}) (corev1.Volume, corev1.VolumeMount, error) {
 	ephemeralVolume, err := asEphemeralVolume(volume)
 	if err != nil {
@@ -310,7 +298,6 @@ func (r Renderer) makeEphemeralVolume(volumeName string, volume map[string]inter
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
 	volumeSpec.Name = volumeName
-	volumeSpec.VolumeSource = corev1.VolumeSource{}
 	volumeSpec.VolumeSource.EmptyDir = &corev1.EmptyDirVolumeSource{}
 	if ephemeralVolume.ManagedStore == ManagedStoreMemory {
 		volumeSpec.VolumeSource.EmptyDir.Medium = corev1.StorageMediumMemory

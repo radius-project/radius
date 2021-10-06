@@ -24,6 +24,4 @@ const (
 	AzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
 	AzureRoleAssignment              = "azure.roleassignment"
 	AzureRedis                       = "azure.redis"
-	AzureFileShare                   = "azure.fileshare"
-	AzureFileShareStorageAccount     = "azure.fileshare.account"
 )
