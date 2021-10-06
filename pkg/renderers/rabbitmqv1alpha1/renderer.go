@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,6 +22,34 @@ import (
 )
 
 type Renderer struct {
+}
+
+func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.InstantiatedWorkload) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference, error) {
+	component := RabbitMQComponent{}
+	err := workload.Workload.AsRequired(Kind, &component)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	queueName := component.Config.Queue
+	// queue name must be specified by the user
+	if queueName == "" {
+		return nil, nil, fmt.Errorf("queue name must be specified")
+	}
+
+	uri := fmt.Sprintf("amqp://%s:%s", workload.Name, fmt.Sprint(5672))
+
+	values := map[string]renderers.ComputedValueReference{
+		"connectionString": {
+			Value: uri,
+		},
+		"queue": {
+			Value: queueName,
+		},
+	}
+	secrets := map[string]renderers.SecretValueReference{}
+	return values, secrets, nil
 }
 
 func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
@@ -44,9 +73,9 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("queue name must be specified")
 	}
 
-	uri := fmt.Sprintf("amqp://%s.%s.svc.cluster.local:%s", workload.Name, namespace, fmt.Sprint(5672))
+	uri := fmt.Sprintf("amqp://%s:%s", workload.Name, fmt.Sprint(5672))
 
-	// connection string looks like amqp://NAME.NAMESPACE.svc.cluster.local:PORT
+	// connection string looks like amqp://NAME:PORT
 	bindings := map[string]components.BindingState{
 		"rabbitmq": {
 			Component: workload.Name,

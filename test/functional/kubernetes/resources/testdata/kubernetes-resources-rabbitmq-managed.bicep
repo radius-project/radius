@@ -1,34 +1,29 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-rabbitmq-managed'
   
-  resource webapp 'Components' = {
+  resource webapp 'ContainerComponent' = {
     name: 'todoapp'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/magpie:latest'
+      container: {
+        image: 'radius.azurecr.io/magpie:latest'
+        env: {
+          BINDING_RABBITMQ_CONNECTIONSTRING: rabbitmq.properties.connectionString
         }
       }
-      uses: [
-        {
-          binding: rabbitmq.properties.bindings.rabbitmq
-          env: {
-            BINDING_RABBITMQ_CONNECTIONSTRING: rabbitmq.properties.bindings.rabbitmq.connectionString
-          }
+      connections: {
+        rabbitmq: {
+          kind: 'rabbitmq.com/MessageQueue'
+          source: rabbitmq.id
         }
-      ]
+      }
     }
   }
 
-  resource rabbitmq 'Components' = {
+  resource rabbitmq 'rabbitmq.com.MessageQueueComponent' = {
     name: 'rabbitmq'
-    kind: 'rabbitmq.com/MessageQueue@v1alpha1'
     properties: {
-      config: {
-        managed: true
-        queue: 'radius-queue'
-      }
+      managed: true
+      queue: 'radius-queue'
     }
   }
 }

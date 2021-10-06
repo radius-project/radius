@@ -6,6 +6,8 @@
 package rabbitmqv1alpha1
 
 const Kind = "rabbitmq.com/MessageQueue@v1alpha1"
+const ResourceType = "rabbitmq.com.MessageQueue"
+
 const QueueNameKey = "queue"
 
 // RabbitMQComponent is the definition of the service bus queue component
