@@ -51,13 +51,13 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *Pu
 	var namespace *servicebus.SBNamespace
 	if properties[ServiceBusNamespaceIDKey] == "" {
 		// If we don't have an ID already then we will need to create a new one.
-		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.Application)
+		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.ApplicationName)
 		if err != nil {
 			return nil, err
 		}
 
 		if namespace == nil {
-			namespace, err = handler.CreateNamespace(ctx, options.Application)
+			namespace, err = handler.CreateNamespace(ctx, options.ApplicationName)
 			if err != nil {
 				return nil, err
 			}
@@ -144,8 +144,8 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ComponentNameKey],
-				"labels":    kubernetes.MakeDescriptiveLabels(options.Application, options.Component),
+				"name":      properties[ResourceName],
+				"labels":    kubernetes.MakeDescriptiveLabels(options.ApplicationName, options.ResourceName),
 			},
 			"spec": map[string]interface{}{
 				"type":    "pubsub.azure.servicebus",
@@ -175,7 +175,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ComponentNameKey],
+				"name":      properties[ResourceName],
 			},
 		},
 	}

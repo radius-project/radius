@@ -57,7 +57,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 		DescriptiveLabels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		SelectorLabels:    kubernetes.MakeSelectorLabels(resource.ApplicationName, resource.ResourceName),
 
-		// For now use the component name as the Kubernetes resource name.
+		// For now use the resource name as the Kubernetes resource name.
 		Name: resource.ResourceName,
 	}
 
@@ -99,7 +99,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 func (r KubernetesRenderer) MakeSecret(options KubernetesOptions, service string, username string, password string) *corev1.Secret {
 	// Make a connection string and use the secret to store it.
 
-	// For now this is static, the host and database are just the component name.
+	// For now this is static, the host and database are just the resource name.
 	port := 27017
 
 	// Mongo connection strings look like: 'mongodb://{accountname}:{key}@{endpoint}:{port}/{logindatabase}?...{params}'

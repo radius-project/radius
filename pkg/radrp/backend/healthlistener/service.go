@@ -16,13 +16,6 @@ import (
 	"github.com/go-logr/logr"
 )
 
-// Radius Resource Types
-const (
-	RadiusRPName             = "radius"
-	ApplicationsResourceType = "Applications"
-	ComponentsResourceType   = "Components"
-)
-
 type Service struct {
 	Options ServiceOptions
 	db      db.RadrpDB

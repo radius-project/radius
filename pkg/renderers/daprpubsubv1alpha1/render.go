@@ -36,7 +36,7 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 
 	properties := resources[0].Properties
 	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
-	pubsubName := properties[handlers.ComponentNameKey]
+	pubsubName := properties[handlers.ResourceName]
 	topicName := properties[handlers.ServiceBusTopicNameKey]
 
 	bindings := map[string]components.BindingState{
@@ -84,7 +84,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
-				handlers.ComponentNameKey:        component.Config.Name,
+				handlers.ResourceName:            component.Config.Name,
 				handlers.KubernetesNamespaceKey:  w.Application,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
@@ -113,7 +113,7 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			Managed:      false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
-				handlers.ComponentNameKey:        component.Config.Name,
+				handlers.ResourceName:            component.Config.Name,
 				handlers.KubernetesNamespaceKey:  w.Application,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
@@ -141,7 +141,7 @@ func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.Ins
 		},
 		"pubSubName": {
 			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			PropertyReference: handlers.ComponentNameKey,
+			PropertyReference: handlers.ResourceName,
 		},
 		"topic": {
 			LocalID:           outputresource.LocalIDAzureServiceBusTopic,

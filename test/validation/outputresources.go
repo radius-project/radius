@@ -20,14 +20,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type ComponentSet struct {
-	Components []Component
+type ResourceSet struct {
+	Resources []RadiusResource
 }
 
 // For now we mostly need the same data regardless of the the appmodel version.
 // We can rename this to `RadiusResourceSet` in the future.
-type Component struct {
-	ComponentName   string
+type RadiusResource struct {
+	ResourceName    string
 	ApplicationName string
 	ResourceType    string
 	OutputResources map[string]ExpectedOutputResource
@@ -59,13 +59,13 @@ func NewOutputResource(localID, outputResourceType, resourceKind string, managed
 	}
 }
 
-func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, expected ComponentSet) {
+func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, expected ResourceSet) {
 	genericClient := clients.NewGenericResourceClient(subscriptionID, authorizer)
 
 	failed := false
 
-	for _, c := range expected.Components {
-		t.Logf("Validating output resources for component %s...", c.ComponentName)
+	for _, c := range expected.Resources {
+		t.Logf("Validating output resources for Radius resource %s...", c.ResourceName)
 
 		all := []rest.OutputResource{}
 		require.NotEmpty(t, c.ResourceType, "ResourceType must be set for v3")
@@ -83,13 +83,13 @@ func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armCo
 			},
 			azresources.ResourceType{
 				Type: c.ResourceType,
-				Name: c.ComponentName,
+				Name: c.ResourceName,
 			})
 
-		t.Logf("Reading resource %s %s...", c.ResourceType, c.ComponentName)
+		t.Logf("Reading resource %s %s...", c.ResourceType, c.ResourceName)
 		resource, err := genericClient.GetByID(context.Background(), strings.TrimPrefix(id, "/"), azresources.CustomRPApiVersion)
 		require.NoError(t, err)
-		t.Logf("Finished resource %s %s...", c.ResourceType, c.ComponentName)
+		t.Logf("Finished resource %s %s...", c.ResourceType, c.ResourceName)
 
 		actual, err := convertFromGenericToRestOutputResource(resource)
 		require.NoError(t, err)

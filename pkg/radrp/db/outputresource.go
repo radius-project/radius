@@ -17,7 +17,7 @@ const (
 	Failed         = "Failed"
 )
 
-// OutputResource represents an output resource comprising a Radius component.
+// OutputResource represents an output resource comprising a Radius resource.
 type OutputResource struct {
 	LocalID string `bson:"id"`
 

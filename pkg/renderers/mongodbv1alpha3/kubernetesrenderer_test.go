@@ -83,8 +83,8 @@ func Test_KubernetesRenderer_Render_Unmanaged_NotSupported(t *testing.T) {
 func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 	renderer := KubernetesRenderer{}
 	options := KubernetesOptions{
-		DescriptiveLabels: kubernetes.MakeDescriptiveLabels("test-application", "test-component"),
-		SelectorLabels:    kubernetes.MakeSelectorLabels("test-application", "test-component"),
+		DescriptiveLabels: kubernetes.MakeDescriptiveLabels("test-application", "test-resource"),
+		SelectorLabels:    kubernetes.MakeSelectorLabels("test-application", "test-resource"),
 		Namespace:         "test-namespace",
 		Name:              "test-name",
 	}
@@ -98,7 +98,7 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-name",
 			Namespace: "test-namespace",
-			Labels:    kubernetes.MakeDescriptiveLabels("test-application", "test-component"),
+			Labels:    kubernetes.MakeDescriptiveLabels("test-application", "test-resource"),
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
@@ -114,8 +114,8 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 func Test_KubernetesRenderer_MakeService(t *testing.T) {
 	renderer := KubernetesRenderer{}
 	options := KubernetesOptions{
-		DescriptiveLabels: kubernetes.MakeDescriptiveLabels("test-application", "test-component"),
-		SelectorLabels:    kubernetes.MakeSelectorLabels("test-application", "test-component"),
+		DescriptiveLabels: kubernetes.MakeDescriptiveLabels("test-application", "test-resource"),
+		SelectorLabels:    kubernetes.MakeSelectorLabels("test-application", "test-resource"),
 		Namespace:         "test-namespace",
 		Name:              "test-name",
 	}
@@ -129,11 +129,11 @@ func Test_KubernetesRenderer_MakeService(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-name",
 			Namespace: "test-namespace",
-			Labels:    kubernetes.MakeDescriptiveLabels("test-application", "test-component"),
+			Labels:    kubernetes.MakeDescriptiveLabels("test-application", "test-resource"),
 		},
 		Spec: corev1.ServiceSpec{
 			ClusterIP: corev1.ClusterIPNone,
-			Selector:  kubernetes.MakeSelectorLabels("test-application", "test-component"),
+			Selector:  kubernetes.MakeSelectorLabels("test-application", "test-resource"),
 		},
 	}
 	require.Equal(t, expected, service)
@@ -142,8 +142,8 @@ func Test_KubernetesRenderer_MakeService(t *testing.T) {
 func Test_KubernetesRenderer_MakeStatefulSet(t *testing.T) {
 	renderer := KubernetesRenderer{}
 	options := KubernetesOptions{
-		DescriptiveLabels: kubernetes.MakeDescriptiveLabels("test-application", "test-component"),
-		SelectorLabels:    kubernetes.MakeSelectorLabels("test-application", "test-component"),
+		DescriptiveLabels: kubernetes.MakeDescriptiveLabels("test-application", "test-resource"),
+		SelectorLabels:    kubernetes.MakeSelectorLabels("test-application", "test-resource"),
 		Namespace:         "test-namespace",
 		Name:              "test-name",
 	}
@@ -157,16 +157,16 @@ func Test_KubernetesRenderer_MakeStatefulSet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-name",
 			Namespace: "test-namespace",
-			Labels:    kubernetes.MakeDescriptiveLabels("test-application", "test-component"),
+			Labels:    kubernetes.MakeDescriptiveLabels("test-application", "test-resource"),
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: kubernetes.MakeSelectorLabels("test-application", "test-component"),
+				MatchLabels: kubernetes.MakeSelectorLabels("test-application", "test-resource"),
 			},
 			ServiceName: "test-service",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: kubernetes.MakeDescriptiveLabels("test-application", "test-component"),
+					Labels: kubernetes.MakeDescriptiveLabels("test-application", "test-resource"),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{

@@ -1364,7 +1364,7 @@
           "$ref": "#/definitions/ProxyResource"
         }
       ],
-      "description": "Interface for generic component -- useful for listing components without specifying a type",
+      "description": "Interface for generic resource -- useful for listing resources without specifying a type",
       "properties": {
         "properties": {
           "type": "object"

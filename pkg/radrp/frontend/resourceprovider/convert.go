@@ -96,17 +96,17 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 func NewRestRadiusResourceStatus(original db.RadiusResourceStatus) RadiusResourceStatus {
 	ors := NewRestOutputResourceStatus(original.OutputResources)
 
-	// Aggregate the component status
+	// Aggregate the resource status
 	healthState := healthcontract.HealthStateHealthy
 	provisioningState := rest.Provisioned
 forLoop:
 	for _, or := range ors {
-		// If any of the output resources is not healthy, mark the component as unhealthy
+		// If any of the output resources is not healthy, mark the resource as unhealthy
 		if or.Status.HealthState != healthcontract.HealthStateHealthy {
 			healthState = healthcontract.HealthStateUnhealthy
 		}
 
-		// If any of the output resources is not in Provisioned state, mark the component accordingly
+		// If any of the output resources is not in Provisioned state, mark the resource accordingly
 		switch or.Status.ProvisioningState {
 		case db.Failed:
 			provisioningState = rest.Failed

@@ -87,7 +87,7 @@ type SecretValueReference struct {
 	Transformer string
 }
 
-// SecretValueTransformer allows transforming a secret value before passing it on to a Component
+// SecretValueTransformer allows transforming a secret value before passing it on to a Resource
 // that wants to access it.
 //
 // This is surprisingly common. For example, it's common for access control/connection strings to apply

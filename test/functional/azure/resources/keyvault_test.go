@@ -33,23 +33,23 @@ func Test_KeyVaultManaged(t *testing.T) {
 						Type: azresources.ManagedIdentityUserAssignedIdentities,
 						Tags: map[string]string{
 							keys.TagRadiusApplication: application,
-							keys.TagRadiusComponent:   "kvaccessor",
+							keys.TagRadiusResource:    "kvaccessor",
 						},
 					},
 					{
 						Type: azresources.KeyVaultVaults,
 						Tags: map[string]string{
 							keys.TagRadiusApplication: application,
-							keys.TagRadiusComponent:   "kv",
+							keys.TagRadiusResource:    "kv",
 						},
 					},
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "kv",
+						ResourceName:    "kv",
 						ResourceType:    keyvaultv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDKeyVault: validation.NewOutputResource(outputresource.LocalIDKeyVault, outputresource.TypeARM, resourcekinds.AzureKeyVault, true, false, rest.OutputResourceStatus{}),
@@ -57,7 +57,7 @@ func Test_KeyVaultManaged(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "kvaccessor",
+						ResourceName:    "kvaccessor",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment:                  validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -85,7 +85,7 @@ func Test_KeyVaultManaged(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "kvaccessor"),
+						validation.NewK8sObjectForResource(application, "kvaccessor"),
 					},
 				},
 			},

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
     "RadiusResource": {
-      "description": "Interface for generic component -- useful for listing components without specifying a type",
+      "description": "Interface for generic resource -- useful for listing resources without specifying a type",
       "type": "object",
       "x-ms-azure-resource": true,
       "allOf": [

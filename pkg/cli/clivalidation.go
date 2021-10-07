@@ -94,14 +94,6 @@ func RequireApplication(cmd *cobra.Command, env environments.Environment) (strin
 	return RequireApplicationArgs(cmd, []string{}, env)
 }
 
-func RequireDeployment(cmd *cobra.Command, args []string) (string, error) {
-	return required(cmd, args, "deployment")
-}
-
-func RequireComponent(cmd *cobra.Command, args []string) (string, error) {
-	return required(cmd, args, "component")
-}
-
 func RequireResource(cmd *cobra.Command, args []string) (resourceType string, resourceName string, err error) {
 	results, err := requiredMultiple(cmd, args, "type", "resource")
 	if err != nil {
@@ -112,14 +104,6 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 
 func RequireOutput(cmd *cobra.Command) (string, error) {
 	return cmd.Flags().GetString("output")
-}
-
-func required(cmd *cobra.Command, args []string, name string) (string, error) {
-	results, err := requiredMultiple(cmd, args, name)
-	if err != nil {
-		return "", err
-	}
-	return results[0], err
 }
 
 func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]string, error) {

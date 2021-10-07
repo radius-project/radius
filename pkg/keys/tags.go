@@ -9,7 +9,7 @@ import "strings"
 
 const TagRadiusEnvironment = "rad-environment"
 const TagRadiusApplication = "radius-application"
-const TagRadiusComponent = "radius-component"
+const TagRadiusResource = "radius-resource"
 
 func HasRadiusEnvironmentTag(tags map[string]*string) bool {
 	return HasTag(tags, TagRadiusEnvironment, "true")
@@ -19,8 +19,8 @@ func HasRadiusApplicationTag(tags map[string]*string, application string) bool {
 	return HasTag(tags, TagRadiusApplication, application)
 }
 
-func HasRadiusComponentTag(tags map[string]*string, component string) bool {
-	return HasTag(tags, TagRadiusComponent, component)
+func HasRadiusResourceTag(tags map[string]*string, resource string) bool {
+	return HasTag(tags, TagRadiusResource, resource)
 }
 
 func HasTag(tags map[string]*string, key string, expectedValue string) bool {
@@ -48,13 +48,13 @@ func HasTagSet(actual map[string]*string, expected map[string]string) bool {
 	return true
 }
 
-func MatchesRadiusComponent(tags map[string]*string, application string, component string) bool {
-	return HasRadiusApplicationTag(tags, application) && HasRadiusComponentTag(tags, component)
+func MatchesRadiusResource(tags map[string]*string, application string, resource string) bool {
+	return HasRadiusApplicationTag(tags, application) && HasRadiusResourceTag(tags, resource)
 }
 
-func MakeTagsForRadiusComponent(application string, component string) map[string]*string {
+func MakeTagsForRadiusResource(application string, resource string) map[string]*string {
 	return map[string]*string{
 		TagRadiusApplication: &application,
-		TagRadiusComponent:   &component,
+		TagRadiusResource:    &resource,
 	}
 }

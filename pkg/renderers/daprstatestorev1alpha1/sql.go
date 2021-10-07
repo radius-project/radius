@@ -33,7 +33,7 @@ func GetDaprStateStoreSQLServer(w workloads.InstantiatedWorkload, component Dapr
 			handlers.KubernetesNamespaceKey:  w.Application,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
-			handlers.ComponentNameKey:        w.Name,
+			handlers.ResourceName:            w.Name,
 		},
 	}
 
