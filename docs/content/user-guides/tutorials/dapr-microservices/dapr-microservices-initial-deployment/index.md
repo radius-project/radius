@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Deploy the Dapr microservices tutorial frontend"
+title: "Deploy the Dapr microservices tutorial backend"
 linkTitle: "Deploy backend"
 slug: "deploy-backend"
 description: "Deploy the application backend container"
