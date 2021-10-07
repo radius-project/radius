@@ -7,7 +7,7 @@ description: "Overview of the Dapr microservices tutorial application"
 weight: 1000
 ---
 
-In this tutorial you will be deploying an online store where you an order items:
+In this tutorial you will be deploying an online store where you can order items:
 
 <img src="./store.png" alt="A screenshot of the store application" width=500 />
 
@@ -62,4 +62,4 @@ In addition to this high level information, the Radius model also uses typical d
 
 Keep the diagram in mind as you proceed through the following steps. Your Radius deployment template will aim to match it.
 
-<br>{{< button text="Next: Deploy the application frontend" page="dapr-microservices-initial-deployment.md" >}}
+<br>{{< button text="Next: Deploy the application backend" page="dapr-microservices-initial-deployment.md" >}}
