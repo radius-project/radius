@@ -40,6 +40,7 @@ func Test_Render_Managed_Azure_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureRedis, output.Resources[0].LocalID)
 	require.Equal(t, resourcekinds.AzureRedis, output.Resources[0].ResourceKind)
+	require.Equal(t, true, output.Resources[0].Managed)
 
 	expectedProperties := map[string]string{
 		handlers.ManagedKey:    "true",
@@ -72,6 +73,7 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureRedis, output.Resources[0].LocalID)
 	require.Equal(t, resourcekinds.AzureRedis, output.Resources[0].ResourceKind)
+	require.Equal(t, false, output.Resources[0].Managed)
 
 	expectedProperties := map[string]string{
 		handlers.ManagedKey:         "false",
