@@ -7,7 +7,7 @@ description: "Overview of the Dapr microservices tutorial application"
 weight: 1000
 ---
 
-In this tutorial you will be deploying an online store where you an order items:
+In this tutorial you will be deploying an online store where you can order items:
 
 <img src="./store.png" alt="A screenshot of the store application" width=500 />
 
