@@ -54,21 +54,18 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 	output := renderers.RendererOutput{
 		Resources: resources,
 		ComputedValues: map[string]renderers.ComputedValueReference{
-			"connectionString": {
-				Value: host + ":" + port,
-			},
 			"host": {
 				Value: host,
 			},
 			"port": {
 				Value: port,
 			},
-			// NOTE: these are not secrets because they are blank. If we start generating
-			// secret credentials here, then this will need to change to use secrets.
-			"primaryKey": {
+			"username": {
 				Value: "",
 			},
-			"secondarykey": {
+			// NOTE: these are not secrets because they are blank. If we start generating
+			// secret credentials here, then this will need to change to use secrets.
+			"password": {
 				Value: "",
 			},
 		},

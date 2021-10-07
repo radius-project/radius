@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -23,6 +24,9 @@ const (
 	RedisResourceIdKey = "redisid"
 	RedisPortKey       = "redisport"
 	RedisHostKey       = "redishost"
+	RedisUsernameKey   = "redisusername"
+	// On Azure, RedisUsername is empty.
+	RedisUsername = ""
 
 	// Note: while this is called a connection string, it **does not** include secrets.
 	RedisConnectionStringKey = "redisconnectionstring"
@@ -83,18 +87,21 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 			return nil, err
 		}
 		properties[RedisResourceIdKey] = *redisResource.ID
+		options.Resource.Identity = resourcemodel.NewARMIdentity(*redisResource.ID, clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
 	} else {
 		var err error
 		redisResource, err = handler.GetRedisByID(ctx, properties[RedisResourceIdKey])
 		if err != nil {
 			return nil, err
 		}
+		options.Resource.Identity = resourcemodel.NewARMIdentity(*redisResource.ID, clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
 	}
 
 	// Properties that are referenced from the renderer
 	properties[RedisNameKey] = *redisResource.Name
 	properties[RedisHostKey] = *redisResource.HostName
 	properties[RedisPortKey] = fmt.Sprintf("%d", *redisResource.Properties.SslPort)
+	properties[RedisUsernameKey] = RedisUsername
 	properties[RedisConnectionStringKey] = *redisResource.HostName + ":" + fmt.Sprintf("%d", *redisResource.Properties.SslPort)
 
 	return properties, nil
