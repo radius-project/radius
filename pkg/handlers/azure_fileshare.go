@@ -14,10 +14,8 @@ import (
 )
 
 const (
-	FileShareNameKey               = "fileshare"
-	FileShareIDKey                 = "fileshareid"
-	FileShareStorageAccountIDKey   = "storageaccountkey"
-	FileShareStorageAccountNameKey = "namekey"
+	FileShareNameKey = "fileshare"
+	FileShareIDKey   = "fileshareid"
 )
 
 func NewAzureFileShareHandler(arm armauth.ArmConfig) ResourceHandler {
