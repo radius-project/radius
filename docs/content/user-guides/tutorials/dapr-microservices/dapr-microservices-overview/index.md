@@ -62,4 +62,4 @@ In addition to this high level information, the Radius model also uses typical d
 
 Keep the diagram in mind as you proceed through the following steps. Your Radius deployment template will aim to match it.
 
-<br>{{< button text="Next: Deploy the application frontend" page="dapr-microservices-initial-deployment.md" >}}
+<br>{{< button text="Next: Deploy the application backend" page="dapr-microservices-initial-deployment.md" >}}
