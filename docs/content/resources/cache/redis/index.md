@@ -38,5 +38,5 @@ A `redislabs.com/Redis` component can be Radius-managed. For more information re
 |----------|-------------|------------|
 | `host`  | The Redis host name. | `redis.hello.com`
 | `port` | The Redis port. | `4242`
-| `username()` | The username for connecting to the redis cache. |
+| `username` | The username for connecting to the redis cache. |
 | `password()` | The password for connecting to the redis cache. Can be used for password and can be empty. | `d2Y2ba...`
