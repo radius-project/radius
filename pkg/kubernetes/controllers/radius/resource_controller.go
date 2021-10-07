@@ -170,7 +170,7 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	results := []client.Object{}
 
 	deployments := &appsv1.DeploymentList{}
-	err := r.Client.List(ctx, deployments, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Name})
+	err := r.Client.List(ctx, deployments, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
 	if err != nil {
 		log.Error(err, "failed to retrieve deployments")
 		return nil, err
@@ -182,7 +182,7 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	}
 
 	services := &corev1.ServiceList{}
-	err = r.Client.List(ctx, services, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Name})
+	err = r.Client.List(ctx, services, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
 	if err != nil {
 		log.Error(err, "failed to retrieve services")
 		return nil, err
