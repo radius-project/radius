@@ -1,25 +1,26 @@
 //SQL
 param serverName string = uniqueString('sql', resourceGroup().id)
 param location string = resourceGroup().location
-param administratorLogin string
-
+param skuName string = 'Standard'
+param skuTier string = 'Standard'
+param adminLogin string
 @secure()
-param administratorLoginPassword string
+param adminLoginPassword string
 
 resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   name: serverName
   location: location
   properties: {
-    administratorLogin: administratorLogin
-    administratorLoginPassword: administratorLoginPassword
+    administratorLogin: adminLogin
+    administratorLoginPassword: adminLoginPassword
   }
 
   resource identity 'databases' = {
     name: 'identity'
     location: location
     sku: {
-      name: 'Standard'
-      tier: 'Standard'
+      name: skuName
+      tier: skuTier
     }
   }
 
@@ -27,8 +28,8 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
     name: 'catalog'
     location: location
     sku: {
-      name: 'Standard'
-      tier: 'Standard'
+      name: skuName
+      tier: skuTier
     }
   }
 
@@ -36,8 +37,8 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
     name: 'ordering'
     location: location
     sku: {
-      name: 'Standard'
-      tier: 'Standard'
+      name: skuName
+      tier: skuTier
     }
   }
 
@@ -45,11 +46,10 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
     name: 'webhooks'
     location: location
     sku: {
-      name: 'Standard'
-      tier: 'Standard'
+      name: skuName
+      tier: skuTier
     }
   }
-
 }
 //SQL
 
@@ -104,5 +104,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     }
   }
   //MONGO
+
+  //SERVICEBUS
+  resource servicebus 'azure.com.ServiceBusQueueComponent' = {
+    name: 'servicebus'
+    properties: {
+      managed: true
+      queue: 'orders'
+    }
+  }
+  //SERVICEBUS
 }
 //APP
