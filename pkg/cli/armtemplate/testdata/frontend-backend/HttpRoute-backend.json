@@ -15,7 +15,7 @@
             "app.kubernetes.io/part-of": "azure-resources-container-httpbinding",
             "app.kubernetes.io/managed-by": "radius-rp"
         },
-        "name": "backend",
+        "name": "azure-resources-container-httpbinding-backend",
         "namespace": "default"
     },
     "spec": {

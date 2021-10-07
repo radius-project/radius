@@ -227,5 +227,5 @@ func extractOwnerKey(obj client.Object) []string {
 		return nil
 	}
 
-	return []string{owner.Name}
+	return []string{owner.Kind + owner.Name}
 }

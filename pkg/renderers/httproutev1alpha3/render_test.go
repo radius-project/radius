@@ -7,6 +7,7 @@ package httproutev1alpha3
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -48,10 +49,10 @@ func Test_Render_Defaults(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedValues := map[string]renderers.ComputedValueReference{
-		"host":   {Value: resourceName},
+		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
 		"port":   {Value: 80},
 		"scheme": {Value: "http"},
-		"url":    {Value: "http://test-route:80"},
+		"url":    {Value: fmt.Sprintf("http://%s:80", kubernetes.MakeResourceName(applicationName, resourceName))},
 	}
 	require.Equal(t, expectedValues, output.ComputedValues)
 
@@ -60,7 +61,7 @@ func Test_Render_Defaults(t *testing.T) {
 	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, resourceName, service.Name)
+	require.Equal(t, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), service.Name)
 	require.Equal(t, applicationName, service.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
 
@@ -98,10 +99,10 @@ func Test_Render_NonDefaults(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedValues := map[string]renderers.ComputedValueReference{
-		"host":   {Value: resourceName},
+		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
 		"port":   {Value: 81},
 		"scheme": {Value: "http"},
-		"url":    {Value: "http://test-route:81"},
+		"url":    {Value: fmt.Sprintf("http://%s:81", kubernetes.MakeResourceName(applicationName, resourceName))},
 	}
 	require.Equal(t, expectedValues, output.ComputedValues)
 
@@ -110,7 +111,7 @@ func Test_Render_NonDefaults(t *testing.T) {
 	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, resourceName, service.Name)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service.Name)
 	require.Equal(t, applicationName, service.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
 
@@ -153,10 +154,10 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 
 	// Adding a gateway has no effect on computed values.
 	expectedValues := map[string]renderers.ComputedValueReference{
-		"host":   {Value: resourceName},
+		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
 		"port":   {Value: 81},
 		"scheme": {Value: "http"},
-		"url":    {Value: "http://test-route:81"},
+		"url":    {Value: fmt.Sprintf("http://%s:81", kubernetes.MakeResourceName(applicationName, resourceName))},
 	}
 	require.Equal(t, expectedValues, output.ComputedValues)
 
@@ -164,7 +165,7 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, resourceName, ingress.Name)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), ingress.Name)
 	require.Equal(t, applicationName, ingress.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), ingress.Labels)
 
@@ -204,7 +205,7 @@ func Test_Render_WithHostname(t *testing.T) {
 	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, resourceName, ingress.Name)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), ingress.Name)
 	require.Equal(t, applicationName, ingress.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), ingress.Labels)
 

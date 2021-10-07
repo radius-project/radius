@@ -227,7 +227,7 @@ func (r *DeploymentTemplateReconciler) InvokeCustomAction(ctx context.Context, n
 		Kind:    armtemplate.GetKindFromArmType(targetID.Types[2].Type),
 	})
 
-	err = r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: targetID.Types[2].Name}, &unst)
+	err = r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: kubernetes.MakeResourceName(targetID.Types[1].Name, targetID.Types[2].Name)}, &unst)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve resource matching id %q: %w", id, err)
 	}

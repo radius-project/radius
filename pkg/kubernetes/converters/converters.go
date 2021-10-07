@@ -42,7 +42,7 @@ func ConvertToARMResource(original *radiusv1alpha3.Resource, body map[string]int
 }
 
 func ConvertToRenderResource(original *radiusv1alpha3.Resource, result *renderers.RendererResource) error {
-	result.ResourceName = original.Name
+	result.ResourceName = original.Spec.Resource
 	result.ResourceType = original.Annotations[kubernetes.LabelRadiusResourceType]
 	result.ApplicationName = original.Spec.Application
 

@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -18,9 +17,6 @@ import (
 
 func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, error) {
 	annotations := map[string]string{}
-
-	// Compute annotations to capture the name segments
-	nameParts := strings.Split(resource.Name, "/")
 
 	data, err := json.Marshal(resource)
 	if err != nil {
@@ -32,6 +28,8 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 		return nil, errors.New("application name is empty")
 	}
 
+	name := applicationName
+
 	annotations[kubernetes.LabelRadiusApplication] = applicationName
 	spec := map[string]interface{}{
 		"template":    runtime.RawExtension{Raw: data},
@@ -42,6 +40,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 		spec["resource"] = resourceName
 		annotations[kubernetes.LabelRadiusResourceType] = resourceType
 		annotations[kubernetes.LabelRadiusResource] = resourceName
+		name = applicationName + "-" + resourceName
 	}
 
 	labels := kubernetes.MakeResourceCRDLabels(applicationName, resourceType, resourceName)
@@ -56,7 +55,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 			"apiVersion": "radius.dev/v1alpha3",
 			"kind":       kind,
 			"metadata": map[string]interface{}{
-				"name":      nameParts[len(nameParts)-1],
+				"name":      name,
 				"namespace": namespace,
 				"labels":    labels,
 			},

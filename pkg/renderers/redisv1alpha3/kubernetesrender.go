@@ -49,7 +49,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 	// For now we don't know the namespace during rendering and so we can't generate a FQDN, so use a simple
 	// one. This should be fine because all of the application's pods are in the same namespace as this
 	// service.
-	host := resource.ResourceName
+	host := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
 	port := fmt.Sprint(Port)
 	output := renderers.RendererOutput{
 		Resources: resources,
@@ -81,7 +81,7 @@ func GetKubernetesRedis(resource renderers.RendererResource, properties RedisCom
 			APIVersion: appsv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   resource.ResourceName,
+			Name:   kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Labels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -121,7 +121,7 @@ func GetKubernetesRedis(resource renderers.RendererResource, properties RedisCom
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   resource.ResourceName,
+			Name:   kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Labels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: corev1.ServiceSpec{
