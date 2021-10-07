@@ -21,11 +21,11 @@ func Test_Gateway(t *testing.T) {
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "exposed",
+						ResourceName:    "exposed",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -36,21 +36,21 @@ func Test_Gateway(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForComponent(application, "exposed"),
+						validation.NewK8sObjectForResource(application, "exposed"),
 					},
 				},
 			},
 			Ingress: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForComponent(application, "exposedroute"),
+						validation.NewK8sObjectForResource(application, "exposedroute"),
 					},
 				},
 			},
 			Services: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForComponent(application, "exposedroute"),
+						validation.NewK8sObjectForResource(application, "exposedroute"),
 					},
 				},
 			},
