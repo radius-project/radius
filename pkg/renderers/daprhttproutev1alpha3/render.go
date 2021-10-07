@@ -22,6 +22,17 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 }
 
 func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	// There's nothing to do here. There's no rendering output from a Dapr Http Route.
-	return renderers.RendererOutput{}, nil
+	properties := DaprHttpRouteProperties{}
+	err := resource.ConvertDefinition(&properties)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	return renderers.RendererOutput{
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"appId": {
+				Value: properties.AppID,
+			},
+		},
+	}, nil
 }
