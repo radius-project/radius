@@ -17,11 +17,11 @@ const (
 var SQLResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
 		{
-			Type: azresources.DocumentDBDatabaseAccounts,
+			Type: azresources.SqlServers,
 			Name: "*",
 		},
 		{
-			Type: azresources.DocumentDBDatabaseAccountsSQLDatabases,
+			Type: azresources.SqlServersDatabases,
 			Name: "*",
 		},
 	},

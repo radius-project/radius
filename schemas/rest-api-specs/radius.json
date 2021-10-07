@@ -1030,7 +1030,7 @@
           "type": "boolean"
         },
         "resource": {
-          "description": "The ID of the user-managed Cosmos DB with SQL API to use for this Component",
+          "description": "The ID of the user-managed SQL database to use for this Component",
           "type": "string"
         }
       },

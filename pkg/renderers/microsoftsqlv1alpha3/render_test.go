@@ -9,12 +9,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/radius/pkg/handlers"
+	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )
@@ -33,64 +34,6 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Managed_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := Renderer{}
-
-	resource := renderers.RendererResource{
-		ApplicationName: applicationName,
-		ResourceName:    resourceName,
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": true,
-		},
-	}
-
-	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
-	require.NoError(t, err)
-	require.NoError(t, err)
-
-	require.Len(t, output.Resources, 2)
-	accountResource := output.Resources[0]
-	databaseResource := output.Resources[1]
-
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosAccount, accountResource.ResourceKind)
-
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBSQL, databaseResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosDBSQL, databaseResource.ResourceKind)
-
-	expectedAccount := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.CosmosDBAccountBaseName: "test-db",
-		handlers.CosmosDBAccountKindKey:  string(documentdb.DatabaseAccountKindGlobalDocumentDB),
-	}
-	require.Equal(t, expectedAccount, accountResource.Resource)
-
-	expectedDatabase := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.CosmosDBAccountBaseName: "test-db",
-		handlers.CosmosDBDatabaseNameKey: "test-db",
-	}
-	require.Equal(t, expectedDatabase, databaseResource.Resource)
-
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"database": {
-			Value: resource.ResourceName,
-		},
-	}
-	require.Equal(t, expectedComputedValues, output.ComputedValues)
-
-	expectedSecretValues := map[string]renderers.SecretValueReference{
-		ConnectionStringValue: {
-			LocalID:       cosmosAccountDependency.LocalID,
-			Action:        "listConnectionStrings",
-			ValueSelector: "/connectionStrings/0/connectionString",
-		},
-	}
-	require.Equal(t, expectedSecretValues, output.SecretValues)
-}
-
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
@@ -100,7 +43,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/sqlDatabases/test-database",
+			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database",
 		},
 	}
 
@@ -111,44 +54,25 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	accountResource := output.Resources[0]
 	databaseResource := output.Resources[1]
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosAccount, accountResource.ResourceKind)
+	require.Equal(t, outputresource.LocalIDAzureSqlServer, accountResource.LocalID)
+	require.Equal(t, resourcekinds.AzureSqlServer, accountResource.ResourceKind)
+	require.Equal(t, resourcemodel.NewARMIdentity("/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server", clients.GetAPIVersionFromUserAgent(sql.UserAgent())), accountResource.Identity)
 
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBSQL, databaseResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosDBSQL, databaseResource.ResourceKind)
-
-	expectedAccount := map[string]string{
-		handlers.ManagedKey:             "false",
-		handlers.CosmosDBAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-		handlers.CosmosDBAccountNameKey: "test-account",
-		handlers.CosmosDBAccountKindKey: string(documentdb.DatabaseAccountKindGlobalDocumentDB),
-	}
-	require.Equal(t, expectedAccount, accountResource.Resource)
-
-	expectedDatabase := map[string]string{
-		handlers.ManagedKey:              "false",
-		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-		handlers.CosmosDBAccountNameKey:  "test-account",
-		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/sqlDatabases/test-database",
-		handlers.CosmosDBDatabaseNameKey: "test-database",
-	}
-	require.Equal(t, expectedDatabase, databaseResource.Resource)
+	require.Equal(t, outputresource.LocalIDAzureSqlServerDatabase, databaseResource.LocalID)
+	require.Equal(t, resourcekinds.AzureSqlServerDatabase, databaseResource.ResourceKind)
+	require.Equal(t, resourcemodel.NewARMIdentity("/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database", clients.GetAPIVersionFromUserAgent(sql.UserAgent())), databaseResource.Identity)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		"database": {
-			Value: resource.ResourceName,
+			Value: "test-database",
+		},
+		"server": {
+			LocalID:     outputresource.LocalIDAzureSqlServer,
+			JSONPointer: "/properties/fullyQualifiedDomainName",
 		},
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-
-	expectedSecretValues := map[string]renderers.SecretValueReference{
-		ConnectionStringValue: {
-			LocalID:       cosmosAccountDependency.LocalID,
-			Action:        "listConnectionStrings",
-			ValueSelector: "/connectionStrings/0/connectionString",
-		},
-	}
-	require.Equal(t, expectedSecretValues, output.SecretValues)
+	require.Empty(t, output.SecretValues)
 }
 
 func Test_Render_Unmanaged_MissingResource(t *testing.T) {
@@ -178,11 +102,11 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/sqlDatabases/test-database",
+			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/servers/sqlDatabases/test-database",
 		},
 	}
 
 	_, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a CosmosDB SQL Database", err.Error())
+	require.Equal(t, "the 'resource' field must refer to a SQL Database", err.Error())
 }

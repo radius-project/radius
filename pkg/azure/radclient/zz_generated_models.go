@@ -1071,7 +1071,7 @@ type MicrosoftSQLSQLComponentProperties struct {
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
 	Managed *bool `json:"managed,omitempty"`
 
-	// The ID of the user-managed Cosmos DB with SQL API to use for this Component
+	// The ID of the user-managed SQL database to use for this Component
 	Resource *string `json:"resource,omitempty"`
 }
 

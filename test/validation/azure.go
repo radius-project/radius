@@ -277,7 +277,8 @@ func (v *AzureResourceValidator) findChildResource(ctx context.Context, parent A
 
 	provider := parts[0]
 	parentType := parts[1]
-	apiVersion := v.getDefaultAPIVersion(ctx, provider, parentType)
+	apiVersion, err := clients.GetDefaultAPIVersion(ctx, v.SubscriptionID, v.Authorizer, *parent.Type+"/"+child.Type)
+	require.NoError(v.T, err)
 
 	resource, err := resc.Get(ctx, v.ResourceGroup, provider, parentType+"/"+*parent.Name, child.Type, child.Name, apiVersion)
 	if detailed, ok := err.(*autorest.DetailedError); ok && detailed.StatusCode == http.StatusNotFound {
@@ -286,22 +287,6 @@ func (v *AzureResourceValidator) findChildResource(ctx context.Context, parent A
 
 	require.NoError(v.T, err, "failed to query resource")
 	return (*ActualResource)(&resource)
-}
-
-func (v *AzureResourceValidator) getDefaultAPIVersion(ctx context.Context, provider string, resourceType string) string {
-	providerc := clients.NewProvidersClient(v.SubscriptionID, v.Authorizer)
-
-	p, err := providerc.Get(ctx, provider, "")
-	require.NoError(v.T, err, "failed to query provider")
-
-	for _, rt := range *p.ResourceTypes {
-		if strings.EqualFold(*rt.ResourceType, resourceType) {
-			return *rt.DefaultAPIVersion
-		}
-	}
-
-	require.Failf(v.T, "failed to find resource type %s", resourceType)
-	return "" // unreachable
 }
 
 func (v *AzureResourceValidator) removeNonApplicationResources(application string, actual []ActualResourceExpanded) []ActualResourceExpanded {

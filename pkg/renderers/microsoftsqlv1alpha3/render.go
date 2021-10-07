@@ -7,17 +7,19 @@ package microsoftsqlv1alpha3
 
 import (
 	"context"
+	"errors"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/handlers"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
-var cosmosAccountDependency outputresource.Dependency = outputresource.Dependency{
-	LocalID: outputresource.LocalIDAzureCosmosAccount,
+var sqlServerDependency outputresource.Dependency = outputresource.Dependency{
+	LocalID: outputresource.LocalIDAzureSqlServer,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -36,111 +38,54 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return renderers.RendererOutput{}, err
 	}
 
-	resources := []outputresource.OutputResource{}
 	if properties.Managed {
-		results, err := RenderManaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
+		return renderers.RendererOutput{}, errors.New("only 'managed: true' SQL components are supported")
+	}
 
-		resources = append(resources, results...)
-	} else {
-		results, err := RenderUnmanaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
+	if properties.Resource == "" {
+		return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
+	}
 
-		resources = append(resources, results...)
+	databaseID, err := renderers.ValidateResourceID(properties.Resource, SQLResourceType, "SQL Database")
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	// Truncate the database part of the ID to make an ID for the server
+	serverID := databaseID.Truncate()
+
+	serverResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDAzureSqlServer,
+		ResourceKind: resourcekinds.AzureSqlServer,
+		Identity:     resourcemodel.NewARMIdentity(serverID.ID, clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+		Resource:     map[string]string{},
+	}
+
+	databaseResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDAzureSqlServerDatabase,
+		ResourceKind: resourcekinds.AzureSqlServerDatabase,
+		Identity:     resourcemodel.NewARMIdentity(databaseID.ID, clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+		Resource:     map[string]string{},
+		Dependencies: []outputresource.Dependency{sqlServerDependency},
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		"database": {
-			Value: resource.ResourceName,
+			Value: databaseID.Name(),
 		},
-	}
-	secretValues := map[string]renderers.SecretValueReference{
-		ConnectionStringValue: {
-			LocalID: cosmosAccountDependency.LocalID,
-			// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-			Action:        "listConnectionStrings",
-			ValueSelector: "/connectionStrings/0/connectionString",
+		"server": {
+			LocalID:     outputresource.LocalIDAzureSqlServer,
+			JSONPointer: "/properties/fullyQualifiedDomainName",
 		},
 	}
 
+	// We don't provide any secret values here because SQL requires the USER to manage
+	// the usernames and passwords. We don't have access!
+	secretValues := map[string]renderers.SecretValueReference{}
+
 	return renderers.RendererOutput{
-		Resources:      resources,
+		Resources:      []outputresource.OutputResource{serverResource, databaseResource},
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil
-}
-
-func RenderManaged(name string, properties MicrosoftSQLComponentProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource != "" {
-		return nil, renderers.ErrResourceSpecifiedForManagedResource
-	}
-
-	cosmosAccountResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosAccount,
-		ResourceKind: resourcekinds.AzureCosmosAccount,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
-			handlers.CosmosDBAccountBaseName: name,
-			handlers.CosmosDBAccountKindKey:  string(documentdb.DatabaseAccountKindGlobalDocumentDB),
-		},
-	}
-
-	// generate data we can use to manage a cosmosdb instance
-	databaseResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosDBSQL,
-		ResourceKind: resourcekinds.AzureCosmosDBSQL,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
-			handlers.CosmosDBAccountBaseName: name,
-			handlers.CosmosDBDatabaseNameKey: name,
-		},
-		Dependencies: []outputresource.Dependency{cosmosAccountDependency},
-	}
-
-	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
-}
-
-func RenderUnmanaged(name string, properties MicrosoftSQLComponentProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForUnmanagedResource
-	}
-
-	databaseID, err := renderers.ValidateResourceID(properties.Resource, SQLResourceType, "CosmosDB SQL Database")
-	if err != nil {
-		return nil, err
-	}
-
-	// Truncate the database part of the ID to make an ID for the account
-	cosmosAccountID := databaseID.Truncate()
-
-	cosmosAccountResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosAccount,
-		ResourceKind: resourcekinds.AzureCosmosAccount,
-		Resource: map[string]string{
-			handlers.ManagedKey:             "false",
-			handlers.CosmosDBAccountIDKey:   cosmosAccountID.ID,
-			handlers.CosmosDBAccountNameKey: databaseID.Types[0].Name,
-			handlers.CosmosDBAccountKindKey: string(documentdb.DatabaseAccountKindGlobalDocumentDB),
-		},
-	}
-
-	databaseResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosDBSQL,
-		ResourceKind: resourcekinds.AzureCosmosDBSQL,
-		Resource: map[string]string{
-			handlers.ManagedKey:              "false",
-			handlers.CosmosDBAccountIDKey:    cosmosAccountID.ID,
-			handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
-			handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,
-			handlers.CosmosDBDatabaseNameKey: databaseID.Types[1].Name,
-		},
-		Dependencies: []outputresource.Dependency{cosmosAccountDependency},
-	}
-	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
