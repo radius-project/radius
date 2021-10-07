@@ -27,9 +27,6 @@ const (
 	RedisUsernameKey   = "redisusername"
 	// On Azure, RedisUsername is empty.
 	RedisUsername = ""
-
-	// Note: while this is called a connection string, it **does not** include secrets.
-	RedisConnectionStringKey = "redisconnectionstring"
 )
 
 func NewAzureRedisHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -102,7 +99,6 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 	properties[RedisHostKey] = *redisResource.HostName
 	properties[RedisPortKey] = fmt.Sprintf("%d", *redisResource.Properties.SslPort)
 	properties[RedisUsernameKey] = RedisUsername
-	properties[RedisConnectionStringKey] = *redisResource.HostName + ":" + fmt.Sprintf("%d", *redisResource.Properties.SslPort)
 
 	return properties, nil
 }
