@@ -251,7 +251,6 @@ jobs:
           --create-namespace \
           --namespace radius-system \
           --version 3.29.0 \
-          --wait
 
     - name: Update rad env with Kubernetes
       run: |
