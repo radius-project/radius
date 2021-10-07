@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -168,7 +169,16 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	require.Equal(t, applicationName, ingress.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), ingress.Labels)
 
-	require.Empty(t, ingress.Spec.Rules)
+	rule := ingress.Spec.Rules[0]
+
+	require.NotNil(t, rule.HTTP)
+	require.Len(t, rule.HTTP.Paths, 1)
+
+	path := rule.HTTP.Paths[0]
+	prefix := v1.PathType("Prefix")
+
+	require.Equal(t, "/", path.Path)
+	require.Equal(t, &prefix, path.PathType)
 
 	backend := ingress.Spec.DefaultBackend
 	require.NotNil(t, backend)
@@ -219,8 +229,9 @@ func Test_Render_WithHostname(t *testing.T) {
 	require.Len(t, rule.HTTP.Paths, 1)
 
 	path := rule.HTTP.Paths[0]
-	require.Equal(t, "", path.Path)
-	require.Nil(t, path.PathType)
+	prefix := v1.PathType("Prefix")
+	require.Equal(t, "/", path.Path)
+	require.Equal(t, &prefix, path.PathType)
 
 	service := path.Backend.Service
 	require.NotNil(t, service)
