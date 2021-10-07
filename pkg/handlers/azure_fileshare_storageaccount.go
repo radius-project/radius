@@ -37,23 +37,8 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 		return nil, err
 	}
 
-	var account *storage.Account
 	if properties[FileShareStorageAccountIDKey] == "" {
-		generated, err := handler.GenerateStorageAccountName(ctx, properties[ResourceName])
-		if err != nil {
-			return nil, err
-		}
-
-		name := *generated
-
-		account, err = handler.CreateStorageAccount(ctx, name, *options)
-		if err != nil {
-			return nil, err
-		}
-
-		// store storage account so we can delete later
-		properties[FileShareStorageAccountNameKey] = *account.Name
-		properties[FileShareStorageAccountIDKey] = *account.ID
+		// TODO Managed resource
 	} else {
 		_, err = getStorageAccountByID(ctx, handler.arm, properties[FileShareStorageAccountIDKey])
 		if err != nil {

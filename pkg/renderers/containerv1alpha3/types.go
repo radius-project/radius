@@ -118,6 +118,19 @@ func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) 
 	return &ephemeralVolume, nil
 }
 
+func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) {
+	data, err := json.Marshal(volume)
+	if err != nil {
+		return nil, err
+	}
+	var ephemeralVolume EphemeralVolume
+	err = json.Unmarshal(data, &ephemeralVolume)
+	if err != nil {
+		return nil, err
+	}
+	return &ephemeralVolume, nil
+}
+
 func asPersistentVolume(volume map[string]interface{}) (*PersistentVolume, error) {
 	data, err := json.Marshal(volume)
 	if err != nil {

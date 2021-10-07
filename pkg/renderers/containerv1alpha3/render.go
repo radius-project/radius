@@ -7,7 +7,6 @@ package containerv1alpha3
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
