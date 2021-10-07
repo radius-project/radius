@@ -9,9 +9,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/renderers/azurefilesharev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
@@ -32,7 +35,13 @@ func Test_ContainerHttpBinding(t *testing.T) {
 			Executor: azuretest.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
-					// Intentionally Empty
+					{
+						Type: azresources.StorageStorageAccounts,
+						Tags: map[string]string{
+							keys.TagRadiusApplication: application,
+							keys.TagRadiusResource:    "myshare",
+						},
+					},
 				},
 			},
 			RadiusResources: &validation.ResourceSet{
@@ -60,6 +69,16 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+					{
+						ApplicationName: application,
+						ResourceName:    "myshare",
+						ResourceType:    azurefilesharev1alpha3.ResourceType,
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDAzureFileShare:               validation.NewOutputResource(outputresource.LocalIDAzureFileShare, outputresource.TypeARM, resourcekinds.AzureFileShare, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureFileShareStorageAccount: validation.NewOutputResource(outputresource.LocalIDAzureFileShareStorageAccount, outputresource.TypeARM, resourcekinds.AzureFileShareStorageAccount, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -73,7 +92,6 @@ func Test_ContainerHttpBinding(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
-				// Verify ephemeral volume
 				labelset := kubernetes.MakeSelectorLabels(application, "backend")
 
 				matches, err := at.Options.K8sClient.CoreV1().Pods(application).List(context.Background(), metav1.ListOptions{
@@ -83,6 +101,8 @@ func Test_ContainerHttpBinding(t *testing.T) {
 
 				found := false
 				var volIndex int
+
+				// Verify ephemeral volume
 				for index, vol := range matches.Items[0].Spec.Volumes {
 					if vol.Name == "my-volume" {
 						found = true
@@ -93,6 +113,20 @@ func Test_ContainerHttpBinding(t *testing.T) {
 				volume := matches.Items[0].Spec.Volumes[volIndex]
 				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
 				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
+
+				// Verify persistent volume
+				found = false
+				for index, vol := range matches.Items[0].Spec.Volumes {
+					if vol.Name == "my-volume2" {
+						found = true
+						volIndex = index
+					}
+				}
+				require.True(t, found, "persistent volume did not get mounted")
+				volume = matches.Items[0].Spec.Volumes[volIndex]
+				require.NotNil(t, volume.AzureFile, "volumes azure file should have not been nil but it is")
+				require.Equal(t, volume.AzureFile.ShareName, "myshare")
+				require.Equal(t, volume.AzureFile.SecretName, "backend")
 			},
 		},
 	})

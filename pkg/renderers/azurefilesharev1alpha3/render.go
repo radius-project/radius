@@ -47,7 +47,12 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 
 	resources := []outputresource.OutputResource{}
 	if properties.Managed {
-		//TODO
+		results, err := RenderManaged(resource.ResourceName, properties)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+
+		resources = append(resources, results...)
 	} else {
 		results, err := RenderUnmanaged(resource.ResourceName, properties)
 		if err != nil {
@@ -57,19 +62,41 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		resources = append(resources, results...)
 	}
 
-	fileshareID, err := renderers.ValidateResourceID(properties.Resource, AzureFileShareResourceType, "Azure File Share")
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-	// Truncate the fileservices/shares part of the ID to make an ID for the account
-	storageAccountID := fileshareID.Truncate().Truncate()
-	computedValues, secretValues := MakeSecretsAndValues(storageAccountID.Types[0].Name)
+	computedValues, secretValues := MakeSecretsAndValues(storageAccountDependency.LocalID)
+	// computedValues, secretValues := MakeSecretsAndValues(storageAccountID.Types[0].Name)
 
 	return renderers.RendererOutput{
 		Resources:      resources,
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil
+}
+func RenderManaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
+	if properties.Resource != "" {
+		return nil, renderers.ErrResourceSpecifiedForManagedResource
+	}
+
+	storageAccountResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDAzureFileShareStorageAccount,
+		ResourceKind: resourcekinds.AzureFileShareStorageAccount,
+		Managed:      true,
+		Resource: map[string]string{
+			handlers.ManagedKey: "true",
+		},
+	}
+
+	fileshareResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDAzureFileShare,
+		ResourceKind: resourcekinds.AzureFileShare,
+		Managed:      true,
+		Resource: map[string]string{
+			handlers.ManagedKey:       "true",
+			handlers.FileShareNameKey: name,
+		},
+		Dependencies: []outputresource.Dependency{storageAccountDependency},
+	}
+
+	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
 func RenderUnmanaged(name string, properties AzureFileShareProperties) ([]outputresource.OutputResource, error) {
@@ -88,6 +115,7 @@ func RenderUnmanaged(name string, properties AzureFileShareProperties) ([]output
 	storageAccountResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureFileShareStorageAccount,
 		ResourceKind: resourcekinds.AzureFileShareStorageAccount,
+		Managed:      false,
 		Resource: map[string]string{
 			handlers.ManagedKey:                     "false",
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,
@@ -98,6 +126,7 @@ func RenderUnmanaged(name string, properties AzureFileShareProperties) ([]output
 	fileshareResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureFileShare,
 		ResourceKind: resourcekinds.AzureFileShare,
+		Managed:      false,
 		Resource: map[string]string{
 			handlers.ManagedKey:                     "false",
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,

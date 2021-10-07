@@ -7,6 +7,7 @@ package containerv1alpha3
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -296,7 +297,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 			}
 
 			// Create spec for persistent volume
-			volumeSpec, volumeMountSpec, err := r.makePersistentVolume(volumeName, *persistentVolume, resource, dependencies)
+			volumeSpec, volumeMountSpec, err := r.makePersistentVolume(volumeName, *persistentVolume, resource)
 			if err != nil {
 				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
 			}
@@ -325,6 +326,16 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 			// The key values are as per: https://docs.microsoft.com/en-us/azure/aks/azure-files-volume
 			properties := dependencies[persistentVolume.Source]
 			for key, value := range properties.ComputedValues {
+				if value.(string) == outputresource.LocalIDAzureFileShareStorageAccount {
+					// The storage account was not created when the computed value was rendered
+					// Lookup the actual storage account name from the local id
+					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
+					r, err := azresources.Parse(id)
+					if err != nil {
+						return outputresource.OutputResource{}, nil, err
+					}
+					value = r.Name()
+				}
 				secretData[key] = []byte(value.(string))
 			}
 		} else {
@@ -498,7 +509,7 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makePersistentVolume(volumeName string, persistentVolume PersistentVolume, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (corev1.Volume, corev1.VolumeMount, error) {
+func (r Renderer) makePersistentVolume(volumeName string, persistentVolume PersistentVolume, resource renderers.RendererResource) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
 	volumeSpec.Name = volumeName

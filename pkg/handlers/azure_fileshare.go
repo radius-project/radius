@@ -7,10 +7,14 @@ package handlers
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -35,10 +39,24 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 		return nil, err
 	}
 
+	var storageAccountName string
+	for _, resource := range options.Dependencies {
+		if resource.LocalID == outputresource.LocalIDAzureFileShareStorageAccount {
+			storageAccountName = resource.Properties[FileShareStorageAccountNameKey]
+		}
+	}
+
+	if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureFileShareStorageAccount]; ok {
+		storageAccountName = properties[FileShareStorageAccountNameKey]
+	}
+
 	if properties[FileShareIDKey] == "" {
-		// TODO
-		// Create managed resource
-		err = errors.New("Managed Azure File share is not yet supported")
+		fsc := clients.NewFileSharesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+		fileshare, err := fsc.Create(ctx, handler.arm.ResourceGroup, storageAccountName, properties[FileShareNameKey], storage.FileShare{}, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create a file share with err: %w", err)
+		}
+		properties[FileShareIDKey] = *fileshare.ID
 	} else {
 		armhandler := NewARMHandler(handler.arm)
 		properties, err = armhandler.Put(ctx, options)
@@ -46,7 +64,9 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 			return nil, err
 		}
 	}
-	return properties, err
+	options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+
+	return properties, nil
 }
 
 func (handler *azureFileShareHandler) Delete(ctx context.Context, options DeleteOptions) error {
