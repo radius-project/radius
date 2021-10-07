@@ -21,6 +21,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	SecretKeyRabbitMQConnectionString = "RABBITMQ_CONNECTIONSTRING"
+)
+
 type Renderer struct {
 }
 
@@ -38,17 +42,17 @@ func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.Ins
 		return nil, nil, fmt.Errorf("queue name must be specified")
 	}
 
-	uri := fmt.Sprintf("amqp://%s:%s", workload.Name, fmt.Sprint(5672))
-
 	values := map[string]renderers.ComputedValueReference{
-		"connectionString": {
-			Value: uri,
-		},
 		"queue": {
 			Value: queueName,
 		},
 	}
-	secrets := map[string]renderers.SecretValueReference{}
+	secrets := map[string]renderers.SecretValueReference{
+		"connectionString": {
+			LocalID:       outputresource.LocalIDRabbitMQSecret,
+			ValueSelector: SecretKeyRabbitMQConnectionString,
+		},
+	}
 	return values, secrets, nil
 }
 
@@ -173,10 +177,33 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 		},
 	}
 
+	uri := fmt.Sprintf("amqp://%s:%s", w.Name, fmt.Sprint(5672))
+
 	resources = append(resources, outputresource.OutputResource{
 		ResourceKind: resourcekinds.Kubernetes,
 		LocalID:      outputresource.LocalIDRabbitMQService,
 		Resource:     &service})
+
+	secret := corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: corev1.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      component.Name,
+			Namespace: namespace,
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			SecretKeyRabbitMQConnectionString: []byte(uri),
+		},
+	}
+
+	resources = append(resources, outputresource.OutputResource{
+		ResourceKind: resourcekinds.Kubernetes,
+		LocalID:      outputresource.LocalIDRabbitMQSecret,
+		Resource:     &secret})
 
 	return resources, nil
 }
