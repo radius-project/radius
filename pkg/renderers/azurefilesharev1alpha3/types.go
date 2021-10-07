@@ -8,10 +8,11 @@ package azurefilesharev1alpha3
 import "github.com/Azure/radius/pkg/azure/azresources"
 
 const (
-	StorageKeyValue    = "azurestorageaccountkey"
-	StorageAccountName = "azurestorageaccountname"
-	ResourceType       = "Volume"
-	kindProperty       = "kind"
+	VolumeKindAzureFileShare = "azure.com.fileshare"
+	StorageKeyValue          = "azurestorageaccountkey"
+	StorageAccountName       = "azurestorageaccountname"
+	ResourceType             = "Volume"
+	kindProperty             = "kind"
 )
 
 var AzureFileShareResourceType = azresources.KnownType{
