@@ -62,7 +62,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 
 	logger.WithValues(
 		radlogger.LogFieldResourceID, *identity.ID,
-		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentityKV).Info("Created managed identity for KeyVault access")
+		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")
 
 	return properties, nil
 }

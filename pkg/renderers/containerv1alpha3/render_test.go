@@ -8,15 +8,20 @@ package containerv1alpha3
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -369,4 +374,146 @@ func Test_Render_Connections(t *testing.T) {
 		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
 	})
 	require.Len(t, output.Resources, 2)
+}
+
+func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
+	properties := ContainerProperties{
+		Connections: map[string]ContainerConnection{
+			"A": {
+				Kind:   "A",
+				Source: makeResourceID(t, "ResourceType", "A").ID,
+			},
+		},
+		Container: Container{
+			Image: "someimage:latest",
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").ID): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+			OutputResources: map[string]resourcemodel.ResourceIdentity{
+				// This is the resource that the role assignments target!
+				"TargetLocalID": resourcemodel.NewARMIdentity(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "2020-01-01"),
+			},
+		},
+	}
+
+	renderer := Renderer{
+		RoleAssignmentMap: map[string]RoleAssignmentData{
+			"A": {
+				LocalID:   "TargetLocalID",
+				RoleNames: []string{"TestRole1", "TestRole2"},
+			},
+		},
+	}
+	output, err := renderer.Render(createContext(t), resource, dependencies)
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+	require.Len(t, output.Resources, 6)
+
+	resourceMap := outputResourcesToKindMap(output.Resources)
+
+	// We're just verifying the role assignments and related things, we'll ignore kubernetes types.
+	matches := resourceMap[resourcekinds.Kubernetes]
+	require.Len(t, matches, 2)
+
+	matches = resourceMap[resourcekinds.AzureRoleAssignment]
+	require.Len(t, matches, 2)
+	expected := []outputresource.OutputResource{
+		{
+			ResourceKind: resourcekinds.AzureRoleAssignment,
+			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole1"),
+			Managed:      true,
+			Deployed:     false,
+			Resource: map[string]string{
+				handlers.RoleNameKey:             "TestRole1",
+				handlers.RoleAssignmentTargetKey: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+				},
+			},
+		},
+		{
+			ResourceKind: resourcekinds.AzureRoleAssignment,
+			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole2"),
+			Managed:      true,
+			Deployed:     false,
+			Resource: map[string]string{
+				handlers.RoleNameKey:             "TestRole2",
+				handlers.RoleAssignmentTargetKey: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+				},
+			},
+		},
+	}
+	require.ElementsMatch(t, expected, matches)
+
+	matches = resourceMap[resourcekinds.AzureUserAssignedManagedIdentity]
+	require.Len(t, matches, 1)
+
+	expected = []outputresource.OutputResource{
+		{
+			ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+			LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
+			Deployed:     false,
+			Managed:      true,
+			Resource: map[string]string{
+				handlers.ManagedKey:                  "true",
+				handlers.UserAssignedIdentityNameKey: resource.ApplicationName + "-" + resource.ResourceName + "-msi",
+			},
+		},
+	}
+	require.ElementsMatch(t, expected, matches)
+
+	matches = resourceMap[resourcekinds.AzurePodIdentity]
+	require.Len(t, matches, 1)
+
+	expected = []outputresource.OutputResource{
+		{
+			LocalID:      outputresource.LocalIDAADPodIdentity,
+			ResourceKind: resourcekinds.AzurePodIdentity,
+			Managed:      true,
+			Deployed:     false,
+			Resource: map[string]string{
+				handlers.ManagedKey:         "true",
+				handlers.PodIdentityNameKey: fmt.Sprintf("podid-%s-%s", strings.ToLower(resource.ApplicationName), strings.ToLower(resource.ResourceName)),
+				handlers.PodNamespaceKey:    resource.ApplicationName,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+				},
+				{
+					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole1"),
+				},
+				{
+					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole2"),
+				},
+			},
+		},
+	}
+	require.ElementsMatch(t, expected, matches)
+}
+
+func outputResourcesToKindMap(resources []outputresource.OutputResource) map[string][]outputresource.OutputResource {
+	results := map[string][]outputresource.OutputResource{}
+	for _, resource := range resources {
+		matches := results[resource.ResourceKind]
+		matches = append(matches, resource)
+		results[resource.ResourceKind] = matches
+	}
+
+	return results
 }

@@ -39,7 +39,13 @@ type ExpectedOutputResource struct {
 	ResourceKind       string
 	Managed            bool
 	Status             rest.OutputResourceStatus
-	verifyStatus       bool
+	VerifyStatus       bool
+
+	// SkipLocalIDWhenMatching instructs the test system to ignore the Local ID when matching
+	// the expected output resource against the actual output resources.
+	//
+	// This is useful when the LocalID is generated from information that's not available for the test.
+	SkipLocalIDWhenMatching bool
 }
 
 func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, verifyStatus bool, status rest.OutputResourceStatus) ExpectedOutputResource {
@@ -49,7 +55,7 @@ func NewOutputResource(localID, outputResourceType, resourceKind string, managed
 		ResourceKind:       resourceKind,
 		Managed:            managed,
 		Status:             status,
-		verifyStatus:       verifyStatus,
+		VerifyStatus:       verifyStatus,
 	}
 }
 
@@ -120,6 +126,15 @@ func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armCo
 
 				t.Logf("found a match for expected resource %+v", expectedResource)
 
+				// TODO: Remove this check once health checks are implemented for all kinds of output resources
+				// https://github.com/Azure/radius/issues/827.
+				// Till then, we will selectively verify the health/provisioning state for output resources that
+				// have the functionality implemented.
+				if expectedResource.VerifyStatus {
+					assert.Equal(t, expectedResource.Status.ProvisioningState, actualResource.Status.ProvisioningState)
+					assert.Equal(t, expectedResource.Status.HealthState, actualResource.Status.HealthState)
+				}
+
 				// We found a match, remove from both lists
 				actual = append(actual[:actualIndex], actual[actualIndex+1:]...)
 				expected = append(expected[:expectedIndex], expected[expectedIndex+1:]...)
@@ -180,19 +195,12 @@ func convertFromGenericToRestOutputResource(obj resources.GenericResource) ([]re
 }
 
 func (e ExpectedOutputResource) IsMatch(a rest.OutputResource) bool {
-	match := e.LocalID == a.LocalID &&
-		e.OutputResourceType == a.OutputResourceType &&
+	match := e.OutputResourceType == a.OutputResourceType &&
 		e.ResourceKind == a.ResourceKind &&
 		e.Managed == a.Managed
 
-	// TODO: Remove this check once health checks are implemented for all kinds of output resources
-	// https://github.com/Azure/radius/issues/827.
-	// Till then, we will selectively verify the health/provisioning state for output resources that
-	// have the functionality implemented.
-	if e.verifyStatus {
-		match = match &&
-			e.Status.HealthState == a.Status.HealthState &&
-			e.Status.ProvisioningState == a.Status.ProvisioningState
+	if !e.SkipLocalIDWhenMatching {
+		match = match && e.LocalID == a.LocalID
 	}
 
 	return match

@@ -115,7 +115,7 @@ func (r Renderer) getManagedIdentityOutput(ctx context.Context, applicationName 
 	managedIdentityName := keyVaultName + "-" + componentName + "-msi"
 	identityOutputResource := outputresource.OutputResource{
 		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
-		LocalID:      outputresource.LocalIDUserAssignedManagedIdentityKV,
+		LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
 		Deployed:     false,
 		Managed:      true,
 		Resource: map[string]string{
@@ -151,7 +151,7 @@ func (r Renderer) getRoleAssignmentOutputResources(ctx context.Context, keyVault
 
 	roleAssignmentDependencies := []outputresource.Dependency{
 		{
-			LocalID: outputresource.LocalIDUserAssignedManagedIdentityKV,
+			LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 		},
 	}
 	readSecretsRAOutputResource := outputresource.OutputResource{
@@ -397,7 +397,7 @@ func (r Renderer) getPodIdentityOutputResource(ctx context.Context, containerNam
 	// Managed identity with required role assignments should be created first
 	podIdentityDependencies := []outputresource.Dependency{
 		{
-			LocalID: outputresource.LocalIDUserAssignedManagedIdentityKV,
+			LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 		},
 		{
 			LocalID: outputresource.LocalIDRoleAssignmentKVSecretsCerts,
@@ -413,10 +413,9 @@ func (r Renderer) getPodIdentityOutputResource(ctx context.Context, containerNam
 		Managed:      true,
 		Deployed:     false,
 		Resource: map[string]string{
-			handlers.ManagedKey:            "true",
-			handlers.PodIdentityNameKey:    podIdentityName,
-			handlers.PodIdentityClusterKey: r.Arm.K8sClusterName,
-			handlers.PodNamespaceKey:       podNamespace,
+			handlers.ManagedKey:         "true",
+			handlers.PodIdentityNameKey: podIdentityName,
+			handlers.PodNamespaceKey:    podNamespace,
 		},
 		Dependencies: podIdentityDependencies,
 	}

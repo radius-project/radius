@@ -17,7 +17,7 @@ func TestGetDependencies(t *testing.T) {
 
 	dependencies, err := outputResource.GetDependencies()
 	require.NoError(t, err)
-	require.Equal(t, []string{LocalIDUserAssignedManagedIdentityKV, LocalIDRoleAssignmentKVKeys},
+	require.Equal(t, []string{LocalIDUserAssignedManagedIdentity, LocalIDRoleAssignmentKVKeys},
 		dependencies)
 }
 
@@ -39,7 +39,7 @@ func TestGetDependencies_MissingLocalID(t *testing.T) {
 
 func TestGetDependencies_Empty(t *testing.T) {
 	testOutputResource := OutputResource{
-		LocalID:      LocalIDUserAssignedManagedIdentityKV,
+		LocalID:      LocalIDUserAssignedManagedIdentity,
 		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
 	}
 
@@ -57,7 +57,7 @@ func TestOrderOutputResources(t *testing.T) {
 	ordered, err := OrderOutputResources(outputResources)
 	require.NoError(t, err)
 
-	expected := []OutputResource{outputResourcesMap[LocalIDUserAssignedManagedIdentityKV], outputResourcesMap[LocalIDRoleAssignmentKVKeys],
+	expected := []OutputResource{outputResourcesMap[LocalIDUserAssignedManagedIdentity], outputResourcesMap[LocalIDRoleAssignmentKVKeys],
 		outputResourcesMap[LocalIDAADPodIdentity]}
 	require.Equal(t, expected, ordered)
 }
@@ -65,7 +65,7 @@ func TestOrderOutputResources(t *testing.T) {
 // Returns output resource with multiple dependencies and a map of localID/unordered list of output resources
 func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputResource) {
 	managedIdentity := OutputResource{
-		LocalID:      LocalIDUserAssignedManagedIdentityKV,
+		LocalID:      LocalIDUserAssignedManagedIdentity,
 		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
 	}
 
@@ -85,9 +85,9 @@ func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputR
 	}
 
 	outputResources := map[string]OutputResource{
-		LocalIDAADPodIdentity:                aadPodIdentity,
-		LocalIDUserAssignedManagedIdentityKV: managedIdentity,
-		LocalIDRoleAssignmentKVKeys:          roleAssignmentKeys,
+		LocalIDAADPodIdentity:              aadPodIdentity,
+		LocalIDUserAssignedManagedIdentity: managedIdentity,
+		LocalIDRoleAssignmentKVKeys:        roleAssignmentKeys,
 	}
 
 	return aadPodIdentity, outputResources

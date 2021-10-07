@@ -19,6 +19,7 @@ import (
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -428,6 +429,19 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 		}
 	}
 
+	outputResources := map[string]resourcemodel.ResourceIdentity{}
+	for localID, outputResource := range k8sResource.Status.Resources {
+		outputResources[localID] = resourcemodel.ResourceIdentity{
+			Kind: resourcemodel.IdentityKindKubernetes,
+			Data: resourcemodel.KubernetesIdentity{
+				Kind:       outputResource.Kind,
+				APIVersion: outputResource.APIVersion,
+				Name:       outputResource.Name,
+				Namespace:  outputResource.Namespace,
+			},
+		}
+	}
+
 	// The 'ComputedValues' we provide to the dependency are a combination of the computed values
 	// we store in status, and secrets we store separately.
 	values := map[string]interface{}{}
@@ -459,9 +473,10 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 	}
 
 	return &renderers.RendererDependency{
-		ComputedValues: values,
-		ResourceID:     id,
-		Definition:     properties,
+		ComputedValues:  values,
+		ResourceID:      id,
+		Definition:      properties,
+		OutputResources: outputResources,
 	}, nil
 }
 
