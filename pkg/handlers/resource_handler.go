@@ -13,9 +13,9 @@ import (
 )
 
 type PutOptions struct {
-	Application string
-	Component   string
-	Resource    *outputresource.OutputResource
+	ApplicationName string
+	ResourceName    string
+	Resource        *outputresource.OutputResource
 
 	Dependencies []Dependency
 
@@ -27,8 +27,8 @@ type PutOptions struct {
 }
 
 type DeleteOptions struct {
-	Application string
-	Component   string
+	Application  string
+	ResourceName string
 
 	// ExistingOutputResource is the current state of the output resource persisted in database
 	ExistingOutputResource *db.OutputResource

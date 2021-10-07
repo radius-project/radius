@@ -125,7 +125,7 @@ func (handler *azureCosmosDBSQLDBHandler) CreateDatabase(ctx context.Context, ac
 				},
 			},
 		},
-		Tags: keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+		Tags: keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 	})
 
 	if err != nil {

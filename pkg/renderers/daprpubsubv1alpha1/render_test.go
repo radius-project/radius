@@ -46,7 +46,7 @@ func Test_Render_Managed_Success_DefaultName(t *testing.T) {
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
-		handlers.ComponentNameKey:        "test-component",
+		handlers.ResourceName:            "test-component",
 		handlers.KubernetesNamespaceKey:  "test-app",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
@@ -85,7 +85,7 @@ func Test_Render_Managed_Success_SpecifyName(t *testing.T) {
 
 	expected := map[string]string{
 		handlers.ManagedKey:              "true",
-		handlers.ComponentNameKey:        "cool-servicebus",
+		handlers.ResourceName:            "cool-servicebus",
 		handlers.KubernetesNamespaceKey:  "test-app",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
@@ -146,7 +146,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 	expected := map[string]string{
 		handlers.ManagedKey:                 "false",
-		handlers.ComponentNameKey:           "cool-servicebus",
+		handlers.ResourceName:               "cool-servicebus",
 		handlers.KubernetesNamespaceKey:     "test-app",
 		handlers.KubernetesAPIVersionKey:    "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:          "Component",

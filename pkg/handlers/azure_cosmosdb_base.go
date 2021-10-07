@@ -94,7 +94,7 @@ func (handler *azureCosmosDBBaseHandler) CreateCosmosDBAccount(ctx context.Conte
 	accountFuture, err := cosmosDBClient.CreateOrUpdate(ctx, handler.arm.ResourceGroup, accountName, documentdb.DatabaseAccountCreateUpdateParameters{
 		Kind:     databaseKind,
 		Location: location,
-		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+		Tags:     keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 		DatabaseAccountCreateUpdateProperties: &documentdb.DatabaseAccountCreateUpdateProperties{
 			DatabaseAccountOfferType: to.StringPtr("Standard"), // Standard is the only supported option
 			Locations: &[]documentdb.Location{

@@ -1424,7 +1424,7 @@ type RabbitmqComMessageQueueComponentListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RadiusResource - Interface for generic component -- useful for listing components without specifying a type
+// RadiusResource - Interface for generic resource -- useful for listing resources without specifying a type
 type RadiusResource struct {
 	ProxyResource
 	// REQUIRED; Any object

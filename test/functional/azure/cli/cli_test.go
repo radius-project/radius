@@ -56,8 +56,8 @@ func Test_CLI(t *testing.T) {
 	validation.ValidatePodsRunning(ctx, t, options.K8sClient, validation.K8sObjectSet{
 		Namespaces: map[string][]validation.K8sObject{
 			application: {
-				validation.NewK8sObjectForComponent(application, "a"),
-				validation.NewK8sObjectForComponent(application, "b"),
+				validation.NewK8sObjectForResource(application, "a"),
+				validation.NewK8sObjectForResource(application, "b"),
 			},
 		},
 	})

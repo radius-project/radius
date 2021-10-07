@@ -124,7 +124,7 @@ func (handler *azureCosmosDBMongoHandler) CreateDatabase(ctx context.Context, ac
 				},
 			},
 		},
-		Tags: keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+		Tags: keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)

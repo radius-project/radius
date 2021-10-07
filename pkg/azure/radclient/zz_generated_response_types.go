@@ -368,7 +368,7 @@ type RadiusResourceListResponse struct {
 
 // RadiusResourceResponse is the response envelope for operations that return a RadiusResource type.
 type RadiusResourceResponse struct {
-	// Interface for generic component -- useful for listing components without specifying a type
+	// Interface for generic resource -- useful for listing resources without specifying a type
 	RadiusResource *RadiusResource
 
 	// RawResponse contains the underlying HTTP response.

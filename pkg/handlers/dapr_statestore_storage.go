@@ -55,7 +55,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 
 	var account *storage.Account
 	if properties[StorageAccountIDKey] == "" {
-		generated, err := handler.GenerateStorageAccountName(ctx, properties[ComponentNameKey])
+		generated, err := handler.GenerateStorageAccountName(ctx, properties[ResourceName])
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +172,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateStorageAccount(ctx conte
 
 	future, err := sc.Create(ctx, handler.arm.ResourceGroup, accountName, storage.AccountCreateParameters{
 		Location: location,
-		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+		Tags:     keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 		Kind:     storage.KindStorageV2,
 		Sku: &storage.Sku{
 			Name: storage.SkuNameStandardLRS,
@@ -208,8 +208,8 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ComponentNameKey],
-				"labels":    kubernetes.MakeDescriptiveLabels(options.Application, options.Component),
+				"name":      properties[ResourceName],
+				"labels":    kubernetes.MakeDescriptiveLabels(options.ApplicationName, options.ResourceName),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.azure.tablestorage",
@@ -282,7 +282,7 @@ func (handler *daprStateStoreAzureStorageHandler) DeleteDaprStateStore(ctx conte
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ComponentNameKey],
+				"name":      properties[ResourceName],
 			},
 		},
 	}

@@ -140,7 +140,7 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 				},
 				EnableRbacAuthorization: to.BoolPtr(true),
 			},
-			Tags: keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+			Tags: keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 		},
 	)
 

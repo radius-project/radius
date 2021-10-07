@@ -68,14 +68,14 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 	var namespace *servicebus.SBNamespace
 	if properties[ServiceBusNamespaceIDKey] == "" {
 		// If we don't have an ID already then we will need to create a new one.
-		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.Application)
+		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.ApplicationName)
 		if err != nil {
 			return nil, err
 		}
 
 		if namespace == nil {
-			logger.Info(fmt.Sprintf("Creating namespace: %s", options.Application))
-			namespace, err = handler.CreateNamespace(ctx, options.Application)
+			logger.Info(fmt.Sprintf("Creating namespace: %s", options.ApplicationName))
+			namespace, err = handler.CreateNamespace(ctx, options.ApplicationName)
 			if err != nil {
 				return nil, err
 			}

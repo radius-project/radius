@@ -29,12 +29,12 @@ const (
 )
 
 type Step struct {
-	Executor       StepExecutor
-	Components     *validation.ComponentSet
-	Pods           *validation.K8sObjectSet
-	PostStepVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
-	SkipComponents bool
-	SkipPods       bool
+	Executor        StepExecutor
+	RadiusResources *validation.ResourceSet
+	Pods            *validation.K8sObjectSet
+	PostStepVerify  func(ctx context.Context, t *testing.T, at ApplicationTest)
+	SkipComponents  bool
+	SkipPods        bool
 }
 
 type StepExecutor interface {
@@ -176,9 +176,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 			step.Executor.Execute(ctx, t, at.Options)
 			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 
-			if step.Components == nil && step.SkipComponents {
+			if step.RadiusResources == nil && step.SkipComponents {
 				t.Logf("skipping validation of components...")
-			} else if step.Components == nil {
+			} else if step.RadiusResources == nil {
 				require.Fail(t, "no component set was specified and SkipComponents == false, either specify a component set or set SkipComponents = true ")
 			} else {
 				// Validate that all expected output resources are created

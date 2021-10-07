@@ -25,7 +25,7 @@ import (
 type Renderer struct {
 }
 
-// Need a step to take rendered routes to be usable by component
+// Need a step to take rendered routes to be usable by resource
 func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
 	return nil, nil
 }

@@ -49,7 +49,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	msiClient := clients.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	identity, err := msiClient.CreateOrUpdate(context.Background(), handler.arm.ResourceGroup, identityName, msi.Identity{
 		Location: to.StringPtr(*rgLocation),
-		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+		Tags:     keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
