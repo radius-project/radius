@@ -43,7 +43,6 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 		// TODO
 		// Create managed resource
 	} else {
-		// This is mostly called for the side-effect of verifying that the database exists.
 		_, err := handler.GetFileShareByID(ctx, properties[FileShareIDKey])
 		if err != nil {
 			return nil, err

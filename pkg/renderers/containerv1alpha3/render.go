@@ -7,7 +7,6 @@ package containerv1alpha3
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -356,7 +355,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 func (r Renderer) makeEphemeralVolume(volumeName string, volume map[string]interface{}) (corev1.Volume, corev1.VolumeMount, error) {
 	ephemeralVolume, err := asEphemeralVolume(volume)
 	if err != nil {
-		return corev1.Volume{}, corev1.VolumeMount{}, err
+		return corev1.Volume{}, corev1.VolumeMount{}, fmt.Errorf("unable to deserialize properties for ephemeral volume: %s - %w", volumeName, err)
 	}
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
@@ -484,10 +483,8 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 func (r Renderer) makePersistentVolume(volumeName string, persistentVolume PersistentVolume, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
-	volumeSpec.VolumeSource = corev1.VolumeSource{}
-	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
 	volumeSpec.Name = volumeName
-	// secret name, share name??
+	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
 	volumeSpec.AzureFile.SecretName = resource.ResourceName
 	resourceID, err := azresources.Parse(persistentVolume.Source)
 	if err != nil {

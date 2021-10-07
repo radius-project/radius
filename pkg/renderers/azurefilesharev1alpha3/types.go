@@ -26,7 +26,7 @@ var AzureFileShareResourceType = azresources.KnownType{
 			Name: "*",
 		},
 		{
-			Type: azresources.AzureFileShareShare,
+			Type: azresources.AzureFileShareShares,
 			Name: "*",
 		},
 	},

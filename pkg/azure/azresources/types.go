@@ -8,7 +8,7 @@ package azresources
 
 const (
 	AzureFileShareFileServices                  = "fileServices"
-	AzureFileShareShare                         = "shares"
+	AzureFileShareShares                        = "shares"
 	ContainerServiceManagedClusters             = "Microsoft.ContainerService/managedClusters"
 	CustomProvidersResourceProviders            = "Microsoft.CustomProviders/resourceProviders"
 	DocumentDBDatabaseAccounts                  = "Microsoft.DocumentDB/databaseAccounts"
