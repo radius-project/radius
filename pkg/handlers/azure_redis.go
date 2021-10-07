@@ -79,15 +79,15 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 			return nil, err
 		}
 		properties[RedisResourceIdKey] = *redisResource.ID
-		options.Resource.Identity = resourcemodel.NewARMIdentity(*redisResource.ID, clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
 	} else {
 		var err error
 		redisResource, err = handler.GetRedisByID(ctx, properties[RedisResourceIdKey])
 		if err != nil {
 			return nil, err
 		}
-		options.Resource.Identity = resourcemodel.NewARMIdentity(*redisResource.ID, clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
 	}
+
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*redisResource.ID, clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
 
 	// Properties that are referenced from the renderer
 	properties[RedisNameKey] = *redisResource.Name
