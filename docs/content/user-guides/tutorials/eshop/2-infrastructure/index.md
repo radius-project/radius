@@ -17,7 +17,7 @@ To begin, create a file named `eshop.bicep` and add the Bicep template for a SQL
 
 Now add a [Radius Application resource]({{< ref application-model >}}), which will contain all the [Application Components]({{< ref components-model >}}).
 
-{{< rad file="snippets/eshop.bicep" embed=true marker="//APP" replace-key-sql="//RADSQL" replace-value-sql="" replace-key-redis="//REDIS" replace-value-redis="" replace-key-mongo="//MONGO" replace-value-mongo="" >}}
+{{< rad file="snippets/eshop.bicep" embed=true marker="//APP" replace-key-sql="//RADSQL" replace-value-sql="" replace-key-redis="//REDIS" replace-value-redis="" replace-key-mongo="//MONGO" replace-value-mongo="" replace-key-sb="//SERVICEBUS" replace-value-sb="" >}}
 
 ### Model SQL as Radius Component
 

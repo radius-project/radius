@@ -814,7 +814,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
         }
         identity: {
           kind: 'Http'
-          source: identity.id
+          source: identityHttp.id
         }
         webshoppingapigw: {
           kind: 'Http'

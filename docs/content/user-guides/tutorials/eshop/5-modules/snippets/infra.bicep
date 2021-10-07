@@ -6,7 +6,7 @@ param adminLogin string
 @secure()
 param adminLoginPassword string
 
-param appName string
+param app object
 
 resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   name: serverName
@@ -54,49 +54,49 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
 }
 
 resource sqlIdentity 'radius.dev/Application/microsoft.com.SQLComponent@v1alpha3' = {
-  name: '${appName}/sql-identity'
+  name: '${app.name}/sql-identity'
   properties: {
     resource: sql::identity.id
   }
 }
 
 resource sqlCatalog 'radius.dev/Application/microsoft.com.SQLComponent@v1alpha3' = {
-  name: '${appName}/sql-catalog'
+  name: '${app.name}/sql-catalog'
   properties: {
     resource: sql::identity.id
   }
 }
 
 resource sqlOrdering 'radius.dev/Application/microsoft.com.SQLComponent@v1alpha3' = {
-  name: '${appName}/sql-ordering'
+  name: '${app.name}/sql-ordering'
   properties: {
     resource: sql::identity.id
   }
 }
 
 resource sqlWebhooks 'radius.dev/Application/microsoft.com.SQLComponent@v1alpha3' = {
-  name: '${appName}/sql-webhooks'
+  name: '${app.name}/sql-webhooks'
   properties: {
     resource: sql::identity.id
   }
 }
 
 resource redis 'radius.dev/Application/redislabs.com.RedisComponent@v1alpha3' = {
-  name: '${appName}/redis'
+  name: '${app.name}/redis'
   properties: {
     managed: true
   }
 }
 
 resource mongo 'radius.dev/Application/mongodb.com.MongoDBComponent@v1alpha3' = {
-  name: '${appName}/mongo'
+  name: '${app.name}/mongo'
   properties: {
     managed: true
   }
 }
 
 resource servicebus 'radius.dev/Application/azure.com.ServiceBusQueueComponent@v1alpha3' = {
-  name: '${appName}/servicebus'
+  name: '${app.name}/servicebus'
   properties: {
     managed: true
     queue: 'orders'
