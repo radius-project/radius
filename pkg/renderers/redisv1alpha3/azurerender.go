@@ -7,7 +7,6 @@ package redisv1alpha3
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/handlers"
@@ -32,45 +31,90 @@ func (r *AzureRenderer) Render(ctx context.Context, resource renderers.RendererR
 		return renderers.RendererOutput{}, err
 	}
 
+	outputResources := []outputresource.OutputResource{}
 	if properties.Managed {
-		output := renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{
-				{
-					LocalID:      outputresource.LocalIDAzureRedis,
-					ResourceKind: resourcekinds.AzureRedis,
-					Managed:      true,
-					Resource: map[string]string{
-						handlers.ManagedKey:    "true",
-						handlers.RedisBaseName: resource.ResourceName,
-					},
-				},
-			},
-			ComputedValues: map[string]renderers.ComputedValueReference{
-				"host": {
-					LocalID:           outputresource.LocalIDAzureRedis,
-					PropertyReference: handlers.RedisHostKey,
-				},
-				"port": {
-					LocalID:           outputresource.LocalIDAzureRedis,
-					PropertyReference: handlers.RedisPortKey,
-				},
-				"username": {
-					LocalID:           outputresource.LocalIDAzureRedis,
-					PropertyReference: handlers.RedisUsernameKey,
-				},
-			},
-			SecretValues: map[string]renderers.SecretValueReference{
-				"password": {
-					LocalID:       outputresource.LocalIDAzureRedis,
-					Action:        "listKeys",
-					ValueSelector: "/primaryKey",
-				},
-			},
+		redisCacheOutputResource := RenderManaged(resource.ResourceName, properties)
+
+		outputResources = append(outputResources, redisCacheOutputResource)
+	} else {
+		redisCacheOutputResource, err := RenderUnmanaged(resource.ResourceName, properties)
+		if err != nil {
+			return renderers.RendererOutput{}, err
 		}
 
-		return output, nil
-	} else {
-		// TODO support managed redis workload
-		return renderers.RendererOutput{}, fmt.Errorf("only managed = true is support for azure redis workload")
+		outputResources = append(outputResources, redisCacheOutputResource)
 	}
+
+	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName)
+
+	return renderers.RendererOutput{
+		Resources:      outputResources,
+		ComputedValues: computedValues,
+		SecretValues:   secretValues,
+	}, nil
+}
+
+func RenderManaged(resourceName string, properties RedisComponentProperties) outputresource.OutputResource {
+	redisCacheOutputResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDAzureRedis,
+		ResourceKind: resourcekinds.AzureRedis,
+		Managed:      true,
+		Resource: map[string]string{
+			handlers.ManagedKey:    "true",
+			handlers.RedisBaseName: resourceName,
+		},
+	}
+
+	return redisCacheOutputResource
+}
+
+func RenderUnmanaged(resourceName string, properties RedisComponentProperties) (outputresource.OutputResource, error) {
+	if properties.Resource == "" {
+		return outputresource.OutputResource{}, renderers.ErrResourceMissingForUnmanagedResource
+	}
+
+	redisResourceID, err := renderers.ValidateResourceID(properties.Resource, RedisResourceType, "Redis Cache")
+	if err != nil {
+		return outputresource.OutputResource{}, err
+	}
+
+	redisCacheOutputResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDAzureRedis,
+		ResourceKind: resourcekinds.AzureRedis,
+		Managed:      true,
+		Resource: map[string]string{
+			handlers.ManagedKey:         "false",
+			handlers.RedisResourceIdKey: redisResourceID.ID,
+			handlers.RedisNameKey:       redisResourceID.Name(),
+		},
+	}
+
+	return redisCacheOutputResource, nil
+}
+
+func MakeSecretsAndValues(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+	computedValues := map[string]renderers.ComputedValueReference{
+		"host": {
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisHostKey,
+		},
+		"port": {
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisPortKey,
+		},
+		"username": {
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisUsernameKey,
+		},
+	}
+
+	secretValues := map[string]renderers.SecretValueReference{
+		"password": {
+			LocalID:       outputresource.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+		},
+	}
+
+	return computedValues, secretValues
 }

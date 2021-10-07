@@ -74,11 +74,6 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 			}
 		}
 
-		properties[RedisNameKey] = redisName
-		if err != nil {
-			return nil, err
-		}
-
 		redisResource, err = handler.CreateRedis(ctx, redisName)
 		if err != nil {
 			return nil, err
