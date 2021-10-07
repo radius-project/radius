@@ -35,6 +35,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
             provides: backend_http.id
           }
         }
+        volumes:{
+          'my-volume':{
+            kind: 'ephemeral'
+            mountPath:'/tmpfs'
+            managedStore:'memory'
+          }
+        }
       }
     }
   }

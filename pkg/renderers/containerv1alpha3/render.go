@@ -26,6 +26,17 @@ import (
 	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
+// Volume constants
+const (
+	VolumeKindEphemeral  = "ephemeral"
+	VolumeKindPersistent = "persistent"
+	ManagedStoreDisk     = "disk"
+	ManagedStoreMemory   = "memory"
+	RbacPermissionsRead  = "read"
+	RbacPermissionsWrite = "write"
+	StorageAccountName   = "storageAccount"
+)
+
 // Renderer is the WorkloadRenderer implementation for containerized workload.
 type Renderer struct {
 
@@ -167,6 +178,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 		ImagePullPolicy: corev1.PullPolicy("Always"),
 		Ports:           ports,
 		Env:             []corev1.EnvVar{},
+		VolumeMounts:    []corev1.VolumeMount{},
 	}
 
 	// We build the environment variable list in a stable order for testability
@@ -222,6 +234,24 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 		container.Env = append(container.Env, env[key])
 	}
 
+	// Add volumes
+	volumes := []corev1.Volume{}
+	for volumeName, volume := range cc.Container.Volumes {
+		// Based on the kind, create a persistent/ephemeral volume
+		if volume[kindProperty] == VolumeKindEphemeral {
+			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, volume)
+			if err != nil {
+				return outputresource.OutputResource{}, nil, err
+			}
+			// Add the volume mount to the Container spec
+			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
+			// Add the volume to the list of volumes to be added to the Volumes spec
+			volumes = append(volumes, volumeSpec)
+		} else {
+			return outputresource.OutputResource{}, secretData, fmt.Errorf("Only ephemeral volumes are supported. Got kind: %v", volume[kindProperty])
+		}
+	}
+
 	// In addition to the descriptive labels, we need to attach labels for each route
 	// so that the generated services can find these pods
 	podLabels := kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName)
@@ -250,6 +280,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{container},
+					Volumes:    volumes,
 				},
 			},
 		},
@@ -257,6 +288,29 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 
 	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
 	return output, secretData, nil
+}
+
+func (r Renderer) makeEphemeralVolume(volumeName string, volume map[string]interface{}) (corev1.Volume, corev1.VolumeMount, error) {
+	ephemeralVolume, err := asEphemeralVolume(volume)
+	if err != nil {
+		return corev1.Volume{}, corev1.VolumeMount{}, err
+	}
+	// Make volume spec
+	volumeSpec := corev1.Volume{}
+	volumeSpec.Name = volumeName
+	volumeSpec.VolumeSource.EmptyDir = &corev1.EmptyDirVolumeSource{}
+	if ephemeralVolume.ManagedStore == ManagedStoreMemory {
+		volumeSpec.VolumeSource.EmptyDir.Medium = corev1.StorageMediumMemory
+	} else {
+		volumeSpec.VolumeSource.EmptyDir.Medium = corev1.StorageMediumDefault
+	}
+
+	// Make volumeMount spec
+	volumeMountSpec := corev1.VolumeMount{}
+	volumeMountSpec.MountPath = ephemeralVolume.MountPath
+	volumeMountSpec.Name = volumeName
+
+	return volumeSpec, volumeMountSpec, nil
 }
 
 func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererResource, secrets map[string][]byte) outputresource.OutputResource {

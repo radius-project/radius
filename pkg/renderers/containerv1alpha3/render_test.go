@@ -507,6 +507,107 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	require.ElementsMatch(t, expected, matches)
 }
 
+func Test_Render_EphemeralVolumes(t *testing.T) {
+	const tempVolName = "TempVolume"
+	const tempVolMountPath = "/tmpfs"
+	properties := ContainerProperties{
+		Container: Container{
+			Image: "someimage:latest",
+			Env: map[string]interface{}{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+			Volumes: map[string]map[string]interface{}{
+				tempVolName: {
+					"kind":         "ephemeral",
+					"mountPath":    tempVolMountPath,
+					"managedStore": "memory",
+				},
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").ID): {
+			ResourceID:     makeResourceID(t, "ResourceType", "A"),
+			Definition:     map[string]interface{}{},
+			ComputedValues: map[string]interface{}{},
+		},
+	}
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, dependencies)
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		deployment, _ := kubernetes.FindDeployment(output.Resources)
+		require.NotNil(t, deployment)
+
+		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+		require.Equal(t, resourceName, container.Name)
+
+		volumes := deployment.Spec.Template.Spec.Volumes
+
+		expectedVolumeMounts := []v1.VolumeMount{
+			{
+				Name:      tempVolName,
+				MountPath: tempVolMountPath,
+			},
+		}
+
+		expectedVolumes := []v1.Volume{
+			{
+				Name: tempVolName,
+				VolumeSource: v1.VolumeSource{
+					EmptyDir: &v1.EmptyDirVolumeSource{
+						Medium: v1.StorageMediumMemory,
+					},
+				},
+			},
+		}
+
+		require.Equal(t, expectedVolumeMounts, container.VolumeMounts)
+		require.Equal(t, expectedVolumes, volumes)
+	})
+}
+
+func Test_Render_NonEphemeralVolumes(t *testing.T) {
+	const tempVolName = "TempVolume"
+	const tempVolMountPath = "/tmpfs"
+	properties := ContainerProperties{
+		Container: Container{
+			Image: "someimage:latest",
+			Env: map[string]interface{}{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+			Volumes: map[string]map[string]interface{}{
+				tempVolName: {
+					"kind":         "persistent",
+					"mountPath":    tempVolMountPath,
+					"managedStore": "memory",
+				},
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").ID): {
+			ResourceID:     makeResourceID(t, "ResourceType", "A"),
+			Definition:     map[string]interface{}{},
+			ComputedValues: map[string]interface{}{},
+		},
+	}
+
+	renderer := Renderer{}
+	_, err := renderer.Render(createContext(t), resource, dependencies)
+	require.Error(t, err)
+	require.Equal(t, "Only ephemeral volumes are supported. Got kind: persistent", err.Error())
+}
+
 func outputResourcesToKindMap(resources []outputresource.OutputResource) map[string][]outputresource.OutputResource {
 	results := map[string][]outputresource.OutputResource{}
 	for _, resource := range resources {
