@@ -11,7 +11,6 @@ const (
 	VolumeKindAzureFileShare = "azure.com.fileshare"
 	StorageKeyValue          = "azurestorageaccountkey"
 	StorageAccountName       = "azurestorageaccountname"
-	kindProperty             = "kind"
 	ResourceType             = "Volume"
 )
 

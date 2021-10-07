@@ -35,16 +35,6 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 	return nil, nil
 }
 
-func (r Renderer) convert(resource renderers.RendererResource) (*AzureFileShare, error) {
-	properties := &AzureFileShare{}
-	err := resource.ConvertDefinition(properties)
-	if err != nil {
-		return nil, err
-	}
-
-	return properties, nil
-}
-
 func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	properties := VolumeProperties{}
 	err := resource.ConvertDefinition(&properties)

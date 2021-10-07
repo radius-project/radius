@@ -103,15 +103,11 @@ func (handler *azureFileShareHandler) Delete(ctx context.Context, options Delete
 }
 
 func NewAzureFileShareHealthHandler(arm armauth.ArmConfig) HealthHandler {
-	return &azureCosmosDBSQLDBHealthHandler{
-		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
-			arm: arm,
-		},
-	}
+	return &azureFileShareHealthHandler{arm: arm}
 }
 
 type azureFileShareHealthHandler struct {
-	azureCosmosDBBaseHandler
+	arm armauth.ArmConfig
 }
 
 func (handler *azureFileShareHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
