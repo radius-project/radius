@@ -46,11 +46,6 @@ func (r *AzureRenderer) Render(ctx context.Context, resource renderers.RendererR
 				},
 			},
 			ComputedValues: map[string]renderers.ComputedValueReference{
-				// NOTE: this is NOT a secret, it doesn't contain the access keys.
-				"connectionString": {
-					LocalID:           outputresource.LocalIDAzureRedis,
-					PropertyReference: handlers.RedisConnectionStringKey,
-				},
 				"host": {
 					LocalID:           outputresource.LocalIDAzureRedis,
 					PropertyReference: handlers.RedisHostKey,
@@ -59,17 +54,16 @@ func (r *AzureRenderer) Render(ctx context.Context, resource renderers.RendererR
 					LocalID:           outputresource.LocalIDAzureRedis,
 					PropertyReference: handlers.RedisPortKey,
 				},
+				"username": {
+					LocalID:           outputresource.LocalIDAzureRedis,
+					PropertyReference: handlers.RedisUsernameKey,
+				},
 			},
 			SecretValues: map[string]renderers.SecretValueReference{
-				"primaryKey": {
+				"password": {
 					LocalID:       outputresource.LocalIDAzureRedis,
 					Action:        "listKeys",
 					ValueSelector: "/primaryKey",
-				},
-				"secondaryKey": {
-					LocalID:       outputresource.LocalIDAzureRedis,
-					Action:        "listKeys",
-					ValueSelector: "/secondaryKey",
 				},
 			},
 		}

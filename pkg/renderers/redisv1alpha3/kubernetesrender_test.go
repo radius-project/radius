@@ -102,19 +102,16 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	})
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"connectionString": {
-			Value: "test-redis:6379",
-		},
 		"host": {
 			Value: "test-redis",
 		},
 		"port": {
 			Value: "6379",
 		},
-		"primaryKey": {
+		"username": {
 			Value: "",
 		},
-		"secondarykey": {
+		"password": {
 			Value: "",
 		},
 	}

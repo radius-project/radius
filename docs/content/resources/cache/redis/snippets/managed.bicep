@@ -1,6 +1,6 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'redis-container'
-  
+
   //SAMPLE
   resource redis 'redislabs.com.RedisComponent' = {
     name: 'redis'
@@ -17,7 +17,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          CONNECTIONSTRING: redis.connectionString()
+          CONNECTIONSTRING: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
         }
       }
       //HIDE

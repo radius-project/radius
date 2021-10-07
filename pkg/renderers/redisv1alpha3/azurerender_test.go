@@ -43,10 +43,9 @@ func Test_Render_Managed_Azure_Success(t *testing.T) {
 	require.Equal(t, expectedProperties, output.Resources[0].Resource)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		// NOTE: this is NOT a secret, it doesn't contain the access keys.
-		"connectionString": {
+		"username": {
 			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisConnectionStringKey,
+			PropertyReference: handlers.RedisUsernameKey,
 		},
 		"host": {
 			LocalID:           outputresource.LocalIDAzureRedis,
@@ -60,15 +59,10 @@ func Test_Render_Managed_Azure_Success(t *testing.T) {
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
 	expectedSecretValues := map[string]renderers.SecretValueReference{
-		"primaryKey": {
+		"password": {
 			LocalID:       outputresource.LocalIDAzureRedis,
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
-		},
-		"secondaryKey": {
-			LocalID:       outputresource.LocalIDAzureRedis,
-			Action:        "listKeys",
-			ValueSelector: "/secondaryKey",
 		},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
