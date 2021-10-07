@@ -99,6 +99,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		resourcekinds.AzureKeyVaultSecret:              {ResourceHandler: handlers.NewAzureKeyVaultSecretHandler(arm), HealthHandler: handlers.NewAzureKeyVaultSecretHealthHandler(arm)},
 		resourcekinds.AzureRedis:                       {ResourceHandler: handlers.NewAzureRedisHandler(arm), HealthHandler: handlers.NewAzureRedisHealthHandler(arm)},
 		resourcekinds.AzureFileShare:                   {ResourceHandler: handlers.NewAzureFileShareHandler(arm), HealthHandler: handlers.NewAzureFileShareHealthHandler(arm)},
+		resourcekinds.AzureFileShareStorageAccount:     {ResourceHandler: handlers.NewAzureFileShareStorageAccountHandler(arm), HealthHandler: handlers.NewAzureFileShareStorageAccountHealthHandler(arm)},
 	}
 
 	// Lookup of transforms to apply to secrets. By-convention the resource type is used as the
