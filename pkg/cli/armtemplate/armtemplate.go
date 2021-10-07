@@ -22,14 +22,17 @@ import (
 
 // DeploymentTemplate represents an ARM template.
 type DeploymentTemplate struct {
-	Schema         string                   `json:"$schema"`
-	ContentVersion string                   `json:"contentVersion"`
-	ApiProfile     string                   `json:"apiProfile"`
-	Parameters     map[string]interface{}   `json:"parameters"`
-	Variables      map[string]interface{}   `json:"variables"`
-	Functions      []interface{}            `json:"functions"`
-	Resources      []map[string]interface{} `json:"resources"`
-	Outputs        map[string]interface{}   `json:"outputs"`
+	Schema         string `json:"$schema"`
+	ContentVersion string `json:"contentVersion"`
+	ApiProfile     string `json:"apiProfile"`
+
+	// Parameters stores parameters in the format they appear inside an ARM template.
+	// See: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/syntax#parameters
+	Parameters map[string]map[string]interface{} `json:"parameters"`
+	Variables  map[string]interface{}            `json:"variables"`
+	Functions  []interface{}                     `json:"functions"`
+	Resources  []map[string]interface{}          `json:"resources"`
+	Outputs    map[string]interface{}            `json:"outputs"`
 }
 
 // Resource represents a (parsed) resource within an ARM template.
@@ -87,8 +90,15 @@ func Parse(template string) (DeploymentTemplate, error) {
 }
 
 type TemplateOptions struct {
-	SubscriptionID         string
-	ResourceGroup          string
+	SubscriptionID string
+	ResourceGroup  string
+
+	// Parameters stores ARM template parameters in the format they appear when submitting a deployment.
+	//
+	// The full format is documented here: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
+	//
+	// Note that we're only storing the 'parameters' node of the format described above.
+	Parameters             map[string]map[string]interface{}
 	EvaluatePropertiesNode bool
 }
 
@@ -98,7 +108,7 @@ type evaluator struct {
 	Resources []Resource
 
 	// Intermediate expression evaluation state
-	Value               string
+	Value               interface{}
 	PreserveExpressions bool
 }
 
@@ -146,17 +156,17 @@ func (eva *evaluator) VisitResource(input map[string]interface{}) (Resource, err
 
 	name, ok := evaluated["name"].(string)
 	if !ok {
-		return Resource{}, errors.New("resource does not contain a name.")
+		return Resource{}, errors.New("resource does not contain a name")
 	}
 
 	t, ok := evaluated["type"].(string)
 	if !ok {
-		return Resource{}, errors.New("resource does not contain a type.")
+		return Resource{}, errors.New("resource does not contain a type")
 	}
 
 	apiVersion, ok := evaluated["apiVersion"].(string)
 	if !ok {
-		return Resource{}, errors.New("resource does not contain an apiVersion.")
+		return Resource{}, errors.New("resource does not contain an apiVersion")
 	}
 
 	dependsOn := []string{}
@@ -164,20 +174,26 @@ func (eva *evaluator) VisitResource(input map[string]interface{}) (Resource, err
 	if ok {
 		ds, ok := obj.([]interface{})
 		if !ok {
-			return Resource{}, errors.New("dependsOn is the wrong type.")
+			return Resource{}, errors.New("dependsOn is the wrong type")
 		}
 
 		for _, d := range ds {
 			dt, ok := d.(string)
 			if !ok {
-				return Resource{}, errors.New("dependsOn is the wrong type.")
+				return Resource{}, errors.New("dependsOn is the wrong type")
 			}
 
 			dependsOn = append(dependsOn, dt)
 		}
 	}
 
-	id, err := eva.EvaluateResourceID(t, strings.Split(name, "/"))
+	nameParts := strings.Split(name, "/")
+	args := []interface{}{}
+	for _, part := range nameParts {
+		args = append(args, part)
+	}
+
+	id, err := eva.EvaluateResourceID(t, args)
 	if err != nil {
 		return Resource{}, err
 	}
@@ -268,7 +284,7 @@ func (eva *evaluator) VisitSlice(input []interface{}) ([]interface{}, error) {
 	return copy, nil
 }
 
-func (eva *evaluator) VisitString(input string) (string, error) {
+func (eva *evaluator) VisitString(input string) (interface{}, error) {
 	if eva.PreserveExpressions {
 		return input, nil
 	}
@@ -306,7 +322,7 @@ func (eva *evaluator) VisitPropertyAccess(node *armexpr.PropertyAccessNode) erro
 func (eva *evaluator) VisitFunctionCall(node *armexpr.FunctionCallNode) error {
 	name := node.Identifier.Text
 
-	args := []string{}
+	args := []interface{}{}
 	for _, argexpr := range node.Args {
 		err := argexpr.Accept(eva)
 		if err != nil {
@@ -322,6 +338,18 @@ func (eva *evaluator) VisitFunctionCall(node *armexpr.FunctionCallNode) error {
 		}
 
 		eva.Value = eva.EvaluateFormat(args[0], args[1:])
+		return nil
+	} else if name == "parameters" {
+		if len(args) != 1 {
+			return fmt.Errorf("exactly 1 argument is required for %s", "parameter")
+		}
+
+		result, err := eva.EvaluateParameter(args[0].(string))
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
 		return nil
 	} else if name == "resourceId" {
 		if len(args) < 2 {
@@ -340,26 +368,39 @@ func (eva *evaluator) VisitFunctionCall(node *armexpr.FunctionCallNode) error {
 	}
 }
 
-func (eva *evaluator) EvaluateFormat(format string, values []string) string {
+func (eva *evaluator) EvaluateFormat(format interface{}, values []interface{}) string {
 	r := regexp.MustCompile(`\{\d+\}`)
-	format = r.ReplaceAllString(format, "%v")
+	format = r.ReplaceAllString(format.(string), "%v")
 
-	v := []interface{}{}
-	for _, val := range values {
-		v = append(v, val)
-	}
-	return fmt.Sprintf(format, v...)
+	return fmt.Sprintf(format.(string), values...)
 }
 
-func (eva *evaluator) EvaluateResourceID(resourceType string, names []string) (string, error) {
-	// for extensibility types they contain the version as part of the type string
-	// exclude this when we build a resource id.
-	index := strings.Index(resourceType, "@")
-	if index >= 0 {
-		resourceType = resourceType[0:index]
+func (eva *evaluator) EvaluateParameter(name string) (interface{}, error) {
+	parameter, ok := eva.Options.Parameters[name]
+	if ok {
+		value, ok := parameter["value"]
+		if !ok {
+			return nil, fmt.Errorf("parameter %q has no value", name)
+		}
+
+		return value, nil
 	}
 
-	typeSegments := strings.Split(resourceType, "/")
+	parameter, ok = eva.Template.Parameters[name]
+	if ok {
+		value, ok := parameter["defaultValue"]
+		if !ok {
+			return nil, fmt.Errorf("parameter %q has no default value", name)
+		}
+
+		return value, nil
+	}
+
+	return nil, fmt.Errorf("parameter %q is not defined by the template", name)
+}
+
+func (eva *evaluator) EvaluateResourceID(resourceType interface{}, names []interface{}) (string, error) {
+	typeSegments := strings.Split(resourceType.(string), "/")
 
 	if len(typeSegments)-1 != len(names) {
 		return "", errors.New("invalid arguments: wrong number of names")
@@ -367,14 +408,14 @@ func (eva *evaluator) EvaluateResourceID(resourceType string, names []string) (s
 
 	head := azresources.ResourceType{
 		Type: typeSegments[0] + "/" + typeSegments[1],
-		Name: names[0],
+		Name: names[0].(string),
 	}
 
 	tail := []azresources.ResourceType{}
 	for i := 1; i < len(names); i++ {
 		tail = append(tail, azresources.ResourceType{
 			Type: typeSegments[i+1],
-			Name: names[i],
+			Name: names[i].(string),
 		})
 	}
 

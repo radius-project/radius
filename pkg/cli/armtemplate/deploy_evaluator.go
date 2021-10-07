@@ -207,6 +207,18 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 
 		eva.Value = eva.EvaluateFormat(args[0], args[1:])
 		return nil
+	} else if name == "parameters" {
+		if len(args) != 1 {
+			return fmt.Errorf("exactly 1 argument is required for %s", "parameter")
+		}
+
+		result, err := eva.EvaluateParameter(args[0].(string))
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
+		return nil
 	} else if name == "reference" {
 		if len(args) != 1 {
 			return fmt.Errorf("exactly 1 argument required for %s", "reference")
@@ -298,6 +310,30 @@ func (eva *DeploymentEvaluator) EvaluateFormat(format interface{}, values []inte
 	format = r.ReplaceAllString(format.(string), "%v")
 
 	return fmt.Sprintf(format.(string), values...)
+}
+
+func (eva *DeploymentEvaluator) EvaluateParameter(name string) (interface{}, error) {
+	parameter, ok := eva.Options.Parameters[name]
+	if ok {
+		value, ok := parameter["value"]
+		if !ok {
+			return nil, fmt.Errorf("parameter %q has no value", name)
+		}
+
+		return value, nil
+	}
+
+	parameter, ok = eva.Template.Parameters[name]
+	if ok {
+		value, ok := parameter["defaultValue"]
+		if !ok {
+			return nil, fmt.Errorf("parameter %q has no default value", name)
+		}
+
+		return value, nil
+	}
+
+	return nil, fmt.Errorf("parameter %q is not defined by the template", name)
 }
 
 func (eva *DeploymentEvaluator) EvaluateReference(id interface{}) (map[string]interface{}, error) {

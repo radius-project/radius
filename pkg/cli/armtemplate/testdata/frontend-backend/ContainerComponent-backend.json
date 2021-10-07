@@ -37,7 +37,7 @@
                         "ports": {
                             "web": {
                                 "containerPort": 81,
-                                "provides": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]"
+                                "provides": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))]"
                             }
                         }
                     }

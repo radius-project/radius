@@ -33,7 +33,7 @@ func NewCLI(t *testing.T, configFilePath string) *CLI {
 }
 
 // Deploy runs the rad deploy command.
-func (cli *CLI) Deploy(ctx context.Context, templateFilePath string) error {
+func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters ...string) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
 		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
@@ -43,6 +43,11 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string) error {
 		"deploy",
 		templateFilePath,
 	}
+
+	for _, parameter := range parameters {
+		args = append(args, "--parameters", parameter)
+	}
+
 	_, err := cli.RunCommand(ctx, args)
 	return err
 }

@@ -42,7 +42,14 @@ func Test_ArmToK8sConversion(t *testing.T) {
 	template, err := Parse(string(content))
 	require.NoError(t, err)
 
-	resources, err := Eval(template, TemplateOptions{})
+	resources, err := Eval(template, TemplateOptions{
+		Parameters: map[string]map[string]interface{}{
+			// Setting one required parameter, and using the default value for 'backendRoute' parameter
+			"frontendRoute": {
+				"value": "frontend",
+			},
+		},
+	})
 	require.NoError(t, err)
 
 	actual := map[string]*unstructured.Unstructured{}

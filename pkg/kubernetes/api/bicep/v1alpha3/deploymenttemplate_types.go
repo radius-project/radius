@@ -15,6 +15,9 @@ type DeploymentTemplateSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:PreserveUnknownFields
 	Content *runtime.RawExtension `json:"content,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:PreserveUnknownFields
+	Parameters *runtime.RawExtension `json:"parameters,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of Arm

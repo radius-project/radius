@@ -13,9 +13,26 @@ import (
 	"github.com/Azure/radius/pkg/azure/radclient"
 )
 
+// NOTE: parameters in the template engine follow the structure:
+//
+// {
+//   "parameter1Name": {
+//     "value": ...
+//   }
+// }
+//
+// Each parameter can have additional metadata besides the mandatory 'value' key.
+//
+// We're really only interested in 'value' and we pass the other metadata through.
+//
+// The full format is documented here: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
+//
+// Note that we're only storing the 'parameters' node of the format described above.
+type DeploymentParameters = map[string]map[string]interface{}
+
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
 type DeploymentClient interface {
-	Deploy(ctx context.Context, content string) error
+	Deploy(ctx context.Context, content string, parameters DeploymentParameters) error
 }
 
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
