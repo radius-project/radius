@@ -44,31 +44,40 @@ type ContainerConnection struct {
 
 // HTTPGetHealthProbe defines the properties when an httpGet readiness/liveness probe is specified
 type HTTPGetHealthProbe struct {
-	Kind                string            `json:"kind"`
-	Path                string            `json:"path"`
-	Port                int               `json:"containerPort"`
-	Headers             map[string]string `json:"headers"`
-	InitialDelaySeconds *int              `json:"initialDelaySeconds"`
-	FailureThreshold    *int              `json:"failureThreshold"`
-	PeriodSeconds       *int              `json:"periodSeconds"`
+	Kind    string            `json:"kind"`
+	Path    string            `json:"path"`
+	Port    int               `json:"containerPort"`
+	Headers map[string]string `json:"headers"`
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *int `json:"initialDelaySeconds"`
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *int `json:"failureThreshold"`
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *int `json:"periodSeconds"`
 }
 
 // TCPHealthProbe defines the properties when a tcp readiness/liveness probe is specified
 type TCPHealthProbe struct {
-	Kind                string `json:"kind"`
-	Port                int    `json:"containerPort"`
-	InitialDelaySeconds *int   `json:"initialDelaySeconds"`
-	FailureThreshold    *int   `json:"failureThreshold"`
-	PeriodSeconds       *int   `json:"periodSeconds"`
+	Kind string `json:"kind"`
+	Port int    `json:"containerPort"`
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *int `json:"initialDelaySeconds"`
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *int `json:"failureThreshold"`
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *int `json:"periodSeconds"`
 }
 
 // ExecHealthProbe defines the properties when an exec readiness/liveness probe is specified
 type ExecHealthProbe struct {
-	Kind                string `json:"kind"`
-	Command             string `json:"command"`
-	InitialDelaySeconds *int   `json:"initialDelaySeconds"`
-	FailureThreshold    *int   `json:"failureThreshold"`
-	PeriodSeconds       *int   `json:"periodSeconds"`
+	Kind    string `json:"kind"`
+	Command string `json:"command"`
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *int `json:"initialDelaySeconds"`
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *int `json:"failureThreshold"`
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *int `json:"periodSeconds"`
 }
 
 type ContainerTrait struct {

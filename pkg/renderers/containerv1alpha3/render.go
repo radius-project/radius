@@ -287,8 +287,6 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 		podLabels = labels.Merge(routeLabels, podLabels)
 	}
 
-	fmt.Printf("@@@@@ Dumping container spec: %v\n", container)
-
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
