@@ -23,7 +23,7 @@ Radius uses the [Bicep langauge](https://github.com/azure/bicep) as its file-for
 To start understanding Radius - think about how cloud-native applications are first designed. It's typical to create a *lines-and-boxes* architecture diagram as the starting point.
 
 {{< imgproc app-diagram Fit "700x500" >}}
-<i>A simple example of an online shopping app has a collection of bindings and resources.</i>
+<i>A simple example of an online shopping app has a collection of connections and resources.</i>
 {{< /imgproc >}}
 
 An architecture diagram would include all of the pieces of the application both the components that run your code as well as other components like databases, messages queues, api gateways, secret stores, and more. These components make up the nodes of the diagram.

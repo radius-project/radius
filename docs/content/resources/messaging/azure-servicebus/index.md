@@ -16,10 +16,10 @@ The Azure ServiceBus Queue component offers to the user:
 
 ## Platform resources
 
-| Platform | Resource |
-|----------|----------|
-| [Microsoft Azure]({{< ref azure>}}) | [Azure Service Bus Queue](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)
-| [Kubernetes]({{< ref kubernetes >}}) | Not compatible
+| Platform                             | Resource                                                                                                               |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| [Microsoft Azure]({{< ref azure>}})  | [Azure Service Bus Queue](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview) |
+| [Kubernetes]({{< ref kubernetes >}}) | Not compatible                                                                                                         |
 
 ## Component format
 
@@ -37,33 +37,35 @@ User-managed resources are not yet supported. Check back soon for updates.
 
 {{< /tabs >}}
 
-| Property | Description | Example |
-|----------|-------------|---------|
-| name | Name of the Component | `'orders'`
+| Property | Description           | Example    |
+| -------- | --------------------- | ---------- |
+| name     | Name of the Component | `'orders'` |
 
 ### Resource lifecycle
 
-| Property | Description | Example |
-|----------|-------------|---------|
-| managed | Indicates if the resource is Radius-managed. For now only `true` is accepted for this Component. | `true`
+| Property | Description                                                                                      | Example |
+| -------- | ------------------------------------------------------------------------------------------------ | ------- |
+| managed  | Indicates if the resource is Radius-managed. For now only `true` is accepted for this Component. | `true`  |
 
 ### Queue properties
 
-| Property | Description | Example |
-|----------|-------------|---------|
-| queue | The name of the queue | `'orders'`
+| Property | Description           | Example    |
+| -------- | --------------------- | ---------- |
+| queue    | The name of the queue | `'orders'` |
 
 ## Provided data
 
 ### Functions
 
-| Property | Description |
-|----------|-------------|
-| `connectionString()` | The Service Bus connection string used to connect to the resource.
+| Property             | Description                                                        |
+| -------------------- | ------------------------------------------------------------------ |
+| `connectionString()` | The Service Bus connection string used to connect to the resource. |
 
 ### Properties
 
-| Property | Description |
-|----------|-------------|
-| `namespace` | The namespace of the Service Bus.
-| `queue` | The message queue to which you are connecting.
+| Property                    | Description                                                         |
+| --------------------------- | ------------------------------------------------------------------- |
+| `namespace`                 | The namespace of the Service Bus.                                   |
+| `namespaceConnectionString` | The Service Bus connection string used to connect to the namespace. |
+| `queue`                     | The message queue to which you are connecting.                      |
+| `queueConnectionString`     | The Service Bus connection string used to connect to the queue.     |

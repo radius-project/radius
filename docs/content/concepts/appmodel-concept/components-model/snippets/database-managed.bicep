@@ -1,8 +1,8 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'cosmos-container-managed'
+  name: 'mongo-container-managed'
 
   //SAMPLE
-  resource db 'azure.com.CosmosDBMongoComponent' = {
+  resource db 'mongodb.com.MongoDBComponent' = {
     name: 'db'
     properties: {
       managed: true

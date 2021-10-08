@@ -67,7 +67,7 @@ Another benefit of using a trait like this is that you *also* benefit from separ
 
 #### Bicep example
 
-Here is a full example of a Radius application that uses multiple components with provided bindings, consumed bindings, and traits.
+Here is a full example of a Radius application that uses multiple components with provided connections and traits.
 
 {{< rad file="snippets/storeapp.bicep" embed=true >}}
 
