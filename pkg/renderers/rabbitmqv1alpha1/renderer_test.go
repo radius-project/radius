@@ -87,7 +87,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	})
 
 	t.Run("verify service", func(t *testing.T) {
-		require.Equal(t, "test-component", service.Name)
+		require.Equal(t, "test-app-test-component", service.Name)
 		require.Equal(t, "default", service.Namespace)
 		require.Equal(t, labels, service.Labels)
 		require.Empty(t, service.Annotations)
