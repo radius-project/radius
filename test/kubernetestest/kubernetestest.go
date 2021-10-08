@@ -35,7 +35,7 @@ type Step struct {
 	Ingress                *validation.K8sObjectSet
 	Services               *validation.K8sObjectSet
 	PostStepVerify         func(ctx context.Context, t *testing.T, at ApplicationTest)
-	SkipComponents         bool
+	SkipOutputResources    bool
 	SkipResourceValidation bool
 }
 
@@ -178,7 +178,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			step.Executor.Execute(ctx, t, at.Options)
 			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 
-			if step.RadiusResources == nil && step.SkipComponents {
+			if step.RadiusResources == nil && step.SkipOutputResources {
 				t.Logf("skipping validation of components...")
 			} else if step.RadiusResources == nil {
 				require.Fail(t, "no component set was specified and SkipComponents == false, either specify a component set or set SkipComponents = true ")

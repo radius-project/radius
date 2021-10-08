@@ -25,7 +25,7 @@ import (
 const (
 	IntervalForDeploymentCreation = 10 * time.Second
 	IntervalForPodShutdown        = 10 * time.Second
-	IntervalForResourceCheck      = 5 * time.Second
+	IntervalForResourceCreation   = 5 * time.Second
 
 	// We want to make sure to produce some output any time we're in a watch
 	// otherwise it's hard to know if it got stuck.
@@ -204,7 +204,7 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 		var actualPods *corev1.PodList
 		for {
 			select {
-			case <-time.After(IntervalForResourceCheck):
+			case <-time.After(IntervalForResourceCreation):
 				t.Logf("at %s waiting for pods in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
@@ -267,7 +267,7 @@ func ValidateIngressesRunning(ctx context.Context, t *testing.T, k8s *kubernetes
 		t.Logf("validating ingresses in namespace %v", namespace)
 		for {
 			select {
-			case <-time.After(IntervalForResourceCheck):
+			case <-time.After(IntervalForResourceCreation):
 				t.Logf("at %s waiting for ingresses in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
@@ -311,7 +311,7 @@ func ValidateServicesRunning(ctx context.Context, t *testing.T, k8s *kubernetes.
 		t.Logf("validating services in namespace %v", namespace)
 		for {
 			select {
-			case <-time.After(IntervalForResourceCheck):
+			case <-time.After(IntervalForResourceCreation):
 				t.Logf("at %s waiting for services in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
