@@ -112,7 +112,7 @@ func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRo
 
 	backend := networkingv1.IngressBackend{
 		Service: &networkingv1.IngressServiceBackend{
-			Name: resource.ResourceName,
+			Name: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Port: networkingv1.ServiceBackendPort{
 				Number: int32(route.GetEffectivePort()),
 			},

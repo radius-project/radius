@@ -159,7 +159,7 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      component.Name,
+			Name:      kubernetes.MakeResourceName(w.Application, component.Name),
 			Namespace: namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
 		},
