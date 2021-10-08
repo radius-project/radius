@@ -2,7 +2,7 @@
   "id": 42,
   "name": 42,
   "properties": {
-    "managed": false,
+    "managed": true,
     "additional": "property"
   }
 }
