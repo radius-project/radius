@@ -198,6 +198,7 @@
             "Http",
             "microsoft.com/SQL",
             "mongo.com/MongoDB",
+            "rabbitmq.com/MessageQueue",
             "redislabs.com/Redis"
           ]
         },

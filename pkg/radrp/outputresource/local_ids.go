@@ -48,6 +48,7 @@ const (
 	LocalIDIngress                     = "Ingress"
 	LocalIDKeyVault                    = "KeyVault"
 	LocalIDRabbitMQDeployment          = "KubernetesRabbitMQDeployment"
+	LocalIDRabbitMQSecret              = "KubernetesRabbitMQSecret"
 	LocalIDRabbitMQService             = "KubernetesRabbitMQService"
 	LocalIDRedisDeployment             = "KubernetesRedisDeployment"
 	LocalIDRedisService                = "KubernetesRedisService"

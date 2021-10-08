@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,15 +21,46 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	SecretKeyRabbitMQConnectionString = "RABBITMQ_CONNECTIONSTRING"
+)
+
 type Renderer struct {
 }
 
-func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	namespace := workload.Namespace
-	if namespace == "" {
-		namespace = workload.Application
+func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.InstantiatedWorkload) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference, error) {
+	component := RabbitMQComponent{}
+	err := workload.Workload.AsRequired(Kind, &component)
+
+	if err != nil {
+		return nil, nil, err
 	}
 
+	queueName := component.Config.Queue
+	// queue name must be specified by the user
+	if queueName == "" {
+		return nil, nil, fmt.Errorf("queue name must be specified")
+	}
+
+	values := map[string]renderers.ComputedValueReference{
+		"queue": {
+			Value: queueName,
+		},
+	}
+	secrets := map[string]renderers.SecretValueReference{
+		"connectionString": {
+			LocalID:       outputresource.LocalIDRabbitMQSecret,
+			ValueSelector: SecretKeyRabbitMQConnectionString,
+		},
+	}
+	return values, secrets, nil
+}
+
+func (r *Renderer) GetKind() string {
+	return Kind
+}
+
+func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
 	// TODO currently we pass in an empty array of resource properties.
 	// Remove once we fix component controller.
 	component := RabbitMQComponent{}
@@ -44,9 +76,9 @@ func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.Insta
 		return nil, fmt.Errorf("queue name must be specified")
 	}
 
-	uri := fmt.Sprintf("amqp://%s.%s.svc.cluster.local:%s", workload.Name, namespace, fmt.Sprint(5672))
+	uri := fmt.Sprintf("amqp://%s:%s", workload.Name, fmt.Sprint(5672))
 
-	// connection string looks like amqp://NAME.NAMESPACE.svc.cluster.local:PORT
+	// connection string looks like amqp://NAME:PORT
 	bindings := map[string]components.BindingState{
 		"rabbitmq": {
 			Component: workload.Name,
@@ -145,10 +177,33 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 		},
 	}
 
+	uri := fmt.Sprintf("amqp://%s:%s", w.Name, fmt.Sprint(5672))
+
 	resources = append(resources, outputresource.OutputResource{
 		ResourceKind: resourcekinds.Kubernetes,
 		LocalID:      outputresource.LocalIDRabbitMQService,
 		Resource:     &service})
+
+	secret := corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: corev1.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      component.Name,
+			Namespace: namespace,
+			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			SecretKeyRabbitMQConnectionString: []byte(uri),
+		},
+	}
+
+	resources = append(resources, outputresource.OutputResource{
+		ResourceKind: resourcekinds.Kubernetes,
+		LocalID:      outputresource.LocalIDRabbitMQSecret,
+		Resource:     &secret})
 
 	return resources, nil
 }

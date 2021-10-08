@@ -16,8 +16,6 @@ import (
 )
 
 func Test_RabbitMQ(t *testing.T) {
-	t.Skip("Need to readd rabbitmq support")
-
 	template := "testdata/kubernetes-resources-rabbitmq-managed.bicep"
 	application := "kubernetes-resources-rabbitmq-managed"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
@@ -35,7 +33,7 @@ func Test_RabbitMQ(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ResourceName:    "todoapp",
+						ResourceName:    "todoapprabbitmq",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -47,7 +45,7 @@ func Test_RabbitMQ(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sObjectForResource(application, "rabbitmq"),
-						validation.NewK8sObjectForResource(application, "todoapp"),
+						validation.NewK8sObjectForResource(application, "todoapprabbitmq"),
 					},
 				},
 			},

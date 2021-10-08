@@ -61,6 +61,7 @@ const (
 	ContainerConnectionKindHTTP ContainerConnectionKind = "Http"
 	ContainerConnectionKindMicrosoftComSQL ContainerConnectionKind = "microsoft.com/SQL"
 	ContainerConnectionKindMongoComMongoDB ContainerConnectionKind = "mongo.com/MongoDB"
+	ContainerConnectionKindRabbitmqComMessageQueue ContainerConnectionKind = "rabbitmq.com/MessageQueue"
 	ContainerConnectionKindRedislabsComRedis ContainerConnectionKind = "redislabs.com/Redis"
 )
 
@@ -76,6 +77,7 @@ func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
 		ContainerConnectionKindHTTP,
 		ContainerConnectionKindMicrosoftComSQL,
 		ContainerConnectionKindMongoComMongoDB,
+		ContainerConnectionKindRabbitmqComMessageQueue,
 		ContainerConnectionKindRedislabsComRedis,
 	}
 }
