@@ -894,6 +894,9 @@ type HTTPRouteBeginDeleteOptions struct {
 type HTTPRouteGateway struct {
 	// REQUIRED; Specifies the public hostname for the route. Use '*' to listen on all hostnames.
 	Hostname *string `json:"hostname,omitempty"`
+
+	// Specifies the path to match on from the incoming request. Use '/' to match on all paths.
+	Path *string `json:"path,omitempty"`
 }
 
 // HTTPRouteGetOptions contains the optional parameters for the HTTPRoute.Get method.

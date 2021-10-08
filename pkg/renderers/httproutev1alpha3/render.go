@@ -119,32 +119,42 @@ func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRo
 		},
 	}
 
-	if route.Gateway.Hostname == "*" {
-		spec := networkingv1.IngressSpec{
-			DefaultBackend: &backend,
-		}
+	// Default path to / if not specified
+	path := route.Gateway.Path
+	if path == "" {
+		path = "/"
+	}
 
-		ingress.Spec = spec
-	} else {
-		spec := networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{
-				{
-					Host: route.Gateway.Hostname,
-					IngressRuleValue: networkingv1.IngressRuleValue{
-						HTTP: &networkingv1.HTTPIngressRuleValue{
-							Paths: []networkingv1.HTTPIngressPath{
-								{
-									Backend: backend,
-								},
+	var defaultBackend *networkingv1.IngressBackend
+	host := route.Gateway.Hostname
+	if route.Gateway.Hostname == "*" {
+		defaultBackend = &backend
+		// * isn't allowed in the hostname, remove it.
+		host = ""
+	}
+	pathType := networkingv1.PathTypePrefix
+
+	spec := networkingv1.IngressSpec{
+		DefaultBackend: defaultBackend,
+		Rules: []networkingv1.IngressRule{
+			{
+				Host: host,
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{
+							{
+								Path:     path,
+								PathType: &pathType,
+								Backend:  backend,
 							},
 						},
 					},
 				},
 			},
-		}
-
-		ingress.Spec = spec
+		},
 	}
+
+	ingress.Spec = spec
 
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
 }

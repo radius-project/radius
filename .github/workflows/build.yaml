@@ -241,6 +241,17 @@ jobs:
       uses: dapr/setup-dapr@v1
     - name: Install dapr into cluster
       run: dapr init -k --wait --timeout 600
+    - name: Install nginx into cluster
+      run: |
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+        helm upgrade \
+          radius-ingress-nginx ingress-nginx/ingress-nginx \
+          --install \
+          --create-namespace \
+          --namespace radius-system \
+          --version 3.29.0 \
+
     - name: Update rad env with Kubernetes
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
