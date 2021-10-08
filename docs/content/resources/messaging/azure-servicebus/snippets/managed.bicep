@@ -18,7 +18,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radiusteam/servicebus-sender:latest'
         env: {
-          SB_CONNECTION: sbq.queueConnectionString()
+          SB_CONNECTION: sbq.properties.queueConnectionString
           SB_NAMESPACE: sbq.properties.namespace
           SB_QUEUE: sbq.properties.queue
         }
@@ -41,7 +41,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radiusteam/servicebus-receiver:latest'
         env: {
-          SB_CONNECTION: sbq.queueConnectionString()
+          SB_CONNECTION: sbq.properties.queueConnectionString
           SB_NAMESPACE: sbq.properties.namespace
           SB_QUEUE: sbq.properties.queue
         }

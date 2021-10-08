@@ -32,10 +32,10 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
 //COSMOS
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'cosmos-container-usermanaged'
+  name: 'mongo-container-usermanaged'
 
   //SAMPLE
-  resource db 'azure.com.CosmosDBMongoComponent' = {
+  resource db 'mongodb.com.MongoDBComponent' = {
     name: 'db'
     properties: {
       resource: account::mongodb.id
