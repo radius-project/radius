@@ -25,7 +25,7 @@ import (
 const (
 	IntervalForDeploymentCreation = 10 * time.Second
 	IntervalForPodShutdown        = 10 * time.Second
-	Interval                      = 10 * time.Second
+	IntervalForResourceCheck      = 5 * time.Second
 
 	// We want to make sure to produce some output any time we're in a watch
 	// otherwise it's hard to know if it got stuck.
@@ -204,7 +204,7 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 		var actualPods *corev1.PodList
 		for {
 			select {
-			case <-time.After(Interval):
+			case <-time.After(IntervalForResourceCheck):
 				t.Logf("at %s waiting for pods in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
@@ -267,11 +267,11 @@ func ValidateIngressesRunning(ctx context.Context, t *testing.T, k8s *kubernetes
 		t.Logf("validating ingresses in namespace %v", namespace)
 		for {
 			select {
-			case <-time.After(Interval):
+			case <-time.After(IntervalForResourceCheck):
 				t.Logf("at %s waiting for ingresses in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
-				actualIngresses, err := k8s.NetworkingV1beta1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+				actualIngresses, err := k8s.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
 				require.NoErrorf(t, err, "failed to list ingresses in namespace %v", namespace)
 
 				remaining := make([]K8sObject, len(expectedIngresses))
@@ -311,7 +311,7 @@ func ValidateServicesRunning(ctx context.Context, t *testing.T, k8s *kubernetes.
 		t.Logf("validating services in namespace %v", namespace)
 		for {
 			select {
-			case <-time.After(Interval):
+			case <-time.After(IntervalForResourceCheck):
 				t.Logf("at %s waiting for services in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
@@ -324,15 +324,15 @@ func ValidateServicesRunning(ctx context.Context, t *testing.T, k8s *kubernetes.
 				remaining := make([]K8sObject, len(expectedServices))
 				copy(remaining, expectedServices)
 
-				for _, ingress := range actualServices.Items {
+				for _, service := range actualServices.Items {
 					// validate that this matches one of our expected services
-					index := matchesExpectedLabels(remaining, ingress.Labels)
+					index := matchesExpectedLabels(remaining, service.Labels)
 					if index == nil {
 						// this is not a match
 						t.Logf("unrecognized service, could not find a match for Service with namespace: %v name: %v labels: %v",
-							ingress.Namespace,
-							ingress.Name,
-							ingress.Labels)
+							service.Namespace,
+							service.Name,
+							service.Labels)
 						continue
 					}
 

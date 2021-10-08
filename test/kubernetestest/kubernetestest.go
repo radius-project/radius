@@ -205,7 +205,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 				if step.Ingress != nil {
 					t.Logf("validating creation of ingress for %s", step.Executor.GetDescription())
-					validation.ValidateIngressesRunning(ctx, t, at.Options.K8sClient, *step.Pods)
+					validation.ValidateIngressesRunning(ctx, t, at.Options.K8sClient, *step.Ingress)
 					t.Logf("finished creation of validating ingress for %s", step.Executor.GetDescription())
 				}
 
