@@ -21,7 +21,7 @@ When a Component describes your code, data, or infrastructure it needs to concep
 | Property | Description | Example |
 |----------|-------------|---------|
 | **Resource type** | What type of thing is this? | `ContainerComponent`
-| **Name** | The logical name of the Component, must be unique per-Application | `my-container`
+| **Name** | The logical name of the Component, must be unique per-Application and resource type | `my-container`
 | **Essentials** | How do I run this? | Container image and tag (`my-container:latest`)
 | **Connections** | What other Components will I interact with? | Need to read from `my-db` 
 | **Routes** | What capabilities do I provide for others? | Offer an HTTP endpoint on `/home`
@@ -32,10 +32,10 @@ These details can generally be separated into two categories:
 - Details that are **always true** about the code *(eg. use `DBCONNECTION` to pass SQL Server connection string)*
 - Details that are **per-deployment** *(eg. accept traffic with the hostname `myapp.example.com`)*
 
-The Component concept in Radius is designed to version with the application code. For maximum flexibility, you should author Components that only capture the details that are always true about the code. Per-deployment settings can be configured separately as part of Deployment definitions.
+The Component concept in Radius is designed to version with the application code. For maximum flexibility, you should use Bicep parameters for the things that change per-deployment. This will allow you to provide these setting at the command line or by composing your definitions into other modules.
 
 {{% alert title="💡 Key concept" color="info" %}}
-Behaviors and requirements that are per-deployment, or otherwise separate from the code, can be defined and stored separately from the Component definition.
+Behaviors and requirements that are per-deployment, or otherwise separate from the code, can be made into parameters and configured separately from the Component definition.
 {{% /alert %}} 
 
 It's up to your discretion as the user to decide which details of your software are per-deployment and which are always true. Radius will also not stop you from writing *all-in-one* definitions that capture everything.
@@ -72,15 +72,22 @@ An example of a non-runnable Radius Component is an inventory database, modeled 
 
 Radius offers two methods for managing the lifecycle of a Component: Radius-managed and user-managed.
 
+Radius-managed components are good for development purposes or to write an *all-in-one* deployable application. User-manged resources allow you to bind to infrastructure, such as cloud resources that are deployed separately from your code.
+
+{{% alert title="💡 Key concept" color="info" %}}
+User-managed resources allow you to represent cloud resources as part of your application and have an easier experience connecting to them. You can create user-managed resources using the same `.bicep` files as your application or create them separately.
+{{% /alert %}} 
+
+#### User-managed
+
+When `managed` is set to `false` or omitted, you can explicitly specify an existing `resource` which you manage. This allows you to connect your Radius Components to existing databases, queues, and other non-compute resources. When you delete your Application Radius will not change or delete your existing resource.
+
 #### Radius-managed
 
 When `managed` is set to `true`, like in the example above, Radius will manage the lifecycle of the underlying resource, meaning it will deploy and manage the resource itself on the [hosting platform]({{< ref platforms >}}).
 
 {{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
 
-#### User-managed
-
-When `managed` is set to `false` or omitted, you can explicitly specify an existing `resource` which you manage. This allows you to connect your Radius Components to existing databases, queues, and other non-compute resources. When you delete your Application Radius will not change or delete your existing resource.
 
 ### Portability
 
