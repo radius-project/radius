@@ -1438,13 +1438,7 @@
           "type": "string"
         },
         "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (Redis currently only supports true)",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ],
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified.",
           "type": "boolean"
         },
         "port": {
@@ -1454,11 +1448,15 @@
             6379
           ],
           "type": "integer"
+        },
+        "resource": {
+          "description": "The ID of the user-managed Redis cache to use for this Component",
+          "example": [
+            "account::redis.id"
+          ],
+          "type": "string"
         }
-      },
-      "required": [
-        "managed"
-      ]
+      }
     },
     "RedisComponentResource": {
       "allOf": [

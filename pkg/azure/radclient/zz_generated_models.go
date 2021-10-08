@@ -1484,17 +1484,20 @@ func (r RedisComponentList) MarshalJSON() ([]byte, error) {
 
 type RedisComponentProperties struct {
 	BasicComponentProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. If false, a Resource must be specified. (Redis currently only supports true)
-	Managed *bool `json:"managed,omitempty"`
-
 	// The Redis connection string used to connect to the redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
 
 	// The host name of the redis cache to which you are connecting
 	Host *string `json:"host,omitempty"`
 
+	// Indicates if the resource is Radius-managed. If false, a Resource must be specified.
+	Managed *bool `json:"managed,omitempty"`
+
 	// The port value of the redis cache to which you are connecting
 	Port *int32 `json:"port,omitempty"`
+
+	// The ID of the user-managed Redis cache to use for this Component
+	Resource *string `json:"resource,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisComponentProperties.
@@ -1504,6 +1507,7 @@ func (r RedisComponentProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "managed", r.Managed)
 	populate(objectMap, "port", r.Port)
+	populate(objectMap, "resource", r.Resource)
 	return json.Marshal(objectMap)
 }
 
