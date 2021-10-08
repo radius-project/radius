@@ -20,9 +20,7 @@ Note that while the custom resource provider and container runtime are optimized
    az login
    ```
 
-   {{% alert title="RBAC requirement" color="warning" %}}
-   Radius environments on Azure currently require you to have *Owner* rights on your subscription. If you use a service principal for CLI authentication, ensure it also has *Owner* rights. This requirement is a temporary limitation.
-   {{% /alert %}}
+   Creating Radius environments on Azure currently **require you to have *Owner* rights on your subscription.** If you use a service principal for CLI authentication, ensure it also has the proper RBAC assignment on your subscription.
 
 1. Create a Radius environment:
 
