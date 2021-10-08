@@ -35,6 +35,18 @@ resource app 'radius.dev/Application@v1alpha3' = {
             provides: backend_http.id
           }
         }
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:8080
+          path: '/healthz'
+          initialDelaySeconds:3
+          failureThreshold:4
+          periodSeconds:20
+        }
+        livenessProbe:{
+          kind:'exec'
+          command:'ls /tmp'
+        }
       }
       traits: [
         {

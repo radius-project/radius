@@ -7,6 +7,7 @@ package containerv1alpha3
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -16,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/handlers"
@@ -35,6 +37,16 @@ const (
 	RbacPermissionsRead  = "read"
 	RbacPermissionsWrite = "write"
 	StorageAccountName   = "storageAccount"
+)
+
+// Liveness/Readiness constants
+const (
+	DefaultInitialDelaySeconds = 0
+	DefaultFailureThreshold    = 3
+	DefaultPeriodSeconds       = 10
+	HTTPGet                    = "httpGet"
+	TCP                        = "tcp"
+	Exec                       = "exec"
 )
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
@@ -171,6 +183,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 		}
 
 	}
+
 	container := corev1.Container{
 		Name:  resource.ResourceName,
 		Image: cc.Container.Image,
@@ -179,6 +192,20 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 		Ports:           ports,
 		Env:             []corev1.EnvVar{},
 		VolumeMounts:    []corev1.VolumeMount{},
+	}
+
+	var err error
+	if cc.Container.ReadinessProbe != nil {
+		container.ReadinessProbe, err = r.makeHealthProbe(cc.Container.ReadinessProbe)
+		if err != nil {
+			return outputresource.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
+		}
+	}
+	if cc.Container.LivenessProbe != nil {
+		container.LivenessProbe, err = r.makeHealthProbe(cc.Container.LivenessProbe)
+		if err != nil {
+			return outputresource.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
+		}
 	}
 
 	// We build the environment variable list in a stable order for testability
@@ -260,6 +287,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 		podLabels = labels.Merge(routeLabels, podLabels)
 	}
 
+	fmt.Printf("@@@@@ Dumping container spec: %v\n", container)
+
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -311,6 +340,111 @@ func (r Renderer) makeEphemeralVolume(volumeName string, volume map[string]inter
 	volumeMountSpec.Name = volumeName
 
 	return volumeSpec, volumeMountSpec, nil
+}
+
+func (r Renderer) makeHealthProbe(healthProbe map[string]interface{}) (*corev1.Probe, error) {
+	probeSpec := corev1.Probe{}
+
+	if strings.EqualFold(healthProbe[kindProperty].(string), HTTPGet) {
+		// httpGet probe has been specified. Read the readiness probe properties as httpGet probe
+		var httpGetProbe HTTPGetHealthProbe
+		data, err := json.Marshal(healthProbe)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(data, &httpGetProbe)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the probe spec
+		probeSpec.Handler.HTTPGet = &corev1.HTTPGetAction{}
+		probeSpec.Handler.HTTPGet.Port = intstr.FromInt(httpGetProbe.Port)
+		probeSpec.Handler.HTTPGet.Path = httpGetProbe.Path
+		httpHeaders := []corev1.HTTPHeader{}
+		for k, v := range httpGetProbe.Headers {
+			httpHeaders = append(httpHeaders, corev1.HTTPHeader{
+				Name:  k,
+				Value: v,
+			})
+		}
+		probeSpec.Handler.HTTPGet.HTTPHeaders = httpHeaders
+		c := containerHealthProbeConfig{
+			initialDelaySeconds: httpGetProbe.InitialDelaySeconds,
+			failureThreshold:    httpGetProbe.FailureThreshold,
+			periodSeconds:       httpGetProbe.PeriodSeconds,
+		}
+		r.setContainerHealthProbeConfig(&probeSpec, c)
+	} else if strings.EqualFold(healthProbe[kindProperty].(string), TCP) {
+		// tcp probe has been specified. Read the readiness probe properties as tcp probe
+		var tcpProbe TCPHealthProbe
+		data, err := json.Marshal(healthProbe)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(data, &tcpProbe)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the probe spec
+		probeSpec.Handler.TCPSocket = &corev1.TCPSocketAction{}
+		probeSpec.TCPSocket.Port = intstr.FromInt(tcpProbe.Port)
+		c := containerHealthProbeConfig{
+			initialDelaySeconds: tcpProbe.InitialDelaySeconds,
+			failureThreshold:    tcpProbe.FailureThreshold,
+			periodSeconds:       tcpProbe.PeriodSeconds,
+		}
+		r.setContainerHealthProbeConfig(&probeSpec, c)
+	} else if strings.EqualFold(healthProbe[kindProperty].(string), Exec) {
+		// exec probe has been specified. Read the readiness probe properties as exec probe
+		var execProbe ExecHealthProbe
+		data, err := json.Marshal(healthProbe)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(data, &execProbe)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the probe spec
+		probeSpec.Handler.Exec = &corev1.ExecAction{}
+		probeSpec.Exec.Command = strings.Split(execProbe.Command, " ")
+		c := containerHealthProbeConfig{
+			initialDelaySeconds: execProbe.InitialDelaySeconds,
+			failureThreshold:    execProbe.FailureThreshold,
+			periodSeconds:       execProbe.PeriodSeconds,
+		}
+		r.setContainerHealthProbeConfig(&probeSpec, c)
+	}
+
+	return &probeSpec, nil
+}
+
+type containerHealthProbeConfig struct {
+	initialDelaySeconds *int
+	failureThreshold    *int
+	periodSeconds       *int
+}
+
+func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config containerHealthProbeConfig) {
+	// Initialize with Radius defaults and overwrite if values are specified
+	probeSpec.InitialDelaySeconds = DefaultInitialDelaySeconds
+	probeSpec.FailureThreshold = DefaultFailureThreshold
+	probeSpec.PeriodSeconds = DefaultPeriodSeconds
+
+	if config.initialDelaySeconds != nil {
+		probeSpec.InitialDelaySeconds = int32(*config.initialDelaySeconds)
+	}
+
+	if config.failureThreshold != nil {
+		probeSpec.FailureThreshold = int32(*config.failureThreshold)
+	}
+
+	if config.periodSeconds != nil {
+		probeSpec.PeriodSeconds = int32(*config.periodSeconds)
+	}
 }
 
 func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererResource, secrets map[string][]byte) outputresource.OutputResource {

@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func Test_ContainerHttpBinding(t *testing.T) {
@@ -229,6 +230,23 @@ func Test_ContainerManualScale(t *testing.T) {
 				})
 				require.NoError(t, err, "failed to list pods")
 				require.Lenf(t, matches.Items, 2, "items should contain two match, instead it had: %+v", matches.Items)
+
+				// Verify readiness probe
+				require.Equal(t, "/healthz", matches.Items[0].Spec.Containers[0].ReadinessProbe.HTTPGet.Path)
+				require.Equal(t, intstr.FromInt(8080), matches.Items[0].Spec.Containers[0].ReadinessProbe.HTTPGet.Port)
+				require.Equal(t, int32(3), matches.Items[0].Spec.Containers[0].ReadinessProbe.InitialDelaySeconds)
+				require.Equal(t, int32(4), matches.Items[0].Spec.Containers[0].ReadinessProbe.FailureThreshold)
+				require.Equal(t, int32(20), matches.Items[0].Spec.Containers[0].ReadinessProbe.PeriodSeconds)
+				require.Nil(t, matches.Items[0].Spec.Containers[0].ReadinessProbe.TCPSocket)
+				require.Nil(t, matches.Items[0].Spec.Containers[0].ReadinessProbe.Exec)
+
+				// Verify liveness probe
+				require.Equal(t, []string{"ls", "/tmp"}, matches.Items[0].Spec.Containers[0].LivenessProbe.Exec.Command)
+				require.Equal(t, int32(0), matches.Items[0].Spec.Containers[0].LivenessProbe.InitialDelaySeconds)
+				require.Equal(t, int32(3), matches.Items[0].Spec.Containers[0].LivenessProbe.FailureThreshold)
+				require.Equal(t, int32(10), matches.Items[0].Spec.Containers[0].LivenessProbe.PeriodSeconds)
+				require.Nil(t, matches.Items[0].Spec.Containers[0].LivenessProbe.TCPSocket)
+				require.Nil(t, matches.Items[0].Spec.Containers[0].LivenessProbe.HTTPGet)
 			},
 		},
 	})

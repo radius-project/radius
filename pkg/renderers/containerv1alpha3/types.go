@@ -23,10 +23,12 @@ type ContainerProperties struct {
 }
 
 type Container struct {
-	Image   string                            `json:"image"`
-	Ports   map[string]ContainerPort          `json:"ports,omitempty"`
-	Env     map[string]interface{}            `json:"env,omitempty"`
-	Volumes map[string]map[string]interface{} `json:"volumes,omitempty"`
+	Image          string                            `json:"image"`
+	Ports          map[string]ContainerPort          `json:"ports,omitempty"`
+	Env            map[string]interface{}            `json:"env,omitempty"`
+	ReadinessProbe map[string]interface{}            `json:"readinessProbe,omitempty"`
+	LivenessProbe  map[string]interface{}            `json:"livenessProbe,omitempty"`
+	Volumes        map[string]map[string]interface{} `json:"volumes,omitempty"`
 }
 
 type ContainerPort struct {
@@ -38,6 +40,35 @@ type ContainerPort struct {
 type ContainerConnection struct {
 	Kind   string `json:"kind"`
 	Source string `json:"source"`
+}
+
+// HTTPGetHealthProbe defines the properties when an httpGet readiness/liveness probe is specified
+type HTTPGetHealthProbe struct {
+	Kind                string            `json:"kind"`
+	Path                string            `json:"path"`
+	Port                int               `json:"containerPort"`
+	Headers             map[string]string `json:"headers"`
+	InitialDelaySeconds *int              `json:"initialDelaySeconds"`
+	FailureThreshold    *int              `json:"failureThreshold"`
+	PeriodSeconds       *int              `json:"periodSeconds"`
+}
+
+// TCPHealthProbe defines the properties when a tcp readiness/liveness probe is specified
+type TCPHealthProbe struct {
+	Kind                string `json:"kind"`
+	Port                int    `json:"containerPort"`
+	InitialDelaySeconds *int   `json:"initialDelaySeconds"`
+	FailureThreshold    *int   `json:"failureThreshold"`
+	PeriodSeconds       *int   `json:"periodSeconds"`
+}
+
+// ExecHealthProbe defines the properties when an exec readiness/liveness probe is specified
+type ExecHealthProbe struct {
+	Kind                string `json:"kind"`
+	Command             string `json:"command"`
+	InitialDelaySeconds *int   `json:"initialDelaySeconds"`
+	FailureThreshold    *int   `json:"failureThreshold"`
+	PeriodSeconds       *int   `json:"periodSeconds"`
 }
 
 type ContainerTrait struct {
