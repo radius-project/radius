@@ -118,7 +118,7 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 			APIVersion: appsv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      component.Name,
+			Name:      kubernetes.MakeResourceName(w.Application, component.Name),
 			Namespace: namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, component.Name),
 		},
@@ -177,7 +177,7 @@ func GetRabbitMQ(w workloads.InstantiatedWorkload, component RabbitMQComponent) 
 		},
 	}
 
-	uri := fmt.Sprintf("amqp://%s:%s", w.Name, fmt.Sprint(5672))
+	uri := fmt.Sprintf("amqp://%s:%s", kubernetes.MakeResourceName(w.Application, component.Name), fmt.Sprint(5672))
 
 	resources = append(resources, outputresource.OutputResource{
 		ResourceKind: resourcekinds.Kubernetes,
