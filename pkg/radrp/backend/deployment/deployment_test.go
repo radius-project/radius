@@ -357,6 +357,72 @@ func Test_RendererFailure_InvalidError(t *testing.T) {
 	require.Equal(t, expectedArmErr, *armerr)
 }
 
+func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	model := model.NewModel(map[string]renderers.Renderer{
+		containerv1alpha3.ResourceType: mocks.renderer,
+	}, map[string]model.Handlers{
+		resourcekinds.Kubernetes: {
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
+		},
+	},
+		map[string]renderers.SecretValueTransformer{},
+	)
+
+	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{ResourceRegistrationWithHealthChannel: registrationChannel}, mocks.secretsValueClient}
+
+	testOutputResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDDeployment,
+		ResourceKind: resourcekinds.Kubernetes,
+		Deployed:     true,
+		Managed:      true,
+		Identity: resourcemodel.ResourceIdentity{
+			Kind: resourcemodel.IdentityKindKubernetes,
+		},
+		Resource: map[string]interface{}{
+			"some-data": "jsonpointer-value",
+		},
+	}
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{testOutputResource},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"test-key1": {
+				LocalID: outputresource.LocalIDDeployment,
+				Value:   "static-value",
+			},
+			"test-key2": {
+				LocalID:           outputresource.LocalIDDeployment,
+				PropertyReference: "property-key",
+			},
+			"test-key3": {
+				LocalID:     outputresource.LocalIDDeployment,
+				JSONPointer: "/some-data",
+			},
+		},
+	}
+
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
+
+	properties := map[string]string{"property-key": "property-value"}
+	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(properties, nil)
+	mocks.healthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(1).Return(healthcontract.HealthCheckOptions{})
+
+	result, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
+	require.NoError(t, err)
+	require.Nil(t, armerr)
+
+	expected := map[string]interface{}{
+		"test-key1": "static-value",
+		"test-key2": "property-value",
+		"test-key3": "jsonpointer-value",
+	}
+	require.Equal(t, expected, result.ComputedValues)
+	<-registrationChannel
+}
+
 func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
@@ -446,21 +512,68 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 		require.Equal(t, expectedArmErr, *armerr)
 	})
 
-	t.Run("verify invalid for non supported resource kind", func(t *testing.T) {
+	t.Run("verify invalid JSON pointer in computed value", func(t *testing.T) {
 		localTestOutputResource := outputresource.OutputResource{
-			ResourceKind: "foo",
-			Deployed:     false,
-			Managed:      true,
+			LocalID:      "test-local-id",
+			ResourceKind: resourcekinds.Kubernetes,
+			Identity: resourcemodel.ResourceIdentity{
+				Kind: resourcemodel.IdentityKindKubernetes,
+			},
+			Deployed: true,
+			Managed:  true,
 		}
 		localRendererOutput := renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{localTestOutputResource},
+			ComputedValues: map[string]renderers.ComputedValueReference{
+				"test-value": {
+					LocalID:     "test-local-id",
+					JSONPointer: ".ddkfkdk",
+				},
+			},
 		}
 
 		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
 
 		_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, localRendererOutput)
 		expectedArmErr := armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  testResourceID.ID,
+		}
+		require.Error(t, err)
+		require.Equal(t, expectedArmErr, *armerr)
+	})
+
+	t.Run("verify JSON pointer in computed value has missing result in output", func(t *testing.T) {
+		localTestOutputResource := outputresource.OutputResource{
+			LocalID:      "test-local-id",
+			ResourceKind: resourcekinds.Kubernetes,
+			Identity: resourcemodel.ResourceIdentity{
+				Kind: resourcemodel.IdentityKindKubernetes,
+			},
+			Deployed: true,
+			Managed:  true,
+			Resource: map[string]interface{}{
+				"some-data": 3,
+			},
+		}
+		localRendererOutput := renderers.RendererOutput{
+			Resources: []outputresource.OutputResource{localTestOutputResource},
+			ComputedValues: map[string]renderers.ComputedValueReference{
+				"test-value": {
+					LocalID:     "test-local-id",
+					JSONPointer: "/some-other-data", // this key is missing
+				},
+			},
+		}
+
+		mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(db.RadiusResource{}, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
+
+		_, armerr, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, localRendererOutput)
+		expectedArmErr := armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
 			Message: err.Error(),
 			Target:  testResourceID.ID,
 		}

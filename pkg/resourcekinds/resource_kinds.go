@@ -18,6 +18,8 @@ const (
 	AzureCosmosDBMongo               = "azure.cosmosdb.mongo"
 	AzureCosmosDBSQL                 = "azure.cosmosdb.sql"
 	AzureServiceBusQueue             = "azure.servicebus.queue"
+	AzureSqlServer                   = "azure.sql"
+	AzureSqlServerDatabase           = "azure.sql.database"
 	AzureKeyVault                    = "azure.keyvault"
 	AzureKeyVaultSecret              = "azure.keyvault.secret"
 	AzurePodIdentity                 = "azure.aadpodidentity"

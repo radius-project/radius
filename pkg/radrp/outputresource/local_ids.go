@@ -41,6 +41,8 @@ const (
 	LocalIDAzureRedis                  = "AzureRedis"
 	LocalIDAzureServiceBusTopic        = "AzureServiceBusTopic"
 	LocalIDAzureServiceBusQueue        = "AzureServiceBusQueue"
+	LocalIDAzureSqlServer              = "AzureSqlServer"
+	LocalIDAzureSqlServerDatabase      = "AzureSqlServerDatabase"
 	LocalIDDaprStateStoreAzureStorage  = "DaprStateStoreAzureStorage"
 	LocalIDDaprStateStoreComponent     = "DaprStateStoreComponent"
 	LocalIDDaprStateStoreSQLServer     = "DaprStateStoreSQLServer"

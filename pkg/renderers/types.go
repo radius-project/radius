@@ -53,13 +53,27 @@ type RendererOutput struct {
 // have been deployed.
 type ComputedValueReference struct {
 	// ComputedValueReference might hold a static value in `.Value` or might be a reference
-	// that needs to be looked up. If `.Value` is set then treat this as a static value.
-	// If `.Value == nil` then use the `.PropertyReference` to look up a property in the property
+	// that needs to be looked up.
+	//
+	// If `.Value` is set then treat this as a static value.
+	//
+	// If `.Value == nil` then use the `.PropertyReference` or to look up a property in the property
 	// bag returned from deploying the resource via `handler.Put`.
+	//
+	// If `.Value == nil` && `.PropertyReference` is unset, then use JSONPointer to evaluate a JSON path
+	// into the 'resource'.
 
-	LocalID           string
+	// LocalID specifies the output resource to be used for lookup. Does not apply with `.Value`
+	LocalID string
+
+	// Value specifies a static value to copy to computed values.
+	Value interface{}
+
+	// PropertyReference specifies a property key to look up in the resource's *persisted properties*.
 	PropertyReference string
-	Value             interface{}
+
+	// JSONPointer specifies a JSON Pointer that cn be used to look up the value in the resource's body.
+	JSONPointer string
 }
 
 // SecretValueReference represents a secret value that can accessed on the output resources

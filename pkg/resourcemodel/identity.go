@@ -89,6 +89,15 @@ func NewKubernetesIdentity(obj runtime.Object, objectMeta metav1.ObjectMeta) Res
 	}
 }
 
+func (r ResourceIdentity) RequireARM() (string, string, error) {
+	if r.Kind == IdentityKindARM {
+		data := r.Data.(ARMIdentity)
+		return data.ID, data.APIVersion, nil
+	}
+
+	return "", "", fmt.Errorf("expected an %q resource identity, was %q", IdentityKindARM, r.Kind)
+}
+
 func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 	if r.Kind != other.Kind {
 		return false

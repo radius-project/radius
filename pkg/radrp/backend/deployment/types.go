@@ -21,6 +21,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/go-openapi/jsonpointer"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/Azure/radius/pkg/radrp/backend/deployment github.com/Azure/radius/pkg/radrp/backend/deployment DeploymentProcessor
@@ -273,7 +274,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		deployedOutputResourceProperties[outputResource.LocalID] = properties
 
 		if outputResource.Identity.Kind == "" {
-			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler.", outputResource.LocalID)
+			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
 				Message: err.Error(),
@@ -284,8 +285,36 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 
 		// Copy deployed output resource property values into corresponding expected computed values
 		for k, v := range rendererOutput.ComputedValues {
-			if outputResource.LocalID == v.LocalID {
+			// A computed value might be a reference to a 'property' returned in preserved properties
+			if outputResource.LocalID == v.LocalID && v.PropertyReference != "" {
 				computedValues[k] = properties[v.PropertyReference]
+				continue
+			}
+
+			// A computed value might be a 'pointer' into the deployed resource
+			if outputResource.LocalID == v.LocalID && v.JSONPointer != "" {
+				pointer, err := jsonpointer.New(v.JSONPointer)
+				if err != nil {
+					err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
+					armerr := &armerrors.ErrorDetails{
+						Code:    armerrors.Internal,
+						Message: err.Error(),
+						Target:  resourceID.ID,
+					}
+					return db.RadiusResource{}, armerr, err
+				}
+
+				value, _, err := pointer.Get(outputResource.Resource)
+				if err != nil {
+					err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
+					armerr := &armerrors.ErrorDetails{
+						Code:    armerrors.Internal,
+						Message: err.Error(),
+						Target:  resourceID.ID,
+					}
+					return db.RadiusResource{}, armerr, err
+				}
+				computedValues[k] = value
 			}
 		}
 
