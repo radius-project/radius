@@ -23,13 +23,63 @@ import (
 var deployCmd = &cobra.Command{
 	Use:   "deploy [app.bicep]",
 	Short: "Deploy a RAD application",
-	Long:  "Deploy a RAD application",
-	RunE:  deploy,
+	Long: `Deploy a RAD application
+
+The deploy command compiles a .bicep file and deploys it to your default environment (unless otherwise specified).
+	
+You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
+the Radius documentation for information about describing your application and resources with Bicep.
+
+You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
+
+- A file containing multiple parameters using the ARM JSON parameter format (see below)
+- A file containing a single value in JSON format
+- A key-value-pair passed in the command line
+
+When passing multiple parameters in a single file, use the format described here:
+
+	https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
+
+You can specify parameters using multiple sources. Parameters can be overridden based on the 
+order the are provided. Parameters appearing later in the argument list will override those defined earlier.
+`,
+	Example: `
+# deploy a template (basic)
+
+rad deploy myapp.bicep
+
+
+# deploy to a specific environment
+
+rad deploy myapp.bicep --environment production
+
+
+# specify a string parameter
+
+rad deploy myapp.bicep --parameters version=latest
+
+
+# specify a non-string parameter using a JSON file
+
+rad deploy myapp.bicep --parameters configuration=@myfile.json
+
+
+# specify many parameters using an ARM JSON parameter file
+
+rad deploy myapp.bicep --parameters @myfile.json
+
+
+# specify parameters from multiple sources
+
+rad deploy myapp.bicep --parameters @myfile.json --parameters version=latest
+`,
+	RunE: deploy,
 }
 
 func init() {
 	RootCmd.AddCommand(deployCmd)
 	deployCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
+	deployCmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
 }
 
 func deploy(cmd *cobra.Command, args []string) error {
@@ -39,6 +89,17 @@ func deploy(cmd *cobra.Command, args []string) error {
 
 	filePath := args[0]
 	err := validateBicepFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
+	if err != nil {
+		return err
+	}
+
+	parser := cli.ParameterParser{FileSystem: cli.OSFileSystem{}}
+	parameters, err := parser.Parse(parameterArgs)
 	if err != nil {
 		return err
 	}
@@ -88,7 +149,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 
 	step = output.BeginStep(progressText)
-	err = client.Deploy(cmd.Context(), template)
+	err = client.Deploy(cmd.Context(), template, parameters)
 	if err != nil {
 		return err
 	}

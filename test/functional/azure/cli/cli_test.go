@@ -169,3 +169,35 @@ func GetAvailablePort() (int, error) {
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
+
+func Test_CLI_DeploymentParameters(t *testing.T) {
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	options := azuretest.NewTestOptions(t)
+
+	application := "azure-cli-parameters"
+	template := "testdata/azure-cli-parameters.bicep"
+	parameterFile := "testdata/azure-cli-parameters.parameters.json"
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	templateFilePath := filepath.Join(cwd, template)
+	parameterFilePath := filepath.Join(cwd, parameterFile)
+	t.Logf("deploying %s from file %s", application, template)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	err = cli.Deploy(ctx, templateFilePath, "@"+parameterFilePath, "env=COOL_VALUE")
+	require.NoErrorf(t, err, "failed to deploy %s", application)
+	t.Logf("finished deploying %s from file %s", application, template)
+
+	// Running for the side effect of making sure the pods are started.
+	validation.ValidatePodsRunning(ctx, t, options.K8sClient, validation.K8sObjectSet{
+		Namespaces: map[string][]validation.K8sObject{
+			application: {
+				validation.NewK8sObjectForResource(application, "a"),
+				validation.NewK8sObjectForResource(application, "b"),
+			},
+		},
+	})
+}
