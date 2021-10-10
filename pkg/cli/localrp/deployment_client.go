@@ -110,6 +110,10 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 		ids = append(ids, parsed)
 	}
 
+	if options.UpdateChannel != nil {
+		close(options.UpdateChannel)
+	}
+
 	return clients.DeploymentResult{Resources: ids}, err
 }
 

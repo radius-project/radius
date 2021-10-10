@@ -77,10 +77,13 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
 
+	opc := azclients.NewDeploymentOperationsClient(e.SubscriptionID, armauth)
+
 	return &azure.ARMDeploymentClient{
-		Client:         dc,
-		SubscriptionID: e.SubscriptionID,
-		ResourceGroup:  e.ResourceGroup,
+		DeploymentsClient: dc,
+		OperationsClient:  opc,
+		SubscriptionID:    e.SubscriptionID,
+		ResourceGroup:     e.ResourceGroup,
 	}, nil
 }
 

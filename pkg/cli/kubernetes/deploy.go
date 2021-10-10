@@ -63,5 +63,13 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.
 	// TODO: the Kubernetes client does not support completion notifications,
 	// nor does it include the list of deployed resources as a summary.
 	err = c.Client.Create(ctx, &deployment, &client.CreateOptions{FieldManager: kubernetes.FieldManager})
-	return clients.DeploymentResult{}, err
+	if err != nil {
+		return clients.DeploymentResult{}, err
+	}
+
+	if options.UpdateChannel != nil {
+		close(options.UpdateChannel)
+	}
+
+	return clients.DeploymentResult{}, nil
 }

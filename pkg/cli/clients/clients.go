@@ -38,10 +38,23 @@ type DeploymentOptions struct {
 
 	// Parameters is the set of parameters passed to the deployment.
 	Parameters DeploymentParameters
+
+	UpdateChannel chan<- DeploymentProgressUpdate
 }
 
 type DeploymentResult struct {
 	Resources []azresources.ResourceID
+}
+
+const (
+	UpdateStart     string = "start"
+	UpdateSucceeded string = "succeeded"
+	UpdateFailed    string = "fail"
+)
+
+type DeploymentProgressUpdate struct {
+	Resource azresources.ResourceID
+	Kind     string
 }
 
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
