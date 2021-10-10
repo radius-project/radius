@@ -118,6 +118,13 @@
                 "description": "The name of your Web Site."
             },
             "type": "string"
+        },
+        "sitePort": {
+            "defaultValue": "5000",
+            "metadata": {
+                "description": "The port that the RP will listen on."
+            },
+            "type": "string"
         }
     },
     "resources": [
@@ -187,6 +194,9 @@
                     },
                     "siteName": {
                         "value": "[parameters('siteName')]"
+                    },
+                    "sitePort": {
+                        "value": "[parameters('sitePort')]"
                     }
                 },
                 "template": {
@@ -233,6 +243,9 @@
                             "type": "object"
                         },
                         "siteName": {
+                            "type": "string"
+                        },
+                        "sitePort": {
                             "type": "string"
                         }
                     },
@@ -477,6 +490,14 @@
                                         {
                                             "name": "K8S_SUBSCRIPTION_ID",
                                             "value": "[subscription().subscriptionId]"
+                                        },
+                                        {
+                                            "name": "WEBSITES_PORT",
+                                            "value": "[parameters('sitePort')]"
+                                        },
+                                        {
+                                            "name": "PORT",
+                                            "value": "[parameters('sitePort')]"
                                         }
                                     ],
                                     "linuxFxVersion": "[concat('DOCKER|', parameters('image'))]"

@@ -48,6 +48,13 @@
                 "description": "The name of your Web Site."
             }
         },
+        "sitePort": {
+            "type": "string",
+            "defaultValue": "5000",
+            "metadata": {
+                "description": "The port that the RP will listen on."
+            }
+        },
         "logAnalyticsWorkspaceName": {
             "type": "string",
             "defaultValue": "",
@@ -183,6 +190,9 @@
                     "siteName": {
                         "value": "[parameters('siteName')]"
                     },
+                    "sitePort": {
+                        "value": "[parameters('sitePort')]"
+                    },
                     "logAnalyticsWorkspaceName": {
                         "value": "[parameters('logAnalyticsWorkspaceName')]"
                     },
@@ -228,6 +238,9 @@
                             "type": "object"
                         },
                         "siteName": {
+                            "type": "string"
+                        },
+                        "sitePort": {
                             "type": "string"
                         },
                         "logAnalyticsWorkspaceName": {
@@ -492,6 +505,14 @@
                                         {
                                             "name": "K8S_SUBSCRIPTION_ID",
                                             "value": "[subscription().subscriptionId]"
+                                        },
+                                        {
+                                            "name": "WEBSITES_PORT",
+                                            "value": "[parameters('sitePort')]"
+                                        },
+                                        {
+                                            "name": "PORT",
+                                            "value": "[parameters('sitePort')]"
                                         }
                                     ]
                                 }
@@ -504,7 +525,7 @@
                             "name": "[variables('loganalyticsworkspacename')]",
                             "dependsOn":[
                                 "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
-                            ],    
+                            ],
                             "properties": {
                               "workspaceId": "[parameters('logAnalyticsWorkspaceID')]",
                               "logs": [

@@ -31,8 +31,6 @@ spec:
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=127.0.0.1:8080
         - --leader-elect
-        command:
-        - /radius-controller
         env:
         - name: TLS_CERT_DIR
           value: /radius/cert
