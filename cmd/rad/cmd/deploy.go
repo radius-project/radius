@@ -6,16 +6,20 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/version"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
 
@@ -149,13 +153,67 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 
 	step = output.BeginStep(progressText)
-	err = client.Deploy(cmd.Context(), template, parameters)
+	options := clients.DeploymentOptions{
+		Template:      template,
+		Parameters:    parameters,
+		UpdateChannel: nil,
+	}
+
+	output.LogInfo("")
+	result, err := performDeployment(cmd.Context(), client, options)
 	if err != nil {
 		return err
 	}
+
+	output.LogInfo("")
 	output.CompleteStep(step)
 
 	output.LogInfo("Deployment Complete")
+	output.LogInfo("")
+
+	output.LogInfo("Resources:")
+	output.LogInfo("")
+
+	for _, resource := range result.Resources {
+		if cli.ShowResource(resource) {
+			output.LogInfo("%-20s %-15s", cli.FormatTypeForDisplay(resource), resource.Name())
+		}
+	}
+
+	diag, err := environments.CreateDiagnosticsClient(cmd.Context(), env)
+	if err != nil {
+		return err
+	}
+
+	endpoints := []struct {
+		ResourceID azresources.ResourceID
+		Endpoint   string
+	}{}
+	for _, resource := range result.Resources {
+		if cli.FormatTypeForDisplay(resource) == "HttpRoute" {
+			endpoint, err := diag.GetPublicEndpoint(cmd.Context(), clients.EndpointOptions{ResourceID: resource})
+			if err != nil {
+				return err
+			}
+
+			if endpoint != nil {
+				endpoints = append(endpoints, struct {
+					ResourceID azresources.ResourceID
+					Endpoint   string
+				}{ResourceID: resource, Endpoint: *endpoint})
+			}
+		}
+	}
+
+	if len(endpoints) > 0 {
+		output.LogInfo("")
+		output.LogInfo("Public Endpoints:")
+		output.LogInfo("")
+
+		for _, entry := range endpoints {
+			output.LogInfo("%-20s %-15s %s", cli.FormatTypeForDisplay(entry.ResourceID), entry.ResourceID.Name(), entry.Endpoint)
+		}
+	}
 
 	return nil
 }
@@ -171,4 +229,35 @@ func validateBicepFile(filePath string) error {
 	}
 
 	return nil
+}
+
+func performDeployment(ctx context.Context, client clients.DeploymentClient, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
+	// Attach to updates from the deployment client
+	update := make(chan clients.DeploymentProgressUpdate)
+	done := make(chan struct{})
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		listener := cli.InteractiveListener{
+			UpdateChannel: update,
+			DoneChannel:   done,
+		}
+		options.UpdateChannel = update
+		listener.Start()
+	} else {
+		listener := cli.TextListener{
+			UpdateChannel: update,
+			DoneChannel:   done,
+		}
+		options.UpdateChannel = update
+		listener.Start()
+	}
+
+	result, err := client.Deploy(ctx, options)
+	if err != nil {
+		return clients.DeploymentResult{}, err
+	}
+
+	// Avoid overlapping IO with any last second progress-bar updates
+	<-done
+
+	return result, nil
 }

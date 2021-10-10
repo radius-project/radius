@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/radclient"
 )
 
@@ -30,15 +31,41 @@ import (
 // Note that we're only storing the 'parameters' node of the format described above.
 type DeploymentParameters = map[string]map[string]interface{}
 
+type DeploymentOptions struct {
+	Template      string
+	Parameters    DeploymentParameters
+	UpdateChannel chan<- DeploymentProgressUpdate
+}
+
+type DeploymentResult struct {
+	Resources []azresources.ResourceID
+}
+
+const (
+	UpdateStart     string = "start"
+	UpdateSucceeded string = "succeeded"
+	UpdateFailed    string = "fail"
+)
+
+type DeploymentProgressUpdate struct {
+	Resource azresources.ResourceID
+	Kind     string
+}
+
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
 type DeploymentClient interface {
-	Deploy(ctx context.Context, content string, parameters DeploymentParameters) error
+	Deploy(ctx context.Context, options DeploymentOptions) (DeploymentResult, error)
 }
 
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
 type DiagnosticsClient interface {
 	Expose(ctx context.Context, options ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error)
 	Logs(ctx context.Context, options LogsOptions) ([]LogStream, error)
+	GetPublicEndpoint(ctx context.Context, options EndpointOptions) (*string, error)
+}
+
+type EndpointOptions struct {
+	ResourceID azresources.ResourceID
 }
 
 type ExposeOptions struct {

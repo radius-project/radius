@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type ResourceIdentityKind string
@@ -96,6 +97,15 @@ func (r ResourceIdentity) RequireARM() (string, string, error) {
 	}
 
 	return "", "", fmt.Errorf("expected an %q resource identity, was %q", IdentityKindARM, r.Kind)
+}
+
+func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, string, error) {
+	if r.Kind == IdentityKindKubernetes {
+		data := r.Data.(KubernetesIdentity)
+		return schema.FromAPIVersionAndKind(data.APIVersion, data.Kind), data.Namespace, data.Name, nil
+	}
+
+	return schema.GroupVersionKind{}, "", "", fmt.Errorf("expected an %q resource identity, was %q", IdentityKindKubernetes, r.Kind)
 }
 
 func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {

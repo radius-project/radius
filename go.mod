@@ -26,8 +26,11 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
+	github.com/gosuri/uiprogress v0.0.2-0.20210317150916-484b9f69ea00
 	github.com/klauspost/compress v1.11.12 // indirect
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
+	github.com/mattn/go-isatty v0.0.14
+	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4 // indirect
@@ -41,6 +44,7 @@ require (
 	go.uber.org/zap v1.17.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+	golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0 // indirect
 	golang.org/x/text v0.3.6
 	golang.org/x/tools v0.1.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

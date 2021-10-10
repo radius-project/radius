@@ -7,7 +7,6 @@ package armauth
 
 import (
 	"errors"
-	"log"
 	"os"
 
 	"github.com/Azure/go-autorest/autorest"
@@ -48,8 +47,6 @@ func GetArmConfig() (ArmConfig, error) {
 		return ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
 	}
 
-	log.Printf("Using SubscriptionId = '%v' and Resource Group = '%v'", subscriptionID, resourceGroup)
-
 	return ArmConfig{
 		Auth:           auth,
 		SubscriptionID: subscriptionID,
@@ -65,7 +62,6 @@ func GetArmConfig() (ArmConfig, error) {
 func GetArmAuthorizer() (autorest.Authorizer, error) {
 	authMethod := GetAuthMethod()
 	if authMethod == ServicePrincipalAuth {
-		log.Println("Service Principal detected - using SP auth to get credentials")
 		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("AZURE_CLIENT_ID"), os.Getenv("AZURE_CLIENT_SECRET"), os.Getenv("AZURE_TENANT_ID"))
 		auth, err := clientcfg.Authorizer()
 		if err != nil {
@@ -81,11 +77,9 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 		if err != nil {
 			return nil, err
 		}
-		log.Println("Using Service Principal auth.")
+
 		return auth, nil
 	} else if authMethod == ManagedIdentityAuth {
-		log.Println("Managed Identity detected - using Managed Identity to get credentials")
-
 		config := auth.NewMSIConfig()
 		token, err := config.ServicePrincipalToken()
 		if err != nil {
@@ -102,11 +96,8 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 			return nil, err
 		}
 
-		log.Println("Using Managed Identity auth.")
 		return auth, nil
 	} else {
-		log.Println("No Service Principal detected.")
-
 		settings, err := auth.GetSettingsFromEnvironment()
 		if err != nil {
 			return nil, err
@@ -117,7 +108,6 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 		if err != nil {
 			return nil, err
 		}
-		log.Println("Using CLI auth.")
 		return auth, nil
 	}
 }

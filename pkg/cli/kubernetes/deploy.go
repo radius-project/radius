@@ -23,26 +23,26 @@ type KubernetesDeploymentClient struct {
 	Namespace string
 }
 
-func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string, parameters clients.DeploymentParameters) error {
+func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	kind := "DeploymentTemplate"
 
 	// Unmarhsal the content into a deployment template
 	// rather than a string.
 	armJson := armtemplate.DeploymentTemplate{}
 
-	err := json.Unmarshal([]byte(content), &armJson)
+	err := json.Unmarshal([]byte(options.Template), &armJson)
 	if err != nil {
-		return err
+		return clients.DeploymentResult{}, err
 	}
 
 	data, err := json.Marshal(armJson)
 	if err != nil {
-		return err
+		return clients.DeploymentResult{}, err
 	}
 
-	parameterData, err := json.Marshal(parameters)
+	parameterData, err := json.Marshal(options.Parameters)
 	if err != nil {
-		return err
+		return clients.DeploymentResult{}, err
 	}
 
 	deployment := bicepv1alpha3.DeploymentTemplate{
@@ -60,6 +60,8 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string, 
 		},
 	}
 
+	// TODO: the Kubernetes client does not support completion notifications,
+	// nor does it include the list of deployed resources as a summary.
 	err = c.Client.Create(ctx, &deployment, &client.CreateOptions{FieldManager: kubernetes.FieldManager})
-	return err
+	return clients.DeploymentResult{}, err
 }
