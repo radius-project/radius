@@ -35,14 +35,9 @@ $(eval $(call generateDockerTargets,magpie,./test/magpie/,./test/magpie/Dockerfi
 # list of 'outputs' to build all images
 DOCKER_BUILD_TARGETS:=docker-build-magpie
 
-# list of 'outputs' to push all images
-DOCKER_PUSH_TARGETS:=docker-push-magpie
-
 .PHONY: docker-build
 docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.
 
-.PHONY: docker-push
-docker-push: $(KO_PUBLISH_TARGETS) docker-push-magpie ## Pushes all Docker images
 
 
 # Generate a target for each image we define
@@ -83,6 +78,12 @@ KO_TARGETS=$(foreach IMAGE,$(KO_IMAGES),ko-publish-$(IMAGE))
 
 .PHONY: ko-publish
 ko-publish: $(KO_TARGETS)
+
+# list of 'outputs' to push all images
+DOCKER_PUSH_TARGETS:=docker-push-magpie
+
+.PHONY: docker-push
+docker-push: $(KO_TARGETS) docker-push-magpie ## Pushes all Docker images
 
 .PHONY: install-ko
 install-ko:
