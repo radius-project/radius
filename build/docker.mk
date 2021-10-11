@@ -6,6 +6,12 @@
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
 
+.PHONY: ko-installed
+ko-installed:
+	@echo "$(ARROW) Installing ko..."
+	go install github.com/google/ko@latest
+	@echo "$(ARROW) OK"
+
 ##@ Docker Images
 
 # Generate a target for each image we define
@@ -45,7 +51,7 @@ docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.
 # $(1): the image name for the target
 define generateKoTargets
 .PHONY: ko-publish-$(1)
-ko-publish-$(1): install-ko
+ko-publish-$(1): ko-installed
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) from $(2)"
 	$(eval $@_KO := $(shell mktemp -d))
 	@echo "builds:" > $($@_KO)/.ko.yaml
@@ -84,7 +90,3 @@ DOCKER_PUSH_TARGETS:=docker-push-magpie
 
 .PHONY: docker-push
 docker-push: $(KO_TARGETS) docker-push-magpie ## Pushes all Docker images
-
-.PHONY: install-ko
-install-ko:
-go install github.com/google/ko:latest
