@@ -357,7 +357,7 @@ func toEnvArray(env map[string]string) []string {
 	return retval
 }
 
-func makeCommand(ctx context.Context, executable *radiusv1alpha1.Executable) *exec.Cmd {
+func makeCommand(ctx context.Context, executable *radiusv1alpha3.Executable) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, executable.Spec.Executable)
 	cmdArgs := []string{executable.Spec.Executable}
 	cmdArgs = append(cmdArgs, executable.Spec.Args...)
