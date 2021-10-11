@@ -1,0 +1,9 @@
+# This file describes the stages of deployment for the application
+name: {{.ApplicationName}}
+stages:
+- name: infra
+  deploy:
+    bicep: infra.bicep
+- name: app
+  deploy:
+    bicep: app.bicep

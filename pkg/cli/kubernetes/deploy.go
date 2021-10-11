@@ -23,6 +23,10 @@ type KubernetesDeploymentClient struct {
 	Namespace string
 }
 
+func (c KubernetesDeploymentClient) GetExistingDeployment(ctx context.Context, options clients.DeploymentOptions) (*clients.DeploymentResult, error) {
+	return nil, nil
+}
+
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	kind := "DeploymentTemplate"
 

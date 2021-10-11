@@ -29,6 +29,28 @@ type ARMDeploymentClient struct {
 
 var _ clients.DeploymentClient = (*ARMDeploymentClient)(nil)
 
+func (dc *ARMDeploymentClient) GetExistingDeployment(ctx context.Context, options clients.DeploymentOptions) (*clients.DeploymentResult, error) {
+	name := options.DeploymentName
+	if name == "" {
+		// No way to look something up if it has a random name.
+		return nil, nil
+	}
+
+	deployment, err := dc.DeploymentsClient.Get(ctx, dc.ResourceGroup, name)
+	if err != nil && deployment.StatusCode == 404 {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	summary, err := dc.createSummary(deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	return &summary, nil
+}
+
 func (dc *ARMDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	template := map[string]interface{}{}
 	err := json.Unmarshal([]byte(options.Template), &template)
@@ -36,7 +58,11 @@ func (dc *ARMDeploymentClient) Deploy(ctx context.Context, options clients.Deplo
 		return clients.DeploymentResult{}, err
 	}
 
-	name := fmt.Sprintf("rad-deploy-%v", uuid.New().String())
+	name := options.DeploymentName
+	if name == "" {
+		name = fmt.Sprintf("rad-deploy-%v", uuid.New().String())
+	}
+
 	op, err := dc.DeploymentsClient.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Template:   template,

@@ -1,0 +1,36 @@
+// Use this file to declare your application and the relationships between its services
+// using Radius.
+
+// You can declare parameters to pass in resources created by infra.bicep or infra.dev.bicep
+// param database resource 'Microsoft.DocumentDB/databaseAccounts/mongoDBDatabases'
+
+resource app 'radius.dev/Application@v1alpha3' = {
+  name: '{{.ApplicationName}}'
+
+  // Declares a container that will run the Radius demo application
+  resource demo 'ContainerComponent' = {
+    name: 'demo'
+    properties: {
+      container: {
+        image: 'radius.azurecr.io/radiusdemo:latest'
+        ports: {
+          web: {
+            containerPort: 3000
+            provides: web.id
+          }
+        }
+      }
+    }
+  }
+
+  // Declares a route to provide HTTP traffic from the internet.
+  // Remove the 'gateway' section to use as an internal route.
+  resource web 'HttpRoute' = {
+    name: 'web'
+    properties: {
+      gateway: {
+        hostname: '*'
+      }
+    }
+  }
+}

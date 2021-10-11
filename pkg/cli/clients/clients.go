@@ -39,11 +39,19 @@ type DeploymentOptions struct {
 	// Parameters is the set of parameters passed to the deployment.
 	Parameters DeploymentParameters
 
+	DeploymentName string
+
 	UpdateChannel chan<- DeploymentProgressUpdate
 }
 
 type DeploymentResult struct {
 	Resources []azresources.ResourceID
+	Outputs   map[string]DeploymentOutput
+}
+
+type DeploymentOutput struct {
+	Type  string      `json:"type"`
+	Value interface{} `json:"value"`
 }
 
 const (
@@ -60,6 +68,7 @@ type DeploymentProgressUpdate struct {
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
 type DeploymentClient interface {
 	Deploy(ctx context.Context, options DeploymentOptions) (DeploymentResult, error)
+	GetExistingDeployment(ctx context.Context, options DeploymentOptions) (*DeploymentResult, error)
 }
 
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
