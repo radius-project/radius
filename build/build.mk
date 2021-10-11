@@ -75,17 +75,14 @@ build-$(1):
 endef
 
 # defines a target for each binary
-BINARIES := docgen rp testenv
+BINARIES := docgen radius-rp radius-controller testenv
 $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
 
 # 'rad' deviates from our convention
 $(eval $(call generateBuildTarget,rad,./cmd/cli))
 
-# 'rad-controller' deviates from our convention
-$(eval $(call generateBuildTarget,rad-controller,./cmd/k8s))
-
 # list of 'outputs' to build for all binaries
-BINARY_TARGETS:=$(foreach ITEM,$(BINARIES),build-$(ITEM)) build-rad build-rad-controller
+BINARY_TARGETS:=$(foreach ITEM,$(BINARIES),build-$(ITEM)) build-rad
 
 .PHONY: build-binaries
 build-binaries: $(BINARY_TARGETS) ## Builds all go binaries.

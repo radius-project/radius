@@ -114,14 +114,14 @@ The simplest is to use your local configuration for Kubernetes (assuming it's al
 Use `go run` to launch the RP from the same terminal where you configured the environment variables.
 
 ```sh
-go run cmd/rp/main.go
+go run cmd/radius-rp/main.go
 ```
 
 ## Optional: Debugging the RP
 
 Launch VSCode from the same terminal where you configurred the environment variables.
 
-Open `cmd/rp/main.go` and then launch the debugger from VSCode.
+Open `cmd/radius-rp/main.go` and then launch the debugger from VSCode.
 
 ## Next: Testing locally
 

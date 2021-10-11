@@ -54,7 +54,7 @@ You can create your own aliases as well, and select them from the drop down.
             "type": "go",
             "request": "launch",
             "mode": "debug",
-            "program": "${workspaceFolder}/cmd/rp/main.go",
+            "program": "${workspaceFolder}/cmd/radius-rp/main.go",
             "env": [ ... environment variables here ...]
             "args": [ ... args here ...]
         },
@@ -83,9 +83,9 @@ Here's an example:
             "mode": "debug",
             "program": "${workspaceFolder}/cmd/cli/main.go",
             "args": [
-                "env", "init", "azure", 
-                "--subscription-id", "...", 
-                "--resource-group", "...", 
+                "env", "init", "azure",
+                "--subscription-id", "...",
+                "--resource-group", "...",
                 "--deployment-template", "${workspaceFolder}/deploy/rp-full.json"
             ]
         }
