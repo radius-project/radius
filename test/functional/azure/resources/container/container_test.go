@@ -18,8 +18,10 @@ import (
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func Test_ContainerHttpBinding(t *testing.T) {
@@ -33,11 +35,11 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					// Intentionally Empty
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "frontend",
+						ResourceName:    "frontend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -46,7 +48,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "backend",
+						ResourceName:    "backend",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -54,7 +56,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "backend",
+						ResourceName:    "backend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -65,15 +67,35 @@ func Test_ContainerHttpBinding(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "frontend"),
-						validation.NewK8sObjectForComponent(application, "backend"),
+						validation.NewK8sObjectForResource(application, "frontend"),
+						validation.NewK8sObjectForResource(application, "backend"),
 					},
 				},
 			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
+				// Verify ephemeral volume
+				labelset := kubernetes.MakeSelectorLabels(application, "backend")
+
+				matches, err := at.Options.K8sClient.CoreV1().Pods(application).List(context.Background(), metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(labelset).String(),
+				})
+				require.NoError(t, err, "failed to list pods")
+
+				found := false
+				var volIndex int
+				for index, vol := range matches.Items[0].Spec.Volumes {
+					if vol.Name == "my-volume" {
+						found = true
+						volIndex = index
+					}
+				}
+				require.True(t, found, "volumes emptydir did not get mounted")
+				volume := matches.Items[0].Spec.Volumes[volIndex]
+				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
+				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
+			},
 		},
 	})
-
-	test.Version = validation.AppModelV3
 
 	test.Test(t)
 }
@@ -92,16 +114,16 @@ func Test_ContainerInboundRoute(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "frontend"),
-						validation.NewK8sObjectForComponent(application, "backend"),
+						validation.NewK8sObjectForResource(application, "frontend"),
+						validation.NewK8sObjectForResource(application, "backend"),
 					},
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "frontend",
+						ResourceName:    "frontend",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -110,7 +132,7 @@ func Test_ContainerInboundRoute(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "frontend",
+						ResourceName:    "frontend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -119,7 +141,7 @@ func Test_ContainerInboundRoute(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "backend",
+						ResourceName:    "backend",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -127,7 +149,7 @@ func Test_ContainerInboundRoute(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "backend",
+						ResourceName:    "backend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -148,8 +170,6 @@ func Test_ContainerInboundRoute(t *testing.T) {
 		},
 	})
 
-	test.Version = validation.AppModelV3
-
 	test.Test(t)
 }
 
@@ -167,16 +187,16 @@ func Test_ContainerManualScale(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "frontend"),
-						validation.NewK8sObjectForComponent(application, "backend"),
+						validation.NewK8sObjectForResource(application, "frontend"),
+						validation.NewK8sObjectForResource(application, "backend"),
 					},
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "frontend",
+						ResourceName:    "frontend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -185,7 +205,7 @@ func Test_ContainerManualScale(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "backend",
+						ResourceName:    "backend",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -193,7 +213,7 @@ func Test_ContainerManualScale(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "backend",
+						ResourceName:    "backend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -210,11 +230,26 @@ func Test_ContainerManualScale(t *testing.T) {
 				})
 				require.NoError(t, err, "failed to list pods")
 				require.Lenf(t, matches.Items, 2, "items should contain two match, instead it had: %+v", matches.Items)
+
+				// Verify readiness probe
+				require.Equal(t, "/healthz", matches.Items[0].Spec.Containers[0].ReadinessProbe.HTTPGet.Path)
+				require.Equal(t, intstr.FromInt(8080), matches.Items[0].Spec.Containers[0].ReadinessProbe.HTTPGet.Port)
+				require.Equal(t, int32(3), matches.Items[0].Spec.Containers[0].ReadinessProbe.InitialDelaySeconds)
+				require.Equal(t, int32(4), matches.Items[0].Spec.Containers[0].ReadinessProbe.FailureThreshold)
+				require.Equal(t, int32(20), matches.Items[0].Spec.Containers[0].ReadinessProbe.PeriodSeconds)
+				require.Nil(t, matches.Items[0].Spec.Containers[0].ReadinessProbe.TCPSocket)
+				require.Nil(t, matches.Items[0].Spec.Containers[0].ReadinessProbe.Exec)
+
+				// Verify liveness probe
+				require.Equal(t, []string{"ls", "/tmp"}, matches.Items[0].Spec.Containers[0].LivenessProbe.Exec.Command)
+				require.Equal(t, int32(0), matches.Items[0].Spec.Containers[0].LivenessProbe.InitialDelaySeconds)
+				require.Equal(t, int32(3), matches.Items[0].Spec.Containers[0].LivenessProbe.FailureThreshold)
+				require.Equal(t, int32(10), matches.Items[0].Spec.Containers[0].LivenessProbe.PeriodSeconds)
+				require.Nil(t, matches.Items[0].Spec.Containers[0].LivenessProbe.TCPSocket)
+				require.Nil(t, matches.Items[0].Spec.Containers[0].LivenessProbe.HTTPGet)
 			},
 		},
 	})
-
-	test.Version = validation.AppModelV3
 
 	test.Test(t)
 }

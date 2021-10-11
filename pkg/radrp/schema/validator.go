@@ -6,10 +6,7 @@
 package schema
 
 import (
-	"embed"
 	"fmt"
-	"io/fs"
-	"log"
 	"strings"
 
 	"github.com/xeipuuv/gojsonschema"
@@ -38,24 +35,6 @@ type Validator interface {
 	// ValidateJSON validates a JSON blob and returns all the errors.
 	ValidateJSON(json []byte) []ValidationError
 }
-
-var (
-	// The listing of files below has an ordering to them, because
-	// each file may depend on one or more files on the preceding
-	// lines.
-	//go:embed common-types.json
-	//go:embed traits/*.json
-	//go:embed traits.json
-	//go:embed components/*.json
-	//go:embed components.json
-	//go:embed radius.json
-	jsonFiles embed.FS
-
-	applicationValidator = newValidator("ApplicationResource")
-	componentValidator   = newValidator("/components.json#/definitions/ComponentResource")
-	deploymentValidator  = newValidator("DeploymentResource")
-	scopeValidator       = newValidator("ScopeResource")
-)
 
 type validator struct {
 	TypeName string
@@ -93,65 +72,6 @@ func (v *validator) ValidateJSON(json []byte) []ValidationError {
 		}
 	}
 	return errs
-}
-
-// ValidatorFor returns a Validator for the given type, based on the
-// type name.
-func ValidatorFor(obj interface{}) (Validator, error) {
-	objT := fmt.Sprintf("%T", obj)
-
-	for suffix, validator := range map[string]*validator{
-		".Application": applicationValidator,
-		".Component":   componentValidator,
-		".Deployment":  deploymentValidator,
-		".Scope":       scopeValidator,
-	} {
-		if strings.HasSuffix(objT, suffix) {
-			return validator, nil
-		}
-	}
-	return nil, fmt.Errorf("Can't find a JSON validator for type %s", objT)
-}
-
-func GetComponentValidator() Validator {
-	return componentValidator
-}
-
-func newValidator(typeName string) *validator {
-	loader := gojsonschema.NewSchemaLoader()
-	err := fs.WalkDir(jsonFiles, ".", func(path string, d fs.DirEntry, _ error) error {
-		if d.IsDir() {
-			return nil
-		}
-		data, err := fs.ReadFile(jsonFiles, path)
-		if err != nil {
-			return fmt.Errorf("cannot read embedded file %s: %w", path, err)
-		}
-		fileLoader := gojsonschema.NewBytesLoader(data)
-		if err = loader.AddSchema( /* url */ "/"+path, fileLoader); err != nil {
-			return fmt.Errorf("failed to parse JSON Schema from %s: %w", path, err)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Fatal("Error:", err)
-	}
-	ref := fmt.Sprintf("/radius.json#/definitions/%s", typeName)
-	if strings.HasPrefix(typeName, "/") { // Allowing absolute path.
-		ref = typeName
-	}
-	schema, err := loader.Compile(gojsonschema.NewStringLoader(fmt.Sprintf(`{
-	  "$schema": "http://json-schema.org/draft-04/schema#",
-	  "type":    "object",
-	  "$ref":    "%s"
-	}`, ref)))
-	if err != nil {
-		log.Fatalf("Failed to parse JSON Schema %s", err)
-	}
-	return &validator{
-		schema:   schema,
-		TypeName: typeName,
-	}
 }
 
 func isAggregateError(err gojsonschema.ResultError) bool {

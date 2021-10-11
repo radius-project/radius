@@ -5,21 +5,21 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource todoapplication 'ContainerComponent' = {
     name: 'todoapp'
     properties: {
-        container: {
-          image: 'radius.azurecr.io/webapptutorial-todoapp'
-          //PORTS
-          ports: {
-            web: {
-              containerPort: 3000
-            }
-          }
-          //PORTS
-          env: {
-            DBCONNECTION: db.connectionString()
+      container: {
+        image: 'radius.azurecr.io/webapptutorial-todoapp'
+        //PORTS
+        ports: {
+          web: {
+            containerPort: 3000
           }
         }
+        //PORTS
+        env: {
+          DBCONNECTION: db.connectionString()
+        }
+      }
       connections: {
-        itemstore:{
+        itemstore: {
           kind: 'mongo.com/MongoDB'
           source: db.id
         }

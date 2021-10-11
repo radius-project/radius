@@ -16,14 +16,14 @@ import (
 )
 
 type Step struct {
-	Executor           StepExecutor
-	AzureResources     *validation.AzureResourceSet
-	Components         *validation.ComponentSet
-	Pods               *validation.K8sObjectSet
-	PostStepVerify     func(ctx context.Context, t *testing.T, at ApplicationTest)
-	SkipAzureResources bool
-	SkipComponents     bool
-	SkipPods           bool
+	Executor            StepExecutor
+	AzureResources      *validation.AzureResourceSet
+	RadiusResources     *validation.ResourceSet
+	Pods                *validation.K8sObjectSet
+	PostStepVerify      func(ctx context.Context, t *testing.T, at ApplicationTest)
+	SkipAzureResources  bool
+	SkipRadiusResources bool
+	SkipPods            bool
 }
 
 type StepExecutor interface {
@@ -35,7 +35,6 @@ type ApplicationTest struct {
 	Options          TestOptions
 	Application      string
 	Description      string
-	Version          validation.AppModelVersion
 	SkipDeletion     bool
 	Steps            []Step
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
@@ -46,7 +45,6 @@ func NewApplicationTest(t *testing.T, application string, steps []Step) Applicat
 		Options:     NewTestOptions(t),
 		Application: application,
 		Description: application,
-		Version:     validation.AppModelV2, // Assume V3 unless overridden
 		Steps:       steps,
 	}
 }
@@ -79,7 +77,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
 
-	cli := radcli.NewCLI(t, at.Options.ConfigFilePath, at.Version)
+	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
@@ -109,14 +107,14 @@ func (at ApplicationTest) Test(t *testing.T) {
 				t.Logf("finished validating Azure resources for %s", step.Executor.GetDescription())
 			}
 
-			if step.Components == nil && step.SkipComponents {
-				t.Logf("skipping validation of components...")
-			} else if step.Components == nil {
-				require.Fail(t, "no component set was specified and SkipComponents == false, either specify a component set or set SkipComponents = true ")
+			if step.RadiusResources == nil && step.SkipRadiusResources {
+				t.Logf("skipping validation of Radius resources...")
+			} else if step.RadiusResources == nil {
+				require.Fail(t, "no resource set was specified and SkipRadiusResources == false, either specify a resource set or set SkipRadiusResources = true ")
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				validation.ValidateOutputResources(t, at.Options.ARMAuthorizer, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, at.Version, *step.Components)
+				validation.ValidateOutputResources(t, at.Options.ARMAuthorizer, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.RadiusResources)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 
@@ -156,7 +154,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// We run the validation code based on the final step
 	last := at.Steps[len(at.Steps)-1]
 
-	// We don't need to validate the components because they are already gone.
+	// We don't need to validate the Radius resources because they are already gone.
 
 	if last.SkipAzureResources {
 		t.Logf("skipping validation of Azure resources..")

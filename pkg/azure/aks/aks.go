@@ -27,7 +27,7 @@ func GetAKSMonitoringCredentials(ctx context.Context, subscriptionID string, res
 	// since it's non-obvious that we'd store credentials in your ~/.rad directory
 	mcc := clients.NewManagedClustersClient(subscriptionID, armauth)
 
-	results, err := mcc.ListClusterMonitoringUserCredentials(ctx, resourceGroup, clusterName, "")
+	results, err := mcc.ListClusterUserCredentials(ctx, resourceGroup, clusterName, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list AKS cluster credentials: %w", err)
 	}

@@ -46,11 +46,11 @@ func Test_ServiceBusManaged(t *testing.T) {
 			// ServiceBus deletion is currently flaky, tracked by: #768
 			SkipAzureResources: true,
 
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "sender",
+						ResourceName:    "sender",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -59,7 +59,7 @@ func Test_ServiceBusManaged(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "sbq",
+						ResourceName:    "sbq",
 						ResourceType:    servicebusqueuev1alpha1.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureServiceBusQueue: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusQueue,
@@ -78,14 +78,12 @@ func Test_ServiceBusManaged(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "sender"),
+						validation.NewK8sObjectForResource(application, "sender"),
 					},
 				},
 			},
 		},
 	})
-
-	test.Version = validation.AppModelV3
 
 	test.Test(t)
 }

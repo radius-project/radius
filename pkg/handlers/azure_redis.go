@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -23,9 +24,9 @@ const (
 	RedisResourceIdKey = "redisid"
 	RedisPortKey       = "redisport"
 	RedisHostKey       = "redishost"
-
-	// Note: while this is called a connection string, it **does not** include secrets.
-	RedisConnectionStringKey = "redisconnectionstring"
+	RedisUsernameKey   = "redisusername"
+	// On Azure, RedisUsername is empty.
+	RedisUsername = ""
 )
 
 func NewAzureRedisHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -39,7 +40,7 @@ type azureRedisHandler struct {
 }
 
 func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
+	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	var redisResource *redis.ResourceType
 	if properties[RedisResourceIdKey] == "" {
@@ -73,11 +74,6 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 			}
 		}
 
-		properties[RedisNameKey] = redisName
-		if err != nil {
-			return nil, err
-		}
-
 		redisResource, err = handler.CreateRedis(ctx, redisName)
 		if err != nil {
 			return nil, err
@@ -91,23 +87,19 @@ func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) 
 		}
 	}
 
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*redisResource.ID, clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
+
 	// Properties that are referenced from the renderer
 	properties[RedisNameKey] = *redisResource.Name
 	properties[RedisHostKey] = *redisResource.HostName
 	properties[RedisPortKey] = fmt.Sprintf("%d", *redisResource.Properties.SslPort)
-	properties[RedisConnectionStringKey] = *redisResource.HostName + ":" + fmt.Sprintf("%d", *redisResource.Properties.SslPort)
+	properties[RedisUsernameKey] = RedisUsername
 
 	return properties, nil
 }
 
 func (handler *azureRedisHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	var properties map[string]string
-	if options.ExistingOutputResource == nil {
-		properties = options.Existing.Properties
-	} else {
-		properties = options.ExistingOutputResource.PersistedProperties
-	}
-
+	properties := options.ExistingOutputResource.PersistedProperties
 	if properties[ManagedKey] != "true" {
 		// For an 'unmanaged' resource we don't need to do anything, just forget it.
 		return nil

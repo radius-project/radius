@@ -711,16 +711,6 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/azure.com.CosmosDBMongoComponent",
-                "routingType": "Proxy",
-                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-            },
-            {
-                "name": "Application/azure.com.CosmosDBSQLComponent",
-                "routingType": "Proxy",
-                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-            },
-            {
                 "name": "Application/azure.com.KeyVaultComponent",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
@@ -731,7 +721,7 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/dapr.io.InvokeRoute",
+                "name": "Application/dapr.io.DaprHttpRoute",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
@@ -742,6 +732,11 @@
             },
             {
                 "name": "Application/dapr.io.StateStoreComponent",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
+                "name": "Application/microsoft.com.SQLComponent",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },

@@ -23,9 +23,12 @@ type ContainerProperties struct {
 }
 
 type Container struct {
-	Image string                   `json:"image"`
-	Ports map[string]ContainerPort `json:"ports,omitempty"`
-	Env   map[string]interface{}   `json:"env,omitempty"`
+	Image          string                            `json:"image"`
+	Ports          map[string]ContainerPort          `json:"ports,omitempty"`
+	Env            map[string]interface{}            `json:"env,omitempty"`
+	ReadinessProbe map[string]interface{}            `json:"readinessProbe,omitempty"`
+	LivenessProbe  map[string]interface{}            `json:"livenessProbe,omitempty"`
+	Volumes        map[string]map[string]interface{} `json:"volumes,omitempty"`
 }
 
 type ContainerPort struct {
@@ -39,9 +42,66 @@ type ContainerConnection struct {
 	Source string `json:"source"`
 }
 
+// HTTPGetHealthProbe defines the properties when an httpGet readiness/liveness probe is specified
+type HTTPGetHealthProbe struct {
+	Kind    string            `json:"kind"`
+	Path    string            `json:"path"`
+	Port    int               `json:"containerPort"`
+	Headers map[string]string `json:"headers"`
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *int `json:"initialDelaySeconds"`
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *int `json:"failureThreshold"`
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *int `json:"periodSeconds"`
+}
+
+// TCPHealthProbe defines the properties when a tcp readiness/liveness probe is specified
+type TCPHealthProbe struct {
+	Kind string `json:"kind"`
+	Port int    `json:"containerPort"`
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *int `json:"initialDelaySeconds"`
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *int `json:"failureThreshold"`
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *int `json:"periodSeconds"`
+}
+
+// ExecHealthProbe defines the properties when an exec readiness/liveness probe is specified
+type ExecHealthProbe struct {
+	Kind    string `json:"kind"`
+	Command string `json:"command"`
+	// Initial delay in seconds before probing for readiness/liveness
+	InitialDelaySeconds *int `json:"initialDelaySeconds"`
+	// Threshold number of times the probe fails after which a failure would be reported
+	FailureThreshold *int `json:"failureThreshold"`
+	// Interval for the readiness/liveness probe in seconds
+	PeriodSeconds *int `json:"periodSeconds"`
+}
+
 type ContainerTrait struct {
 	Kind                 string
 	AdditionalProperties map[string]interface{}
+}
+
+type EphemeralVolume struct {
+	Kind         string `json:"kind"`
+	MountPath    string `json:"mountPath"`
+	ManagedStore string `json:"managedStore"`
+}
+
+func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) {
+	data, err := json.Marshal(volume)
+	if err != nil {
+		return nil, err
+	}
+	var ephemeralVolume EphemeralVolume
+	err = json.Unmarshal(data, &ephemeralVolume)
+	if err != nil {
+		return nil, err
+	}
+	return &ephemeralVolume, nil
 }
 
 func (ct ContainerTrait) MarshalJSON() ([]byte, error) {

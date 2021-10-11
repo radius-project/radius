@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Add Dapr sidecars and a Dapr statestore to the app"
-linkTitle: "Add Dapr trait"
+linkTitle: "Add Dapr"
 slug: "add-dapr"
 description: "How to enable Dapr sidecars and connect a Dapr state store to the tutorial application"
 weight: 3000
@@ -9,23 +9,23 @@ weight: 3000
 
 Currently, the data you send to `backend` will be stored in memory inside the application. If the website restarts then all of your data will be lost!
 
-In this step you will learn how to add a database and connect to it from the application.
+In this step you will learn how to add a database and connect to it from the application with Dapr.
 
 ## Add a Dapr trait
 
-A [`dapr.io/App` trait]({{< ref dapr-trait >}}) on the `backend` component can be used to describe the Dapr configuration:
+A [`dapr.io/Sidecar` trait]({{< ref dapr-trait >}}) on the `backend` component can be used to describe the Dapr configuration:
 
 {{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" >}}
 
-The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added via a trait. Traits have a `kind` so that they can be strongly typed. In this case we're providing some required Dapr configuration: the `app-id` and `app-port`.
+The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added via a trait. Traits have a `kind` so that they can be strongly typed.
 
 ## Add a Dapr Invoke Route
 
-Here you are describing how the `backend` Component will provide the `invoke` Route for other Components to consume.
+Here you are describing how the `backend` Component will provide the `DaprHttpRoute` for other Components to consume.
 
-Add a [`dapr.io.InvokeRoute`]({{< ref dapr >}}) resource to the app, and specify that the `backend` Component will provide the Route as part of the `orders` port.
+Add a [`dapr.io.DaprHttpRoute`]({{< ref dapr >}}) resource to the app, and specify that the `backend` Component will provide the Route as part of the `dapr` port.
 
-{{< rad file="snippets/invoke.bicep" embed=true marker="//SAMPLE" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
+{{< rad file="snippets/invoke.bicep" embed=true marker="//SAMPLE" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" >}}
 
 ## Add statestore component
 
@@ -33,9 +33,9 @@ Now that the backend is configured with Dapr, we need to define a state store to
 
 A [`statestore` component]({{< ref dapr-statestore >}}) is used to specify a few properties about the state store:
 
-- **kind**: `'dapr.io/StateStore@v1alpha1'` represents a resource that Dapr uses to communicate with a database.
-- **properties.kind**: `'any'` tells Radius to pick the best available statestore for the platform. For Azure this is Table Storage and for Kubernetes this is a Redis container.
-- **properties.managed**: `true` tells Radius to manage the lifetime of the component for you. 
+- **resource type**: `'dapr.io/StateStoreComponent'` represents a resource that Dapr uses to communicate with a database.
+- **kind**: `'any'` tells Radius to pick the best available statestore for the platform. For Azure this is Table Storage and for Kubernetes this is a Redis container.
+- **managed**: `true` tells Radius to manage the lifetime of the component for you. 
 
 {{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
@@ -76,13 +76,13 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 1. You can confirm that the new `statestore` component was deployed by running:
 
    ```sh
-   rad component list --application dapr-tutorial
+   rad resource list --application dapr-tutorial
    ```
 
    You should see both `backend` and `statestore` components in your `dapr-tutorial` application. Example output:
 
    ```
-   COMPONENT   KIND
+   RESOURCE   KIND
    backend     ContainerComponent
    statestore  dapr.io.StateStoreComponent
    ```
@@ -90,7 +90,7 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 1. To test out the state store, open a local tunnel on port 3000 again:
 
    ```sh
-   rad component expose backend --application dapr-tutorial --port 3000
+   rad resource expose backend --application dapr-tutorial --port 3000
    ```
 
 1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:

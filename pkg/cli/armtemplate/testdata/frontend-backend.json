@@ -9,11 +9,20 @@
     }
   },
   "functions": [],
+  "parameters": {
+    "frontendRoute": {
+      "type": "string"
+    },
+    "backendRoute": {
+      "type": "string",
+      "defaultValue": "backend"
+    } 
+  },
   "resources": [
     {
       "type": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute",
       "apiVersion": "2018-09-01-preview",
-      "name": "[format('{0}/{1}/{2}', 'radiusv3', 'azure-resources-container-httpbinding', 'frontend')]",
+      "name": "[format('{0}/{1}/{2}', 'radiusv3', 'azure-resources-container-httpbinding', parameters('frontendRoute'))]",
       "properties": {
         "port": 80
       },
@@ -29,7 +38,7 @@
         "connections": {
           "backend": {
             "kind": "Http",
-            "source": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]"
+            "source": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))]"
           }
         },
         "container": {
@@ -37,24 +46,24 @@
           "ports": {
             "web": {
               "containerPort": 80,
-              "provides": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'frontend')]"
+              "provides": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('frontendRoute'))]"
             }
           },
           "env": {
-            "SERVICE__BACKEND__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')).port]"
+            "SERVICE__BACKEND__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))).port]"
           }
         }
       },
       "dependsOn": [
         "[resourceId('Microsoft.CustomProviders/resourceProviders/Application', 'radiusv3', 'azure-resources-container-httpbinding')]",
-        "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]",
-        "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'frontend')]"
+        "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))]",
+        "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('frontendRoute'))]"
       ]
     },
     {
       "type": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute",
       "apiVersion": "2018-09-01-preview",
-      "name": "[format('{0}/{1}/{2}', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]",
+      "name": "[format('{0}/{1}/{2}', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))]",
       "properties": {
         "port": 80
       },
@@ -65,21 +74,21 @@
     {
       "type": "Microsoft.CustomProviders/resourceProviders/Application/ContainerComponent",
       "apiVersion": "2018-09-01-preview",
-      "name": "[format('{0}/{1}/{2}', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]",
+      "name": "[format('{0}/{1}/{2}', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))]",
       "properties": {
         "container": {
           "image": "rynowak/backend:0.5.0-dev",
           "ports": {
             "web": {
               "containerPort": 81,
-              "provides": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]"
+              "provides": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))]"
             }
           }
         }
       },
       "dependsOn": [
         "[resourceId('Microsoft.CustomProviders/resourceProviders/Application', 'radiusv3', 'azure-resources-container-httpbinding')]",
-        "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]"
+        "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))]"
       ]
     },
     {

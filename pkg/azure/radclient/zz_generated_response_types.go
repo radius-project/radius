@@ -15,8 +15,20 @@ import (
 
 // ApplicationListResponse is the response envelope for operations that return a ApplicationList type.
 type ApplicationListResponse struct {
-	// Application list.
+	// List of Application resources.
 	ApplicationList *ApplicationList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationResourcePollerResponse is the response envelope for operations that asynchronously return a ApplicationResource type.
+type ApplicationResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (ApplicationResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller ApplicationResourcePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
@@ -31,49 +43,183 @@ type ApplicationResourceResponse struct {
 	RawResponse *http.Response
 }
 
-// ComponentListResponse is the response envelope for operations that return a ComponentList type.
-type ComponentListResponse struct {
-	// Component list.
-	ComponentList *ComponentList
+// AzureKeyVaultComponentListResponse is the response envelope for operations that return a AzureKeyVaultComponentList type.
+type AzureKeyVaultComponentListResponse struct {
+	// List of azure.com.KeyVaultComponent resources.
+	AzureKeyVaultComponentList *AzureKeyVaultComponentList
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ComponentResourceResponse is the response envelope for operations that return a ComponentResource type.
-type ComponentResourceResponse struct {
-	// Component resource.
-	ComponentResource *ComponentResource
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// DeploymentListResponse is the response envelope for operations that return a DeploymentList type.
-type DeploymentListResponse struct {
-	// Deployment list.
-	DeploymentList *DeploymentList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// DeploymentResourcePollerResponse is the response envelope for operations that asynchronously return a DeploymentResource type.
-type DeploymentResourcePollerResponse struct {
+// AzureKeyVaultComponentResourcePollerResponse is the response envelope for operations that asynchronously return a AzureKeyVaultComponentResource type.
+type AzureKeyVaultComponentResourcePollerResponse struct {
 	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (DeploymentResourceResponse, error)
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (AzureKeyVaultComponentResourceResponse, error)
 
 	// Poller contains an initialized poller.
-	Poller DeploymentResourcePoller
+	Poller AzureKeyVaultComponentResourcePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DeploymentResourceResponse is the response envelope for operations that return a DeploymentResource type.
-type DeploymentResourceResponse struct {
-	// Deployment resource.
-	DeploymentResource *DeploymentResource
+// AzureKeyVaultComponentResourceResponse is the response envelope for operations that return a AzureKeyVaultComponentResource type.
+type AzureKeyVaultComponentResourceResponse struct {
+	// Component for Azure KeyVault
+	AzureKeyVaultComponentResource *AzureKeyVaultComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureServiceBusComponentListResponse is the response envelope for operations that return a AzureServiceBusComponentList type.
+type AzureServiceBusComponentListResponse struct {
+	// List of azure.com.ServiceBusQueueComponent resources.
+	AzureServiceBusComponentList *AzureServiceBusComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureServiceBusComponentResourcePollerResponse is the response envelope for operations that asynchronously return a AzureServiceBusComponentResource
+// type.
+type AzureServiceBusComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (AzureServiceBusComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller AzureServiceBusComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureServiceBusComponentResourceResponse is the response envelope for operations that return a AzureServiceBusComponentResource type.
+type AzureServiceBusComponentResourceResponse struct {
+	// Component for Azure ServiceBus
+	AzureServiceBusComponentResource *AzureServiceBusComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainerComponentListResponse is the response envelope for operations that return a ContainerComponentList type.
+type ContainerComponentListResponse struct {
+	// List of ContainerComponent resources.
+	ContainerComponentList *ContainerComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainerComponentResourcePollerResponse is the response envelope for operations that asynchronously return a ContainerComponentResource type.
+type ContainerComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (ContainerComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller ContainerComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainerComponentResourceResponse is the response envelope for operations that return a ContainerComponentResource type.
+type ContainerComponentResourceResponse struct {
+	// The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform
+	ContainerComponentResource *ContainerComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprHTTPRouteListResponse is the response envelope for operations that return a DaprHTTPRouteList type.
+type DaprHTTPRouteListResponse struct {
+	// List of dapr.io.DaprHttpRoute resources.
+	DaprHTTPRouteList *DaprHTTPRouteList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprHTTPRouteResourcePollerResponse is the response envelope for operations that asynchronously return a DaprHTTPRouteResource type.
+type DaprHTTPRouteResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (DaprHTTPRouteResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller DaprHTTPRouteResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprHTTPRouteResourceResponse is the response envelope for operations that return a DaprHTTPRouteResource type.
+type DaprHTTPRouteResourceResponse struct {
+	// Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between components.
+	DaprHTTPRouteResource *DaprHTTPRouteResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubTopicComponentListResponse is the response envelope for operations that return a DaprPubSubTopicComponentList type.
+type DaprPubSubTopicComponentListResponse struct {
+	// List of dapr.io.PubSubTopicComponent resources.
+	DaprPubSubTopicComponentList *DaprPubSubTopicComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubTopicComponentResourcePollerResponse is the response envelope for operations that asynchronously return a DaprPubSubTopicComponentResource
+// type.
+type DaprPubSubTopicComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (DaprPubSubTopicComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller DaprPubSubTopicComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubTopicComponentResourceResponse is the response envelope for operations that return a DaprPubSubTopicComponentResource type.
+type DaprPubSubTopicComponentResourceResponse struct {
+	// Component for Dapr Pub/Sub
+	DaprPubSubTopicComponentResource *DaprPubSubTopicComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoreComponentListResponse is the response envelope for operations that return a DaprStateStoreComponentList type.
+type DaprStateStoreComponentListResponse struct {
+	// List of dapr.io.StateStoreComponent resources.
+	DaprStateStoreComponentList *DaprStateStoreComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoreComponentResourcePollerResponse is the response envelope for operations that asynchronously return a DaprStateStoreComponentResource type.
+type DaprStateStoreComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (DaprStateStoreComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller DaprStateStoreComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoreComponentResourceResponse is the response envelope for operations that return a DaprStateStoreComponentResource type.
+type DaprStateStoreComponentResourceResponse struct {
+	// Component for Dapr state store
+	DaprStateStoreComponentResource *DaprStateStoreComponentResource
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
@@ -89,5 +235,203 @@ type HTTPPollerResponse struct {
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
+}
+
+// HTTPRouteListResponse is the response envelope for operations that return a HTTPRouteList type.
+type HTTPRouteListResponse struct {
+	// List of HttpRoute resources.
+	HTTPRouteList *HTTPRouteList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRouteResourcePollerResponse is the response envelope for operations that asynchronously return a HTTPRouteResource type.
+type HTTPRouteResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (HTTPRouteResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller HTTPRouteResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRouteResourceResponse is the response envelope for operations that return a HTTPRouteResource type.
+type HTTPRouteResourceResponse struct {
+	// Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a component.
+	HTTPRouteResource *HTTPRouteResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MicrosoftSQLComponentListResponse is the response envelope for operations that return a MicrosoftSQLComponentList type.
+type MicrosoftSQLComponentListResponse struct {
+	// List of microsoft.com.SQLComponent resources.
+	MicrosoftSQLComponentList *MicrosoftSQLComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MicrosoftSQLComponentResourcePollerResponse is the response envelope for operations that asynchronously return a MicrosoftSQLComponentResource type.
+type MicrosoftSQLComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (MicrosoftSQLComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller MicrosoftSQLComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MicrosoftSQLComponentResourceResponse is the response envelope for operations that return a MicrosoftSQLComponentResource type.
+type MicrosoftSQLComponentResourceResponse struct {
+	// Component for a Microsoft SQL compatible database.
+	MicrosoftSQLComponentResource *MicrosoftSQLComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongoDBComponentListResponse is the response envelope for operations that return a MongoDBComponentList type.
+type MongoDBComponentListResponse struct {
+	// List of mongodb.com.MongoDBComponent resources.
+	MongoDBComponentList *MongoDBComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongoDBComponentResourcePollerResponse is the response envelope for operations that asynchronously return a MongoDBComponentResource type.
+type MongoDBComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (MongoDBComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller MongoDBComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongoDBComponentResourceResponse is the response envelope for operations that return a MongoDBComponentResource type.
+type MongoDBComponentResourceResponse struct {
+	// The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
+	MongoDBComponentResource *MongoDBComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQComponentListResponse is the response envelope for operations that return a RabbitMQComponentList type.
+type RabbitMQComponentListResponse struct {
+	// List of rabbitmq.com.MessageQueueComponent resources.
+	RabbitMQComponentList *RabbitMQComponentList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQComponentResourcePollerResponse is the response envelope for operations that asynchronously return a RabbitMQComponentResource type.
+type RabbitMQComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (RabbitMQComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller RabbitMQComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQComponentResourceResponse is the response envelope for operations that return a RabbitMQComponentResource type.
+type RabbitMQComponentResourceResponse struct {
+	// The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
+	RabbitMQComponentResource *RabbitMQComponentResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RadiusResourceListResponse is the response envelope for operations that return a RadiusResourceList type.
+type RadiusResourceListResponse struct {
+	// List of RadiusResource resources.
+	RadiusResourceList *RadiusResourceList
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RadiusResourceResponse is the response envelope for operations that return a RadiusResource type.
+type RadiusResourceResponse struct {
+	// Interface for generic resource -- useful for listing resources without specifying a type
+	RadiusResource *RadiusResource
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisComponentListResponse is the response envelope for operations that return a RedisComponentList type.
+type RedisComponentListResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+
+	// List of redislabs.com.RedisComponent resources.
+	RedisComponentList *RedisComponentList
+}
+
+// RedisComponentResourcePollerResponse is the response envelope for operations that asynchronously return a RedisComponentResource type.
+type RedisComponentResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (RedisComponentResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller RedisComponentResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisComponentResourceResponse is the response envelope for operations that return a RedisComponentResource type.
+type RedisComponentResourceResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+
+	// The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
+	RedisComponentResource *RedisComponentResource
+}
+
+// VolumeListResponse is the response envelope for operations that return a VolumeList type.
+type VolumeListResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+
+	// List of Volume resources.
+	VolumeList *VolumeList
+}
+
+// VolumeResourcePollerResponse is the response envelope for operations that asynchronously return a VolumeResource type.
+type VolumeResourcePollerResponse struct {
+	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
+	PollUntilDone func(ctx context.Context, frequency time.Duration) (VolumeResourceResponse, error)
+
+	// Poller contains an initialized poller.
+	Poller VolumeResourcePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// VolumeResourceResponse is the response envelope for operations that return a VolumeResource type.
+type VolumeResourceResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+
+	// The Volume provides an abstraction for a volume that can be mounted to a container
+	VolumeResource *VolumeResource
 }
 

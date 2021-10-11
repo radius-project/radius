@@ -15,20 +15,19 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type ComponentSet struct {
-	Components []Component
+type ResourceSet struct {
+	Resources []RadiusResource
 }
 
 // For now we mostly need the same data regardless of the the appmodel version.
 // We can rename this to `RadiusResourceSet` in the future.
-type Component struct {
-	ComponentName   string
+type RadiusResource struct {
+	ResourceName    string
 	ApplicationName string
 	ResourceType    string
 	OutputResources map[string]ExpectedOutputResource
@@ -40,7 +39,13 @@ type ExpectedOutputResource struct {
 	ResourceKind       string
 	Managed            bool
 	Status             rest.OutputResourceStatus
-	verifyStatus       bool
+	VerifyStatus       bool
+
+	// SkipLocalIDWhenMatching instructs the test system to ignore the Local ID when matching
+	// the expected output resource against the actual output resources.
+	//
+	// This is useful when the LocalID is generated from information that's not available for the test.
+	SkipLocalIDWhenMatching bool
 }
 
 func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, verifyStatus bool, status rest.OutputResourceStatus) ExpectedOutputResource {
@@ -50,65 +55,46 @@ func NewOutputResource(localID, outputResourceType, resourceKind string, managed
 		ResourceKind:       resourceKind,
 		Managed:            managed,
 		Status:             status,
-		verifyStatus:       verifyStatus,
+		VerifyStatus:       verifyStatus,
 	}
 }
 
-func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, version AppModelVersion, expected ComponentSet) {
-	componentsClient := radclient.NewComponentClient(armConnection, subscriptionID)
+func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armConnection *armcore.Connection, subscriptionID string, resourceGroup string, expected ResourceSet) {
 	genericClient := clients.NewGenericResourceClient(subscriptionID, authorizer)
 
 	failed := false
 
-	for _, c := range expected.Components {
-		t.Logf("Validating output resources for component %s...", c.ComponentName)
+	for _, c := range expected.Resources {
+		t.Logf("Validating output resources for Radius resource %s...", c.ResourceName)
 
 		all := []rest.OutputResource{}
-		if version == AppModelV2 {
-			t.Logf("Reading component %s...", c.ComponentName)
-			component, err := componentsClient.Get(context.Background(), resourceGroup, c.ApplicationName, c.ComponentName, nil)
-			require.NoError(t, err)
-			t.Logf("Finished reading component %s", c.ComponentName)
+		require.NotEmpty(t, c.ResourceType, "ResourceType must be set for v3")
 
-			for _, v := range component.ComponentResource.Properties.Status.OutputResources {
-				actual, err := convertToRestOutputResource(v)
-				require.NoError(t, err, "failed to convert output resource")
-				all = append(all, actual)
-			}
-		} else if version == AppModelV3 {
-			// TODO tcgnhia :)
+		id := azresources.MakeID(
+			subscriptionID,
+			resourceGroup,
+			azresources.ResourceType{
+				Type: azresources.CustomProvidersResourceProviders,
+				Name: azresources.CustomRPV3Name,
+			},
+			azresources.ResourceType{
+				Type: "Application",
+				Name: c.ApplicationName,
+			},
+			azresources.ResourceType{
+				Type: c.ResourceType,
+				Name: c.ResourceName,
+			})
 
-			require.NotEmpty(t, c.ResourceType, "ResourceType must be set for v3")
+		t.Logf("Reading resource %s %s...", c.ResourceType, c.ResourceName)
+		resource, err := genericClient.GetByID(context.Background(), strings.TrimPrefix(id, "/"), azresources.CustomRPApiVersion)
+		require.NoError(t, err)
+		t.Logf("Finished resource %s %s...", c.ResourceType, c.ResourceName)
 
-			id := azresources.MakeID(
-				subscriptionID,
-				resourceGroup,
-				azresources.ResourceType{
-					Type: azresources.CustomProvidersResourceProviders,
-					Name: azresources.CustomRPV3Name,
-				},
-				azresources.ResourceType{
-					Type: "Application",
-					Name: c.ApplicationName,
-				},
-				azresources.ResourceType{
-					Type: c.ResourceType,
-					Name: c.ComponentName,
-				})
+		actual, err := convertFromGenericToRestOutputResource(resource)
+		require.NoError(t, err)
 
-			t.Logf("Reading resource %s %s...", c.ResourceType, c.ComponentName)
-			resource, err := genericClient.GetByID(context.Background(), strings.TrimPrefix(id, "/"), azresources.CustomRPApiVersion)
-			require.NoError(t, err)
-			t.Logf("Finished resource %s %s...", c.ResourceType, c.ComponentName)
-
-			actual, err := convertFromGenericToRestOutputResource(resource)
-			require.NoError(t, err)
-
-			all = append(all, actual...)
-
-		} else {
-			require.Fail(t, "unsupported version", version)
-		}
+		all = append(all, actual...)
 
 		expected := []ExpectedOutputResource{}
 		t.Logf("Expected resources: ")
@@ -126,7 +112,7 @@ func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armCo
 
 		// Now we have the set of resources, so we can diff them against what's expected. We'll make copies
 		// of the expected and actual resources so we can 'check off' things as we match them.
-		actual := all
+		actual = all
 
 		// Iterating in reverse allows us to remove things without throwing off indexing
 		for actualIndex := len(actual) - 1; actualIndex >= 0; actualIndex-- {
@@ -139,6 +125,15 @@ func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armCo
 				}
 
 				t.Logf("found a match for expected resource %+v", expectedResource)
+
+				// TODO: Remove this check once health checks are implemented for all kinds of output resources
+				// https://github.com/Azure/radius/issues/827.
+				// Till then, we will selectively verify the health/provisioning state for output resources that
+				// have the functionality implemented.
+				if expectedResource.VerifyStatus {
+					assert.Equal(t, expectedResource.Status.ProvisioningState, actualResource.Status.ProvisioningState)
+					assert.Equal(t, expectedResource.Status.HealthState, actualResource.Status.HealthState)
+				}
 
 				// We found a match, remove from both lists
 				actual = append(actual[:actualIndex], actual[actualIndex+1:]...)
@@ -199,35 +194,13 @@ func convertFromGenericToRestOutputResource(obj resources.GenericResource) ([]re
 	return result, nil
 }
 
-func convertToRestOutputResource(obj interface{}) (rest.OutputResource, error) {
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return rest.OutputResource{}, err
-	}
-
-	result := rest.OutputResource{}
-	err = json.Unmarshal(b, &result)
-	if err != nil {
-		return rest.OutputResource{}, err
-	}
-
-	return result, nil
-}
-
 func (e ExpectedOutputResource) IsMatch(a rest.OutputResource) bool {
-	match := e.LocalID == a.LocalID &&
-		e.OutputResourceType == a.OutputResourceType &&
+	match := e.OutputResourceType == a.OutputResourceType &&
 		e.ResourceKind == a.ResourceKind &&
 		e.Managed == a.Managed
 
-	// TODO: Remove this check once health checks are implemented for all kinds of output resources
-	// https://github.com/Azure/radius/issues/827.
-	// Till then, we will selectively verify the health/provisioning state for output resources that
-	// have the functionality implemented.
-	if e.verifyStatus {
-		match = match &&
-			e.Status.HealthState == a.Status.HealthState &&
-			e.Status.ProvisioningState == a.Status.ProvisioningState
+	if !e.SkipLocalIDWhenMatching {
+		match = match && e.LocalID == a.LocalID
 	}
 
 	return match

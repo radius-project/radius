@@ -4,6 +4,7 @@ import { loadBindings, BindingStatus, BindingProvider } from './binding'
 import { DaprPubSubBinding } from './bindings/daprpubsub';
 import { DaprStateStoreBinding } from './bindings/daprstatestore';
 import { KeyVaultBinding } from './bindings/keyvault'
+import { MicrosoftSqlBinding } from './bindings/microsoftsql'
 import { MongoBinding } from './bindings/mongo'
 import { ServiceBusBinding } from './bindings/servicebus'
 import { RedisBinding } from './bindings/redis'
@@ -18,6 +19,7 @@ const providers: {[key: string]: BindingProvider }= {
     'KEYVAULT': (map) => new KeyVaultBinding(map),
     'MONGODB': (map) => new MongoBinding(map),
     'SERVICEBUS': (map) => new ServiceBusBinding(map),
+    'SQL': (map) => new MicrosoftSqlBinding(map),
     'REDIS': (map) => new RedisBinding(map),
     'DAPRSTATESTORE': (map) => new DaprStateStoreBinding(map),
     'RABBITMQ' : (map) => new RabbitMQBinding(map),

@@ -9,8 +9,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -29,11 +34,12 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 					// None
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "a",
+						ResourceName:    "a",
+						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
@@ -43,7 +49,7 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "a"),
+						validation.NewK8sObjectForResource(application, "a"),
 					},
 				},
 			},
@@ -55,18 +61,20 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 					// None
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "a",
+						ResourceName:    "a",
+						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "b",
+						ResourceName:    "b",
+						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
@@ -76,8 +84,8 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "a"),
-						validation.NewK8sObjectForComponent(application, "b"),
+						validation.NewK8sObjectForResource(application, "a"),
+						validation.NewK8sObjectForResource(application, "b"),
 					},
 				},
 			},
@@ -87,33 +95,51 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 	test.Test(t)
 }
 
-// Tests that we can delete a component from a deployed application
-// by redeploying with fewer components.
-func Test_RedeployWithoutComponent(t *testing.T) {
-	application := "azure-mechanics-redeploy-withoutcomponent"
-	templateFmt := "testdata/azure-mechanics-redeploy-withoutcomponent.step%d.bicep"
+func Test_CommunicationCycle(t *testing.T) {
+	application := "azure-mechanics-communication-cycle"
+	template := "testdata/azure-mechanics-communication-cycle.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1)),
+			Executor: azuretest.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// None
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "a",
+						ResourceName:    "a",
+						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "b",
+						ResourceName:    "a",
+						ResourceType:    httproutev1alpha3.ResourceType,
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+					{
+						ApplicationName: application,
+						ResourceName:    "b",
+						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+					{
+						ApplicationName: application,
+						ResourceName:    "b",
+						ResourceType:    httproutev1alpha3.ResourceType,
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -121,26 +147,58 @@ func Test_RedeployWithoutComponent(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "a"),
-						validation.NewK8sObjectForComponent(application, "b"),
+						validation.NewK8sObjectForResource(application, "a"),
+						validation.NewK8sObjectForResource(application, "b"),
 					},
 				},
 			},
 		},
+	})
+
+	test.Test(t)
+}
+
+func Test_Secrets_Access(t *testing.T) {
+	application := "azure-mechanics-secrets-access"
+	template := "testdata/azure-mechanics-secrets-access.bicep"
+	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2)),
+			Executor: azuretest.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
-					// None
+					{
+						Type: azresources.DocumentDBDatabaseAccounts,
+						Tags: map[string]string{
+							keys.TagRadiusApplication: application,
+							keys.TagRadiusResource:    "db",
+						},
+						Children: []validation.ExpectedChildResource{
+							{
+								Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+								Name: "db",
+							},
+						},
+					},
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "a",
+						ResourceName:    "todoapp",
+						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+					{
+						ApplicationName: application,
+						ResourceName:    "db",
+						ResourceType:    mongodbv1alpha3.ResourceType,
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDAzureCosmosAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccount, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -148,7 +206,7 @@ func Test_RedeployWithoutComponent(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "a"),
+						validation.NewK8sObjectForResource(application, "todoapp"),
 					},
 				},
 			},

@@ -7,7 +7,7 @@ weight: 100
 no_list: true
 ---
 
-{{< cardpane width=80% >}}
+{{< cardpane width=500px >}}
 {{% card header="[Website + Database](./webapp)" footer="Learn how to deploy a simple website container and database" %}}
 <div class="text-center">
   <a href="./webapp">
@@ -17,7 +17,7 @@ no_list: true
 {{% /card %}}
 {{% card header="[Dapr Microservices](./dapr-microservices)" footer="Learn how to add Dapr traits and components to your application" %}}
 <div class="text-center">
-  <a href="./dapr">
+  <a href="./dapr-microservices">
     <img src="dapr-microservices.svg" alt="Dapr logo">
   </a>
 </div>

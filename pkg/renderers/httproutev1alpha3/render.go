@@ -25,7 +25,7 @@ import (
 type Renderer struct {
 }
 
-// Need a step to take rendered routes to be usable by component
+// Need a step to take rendered routes to be usable by resource
 func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
 	return nil, nil
 }
@@ -39,13 +39,13 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: resource.ResourceName,
+			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 		},
 		"port": {
 			Value: route.GetEffectivePort(),
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", resource.ResourceName, route.GetEffectivePort()),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), route.GetEffectivePort()),
 		},
 		"scheme": {
 			Value: "http",
@@ -76,7 +76,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      resource.ResourceName,
+			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Namespace: resource.ApplicationName,
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
@@ -104,7 +104,7 @@ func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRo
 			APIVersion: networkingv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      resource.ResourceName,
+			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Namespace: resource.ApplicationName,
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
@@ -119,32 +119,42 @@ func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRo
 		},
 	}
 
-	if route.Gateway.Hostname == "*" {
-		spec := networkingv1.IngressSpec{
-			DefaultBackend: &backend,
-		}
+	// Default path to / if not specified
+	path := route.Gateway.Path
+	if path == "" {
+		path = "/"
+	}
 
-		ingress.Spec = spec
-	} else {
-		spec := networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{
-				{
-					Host: route.Gateway.Hostname,
-					IngressRuleValue: networkingv1.IngressRuleValue{
-						HTTP: &networkingv1.HTTPIngressRuleValue{
-							Paths: []networkingv1.HTTPIngressPath{
-								{
-									Backend: backend,
-								},
+	var defaultBackend *networkingv1.IngressBackend
+	host := route.Gateway.Hostname
+	if route.Gateway.Hostname == "*" {
+		defaultBackend = &backend
+		// * isn't allowed in the hostname, remove it.
+		host = ""
+	}
+	pathType := networkingv1.PathTypePrefix
+
+	spec := networkingv1.IngressSpec{
+		DefaultBackend: defaultBackend,
+		Rules: []networkingv1.IngressRule{
+			{
+				Host: host,
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{
+							{
+								Path:     path,
+								PathType: &pathType,
+								Backend:  backend,
 							},
 						},
 					},
 				},
 			},
-		}
-
-		ingress.Spec = spec
+		},
 	}
+
+	ingress.Spec = spec
 
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
 }

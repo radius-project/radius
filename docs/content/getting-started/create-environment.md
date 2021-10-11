@@ -20,6 +20,8 @@ Note that while the custom resource provider and container runtime are optimized
    az login
    ```
 
+   Creating Radius environments on Azure currently **require you to have *Owner* rights on your subscription.** If you use a service principal for CLI authentication, ensure it also has the proper RBAC assignment on your subscription.
+
 1. Create a Radius environment:
 
    The following command creates an environment in interactive mode and will prompt you for input like the name of a new Resource Group and location. If no environment name is specified, it will default to the Resource Group name.

@@ -10,12 +10,11 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	radschema "github.com/Azure/radius/pkg/radrp/schema"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,239 +74,14 @@ func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*ra
 }
 
 func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error) {
-	// We don't have a guarantee that the application name is the same
-	// as the k8s resource name, so we have to filter on the client.
-	applications := radiusv1alpha3.ApplicationList{}
-	err := mc.Client.List(ctx, &applications, &client.ListOptions{Namespace: mc.Namespace})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, item := range applications.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
-			application, err := ConvertK8sApplicationToARM(item)
-			if err != nil {
-				return nil, err
-			}
-
-			return application, nil
-		}
-	}
-
-	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, mc.EnvironmentName)
-	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
-}
-
-func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, applicationName string) error {
-	// We don't have a guarantee that the application name is the same
-	// as the k8s resource name, so we have to filter on the client.
-	applications := radiusv1alpha3.ApplicationList{}
-	err := mc.Client.List(ctx, &applications, &client.ListOptions{
-		Namespace: mc.Namespace,
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, item := range applications.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
-			err = mc.Client.Delete(ctx, &item, &client.DeleteOptions{})
-			if err != nil {
-				return err
-			}
-
-			err = mc.deleteComponentsInApplication(ctx, applicationName)
-			return err
-		}
-	}
-
-	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, mc.EnvironmentName)
-	return radclient.NewRadiusError("ResourceNotFound", errorMessage)
-}
-
-func (mc *KubernetesManagementClient) ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error) {
-	components := radiusv1alpha3.ResourceList{}
-	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
-	if err != nil {
-		return nil, err
-	}
-
-	converted := []*radclient.ComponentResource{}
-	for _, item := range components.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
-			component, err := ConvertK8sResourceToARM(item)
-			if err != nil {
-				return nil, err
-			}
-
-			converted = append(converted, component)
-		}
-	}
-
-	if len(converted) == 0 {
-		errorMessage := fmt.Sprintf("Applications not found in environment '%s'", mc.EnvironmentName)
-		return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
-	}
-
-	return &radclient.ComponentList{Value: converted}, nil
-}
-
-func (mc *KubernetesManagementClient) ShowComponent(ctx context.Context, applicationName string, componentName string) (*radclient.ComponentResource, error) {
-	// We don't have a guarantee that the component name is the same
-	// as the k8s resource name, so we have to filter on the client.
-	components := radiusv1alpha3.ResourceList{}
-	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, item := range components.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName &&
-			item.Annotations[kubernetes.LabelRadiusResource] == componentName {
-			component, err := ConvertK8sResourceToARM(item)
-			if err != nil {
-				return nil, err
-			}
-
-			return component, nil
-		}
-	}
-
-	errorMessage := fmt.Sprintf("Component '%s' not found in application '%s' and environment '%s'", componentName, applicationName, mc.EnvironmentName)
-	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
-}
-
-func (mc *KubernetesManagementClient) deleteComponentsInApplication(ctx context.Context, applicationName string) error {
-	components := radiusv1alpha3.ResourceList{}
-	err := mc.Client.List(ctx, &components, &client.ListOptions{Namespace: mc.Namespace})
-	if err != nil {
-		return err
-	}
-
-	for _, item := range components.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
-			err = mc.Client.Delete(ctx, &item, &client.DeleteOptions{})
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (mc *KubernetesManagementClient) DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error {
-	// We don't have a guarantee that the deployment name is the same
-	// as the k8s resource name, so we have to filter on the client.
-	deployments := bicepv1alpha3.DeploymentTemplateList{}
-	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
-	if err != nil {
-		return err
-	}
-
-	for _, item := range deployments.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName &&
-			item.Annotations["radius.dev/deployment"] == deploymentName {
-			err = mc.Client.Delete(ctx, &item)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		}
-	}
-
-	errorMessage := fmt.Sprintf("Deployment '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
-	return radclient.NewRadiusError("ResourceNotFound", errorMessage)
-}
-
-func (mc *KubernetesManagementClient) ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error) {
-	deployments := bicepv1alpha3.DeploymentTemplateList{}
-	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
-	if err != nil {
-		return nil, err
-	}
-
-	converted := []*radclient.DeploymentResource{}
-	for _, item := range deployments.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName {
-			deployment, err := ConvertK8sDeploymentToARM(item)
-			if err != nil {
-				return nil, err
-			}
-
-			converted = append(converted, deployment)
-		}
-	}
-
-	if len(converted) == 0 {
-		errorMessage := fmt.Sprintf("Deployments not found in application '%s' and environment '%s'", applicationName, mc.EnvironmentName)
-		return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
-	}
-
-	return &radclient.DeploymentList{Value: converted}, nil
-}
-
-func (mc *KubernetesManagementClient) ShowDeployment(ctx context.Context, applicationName string, deploymentName string) (*radclient.DeploymentResource, error) {
-	// We don't have a guarantee that the deployment name is the same
-	// as the k8s resource name, so we have to filter on the client.
-	deployments := bicepv1alpha3.DeploymentTemplateList{}
-	err := mc.Client.List(ctx, &deployments, &client.ListOptions{Namespace: mc.Namespace})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, item := range deployments.Items {
-		if item.Annotations[kubernetes.LabelRadiusApplication] == applicationName &&
-			item.Annotations["radius.dev/deployment"] == deploymentName {
-			deployment, err := ConvertK8sDeploymentToARM(item)
-			if err != nil {
-				return nil, err
-			}
-
-			return deployment, nil
-		}
-	}
-
-	errorMessage := fmt.Sprintf("Deployment '%s' not found in application '%s' environment '%s'", deploymentName, applicationName, mc.EnvironmentName)
-	return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
-}
-
-// V3 API.
-func (mc *KubernetesManagementClient) ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error) {
-	applications := radiusv1alpha3.ApplicationList{}
-	err := mc.Client.List(ctx, &applications, &client.ListOptions{Namespace: mc.Namespace})
-	if err != nil {
-		return nil, err
-	}
-
-	converted := []*radclientv3.ApplicationResource{}
-	for _, item := range applications.Items {
-		application, err := ConvertK8sApplicationToARMV3(item)
-		if err != nil {
-			return nil, err
-		}
-
-		converted = append(converted, application)
-	}
-
-	if len(converted) == 0 {
-		errorMessage := fmt.Sprintf("Applications not found in environment '%s'", mc.EnvironmentName)
-		return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
-	}
-
-	return &radclientv3.ApplicationList{Value: converted}, nil
-}
-
-func (mc *KubernetesManagementClient) ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error) {
 	application, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
 		return nil, err
 	}
-	return ConvertK8sApplicationToARMV3(*application)
+	return ConvertK8sApplicationToARM(*application)
 }
 
-func (mc *KubernetesManagementClient) DeleteApplicationV3(ctx context.Context, applicationName string) error {
+func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, applicationName string) error {
 	application, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
 		return err
@@ -326,7 +100,7 @@ func (mc *KubernetesManagementClient) listAllRadiusCRDs(ctx context.Context) ([]
 		if crd.Spec.Group != radiusv1alpha3.GroupVersion.Group {
 			continue
 		}
-		if crd.Spec.Names.Kind == schemav3.ApplicationResourceType {
+		if crd.Spec.Names.Kind == radschema.ApplicationResourceType {
 			continue
 		}
 		for _, version := range crd.Spec.Versions {
@@ -339,7 +113,7 @@ func (mc *KubernetesManagementClient) listAllRadiusCRDs(ctx context.Context) ([]
 	return results, nil
 }
 
-func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (*radclientv3.RadiusResourceList, error) {
+func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (*radclient.RadiusResourceList, error) {
 	// First check that the application exist
 	_, err := mc.mustGetApplication(ctx, applicationName)
 	if err != nil {
@@ -361,7 +135,7 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 		FieldSelector: labels.SelectorFromSet(labels.Set(fieldSelector)).String(),
 		LabelSelector: labels.SelectorFromSet(labels.Set(labelSelector)).String(),
 	}
-	results := []*radclientv3.RadiusResource{}
+	results := []*radclient.RadiusResource{}
 	for _, crd := range crds {
 		resourceClient := mc.DynamicClient.Resource(schema.GroupVersionResource{
 			Group:    radiusv1alpha3.GroupVersion.Group,
@@ -373,17 +147,17 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 			return nil, err
 		}
 		for _, item := range list.Items {
-			resource, err := ConvertK8sResourceToARMV3(item)
+			resource, err := ConvertK8sResourceToARM(item)
 			if err != nil {
 				return nil, err
 			}
 			results = append(results, resource)
 		}
 	}
-	return &radclientv3.RadiusResourceList{Value: results}, nil
+	return &radclient.RadiusResourceList{Value: results}, nil
 }
 
-func (mc *KubernetesManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error) {
+func (mc *KubernetesManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error) {
 	return mc.listAllResourcesByApplication(ctx, applicationName, "", "")
 }
 
@@ -395,14 +169,14 @@ func (mc *KubernetesManagementClient) ShowResource(ctx context.Context, appName 
 	if len(results.Value) == 0 {
 		errorMessage := fmt.Sprintf("Resource '%s/%s' not found in application %q and environment %q",
 			resourceType, resourceName, appName, mc.EnvironmentName)
-		return nil, radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
+		return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
 	}
 	return results.Value[0], nil
 }
 
-func (mc *KubernetesManagementClient) appV3NotFoundError(applicationName string) error {
+func (mc *KubernetesManagementClient) appNotFoundError(applicationName string) error {
 	errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, mc.EnvironmentName)
-	return radclientv3.NewRadiusError("ResourceNotFound", errorMessage)
+	return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 }
 
 // mustGetApplication will return a ResourceNotFound error if no application is found.
@@ -418,7 +192,7 @@ func (mc *KubernetesManagementClient) mustGetApplication(ctx context.Context, ap
 		return nil, err
 	}
 	if len(applications.Items) == 0 {
-		return nil, mc.appV3NotFoundError(applicationName)
+		return nil, mc.appNotFoundError(applicationName)
 	}
 	return &applications.Items[0], nil
 }

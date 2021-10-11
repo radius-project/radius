@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Dapr sidecar Trait"
+title: "Dapr Sidecar Trait"
 linkTitle: "Dapr Trait"
 description: "Learn how to add a Dapr sidecar with a Dapr trait"
 weight: 100
@@ -9,7 +9,7 @@ slug: "trait"
 
 ## Overview
 
-The `dapr.io/App` trait adds and configures a Dapr sidecar to your application.
+The `dapr.io/Sidecar` trait adds and configures a Dapr sidecar to your application.
 
 ## Trait format
 
@@ -21,8 +21,9 @@ In this example, a [container Component]({{< ref container >}}) adds a Dapr trai
 
 | Property | Required | Description | Example |
 |----------|:--------:|-------------|---------|
-| appId | n | The appId of the Dapr sidecar | `backend` |
+| appId | n | The appId of the Dapr sidecar. Will use the value of an attached [Route]({{< ref dapr-http >}}) if present. | `backend` |
 | appPort | n | The port your Component exposes to Dapr | `3500`
+| provides | n | The [Dapr Route]({{< ref dapr-http >}}) provided by the Trait | `daprHttp.id`
 
 ## Component compatibility
 

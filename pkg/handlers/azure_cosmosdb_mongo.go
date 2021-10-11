@@ -35,7 +35,7 @@ type azureCosmosDBMongoHandler struct {
 }
 
 func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
+	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
 	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBDatabaseIDKey)
@@ -79,13 +79,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 }
 
 func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	var properties map[string]string
-	if options.ExistingOutputResource == nil {
-		properties = options.Existing.Properties
-	} else {
-		properties = options.ExistingOutputResource.PersistedProperties
-	}
-
+	properties := options.ExistingOutputResource.PersistedProperties
 	if properties[ManagedKey] != "true" {
 		// User managed resources aren't deleted by radius, skip this step.
 		return nil
@@ -130,7 +124,7 @@ func (handler *azureCosmosDBMongoHandler) CreateDatabase(ctx context.Context, ac
 				},
 			},
 		},
-		Tags: keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+		Tags: keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to PUT cosmosdb database: %w", err)

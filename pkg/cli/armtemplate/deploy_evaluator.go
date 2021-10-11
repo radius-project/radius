@@ -21,6 +21,8 @@ type DeploymentEvaluator struct {
 	Deployed  map[string]map[string]interface{}
 	Variables map[string]interface{}
 
+	CustomActionCallback func(id string, apiVersion string, action string, payload interface{}) (interface{}, error)
+
 	// Intermediate expression evaluation state
 	Value interface{}
 }
@@ -174,12 +176,48 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 		args = append(args, eva.Value)
 	}
 
-	if name == "format" {
+	if strings.HasPrefix(name, "list") {
+		if len(args) < 2 {
+			return fmt.Errorf("at least 2 arguments are required for %s", name)
+		}
+
+		result, err := eva.EvaluateCustomAction(name, args)
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
+		return nil
+	} else if name == "createObject" {
+		if len(args)%2 != 0 {
+			return fmt.Errorf("an even number of arguments is required for %s", "createObject")
+		}
+
+		result, err := eva.EvaluateCreateObject(args)
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
+		return nil
+	} else if name == "format" {
 		if len(args) < 1 {
 			return fmt.Errorf("at least 1 argument is required for %s", "format")
 		}
 
 		eva.Value = eva.EvaluateFormat(args[0], args[1:])
+		return nil
+	} else if name == "parameters" {
+		if len(args) != 1 {
+			return fmt.Errorf("exactly 1 argument is required for %s", "parameter")
+		}
+
+		result, err := eva.EvaluateParameter(args[0].(string))
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
 		return nil
 	} else if name == "reference" {
 		if len(args) != 1 {
@@ -229,11 +267,73 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 	}
 }
 
+func (eva *DeploymentEvaluator) EvaluateCustomAction(name string, values []interface{}) (interface{}, error) {
+
+	id, ok := values[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("resource id must be a string, was: %v", values[0])
+	}
+
+	apiVersion, ok := values[1].(string)
+	if !ok {
+		return nil, fmt.Errorf("API Version must be a string, was: %v", values[1])
+	}
+
+	var body interface{}
+	if len(values) == 3 {
+		body = values[2]
+	}
+
+	if eva.CustomActionCallback == nil {
+		return nil, errors.New("custom actions are not supported by this host")
+	}
+
+	return eva.CustomActionCallback(id, apiVersion, name, body)
+}
+
+func (eva *DeploymentEvaluator) EvaluateCreateObject(values []interface{}) (map[string]interface{}, error) {
+	result := map[string]interface{}{}
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("key must be a string, was: %v", values[i])
+		}
+
+		result[key] = values[i+1]
+	}
+
+	return result, nil
+}
+
 func (eva *DeploymentEvaluator) EvaluateFormat(format interface{}, values []interface{}) string {
 	r := regexp.MustCompile(`\{\d+\}`)
 	format = r.ReplaceAllString(format.(string), "%v")
 
 	return fmt.Sprintf(format.(string), values...)
+}
+
+func (eva *DeploymentEvaluator) EvaluateParameter(name string) (interface{}, error) {
+	parameter, ok := eva.Options.Parameters[name]
+	if ok {
+		value, ok := parameter["value"]
+		if !ok {
+			return nil, fmt.Errorf("parameter %q has no value", name)
+		}
+
+		return value, nil
+	}
+
+	parameter, ok = eva.Template.Parameters[name]
+	if ok {
+		value, ok := parameter["defaultValue"]
+		if !ok {
+			return nil, fmt.Errorf("parameter %q has no default value", name)
+		}
+
+		return value, nil
+	}
+
+	return nil, fmt.Errorf("parameter %q is not defined by the template", name)
 }
 
 func (eva *DeploymentEvaluator) EvaluateReference(id interface{}) (map[string]interface{}, error) {

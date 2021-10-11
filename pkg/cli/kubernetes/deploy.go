@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 
 	"github.com/Azure/radius/pkg/cli/armtemplate"
+	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +23,7 @@ type KubernetesDeploymentClient struct {
 	Namespace string
 }
 
-func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) error {
+func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string, parameters clients.DeploymentParameters) error {
 	kind := "DeploymentTemplate"
 
 	// Unmarhsal the content into a deployment template
@@ -39,6 +40,11 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 		return err
 	}
 
+	parameterData, err := json.Marshal(parameters)
+	if err != nil {
+		return err
+	}
+
 	deployment := bicepv1alpha3.DeploymentTemplate{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "bicep.dev/v1alpha3",
@@ -49,7 +55,8 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, content string) 
 			Namespace:    c.Namespace,
 		},
 		Spec: bicepv1alpha3.DeploymentTemplateSpec{
-			Content: &runtime.RawExtension{Raw: data},
+			Content:    &runtime.RawExtension{Raw: data},
+			Parameters: &runtime.RawExtension{Raw: parameterData},
 		},
 	}
 

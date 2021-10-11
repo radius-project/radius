@@ -1,0 +1,3 @@
+(root).id: Invalid type. Expected: string, given: integer
+(root).name: Invalid type. Expected: string, given: integer
+(root).properties: Additional property additional is not allowed

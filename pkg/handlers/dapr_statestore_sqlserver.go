@@ -52,14 +52,14 @@ type daprStateStoreSQLServerHandler struct {
 }
 
 func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
+	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	location, err := clients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
 		return nil, err
 	}
 
-	dbName := properties[ComponentNameKey]
+	dbName := properties[ResourceName]
 
 	// Generate password
 	passwordConditions := &PasswordConditions{16, 2, 1, 1}
@@ -98,7 +98,7 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 			"metadata": map[string]interface{}{
 				"name":      properties[KubernetesNameKey],
 				"namespace": properties[KubernetesNamespaceKey],
-				"labels":    kubernetes.MakeDescriptiveLabels(options.Application, options.Component),
+				"labels":    kubernetes.MakeDescriptiveLabels(options.ApplicationName, options.ResourceName),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.sqlserver",
@@ -126,13 +126,7 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 }
 
 func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	var properties map[string]string
-	if options.ExistingOutputResource == nil {
-		properties = options.Existing.Properties
-	} else {
-		properties = options.ExistingOutputResource.PersistedProperties
-	}
-
+	properties := options.ExistingOutputResource.PersistedProperties
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],
@@ -150,7 +144,7 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 	}
 
 	serverName := properties[serverNameKey]
-	databaseName := properties[ComponentNameKey]
+	databaseName := properties[ResourceName]
 
 	// Delete database
 	sqlDBClient := clients.NewDatabasesClient(handler.arm.SubscriptionID, handler.arm.Auth)
@@ -218,7 +212,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 	// Create server
 	future, err := sqlServerClient.CreateOrUpdate(ctx, handler.arm.ResourceGroup, serverName, sql.Server{
 		Location: location,
-		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+		Tags:     keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 		ServerProperties: &sql.ServerProperties{
 			AdministratorLogin:         to.StringPtr(dbLogin),
 			AdministratorLoginPassword: to.StringPtr(password),
@@ -251,7 +245,7 @@ func (handler *daprStateStoreSQLServerHandler) createSQLDB(ctx context.Context, 
 		dbName,
 		sql.Database{
 			Location: location,
-			Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+			Tags:     keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 		})
 	if err != nil {
 		return sql.Database{}, fmt.Errorf("failed to create sql database: %w", err)

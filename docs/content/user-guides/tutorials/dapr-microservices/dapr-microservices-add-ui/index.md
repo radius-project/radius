@@ -15,10 +15,10 @@ Again, we'll discuss changes to template.bicep and then provide the full, update
 
 Another container component is used to specify a few properties about the order generator:
 
-- **kind**: `ContainerComponent` indicates you are using a generic container.
-- **container image**: radius.azurecr.io/daprtutorial-frontend` is a Docker image the container will run.
-- **connections**: `invoke.id` declares the intention for `frontend` to communicate with `backend` through the `invoke` Dapr service invocation Route.
-- **traits**: `dapr.io/App` configures Dapr on the container.
+- **resource type**: `ContainerComponent` indicates you are using a generic container.
+- **container image**: `radius.azurecr.io/daprtutorial-frontend` is a Docker image the container will run.
+- **connections**: `backendDapr.id` declares the intention for `frontend` to communicate with `backend` through the `backendDapr` Dapr HTTP Route.
+- **traits**: `dapr.io/Sidecar` configures Dapr on the container.
 
 {{< rad file="snippets/app.bicep" marker="//FRONTEND" embed=true >}}
   
@@ -37,7 +37,7 @@ Another container component is used to specify a few properties about the order 
 1. To test out the frontend microservice, open a local tunnel on port 80:
 
    ```sh
-   rad component expose frontend --application dapr-tutorial --port 5000 --remote-port 80
+   rad resource expose frontend --application dapr-tutorial --port 5000 --remote-port 80
    ```
 
 1. Visit [http://localhost:5000](http://localhost:5000) in your browser and submit orders.

@@ -15,7 +15,7 @@
             "app.kubernetes.io/part-of": "azure-resources-container-httpbinding",
             "app.kubernetes.io/managed-by": "radius-rp"
         },
-        "name": "backend",
+        "name": "azure-resources-container-httpbinding-backend",
         "namespace": "default"
     },
     "spec": {
@@ -37,7 +37,7 @@
                         "ports": {
                             "web": {
                                 "containerPort": 81,
-                                "provides": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'backend')]"
+                                "provides": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))]"
                             }
                         }
                     }

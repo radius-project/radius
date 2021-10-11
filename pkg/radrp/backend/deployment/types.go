@@ -20,6 +20,8 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/go-openapi/jsonpointer"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/Azure/radius/pkg/radrp/backend/deployment github.com/Azure/radius/pkg/radrp/backend/deployment DeploymentProcessor
@@ -30,28 +32,120 @@ type DeploymentProcessor interface {
 
 	Deploy(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error
 	Delete(ctx context.Context, id azresources.ResourceID, resource db.RadiusResource) error
+	FetchSecrets(ctx context.Context, id azresources.ResourceID, resource db.RadiusResource) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModelV3, db db.RadrpDB, healthChannels *healthcontract.HealthChannels, secretClient renderers.SecretValueClient) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, db db.RadrpDB, healthChannels *healthcontract.HealthChannels, secretClient renderers.SecretValueClient) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, db: db, healthChannels: healthChannels, secretClient: secretClient}
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 
 type deploymentProcessor struct {
-	appmodel       model.ApplicationModelV3
+	appmodel       model.ApplicationModel
 	db             db.RadrpDB
 	healthChannels *healthcontract.HealthChannels
 	secretClient   renderers.SecretValueClient
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldOperationID, operationID.ID,
-	)
-
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, operationID.ID)
 	resourceID := operationID.Truncate()
 
+	// Render
+	rendererOutput, armerr, err := dp.renderResource(ctx, resourceID, resource)
+	if err != nil {
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+		return err
+	}
+
+	// Deploy
+	logger.Info(fmt.Sprintf("Deploying radius resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
+	deployedRadiusResource, armerr, err := dp.deployRenderedResources(ctx, resourceID, resource, rendererOutput)
+	if err != nil {
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+		return err
+	}
+
+	// Persist updated/created resource and operation in the database
+	err = dp.db.UpdateV3ResourceStatus(ctx, resourceID, deployedRadiusResource)
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+		return err
+	}
+
+	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
+
+	return nil
+}
+
+func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, operationID.ID)
+	resourceID := operationID.Truncate()
+
+	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
+	deployedOutputResources := resource.Status.OutputResources
+	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
+		outputResource := deployedOutputResources[i]
+		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
+		if err != nil {
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+			return err
+		}
+
+		logger.Info(fmt.Sprintf("Deleting output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
+		err = resourceHandlers.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
+			Application:            resource.ApplicationName,
+			ResourceName:              resource.ResourceGroup,
+			ExistingOutputResource: &outputResource,
+		})
+		if err != nil {
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+			return err
+		}
+
+		healthResource := healthcontract.HealthResource{
+			ResourceKind:     outputResource.ResourceKind,
+			Identity:         outputResource.Identity,
+			RadiusResourceID: resource.ID,
+		}
+		dp.unregisterOutputResourceForHealthChecks(ctx, healthResource)
+	}
+
+	// Update resource and operation in the database
+	err := dp.db.DeleteV3Resource(ctx, resourceID)
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+		return err
+	}
+
+	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
+
+	return nil
+}
+
+func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource) (renderers.RendererOutput, *armerrors.ErrorDetails, error) {
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
 	renderer, err := dp.appmodel.LookupRenderer(resourceID.Types[len(resourceID.Types)-1].Type) // Using the last type segment as key
 	if err != nil {
@@ -60,8 +154,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
+		return renderers.RendererOutput{}, armerr, err
 	}
 
 	// Build inputs for renderer
@@ -80,8 +173,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
+		return renderers.RendererOutput{}, armerr, err
 	}
 
 	rendererDependencies, err := dp.fetchDepenendencies(ctx, dependencyResourceIDs)
@@ -91,11 +183,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
+		return renderers.RendererOutput{}, armerr, err
 	}
 
-	// Render - output resources to be deployed for the radius resource
 	rendererOutput, err := renderer.Render(ctx, rendererResource, rendererDependencies)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
@@ -103,9 +193,17 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
+		return renderers.RendererOutput{}, armerr, err
 	}
+
+	return rendererOutput, nil, nil
+}
+
+// Deploys rendered output resources in order of dependencies
+// returns deployedRadiusResource - updated radius resource state that should be persisted in the database
+func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource, rendererOutput renderers.RendererOutput) (db.RadiusResource, *armerrors.ErrorDetails, error) {
+	logger := radlogger.GetLogger(ctx)
+
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
@@ -114,28 +212,25 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
+		return db.RadiusResource{}, armerr, err
 	}
 
-	// Get existing state of the resource from database, if it's an existing resource
+	// Get current state of the resource from database, if it's an existing resource
 	existingDBResource, err := dp.db.GetV3Resource(ctx, resourceID)
 	if err == db.ErrNotFound {
 		// no-op - a resource will only exist if this is an update
 	} else if err != nil {
 		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
+			Code:    armerrors.Internal,
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
+		return db.RadiusResource{}, armerr, err
 	}
 	existingDBOutputResources := existingDBResource.Status.OutputResources
 
-	// Deploy and update the radius resource
-	dbOutputResources := []db.OutputResource{}
-	// values consumed by other Radius resource types through connections
+	deployedOutputResources := []db.OutputResource{}
+	// Values consumed by other Radius resource types through connections
 	computedValues := map[string]interface{}{}
 	// Map of localID to properties deployed for each output resource. Consumed by handler of any output resource with dependencies on other output resources
 	// Example - CosmosDBAccountName consumed by CosmosDBMongo/SQL handler
@@ -158,13 +253,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 				Message: err.Error(),
 				Target:  resourceID.ID,
 			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return err
+			return db.RadiusResource{}, armerr, err
 		}
 
 		properties, err := resourceHandlers.ResourceHandler.Put(ctx, &handlers.PutOptions{
-			Application:            resource.ApplicationName,
-			Component:              resource.ResourceName,
+			ApplicationName:            resource.ApplicationName,
+			ResourceName:              resource.ResourceName,
 			Resource:               &outputResource,
 			ExistingOutputResource: &existingOutputResourceState,
 			DependencyProperties:   deployedOutputResourceProperties,
@@ -175,25 +269,52 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 				Message: err.Error(),
 				Target:  resourceID.ID,
 			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return err
+			return db.RadiusResource{}, armerr, err
 		}
 		deployedOutputResourceProperties[outputResource.LocalID] = properties
 
 		if outputResource.Identity.Kind == "" {
+			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
 				Message: err.Error(),
 				Target:  resourceID.ID,
 			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler. ", outputResource.LocalID)
+			return db.RadiusResource{}, armerr, err
 		}
 
 		// Copy deployed output resource property values into corresponding expected computed values
 		for k, v := range rendererOutput.ComputedValues {
-			if outputResource.LocalID == v.LocalID {
+			// A computed value might be a reference to a 'property' returned in preserved properties
+			if outputResource.LocalID == v.LocalID && v.PropertyReference != "" {
 				computedValues[k] = properties[v.PropertyReference]
+				continue
+			}
+
+			// A computed value might be a 'pointer' into the deployed resource
+			if outputResource.LocalID == v.LocalID && v.JSONPointer != "" {
+				pointer, err := jsonpointer.New(v.JSONPointer)
+				if err != nil {
+					err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
+					armerr := &armerrors.ErrorDetails{
+						Code:    armerrors.Internal,
+						Message: err.Error(),
+						Target:  resourceID.ID,
+					}
+					return db.RadiusResource{}, armerr, err
+				}
+
+				value, _, err := pointer.Get(outputResource.Resource)
+				if err != nil {
+					err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
+					armerr := &armerrors.ErrorDetails{
+						Code:    armerrors.Internal,
+						Message: err.Error(),
+						Target:  resourceID.ID,
+					}
+					return db.RadiusResource{}, armerr, err
+				}
+				computedValues[k] = value
 			}
 		}
 
@@ -218,7 +339,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 				ProvisioningErrorDetails: "",
 			},
 		}
-		dbOutputResources = append(dbOutputResources, dbOutputResource)
+		deployedOutputResources = append(deployedOutputResources, dbOutputResource)
 	}
 
 	// Update static values for connections
@@ -228,12 +349,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		}
 	}
 
-	// Persist updated/created resource in the database
 	resourceStatus := db.RadiusResourceStatus{
 		ProvisioningState: db.Provisioned,
-		OutputResources:   dbOutputResources,
+		OutputResources:   deployedOutputResources,
 	}
-	updatedRadiusResource := db.RadiusResource{
+	deployedRadiusResource := db.RadiusResource{
 		ID:              resource.ID,
 		Type:            resource.Type,
 		SubscriptionID:  resource.SubscriptionID,
@@ -250,85 +370,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		ProvisioningState: string(rest.SuccededStatus),
 	}
 
-	err = dp.db.UpdateV3ResourceStatus(ctx, resourceID, updatedRadiusResource)
-	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Internal,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
-	}
-
-	// Update operation
-	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
-
-	return nil
-}
-
-func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldOperationID, operationID.ID,
-	)
-
-	resourceID := operationID.Truncate()
-
-	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
-	deployedOutputResources := resource.Status.OutputResources
-	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
-		outputResource := deployedOutputResources[i]
-		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
-		if err != nil {
-			armerr := &armerrors.ErrorDetails{
-				Code:    armerrors.Invalid,
-				Message: err.Error(),
-				Target:  resourceID.ID,
-			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return err
-		}
-
-		logger.Info(fmt.Sprintf("Deleting output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
-		err = resourceHandlers.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
-			Application:            resource.ApplicationName,
-			Component:              resource.ResourceGroup,
-			ExistingOutputResource: &outputResource,
-		})
-		if err != nil {
-			armerr := &armerrors.ErrorDetails{
-				Code:    armerrors.Internal,
-				Message: err.Error(),
-				Target:  resourceID.ID,
-			}
-			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-			return err
-		}
-
-		healthResource := healthcontract.HealthResource{
-			ResourceKind:     outputResource.ResourceKind,
-			Identity:         outputResource.Identity,
-			RadiusResourceID: resource.ID,
-		}
-		dp.unregisterOutputResourceForHealthChecks(ctx, healthResource)
-	}
-
-	// Delete resource from database
-	err := dp.db.DeleteV3Resource(ctx, resourceID)
-	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Internal,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
-		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
-		return err
-	}
-
-	// Update operation
-	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
-
-	return nil
+	return deployedRadiusResource, nil, nil
 }
 
 func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) {
@@ -388,6 +430,11 @@ func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependen
 			return nil, fmt.Errorf("failed to fetch dependency resource %q: %w", dependencyResourceID.ID, err)
 		}
 
+		dependencyOutputResources := map[string]resourcemodel.ResourceIdentity{}
+		for _, outputResource := range dbDependencyResource.Status.OutputResources {
+			dependencyOutputResources[outputResource.LocalID] = outputResource.Identity
+		}
+
 		// We already have all of the computed values (stored in our database), but we need to look secrets
 		// (not stored in our database) and add them to the computed values.
 		computedValues := map[string]interface{}{}
@@ -395,37 +442,79 @@ func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependen
 			computedValues[k] = v
 		}
 
-		rendererDependency := renderers.RendererDependency{
-			ResourceID:     dependencyResourceID,
-			Definition:     dbDependencyResource.Definition,
-			ComputedValues: computedValues,
+		secretValues, err := dp.FetchSecrets(ctx, dependencyResourceID, dbDependencyResource)
+		if err != nil {
+			return nil, err
 		}
 
-		for k, secretReference := range dbDependencyResource.SecretValues {
-			secret, err := dp.fetchSecret(ctx, dbDependencyResource, secretReference)
-			if err != nil {
-				return nil, fmt.Errorf("failed to fetch secret %q of dependency resource %q: %w", k, dependencyResourceID.ID, err)
-			}
+		for k, v := range secretValues {
+			computedValues[k] = v
+		}
 
-			if secretReference.Transformer != "" {
-				transformer, err := dp.appmodel.LookupSecretTransformer(secretReference.Transformer)
-				if err != nil {
-					return nil, err
-				}
-
-				secret, err = transformer.Transform(ctx, rendererDependency, secret)
-				if err != nil {
-					return nil, fmt.Errorf("failed to transform secret %q of dependency resource %q: %W", k, dependencyResourceID.ID, err)
-				}
-			}
-
-			computedValues[k] = secret
+		rendererDependency := renderers.RendererDependency{
+			ResourceID:      dependencyResourceID,
+			Definition:      dbDependencyResource.Definition,
+			ComputedValues:  computedValues,
+			OutputResources: dependencyOutputResources,
 		}
 
 		rendererDependencies[dependencyResourceID.ID] = rendererDependency
 	}
 
 	return rendererDependencies, nil
+}
+
+func convertSecretValues(input map[string]renderers.SecretValueReference) map[string]db.SecretValueReference {
+	output := map[string]db.SecretValueReference{}
+	for k, v := range input {
+		output[k] = db.SecretValueReference{
+			LocalID:       v.LocalID,
+			Action:        v.Action,
+			ValueSelector: v.ValueSelector,
+			Transformer:   v.Transformer,
+		}
+	}
+
+	return output
+}
+
+func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.ResourceID, resource db.RadiusResource) (map[string]interface{}, error) {
+	// We already have all of the computed values (stored in our database), but we need to look secrets
+	// (not stored in our database) and add them to the computed values.
+	computedValues := map[string]interface{}{}
+	for k, v := range resource.ComputedValues {
+		computedValues[k] = v
+	}
+
+	rendererDependency := renderers.RendererDependency{
+		ResourceID:     id,
+		Definition:     resource.Definition,
+		ComputedValues: computedValues,
+	}
+
+	secretValues := map[string]interface{}{}
+	for k, secretReference := range resource.SecretValues {
+		secret, err := dp.fetchSecret(ctx, resource, secretReference)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch secret %q of dependency resource %q: %w", k, id.ID, err)
+		}
+
+		if secretReference.Transformer != "" {
+			transformer, err := dp.appmodel.LookupSecretTransformer(secretReference.Transformer)
+			if err != nil {
+				return nil, err
+			}
+
+			secret, err = transformer.Transform(ctx, rendererDependency, secret)
+			if err != nil {
+				return nil, fmt.Errorf("failed to transform secret %q of dependency resource %q: %W", k, id.ID, err)
+			}
+		}
+
+		secretValues[k] = secret
+	}
+
+	return secretValues, nil
 }
 
 func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.RadiusResource, reference db.SecretValueReference) (interface{}, error) {
@@ -443,18 +532,4 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 	}
 
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
-}
-
-func convertSecretValues(input map[string]renderers.SecretValueReference) map[string]db.SecretValueReference {
-	output := map[string]db.SecretValueReference{}
-	for k, v := range input {
-		output[k] = db.SecretValueReference{
-			LocalID:       v.LocalID,
-			Action:        v.Action,
-			ValueSelector: v.ValueSelector,
-			Transformer:   v.Transformer,
-		}
-	}
-
-	return output
 }

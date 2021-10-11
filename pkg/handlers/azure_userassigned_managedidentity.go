@@ -38,7 +38,7 @@ type azureUserAssignedManagedIdentityHandler struct {
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
-	properties := mergeProperties(*options.Resource, options.Existing, options.ExistingOutputResource)
+	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	rgLocation, err := clients.GetResourceGroupLocation(ctx, handler.arm)
 	if err != nil {
@@ -49,7 +49,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	msiClient := clients.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	identity, err := msiClient.CreateOrUpdate(context.Background(), handler.arm.ResourceGroup, identityName, msi.Identity{
 		Location: to.StringPtr(*rgLocation),
-		Tags:     keys.MakeTagsForRadiusComponent(options.Application, options.Component),
+		Tags:     keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user assigned managed identity: %w", err)
@@ -62,7 +62,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 
 	logger.WithValues(
 		radlogger.LogFieldResourceID, *identity.ID,
-		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentityKV).Info("Created managed identity for KeyVault access")
+		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")
 
 	return properties, nil
 }

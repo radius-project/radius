@@ -150,19 +150,19 @@ The application model is represented in Bicep as a set of ARM-like types. They a
 For example:
 
 ```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   ...
 }
 ```
 
-An ARM type would have a name/version like `Microsoft.Radius/applications@2020-01-01`. 
+An ARM type would have a name/version like `Microsoft.Radius/application@2020-01-01`. 
 
 {{% alert title="🚀 Future State 🚀" color="success" %}}
 We make sure of several ARM-isms today but it's likely we'll gain further distance as we embrace Kubernetes more.
 
 For example our objects allow users to set all of the top-level ARM resource properties, and additionally wrap all of our data in a `properties` node. We'll remove this in the future to simplify the authoring experience and ensure that we're neither coupled to ARM or Kubernetes.
 
-When we create a production resource provider as part of a service, it will likely reflect the Microsoft-branded nature of such a service (`Microsoft.Radius/applications@2020-01-01`). Similarly in Kubernetes, our resources will be represented as CRDs that follow all of the related conventions.
+When we create a production resource provider as part of a service, it will likely reflect the Microsoft-branded nature of such a service (`Microsoft.Radius/application@2020-01-01`). Similarly in Kubernetes, our resources will be represented as CRDs that follow all of the related conventions.
 
 This translation needs to occur at the Bicep compiler level. We need to build in a plugin that understands the Radius types and can convert them to the appropriate output type for the destination hosting platform. It is important that this happens in the Bicep compiler so that it interoperates successfully with the other primitives.
 
@@ -170,14 +170,12 @@ Example user-facing representation (Future):
 
 
 ```sh
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'app'
-  resource website 'Components' = {
+  resource website 'ContainerComponent' = {
     name: 'website'
-    run: {
-      container: {
-        image: 'radiusteam/mywebsite:latest'
-      }
+    container: {
+      image: 'radiusteam/mywebsite:latest'
     }
   }
 }
@@ -189,24 +187,22 @@ Translated to ARM:
 {
   "resources": [
     {
-      "type": "Microsoft.Radius/applications",
+      "type": "Microsoft.Radius/application",
       "apiVersion": "2020-01-01",
       "name": "app",
       "properties": {
       }
     },
     {
-      "type": "Microsoft.Radius/applications/components",
+      "type": "Microsoft.Radius/application/containerComponent",
       "apiVersion": "2020-01-01",
       "name": "website",
       "dependsOn": [
         "[resourceId(....)]"
       ],
       "properties": {
-        "run": {
-          "container": {
-            "image": "radiusteam/mywebsite:latest"
-          }
+        "container": {
+          "image": "radiusteam/mywebsite:latest"
         }
       }
     }
@@ -221,7 +217,7 @@ Translated to Kubernetes:
   "resources": [
     {
       "kind": "Application",
-      "apiVersion": "radius.dev/v1alpha1",
+      "apiVersion": "radius.dev/v1alpha3",
       "metadata": {
         "name": "app",
         "namespace": "mynamespace",
@@ -231,21 +227,19 @@ Translated to Kubernetes:
       }
     },
     {
-      "kind": "Component",
-      "apiVersion": "radius.dev/v1alpha1",
+      "kind": "ContainerComponent",
+      "apiVersion": "radius.dev/v1alpha3",
       "metadata": {
         "name": "app-website",
         "namespace": "mynamespace",
         "annotations": {
           "radius.dev/application": "app",
-          "radius.dev/component": "website"
+          "radius.dev/resource": "website"
         }
       },
       "spec": {
-        "run": {
-          "container": {
-            "image": "radiusteam/mywebsite:latest"
-          }
+        "container": {
+          "image": "radiusteam/mywebsite:latest"
         }
       }
     }
@@ -253,14 +247,14 @@ Translated to Kubernetes:
 }
 ```
 
-Application model features (Components, Bindings, Scopes, Traits) must be defined with JSON schemas so that consistent validation and parsing can be performed across all of the hosting platforms we support. 
+Application model features (Components, Routes, Scopes, Traits) must be defined with JSON schemas so that consistent validation and parsing can be performed across all of the hosting platforms we support. 
 
 Regardless of the hosting platform the bodies of our types (eg. everything inside `spec` in Kubernetes, everything inside `properties` in ARM will be consistent.) By using schemas to define the defintions we can easily support all of these targets in full fidelty because its just the wrappers that are different. This is important to achieve velocity because we will support a large number of these types and want to make authoring them easy.
 
 {{% /alert %}}
 
 {{% alert title="🚧 Under Construction 🚧" color="info" %}}
-We currently do a translation of types but not of structure in the Bicep compiler. We code-generate different ARM types for our output like `radius.dev/Applications` -> `Microsoft.CustomProviders/provider/Applications`.
+We currently do a translation of types but not of structure in the Bicep compiler. We code-generate different ARM types for our output like `radius.dev/Application` -> `Microsoft.CustomProviders/provider/Application`.
 
 We do not currently perform any translation of the structure of the output.
 {{% /alert %}}

@@ -29,6 +29,7 @@ rad.exe
 
 .vscode/
 .DS_Store
+.idea/
 creds.json
 __debug_bin
 __debug_bin.exe

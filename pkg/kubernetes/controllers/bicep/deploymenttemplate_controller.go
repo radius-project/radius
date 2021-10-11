@@ -7,22 +7,28 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // DeploymentTemplateReconciler reconciles a Arm object
@@ -65,9 +71,18 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
+	parameters := map[string]map[string]interface{}{}
+	if arm.Spec.Parameters != nil {
+		err = json.Unmarshal(arm.Spec.Parameters.Raw, &parameters)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	options := armtemplate.TemplateOptions{
 		SubscriptionID: "kubernetes",
 		ResourceGroup:  req.Namespace,
+		Parameters:     parameters,
 	}
 	resources, err := armtemplate.Eval(template, options)
 	if err != nil {
@@ -82,6 +97,10 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		Options:   options,
 		Deployed:  deployed,
 		Variables: map[string]interface{}{},
+
+		CustomActionCallback: func(id string, apiVersion string, action string, payload interface{}) (interface{}, error) {
+			return r.InvokeCustomAction(ctx, req.Namespace, id, apiVersion, action, payload)
+		},
 	}
 
 	for name, variable := range template.Variables {
@@ -177,6 +196,74 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *DeploymentTemplateReconciler) InvokeCustomAction(ctx context.Context, namespace string, id string, apiVersion string, action string, payload interface{}) (interface{}, error) {
+	if action != "listSecrets" {
+		return nil, fmt.Errorf("only %q is supported", "listSecrets")
+	}
+
+	// We can ignore ID in this case because it reference to the Radius Custom RP name ('radiusv3')
+	// The resource ID we actually want is inside the payload.
+	type ListSecretsInput = struct {
+		TargetID string `json:"targetID"`
+	}
+
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil, errors.New("failed to read listSecrets payload")
+	}
+
+	input := ListSecretsInput{}
+	err = json.Unmarshal(b, &input)
+	if err != nil {
+		return nil, errors.New("failed to read listSecrets payload")
+	}
+
+	targetID, err := azresources.Parse(input.TargetID)
+	if err != nil {
+		return nil, fmt.Errorf("resource id %q is invalid: %w", id, err)
+	}
+
+	if len(targetID.Types) != 3 {
+		return nil, fmt.Errorf("resource id must refer to a Radius resource, was: %q", id)
+	}
+
+	unst := unstructured.Unstructured{}
+	unst.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "radius.dev",
+		Version: "v1alpha3",
+		Kind:    armtemplate.GetKindFromArmType(targetID.Types[2].Type),
+	})
+
+	err = r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: kubernetes.MakeResourceName(targetID.Types[1].Name, targetID.Types[2].Name)}, &unst)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve resource matching id %q: %w", id, err)
+	}
+
+	resource := radiusv1alpha3.Resource{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, &resource)
+	if err != nil {
+		return nil, err
+	}
+
+	secretValues, err := converters.GetSecretValues(resource.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	secretClient := converters.SecretClient{Client: r.Client}
+	values := map[string]interface{}{}
+	for key, reference := range secretValues {
+		value, err := secretClient.LookupSecretValue(ctx, resource.Status, reference)
+		if err != nil {
+			return nil, err
+		}
+
+		values[key] = value
+	}
+
+	return values, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

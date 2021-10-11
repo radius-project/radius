@@ -23,7 +23,7 @@ type ARMDeploymentClient struct {
 
 var _ clients.DeploymentClient = (*ARMDeploymentClient)(nil)
 
-func (dc *ARMDeploymentClient) Deploy(ctx context.Context, content string) error {
+func (dc *ARMDeploymentClient) Deploy(ctx context.Context, content string, parameters clients.DeploymentParameters) error {
 	template := map[string]interface{}{}
 	err := json.Unmarshal([]byte(content), &template)
 	if err != nil {
@@ -34,7 +34,7 @@ func (dc *ARMDeploymentClient) Deploy(ctx context.Context, content string) error
 	op, err := dc.Client.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Template:   template,
-			Parameters: map[string]interface{}{},
+			Parameters: parameters,
 			Mode:       resources.DeploymentModeIncremental,
 		},
 	})

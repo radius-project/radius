@@ -14,8 +14,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/Azure/radius/test/validation"
 )
 
 const (
@@ -25,23 +23,17 @@ const (
 type CLI struct {
 	T              *testing.T
 	ConfigFilePath string
-	Version        validation.AppModelVersion
 }
 
-func NewCLI(t *testing.T, configFilePath string, version validation.AppModelVersion) *CLI {
+func NewCLI(t *testing.T, configFilePath string) *CLI {
 	return &CLI{
 		T:              t,
 		ConfigFilePath: configFilePath,
-		Version:        version,
 	}
 }
 
-func (cli *CLI) isV3() bool {
-	return cli.Version == validation.AppModelV3
-}
-
 // Deploy runs the rad deploy command.
-func (cli *CLI) Deploy(ctx context.Context, templateFilePath string) error {
+func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters ...string) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
 		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
@@ -51,15 +43,17 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string) error {
 		"deploy",
 		templateFilePath,
 	}
+
+	for _, parameter := range parameters {
+		args = append(args, "--parameters", parameter)
+	}
+
 	_, err := cli.RunCommand(ctx, args)
 	return err
 }
 
 func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
 	command := "application"
-	if cli.isV3() {
-		command = "applicationV3"
-	}
 
 	args := []string{
 		command,
@@ -72,9 +66,6 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (st
 // ApplicationDelete deletes the specified application deployed by Radius.
 func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) error {
 	command := "application"
-	if cli.isV3() {
-		command = "applicationV3"
-	}
 
 	args := []string{
 		command,
@@ -86,56 +77,46 @@ func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) e
 	return err
 }
 
-func (cli *CLI) ComponentShow(ctx context.Context, applicationName string, componentType string, componentName string) (string, error) {
+func (cli *CLI) ResourceShow(ctx context.Context, applicationName string, resourceType string, resourceName string) (string, error) {
 	args := []string{
+		"resource",
 		"show",
 		"-a", applicationName,
-	}
-	if cli.isV3() {
-		args = append(append([]string{"resource"}, args...), componentType, componentName)
-	} else {
-		args = append(append([]string{"resource"}, args...), componentName)
+		resourceType,
+		resourceName,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) ComponentList(ctx context.Context, applicationName string) (string, error) {
-	command := "component"
-	if cli.isV3() {
-		command = "resource"
-	}
+func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (string, error) {
 	args := []string{
-		command,
+		"resource",
 		"list",
 		"-a", applicationName,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) ComponentLogs(ctx context.Context, applicationName string, componentName string) (string, error) {
+func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resourceName string) (string, error) {
 	args := []string{
+		"resource",
 		"logs",
 		"-a", applicationName,
-	}
-	if cli.isV3() {
-		args = append(append([]string{"resource"}, args...), "ContainerComponent", componentName)
-	} else {
-		args = append(append([]string{"component"}, args...), componentName)
+		"ContainerComponent",
+		resourceName,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) ComponentExpose(ctx context.Context, applicationName string, componentName string, localPort int, remotePort int) (string, error) {
+func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, resourceName string, localPort int, remotePort int) (string, error) {
 	args := []string{
+		"resource",
 		"expose",
 		"-a", applicationName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
-	}
-	if cli.isV3() {
-		args = append(append([]string{"resource"}, args...), "ContainerComponent", componentName)
-	} else {
-		args = append(append([]string{"component"}, args...), componentName)
+		"ContainerComponent",
+		resourceName,
 	}
 	return cli.RunCommand(ctx, args)
 }

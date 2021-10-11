@@ -70,7 +70,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 		handlers.KubernetesNamespaceKey:  "test-app",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
-		handlers.ComponentNameKey:        "test-component",
+		handlers.ResourceName:            "test-component",
 	}
 	require.Equal(t, expected, resource.Resource)
 }
@@ -194,7 +194,7 @@ func Test_Render_SQL_Managed_Success(t *testing.T) {
 		handlers.KubernetesNamespaceKey:  "test-app",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
-		handlers.ComponentNameKey:        "test-component",
+		handlers.ResourceName:            "test-component",
 	}
 	require.Equal(t, expected, resource.Resource)
 }
@@ -341,7 +341,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 					"metadata": []interface{}{
 						map[string]interface{}{
 							"name":  "redisHost",
-							"value": "test-component.default.svc.cluster.local:6379",
+							"value": "test-component:6379",
 						},
 						map[string]interface{}{
 							"name":  "redisPassword",

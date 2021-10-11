@@ -36,6 +36,7 @@ A `redislabs.com/Redis` component can be Radius-managed. For more information re
 
 | Property | Description | Example(s) |
 |----------|-------------|------------|
-| `connectionString()` | The Redis connection string used to connect to the redis cache. | `myrediscache.redis.cache.windows.net:6380`, `redis.default.svc.cluster.local:6379`
-| `primaryKey()` | The primary access key for connecting to the redis cache. Can be used for password and can be empty. | `d2Y2ba...`
-| `secondaryKey()` | The secondary access key for connecting to the redis cache. | `d2Y2ba...`
+| `host`  | The Redis host name. | `redis.hello.com`
+| `port` | The Redis port. | `4242`
+| `username` | The username for connecting to the redis cache. |
+| `password()` | The password for connecting to the redis cache. Can be used for password and can be empty. | `d2Y2ba...`

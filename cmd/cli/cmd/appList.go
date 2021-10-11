@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// appListCmd command to list applications deployed in the resource group
+// appListCmd command to list  applications deployed in the resource group
 var appListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists RAD applications",

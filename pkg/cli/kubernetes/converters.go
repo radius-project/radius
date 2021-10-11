@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"strings"
 
-	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/Azure/radius/pkg/kubernetes"
 )
 
@@ -29,24 +27,7 @@ func ConvertK8sApplicationToARM(input radiusv1alpha3.Application) (*radclient.Ap
 	return &result, nil
 }
 
-func ConvertK8sApplicationToARMV3(input radiusv1alpha3.Application) (*radclientv3.ApplicationResource, error) {
-	result := radclientv3.ApplicationResource{}
-	result.Name = to.StringPtr(input.Annotations[kubernetes.LabelRadiusApplication])
-
-	// There's nothing in properties for an application
-	result.Properties = &radclientv3.ApplicationProperties{}
-
-	return &result, nil
-}
-
-func ConvertK8sResourceToARM(input radiusv1alpha3.Resource) (*radclient.ComponentResource, error) {
-	result := radclient.ComponentResource{}
-
-	// TODO fix once we deal with client simplification and have RP changes
-	return &result, nil
-}
-
-func ConvertK8sResourceToARMV3(input unstructured.Unstructured) (*radclientv3.RadiusResource, error) {
+func ConvertK8sResourceToARM(input unstructured.Unstructured) (*radclient.RadiusResource, error) {
 	objRef := fmt.Sprintf("%s/%s/%s", input.GetKind(), input.GetNamespace(), input.GetName())
 	m := input.UnstructuredContent()
 	template, err := mapDeepGetMap(m, "spec", "template")
@@ -68,9 +49,9 @@ func ConvertK8sResourceToARMV3(input unstructured.Unstructured) (*radclientv3.Ra
 	}
 	// It is ok for "properties" to be empty
 	properties, _ := mapDeepGetMap(template, "body", "properties")
-	result := radclientv3.RadiusResource{
-		ProxyResource: radclientv3.ProxyResource{
-			Resource: radclientv3.Resource{
+	result := radclient.RadiusResource{
+		ProxyResource: radclient.ProxyResource{
+			Resource: radclient.Resource{
 				Name: to.StringPtr(nameparts[len(nameparts)-1]),
 				ID:   to.StringPtr(id),
 				Type: to.StringPtr(resourceType),
@@ -78,14 +59,6 @@ func ConvertK8sResourceToARMV3(input unstructured.Unstructured) (*radclientv3.Ra
 		},
 		Properties: properties,
 	}
-	return &result, nil
-}
-
-func ConvertK8sDeploymentToARM(input bicepv1alpha3.DeploymentTemplate) (*radclient.DeploymentResource, error) {
-	result := radclient.DeploymentResource{}
-	result.Properties = &radclient.DeploymentProperties{}
-
-	// TODO remove once we deal with client simplification and have RP changes
 	return &result, nil
 }
 

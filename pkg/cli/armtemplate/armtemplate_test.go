@@ -25,6 +25,12 @@ func Test_DeploymentTemplate(t *testing.T) {
 	resources, err := Eval(template, TemplateOptions{
 		SubscriptionID: "test-sub",
 		ResourceGroup:  "test-group",
+		Parameters: map[string]map[string]interface{}{
+			// Setting one required parameter, and using the default value for 'backendRoute' parameter
+			"frontendRoute": {
+				"value": "frontend",
+			},
+		},
 	})
 	require.NoError(t, err)
 

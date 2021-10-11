@@ -42,13 +42,13 @@ const (
 // In general, descriptive labels should be applied all to Kubernetes objects, and selector labels should be used
 // when programmatically querying those objects.
 
-// MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes resource associated with a component.
+// MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes resource associated with a Radius resource.
 // The descriptive labels are a superset of the selector labels.
 func MakeDescriptiveLabels(application string, resource string) map[string]string {
 	return map[string]string{
 		LabelRadiusApplication: application,
 		LabelRadiusResource:    resource,
-		LabelName:              resource,
+		LabelName:              MakeResourceName(application, resource),
 		LabelPartOf:            application,
 		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
@@ -58,11 +58,11 @@ func MakeDescriptiveLabels(application string, resource string) map[string]strin
 // Kubernetes object.
 //
 // This function is used to generate the labels used by a Deployment to select its Pods. eg: the Deployment and Pods
-// are the same component.
-func MakeSelectorLabels(application string, component string) map[string]string {
+// are the same resource.
+func MakeSelectorLabels(application string, resource string) map[string]string {
 	return map[string]string{
 		LabelRadiusApplication: application,
-		LabelRadiusResource:    component,
+		LabelRadiusResource:    resource,
 	}
 }
 
@@ -103,4 +103,8 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 		LabelName:              application,
 		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
+}
+
+func MakeResourceName(application string, resource string) string {
+	return application + "-" + resource
 }

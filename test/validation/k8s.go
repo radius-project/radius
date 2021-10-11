@@ -25,7 +25,7 @@ import (
 const (
 	IntervalForDeploymentCreation = 10 * time.Second
 	IntervalForPodShutdown        = 10 * time.Second
-	IntervalForPodCreation        = 10 * time.Second
+	IntervalForResourceCreation   = 5 * time.Second
 
 	// We want to make sure to produce some output any time we're in a watch
 	// otherwise it's hard to know if it got stuck.
@@ -40,7 +40,7 @@ type K8sObject struct {
 	Labels map[string]string
 }
 
-func NewK8sObjectForComponent(application string, name string) K8sObject {
+func NewK8sObjectForResource(application string, name string) K8sObject {
 	return K8sObject{
 		// NOTE: we use the selector labels here because the selector labels are intended
 		// to be determininistic. We might add things to the descriptive labels that are NON deterministic.
@@ -204,7 +204,7 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 		var actualPods *corev1.PodList
 		for {
 			select {
-			case <-time.After(IntervalForPodCreation):
+			case <-time.After(IntervalForResourceCreation):
 				t.Logf("at %s waiting for pods in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
@@ -257,6 +257,100 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 				Pod: actualPod,
 			}
 			monitor.ValidateRunning(ctx, t)
+		}
+	}
+}
+
+// ValidateIngressesRunning validates the namespaces and ingresses specified in each namespace are running
+func ValidateIngressesRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
+	for namespace, expectedIngresses := range expected.Namespaces {
+		t.Logf("validating ingresses in namespace %v", namespace)
+		for {
+			select {
+			case <-time.After(IntervalForResourceCreation):
+				t.Logf("at %s waiting for ingresses in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
+
+				var err error
+				actualIngresses, err := k8s.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+				require.NoErrorf(t, err, "failed to list ingresses in namespace %v", namespace)
+
+				remaining := make([]K8sObject, len(expectedIngresses))
+				copy(remaining, expectedIngresses)
+
+				for _, ingress := range actualIngresses.Items {
+					index := matchesExpectedLabels(remaining, ingress.Labels)
+					if index == nil {
+						t.Logf("unrecognized ingress, could not find a match for Ingress with namespace: %v name: %v labels: %v",
+							ingress.Namespace,
+							ingress.Name,
+							ingress.Labels)
+						continue
+					}
+
+					remaining = append(remaining[:*index], remaining[*index+1:]...)
+				}
+
+				if len(remaining) == 0 {
+					return
+				}
+				for _, remainingIngress := range remaining {
+					t.Logf("failed to match ingress in namespace %v with labels %v, retrying", namespace, remainingIngress.Labels)
+				}
+
+			case <-ctx.Done():
+				assert.Fail(t, "timed out after waiting for ingresses to be created")
+				return
+			}
+		}
+	}
+}
+
+// ValidateServicesRunning validates the namespaces and services specified in each namespace are running
+func ValidateServicesRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
+	for namespace, expectedServices := range expected.Namespaces {
+		t.Logf("validating services in namespace %v", namespace)
+		for {
+			select {
+			case <-time.After(IntervalForResourceCreation):
+				t.Logf("at %s waiting for services in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
+
+				var err error
+				actualServices, err := k8s.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+				require.NoErrorf(t, err, "failed to list services in namespace %v", namespace)
+
+				// copy the list of expected services so we can remove from it
+				//
+				// this way we "check off" each service as it is matched
+				remaining := make([]K8sObject, len(expectedServices))
+				copy(remaining, expectedServices)
+
+				for _, service := range actualServices.Items {
+					// validate that this matches one of our expected services
+					index := matchesExpectedLabels(remaining, service.Labels)
+					if index == nil {
+						// this is not a match
+						t.Logf("unrecognized service, could not find a match for Service with namespace: %v name: %v labels: %v",
+							service.Namespace,
+							service.Name,
+							service.Labels)
+						continue
+					}
+
+					// trim the list of 'remaining' services
+					remaining = append(remaining[:*index], remaining[*index+1:]...)
+				}
+
+				if len(remaining) == 0 {
+					return
+				}
+				for _, remainingService := range remaining {
+					t.Logf("failed to match service in namespace %v with labels %v, retrying", namespace, remainingService.Labels)
+				}
+
+			case <-ctx.Done():
+				assert.Fail(t, "timed out after waiting for services to be created")
+				return
+			}
 		}
 	}
 }

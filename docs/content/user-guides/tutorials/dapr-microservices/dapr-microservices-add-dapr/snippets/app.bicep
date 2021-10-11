@@ -11,7 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         ports: {
           orders: {
             containerPort: 3000
-            provides: invoke.id
+            provides: daprBackend.id
           }
         }
       }
@@ -25,9 +25,9 @@ resource app 'radius.dev/Application@v1alpha3' = {
       //TRAITS
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
-          appId: 'backend'
+          kind: 'dapr.io/Sidecar@v1alpha1'
           appPort: 3000
+          provides: daprBackend.id
         }
       ]
       //TRAITS
@@ -45,8 +45,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //STATESTORE
   //SAMPLE
 
-  resource invoke 'dapr.io.InvokeRoute' = {
-    name: 'order-invocation'
+  resource daprBackend 'dapr.io.DaprHttpRoute' = {
+    name: 'dapr-backend'
+    properties: {
+      appId: 'backend'
+    }
   }
 
 }

@@ -29,12 +29,14 @@ const (
 )
 
 type Step struct {
-	Executor       StepExecutor
-	Components     *validation.ComponentSet
-	Pods           *validation.K8sObjectSet
-	PostStepVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
-	SkipComponents bool
-	SkipPods       bool
+	Executor               StepExecutor
+	RadiusResources        *validation.ResourceSet
+	Pods                   *validation.K8sObjectSet
+	Ingress                *validation.K8sObjectSet
+	Services               *validation.K8sObjectSet
+	PostStepVerify         func(ctx context.Context, t *testing.T, at ApplicationTest)
+	SkipOutputResources    bool
+	SkipResourceValidation bool
 }
 
 type StepExecutor interface {
@@ -94,12 +96,14 @@ var _ StepExecutor = (*DeployStepExecutor)(nil)
 type DeployStepExecutor struct {
 	Description string
 	Template    string
+	Parameters  []string
 }
 
-func NewDeployStepExecutor(template string) *DeployStepExecutor {
+func NewDeployStepExecutor(template string, parameters ...string) *DeployStepExecutor {
 	return &DeployStepExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
 		Template:    template,
+		Parameters:  parameters,
 	}
 }
 
@@ -113,8 +117,8 @@ func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options 
 
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath, validation.AppModelV3)
-	err = cli.Deploy(ctx, templateFilePath)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
 	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
@@ -148,16 +152,16 @@ func (at ApplicationTest) Test(t *testing.T) {
 	radiusControllerLogSync.Do(func() {
 		err := validation.SaveLogsForController(ctx, at.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %w", err)
+			t.Errorf("failed to capture logs from radius controller: %v", err)
 		}
 	})
 
 	err := validation.SaveLogsForApplication(ctx, at.Options.K8sClient, "default", logPrefix+"/"+at.Application, at.Application)
 	if err != nil {
-		t.Errorf("failed to capture logs from radius pods %w", err)
+		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
 
-	cli := radcli.NewCLI(t, at.Options.ConfigFilePath, validation.AppModelV3)
+	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
@@ -176,9 +180,9 @@ func (at ApplicationTest) Test(t *testing.T) {
 			step.Executor.Execute(ctx, t, at.Options)
 			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 
-			if step.Components == nil && step.SkipComponents {
+			if step.RadiusResources == nil && step.SkipOutputResources {
 				t.Logf("skipping validation of components...")
-			} else if step.Components == nil {
+			} else if step.RadiusResources == nil {
 				require.Fail(t, "no component set was specified and SkipComponents == false, either specify a component set or set SkipComponents = true ")
 			} else {
 				// Validate that all expected output resources are created
@@ -190,16 +194,28 @@ func (at ApplicationTest) Test(t *testing.T) {
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 
-			if step.Pods == nil && step.SkipPods {
-				t.Logf("skipping validation of pods...")
-			} else if step.Pods == nil {
-				require.Fail(t, "no pod set was specified and SkipPods == false, either specify a pod set or set SkipPods = true ")
+			if step.SkipResourceValidation {
+				t.Logf("skipping validation of resources...")
+			} else if step.Pods == nil && step.Ingress == nil && step.Services == nil {
+				require.Fail(t, "no resources specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
 			} else {
-				// ValidatePodsRunning triggers its own assertions, no need to handle errors
+				if step.Pods != nil {
+					t.Logf("validating creation of pods for %s", step.Executor.GetDescription())
+					validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
+					t.Logf("finished creation of validating pods for %s", step.Executor.GetDescription())
+				}
 
-				t.Logf("validating creation of pods for %s", step.Executor.GetDescription())
-				validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
-				t.Logf("finished creation of validating pods for %s", step.Executor.GetDescription())
+				if step.Ingress != nil {
+					t.Logf("validating creation of ingress for %s", step.Executor.GetDescription())
+					validation.ValidateIngressesRunning(ctx, t, at.Options.K8sClient, *step.Ingress)
+					t.Logf("finished creation of validating ingress for %s", step.Executor.GetDescription())
+				}
+
+				if step.Services != nil {
+					t.Logf("validating creation of services for %s", step.Executor.GetDescription())
+					validation.ValidateServicesRunning(ctx, t, at.Options.K8sClient, *step.Services)
+					t.Logf("finished creation of validating services for %s", step.Executor.GetDescription())
+				}
 			}
 
 			// Custom verification is expected to use `t` to trigger its own assertions
@@ -222,7 +238,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	require.NoErrorf(t, err, "failed to delete %s", at.Description)
 	t.Logf("finished deleting %s", at.Description)
 
-	if last.SkipPods {
+	if last.SkipResourceValidation {
 		t.Logf("skipping validation of pods...")
 	} else {
 		t.Logf("validating deletion of pods for %s", at.Description)

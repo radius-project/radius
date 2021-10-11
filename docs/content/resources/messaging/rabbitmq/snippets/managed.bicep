@@ -22,7 +22,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
 
   //SAMPLE
-  resource rabbitmq 'rabbitmq.com.MessageQueue' = {
+  resource rabbitmq 'rabbitmq.com.MessageQueueComponent' = {
     name: 'rabbitmq'
     properties: {
       managed: true

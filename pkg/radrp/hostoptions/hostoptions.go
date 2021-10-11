@@ -43,22 +43,22 @@ type HostOptions struct {
 func NewHostOptionsFromEnvironment() (HostOptions, error) {
 	port, authenticate, err := getRest()
 	if err != nil {
-		return HostOptions{}, nil
+		return HostOptions{}, err
 	}
 
 	dbClientFactory, err := getMongo()
 	if err != nil {
-		return HostOptions{}, nil
+		return HostOptions{}, err
 	}
 
 	arm, err := getArm()
 	if err != nil {
-		return HostOptions{}, nil
+		return HostOptions{}, err
 	}
 
 	k8s, err := getKubernetes()
 	if err != nil {
-		return HostOptions{}, nil
+		return HostOptions{}, err
 	}
 
 	return HostOptions{
@@ -137,10 +137,10 @@ func getArm() (*armauth.ArmConfig, error) {
 
 	arm, err := armauth.GetArmConfig()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to build ARM config: %w", err)
 	}
 
-	return &arm, err
+	return &arm, nil
 }
 
 func getKubernetes() (*rest.Config, error) {

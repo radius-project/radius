@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
+//go:generate mockgen -destination=../../pkg/renderers/mock_renderer_v3.go -package=renderers github.com/Azure/radius/pkg/renderers Renderer
 type Renderer interface {
 	GetDependencyIDs(ctx context.Context, resource RendererResource) ([]azresources.ResourceID, error)
 	Render(ctx context.Context, resource RendererResource, dependencies map[string]RendererDependency) (RendererOutput, error)
@@ -27,10 +28,19 @@ type RendererResource struct {
 	Definition      map[string]interface{}
 }
 
+// Represents a dependency of the resource currently being rendered. Currently dependencies are always Radius resources.
 type RendererDependency struct {
-	ResourceID     azresources.ResourceID
-	Definition     map[string]interface{}
+	// ResourceID is the resource ID of the Radius resource that is the dependency.
+	ResourceID azresources.ResourceID
+
+	// Definition is the definition (`properties` node) of the dependency.
+	Definition map[string]interface{}
+
+	// ComputedValues is a map of the computed values and secrets of the dependency.
 	ComputedValues map[string]interface{}
+
+	// OutputResources is a map of the output resource identities of the dependency. The map is keyed on the LocalID of the output resource.
+	OutputResources map[string]resourcemodel.ResourceIdentity
 }
 
 type RendererOutput struct {
@@ -43,13 +53,27 @@ type RendererOutput struct {
 // have been deployed.
 type ComputedValueReference struct {
 	// ComputedValueReference might hold a static value in `.Value` or might be a reference
-	// that needs to be looked up. If `.Value` is set then treat this as a static value.
-	// If `.Value == nil` then use the `.PropertyReference` to look up a property in the property
+	// that needs to be looked up.
+	//
+	// If `.Value` is set then treat this as a static value.
+	//
+	// If `.Value == nil` then use the `.PropertyReference` or to look up a property in the property
 	// bag returned from deploying the resource via `handler.Put`.
+	//
+	// If `.Value == nil` && `.PropertyReference` is unset, then use JSONPointer to evaluate a JSON path
+	// into the 'resource'.
 
-	LocalID           string
+	// LocalID specifies the output resource to be used for lookup. Does not apply with `.Value`
+	LocalID string
+
+	// Value specifies a static value to copy to computed values.
+	Value interface{}
+
+	// PropertyReference specifies a property key to look up in the resource's *persisted properties*.
 	PropertyReference string
-	Value             interface{}
+
+	// JSONPointer specifies a JSON Pointer that cn be used to look up the value in the resource's body.
+	JSONPointer string
 }
 
 // SecretValueReference represents a secret value that can accessed on the output resources
@@ -77,7 +101,7 @@ type SecretValueReference struct {
 	Transformer string
 }
 
-// SecretValueTransformer allows transforming a secret value before passing it on to a Component
+// SecretValueTransformer allows transforming a secret value before passing it on to a Resource
 // that wants to access it.
 //
 // This is surprisingly common. For example, it's common for access control/connection strings to apply
@@ -95,6 +119,21 @@ type SecretValueClient interface {
 
 // ConvertDefinition can be used to convert `.Definition` to a strongly-typed struct.
 func (r RendererResource) ConvertDefinition(properties interface{}) error {
+	b, err := json.Marshal(r.Definition)
+	if err != nil {
+		return fmt.Errorf("failed to marshal resource definition: %w", err)
+	}
+
+	err = json.Unmarshal(b, properties)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal resource definition: %w", err)
+	}
+
+	return nil
+}
+
+// ConvertDefinition can be used to convert `.Definition` to a strongly-typed struct.
+func (r RendererDependency) ConvertDefinition(properties interface{}) error {
 	b, err := json.Marshal(r.Definition)
 	if err != nil {
 		return fmt.Errorf("failed to marshal resource definition: %w", err)

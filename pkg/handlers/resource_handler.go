@@ -13,29 +13,24 @@ import (
 )
 
 type PutOptions struct {
-	Application string
-	Component   string
-	Resource    *outputresource.OutputResource
+	ApplicationName string
+	ResourceName    string
+	Resource        *outputresource.OutputResource
 
-	// used by app model v2
-	Existing     *db.DeploymentResource
-	Dependencies []db.DeploymentResource
+	Dependencies []Dependency
 
-	// used by app model v3
-	// Current state of the output resource persisted in database
+	// ExistingOutputResource is the current state of the output resource persisted in database
 	ExistingOutputResource *db.OutputResource
-	// Map of output resource localID to resource properties populated during deployment in the resource handler
+
+	// DependencyProperties is a map of output resource localID to resource properties populated during deployment in the resource handler
 	DependencyProperties map[string]map[string]string
 }
 
 type DeleteOptions struct {
-	Application string
-	Component   string
+	Application  string
+	ResourceName string
 
-	// app model v2
-	Existing db.DeploymentResource
-
-	// app model v3
+	// ExistingOutputResource is the current state of the output resource persisted in database
 	ExistingOutputResource *db.OutputResource
 }
 
@@ -44,4 +39,9 @@ type DeleteOptions struct {
 type ResourceHandler interface {
 	Put(ctx context.Context, options *PutOptions) (map[string]string, error)
 	Delete(ctx context.Context, options DeleteOptions) error
+}
+
+type Dependency struct {
+	LocalID    string
+	Properties map[string]string
 }

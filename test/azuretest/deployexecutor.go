@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/test/radcli"
-	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,7 +40,7 @@ func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options 
 
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath, validation.AppModelV2 /* version doesn't matter for this command*/)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	err = cli.Deploy(ctx, templateFilePath)
 	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)

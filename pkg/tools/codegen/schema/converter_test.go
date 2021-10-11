@@ -11,14 +11,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
 func TestNewAutorestConverter(t *testing.T) {
-	assert.Equal(t, len(NewAutorestConverter().resources), len(schemav3.ResourceManifest.Resources))
+	assert.Equal(t, len(NewAutorestConverter().resources), len(schema.ResourceManifest.Resources))
 }
 
 func TestConverter(t *testing.T) {

@@ -163,24 +163,15 @@ The shortcode below and code sample:
 
 ```bicep
 // in snippets/mysample.bicep
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'storefront-app'
 
   //SAMPLE
-  resource store 'Components' = {
+  resource store 'ContainerComponent' = {
     name: 'storefront'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: { 
-        container: {
-          image: 'foo'
-        }
-      }
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
+      container: {
+        image: 'foo'
       }
     }
   }
@@ -191,20 +182,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 Will result in the following output:
 
 ```bicep
-  resource store 'Components' = {
+  resource store 'ContainerComponent' = {
     name: 'storefront'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: { 
-        container: {
-          image: 'foo'
-        }
-      }
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
-        }
+      container: {
+        image: 'foo'
       }
     }
   }
@@ -214,30 +196,27 @@ Use the `replace-key-[token]` and `replace-value-[token]` parameters to limit th
 
 The shortcode below and code sample:
 
-{{</* rad file="snippets/mysample.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="run: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" */>}}
+{{</* rad file="snippets/mysample.bicep" embed=true marker="//SAMPLE" replace-key-container="//RUN" replace-value-container="container: {...}" replace-key-connections="//CONNECTIONS" replace-value-connections="connections: {...}" */>}}
 
 ```bicep
 // in snippets/mysample.bicep
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha1' = {
   name: 'storefront-app'
 
   //SAMPLE
-  resource store 'Components' = {
+  resource store 'ContainerComponent' = {
     name: 'storefront'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
       //RUN
-      run: { 
-        container: {
-          image: 'foo'
-        }
+      container: {
+        image: 'foo'
       }
       //RUN
       //BINDINGS
-      bindings: {
-        web: {
-          kind: 'http'
-          targetPort: 3000
+      connections: {
+        backend: {
+          kind: 'Http'
+          source: other.id
         }
       }
       //BINDINGS
@@ -250,12 +229,11 @@ resource app 'radius.dev/Applications@v1alpha1' = {
 Will result in the following output:
 
 ```bicep
-  resource store 'Components' = {
+  resource store 'ContainerComponent' = {
     name: 'storefront'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {...}
-      bindings: {...}
+      container: {...}
+      connections: {...}
     }
   }
 ```

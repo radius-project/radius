@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-rp-manifest generate-radclient generate-radclient-v3 generate-go generate-k8s-manifests generate-controller ## Generates all targets.
+generate: generate-rp-manifest generate-radclient generate-go generate-k8s-manifests generate-controller ## Generates all targets.
 
 .PHONY: generate-rp-manifest
 generate-rp-manifest: ## Generates Custom RP manifest that registers our resource types.
@@ -14,7 +14,7 @@ generate-rp-manifest: ## Generates Custom RP manifest that registers our resourc
 	go run cmd/rp-manifest-gen/main.go \
 		--input deploy/rp-full.input.json \
 		--output deploy/rp-full.json \
-		--resources pkg/radrp/schemav3/resource-types.json
+		--resources pkg/radrp/schema/resource-types.json
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -28,36 +28,22 @@ generate-autorest-installed:
 	@which autorest > /dev/null || { echo "run 'npm install -g autorest' to install autorest"; exit 1; }
 	@echo "$(ARROW) OK"
 
-.PHONY: generate-openapi-specs-v3
-generate-openapi-specs-v3:
+.PHONY: generate-openapi-specs
+generate-openapi-specs:
 	@echo "$(ARROW) Generating OpenAPI schema manifest..."
 
 	go run cmd/autorest-schema-gen/main.go \
-		--output schemas/rest-api-specs-v3/radius.json \
-		`# We can't just do pkg/radrp/schemav3/*.json because we want to exclude resource-types.json` \
-		pkg/radrp/schemav3/common-types.json \
-		pkg/radrp/schemav3/application.json \
-		pkg/radrp/schemav3/traits.json \
-		pkg/radrp/schemav3/*/*.json
-
-.PHONY: generate-radclient-v3
-generate-radclient-v3: generate-node-installed generate-autorest-installed generate-openapi-specs-v3 ## Generates the radclientv3 SDK (Autorest).
-	autorest --use=@autorest/go@4.0.0-preview.22 \
-		--input-file=schemas/rest-api-specs-v3/radius.json \
-		--tag=package-2018-09-01-preview \
-		--go  \
-		--gomod-root=. \
-		--output-folder=./pkg/azure/radclientv3 \
-		--modelerfour.lenient-model-deduplication \
-		--license-header=MICROSOFT_MIT_NO_VERSION \
-		--file-prefix=zz_generated_ \
-		--azure-arm \
-		--verbose
+		--output schemas/rest-api-specs/radius.json \
+		`# We can't just do pkg/radrp/schema/*.json because we want to exclude resource-types.json` \
+		pkg/radrp/schema/common-types.json \
+		pkg/radrp/schema/application.json \
+		pkg/radrp/schema/traits.json \
+		pkg/radrp/schema/*/*.json
 
 .PHONY: generate-radclient
-generate-radclient: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
+generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).
 	autorest --use=@autorest/go@4.0.0-preview.22 \
-		schemas/rest-api-specs/readme.md \
+		--input-file=schemas/rest-api-specs/radius.json \
 		--tag=package-2018-09-01-preview \
 		--go  \
 		--gomod-root=. \

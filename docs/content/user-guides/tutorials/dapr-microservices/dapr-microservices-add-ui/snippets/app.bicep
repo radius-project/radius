@@ -15,15 +15,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       connections: {
-        orders: {
-          kind: 'dapr.io/Invoke'
-          source: invoke.id
+        backend: {
+          kind: 'dapr.io/DaprHttp'
+          source: backendDapr.id
         }
       }
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
-          appId: 'frontend'
+          kind: 'dapr.io/Sidecar@v1alpha1'
         }
       ]
     }
@@ -35,12 +34,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: 'radius.azurecr.io/daprtutorial-backend'
-        ports: {
-          orders: {
-            containerPort: 3000
-            provides: invoke.id
-          }
-        }
       }
       connections: {
         orders: {
@@ -50,16 +43,20 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
+          kind: 'dapr.io/Sidecar@v1alpha1'
           appId: 'backend'
           appPort: 3000
+          provides: backendDapr.id
         }
       ]
     }
   }
 
-  resource invoke 'dapr.io.InvokeRoute' = {
-    name: 'order-invocation'
+  resource backendDapr 'dapr.io.DaprHttpRoute' = {
+    name: 'backend-dapr'
+    properties: {
+      appId: 'backend'
+    }
   }
 
   resource statestore 'dapr.io.StateStoreComponent' = {

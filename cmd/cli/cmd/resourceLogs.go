@@ -6,13 +6,16 @@
 package cmd
 
 import (
+	"bufio"
+	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/radrp/schemav3"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 
@@ -54,8 +57,8 @@ rad resource logs ContainerComponent orders --application icecream-store --conta
 		if err != nil {
 			return err
 		}
-		if resourceType != schemav3.ContainerComponentType {
-			return fmt.Errorf("only %s is supported", schemav3.ContainerComponentType)
+		if resourceType != schema.ContainerComponentType {
+			return fmt.Errorf("only %s is supported", schema.ContainerComponentType)
 		}
 		follow, err := cmd.Flags().GetBool("follow")
 		if err != nil {
@@ -74,7 +77,7 @@ rad resource logs ContainerComponent orders --application icecream-store --conta
 
 		streams, err := client.Logs(cmd.Context(), clients.LogsOptions{
 			Application: application,
-			Component:   resourceName,
+			Resource:    resourceName,
 			Follow:      follow,
 			Container:   container})
 		if err != nil {
@@ -103,6 +106,57 @@ rad resource logs ContainerComponent orders --application icecream-store --conta
 		}
 		return nil
 	},
+}
+
+func captureLogs(info clients.LogStream, logErrors chan<- error, follow bool) {
+	stream := info.Stream
+	defer stream.Close()
+
+	name := info.Name
+	hasLogs := false
+	reader := bufio.NewReader(stream)
+	startLine := true
+	for {
+		line, prefix, err := reader.ReadLine()
+		if err == context.Canceled {
+			// CTRL+C => done
+			logErrors <- nil
+			return
+		} else if err == io.EOF {
+			// End of stream
+			//
+			// Output a status message to stderr if there were no logs for non-streaming
+			// so an interactive user gets *some* feedback.
+			if !follow && !hasLogs {
+				fmt.Fprintln(os.Stderr, "Component's log is currently empty.")
+			}
+			logErrors <- nil
+			return
+		} else if err != nil {
+			logErrors <- err
+			return
+		}
+
+		hasLogs = true
+
+		// Handle the case where a partial line is returned
+		if prefix {
+			if startLine {
+				fmt.Print("[" + name + "] " + string(line))
+			} else {
+				fmt.Print(string(line))
+			}
+			startLine = false
+			continue
+		}
+
+		if startLine {
+			fmt.Println("[" + name + "] " + string(line))
+		} else {
+			fmt.Println(string(line))
+		}
+		startLine = true
+	}
 }
 
 func init() {

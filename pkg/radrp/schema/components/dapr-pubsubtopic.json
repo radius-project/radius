@@ -1,60 +1,56 @@
 {
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "DaprPubSubComponentResource": {
+    "DaprPubSubTopicComponentResource": {
       "description": "Component for Dapr Pub/Sub",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
       "required": [
-        "kind",
         "properties"
       ],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "dapr.io/PubSubTopic@v1alpha1"
-          ]
-        },
         "properties": {
-          "$ref": "#/definitions/DaprPubSubComponentProperties"
+          "$ref": "#/definitions/DaprPubSubTopicComponentProperties"
         }
       }
     },
-    "DaprPubSubComponentProperties": {
+    "DaprPubSubTopicComponentProperties": {
       "allOf": [
         {
           "$ref": "basic-component.json#/definitions/BasicComponentProperties"
         }
       ],
+      "additionalProperties": false,
       "required": [
-        "config"
+        "kind"
       ],
       "properties": {
-        "config": {
-          "type": "object",
-          "required": [
-            "kind"
-          ],
-          "properties": {
-            "managed": {
-              "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
-              "type": "boolean"
-            },
-            "kind": {
-              "description": "Dapr Pub/Sub kind",
-              "type": "string"
-            },
-            "topic": {
-              "description": "PubSub topic",
-              "type": "string"
-            },
-            "resource": {
-              "description": "PubSub resource, for unmanaged",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
+          "type": "boolean"
+        },
+        "kind": {
+          "description": "The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.",
+          "type": "string",
+          "enum": [
+            "any",
+            "pubsub.azure.servicebus"
+          ]
+        },
+        "topic": {
+          "description": "PubSub topic",
+          "type": "string"
+        },
+        "resource": {
+          "description": "PubSub resource, for unmanaged",
+          "type": "string"
         }
-      },
-      "additionalProperties": false
+      }
     }
   }
 }

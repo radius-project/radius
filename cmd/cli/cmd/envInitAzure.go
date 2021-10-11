@@ -503,7 +503,7 @@ func validateRegistry(ctx context.Context, authorizer autorest.Authorizer, subsc
 		}
 	}
 
-	return "", fmt.Errorf("failed to find registry %s in subscription %s. The container registry must be in the same subscription as the environment.", registryName, subscriptionID)
+	return "", fmt.Errorf("failed to find registry %s in subscription %s. The container registry must be in the same subscription as the environment", registryName, subscriptionID)
 }
 
 func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, logAnalyticsWorkspaceID string) (string, error) {

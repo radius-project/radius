@@ -48,13 +48,16 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 
 	resources, err := renderer.Render(ctx, workload)
 	require.NoError(t, err)
-	require.Len(t, resources, 2)
+	require.Len(t, resources, 3)
 
 	deployment, _ := kubernetes.FindDeployment(resources)
 	require.NotNil(t, deployment)
 
 	service, _ := kubernetes.FindService(resources)
 	require.NotNil(t, service)
+
+	secret, _ := kubernetes.FindSecret(resources)
+	require.NotNil(t, secret)
 
 	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-component")
 
@@ -98,6 +101,16 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		require.Equal(t, v1.ProtocolTCP, port.Protocol)
 		require.Equal(t, int32(5672), port.Port)
 		require.Equal(t, intstr.FromInt(5672), port.TargetPort)
+	})
+
+	t.Run("verify secret", func(t *testing.T) {
+		require.Equal(t, "test-component", secret.Name)
+		require.Equal(t, "default", secret.Namespace)
+		require.Equal(t, labels, secret.Labels)
+		require.Empty(t, secret.Annotations)
+
+		data := secret.Data
+		require.Equal(t, "amqp://test-component:5672", string(data[SecretKeyRabbitMQConnectionString]))
 	})
 }
 

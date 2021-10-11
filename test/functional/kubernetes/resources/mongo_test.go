@@ -21,11 +21,11 @@ func Test_Mongo(t *testing.T) {
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "todomongo",
+						ResourceName:    "todomongo",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -33,7 +33,7 @@ func Test_Mongo(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "mongodb",
+						ResourceName:    "mongodb",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDSecret:      validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDStatefulSet: validation.NewOutputResource(outputresource.LocalIDStatefulSet, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -45,8 +45,8 @@ func Test_Mongo(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForComponent(application, "todomongo"),
-						validation.NewK8sObjectForComponent(application, "mongodb"),
+						validation.NewK8sObjectForResource(application, "todomongo"),
+						validation.NewK8sObjectForResource(application, "mongodb"),
 					},
 				},
 			},

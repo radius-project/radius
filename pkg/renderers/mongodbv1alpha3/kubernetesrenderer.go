@@ -57,8 +57,8 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 		DescriptiveLabels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		SelectorLabels:    kubernetes.MakeSelectorLabels(resource.ApplicationName, resource.ResourceName),
 
-		// For now use the component name as the Kubernetes resource name.
-		Name: resource.ResourceName,
+		// For now use the resource name as the Kubernetes resource name.
+		Name: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 	}
 
 	resources := []outputresource.OutputResource{}
@@ -66,7 +66,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 	// The secret is used to hold the password, just so it's not stored in plaintext.
 	//
 	// TODO: for now this is VERY hardcoded.
-	secret := r.MakeSecret(options, resource.ResourceName, "admin", "password")
+	secret := r.MakeSecret(options, "admin", "password")
 	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, secret, secret.ObjectMeta))
 
 	// This is a headless service, clients of Mongo will just use it for DNS.
@@ -96,17 +96,17 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 	}, nil
 }
 
-func (r KubernetesRenderer) MakeSecret(options KubernetesOptions, service string, username string, password string) *corev1.Secret {
+func (r KubernetesRenderer) MakeSecret(options KubernetesOptions, username string, password string) *corev1.Secret {
 	// Make a connection string and use the secret to store it.
 
-	// For now this is static, the host and database are just the component name.
+	// For now this is static, the host and database are just the resource name.
 	port := 27017
 
 	// Mongo connection strings look like: 'mongodb://{accountname}:{key}@{endpoint}:{port}/{logindatabase}?...{params}'
 	u := url.URL{
 		Scheme: "mongodb",
 		User:   url.UserPassword(string(username), string(password)),
-		Host:   fmt.Sprintf("%s:%d", service, port),
+		Host:   fmt.Sprintf("%s:%d", options.Name, port),
 		Path:   "admin", // is the default for the login database
 	}
 

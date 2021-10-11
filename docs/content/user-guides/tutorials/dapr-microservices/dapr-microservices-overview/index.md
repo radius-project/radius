@@ -7,7 +7,7 @@ description: "Overview of the Dapr microservices tutorial application"
 weight: 1000
 ---
 
-In this tutorial you will be deploying an online store where you an order items:
+In this tutorial you will be deploying an online store where you can order items:
 
 <img src="./store.png" alt="A screenshot of the store application" width=500 />
 
@@ -43,7 +43,7 @@ Radius offers communication between runnable Components via [Communication Route
 
 ### Dapr service invocation
 
-In this tutorial, we will be using `dapr.io.InvokeRoute` to model the communication between `frontend` and `backend`.
+In this tutorial, we will be using `dapr.io.DaprHttpRoute` to model the Dapr sidecar running alongside `frontend` and `backend`. This allows `frontend` to use Dapr service invocation to interact with `backend`.
 
 <img src="./invoke.png" alt="A diagram of the Dapr service invocation" width=500 />
 
@@ -62,4 +62,4 @@ In addition to this high level information, the Radius model also uses typical d
 
 Keep the diagram in mind as you proceed through the following steps. Your Radius deployment template will aim to match it.
 
-<br>{{< button text="Next: Deploy the application frontend" page="dapr-microservices-initial-deployment.md" >}}
+<br>{{< button text="Next: Deploy the application backend" page="dapr-microservices-initial-deployment.md" >}}

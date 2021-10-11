@@ -11,12 +11,28 @@ import (
 	"os"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/azure/radclientv3"
 )
+
+// NOTE: parameters in the template engine follow the structure:
+//
+// {
+//   "parameter1Name": {
+//     "value": ...
+//   }
+// }
+//
+// Each parameter can have additional metadata besides the mandatory 'value' key.
+//
+// We're really only interested in 'value' and we pass the other metadata through.
+//
+// The full format is documented here: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
+//
+// Note that we're only storing the 'parameters' node of the format described above.
+type DeploymentParameters = map[string]map[string]interface{}
 
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
 type DeploymentClient interface {
-	Deploy(ctx context.Context, content string) error
+	Deploy(ctx context.Context, content string, parameters DeploymentParameters) error
 }
 
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
@@ -27,7 +43,7 @@ type DiagnosticsClient interface {
 
 type ExposeOptions struct {
 	Application string
-	Component   string
+	Resource    string
 	Port        int
 	RemotePort  int
 	Replica     string
@@ -35,7 +51,7 @@ type ExposeOptions struct {
 
 type LogsOptions struct {
 	Application string
-	Component   string
+	Resource    string
 	Follow      bool
 	Container   string
 	Replica     string
@@ -46,24 +62,12 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
-// ManagementClient is used to interface with management features like listing applications and components.
+// ManagementClient is used to interface with management features like listing applications and resources.
 type ManagementClient interface {
 	ListApplications(ctx context.Context) (*radclient.ApplicationList, error)
 	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) error
 
-	ListComponents(ctx context.Context, applicationName string) (*radclient.ComponentList, error)
-	ShowComponent(ctx context.Context, applicationName string, componentName string) (*radclient.ComponentResource, error)
-
-	ListDeployments(ctx context.Context, applicationName string) (*radclient.DeploymentList, error)
-	ShowDeployment(ctx context.Context, applicationName string, deploymentName string) (*radclient.DeploymentResource, error)
-	DeleteDeployment(ctx context.Context, applicationName string, deploymentName string) error
-
-	// V3 API.
-	ListApplicationsV3(ctx context.Context) (*radclientv3.ApplicationList, error)
-	ShowApplicationV3(ctx context.Context, applicationName string) (*radclientv3.ApplicationResource, error)
-	DeleteApplicationV3(ctx context.Context, applicationName string) error
-
 	ShowResource(ctx context.Context, applicationName string, resourceType string, resourceName string) (interface{}, error)
-	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclientv3.RadiusResourceList, error)
+	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
 }

@@ -75,6 +75,9 @@ func UnfoldServiceError(in *azure.ServiceError) *ServiceError {
 // UnfoldErrorDetails extract the Message field of a given *radclient.ErrorDetail
 // into its correspoding Details field, which is structured.
 func UnfoldErrorDetails(d *radclient.ErrorDetail) *radclient.ErrorDetail {
+	if d == nil {
+		return nil
+	}
 	new := *d
 	if new.Target != nil && *new.Target == "" {
 		new.Target = nil

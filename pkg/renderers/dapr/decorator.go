@@ -10,96 +10,86 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/model/components"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloads"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// Renderer is the WorkloadRenderer implementation for the dapr trait decorator.
+var _ renderers.Renderer = (*Renderer)(nil)
+
 type Renderer struct {
-	Inner workloads.WorkloadRenderer
+	Inner renderers.Renderer
 }
 
-// Allocate is the WorkloadRenderer implementation for the dapr trait decorator.
-func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	// TODO verify return a binding for dapr invoke
-	bindings, err := r.Inner.AllocateBindings(ctx, workload, resources)
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+	dependencies, err := r.Inner.GetDependencyIDs(ctx, resource)
 	if err != nil {
 		return nil, err
 	}
 
-	// If the component declares an invoke binding, handle it here so others can depend on it.
-	for name, binding := range workload.Workload.Bindings {
-		if binding.Kind != BindingKind {
-			continue
-		}
-
-		trait := Trait{}
-		found, err := workload.Workload.FindTrait(Kind, &trait)
-		if err != nil {
-			return nil, err
-		} else if !found {
-			// no trait
-			return nil, fmt.Errorf("the trait %s is required to use binding %s", Kind, BindingKind)
-		}
-
-		if trait.AppID == "" {
-			trait.AppID = workload.Workload.Name
-		}
-
-		bindings[name] = components.BindingState{
-			Component: workload.Name,
-			Binding:   name,
-			Kind:      binding.Kind,
-			Properties: map[string]interface{}{
-				"appId": trait.AppID,
-			},
-		}
+	trait, err := r.FindTrait(resource)
+	if err != nil {
+		return nil, err
 	}
 
-	return bindings, nil
+	if trait == nil {
+		return dependencies, nil
+	}
+
+	if trait.Provides == "" {
+		return dependencies, nil
+	}
+
+	parsed, err := azresources.Parse(trait.Provides)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(dependencies, parsed), nil
 }
 
-// Render is the WorkloadRenderer implementation for the dapr deployment decorator.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	// Let the inner renderer do its work
-	resources, err := r.Inner.Render(ctx, w)
+func (r *Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+	output, err := r.Inner.Render(ctx, resource, dependencies)
 	if err != nil {
-		// Even if the operation fails, return the output resources created so far
-		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
-		// we no longer need to track the output resources on error
-		// See: https://github.com/Azure/radius/issues/499
-		return resources, err
+		return renderers.RendererOutput{}, nil
 	}
 
-	trait := Trait{}
-	found, err := w.Workload.FindTrait(Kind, &trait)
-	if !found || err != nil {
-		// Even if the operation fails, return the output resources created so far
-		// TODO: This is temporary. Once there are no resources actually deployed during render phase,
-		// we no longer need to track the output resources on error
-		// See: https://github.com/Azure/radius/issues/499
-		return resources, err
+	trait, err := r.FindTrait(resource)
+	if err != nil {
+		return renderers.RendererOutput{}, nil
 	}
 
-	// dapr detected! Update the deployment
-	for _, resource := range resources {
-		if resource.ResourceKind != resourcekinds.Kubernetes {
+	if trait == nil {
+		return output, nil
+	}
+
+	// If we get here then we found a Dapr Sidecar trait. We need to update the Kubernetes deployment with
+	// the desired annotations.
+
+	// Resolve the AppID:
+	// 1. If there's a DaprHttpRoute then it *must* specify an app id.
+	// 2. The trait specifies an app id (must not conflict with 1)
+	// 3. (none)
+
+	appID, err := r.resolveAppId(*trait, dependencies)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	for i := range output.Resources {
+		if output.Resources[i].ResourceKind != resourcekinds.Kubernetes {
 			// Not a Kubernetes resource
 			continue
 		}
 
-		o, ok := resource.Resource.(runtime.Object)
+		o, ok := output.Resources[i].Resource.(runtime.Object)
 		if !ok {
-			// Even if the operation fails, return the output resources created so far
-			// TODO: This is temporary. Once there are no resources actually deployed during render phase,
-			// we no longer need to track the output resources on error
-			// See: https://github.com/Azure/radius/issues/499
-			return resources, errors.New("found Kubernetes resource with non-Kubernetes payload")
+			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}
 
 		annotations, ok := r.getAnnotations(o)
@@ -107,13 +97,11 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			continue
 		}
 
-		// use the workload name
-		if trait.AppID == "" {
-			trait.AppID = w.Workload.Name
-		}
-
 		annotations["dapr.io/enabled"] = "true"
-		annotations["dapr.io/app-id"] = trait.AppID
+
+		if appID != "" {
+			annotations["dapr.io/app-id"] = appID
+		}
 		if trait.AppPort != 0 {
 			annotations["dapr.io/app-port"] = fmt.Sprintf("%d", trait.AppPort)
 		}
@@ -127,10 +115,58 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 		r.setAnnotations(o, annotations)
 	}
 
-	return resources, err
+	return output, nil
 }
 
-func (r Renderer) getAnnotations(o runtime.Object) (map[string]string, bool) {
+func (r *Renderer) FindTrait(resource renderers.RendererResource) (*Trait, error) {
+	container := containerv1alpha3.ContainerProperties{}
+	err := resource.ConvertDefinition(&container)
+	if err != nil {
+		return nil, err
+	}
+
+	trait := Trait{}
+	found, err := container.FindTrait(Kind, &trait)
+	if err != nil {
+		return nil, err
+	} else if !found {
+		return nil, nil
+	}
+
+	return &trait, nil
+}
+
+func (r *Renderer) resolveAppId(trait Trait, dependencies map[string]renderers.RendererDependency) (string, error) {
+	// We're being extra pedantic here about reporting error cases. None of these
+	// cases should be possible to trigger with user input, they would result from internal bugs.
+	routeAppID := ""
+	if trait.Provides != "" {
+		routeDependency, ok := dependencies[trait.Provides]
+		if !ok {
+			return "", fmt.Errorf("failed to find depenendency with id %q", trait.Provides)
+		}
+
+		route := daprhttproutev1alpha3.DaprHttpRouteProperties{}
+		err := routeDependency.ConvertDefinition(&route)
+		if err != nil {
+			return "", err
+		}
+
+		routeAppID = route.AppID
+	}
+
+	if trait.AppID != "" && routeAppID != "" && trait.AppID != routeAppID {
+		return "", fmt.Errorf("the appId specified on a %q must match the appId specified on the %q trait. Route: %q, Trait: %q", daprhttproutev1alpha3.ResourceType, Kind, routeAppID, trait.AppID)
+	}
+
+	if routeAppID != "" {
+		return routeAppID, nil
+	}
+
+	return trait.AppID, nil
+}
+
+func (r *Renderer) getAnnotations(o runtime.Object) (map[string]string, bool) {
 	dep, ok := o.(*appsv1.Deployment)
 	if ok {
 		if dep.Spec.Template.Annotations == nil {
@@ -152,7 +188,7 @@ func (r Renderer) getAnnotations(o runtime.Object) (map[string]string, bool) {
 	return nil, false
 }
 
-func (r Renderer) setAnnotations(o runtime.Object, annotations map[string]string) {
+func (r *Renderer) setAnnotations(o runtime.Object, annotations map[string]string) {
 	un, ok := o.(*unstructured.Unstructured)
 	if ok {
 		un.SetAnnotations(annotations)

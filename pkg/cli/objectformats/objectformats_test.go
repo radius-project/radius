@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/azure/radclientv3"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/stretchr/testify/require"
 )
@@ -40,54 +39,25 @@ func Test_FormatApplicationTable(t *testing.T) {
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
-test-app     Provisioned         Healthy
+	expected := `APPLICATION
+test-app
 `
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
-}
-
-func Test_FormatComponentTable(t *testing.T) {
-	options := GetComponentTableFormat()
-
-	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	obj := radclient.ComponentResource{
-		TrackedResource: radclient.TrackedResource{
-			Resource: radclient.Resource{
-				Name: to.StringPtr("test-component"),
-			},
-		},
-		Kind: to.StringPtr("radius.dev/TestComponent@v1alpha1"),
-		Properties: &radclient.ComponentProperties{
-			Status: &radclient.ComponentStatus{
-				HealthState:       to.StringPtr("Healthy"),
-				ProvisioningState: to.StringPtr("Provisioned"),
-			},
-		},
-	}
-
-	buffer := bytes.Buffer{}
-	err := output.Write(output.FormatTable, &obj, &buffer, options)
-	require.NoError(t, err)
-
-	expected := `COMPONENT       KIND                               PROVISIONING_STATE  HEALTH_STATE
-test-component  radius.dev/TestComponent@v1alpha1  Provisioned         Healthy
-`
-	require.Equal(t, expected, buffer.String())
 }
 
 func Test_FormatResourceTable(t *testing.T) {
 	options := GetResourceTableFormat()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	obj := radclientv3.RadiusResource{
-		ProxyResource: radclientv3.ProxyResource{
-			Resource: radclientv3.Resource{
+	obj := radclient.RadiusResource{
+		ProxyResource: radclient.ProxyResource{
+			Resource: radclient.Resource{
 				Name: to.StringPtr("test-resource"),
 				Type: to.StringPtr("my/very/CoolResource"),
 			},
 		},
 		Properties: map[string]interface{}{
-			"status": &radclientv3.ComponentStatus{
+			"status": &radclient.ComponentStatus{
 				HealthState:       to.StringPtr("Healthy"),
 				ProvisioningState: to.StringPtr("Provisioned"),
 			},
@@ -100,39 +70,6 @@ func Test_FormatResourceTable(t *testing.T) {
 
 	expected := `RESOURCE       TYPE          PROVISIONING_STATE  HEALTH_STATE
 test-resource  CoolResource  Provisioned         Healthy
-`
-	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
-}
-
-func Test_FormatDeploymentTable(t *testing.T) {
-	options := GetDeploymentTableFormat()
-
-	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	components := []*radclient.DeploymentComponent{
-		{
-			ComponentName: to.StringPtr("frontend"),
-		},
-		{
-			ComponentName: to.StringPtr("backend"),
-		},
-	}
-	obj := radclient.DeploymentResource{
-		TrackedResource: radclient.TrackedResource{
-			Resource: radclient.Resource{
-				Name: to.StringPtr("test-deployment"),
-			},
-		},
-		Properties: &radclient.DeploymentProperties{
-			Components: components,
-		},
-	}
-
-	buffer := bytes.Buffer{}
-	err := output.Write(output.FormatTable, &obj, &buffer, options)
-	require.NoError(t, err)
-
-	expected := `DEPLOYMENT       COMPONENTS
-test-deployment  frontend backend
 `
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }

@@ -101,7 +101,7 @@ Author and deploy your first appliction in minutes with Radius:
   Initializing Azure environment...
   $ rad deploy eshop.bicep
   Deploying application 'eShop' into environment 'Azure'...
-  $ rad component logs -c orders -a eshop
+  $ rad resource logs -c orders -a eshop
   Order #1 received
   Order #2 received
   ...</pre>

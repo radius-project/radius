@@ -48,7 +48,7 @@ type ResourceStatus struct {
 //+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.resource"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
 
-// Resource is the Schema for the components API
+// Resource is the Schema for the resources API
 type Resource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

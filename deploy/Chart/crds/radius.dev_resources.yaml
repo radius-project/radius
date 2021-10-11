@@ -32,7 +32,7 @@ spec:
     name: v1alpha3
     schema:
       openAPIV3Schema:
-        description: Resource is the Schema for the components API
+        description: Resource is the Schema for the resources API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation

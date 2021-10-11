@@ -44,11 +44,11 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 
 			// This is currently flaky, tracked by #768
 			SkipAzureResources: true,
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "publisher",
+						ResourceName:    "publisher",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -57,7 +57,7 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "pubsub",
+						ResourceName:    "pubsub",
 						ResourceType:    daprpubsubv1alpha1.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, resourcekinds.DaprPubSubTopicAzureServiceBus, true, false, rest.OutputResourceStatus{}),
@@ -68,14 +68,12 @@ func Test_DaprPubSubServiceBusManaged(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "publisher"),
+						validation.NewK8sObjectForResource(application, "publisher"),
 					},
 				},
 			},
 		},
 	})
-
-	test.Version = validation.AppModelV3
 
 	test.Test(t)
 }
@@ -104,11 +102,11 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 					},
 				},
 			},
-			Components: &validation.ComponentSet{
-				Components: []validation.Component{
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ComponentName:   "publisher",
+						ResourceName:    "publisher",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -117,7 +115,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ComponentName:   "pubsub",
+						ResourceName:    "pubsub",
 						ResourceType:    daprpubsubv1alpha1.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, resourcekinds.DaprPubSubTopicAzureServiceBus, false, false, rest.OutputResourceStatus{}),
@@ -128,14 +126,12 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForComponent(application, "publisher"),
+						validation.NewK8sObjectForResource(application, "publisher"),
 					},
 				},
 			},
 		},
 	})
-
-	test.Version = validation.AppModelV3
 
 	test.Test(t)
 }

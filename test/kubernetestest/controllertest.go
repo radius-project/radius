@@ -146,7 +146,7 @@ func StartController() error {
 		client.ObjectList
 	}{
 		{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
-		{&radiusv1alpha3.DaprIOInvokeRoute{}, &radiusv1alpha3.DaprIOInvokeRouteList{}},
+		{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
 		{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
 		{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
 		{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
@@ -349,5 +349,5 @@ func extractOwnerKey(obj client.Object) []string {
 		return nil
 	}
 
-	return []string{owner.Name}
+	return []string{owner.Kind + owner.Name}
 }

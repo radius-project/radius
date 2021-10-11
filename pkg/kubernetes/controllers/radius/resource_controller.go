@@ -19,6 +19,7 @@ import (
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -69,9 +70,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=containercomponents,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=containercomponents/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=containercomponents/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokeroutes/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes/finalizers,verbs=update
 //+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents/finalizers,verbs=update
@@ -169,7 +170,7 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	results := []client.Object{}
 
 	deployments := &appsv1.DeploymentList{}
-	err := r.Client.List(ctx, deployments, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Name})
+	err := r.Client.List(ctx, deployments, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
 	if err != nil {
 		log.Error(err, "failed to retrieve deployments")
 		return nil, err
@@ -181,7 +182,7 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	}
 
 	services := &corev1.ServiceList{}
-	err = r.Client.List(ctx, services, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Name})
+	err = r.Client.List(ctx, services, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
 	if err != nil {
 		log.Error(err, "failed to retrieve services")
 		return nil, err
@@ -346,20 +347,17 @@ func (r *ResourceReconciler) ApplyState(
 
 	// Only support strings for now
 	if desired.ComputedValues != nil {
-		data, err := json.Marshal(desired.ComputedValues)
+		err := converters.SetComputedValues(&resource.Status, desired.ComputedValues)
 		if err != nil {
 			return err
 		}
-		// TODO convert from computed value to to interface{}
-		resource.Status.ComputedValues = &runtime.RawExtension{Raw: data}
 	}
 
 	if desired.SecretValues != nil {
-		data, err := json.Marshal(desired.SecretValues)
+		err := converters.SetSecretValues(&resource.Status, desired.SecretValues)
 		if err != nil {
 			return err
 		}
-		resource.Status.SecretValues = &runtime.RawExtension{Raw: data}
 	}
 
 	// Can't use resource type to update as it will assume the wrong type
@@ -399,7 +397,7 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 
 	err := r.Client.Get(ctx, client.ObjectKey{
 		Namespace: namespace,
-		Name:      resourceType.Name,
+		Name:      kubernetes.MakeResourceName(id.Types[1].Name, id.Types[2].Name),
 	}, unst)
 	if err != nil {
 		// TODO make this wait without an error?
@@ -431,16 +429,26 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 		}
 	}
 
+	outputResources := map[string]resourcemodel.ResourceIdentity{}
+	for localID, outputResource := range k8sResource.Status.Resources {
+		outputResources[localID] = resourcemodel.ResourceIdentity{
+			Kind: resourcemodel.IdentityKindKubernetes,
+			Data: resourcemodel.KubernetesIdentity{
+				Kind:       outputResource.Kind,
+				APIVersion: outputResource.APIVersion,
+				Name:       outputResource.Name,
+				Namespace:  outputResource.Namespace,
+			},
+		}
+	}
+
 	// The 'ComputedValues' we provide to the dependency are a combination of the computed values
 	// we store in status, and secrets we store separately.
 	values := map[string]interface{}{}
 
-	computedValues := map[string]renderers.ComputedValueReference{}
-	if k8sResource.Status.ComputedValues != nil {
-		err = json.Unmarshal(k8sResource.Status.ComputedValues.Raw, &computedValues)
-		if err != nil {
-			return nil, err
-		}
+	computedValues, err := converters.GetComputedValues(k8sResource.Status)
+	if err != nil {
+		return nil, err
 	}
 
 	for k, v := range computedValues {
@@ -449,45 +457,26 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 
 	// The 'SecretValues' we store as part of the resource status (from render output) are references
 	// to secrets, we need to fetch the values and pass them to the renderer.
-	secretValues := map[string]renderers.SecretValueReference{}
-	if k8sResource.Status.SecretValues != nil {
-		err = json.Unmarshal(k8sResource.Status.SecretValues.Raw, &secretValues)
-		if err != nil {
-			return nil, err
-		}
+	secretValues, err := converters.GetSecretValues(k8sResource.Status)
+	if err != nil {
+		return nil, err
 	}
 
+	secretClient := converters.SecretClient{Client: r.Client}
 	for k, v := range secretValues {
-		// Each value needs to be looked up in a secret where it's stored. The reference
-		// to the secret will be in the output resources.
-		secretRef, ok := k8sResource.Status.Resources[v.LocalID]
-		if !ok {
-			return nil, fmt.Errorf("could not find a matching resource for LocalID %q", v.LocalID)
-		}
-
-		secret := corev1.Secret{}
-		err = r.Client.Get(ctx, client.ObjectKey{Namespace: secretRef.Namespace, Name: secretRef.Name}, &secret)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve secret of dependency: %w", err)
-		}
-
-		encodedValue, ok := secret.Data[v.ValueSelector]
-		if !ok {
-			return nil, fmt.Errorf("secret did contain expected key: %q", v.ValueSelector)
-		}
-
-		decodedValue := string(encodedValue)
+		value, err := secretClient.LookupSecretValue(ctx, k8sResource.Status, v)
 		if err != nil {
 			return nil, err
 		}
 
-		values[k] = decodedValue
+		values[k] = value
 	}
 
 	return &renderers.RendererDependency{
-		ComputedValues: values,
-		ResourceID:     id,
-		Definition:     properties,
+		ComputedValues:  values,
+		ResourceID:      id,
+		Definition:      properties,
+		OutputResources: outputResources,
 	}, nil
 }
 

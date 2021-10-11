@@ -1,14 +1,11 @@
-resource app 'radius.dev/Applications@v1alpha1' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-mechanics-redeploy-withanothercomponent'
 
-  resource a 'Components' = {
+  resource a 'ContainerComponent' = {
     name: 'a'
-    kind: 'radius.dev/Container@v1alpha1'
     properties: {
-      run: {
-        container: {
-          image: 'radius.azurecr.io/magpie:latest'
-        }
+      container: {
+        image: 'radius.azurecr.io/magpie:latest'
       }
     }
   }
