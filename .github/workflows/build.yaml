@@ -121,9 +121,15 @@ jobs:
           login_server: https://index.docker.io/v1/
           username_secret: RADIUSTEAM_DOCKERHUB_USERNAME
           password_secret: RADIUSTEAM_DOCKERHUB_PASSWORD
+    env:
+      GOVER: '^1.17'
     steps:
       - name: Check out code
         uses: actions/checkout@v2
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: make docker-build
