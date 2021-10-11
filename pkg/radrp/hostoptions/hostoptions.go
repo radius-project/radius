@@ -140,7 +140,7 @@ func getArm() (*armauth.ArmConfig, error) {
 		return nil, fmt.Errorf("failed to build ARM config: %w", err)
 	}
 
-	return &arm, err
+	return &arm, nil
 }
 
 func getKubernetes() (*rest.Config, error) {
