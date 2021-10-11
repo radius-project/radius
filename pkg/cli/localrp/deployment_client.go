@@ -39,6 +39,10 @@ type LocalRPDeploymentClient struct {
 
 var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
 
+func (dc *LocalRPDeploymentClient) GetExistingDeployment(ctx context.Context, options clients.DeploymentOptions) (*clients.DeploymentResult, error) {
+	return nil, nil
+}
+
 func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	template, err := armtemplate.Parse(options.Template)
 	if err != nil {

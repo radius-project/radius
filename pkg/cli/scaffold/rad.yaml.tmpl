@@ -1,0 +1,17 @@
+name: {{.ApplicationName}}
+# Defines environment-specific settings for different environments
+# that the application uses (dev/staging/production)
+environments: {}
+# Defines the layers of the application. Each layer depends on the previous layer
+# and may access their outputs.
+layers:
+- name: infra
+  deploy: infra.yaml
+- name: build
+  build:
+  - name: todo_image
+    docker:
+      context: '.'
+      repository: rynowak/todoapp #TODO: fill in your username here
+- name: app
+  deploy: app.yaml

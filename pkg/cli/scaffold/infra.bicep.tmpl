@@ -1,0 +1,29 @@
+resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
+  name: 'todo-${guid(resourceGroup().id)}'
+  location: resourceGroup().location
+  kind: 'MongoDB'
+  properties: {
+    locations: [
+      {
+        locationName: resourceGroup().location
+        failoverPriority: 0
+        isZoneRedundant: false
+      }
+    ]
+    databaseAccountOfferType: 'Standard'
+  }
+
+  resource db 'mongodbDatabases' = {
+    name: 'todo-db'
+    properties: {
+      resource: {
+        id: 'todo-db'
+      }
+      options: { 
+        throughput: 400
+      }
+    }
+  }
+}
+
+output todo_db string = account::db.id

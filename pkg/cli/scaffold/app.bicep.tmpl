@@ -1,0 +1,56 @@
+// Declares a parameter that will provide information about the container
+// The parameter name must match the parameter declared in rad.yaml
+param todo_image object
+
+// Declares a parameter that will provide the underlying cloud resource
+// for the database.
+// The parameter name must match the parameter declared in infra.bicep
+param todo_db string
+
+resource app 'radius.dev/Application@v1alpha3' = {
+  name: '{{.ApplicationName}}'
+
+  resource todo 'ContainerComponent' = {
+    name: 'todo'
+    properties: {
+      
+      // Declaring a connection declares environment variables for service discovery
+      // based on the connection name.
+      //
+      // The mongo connection string can be found in `CONNECTION_DB_CONNECTIONSTRING`
+      connections: {
+        db: {
+          kind: 'mongo.com/MongoDB'
+          source: db.id
+        }
+      }
+      container: {
+        image: todo_image.image
+        ports: {
+          web: {
+            containerPort: 3000
+            provides: web.id
+          }
+        }
+      }
+    }
+  }
+
+  // Declares a route to provide HTTP traffic from the internet.
+  // Remove the 'gateway' section to use as an internal route.
+  resource web 'HttpRoute' = {
+    name: 'web'
+    properties: {
+      gateway: {
+        hostname: '*'
+      }
+    }
+  }
+
+  resource db 'mongodb.com.MongoDBComponent' = {
+    name: 'db'
+    properties: {
+      resource: todo_db
+    }
+  }
+}

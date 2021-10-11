@@ -18,6 +18,15 @@ type InteractiveListener struct {
 	DoneChannel   chan<- struct{}
 }
 
+func (d InteractiveListener) CreateBar(progress *uiprogress.Progress, resource azresources.ResourceID) *uiprogress.Bar {
+	resourceType := FormatTypeForDisplay(resource)
+	resourceName := resource.Name()
+	return progress.AddBar(100).
+		PrependFunc(func(b *uiprogress.Bar) string {
+			return fmt.Sprintf("%-30s %-15s", resourceType, resourceName)
+		})
+}
+
 func (d InteractiveListener) Start() {
 	go func() {
 		progress := uiprogress.New()
@@ -35,28 +44,29 @@ func (d InteractiveListener) Start() {
 
 			switch update.Kind {
 			case clients.UpdateStart:
-				resourceType := FormatTypeForDisplay(update.Resource)
-				resourceName := update.Resource.Name()
-				bars[update.Resource.ID] = progress.AddBar(100).
-					PrependFunc(func(b *uiprogress.Bar) string {
-						return fmt.Sprintf("%-20s %-15s", resourceType, resourceName)
-					})
+				bars[update.Resource.ID] = d.CreateBar(progress, update.Resource)
 
 			case clients.UpdateSucceeded:
 				bar := bars[update.Resource.ID]
-				if bar != nil {
-					bar.AppendFunc(func(b *uiprogress.Bar) string {
-						return "Succeeded"
-					}).Set(100)
+				if bar == nil {
+					bar = d.CreateBar(progress, update.Resource)
+					bars[update.Resource.ID] = bar
 				}
+
+				bar.AppendFunc(func(b *uiprogress.Bar) string {
+					return "Succeeded"
+				}).Set(100)
 
 			case clients.UpdateFailed:
 				bar := bars[update.Resource.ID]
-				if bar != nil {
-					bar.AppendFunc(func(b *uiprogress.Bar) string {
-						return "Failed"
-					}).Set(100)
+				if bar == nil {
+					bar = d.CreateBar(progress, update.Resource)
+					bars[update.Resource.ID] = bar
 				}
+
+				bar.AppendFunc(func(b *uiprogress.Bar) string {
+					return "Failed"
+				}).Set(100)
 			}
 		}
 	}()

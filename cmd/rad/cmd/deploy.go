@@ -176,7 +176,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 
 	for _, resource := range result.Resources {
 		if cli.ShowResource(resource) {
-			output.LogInfo("%-20s %-15s", cli.FormatTypeForDisplay(resource), resource.Name())
+			output.LogInfo("%-30s %-15s", cli.FormatTypeForDisplay(resource), resource.Name())
 		}
 	}
 
@@ -211,7 +211,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 		output.LogInfo("")
 
 		for _, entry := range endpoints {
-			output.LogInfo("%-20s %-15s %s", cli.FormatTypeForDisplay(entry.ResourceID), entry.ResourceID.Name(), entry.Endpoint)
+			output.LogInfo("%-30s %-15s %s", cli.FormatTypeForDisplay(entry.ResourceID), entry.ResourceID.Name(), entry.Endpoint)
 		}
 	}
 

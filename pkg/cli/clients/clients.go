@@ -32,13 +32,20 @@ import (
 type DeploymentParameters = map[string]map[string]interface{}
 
 type DeploymentOptions struct {
-	Template      string
-	Parameters    DeploymentParameters
-	UpdateChannel chan<- DeploymentProgressUpdate
+	Template       string
+	Parameters     DeploymentParameters
+	DeploymentName string
+	UpdateChannel  chan<- DeploymentProgressUpdate
 }
 
 type DeploymentResult struct {
 	Resources []azresources.ResourceID
+	Outputs   map[string]DeploymentOutput
+}
+
+type DeploymentOutput struct {
+	Type  string      `json:"type"`
+	Value interface{} `json:"value"`
 }
 
 const (
@@ -55,6 +62,7 @@ type DeploymentProgressUpdate struct {
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
 type DeploymentClient interface {
 	Deploy(ctx context.Context, options DeploymentOptions) (DeploymentResult, error)
+	GetExistingDeployment(ctx context.Context, options DeploymentOptions) (*DeploymentResult, error)
 }
 
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
