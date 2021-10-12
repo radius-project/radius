@@ -106,7 +106,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			"apiVersion": "dapr.io/v1alpha1",
 			"kind":       "Component",
 			"metadata": map[string]interface{}{
-				"name":      kubernetes.MakeResourceName(w.Application, component.Name),
+				"name":      component.Name,
 				"namespace": namespace,
 				"labels":    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 			},
