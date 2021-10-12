@@ -104,7 +104,7 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		Data: map[string][]byte{
 			SecretKeyMongoDBAdminUsername:    []byte("test-username"),
 			SecretKeyMongoDBAdminPassword:    []byte("test-password"),
-			SecretKeyMongoDBConnectionString: []byte("mongodb://test-username:test-password@test-name:27017/admin"),
+			SecretKeyMongoDBConnectionString: []byte("test-application-mongodb://test-username:test-password@test-name:27017/admin"),
 		},
 	}
 
