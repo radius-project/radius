@@ -16,6 +16,13 @@
       "properties": {
         "properties": {
           "$ref": "#/definitions/ContainerComponentProperties"
+        },
+        "traits": {
+          "type": "array",
+          "description": "Traits spec of the component",
+          "items": {
+            "$ref": "../traits.json#/definitions/ComponentTrait"
+          }
         }
       }
     },
@@ -70,14 +77,7 @@
               }
             }
           }
-        },
-	    "traits": {
-          "type": "array",
-          "description": "Traits spec of the component",
-          "items": {
-            "$ref": "../traits.json#/definitions/ComponentTrait"
-          }
-	      }
+        }
       }
     },
     "ContainerPort": {

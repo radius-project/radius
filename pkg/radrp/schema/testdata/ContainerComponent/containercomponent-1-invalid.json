@@ -85,8 +85,7 @@
       "appId": "cool-app"
     },
     {
-      "kind": "dapr.io/Sidecar@v1alpha1",
-      "appId": "cool-app"
+      "kind": "dapr.io/Sidecar@v1alpha1"
     }
   ]
 }

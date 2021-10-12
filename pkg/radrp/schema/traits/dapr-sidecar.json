@@ -4,6 +4,9 @@
     "DaprSidecarTrait": {
       "type": "object",
       "description": "The specifies that the component should have a Dapr sidecar injected",
+      "required": [
+        "appId"
+      ],
       "properties": {
         "kind": {
           "description": "Trait kind.",
