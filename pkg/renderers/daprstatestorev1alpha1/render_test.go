@@ -288,7 +288,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-component")
 
 	t.Run("verify deployment", func(t *testing.T) {
-		require.Equal(t, "test-component", resourceDeployment.Name)
+		require.Equal(t, "test-app-test-component", resourceDeployment.Name)
 		require.Equal(t, labels, resourceDeployment.Labels)
 		require.Empty(t, resourceDeployment.Annotations)
 
@@ -310,7 +310,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 	})
 
 	t.Run("verify service", func(t *testing.T) {
-		require.Equal(t, "test-component", resourceService.Name)
+		require.Equal(t, "test-app-test-component", resourceService.Name)
 		require.Equal(t, labels, resourceService.Labels)
 		require.Empty(t, resourceService.Annotations)
 
@@ -331,7 +331,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 				"apiVersion": "dapr.io/v1alpha1",
 				"kind":       "Component",
 				"metadata": map[string]interface{}{
-					"name":      "test-component",
+					"name":      "test-app-test-component",
 					"namespace": "default",
 					"labels":    kubernetes.MakeDescriptiveLabels("test-app", "test-component"),
 				},
@@ -341,7 +341,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 					"metadata": []interface{}{
 						map[string]interface{}{
 							"name":  "redisHost",
-							"value": "test-component:6379",
+							"value": "test-app-test-component:6379",
 						},
 						map[string]interface{}{
 							"name":  "redisPassword",

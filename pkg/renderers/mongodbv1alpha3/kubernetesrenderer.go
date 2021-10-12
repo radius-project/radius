@@ -36,7 +36,6 @@ type KubernetesOptions struct {
 	SelectorLabels    map[string]string
 	Namespace         string
 	Name              string
-	ApplicationName   string
 }
 
 func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
@@ -59,8 +58,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 		SelectorLabels:    kubernetes.MakeSelectorLabels(resource.ApplicationName, resource.ResourceName),
 
 		// For now use the resource name as the Kubernetes resource name.
-		Name:            kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
-		ApplicationName: resource.ApplicationName,
+		Name: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 	}
 
 	resources := []outputresource.OutputResource{}
@@ -106,7 +104,7 @@ func (r KubernetesRenderer) MakeSecret(options KubernetesOptions, username strin
 
 	// Mongo connection strings look like: 'mongodb://{accountname}:{key}@{endpoint}:{port}/{logindatabase}?...{params}'
 	u := url.URL{
-		Scheme: kubernetes.MakeResourceName(options.ApplicationName, "mongodb"),
+		Scheme: "mongodb",
 		User:   url.UserPassword(string(username), string(password)),
 		Host:   fmt.Sprintf("%s:%d", options.Name, port),
 		Path:   "admin", // is the default for the login database

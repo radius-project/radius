@@ -87,7 +87,6 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		SelectorLabels:    kubernetes.MakeSelectorLabels("test-application", "test-resource"),
 		Namespace:         "test-namespace",
 		Name:              "test-name",
-		ApplicationName:   "test-application",
 	}
 	secret := renderer.MakeSecret(options, "test-username", "test-password")
 
@@ -105,7 +104,7 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		Data: map[string][]byte{
 			SecretKeyMongoDBAdminUsername:    []byte("test-username"),
 			SecretKeyMongoDBAdminPassword:    []byte("test-password"),
-			SecretKeyMongoDBConnectionString: []byte("test-application-mongodb://test-username:test-password@test-name:27017/admin"),
+			SecretKeyMongoDBConnectionString: []byte("mongodb://test-username:test-password@test-name:27017/admin"),
 		},
 	}
 

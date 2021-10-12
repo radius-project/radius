@@ -24,7 +24,7 @@ Another container component is used to specify a few properties about the order 
   
 ## Deploy application
 
-1. Make sure your `template.json` file matches the full tutorial file:
+1. Make sure your `template.bicep` file matches the full tutorial file:
 
    {{< rad file="snippets/app.bicep" download=true >}}
 

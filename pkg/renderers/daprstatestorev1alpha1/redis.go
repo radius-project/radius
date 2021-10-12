@@ -39,7 +39,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			APIVersion: appsv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      component.Name,
+			Name:      kubernetes.MakeResourceName(w.Application, component.Name),
 			Namespace: namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 		},
@@ -79,7 +79,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      component.Name,
+			Name:      kubernetes.MakeResourceName(w.Application, component.Name),
 			Namespace: namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 		},
@@ -106,7 +106,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 			"apiVersion": "dapr.io/v1alpha1",
 			"kind":       "Component",
 			"metadata": map[string]interface{}{
-				"name":      component.Name,
+				"name":      kubernetes.MakeResourceName(w.Application, component.Name),
 				"namespace": namespace,
 				"labels":    kubernetes.MakeDescriptiveLabels(w.Application, w.Name),
 			},
@@ -116,7 +116,7 @@ func GetDaprStateStoreKubernetesRedis(w workloads.InstantiatedWorkload, componen
 				"metadata": []interface{}{
 					map[string]interface{}{
 						"name":  "redisHost",
-						"value": fmt.Sprintf("%s:6379", component.Name),
+						"value": fmt.Sprintf("%s:6379", kubernetes.MakeResourceName(w.Application, component.Name)),
 					},
 					map[string]interface{}{
 						"name":  "redisPassword",
