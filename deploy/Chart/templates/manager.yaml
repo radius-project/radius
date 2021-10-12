@@ -5,7 +5,7 @@ metadata:
   labels:
     control-plane: controller-manager
   name: radius-controller-manager
-  namespace: {{ .Release.Namespace }}
+  namespace: radius-system
 spec:
   replicas: 1
   selector:
@@ -80,7 +80,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: webhook-service
-  namespace: {{ .Release.Namespace }}
+  namespace: radius-system
 spec:
   ports:
     - port: 443
