@@ -87,6 +87,7 @@ func Test_KubernetesRenderer_MakeSecret(t *testing.T) {
 		SelectorLabels:    kubernetes.MakeSelectorLabels("test-application", "test-resource"),
 		Namespace:         "test-namespace",
 		Name:              "test-name",
+		ApplicationName:   "test-application",
 	}
 	secret := renderer.MakeSecret(options, "test-username", "test-password")
 
