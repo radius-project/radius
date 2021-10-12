@@ -323,9 +323,6 @@ type ContainerComponentProperties struct {
 	// Dictionary of
 	Connections map[string]*ContainerConnection `json:"connections,omitempty"`
 	Container *ContainerComponentPropertiesContainer `json:"container,omitempty"`
-
-	// Traits spec of the component
-	Traits []map[string]interface{} `json:"traits,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentProperties.
@@ -333,7 +330,6 @@ func (c ContainerComponentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := c.BasicComponentProperties.marshalInternal()
 	populate(objectMap, "connections", c.Connections)
 	populate(objectMap, "container", c.Container)
-	populate(objectMap, "traits", c.Traits)
 	return json.Marshal(objectMap)
 }
 
@@ -374,12 +370,16 @@ type ContainerComponentResource struct {
 	ProxyResource
 	// REQUIRED
 	Properties *ContainerComponentProperties `json:"properties,omitempty"`
+
+	// Traits spec of the component
+	Traits []map[string]interface{} `json:"traits,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentResource.
 func (c ContainerComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := c.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", c.Properties)
+	populate(objectMap, "traits", c.Traits)
 	return json.Marshal(objectMap)
 }
 
@@ -552,7 +552,7 @@ func (d DaprPubSubTopicComponentResource) MarshalJSON() ([]byte, error) {
 
 // DaprSidecarTrait - The specifies that the component should have a Dapr sidecar injected
 type DaprSidecarTrait struct {
-	// The Dapr appId. Specifies the identifier used by Dapr for service invocation.
+	// REQUIRED; The Dapr appId. Specifies the identifier used by Dapr for service invocation.
 	AppID *string `json:"appId,omitempty"`
 
 	// The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
