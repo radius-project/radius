@@ -21,7 +21,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       traits: [
         {
           kind: 'dapr.io/Sidecar@v1alpha1'
-					appId: 'frontend'
+          appId: 'frontend'
         }
       ]
     }
