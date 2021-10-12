@@ -331,7 +331,7 @@ func Test_Render_K8s_Managed_Success(t *testing.T) {
 				"apiVersion": "dapr.io/v1alpha1",
 				"kind":       "Component",
 				"metadata": map[string]interface{}{
-					"name":      "test-app-test-component",
+					"name":      "test-component",
 					"namespace": "default",
 					"labels":    kubernetes.MakeDescriptiveLabels("test-app", "test-component"),
 				},
