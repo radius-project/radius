@@ -367,13 +367,6 @@
             "image"
           ],
           "type": "object"
-        },
-        "traits": {
-          "description": "Traits spec of the component",
-          "items": {
-            "$ref": "#/definitions/ComponentTrait"
-          },
-          "type": "array"
         }
       }
     },
@@ -387,6 +380,13 @@
       "properties": {
         "properties": {
           "$ref": "#/definitions/ContainerComponentProperties"
+        },
+        "traits": {
+          "description": "Traits spec of the component",
+          "items": {
+            "$ref": "#/definitions/ComponentTrait"
+          },
+          "type": "array"
         }
       },
       "required": [
@@ -602,6 +602,10 @@
           "type": "string"
         }
       },
+      "required": [
+        "appId",
+        "kind"
+      ],
       "type": "object",
       "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
     },
