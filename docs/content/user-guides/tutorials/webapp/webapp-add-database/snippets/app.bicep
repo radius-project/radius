@@ -14,9 +14,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           }
         }
         //PORTS
-        env: {
-          DBCONNECTION: db.connectionString()
-        }
       }
       connections: {
         itemstore: {
