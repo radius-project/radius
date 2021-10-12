@@ -17,12 +17,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         backend: {
           kind: 'dapr.io/DaprHttp'
-          source: backendDapr.id
+          source: daprBackend.id
         }
       }
       traits: [
         {
           kind: 'dapr.io/Sidecar@v1alpha1'
+          appId: 'frontend'
         }
       ]
     }
@@ -46,13 +47,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
           kind: 'dapr.io/Sidecar@v1alpha1'
           appId: 'backend'
           appPort: 3000
-          provides: backendDapr.id
+          provides: daprBackend.id
         }
       ]
     }
   }
 
-  resource backendDapr 'dapr.io.DaprHttpRoute' = {
+  resource daprBackend 'dapr.io.DaprHttpRoute' = {
     name: 'backend-dapr'
     properties: {
       appId: 'backend'
