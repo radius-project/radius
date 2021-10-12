@@ -187,7 +187,7 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	service := backend.Service
 	require.NotNil(t, service)
 
-	require.Equal(t, resourceName, service.Name)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service.Name)
 	require.Equal(t, int32(81), service.Port.Number)
 }
 
@@ -236,6 +236,6 @@ func Test_Render_WithHostname(t *testing.T) {
 
 	service := path.Backend.Service
 	require.NotNil(t, service)
-	require.Equal(t, resourceName, service.Name)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service.Name)
 	require.Equal(t, int32(81), service.Port.Number)
 }

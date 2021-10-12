@@ -64,7 +64,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-component")
 
 	t.Run("verify deployment", func(t *testing.T) {
-		require.Equal(t, "test-component", deployment.Name)
+		require.Equal(t, "test-app-test-component", deployment.Name)
 		require.Equal(t, "default", deployment.Namespace)
 		require.Equal(t, labels, deployment.Labels)
 		require.Empty(t, deployment.Annotations)
@@ -87,7 +87,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	})
 
 	t.Run("verify service", func(t *testing.T) {
-		require.Equal(t, "test-component", service.Name)
+		require.Equal(t, "test-app-test-component", service.Name)
 		require.Equal(t, "default", service.Namespace)
 		require.Equal(t, labels, service.Labels)
 		require.Empty(t, service.Annotations)
@@ -110,7 +110,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		require.Empty(t, secret.Annotations)
 
 		data := secret.Data
-		require.Equal(t, "amqp://test-component:5672", string(data[SecretKeyRabbitMQConnectionString]))
+		require.Equal(t, "amqp://test-app-test-component:5672", string(data[SecretKeyRabbitMQConnectionString]))
 	})
 }
 
