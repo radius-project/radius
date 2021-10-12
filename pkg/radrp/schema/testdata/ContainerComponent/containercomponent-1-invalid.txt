@@ -16,3 +16,4 @@
 (root).properties.container.volumes.vol6: kind is required
 (root).traits.0.kind: traits.0.kind must be one of the following: "dapr.io/Sidecar@v1alpha1"
 (root).traits.1: appId is required
+(root).traits.2: kind is required

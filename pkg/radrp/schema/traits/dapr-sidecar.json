@@ -5,7 +5,8 @@
       "type": "object",
       "description": "The specifies that the component should have a Dapr sidecar injected",
       "required": [
-        "appId"
+        "appId",
+        "kind"
       ],
       "properties": {
         "kind": {

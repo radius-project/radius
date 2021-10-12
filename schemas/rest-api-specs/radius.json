@@ -603,7 +603,8 @@
         }
       },
       "required": [
-        "appId"
+        "appId",
+        "kind"
       ],
       "type": "object",
       "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"

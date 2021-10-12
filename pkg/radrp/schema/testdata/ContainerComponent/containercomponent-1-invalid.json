@@ -86,6 +86,9 @@
     },
     {
       "kind": "dapr.io/Sidecar@v1alpha1"
+    },
+    {
+      "appId": "foo"
     }
   ]
 }
