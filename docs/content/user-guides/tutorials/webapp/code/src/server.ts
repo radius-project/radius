@@ -22,8 +22,8 @@ export async function main(): Promise<void> {
     const client = new SecretClient(kvURI, credential);
     connectionString = (await client.getSecret(secretName)).value || '';
     console.log("Retrieved DB connection string from Key Vault")
-  } else if (process.env.DBCONNECTION) {
-    connectionString = process.env.DBCONNECTION
+  } else if (process.env.CONNECTION_ITEMSTORE_CONNECTIONSTRING) {
+    connectionString = process.env.CONNECTION_ITEMSTORE_CONNECTIONSTRING
     console.log("Retrieved DB connection string from environment variable")
   }
 
