@@ -10,13 +10,18 @@ app.use(bodyParser.json());
 const daprPort = process.env.DAPR_HTTP_PORT; 
 const daprGRPCPort = process.env.DAPR_GRPC_PORT;
 
-const stateStoreName = `statestore`;
+const stateStoreName =  process.env.CONNECTION_ORDERS_STATESTORENAME;
 const stateUrl = `http://localhost:${daprPort}/v1.0/state/${stateStoreName}`;
 const port = 3000;
 
 app.get('/order', (_req, res) => {
     if (!process.env.DAPR_HTTP_PORT) {
         res.status(400).send({message: "The container is running, but Dapr has not been configured."});
+        return;
+    }
+
+    if (!process.env.CONNECTION_ORDERS_STATESTORENAME) {
+        res.status(400).send({message: "The container is running, but the state store name is not set."});
         return;
     }
 

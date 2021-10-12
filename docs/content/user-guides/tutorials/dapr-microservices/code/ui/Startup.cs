@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http;
 using Dapr.Client;
 using Microsoft.AspNetCore.Builder;
@@ -21,7 +22,9 @@ namespace ui
         {
             services.AddRazorPages();
             services.AddServerSideBlazor();
-            services.AddSingleton<HttpClient>(DaprClient.CreateInvokeHttpClient("backend"));
+
+            var appId = Environment.GetEnvironmentVariable("CONNECTION_BACKEND_APPID");
+            services.AddSingleton<HttpClient>(DaprClient.CreateInvokeHttpClient(appId));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
