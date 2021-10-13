@@ -29,6 +29,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         {
           kind: 'dapr.io/Sidecar@v1alpha1'
           provides: nodeapplication_dapr.id
+          appId: 'nodeapp'
           appPort: 3000
         }
       ]

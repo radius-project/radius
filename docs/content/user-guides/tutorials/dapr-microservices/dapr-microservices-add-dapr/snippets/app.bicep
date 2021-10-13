@@ -27,6 +27,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         {
           kind: 'dapr.io/Sidecar@v1alpha1'
           appPort: 3000
+          appId: 'backend'
           provides: daprBackend.id
         }
       ]
@@ -53,4 +54,3 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
 
 }
-
