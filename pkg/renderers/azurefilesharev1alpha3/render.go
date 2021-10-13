@@ -8,12 +8,15 @@ package azurefilesharev1alpha3
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
@@ -36,7 +39,7 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 }
 
 func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	properties := VolumeProperties{}
+	properties := AzureFileShareProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -58,10 +61,8 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-
 	// Truncate the fileservices/shares part of the ID to make an ID for the account
 	storageAccountID := fileshareID.Truncate().Truncate()
-
 	computedValues, secretValues := MakeSecretsAndValues(storageAccountID.Types[0].Name)
 
 	return renderers.RendererOutput{
@@ -71,7 +72,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	}, nil
 }
 
-func RenderUnmanaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
+func RenderUnmanaged(name string, properties AzureFileShareProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
@@ -105,6 +106,7 @@ func RenderUnmanaged(name string, properties VolumeProperties) ([]outputresource
 			handlers.FileShareNameKey:               fileshareID.Types[2].Name,
 		},
 		Dependencies: []outputresource.Dependency{storageAccountDependency},
+		Identity:     resourcemodel.NewARMIdentity(fileshareID.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent())),
 	}
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }

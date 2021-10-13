@@ -81,6 +81,7 @@ func makeResourceID(t *testing.T, resourceType string, resourceName string) azre
 }
 
 func Test_GetDependencyIDs_Success(t *testing.T) {
+	testResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 	properties := ContainerProperties{
 		Connections: map[string]ContainerConnection{
 			"A": {
@@ -100,6 +101,13 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 					Provides:      makeResourceID(t, "HttpRoute", "C").ID,
 				},
 			},
+			Volumes: map[string]map[string]interface{}{
+				"vol1": {
+					"kind":      "persistent",
+					"mountPath": "/tmpfs",
+					"source":    testResourceID,
+				},
+			},
 		},
 	}
 	resource := makeResource(t, properties)
@@ -108,10 +116,27 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	ids, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.NoError(t, err)
 
+	storageID, _ := azresources.Parse(azresources.MakeID(
+		"test-sub-id",
+		"test-rg",
+		azresources.ResourceType{
+			Type: "Microsoft.Storage/storageaccounts",
+			Name: "testaccount",
+		},
+		azresources.ResourceType{
+			Type: "fileservices",
+			Name: "default",
+		},
+		azresources.ResourceType{
+			Type: "shares",
+			Name: "testShareName",
+		}))
+
 	expected := []azresources.ResourceID{
 		makeResourceID(t, "HttpRoute", "A"),
 		makeResourceID(t, "HttpRoute", "B"),
 		makeResourceID(t, "HttpRoute", "C"),
+		storageID,
 	}
 	require.ElementsMatch(t, expected, ids)
 }

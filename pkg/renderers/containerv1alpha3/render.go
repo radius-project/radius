@@ -91,16 +91,17 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 	for _, volume := range properties.Container.Volumes {
 		if volume[kindProperty] == VolumeKindEphemeral {
 			continue
+		} else if volume[kindProperty] == VolumeKindPersistent {
+			persistentVolume, err := asPersistentVolume(volume)
+			if err != nil {
+				return nil, err
+			}
+			resourceID, err := azresources.Parse(persistentVolume.Source)
+			if err != nil {
+				return nil, err
+			}
+			deps = append(deps, resourceID)
 		}
-		persistentVolume, err := asPersistentVolume(volume)
-		if err != nil {
-			return nil, err
-		}
-		resourceID, err := azresources.Parse(persistentVolume.Source)
-		if err != nil {
-			return nil, err
-		}
-		deps = append(deps, resourceID)
 	}
 
 	return deps, nil
@@ -312,6 +313,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 			for key, value := range properties.ComputedValues {
 				secretData[key] = []byte(value.(string))
 			}
+		} else {
+			return outputresource.OutputResource{}, secretData, fmt.Errorf("Only ephemeral or persistent volumes are supported. Got kind: %v", volume[kindProperty])
 		}
 	}
 

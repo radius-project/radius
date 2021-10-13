@@ -8,10 +8,9 @@ package azurefilesharev1alpha3
 import "github.com/Azure/radius/pkg/azure/azresources"
 
 const (
-	VolumeKindAzureFileShare = "azure.com.fileshare"
-	StorageKeyValue          = "azurestorageaccountkey"
-	StorageAccountName       = "azurestorageaccountname"
-	ResourceType             = "Volume"
+	StorageKeyValue    = "azurestorageaccountkey"
+	StorageAccountName = "azurestorageaccountname"
+	ResourceType       = "Volume"
 )
 
 var AzureFileShareResourceType = azresources.KnownType{
@@ -31,13 +30,7 @@ var AzureFileShareResourceType = azresources.KnownType{
 	},
 }
 
-type VolumeProperties struct {
-	Kind     string `json:"kind"`
-	Managed  bool   `json:"managed"`
-	Resource string `json:"resource"`
-}
-
-type AzureFileShare struct {
+type AzureFileShareProperties struct {
 	Kind     string `json:"kind"`
 	Managed  bool   `json:"managed"`
 	Resource string `json:"resource"`

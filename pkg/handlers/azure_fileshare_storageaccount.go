@@ -60,10 +60,9 @@ func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, 
 		return nil
 	}
 
-	accountName := properties[StorageAccountNameKey]
 	sc := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	_, err := sc.Delete(ctx, handler.arm.ResourceGroup, accountName)
+	_, err := sc.Delete(ctx, handler.arm.ResourceGroup, properties[StorageAccountNameKey])
 	if err != nil {
 		return fmt.Errorf("failed to delete storage account: %w", err)
 	}
