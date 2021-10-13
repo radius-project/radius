@@ -369,6 +369,13 @@
             "image"
           ],
           "type": "object"
+        },
+        "traits": {
+          "description": "Traits spec of the component",
+          "items": {
+            "$ref": "#/definitions/ComponentTrait"
+          },
+          "type": "array"
         }
       },
       "type": "object"
@@ -383,13 +390,6 @@
       "properties": {
         "properties": {
           "$ref": "#/definitions/ContainerComponentProperties"
-        },
-        "traits": {
-          "description": "Traits spec of the component",
-          "items": {
-            "$ref": "#/definitions/ComponentTrait"
-          },
-          "type": "array"
         }
       },
       "required": [

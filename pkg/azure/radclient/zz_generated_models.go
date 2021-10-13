@@ -163,6 +163,26 @@ func (a AzureKeyVaultComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureKeyVaultComponentProperties.
+func (a *AzureKeyVaultComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managed":
+				err = unpopulate(val, &a.Managed)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return a.BasicComponentProperties.unmarshalInternal(rawMsg)
+}
+
 // AzureKeyVaultComponentResource - Component for Azure KeyVault
 type AzureKeyVaultComponentResource struct {
 	ProxyResource
@@ -175,26 +195,6 @@ func (a AzureKeyVaultComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := a.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type AzureKeyVaultComponentResource.
-func (a *AzureKeyVaultComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &a.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return a.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // AzureServiceBusComponentList - List of azure.com.ServiceBusQueueComponent resources.
@@ -227,6 +227,29 @@ func (a AzureServiceBusComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureServiceBusComponentProperties.
+func (a *AzureServiceBusComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managed":
+				err = unpopulate(val, &a.Managed)
+				delete(rawMsg, key)
+		case "queue":
+				err = unpopulate(val, &a.Queue)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return a.BasicComponentProperties.unmarshalInternal(rawMsg)
+}
+
 // AzureServiceBusComponentResource - Component for Azure ServiceBus
 type AzureServiceBusComponentResource struct {
 	ProxyResource
@@ -241,26 +264,6 @@ func (a AzureServiceBusComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AzureServiceBusComponentResource.
-func (a *AzureServiceBusComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &a.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return a.ProxyResource.unmarshalInternal(rawMsg)
-}
-
 // BasicComponentProperties - Basic properties of a component.
 type BasicComponentProperties struct {
 	// Status of the component
@@ -273,10 +276,34 @@ func (b BasicComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type BasicComponentProperties.
+func (b *BasicComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return b.unmarshalInternal(rawMsg)
+}
+
 func (b BasicComponentProperties) marshalInternal() map[string]interface{} {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "status", b.Status)
 	return objectMap
+}
+
+func (b *BasicComponentProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "status":
+				err = unpopulate(val, &b.Status)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // BasicRouteProperties - Basic properties of a route.
@@ -412,6 +439,9 @@ type ContainerComponentProperties struct {
 	// Dictionary of
 	Connections map[string]*ContainerConnection `json:"connections,omitempty"`
 	Container *ContainerComponentPropertiesContainer `json:"container,omitempty"`
+
+	// Traits spec of the component
+	Traits []ComponentTraitClassification `json:"traits,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentProperties.
@@ -419,7 +449,34 @@ func (c ContainerComponentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := c.BasicComponentProperties.marshalInternal()
 	populate(objectMap, "connections", c.Connections)
 	populate(objectMap, "container", c.Container)
+	populate(objectMap, "traits", c.Traits)
 	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerComponentProperties.
+func (c *ContainerComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "connections":
+				err = unpopulate(val, &c.Connections)
+				delete(rawMsg, key)
+		case "container":
+				err = unpopulate(val, &c.Container)
+				delete(rawMsg, key)
+		case "traits":
+				c.Traits, err = unmarshalComponentTraitClassificationArray(val)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return c.BasicComponentProperties.unmarshalInternal(rawMsg)
 }
 
 type ContainerComponentPropertiesContainer struct {
@@ -494,40 +551,13 @@ type ContainerComponentResource struct {
 	ProxyResource
 	// REQUIRED
 	Properties *ContainerComponentProperties `json:"properties,omitempty"`
-
-	// Traits spec of the component
-	Traits []ComponentTraitClassification `json:"traits,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerComponentResource.
 func (c ContainerComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := c.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", c.Properties)
-	populate(objectMap, "traits", c.Traits)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerComponentResource.
-func (c *ContainerComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &c.Properties)
-				delete(rawMsg, key)
-		case "traits":
-				c.Traits, err = unmarshalComponentTraitClassificationArray(val)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return c.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // ContainerConnection - Specifies a connection from the container to another resource
@@ -583,26 +613,6 @@ func (d DaprHTTPRouteResource) MarshalJSON() ([]byte, error) {
 	objectMap := d.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprHTTPRouteResource.
-func (d *DaprHTTPRouteResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &d.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return d.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoDaprHTTPRoute.BeginCreateOrUpdate method.
@@ -703,6 +713,35 @@ func (d DaprPubSubTopicComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicComponentProperties.
+func (d *DaprPubSubTopicComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, &d.Kind)
+				delete(rawMsg, key)
+		case "managed":
+				err = unpopulate(val, &d.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &d.Resource)
+				delete(rawMsg, key)
+		case "topic":
+				err = unpopulate(val, &d.Topic)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return d.BasicComponentProperties.unmarshalInternal(rawMsg)
+}
+
 // DaprPubSubTopicComponentResource - Component for Dapr Pub/Sub
 type DaprPubSubTopicComponentResource struct {
 	ProxyResource
@@ -715,26 +754,6 @@ func (d DaprPubSubTopicComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := d.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicComponentResource.
-func (d *DaprPubSubTopicComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &d.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return d.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // DaprSidecarTrait - The specifies that the component should have a Dapr sidecar injected
@@ -829,6 +848,29 @@ func (d DaprStateStoreComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreComponentProperties.
+func (d *DaprStateStoreComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, &d.Kind)
+				delete(rawMsg, key)
+		case "managed":
+				err = unpopulate(val, &d.Managed)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return d.BasicComponentProperties.unmarshalInternal(rawMsg)
+}
+
 // DaprStateStoreComponentResource - Component for Dapr state store
 type DaprStateStoreComponentResource struct {
 	ProxyResource
@@ -841,26 +883,6 @@ func (d DaprStateStoreComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := d.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreComponentResource.
-func (d *DaprStateStoreComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &d.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return d.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // EncryptionProperties - Configuration of key for data encryption
@@ -1165,26 +1187,6 @@ func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type HTTPRouteResource.
-func (h *HTTPRouteResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &h.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return h.ProxyResource.unmarshalInternal(rawMsg)
-}
-
 // HealthProbePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetHealthProbeProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
@@ -1350,26 +1352,6 @@ func (m MicrosoftSQLComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MicrosoftSQLComponentResource.
-func (m *MicrosoftSQLComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &m.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return m.ProxyResource.unmarshalInternal(rawMsg)
-}
-
 type MicrosoftSQLSQLComponentProperties struct {
 	BasicComponentProperties
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
@@ -1385,6 +1367,29 @@ func (m MicrosoftSQLSQLComponentProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "managed", m.Managed)
 	populate(objectMap, "resource", m.Resource)
 	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MicrosoftSQLSQLComponentProperties.
+func (m *MicrosoftSQLSQLComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managed":
+				err = unpopulate(val, &m.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &m.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return m.BasicComponentProperties.unmarshalInternal(rawMsg)
 }
 
 // MongoDBComponentList - List of mongodb.com.MongoDBComponent resources.
@@ -1417,6 +1422,29 @@ func (m MongoDBComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDBComponentProperties.
+func (m *MongoDBComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managed":
+				err = unpopulate(val, &m.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &m.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return m.BasicComponentProperties.unmarshalInternal(rawMsg)
+}
+
 // MongoDBComponentResource - The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
 type MongoDBComponentResource struct {
 	ProxyResource
@@ -1428,26 +1456,6 @@ func (m MongoDBComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := m.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", m.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDBComponentResource.
-func (m *MongoDBComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &m.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return m.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // MongodbComMongoDBComponentBeginCreateOrUpdateOptions contains the optional parameters for the MongodbComMongoDBComponent.BeginCreateOrUpdate method.
@@ -1684,10 +1692,6 @@ func (p ProxyResource) marshalInternal() map[string]interface{} {
 	return objectMap
 }
 
-func (p *ProxyResource) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
-	return p.Resource.unmarshalInternal(rawMsg)
-}
-
 // RabbitMQComponentList - List of rabbitmq.com.MessageQueueComponent resources.
 type RabbitMQComponentList struct {
 	// REQUIRED; List of rabbitmq.com.MessageQueueComponent resources.
@@ -1718,6 +1722,29 @@ func (r RabbitMQComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQComponentProperties.
+func (r *RabbitMQComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managed":
+				err = unpopulate(val, &r.Managed)
+				delete(rawMsg, key)
+		case "queue":
+				err = unpopulate(val, &r.Queue)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return r.BasicComponentProperties.unmarshalInternal(rawMsg)
+}
+
 // RabbitMQComponentResource - The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
 type RabbitMQComponentResource struct {
 	ProxyResource
@@ -1730,26 +1757,6 @@ func (r RabbitMQComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := r.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", r.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQComponentResource.
-func (r *RabbitMQComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &r.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return r.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.BeginCreateOrUpdate
@@ -1785,26 +1792,6 @@ func (r RadiusResource) MarshalJSON() ([]byte, error) {
 	objectMap := r.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", r.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RadiusResource.
-func (r *RadiusResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &r.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return r.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // RadiusResourceBeginDeleteOptions contains the optional parameters for the RadiusResource.BeginDelete method.
@@ -1877,6 +1864,38 @@ func (r RedisComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisComponentProperties.
+func (r *RedisComponentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "connectionString":
+				err = unpopulate(val, &r.ConnectionString)
+				delete(rawMsg, key)
+		case "host":
+				err = unpopulate(val, &r.Host)
+				delete(rawMsg, key)
+		case "managed":
+				err = unpopulate(val, &r.Managed)
+				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, &r.Port)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &r.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return r.BasicComponentProperties.unmarshalInternal(rawMsg)
+}
+
 // RedisComponentResource - The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
 type RedisComponentResource struct {
 	ProxyResource
@@ -1889,26 +1908,6 @@ func (r RedisComponentResource) MarshalJSON() ([]byte, error) {
 	objectMap := r.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", r.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RedisComponentResource.
-func (r *RedisComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &r.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return r.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 // RedislabsComRedisComponentBeginCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedisComponent.BeginCreateOrUpdate method.
@@ -1949,42 +1948,12 @@ func (r Resource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type Resource.
-func (r *Resource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	return r.unmarshalInternal(rawMsg)
-}
-
 func (r Resource) marshalInternal() map[string]interface{} {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "name", r.Name)
 	populate(objectMap, "type", r.Type)
 	return objectMap
-}
-
-func (r *Resource) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "id":
-				err = unpopulate(val, &r.ID)
-				delete(rawMsg, key)
-		case "name":
-				err = unpopulate(val, &r.Name)
-				delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, &r.Type)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // ResourceModelWithAllowedPropertySet - The resource model definition containing the full set of allowed properties for a resource. Except properties bag,
@@ -2345,6 +2314,32 @@ func (v VolumeProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type VolumeProperties.
+func (v *VolumeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, &v.Kind)
+				delete(rawMsg, key)
+		case "managed":
+				err = unpopulate(val, &v.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &v.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return v.BasicComponentProperties.unmarshalInternal(rawMsg)
+}
+
 // VolumeResource - The Volume provides an abstraction for a volume that can be mounted to a container
 type VolumeResource struct {
 	ProxyResource
@@ -2357,26 +2352,6 @@ func (v VolumeResource) MarshalJSON() ([]byte, error) {
 	objectMap := v.ProxyResource.marshalInternal()
 	populate(objectMap, "properties", v.Properties)
 	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type VolumeResource.
-func (v *VolumeResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &v.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return v.ProxyResource.unmarshalInternal(rawMsg)
 }
 
 func populate(m map[string]interface{}, k string, v interface{}) {
