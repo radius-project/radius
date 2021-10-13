@@ -15,6 +15,14 @@ DOCKER_TAG_VERSION?=latest
 define generateDockerTargets
 .PHONY: docker-build-$(1)
 docker-build-$(1):
+ifeq ($(strip $(4)),go)
+	GOOS=linux GOARCH=amd64 go build \
+		-v \
+		-gcflags $(GCFLAGS) \
+		-ldflags=$(LDFLAGS) \
+		-o dist/linux_amd64/release/$(1) \
+		./cmd/$(1)
+endif
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) from $(2)"
 	docker build $(2) \
 		-f $(3) \
@@ -31,7 +39,7 @@ endef
 
 # defines a target for each image
 DOCKER_IMAGES := radius-rp radius-controller
-$(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile)))
+$(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
 
 # magpie comes from our test directory.
 $(eval $(call generateDockerTargets,magpie,./test/magpie/,./test/magpie/Dockerfile))

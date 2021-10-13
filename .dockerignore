@@ -8,7 +8,6 @@ bin/
 deploy/
 docs/
 diagrams/
-dist/
 docs/
 examples/
 install/
@@ -33,4 +32,3 @@ radius-rp.exe
 rad
 rad.exe
 .DS_Store
-
