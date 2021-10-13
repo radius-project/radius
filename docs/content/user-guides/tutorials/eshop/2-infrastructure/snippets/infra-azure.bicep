@@ -53,11 +53,9 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
 }
 //SQL
 
-//APP
 resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 
-  //RADSQL
   resource sqlIdentity 'microsoft.com.SQLComponent' = {
     name: 'sql-identity'
     properties: {
@@ -85,34 +83,5 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       resource: sql::identity.id
     }
   }
-  //RADSQL
 
-  //REDIS
-  resource redis 'redislabs.com.RedisComponent' = {
-    name: 'redis'
-    properties: {
-      managed: true
-    }
-  }
-  //REDIS
-
-  //MONGO
-  resource mongo 'mongodb.com.MongoDBComponent' = {
-    name: 'mongo'
-    properties: {
-      managed: true
-    }
-  }
-  //MONGO
-
-  //SERVICEBUS
-  resource servicebus 'azure.com.ServiceBusQueueComponent' = {
-    name: 'servicebus'
-    properties: {
-      managed: true
-      queue: 'orders'
-    }
-  }
-  //SERVICEBUS
 }
-//APP
