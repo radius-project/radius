@@ -27,11 +27,9 @@ func TestPropertySpecUnmarshalJSON(t *testing.T) {
                   "enum": ["dapr.io/App@v1alpha1"]
                 }`,
 		expected: PropertySpec{
-			Enum: []interface{}{"dapr.io/App@v1alpha1"},
-			AdditionalProperties: map[string]interface{}{
-				"type":        "string",
-				"description": "Trait kind",
-			},
+			Enum:        []interface{}{"dapr.io/App@v1alpha1"},
+			Type:        "string",
+			Description: "Trait kind",
 		},
 	}, {
 		name: "no enum",
@@ -40,10 +38,8 @@ func TestPropertySpecUnmarshalJSON(t *testing.T) {
                   "type": "string"
                 }`,
 		expected: PropertySpec{
-			AdditionalProperties: map[string]interface{}{
-				"type":        "string",
-				"description": "Trait kind",
-			},
+			Type:        "string",
+			Description: "Trait kind",
 		},
 	}, {
 		name:     "empty",

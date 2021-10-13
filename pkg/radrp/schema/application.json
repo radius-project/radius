@@ -24,7 +24,6 @@
       "additionalProperties": false,
       "properties": {
         "status": {
-          "type": "object",
           "$ref": "#/definitions/ApplicationStatus",
           "description": "Status of the application"
         }

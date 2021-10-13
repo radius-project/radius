@@ -46,7 +46,13 @@ func (c *converter) handlePolymorphism(s *Schema) (*Schema, error) {
 		//
 		// For now, we only support "kind"
 		spec.AdditionalProperties["discriminator"] = "kind"
-
+		if spec.Properties == nil {
+			spec.Properties = make(map[string]*PropertySpec)
+		}
+		spec.Properties["kind"] = &PropertySpec{
+			Description: fmt.Sprintf("The %s kind", parent),
+			Type:        "string",
+		}
 		// Mark the field as required. Instead of using
 		// []string{"kind"} here, we use []interface{}{"kind"} to make
 		// it easier to unmarshal an output file and test for exact

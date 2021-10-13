@@ -25,8 +25,7 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/ApplicationStatus",
-          "description": "Status of the application",
-          "type": "object"
+          "description": "Status of the application"
         }
       },
       "type": "object"
@@ -211,8 +210,7 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/ComponentStatus",
-          "description": "Status of the component",
-          "type": "object"
+          "description": "Status of the component"
         }
       },
       "type": "object"
@@ -222,8 +220,7 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/RouteStatus",
-          "description": "Status of the component",
-          "type": "object"
+          "description": "Status of the component"
         }
       },
       "type": "object"
@@ -295,6 +292,12 @@
     "ComponentTrait": {
       "description": "Trait of a component.",
       "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The ComponentTrait kind",
+          "type": "string"
+        }
+      },
       "required": [
         "kind"
       ],
@@ -317,6 +320,7 @@
       "type": "object"
     },
     "ContainerComponentProperties": {
+      "additionalProperties": false,
       "allOf": [
         {
           "$ref": "#/definitions/BasicComponentProperties"
@@ -343,8 +347,7 @@
               "type": "string"
             },
             "livenessProbe": {
-              "$ref": "#/definitions/HealthProbeProperties",
-              "type": "object"
+              "$ref": "#/definitions/HealthProbeProperties"
             },
             "ports": {
               "additionalProperties": {
@@ -353,8 +356,7 @@
               "type": "object"
             },
             "readinessProbe": {
-              "$ref": "#/definitions/HealthProbeProperties",
-              "type": "object"
+              "$ref": "#/definitions/HealthProbeProperties"
             },
             "volumes": {
               "additionalProperties": {
@@ -368,7 +370,8 @@
           ],
           "type": "object"
         }
-      }
+      },
+      "type": "object"
     },
     "ContainerComponentResource": {
       "allOf": [
@@ -548,7 +551,8 @@
       },
       "required": [
         "kind"
-      ]
+      ],
+      "type": "object"
     },
     "DaprPubSubTopicComponentResource": {
       "allOf": [
@@ -657,7 +661,8 @@
       "required": [
         "managed",
         "kind"
-      ]
+      ],
+      "type": "object"
     },
     "DaprStateStoreComponentResource": {
       "allOf": [
@@ -807,6 +812,12 @@
     "HealthProbeProperties": {
       "description": "Properties for readiness/liveness probe",
       "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The HealthProbeProperties kind",
+          "type": "string"
+        }
+      },
       "required": [
         "kind"
       ],
@@ -1080,7 +1091,8 @@
           ],
           "type": "string"
         }
-      }
+      },
+      "type": "object"
     },
     "MongoDBComponentResource": {
       "allOf": [
@@ -1347,7 +1359,8 @@
       "required": [
         "managed",
         "queue"
-      ]
+      ],
+      "type": "object"
     },
     "RabbitMQComponentResource": {
       "allOf": [
@@ -1460,7 +1473,8 @@
           ],
           "type": "string"
         }
-      }
+      },
+      "type": "object"
     },
     "RedisComponentResource": {
       "allOf": [
@@ -1725,6 +1739,12 @@
     "Volume": {
       "description": "Specifies a volume for a container",
       "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The Volume kind",
+          "type": "string"
+        }
+      },
       "required": [
         "kind"
       ],
