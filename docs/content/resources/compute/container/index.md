@@ -29,7 +29,7 @@ The following top-level information is available for containers:
 
 ### Container
 
-Deatils on what to run and how to run it are defined in the `container` property:
+Details on what to run and how to run it are defined in the `container` property:
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
@@ -39,14 +39,18 @@ Deatils on what to run and how to run it are defined in the `container` property
 
 ### Ports
 
+The ports offered by the container are  defined in the `ports` section.
+
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | name | y | A name key for the port. | `http`
 | containerPort | y | The port the container exposes | `80`
 | protocol | n | The protocol the container exposes | `'TCP'`
-| provides | n | The id of the [Route]({{< ref connections-model >}}) the container provides. | `http.id`
+| provides | n | The id of the [Route]({{< ref networking >}}) the container provides. | `http.id`
 
 ### Volumes
+
+The volumes mounted to the container, either local or external, are defined in the `volumes` section.
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
