@@ -16,17 +16,11 @@
       "properties": {
         "properties": {
           "$ref": "#/definitions/ContainerComponentProperties"
-        },
-        "traits": {
-          "type": "array",
-          "description": "Traits spec of the component",
-          "items": {
-            "$ref": "../traits.json#/definitions/ComponentTrait"
-          }
         }
       }
     },
     "ContainerComponentProperties": {
+      "type": "object",
       "allOf": [
         {
           "$ref": "basic-component.json#/definitions/BasicComponentProperties"
@@ -63,11 +57,9 @@
               }
             },
             "readinessProbe": {
-              "type": "object",
               "$ref": "#/definitions/HealthProbeProperties"
             },
             "livenessProbe": {
-              "type": "object",
               "$ref": "#/definitions/HealthProbeProperties"
             },
             "volumes": {
@@ -77,8 +69,16 @@
               }
             }
           }
+        },
+        "traits": {
+          "type": "array",
+          "description": "Traits spec of the component",
+          "items": {
+            "$ref": "../traits.json#/definitions/ComponentTrait"
+          }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "ContainerPort": {
       "description": "Specifies a listening port for the container",

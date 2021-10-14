@@ -77,18 +77,18 @@
           "managedStore": "disk"
         }
       }
-    }
-  },
-  "traits": [
-    {
-      "kind": "UNKNOWN TRAIT",
-      "appId": "cool-app"
     },
-    {
-      "kind": "dapr.io/Sidecar@v1alpha1"
-    },
-    {
-      "appId": "foo"
-    }
-  ]
+    "traits": [
+      {
+        "kind": "UNKNOWN TRAIT",
+        "appId": "cool-app"
+      },
+      {
+        "kind": "dapr.io/Sidecar@v1alpha1"
+      },
+      {
+        "appId": "foo"
+      }
+    ]
+  }
 }

@@ -604,8 +604,14 @@
       "description": "Trait of a component.",
       "discriminator": "kind",
       "required": [
-	"kind"
+        "kind"
       ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The ComponentTrait kind"
+        }
+      },
       "type": "object"
     },
     "DaprTrait": {

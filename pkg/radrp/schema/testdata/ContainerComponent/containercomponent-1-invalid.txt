@@ -14,6 +14,6 @@
 (root).properties.container.volumes.vol4.rbac: properties.container.volumes.vol4.rbac must be one of the following: "read", "write"
 (root).properties.container.volumes.vol5.managedStore: properties.container.volumes.vol5.managedStore must be one of the following: "memory", "disk"
 (root).properties.container.volumes.vol6: kind is required
-(root).traits.0.kind: traits.0.kind must be one of the following: "dapr.io/Sidecar@v1alpha1"
-(root).traits.1: appId is required
-(root).traits.2: kind is required
+(root).properties.traits.0.kind: properties.traits.0.kind must be one of the following: "dapr.io/Sidecar@v1alpha1"
+(root).properties.traits.1: appId is required
+(root).properties.traits.2: kind is required
