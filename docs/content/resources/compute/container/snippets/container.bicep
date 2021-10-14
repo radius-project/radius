@@ -25,6 +25,18 @@ resource app 'radius.dev/Application@v1alpha3' = {
             managedStore: 'memory'
           }
         }
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:8080
+          path: '/healthz'
+          initialDelaySeconds:3
+          failureThreshold:4
+          periodSeconds:20
+        }
+        livenessProbe:{
+          kind:'exec'
+          command:'ls /tmp'
+        }
       }
       connections: {
         inventory: {

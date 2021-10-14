@@ -36,6 +36,8 @@ Details on what to run and how to run it are defined in the `container` property
 | image | y | The registry and image to download and run in your container. | `radiusteam/frontend`
 | env | n | The environment variables to be set for the container. | `"ENV_VAR": "value"`
 | ports | n | Ports the container provides | [See below](#ports).
+| readinessProbe | n | Readiness checks config | [See below](#readinessprobe).
+| livenessProbe | n | Liveness checks config | [See below](#livenessprobe).
 
 ### Ports
 
@@ -78,6 +80,29 @@ Persistent volumes are still in development, check back soon for updates on avai
 |------|:--------:|-------------|---------|
 | mountPath | y | The container path to mount the volume to. | `\tmp\mystore`
 | source | y | The resource if of the resource providing the volume. | `filestore.id`
+### ReadinessProbe
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| kind | y | Type of readiness check. | `httpGet`
+| containerPort | n | Used when kind is `httpGet` or `tcp`. The listening port number. | `8080`
+| path | n | Used when kind is `httpGet`. The route to make the HTTP request on | `'/healthz'`
+| command | n | Used when kind is `exec`. Command to execute to probe readiness | `'/healthz'`
+| initialDelaySeconds | n | Initial delay in seconds before probing for readiness. | `10`
+| failureThreshold | n | Threshold number of times the probe fails after which a failure would be reported. | `5`
+| periodSeconds | n | Interval for the readiness probe in seconds. | `5`
+
+### LivenessProbe
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+|| kind | y | Type of liveness check. | `httpGet`
+| containerPort | n | Used when kind is `httpGet` or `tcp`. The listening port number. | `8080`
+| path | n | Used when kind is `httpGet`. The route to make the HTTP request on | `'/healthz'`
+| command | n | Used when kind is `exec`. Command to execute to probe liveness | `'/healthz'`
+| initialDelaySeconds | n | Initial delay in seconds before probing for liveness. | `10`
+| failureThreshold | n | Threshold number of times the probe fails after which a failure would be reported. | `5`
+| periodSeconds | n | Interval for the liveness probe in seconds. | `5`
 
 ### Connections
 
