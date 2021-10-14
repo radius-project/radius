@@ -60,7 +60,7 @@ func (h Monitor) Run(ctx context.Context) error {
 			}
 		case newHealthState := <-h.watchHealthChangesChannel:
 			if newHealthState.HealthState != "" {
-				logger.Info("Received a health state change event", newHealthState.Registration.Identity.AsLogValues()...)
+				logger.Info(fmt.Sprintf("Received a health state change event with state: %s", newHealthState.HealthState), newHealthState.Registration.Identity.AsLogValues()...)
 				h.handleStateChanges(ctx, newHealthState)
 			}
 		case <-ctx.Done():
@@ -80,10 +80,15 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 
 	logger.Info("Registering resource with health service")
 
-	healthHandler, mode := h.model.LookupHandler(registerMsg)
+	healthHandler, mode := h.model.LookupHandler(ctx, registerMsg)
 	if healthHandler == nil {
-		// TODO: Convert this log to error once health checks are implemented for all resource kinds
-		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %+v not monitored by HealthService", registerMsg.Resource.ResourceKind, registerMsg.Resource.Identity))
+		// No health handler was found. Return NotSupported state to distinguish from Unhealthy
+		msg := healthcontract.ResourceHealthDataMessage{
+			Resource:                registerMsg.Resource,
+			HealthState:             healthcontract.HealthStateNotSupported,
+			HealthStateErrorDetails: "",
+		}
+		h.SendHealthStateChangeNotification(ctx, msg)
 		return nil
 	}
 

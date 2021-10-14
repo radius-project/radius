@@ -144,7 +144,13 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 		}
 
 	case IdentityKindKubernetes:
-		return nil
+		data := r.Data.(KubernetesIdentity)
+		return []interface{}{
+			radlogger.LogFieldResourceName, data.Name,
+			radlogger.LogFieldNamespace, data.Namespace,
+			radlogger.LogFieldKind, data.Kind,
+			radlogger.LogFieldWorkLoadKind, "kubernetes",
+		}
 
 	case IdentityKindAADPodIdentity:
 		return nil

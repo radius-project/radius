@@ -101,6 +101,10 @@ func NewRestRadiusResourceStatus(original db.RadiusResourceStatus) RadiusResourc
 	provisioningState := rest.Provisioned
 forLoop:
 	for _, or := range ors {
+		if or.Status.HealthState == healthcontract.HealthStateNotSupported {
+			// Ignore health state for resources for which health is not yet supported
+			continue
+		}
 		// If any of the output resources is not healthy, mark the resource as unhealthy
 		if or.Status.HealthState != healthcontract.HealthStateHealthy {
 			healthState = healthcontract.HealthStateUnhealthy

@@ -22,8 +22,9 @@ const (
 
 // Possible values for HealthState
 const (
-	HealthStateHealthy   = "Healthy"
-	HealthStateUnhealthy = "Unhealthy"
+	HealthStateHealthy      = "Healthy"
+	HealthStateUnhealthy    = "Unhealthy"
+	HealthStateNotSupported = "NotSupported"
 )
 
 // HealthCheckOptions defines the options available for performing health check of a resource
