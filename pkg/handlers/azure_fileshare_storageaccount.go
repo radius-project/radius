@@ -7,11 +7,9 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2021-04-01/storage"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/resourcemodel"
@@ -42,7 +40,7 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 	if properties[FileShareStorageAccountIDKey] == "" {
 		// TODO Managed resource
 	} else {
-		_, err = handler.GetStorageAccountByID(ctx, properties[FileShareStorageAccountIDKey])
+		_, err = getStorageAccountByID(ctx, handler.arm, properties[FileShareStorageAccountIDKey])
 		if err != nil {
 			return nil, err
 		}
@@ -60,30 +58,7 @@ func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, 
 		return nil
 	}
 
-	sc := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
-
-	_, err := sc.Delete(ctx, handler.arm.ResourceGroup, properties[StorageAccountNameKey])
-	if err != nil {
-		return fmt.Errorf("failed to delete storage account: %w", err)
-	}
-
-	return nil
-}
-
-func (handler *azureFileShareStorageAccountHandler) GetStorageAccountByID(ctx context.Context, accountID string) (*storage.Account, error) {
-	parsed, err := azresources.Parse(accountID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
-	}
-
-	sac := clients.NewAccountsClient(parsed.SubscriptionID, handler.arm.Auth)
-
-	account, err := sac.GetProperties(ctx, parsed.ResourceGroup, parsed.Types[0].Name, storage.AccountExpand(""))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Storage Account: %w", err)
-	}
-
-	return &account, nil
+	return deleteStorageAccount(ctx, handler.arm, properties[StorageAccountNameKey])
 }
 
 func NewAzureFileShareStorageAccountHealthHandler(arm armauth.ArmConfig) HealthHandler {

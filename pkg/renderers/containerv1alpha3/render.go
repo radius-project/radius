@@ -89,9 +89,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 	}
 
 	for _, volume := range properties.Container.Volumes {
-		if volume[kindProperty] == VolumeKindEphemeral {
-			continue
-		} else if volume[kindProperty] == VolumeKindPersistent {
+		if volume[kindProperty] == VolumeKindPersistent {
 			persistentVolume, err := asPersistentVolume(volume)
 			if err != nil {
 				return nil, err
@@ -101,6 +99,8 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 				return nil, err
 			}
 			deps = append(deps, resourceID)
+		} else {
+			continue
 		}
 	}
 
