@@ -5,6 +5,8 @@ linkTitle: "Separate into modules"
 slug: "modules"
 description: "Learn how to break the eShop up into modules"
 weight: 500
+toc_hide: true
+hide_summary: true
 ---
 
 Now that you've modeled and deployed the eShop application as a single file, you can break it up into [Bicep modules](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/modules) to make it easier to manage for large teams.

@@ -7,24 +7,59 @@ description: "Learn how to deploy thr eShop application to a Radius environment"
 weight: 400
 ---
 
-## Setup environment
+## Download complete Application
 
-Visit the [getting started guide]({{< ref create-environment >}}) to deploy or connect to a Radius environment.
+Make sure you have downloaded the latest eShop application:
 
-{{% alert title="Kubernetes environments" color="warning" %}}
-Kubernetes support for eShop is still in development. Check back soon for updates.
-{{% /alert %}}
+{{< tabs Azure Kubernetes >}}
+{{% codetab %}}
+This template uses Azure SQL, Azure Redis Cache, Azure Service Bus, and Azure CosmosDB w/ Mongo API:
+{{< rad file="../eshop-azure.bicep" download=true >}}
+{{% /codetab %}}
+{{% codetab %}}
+This template uses containerized versions of SQL, Redis, RabbitMQ, and MongoDB:
+{{< rad file="../eshop-kubernetes.bicep" download=true >}}
+{{% /codetab %}}
+{{% /tabs %}}
+
+## Initialize environment
+
+Visit the [getting started guide]({{< ref create-environment >}}) to deploy or connect to a Radius environment running the latest release.
+
+### Get cluster IP
+
+Radius gateways are still in development. Until they are completed manually retrieve your cluster IP address to pass into the application:
+
+{{< tabs Azure Kubernetes >}}
+{{% codetab %}}
+1. Navigate to the RE-[ENV-NAME] resource group that was just initialized.
+1. Select the Azure Kubernetes Service cluster.
+1. Note the IP address of the External IP of your LoadBalancer.
+{{% /codetab %}}
+{{% codetab %}}
+1. Run `kubectl get svc -A` and note the EXTERNAL-IP value of your load balancer.
+{{% /codetab %}}
+{{% /tabs %}}
 
 ## Deploy application
 
 Using the [`rad deploy`]({{< ref rad_deploy >}}) command, deploy the eShop application to your environment:
 
+{{< tabs Azure Kubernetes >}}
+{{% codetab %}}
 ```sh
-$ rad deploy eshop.bicep --parameters adminLogin=admin adminLoginPassword=YOUR-PASSWORD
+$ rad deploy eshop-azure.bicep -p adminLogin=admin -p adminLoginPassword=YOUR-PASSWORD
 ```
+{{% /codetab %}}
+{{% codetab %}}
+```sh
+$ rad deploy eshop-kubernetes.bicep --parameters adminLogin=admin adminLoginPassword=YOUR-PASSWORD
+```
+{{% /codetab %}}
+{{% /tabs %}}
 
-{{% alert title="Coffee break" color="info" %}}
-Azure Redis cache can take up to 45 minutes to deploy. Feel free to go grab a cup of coffee and come back in a bit once your application is deployed.
+{{% alert title="Note" color="info" %}}
+Azure Redis cache can ~30 minutes to deploy. You can monitor your deployment process in the `Deployments` blade of your environment's resource group.
 {{% /alert %}}
 
 ## Verify app health

@@ -5,8 +5,19 @@ param skuTier string = 'Standard'
 param adminLogin string = 'admin'
 @secure()
 param adminPassword string
-
 param AZURESERVICEBUSENABLED string = 'True'
+//PARAMS
+//REST
+//REST
+param CLUSTER_IP string
+param ESHOP_EXTERNAL_DNS_NAME_OR_IP string = '*'
+param OCHESTRATOR_TYPE string = 'K8S'
+param APPLICATION_INSIGHTS_KEY string = ''
+param AZURESTORAGEENABLED string = 'False'
+param ENABLEDEVSPACES string = 'False'
+param TAG string = 'linux-dev'
+var PICBASEURL =  'http://${CLUSTER_IP}.nip.io/webshoppingapigw/c/api/v1/catalog/items/[0]/pic/'
+//PARAMS
 
 resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   name: serverName
@@ -50,19 +61,6 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
       name: skuName
       tier: skuTier
     }
-  }
-}
-
-
-resource redisCache 'Microsoft.Cache/redis@2020-06-01' existing = {
-  name: 'eshop'
-}
-
-resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-06-15' existing = {
-  name: 'eshop'
-
-  resource db 'mongodbDatabases' existing = {
-    name: 'db'
   }
 }
 
@@ -200,6 +198,60 @@ resource servicebus 'Microsoft.ServiceBus/namespaces@2021-06-01-preview' = {
 resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 
+  //CATALOG
+  resource catalog 'ContainerComponent' = {
+    name: 'catalog-api'
+    properties: {
+      container: {
+        image: 'eshop/catalog.api:${TAG}'
+        env: {
+          UseCustomizationData: 'False'
+          PATH_BASE: '/catalog-api'
+          ASPNETCORE_ENVIRONMENT: 'Development'
+          OrchestratorType: OCHESTRATOR_TYPE
+          PORT: '80'
+          GRPC_PORT: '81'
+          PicBaseUrl: PICBASEURL
+          AzureStorageEnabled: AZURESTORAGEENABLED
+          ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
+          AzureServiceBusEnabled: AZURESERVICEBUSENABLED
+          ConnectionString: 'Server=tcp:${sqlCatalog.properties.server},1433;Initial Catalog=CatalogDb;Persist Security Info=False;User ID=${adminLogin};Password=${adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
+        }
+        ports: {
+          http: {
+            containerPort: 80
+            //PROVIDES
+            provides: catalogHttp.id
+            //PROVIDES
+          }
+          grpc: {
+            containerPort: 81
+          }
+        }
+      }
+      connections: {
+        sql: {
+          kind: 'microsoft.com/SQL'
+          source: sqlCatalog.id
+        }
+      }
+    }
+  }
+  //CATALOG
+
+  //ROUTE
+  resource catalogHttp 'HttpRoute' = {
+    name: 'catalog-http'
+    properties: {
+      port: 5101
+      gateway: {
+        hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
+        path: '/catalog'
+      }
+    }
+  }
+  //ROUTE
   resource sqlIdentity 'microsoft.com.SQLComponent' = {
     name: 'IdentityDb'
     properties: {
@@ -227,20 +279,4 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       resource: sql::webhooks.id
     }
   }
-
-  resource redis 'redislabs.com.RedisComponent' = {
-    name: 'redis'
-    properties: {
-      resource: redisCache.id
-    }
-  }
-
-  resource mongo 'mongodb.com.MongoDBComponent' = {
-    name: 'mongo'
-    properties: {
-      managed: true
-    }
-  }
-
 }
-

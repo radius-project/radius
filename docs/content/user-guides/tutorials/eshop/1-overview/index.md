@@ -21,9 +21,8 @@ From the [eShop repo](https://github.com/dotnet-architecture/eShopOnContainers#a
 
 ### Deployment
 
-<img src="deploy.png" alt="Screenshot of the list of steps to deploy eShop" width=250 >
-
 Currently, [deploying eShop](https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s) requires deploying a cluster and the backing infrastructure, configuring multiple CLIs and tools, running deployment scripts, and manually copying/pasting credentials and endpoints.
+> <img src="deploy.png" alt="Screenshot of the list of steps to deploy eShop" width=250 >
 
 #### Kubernetes cluster
 

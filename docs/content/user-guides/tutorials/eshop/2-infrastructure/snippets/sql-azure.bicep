@@ -4,14 +4,14 @@ param skuName string = 'Standard'
 param skuTier string = 'Standard'
 param adminLogin string
 @secure()
-param adminLoginPassword string
+param adminPassword string
 
 resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   name: serverName
   location: location
   properties: {
     administratorLogin: adminLogin
-    administratorLoginPassword: adminLoginPassword
+    administratorLoginPassword: adminPassword
   }
 
   resource identity 'databases' = {
@@ -55,30 +55,30 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 
   resource sqlIdentity 'microsoft.com.SQLComponent' = {
-    name: 'sql-identity'
+    name: 'IdentityDb'
     properties: {
       resource: sql::identity.id
     }
   }
 
   resource sqlCatalog 'microsoft.com.SQLComponent' = {
-    name: 'sql-catalog'
+    name: 'CatalogDb'
     properties: {
-      resource: sql::identity.id
+      resource: sql::catalog.id
     }
   }
 
   resource sqlOrdering 'microsoft.com.SQLComponent' = {
-    name: 'sql-ordering'
+    name: 'OrderingDb'
     properties: {
-      resource: sql::identity.id
+      resource: sql::ordering.id
     }
   }
 
   resource sqlWebhooks 'microsoft.com.SQLComponent' = {
-    name: 'sql-webhooks'
+    name: 'WebhooksDb'
     properties: {
-      resource: sql::identity.id
+      resource: sql::webhooks.id
     }
   }
 

@@ -1,11 +1,11 @@
-//APP
 @secure()
-param adminLoginPassword string
+param adminPassword string
+
+param AZURESERVICEBUSENABLED string = 'True'
 
 resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 
-  //RADSQL
   resource sqlIdentity 'ContainerComponent' = {
     name: 'IdentityDb'
     properties: {
@@ -14,7 +14,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
         env: {
           ACCEPT_EULA: 'Y'
           MSSQL_PID: 'Developer'
-          MSSQL_SA_PASSWORD: adminLoginPassword
+          MSSQL_SA_PASSWORD: adminPassword
         }
         ports: {
           sql: {
@@ -25,47 +25,27 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource sqlCatalog 'ContainerComponent' = {
-    name: 'CatalogDb'
-    properties: {
-      r
+  resource sqlRoute 'HttpRoute' = {
+    name: 'sql-route'
+    properties:{
+      
     }
   }
 
-  resource sqlOrdering 'ContainerComponent' = {
-    name: 'OrderingDb'
-    properties: {
-      resource: sql::identity.id
-    }
-  }
-
-  resource sqlWebhooks 'ContainerComponent' = {
-    name: 'WebhooksDb'
-    properties: {
-      resource: sql::identity.id
-    }
-  }
-  //RADSQL
-
-  //REDIS
   resource redis 'redislabs.com.RedisComponent' = {
     name: 'redis'
     properties: {
-      managed: true
+      resource: redisCache.id
     }
   }
-  //REDIS
 
-  //MONGO
   resource mongo 'mongodb.com.MongoDBComponent' = {
     name: 'mongo'
     properties: {
       managed: true
     }
   }
-  //MONGO
 
-  //RABBITMQ
   resource rabbitmq 'rabbitmq.com.MessageQueueComponent' = {
     name: 'rabbitmq'
     properties: {
@@ -73,6 +53,5 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       queue: 'eshop_event_bus'
     }
   }
-  //RABBITMQ
+
 }
-//APP

@@ -1,10 +1,9 @@
 @secure()
-param adminLoginPassword string
+param adminPassword string
 
 resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 
-  //RADSQL
   resource sqlIdentity 'ContainerComponent' = {
     name: 'IdentityDb'
     properties: {
@@ -13,7 +12,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
         env: {
           ACCEPT_EULA: 'Y'
           MSSQL_PID: 'Developer'
-          MSSQL_SA_PASSWORD: adminLoginPassword
+          MSSQL_SA_PASSWORD: adminPassword
         }
         ports: {
           sql: {
