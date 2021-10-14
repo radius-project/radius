@@ -60,7 +60,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 		if !ok {
 			return nil, err
 		}
-		// StatusCode = 409 indicates that the role assignment already exists. Retreive existing resource
+		// StatusCode = 409 indicates that the role assignment already exists. Retrieve it
 		if detailed.StatusCode == 409 {
 			roleAssignment, err := rac.Get(ctx, scope, raName.String(), "")
 			if err != nil {
