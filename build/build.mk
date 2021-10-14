@@ -75,7 +75,7 @@ build-$(1):
 endef
 
 # defines a target for each binary
-BINARIES := docgen radius-rp testenv radius-controller
+BINARIES := docgen rad radius-controller radius-rp testenv
 $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
 
 # list of 'outputs' to build for all binaries
