@@ -151,9 +151,9 @@ func ensureNamespace(ctx context.Context, namespace string) error {
 	return client.Create(ctx, &nsObject, &runtimeclient.CreateOptions{})
 }
 
-func ensureReplicasRunning(ctx context.Context, exeName string, n int) error {
+func ensureReplicasRunning(ctx context.Context, cmdPath string, n int) error {
 	waitReplicaStarted := func() (bool, error) {
-		runninReplicas := executor.FindAll(exeName, func(pe ProcessExecution) bool {
+		runninReplicas := executor.FindAll(cmdPath, func(pe ProcessExecution) bool {
 			return pe.EndedAt.IsZero()
 		})
 

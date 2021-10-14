@@ -8,6 +8,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"sync"
 	"time"
 
@@ -221,18 +222,14 @@ func (r *ExecutableReconciler) manageReplicas(ctx context.Context, executable *r
 func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *radiusv1alpha3.Executable, log logr.Logger) {
 	var err error
 	var rs radiusv1alpha3.ReplicaStatus
-	env := toEnvArray(executable.Spec.Env)
 
 	log.Info("starting replica...",
 		"executable", executable.Spec.Executable,
 		"args", fmt.Sprintf("%v", executable.Spec.Args),
-		"env", fmt.Sprintf("%v", env))
-	pid, startWaiting, err := r.ProcessExecutor.StartProcess(
-		ctx,
-		executable.Spec.Executable,
-		executable.Spec.Args,
-		env,
-		r)
+		"env", fmt.Sprintf("%v", executable.Spec.Env))
+
+	cmd := makeCommand(ctx, executable)
+	pid, startWaiting, err := r.ProcessExecutor.StartProcess(ctx, cmd, r)
 	if err != nil {
 		log.Error(err, "failed to start a replica")
 		rs.PID = InvalidPID
@@ -358,6 +355,17 @@ func toEnvArray(env map[string]string) []string {
 		i++
 	}
 	return retval
+}
+
+func makeCommand(ctx context.Context, executable *radiusv1alpha3.Executable) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, executable.Spec.Executable)
+	cmdArgs := []string{executable.Spec.Executable}
+	cmdArgs = append(cmdArgs, executable.Spec.Args...)
+	cmd.Args = cmdArgs
+	env := toEnvArray(executable.Spec.Env)
+	cmd.Env = env
+	cmd.Dir = executable.Spec.WorkingDirectory
+	return cmd
 }
 
 func (r *ExecutableReconciler) SetupWithManager(mgr ctrl.Manager) error {
