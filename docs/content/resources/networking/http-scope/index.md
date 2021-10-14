@@ -36,6 +36,7 @@ You can optionally define a Gateway for external users to access the Route.
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | hostname | n | The hostname of the Gateway. Wildcards supported | `'example.com'`
+| path | n | The path to provide the gateway on. | `'/orders'`
 
 ## Provided Data
 
