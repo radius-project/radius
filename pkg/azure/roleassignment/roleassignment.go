@@ -60,9 +60,14 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 		if !ok {
 			return nil, err
 		}
-		// StatusCode = 409 indicates that the role assignment already exists. Ignore that error
+		// StatusCode = 409 indicates that the role assignment already exists. Retrieve it
 		if detailed.StatusCode == 409 {
-			return nil, nil
+			roleAssignment, err := rac.Get(ctx, scope, raName.String(), "")
+			if err != nil {
+				return nil, err
+			}
+
+			return &roleAssignment, nil
 		}
 
 		// Sometimes, the managed identity takes a while to propagate and the role assignment creation fails with status code = 400
