@@ -13,24 +13,26 @@ DOCKER_TAG_VERSION?=latest
 # $(1): the image name for the target
 # $(2): the Dockerfile path
 define generateDockerTargets
-.PHONY: docker-build-$(1)
-docker-build-$(1):
 ifeq ($(strip $(4)),go)
-	GOOS=linux GOARCH=amd64 go build \
-		-v \
-		-gcflags $(GCFLAGS) \
-		-ldflags=$(LDFLAGS) \
-		-o $(OUT_DIR)/linux_amd64/release/$(1) \
-		./cmd/$(1)
-endif
-	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) from $(2)"
-	docker build $(2) \
-		-f $(3) \
+.PHONY: docker-build-$(1)
+docker-build-$(1): build-$(1)-linux-amd64
+	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
+	@mkdir -p $(OUT_DIR)/docker/linux_amd64/$(1)
+	@cp $(3) $(OUT_DIR)/docker/linux_amd64/$(1)
+	@cp $(BINS_OUT_DIR_linux_amd64)/$(1) $(OUT_DIR)/docker/linux_amd64/$(1)
+
+	cd $(OUT_DIR)/docker/linux_amd64/$(1) && docker build $(2) \
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
-		--build-arg LDFLAGS=$(LDFLAGS) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
-
+else
+docker-build-$(1):
+	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
+	docker build $(2) -f $(3) \
+		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
+		--label org.opencontainers.image.version="$(REL_VERSION)" \
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+endif
 .PHONY: docker-push-$(1)
 docker-push-$(1):
 	@echo "$(ARROW) Pushing image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
