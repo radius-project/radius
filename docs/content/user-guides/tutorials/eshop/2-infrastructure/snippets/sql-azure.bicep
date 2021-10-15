@@ -15,7 +15,7 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   }
 
   resource identity 'databases' = {
-    name: 'identity'
+    name: 'IdentityDb'
     location: location
     sku: {
       name: skuName
@@ -24,7 +24,7 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   }
 
   resource catalog 'databases' = {
-    name: 'catalog'
+    name: 'CatalogDb'
     location: location
     sku: {
       name: skuName
@@ -33,7 +33,7 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   }
 
   resource ordering 'databases' = {
-    name: 'ordering'
+    name: 'OrderingDb'
     location: location
     sku: {
       name: skuName
@@ -42,7 +42,7 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   }
 
   resource webhooks 'databases' = {
-    name: 'webhooks'
+    name: 'WebhooksDb'
     location: location
     sku: {
       name: skuName

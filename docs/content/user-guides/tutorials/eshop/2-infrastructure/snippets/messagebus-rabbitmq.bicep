@@ -1,4 +1,4 @@
-param AZURESERVICEBUSENABLED string = 'True'
+param AZURESERVICEBUSENABLED string = 'False'
 
 //REST
 //REST

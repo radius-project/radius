@@ -28,15 +28,17 @@ Visit the [getting started guide]({{< ref create-environment >}}) to deploy or c
 
 ### Get cluster IP
 
-Radius gateways are still in development. Until they are completed manually retrieve your cluster IP address to pass into the application:
+Radius gateways are still in development, and will get more features in upcoming releases. Until they are updated, manually retrieve your cluster IP address to pass into the application:
 
 {{< tabs Azure Kubernetes >}}
 {{% codetab %}}
-1. Navigate to the RE-[ENV-NAME] resource group that was just initialized.
+
+1. Navigate to the RE-[ENV-NAME] resource group that was initialized for your environment.
 1. Select the Azure Kubernetes Service cluster.
 1. Note the IP address of the External IP of your LoadBalancer.
 {{% /codetab %}}
 {{% codetab %}}
+1. Ensure your cluster is set as the default cluster in your kubectl config, and Radius is initialized on it.
 1. Run `kubectl get svc -A` and note the EXTERNAL-IP value of your load balancer.
 {{% /codetab %}}
 {{% /tabs %}}

@@ -15,6 +15,10 @@ Create a file named `eshop.radius` and add a [Radius Application resource]({{< r
 
 {{< rad file="snippets/blank.bicep" embed=true >}}
 
+{{% alert title="🚨 Skip to deployment" color="info" %}}
+Want to skip building the app and download the full template and deploy it to your environment right away? Head to [the deploy step]({{< ref 4-deploy >}}).
+{{% /alert %}}
+
 ## Add infrastructure
 
 Now you'll add the required infrastucture:
@@ -130,15 +134,17 @@ eShop has two different modes: Service Bus and RabbitMQ. A parameter passed into
 
 {{< codetab >}}
 
+Azure Service Bus is only compatible with Azure environments. For Kubernetes environments use RabbitMQ (next tab).
+
 {{% alert title="💡 Concept" color="info" %}}
 Here you are deploying a <a href="{{< ref "components-model#platform-specific-resources" >}}">platform-specific Service Bus Topic resource</a>, which does not have a portable, Radius component. Other Components can bind directly to this resource.
 {{% /alert %}}
-
 
 {{< rad file="snippets/messagebus-servicebus.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
 {{< /codetab >}}
 
 {{< codetab >}}
+RabbitMQ is only compatible with Kubernetes environments. For Azure environments use Azure Service Bus (previous tab).
 
 {{< rad file="snippets/messagebus-rabbitmq.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
 {{< /codetab >}}

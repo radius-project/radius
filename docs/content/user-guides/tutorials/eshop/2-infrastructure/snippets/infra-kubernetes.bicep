@@ -1,7 +1,7 @@
 @secure()
 param adminPassword string
 
-param AZURESERVICEBUSENABLED string = 'True'
+param AZURESERVICEBUSENABLED string = 'False'
 
 resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
