@@ -67,6 +67,9 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 		properties[StorageAccountIDKey] = *account.ID
 	} else {
 		account, err = getStorageAccountByID(ctx, handler.arm, properties[StorageAccountIDKey])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Use the identity of the table storage as the thing to monitor
