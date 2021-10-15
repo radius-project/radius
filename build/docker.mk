@@ -20,7 +20,7 @@ ifeq ($(strip $(4)),go)
 		-v \
 		-gcflags $(GCFLAGS) \
 		-ldflags=$(LDFLAGS) \
-		-o dist/linux_amd64/release/$(1) \
+		-o $(OUT_DIR)/linux_amd64/release/$(1) \
 		./cmd/$(1)
 endif
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) from $(2)"
