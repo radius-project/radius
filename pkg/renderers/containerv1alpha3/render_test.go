@@ -191,7 +191,7 @@ func Test_Render_Basic(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
 		require.NotNil(t, deployment)
 
-		expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
+		expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta, false)
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		// Only real thing to verify here is the image and the labels
@@ -389,7 +389,7 @@ func Test_Render_Connections(t *testing.T) {
 		secret, outputResource := kubernetes.FindSecret(output.Resources)
 		require.NotNil(t, secret)
 
-		expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, secret, secret.ObjectMeta)
+		expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, secret, secret.ObjectMeta, true)
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		require.Equal(t, resourceName, secret.Name)
@@ -470,6 +470,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 				},
 			},
+			SkipHealthMonitoring: true,
 		},
 		{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
@@ -485,6 +486,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 				},
 			},
+			SkipHealthMonitoring: true,
 		},
 	}
 	require.ElementsMatch(t, expected, matches)
@@ -502,6 +504,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				handlers.ManagedKey:                  "true",
 				handlers.UserAssignedIdentityNameKey: resource.ApplicationName + "-" + resource.ResourceName + "-msi",
 			},
+			SkipHealthMonitoring: true,
 		},
 	}
 	require.ElementsMatch(t, expected, matches)

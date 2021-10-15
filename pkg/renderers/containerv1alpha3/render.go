@@ -366,7 +366,7 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 		},
 	}
 
-	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
+	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta, false)
 	return output, secretData, nil
 }
 
@@ -535,7 +535,8 @@ func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererRes
 		Data: secrets,
 	}
 
-	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, &secret, secret.ObjectMeta)
+	// Skip registration of the secret resource with the HealthService since health as a concept is not quite applicable to it
+	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, &secret, secret.ObjectMeta, true)
 	return output
 }
 
@@ -560,6 +561,7 @@ func (r Renderer) makeManagedIdentity(ctx context.Context, resource renderers.Re
 			handlers.ManagedKey:                  "true",
 			handlers.UserAssignedIdentityNameKey: managedIdentityName,
 		},
+		SkipHealthMonitoring: true,
 	}
 
 	return identityOutputResource
@@ -643,6 +645,7 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, resource r
 					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 				},
 			},
+			SkipHealthMonitoring: true,
 		}
 
 		outputResources = append(outputResources, roleAssignment)

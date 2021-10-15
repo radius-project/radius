@@ -34,8 +34,9 @@ type OutputResource struct {
 	// This is an old pattern that we're trying to migrate away from because it requires
 	// a resource handler per-resource type. In general any per-resource type processing
 	// should be done in the renderer.
-	PersistedProperties map[string]string    `bson:"persistedProperties"`
-	Status              OutputResourceStatus `bson:"status"`
+	PersistedProperties  map[string]string    `bson:"persistedProperties"`
+	Status               OutputResourceStatus `bson:"status"`
+	SkipHealthMonitoring bool                 `bson:"skipHealthMonitoring"`
 }
 
 // OutputResourceStatus represents the status of the Output Resource

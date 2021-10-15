@@ -22,9 +22,12 @@ const (
 
 // Possible values for HealthState
 const (
-	HealthStateHealthy      = "Healthy"
-	HealthStateUnhealthy    = "Unhealthy"
-	HealthStateNotSupported = "NotSupported"
+	HealthStateUnknown       = "Unknown" // Health reporting is implemented but the state is not yet known
+	HealthStateHealthy       = "Healthy"
+	HealthStateUnhealthy     = "Unhealthy"
+	HealthStateDegraded      = "Degraded"      // Functionality is working but some resources are unhealthy
+	HealthStateNotSupported  = "NotSupported"  // Health reporting has not yet been implemented
+	HealthStateNotApplicable = "NotApplicable" // Health as a concept does not apply to this resource eg: Secrets
 )
 
 // HealthCheckOptions defines the options available for performing health check of a resource

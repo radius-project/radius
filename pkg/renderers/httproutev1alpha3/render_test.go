@@ -72,7 +72,7 @@ func Test_Render_Defaults(t *testing.T) {
 
 	service, outputResource := kubernetes.FindService(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta, false)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), service.Name)
@@ -133,7 +133,7 @@ func Test_Render_NonDefaults(t *testing.T) {
 
 	service, outputResource := kubernetes.FindService(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta, false)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service.Name)

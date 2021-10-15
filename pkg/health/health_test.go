@@ -66,7 +66,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	require.Equal(t, 1, probesLen)
 	require.Equal(t, true, found)
 
-	handler, mode := monitor.model.LookupHandler(registrationMsg)
+	handler, mode := monitor.model.LookupHandler(ctx, registrationMsg)
 	require.Equal(t, handler, healthInfo.handler)
 	require.Equal(t, handlers.HealthHandlerModePull, mode)
 	require.Equal(t, *registration, healthInfo.Registration)

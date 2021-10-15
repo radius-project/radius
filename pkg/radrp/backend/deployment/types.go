@@ -122,12 +122,14 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 			return err
 		}
 
-		healthResource := healthcontract.HealthResource{
-			ResourceKind:     outputResource.ResourceKind,
-			Identity:         outputResource.Identity,
-			RadiusResourceID: resource.ID,
+		if !outputResource.SkipHealthMonitoring {
+			healthResource := healthcontract.HealthResource{
+				ResourceKind:     outputResource.ResourceKind,
+				Identity:         outputResource.Identity,
+				RadiusResourceID: resource.ID,
+			}
+			dp.unregisterOutputResourceForHealthChecks(ctx, healthResource)
 		}
-		dp.unregisterOutputResourceForHealthChecks(ctx, healthResource)
 	}
 
 	// Update resource and operation in the database
@@ -323,14 +325,16 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			}
 		}
 
-		// Register health checks for the output resource
-		healthResource := healthcontract.HealthResource{
-			Identity:         outputResource.Identity,
-			ResourceKind:     outputResource.ResourceKind,
-			RadiusResourceID: resource.ID,
-		}
+		if !outputResource.SkipHealthMonitoring {
+			// Register health checks for the output resource
+			healthResource := healthcontract.HealthResource{
+				Identity:         outputResource.Identity,
+				ResourceKind:     outputResource.ResourceKind,
+				RadiusResourceID: resource.ID,
+			}
 
-		dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
+			dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
+		}
 
 		// Build database resource - copy updated properties to Resource field
 		dbOutputResource := db.OutputResource{
@@ -343,6 +347,10 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 				ProvisioningState:        db.Provisioned,
 				ProvisioningErrorDetails: "",
 			},
+			SkipHealthMonitoring: outputResource.SkipHealthMonitoring,
+		}
+		if outputResource.SkipHealthMonitoring {
+			dbOutputResource.Status.HealthState = healthcontract.HealthStateNotApplicable
 		}
 		deployedOutputResources = append(deployedOutputResources, dbOutputResource)
 	}

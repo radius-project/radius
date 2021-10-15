@@ -30,7 +30,7 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.Renderer
 func (r *noop) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the manualscale trait can modify it
 	deployment := appsv1.Deployment{}
-	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
+	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta, false)}
 	return renderers.RendererOutput{Resources: resources}, nil
 }
 
