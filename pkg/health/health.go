@@ -114,7 +114,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		// Create a new ticker for the resource which will start the health check at the specified interval
 		// TODO: Optimize and not create a ticker per resource
 		handler:      healthHandler,
-		HealthState:  healthcontract.HealthStateUnhealthy,
+		HealthState:  healthcontract.HealthStateUnknown,
 		Registration: registration,
 		Options:      ho,
 	}

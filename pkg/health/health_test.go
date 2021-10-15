@@ -82,9 +82,11 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
+	hrpc := make(chan healthcontract.ResourceHealthDataMessage, 1)
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
+		HealthProbeChannel:          hrpc,
 		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
@@ -101,6 +103,9 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 	monitor.activeHealthProbesMutex.RLock()
 	defer monitor.activeHealthProbesMutex.RUnlock()
 	require.Equal(t, 0, len(monitor.activeHealthProbes))
+	notification := <-hrpc
+	require.Equal(t, "NotImplementedType", notification.Resource.ResourceKind)
+	require.Equal(t, healthcontract.HealthStateNotSupported, notification.HealthState)
 }
 
 func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
@@ -151,9 +156,11 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
+	hrpc := make(chan healthcontract.ResourceHealthDataMessage, 1)
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
+		HealthProbeChannel:          hrpc,
 		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})

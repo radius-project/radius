@@ -6,6 +6,8 @@
 package resourceprovider
 
 import (
+	"fmt"
+
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radrp/db"
@@ -72,7 +74,7 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 	properties := map[string]interface{}{}
 
 	// We're copying things in order of priority even though we don't expect conflicts.
-	properties["status"] = NewRestRadiusResourceStatus(resource.Status)
+	properties["status"] = NewRestRadiusResourceStatus(resource.ResourceName, resource.Status)
 	if resource.Definition != nil {
 		for k, v := range resource.Definition {
 			properties[k] = v
@@ -93,23 +95,56 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 	}
 }
 
-func NewRestRadiusResourceStatus(original db.RadiusResourceStatus) RadiusResourceStatus {
+func NewRestRadiusResourceStatus(resourceName string, original db.RadiusResourceStatus) RadiusResourceStatus {
 	ors := NewRestOutputResourceStatus(original.OutputResources)
 
 	// Aggregate the resource status
 	healthState := healthcontract.HealthStateHealthy
+	healthStateErrorDetails := ""
+	foundNotSupported := false
+	foundHealthyOrUnhealthy := false
+	for i, or := range ors {
+		userHealthState := healthcontract.InternalToUserHealthStateTranslation[or.Status.HealthState]
+		switch or.Status.HealthState {
+		case healthcontract.HealthStateNotSupported:
+			foundNotSupported = true
+			// Show output resource state NotSupported as "" to the users for individual output resources
+			// as well as the aggregated status
+			ors[i].Status.HealthState = userHealthState
+			// Modify the aggregated status
+			healthState = userHealthState
+		case healthcontract.HealthStateNotApplicable:
+			// Show output resource state NotApplicable as Healthy to the users
+			// A resource with state = NotApplicable has no effect on the aggregate state
+			ors[i].Status.HealthState = userHealthState
+		case healthcontract.HealthStateHealthy:
+			foundHealthyOrUnhealthy = true
+			// No need to modify the aggregate state as it is already Healthy
+		case healthcontract.HealthStateUnhealthy:
+			foundHealthyOrUnhealthy = true
+			// If any of the output resources is not healthy, modify the aggregate health state as unhealthy
+			healthState = userHealthState
+		case healthcontract.HealthStateUnknown:
+			healthState = userHealthState
+			healthStateErrorDetails = "Health state unknown"
+		default:
+			// Unexpected state
+			healthState = healthcontract.InternalToUserHealthStateTranslation[healthcontract.HealthStateUnhealthy]
+			healthStateErrorDetails = fmt.Sprintf("output resource found in unexpected state: %s", or.Status.HealthState)
+		}
+	}
+
+	if foundNotSupported && foundHealthyOrUnhealthy {
+		// We do not expect a combination of not supported and supported health reporting for output resources
+		// This will result in an aggregation logic error
+		healthState = healthcontract.InternalToUserHealthStateTranslation[healthcontract.HealthStateError]
+		healthStateErrorDetails = fmt.Sprintf("radius resource: %q has a combination of supported and unsupported health reporting for its output resources. Aggregation error", resourceName)
+	}
+
 	provisioningState := rest.Provisioned
+
 forLoop:
 	for _, or := range ors {
-		if or.Status.HealthState == healthcontract.HealthStateNotSupported {
-			// Ignore health state for resources for which health is not yet supported
-			continue
-		}
-		// If any of the output resources is not healthy, mark the resource as unhealthy
-		if or.Status.HealthState != healthcontract.HealthStateHealthy {
-			healthState = healthcontract.HealthStateUnhealthy
-		}
-
 		// If any of the output resources is not in Provisioned state, mark the resource accordingly
 		switch or.Status.ProvisioningState {
 		case db.Failed:
@@ -119,10 +154,12 @@ forLoop:
 			provisioningState = rest.Provisioning
 		}
 	}
+
 	status := RadiusResourceStatus{
-		ProvisioningState: provisioningState,
-		HealthState:       healthState,
-		OutputResources:   ors,
+		ProvisioningState:  provisioningState,
+		HealthState:        healthState,
+		HealthErrorDetails: healthStateErrorDetails,
+		OutputResources:    ors,
 	}
 	return status
 }

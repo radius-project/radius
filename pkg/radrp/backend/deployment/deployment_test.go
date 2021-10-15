@@ -381,6 +381,11 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 		Managed:      true,
 		Identity: resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
+			Data: resourcemodel.KubernetesIdentity{
+				Kind:      resourcekinds.Kubernetes,
+				Name:      "test-name",
+				Namespace: "test-namespace",
+			},
 		},
 		Resource: map[string]interface{}{
 			"some-data": "jsonpointer-value",
@@ -748,4 +753,104 @@ func Test_UpdateOperationFailure_NoOp(t *testing.T) {
 		err := dp.Deploy(ctx, operationID, testRadiusResource)
 		require.NoError(t, err)
 	})
+}
+
+func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	model := model.NewModel(map[string]renderers.Renderer{
+		containerv1alpha3.ResourceType: mocks.renderer,
+	}, map[string]model.Handlers{
+		resourcekinds.Kubernetes: {
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
+		},
+	},
+		map[string]renderers.SecretValueTransformer{},
+	)
+
+	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+		ResourceRegistrationWithHealthChannel: registrationChannel,
+	}, mocks.secretsValueClient}
+
+	testOutputResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDSecret,
+		ResourceKind: resourcekinds.Kubernetes,
+		Deployed:     false,
+		Managed:      true,
+		Identity: resourcemodel.ResourceIdentity{
+			Kind: resourcemodel.IdentityKindKubernetes,
+			Data: resourcemodel.KubernetesIdentity{
+				Name:      resourceName,
+				Namespace: testApplicationName,
+			},
+		},
+		SkipHealthMonitoring: true,
+	}
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{testOutputResource},
+	}
+
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).AnyTimes().Return(db.RadiusResource{}, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).AnyTimes().Return(testRadiusResource, nil)
+	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
+	// Note that GetHealthOptions call is missing
+
+	radResource, _, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
+	require.NoError(t, err)
+	require.Equal(t, healthcontract.HealthStateNotApplicable, radResource.Status.OutputResources[0].Status.HealthState)
+
+	// Validate registration of the output resource
+	require.Zero(t, len(registrationChannel))
+}
+
+func Test_Deploy_WithHealthMonitoring(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	model := model.NewModel(map[string]renderers.Renderer{
+		containerv1alpha3.ResourceType: mocks.renderer,
+	}, map[string]model.Handlers{
+		resourcekinds.Kubernetes: {
+			ResourceHandler: mocks.resourceHandler,
+			HealthHandler:   mocks.healthHandler,
+		},
+	},
+		map[string]renderers.SecretValueTransformer{},
+	)
+
+	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+		ResourceRegistrationWithHealthChannel: registrationChannel,
+	}, mocks.secretsValueClient}
+
+	testOutputResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDDeployment,
+		ResourceKind: resourcekinds.Kubernetes,
+		Deployed:     false,
+		Managed:      true,
+		Identity: resourcemodel.ResourceIdentity{
+			Kind: resourcemodel.IdentityKindKubernetes,
+			Data: resourcemodel.KubernetesIdentity{
+				Name:      resourceName,
+				Namespace: testApplicationName,
+			},
+		},
+		SkipHealthMonitoring: false,
+	}
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{testOutputResource},
+	}
+
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).AnyTimes().Return(db.RadiusResource{}, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).AnyTimes().Return(testRadiusResource, nil)
+	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
+	mocks.healthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(1).Return(healthcontract.HealthCheckOptions{})
+
+	radResource, _, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
+	require.NoError(t, err)
+	require.Equal(t, "", radResource.Status.OutputResources[0].Status.HealthState)
+
+	// Validate registration of the output resource
+	require.Equal(t, 1, len(registrationChannel))
 }

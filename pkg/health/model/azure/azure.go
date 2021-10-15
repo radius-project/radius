@@ -19,7 +19,6 @@ func NewAzureHealthModel(arm armauth.ArmConfig, k8s kubernetes.Interface) model.
 		// TODO: Add health check handler for all resource kinds
 		resourcekinds.AzureServiceBusQueue: handlers.NewAzureServiceBusQueueHandler(arm),
 		resourcekinds.Deployment:           handlers.NewKubernetesDeploymentHandler(k8s),
-		resourcekinds.Service:              handlers.NewKubernetesServiceHandler(k8s),
 	}
 	return model.NewHealthModel(handlers)
 }

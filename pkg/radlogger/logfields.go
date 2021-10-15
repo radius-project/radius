@@ -25,7 +25,6 @@ const (
 	LogFieldResourceType       = "resourceType"
 	LogFieldScopeName          = "scopeName"
 	LogFieldSubscriptionID     = "subscriptionID"
-	LogFieldWorkLoadKind       = "workloadKind"
-	LogFieldWorkLoadName       = "workloadName"
+	LogFieldResourceKind       = "resourceKind"
 	LogHTTPStatusCode          = "statusCode"
 )

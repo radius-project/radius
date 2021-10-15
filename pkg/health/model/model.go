@@ -31,6 +31,7 @@ func (hm *healthModel) LookupHandler(ctx context.Context, registerMsg healthcont
 		kID := registerMsg.Resource.Identity.Data.(resourcemodel.KubernetesIdentity)
 		if hm.handlersList[kID.Kind] == nil {
 			// TODO: Convert this log to error once health checks are implemented for all resource kinds
+			// https://github.com/Azure/radius/issues/827
 			logger.Info(fmt.Sprintf("ResourceKind: %s-%s does not support health checks. Resource: %+v not monitored by HealthService", registerMsg.Resource.ResourceKind, kID.Kind, registerMsg.Resource.Identity))
 			return nil, handlers.HealthHandlerModePush
 		}
@@ -40,6 +41,7 @@ func (hm *healthModel) LookupHandler(ctx context.Context, registerMsg healthcont
 	// For all other resource kinds, the mode is Pull
 	if hm.handlersList[registerMsg.Resource.ResourceKind] == nil {
 		// TODO: Convert this log to error once health checks are implemented for all resource kinds
+		// https://github.com/Azure/radius/issues/827
 		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %+v not monitored by HealthService", registerMsg.Resource.ResourceKind, registerMsg.Resource.Identity))
 		return nil, handlers.HealthHandlerModePull
 	}
