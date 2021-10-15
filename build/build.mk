@@ -85,7 +85,7 @@ build-$(3)-$(1)-$(2):
 endef
 
 # defines a target for each binary
-GOOSES := darwin linux
+GOOSES := darwin linux windows
 GOARCHES := amd64 arm arm64
 BINARIES := docgen rad radius-controller radius-rp testenv
 $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
