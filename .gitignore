@@ -26,6 +26,9 @@ radius-rp.exe
 rad
 !rad/
 rad.exe
+kcp
+!kcp/
+kcp.exe
 
 .vscode/
 .DS_Store
