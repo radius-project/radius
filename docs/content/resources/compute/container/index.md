@@ -84,7 +84,7 @@ Persistent volumes are still in development, check back soon for updates on avai
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
-| kind | y | Type of readiness check. | `httpGet`
+| kind | y | Type of readiness check, `httpGet` or `exec`. | `httpGet`
 | containerPort | n | Used when kind is `httpGet` or `tcp`. The listening port number. | `8080`
 | path | n | Used when kind is `httpGet`. The route to make the HTTP request on | `'/healthz'`
 | command | n | Used when kind is `exec`. Command to execute to probe readiness | `'/healthz'`
