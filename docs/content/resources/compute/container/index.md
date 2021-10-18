@@ -82,6 +82,14 @@ Persistent volumes are still in development, check back soon for updates on avai
 | source | y | The resource if of the resource providing the volume. | `filestore.id`
 ### ReadinessProbe
 
+Readiness probes detect when a container begins reporting it is ready to receive traffic, such as after loading a large configuration file that may take a couple seconds to process.
+There are three types of probes available, `httpGet`, `tcp` and `exec`. For an `httpGet` probe, an HTTP GET request at the specified endpoint will be used to probe the application. If a success code is returned, the probe passes. If no code or an error code is returned, the probe fails, and the container won't receive any requests after a specified number of failures.
+Any code greater than or equal to 200 and less than 400 indicates success. Any other code indicates failure.
+
+For a `tcp` probe, the specified container port is probed to be listening. If not, the probe fails.
+
+For an `exec` probe, a command is run within the container. A return code of 0 indicates a success and the probe succeeds. Any other return indicates a failure, and the container doesn't receive any requests after a specified number of failures.
+
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | kind | y | Type of readiness check, `httpGet` or `tcp` or `exec`. | `httpGet`
@@ -93,6 +101,14 @@ Persistent volumes are still in development, check back soon for updates on avai
 | periodSeconds | n | Interval for the readiness probe in seconds. | `5`
 
 ### Liveness probe
+
+Liveness probes detect when a container is in a broken state, restarting the container to return it to a healthy state.
+There are three types of probes available, `httpGet`, `tcp` and `exec`. For an `httpGet` probe, an HTTP GET request at the specified endpoint will be used to probe the application. If a success code is returned, the probe passes. If no code or an error code is returned, the probe fails, and the container won't receive any requests after a specified number of failures.
+Any code greater than or equal to 200 and less than 400 indicates success. Any other code indicates failure.
+
+For a `tcp` probe, the specified container port is probed to be listening. If not, the probe fails.
+
+For an `exec` probe, a command is run within the container. A return code of 0 indicates a success and the probe succeeds. Any other return indicates a failure, and the container doesn't receive any requests after a specified number of failures.
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
