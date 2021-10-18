@@ -29,7 +29,7 @@ iwr -useb "https://get.radapp.dev/tools/rad/install.ps1" | iex
 #### Install the latest unstable version
 
 ```powershell
-$script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList edge
+$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList edge
 ```
 
 #### Install a specific version
@@ -50,7 +50,7 @@ curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash
 ### Install the latest unstable version
 
 ```bash
-curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s edge
+curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s edge
 ```
 
 ### Install a specific version
@@ -72,7 +72,7 @@ wget -q "https://get.radapp.dev/tools/rad/install.sh" -O - | /bin/bash
 ### Install the latest unstable version
 
 ```bash
-wget -q "https://get.radapp.dev/tools/rad/install.sh" -O - | /bin/bash -s edge
+wget -q "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" -O - | /bin/bash -s edge
 ```
 
 ### Install a specific version
@@ -106,9 +106,9 @@ PowerShell for Cloud Shell is currently not supported.
 
 1. Download the `rad` CLI from one of these URLs:
 
-   - MacOS: https://get.radapp.dev/tools/rad/0.5/macos-x64/rad
-   - Linux: https://get.radapp.dev/tools/rad/0.5/linux-x64/rad
-   - Windows: https://get.radapp.dev/tools/rad/0.5/windows-x64/rad.exe
+   - MacOS: https://get.radapp.dev/tools/rad/0.6/macos-x64/rad
+   - Linux: https://get.radapp.dev/tools/rad/0.6/linux-x64/rad
+   - Windows: https://get.radapp.dev/tools/rad/0.6/windows-x64/rad.exe
 
 1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
@@ -116,9 +116,9 @@ PowerShell for Cloud Shell is currently not supported.
 
 1. Download the `rad` CLI from one of these URLs:
 
-   - MacOS: https://get.radapp.dev/tools/rad/edge/macos-x64/rad
-   - Linux: https://get.radapp.dev/tools/rad/edge/linux-x64/rad
-   - Windows: https://get.radapp.dev/tools/rad/edge/windows-x64/rad.exe
+   - MacOS: https://radiuspublic.blob.core.windows.net/tools/rad/edge/macos-x64/rad
+   - Linux: https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad
+   - Windows: https://radiuspublic.blob.core.windows.net/tools/rad/edge/windows-x64/rad.exe
 
 1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 
@@ -157,7 +157,7 @@ Verify the rad CLI is installed correctly:
    Available Commands:
      application Manage applications
      bicep       Manage bicep compiler
-     component   Manage components
+     resource    Manage resources
      deploy      Deploy a RAD application
      deployment  Manage deployments
      env         Manage environments
