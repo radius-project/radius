@@ -92,7 +92,7 @@ Persistent volumes are still in development, check back soon for updates on avai
 | failureThreshold | n | Threshold number of times the probe fails after which a failure would be reported. | `5`
 | periodSeconds | n | Interval for the readiness probe in seconds. | `5`
 
-### LivenessProbe
+### Liveness probe
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
