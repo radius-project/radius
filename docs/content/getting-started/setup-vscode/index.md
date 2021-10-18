@@ -48,8 +48,6 @@ Radius can be used with any text editor, but Radius-specific optimizations are a
 
 ## Install other Radius extension versions
 
-You can access other versions of the Radius extension from the following URLs:
-
-- [Latest unstable](https://get.radapp.dev/tools/vscode/edge/rad-vscode-bicep.vsix)
+Visit the [edge docs](https://edge.radapp.dev) if you want to download the latest pre-release tools.
 
 {{< button text="Next: Create environment" page="create-environment.md" >}}
