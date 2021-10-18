@@ -75,11 +75,12 @@ Currently performing a release involves our custom Bicep compiler - which is in 
    
    1. Within GitHub delete the branch for the prior Radius release, *e.g. `release/v0.1`*.
    1. Create a new branch named `release/vX.Y` from `main`, using the release version number.
-   1. Update the `#Versioning` section within  `docs/config.yaml` to have the new release version number.
-   1. Update the `baseURL` parameter within `docs/config.yaml` to be `https://radapp.dev/` instead of `https://edge.radapp.dev/`.
+   1. Within  `docs/config.yaml` update the `#Versioning` section to have the new release version number.
+   1. Within `docs/config.yaml` update the `baseURL` parameter  to be `https://radapp.dev/` instead of `https://edge.radapp.dev/`.
    1. Within `.github/workflows/website.yml` update the branch to be the new `release\vX.Y` branch you created above.
-   1. Within `.github/workflows/website.yml` update `${{ secrets.EDGE_DOCS_SITE_PUBLISHPROFILE }}` to `${{ secrets.DOCS_SITE_PUBLISHPROFILE }}` within the "Deploy to WebApp" step.
-   1. In `docs/content/getting-started/install-cli.md` update the binary download links with the new version number.
+   1. Within `.github/workflows/website.yml` update `${{ secrets.EDGE_DOCS_SITE_PUBLISHPROFILE }}` to `${{ secrets.DOCS_SITE_PUBLISHPROFILE }}` and "edge-radius" to "radius".
+   1. In `docs/content/getting-started/install-cli.md` update the binary download links with the new version number, and delete commands for unstable/version commands, including all sub-headers.
+   1. In `docs/content/getting-started/setup-tools/index.md` update the download link to the stable version instead of the edge version.
    1. Commit and push updates to be the new `release\vX.Y` branch you created above.
    1. Verify https://radapp.dev now shows the new version.
 
