@@ -37,7 +37,7 @@ Details on what to run and how to run it are defined in the `container` property
 | env | n | The environment variables to be set for the container. | `"ENV_VAR": "value"`
 | ports | n | Ports the container provides | [See below](#ports).
 | readinessProbe | n | Readiness checks config | [See below](#readiness-probe).
-| livenessProbe | n | Liveness checks config | [See below](#livenessprobe).
+| livenessProbe | n | Liveness checks config | [See below](#liveness-probe).
 
 ### Ports
 
