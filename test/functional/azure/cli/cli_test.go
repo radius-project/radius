@@ -86,8 +86,8 @@ azure-cli
 		// We are more interested in the content and less about the formatting, which
 		// is already covered by unit tests. The spaces change depending on the input
 		// and it takes very long to get a feedback from CI.
-		expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
-a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+		expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE
+a\s+ContainerComponent\s+.*Provisioned\s*
 `)
 		match := expected.MatchString(output)
 		require.Equal(t, true, match)
