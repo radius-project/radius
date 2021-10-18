@@ -10,7 +10,7 @@ The container running the application code could be configured with readiness an
 
 For example, for the readiness probe config as follows:-
 
-```
+```json
 readinessProbe:{
     kind:'httpGet'
     containerPort:8080
