@@ -71,6 +71,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v2
         with:
