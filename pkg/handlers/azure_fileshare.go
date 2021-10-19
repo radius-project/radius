@@ -42,11 +42,20 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 	} else {
 		armhandler := NewARMHandler(handler.arm)
 		properties, err = armhandler.Put(ctx, options)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return properties, err
 }
 
 func (handler *azureFileShareHandler) Delete(ctx context.Context, options DeleteOptions) error {
+	properties := options.ExistingOutputResource.PersistedProperties
+	if properties[ManagedKey] != "true" {
+		// For an 'unmanaged' resource we don't need to do anything, just forget it.
+		return nil
+	}
+
 	armHandler := NewARMHandler(handler.arm)
 	return armHandler.Delete(ctx, options)
 }
