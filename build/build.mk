@@ -92,11 +92,12 @@ $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITE
 $(foreach ARCH,$(GOARCHES),$(foreach OS,$(GOOSES),$(foreach ITEM,$(BINARIES),$(eval $(call generatePlatformBuildTarget,$(OS),$(ARCH),$(ITEM),./cmd/$(ITEM))))))
 
 # 'kcp' (minimal Kubernetes API server, a 3rd party component) deviates from our convention
+KCP_OUT_PATH := $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)/kcp$(BINARY_EXT)
 .PHONY: build-kcp
 build-kcp: ## Builds KCP executable
-	@echo "$(ARROW) Building kcp to $(BINS_OUT_DIR)/kcp$(BINARY_EXT)"
+	@echo "$(ARROW) Building kcp to $(KCP_OUT_PATH)"
 	cd ./third_party/kcp && go build \
-		-o ../../$(BINS_OUT_DIR)/kcp$(BINARY_EXT) \
+		-o ../../$(KCP_OUT_PATH) \
 		github.com/kcp-dev/kcp/cmd/kcp
 
 # list of 'outputs' to build for all binaries
