@@ -3,18 +3,14 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package httproutev1alpha3
+package gateway
 
 import (
 	"context"
 	"fmt"
 
-	"strings"
-
-	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -31,8 +27,8 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.Rende
 }
 
 func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	route := HttpRoute{}
-	err := resource.ConvertDefinition(&route)
+	gateway := Gateway{}
+	err := resource.ConvertDefinition(&gateway)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -54,17 +50,8 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 
 	outputs := []outputresource.OutputResource{}
 
-	service := r.makeService(resource, route)
-	outputs = append(outputs, service)
-
-	if route.Gateway != nil {
-		// get
-		gatewayId := route.Gateway.Source
-		existingIngress := dependencies[gatewayId]
-
-		ingress := r.makeIngress(resource, route)
-		outputs = append(outputs, ingress)
-	}
+	ingress := r.makeIngress(resource, gateway)
+	outputs = append(outputs, ingress)
 
 	return renderers.RendererOutput{
 		Resources:      outputs,
@@ -72,37 +59,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	}, nil
 }
 
-func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {
-	typeParts := strings.Split(resource.ResourceType, "/")
-	service := &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
-			Namespace: resource.ApplicationName,
-			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, typeParts[len(typeParts)-1], resource.ResourceName),
-			Type:     corev1.ServiceTypeClusterIP,
-			Ports: []corev1.ServicePort{
-				{
-					Name:       resource.ResourceName,
-					Port:       int32(route.GetEffectivePort()),
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + typeParts[len(typeParts)-1] + resource.ResourceName)),
-					Protocol:   corev1.ProtocolTCP,
-				},
-			},
-		},
-	}
-
-	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
-}
-
-// Instead of making the ingress here, we need to get the previous ingress and update it
-func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {
+func (r *Renderer) makeIngress(resource renderers.RendererResource, gateway Gateway) outputresource.OutputResource {
 	ingress := &networkingv1.Ingress{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Ingress",
