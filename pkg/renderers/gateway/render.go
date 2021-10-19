@@ -7,7 +7,6 @@ package gateway
 
 import (
 	"context"
-	"fmt"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,23 +32,10 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return renderers.RendererOutput{}, err
 	}
 
-	computedValues := map[string]renderers.ComputedValueReference{
-		"host": {
-			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
-		},
-		"port": {
-			Value: route.GetEffectivePort(),
-		},
-		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), route.GetEffectivePort()),
-		},
-		"scheme": {
-			Value: "http",
-		},
-	}
+	computedValues := map[string]renderers.ComputedValueReference{}
 
 	outputs := []outputresource.OutputResource{}
-
+	// TODO can't specify listener here as ingress doesn't allow you to specify port to listen on, should we just remove?
 	ingress := r.makeIngress(resource, gateway)
 	outputs = append(outputs, ingress)
 
@@ -71,52 +57,9 @@ func (r *Renderer) makeIngress(resource renderers.RendererResource, gateway Gate
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 	}
-
-	backend := networkingv1.IngressBackend{
-		Service: &networkingv1.IngressServiceBackend{
-			Name: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
-			Port: networkingv1.ServiceBackendPort{
-				Number: int32(route.GetEffectivePort()),
-			},
-		},
+	ingress.Spec = networkingv1.IngressSpec{
+		DefaultBackend: &networkingv1.IngressBackend{},
 	}
-
-	// Default path to / if not specified
-	path := route.Gateway.Path
-	if path == "" {
-		path = "/"
-	}
-
-	var defaultBackend *networkingv1.IngressBackend
-	host := route.Gateway.Hostname
-	if route.Gateway.Hostname == "*" {
-		defaultBackend = &backend
-		// * isn't allowed in the hostname, remove it.
-		host = ""
-	}
-	pathType := networkingv1.PathTypePrefix
-
-	spec := networkingv1.IngressSpec{
-		DefaultBackend: defaultBackend,
-		Rules: []networkingv1.IngressRule{
-			{
-				Host: host,
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{
-							{
-								Path:     path,
-								PathType: &pathType,
-								Backend:  backend,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	ingress.Spec = spec
 
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
 }

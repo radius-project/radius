@@ -244,6 +244,32 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
+  - gateways
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - gateways/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - gateways/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
   - grpcroutes
   verbs:
   - create

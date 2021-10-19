@@ -154,6 +154,7 @@ func StartController() error {
 		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
 		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
 		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
+		{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 	}
 
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)

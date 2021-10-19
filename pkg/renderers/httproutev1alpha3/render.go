@@ -58,12 +58,16 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	outputs = append(outputs, service)
 
 	if route.Gateway != nil {
-		// get
+		// If not source specified, create an ingress by default.
 		gatewayId := route.Gateway.Source
-		existingIngress := dependencies[gatewayId]
-
-		ingress := r.makeIngress(resource, route)
-		outputs = append(outputs, ingress)
+		if gatewayId != "" {
+			existingIngress := dependencies[gatewayId]
+			ingress := r.makeIngressRule(resource, route, existingIngress)
+			outputs = append(outputs, ingress)
+		} else {
+			ingress := r.makeIngress(resource, route)
+			outputs = append(outputs, ingress)
+		}
 	}
 
 	return renderers.RendererOutput{
@@ -99,6 +103,64 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 	}
 
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
+}
+
+func (r *Renderer) makeIngressRule(resource renderers.RendererResource, route HttpRoute, existingIngress renderers.RendererDependency) outputresource.OutputResource {
+	gatewayName := existingIngress.ResourceID.Name()
+	ingress := &networkingv1.Ingress{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: networkingv1.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kubernetes.MakeResourceName(resource.ApplicationName, gatewayName),
+			Namespace: resource.ApplicationName,
+			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, gatewayName),
+		},
+	}
+
+	backend := networkingv1.IngressBackend{
+		Service: &networkingv1.IngressServiceBackend{
+			Name: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
+			Port: networkingv1.ServiceBackendPort{
+				Number: int32(route.GetEffectivePort()),
+			},
+		},
+	}
+
+	// Default path to / if not specified
+	path := route.Gateway.Path
+	if path == "" {
+		path = "/"
+	}
+
+	host := route.Gateway.Hostname
+	if route.Gateway.Hostname == "*" {
+		// * isn't allowed in the hostname, remove it.
+		host = ""
+	}
+	pathType := networkingv1.PathTypePrefix
+	spec := networkingv1.IngressSpec{
+		Rules: []networkingv1.IngressRule{
+			{
+				Host: host,
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{
+							{
+								Path:     path,
+								PathType: &pathType,
+								Backend:  backend,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ingress.Spec = spec
+	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
 }
 
 // Instead of making the ingress here, we need to get the previous ingress and update it

@@ -135,6 +135,7 @@ func GetKindFromArmType(armType string) string {
 		"redislabs.com.RedisComponent":       "RedisComponent",
 		"HttpRoute":                          "HttpRoute",
 		"GrpcRoute":                          "GrpcRoute",
+		"Gateway":                            "Gateway",
 	}
 	return kindMap[armType]
 }

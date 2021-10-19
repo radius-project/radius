@@ -1,5 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'kubernetes-resources-gateway'
+  name: 'kubernetes-resources-gateway-explicit'
 
   resource gateway 'Gateway' = {
     name: 'gateway'

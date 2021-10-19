@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
+	"github.com/Azure/radius/pkg/renderers/gateway"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
@@ -69,6 +70,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 				StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues,
 			},
 		},
+		gateway.ResourceType: &gateway.Renderer{},
 
 		// Portable
 		microsoftsqlv1alpha3.ResourceType: &microsoftsqlv1alpha3.Renderer{},

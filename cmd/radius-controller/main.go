@@ -125,6 +125,7 @@ func main() {
 		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
 		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
 		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
+		{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 	}
 
 	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
