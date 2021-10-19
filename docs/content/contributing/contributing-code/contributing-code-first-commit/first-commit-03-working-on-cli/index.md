@@ -16,7 +16,7 @@ First, make sure you've clone the repo to your computer and can open it in your 
 
 If you're using VS Code, entring `code .` at the command line from the root directory of the repository will open everything you need.
 
-Open the file `cmd/cli/main.go`. This is the entry point of the `rad` CLI.
+Open the file `cmd/rad/main.go`. This is the entry point of the `rad` CLI.
 
 {{% alert title="VSCode tip" color="primary" %}}
 Using VS Code you can hit `Command+P` (or `Ctrl+P`) and get a search bar for files that does fuzzy searching. For instance typing `main` would let you pick the file from a short list. With practice this can make navigation very fast.
@@ -49,7 +49,7 @@ You could repeat the commands from the previous step (`make` followed by `./dist
 However, there is a faster way that you should learn. You can use `go run` to build and run in one step.
 
 ```sh
-go run cmd/cli/main.go
+go run cmd/rad/main.go
 ```
 
 You should see the basic help text of the CLI with your changes.

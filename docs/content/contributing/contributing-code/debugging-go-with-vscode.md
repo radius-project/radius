@@ -35,7 +35,7 @@ The most basic configuration for Go looks like this:
 
 This example will allow you to launch the debugger with whatever file open in the editor as the entry point.
 
-To use this open a file like `cmd/cli/main.go` and press the green triangle button.
+To use this open a file like `cmd/rad/main.go` and press the green triangle button.
 
 ## Building aliases
 
@@ -81,7 +81,7 @@ Here's an example:
             "type": "go",
             "request": "launch",
             "mode": "debug",
-            "program": "${workspaceFolder}/cmd/cli/main.go",
+            "program": "${workspaceFolder}/cmd/rad/main.go",
             "args": [
                 "env", "init", "azure", 
                 "--subscription-id", "...", 
