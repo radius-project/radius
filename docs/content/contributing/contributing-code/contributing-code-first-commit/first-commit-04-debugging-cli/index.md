@@ -35,7 +35,7 @@ Replace the contents with the following text:
             "type": "go",
             "request": "launch",
             "mode": "debug",
-            "program": "${workspaceFolder}/cmd/cli/main.go",
+            "program": "${workspaceFolder}/cmd/rad/main.go",
             "cwd": "${workspaceFolder}",
 
             // If you need to specify command line arguments
