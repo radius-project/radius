@@ -164,7 +164,10 @@ func (eva *evaluator) VisitResource(input map[string]interface{}) (Resource, err
 		return Resource{}, errors.New("resource does not contain a type")
 	}
 
-	apiVersion := evaluated["apiVersion"].(string)
+	apiVersion, ok := evaluated["apiVersion"].(string)
+	if !ok {
+		return Resource{}, errors.New("resource does not contain an apiVersion")
+	}
 
 	dependsOn := []string{}
 	obj, ok := evaluated["dependsOn"]
