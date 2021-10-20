@@ -158,6 +158,7 @@ installFile() {
     runAsRoot cp "$tmp_root_Radius_cli" "$RADIUS_INSTALL_DIR"
 
     if [ -f "$RADIUS_CLI_FILE" ]; then
+        $RADIUS_CLI_FILE bicep download
         echo "$RADIUS_CLI_FILENAME installed into $RADIUS_INSTALL_DIR successfully."
 
         # TODO: $RADIUS_CLI_FILE --version
