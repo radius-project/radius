@@ -8,7 +8,7 @@ package azuretest
 import (
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/azure/armauth"
@@ -28,7 +28,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	require.NoErrorf(t, err, "failed to obtain Azure credentials")
-	con := armcore.NewDefaultConnection(azcred, nil)
+	con := arm.NewDefaultConnection(azcred, nil)
 
 	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
@@ -54,7 +54,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 type TestOptions struct {
 	ConfigFilePath string
 	ARMAuthorizer  autorest.Authorizer
-	ARMConnection  *armcore.Connection
+	ARMConnection  *arm.Connection
 	Environment    *environments.AzureCloudEnvironment
 	K8sClient      *k8s.Clientset
 }

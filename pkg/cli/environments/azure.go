@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/pkg/azure/aks"
 	"github.com/Azure/radius/pkg/azure/armauth"
@@ -106,7 +106,7 @@ func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (cli
 		return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
 	}
 
-	con := armcore.NewDefaultConnection(azcred, nil)
+	con := arm.NewDefaultConnection(azcred, nil)
 
 	return &azure.ARMManagementClient{
 		Connection:      con,

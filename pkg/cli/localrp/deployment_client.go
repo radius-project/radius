@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
 	"github.com/Azure/go-autorest/autorest"
 	azclients "github.com/Azure/radius/pkg/azure/clients"
@@ -32,7 +32,7 @@ const PollInterval = 5 * time.Second
 type LocalRPDeploymentClient struct {
 	Authorizer     autorest.Authorizer
 	BaseURL        string
-	Connection     *armcore.Connection
+	Connection     *arm.Connection
 	SubscriptionID string
 	ResourceGroup  string
 }
@@ -103,7 +103,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string, p
 	return nil
 }
 
-func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connection *armcore.Connection, resource armtemplate.Resource) (*http.Response, map[string]interface{}, error) {
+func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connection *arm.Connection, resource armtemplate.Resource) (*http.Response, map[string]interface{}, error) {
 	client := azclients.NewGenericResourceClient(dc.SubscriptionID, dc.Authorizer)
 	client.BaseURI = strings.TrimSuffix(dc.BaseURL, "/")
 	client.PollingDelay = PollInterval
