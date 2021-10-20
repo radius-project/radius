@@ -13,6 +13,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.2
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
+	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gibson042/canonicaljson-go v1.0.3
 	github.com/go-logr/logr v0.4.0
@@ -34,9 +35,11 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4 // indirect
+	github.com/shirou/gopsutil v3.21.9+incompatible
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
+	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415
 	github.com/xeipuuv/gojsonschema v1.2.0

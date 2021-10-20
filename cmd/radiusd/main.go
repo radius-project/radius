@@ -9,66 +9,48 @@ import (
 	"flag"
 	"os"
 
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	zap "sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/Azure/radius/pkg/localenv"
+	"github.com/Azure/radius/pkg/radlogger"
 )
 
-var (
-	scheme    = runtime.NewScheme()
-	daemonLog = ctrl.Log.WithName("radiusd")
-)
-
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
-	// Probably don't need all the Radius CRDs for local development... but for now this will do
-	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
+type startupOpts struct {
+	MetricsAddr     string
+	HealthProbeAddr string
 }
 
 func main() {
-	var metricsAddr string
-	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":43590", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":43591", "The address the probe endpoint binds to.")
-	opts := zap.Options{
-		Development: true,
-	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
-
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
-	certDir := os.Getenv("TLS_CERT_DIR")
-
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         false,
-		CertDir:                certDir,
-	})
+	opts := getStartupOpts()
+	zap.New()
+	log, flushLogs, err := radlogger.NewLogger("radiusd")
 	if err != nil {
-		daemonLog.Error(err, "unable to create controller manager")
+		println(err.Error())
 		os.Exit(1)
 	}
+	defer flushLogs()
 
-	if err = (&radcontroller.ExecutableReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Executable"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		daemonLog.Error(err, "unable to create controller", "controller", "Executable")
+	cms, err := localenv.NewControllerManagerService(log, opts.MetricsAddr, opts.HealthProbeAddr)
+	if err != nil {
+		log.Error(err, "unable to create controller manager")
 		os.Exit(2)
 	}
 
-	daemonLog.Info("starting controller manager...")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		daemonLog.Error(err, "failed to start controller manager")
+	ctx := ctrl.SetupSignalHandler()
+
+	log.Info("starting controller manager...")
+	if err := cms.Run(ctx); err != nil {
+		log.Error(err, "failed to start controller manager")
 		os.Exit(3)
 	}
+}
+
+func getStartupOpts() *startupOpts {
+	opts := startupOpts{}
+
+	flag.StringVar(&opts.MetricsAddr, "metrics-bind-address", ":43590", "The address the metric endpoint binds to.")
+	flag.StringVar(&opts.HealthProbeAddr, "health-probe-bind-address", ":43591", "The address the probe endpoint binds to.")
+	flag.Parse()
+	return &startupOpts{}
 }

@@ -37,9 +37,6 @@ const (
 	ExitCodeAbandoned = -2
 	// We use ExitCodeFailedToStart to designate failed replica start attempts
 	ExitCodeFailedToStart = -3
-
-	// Invalid PID code is used when replica start fails
-	InvalidPID = -1
 )
 
 type runningProcessStatus struct {
@@ -234,14 +231,14 @@ func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *rad
 	logfile, err := os.CreateTemp("", path.Base(executable.Spec.Executable))
 	if err != nil {
 		log.Error(err, "failed to start a replica")
-		rs.PID = InvalidPID
+		rs.PID = process.InvalidPID
 		rs.ExitCode = ExitCodeFailedToStart
 	}
 
 	ports, err := allocatePorts(ctx, executable)
 	if err != nil {
 		log.Error(err, "failed to allocate ports for a replica")
-		rs.PID = InvalidPID
+		rs.PID = process.InvalidPID
 		rs.ExitCode = ExitCodeFailedToStart
 	}
 
@@ -251,7 +248,7 @@ func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *rad
 	pid, startWaiting, err := r.ProcessExecutor.StartProcess(ctx, cmd, r)
 	if err != nil {
 		log.Error(err, "failed to start a replica")
-		rs.PID = InvalidPID
+		rs.PID = process.InvalidPID
 		rs.ExitCode = ExitCodeFailedToStart
 	} else {
 		log.Info("replica started", "PID", pid)

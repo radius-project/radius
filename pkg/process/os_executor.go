@@ -10,6 +10,8 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+
+	procutil "github.com/shirou/gopsutil/process"
 )
 
 type OSExecutor struct{}
@@ -64,4 +66,25 @@ func (e *OSExecutor) StopProcess(pid int) error {
 		err = proc.Kill()
 	}
 	return err
+}
+
+func (e *OSExecutor) Processes() ([]ProcessData, error) {
+	processes, err := procutil.Processes()
+	if err != nil {
+		return nil, err
+	}
+
+	retval := make([]ProcessData, len(processes))
+	for i, p := range processes {
+		retval[i].PID = int(p.Pid)
+
+		cmdline, err := p.Cmdline()
+		if err != nil {
+			return nil, err
+		}
+
+		retval[i].Cmdline = cmdline
+	}
+
+	return retval, nil
 }

@@ -3,19 +3,22 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package controllers
+package localenvtest
 
 import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/pkg/process"
 	"github.com/stretchr/testify/require"
+	wait "k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/Azure/radius/pkg/process"
 )
 
 type ProcessExecution struct {
@@ -73,12 +76,26 @@ func (e *TestProcessExecutor) StartProcess(ctx context.Context, cmd *exec.Cmd, h
 	return
 }
 
-// Called by the controller (via Executor interface)
 func (e *TestProcessExecutor) StopProcess(pid int) error {
 	return e.stopProcessImpl(pid, KilledProcessExitCode)
 }
 
-// Called by tests
+func (e *TestProcessExecutor) Processes() ([]process.ProcessData, error) {
+	e.m.RLock()
+	defer e.m.RUnlock()
+
+	retval := make([]process.ProcessData, len(e.Executions))
+	for i, pe := range e.Executions {
+		if pe.Finished() {
+			continue
+		}
+		retval[i].PID = pe.PID
+		retval[i].Cmdline = strings.Join(pe.Cmd.Args, " ")
+	}
+	return retval, nil
+}
+
+// Following methods are called by tests only (they are not part of Executor interface)
 func (e *TestProcessExecutor) SimulateProcessExit(t *testing.T, pid int, exitCode int) {
 	err := e.stopProcessImpl(pid, exitCode)
 	if err != nil {
@@ -107,6 +124,17 @@ func (e *TestProcessExecutor) FindAll(cmdPath string, cond func(pe ProcessExecut
 	return retval
 }
 
+func (e *TestProcessExecutor) WaitProcessesStarted(ctx context.Context, cmdPath string, n int) error {
+	waitProcessesStarted := func() (bool, error) {
+		processesRunning := e.FindAll(cmdPath, func(pe ProcessExecution) bool {
+			return !pe.Finished()
+		})
+
+		return len(processesRunning) == n, nil
+	}
+	return wait.PollUntil(time.Second, waitProcessesStarted, ctx.Done())
+}
+
 func (e *TestProcessExecutor) findByPid(pid int) int {
 	for i, pe := range e.Executions {
 		if pe.PID == pid {
@@ -133,4 +161,8 @@ func (e *TestProcessExecutor) stopProcessImpl(pid, exitCode int) error {
 		pe.ExitHandler.OnProcessExited(pid, exitCode, nil)
 	}
 	return nil
+}
+
+func (pe *ProcessExecution) Finished() bool {
+	return !pe.EndedAt.IsZero()
 }

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package localenv
+package controllers
 
 import (
 	"bytes"
@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/test/localenvtest"
 	"github.com/Azure/radius/test/testcontext"
 )
@@ -62,7 +61,7 @@ func startController() error {
 	}
 
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "deploy", "Chart", "crds")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "..", "deploy", "Chart", "crds")},
 		ErrorIfCRDPathMissing: true,
 		BinaryAssetsDirectory: assetDir,
 	}
@@ -94,7 +93,7 @@ func startController() error {
 	}
 
 	executor = localenvtest.NewTestProcessExecutor()
-	if err = (&radcontroller.ExecutableReconciler{
+	if err = (&ExecutableReconciler{
 		Client:          mgr.GetClient(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Executable"),
 		Scheme:          mgr.GetScheme(),
@@ -277,7 +276,7 @@ func TestExitCodeCaptured(t *testing.T) {
 			if err != nil {
 				return false, nil
 			}
-			if rs.ExitCode == radcontroller.ExitCodeRunning {
+			if rs.ExitCode == ExitCodeRunning {
 				return false, nil // Controller had no chance to update the replica status yet
 			}
 			if rs.ExitCode != expectedEC[i] {
