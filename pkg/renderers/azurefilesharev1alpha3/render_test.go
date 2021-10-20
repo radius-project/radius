@@ -151,7 +151,8 @@ func Test_Render_Managed_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.AzureFileShare, output.Resources[1].ResourceKind)
 
 	expectedProperties := map[string]string{
-		handlers.ManagedKey: "true",
+		handlers.ManagedKey:                           "true",
+		handlers.AzureFileShareStorageAccountBaseName: "storageaccount-",
 	}
 	require.Equal(t, expectedProperties, output.Resources[0].Resource)
 

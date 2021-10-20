@@ -56,6 +56,7 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 			return nil, fmt.Errorf("failed to create a file share with err: %w", err)
 		}
 		properties[FileShareIDKey] = *fileshare.ID
+		options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 	} else {
 		armhandler := NewARMHandler(handler.arm)
 		properties, err = armhandler.Put(ctx, options)
@@ -63,7 +64,6 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 			return nil, err
 		}
 	}
-	options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 
 	return properties, nil
 }
