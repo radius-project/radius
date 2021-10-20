@@ -65,10 +65,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     name: 'catalog-http'
     properties: {
       port: 5101
-      gateway: {
-        hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/catalog'
-      }
     }
   }
 
@@ -155,7 +151,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5105
       gateway: {
-        hostname: '*'
+        hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
         path: '/identity-api'
       }
     }

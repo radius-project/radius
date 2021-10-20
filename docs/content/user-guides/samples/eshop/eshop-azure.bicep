@@ -216,7 +216,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
           ConnectionString: 'Server=tcp:${sqlCatalog.properties.server},1433;Initial Catalog=${sqlCatalog.properties.database};User Id=${adminLogin};Password=${adminPassword};'
-          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
+          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
         }
         ports: {
           http: {
@@ -242,10 +242,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     name: 'catalog-http'
     properties: {
       port: 5101
-      gateway: {
-        hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/catalog'
-      }
     }
   }
 
@@ -273,13 +269,13 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           XamarinCallback: ''
           EnableDevspaces: ENABLEDEVSPACES
           ConnectionString: 'Server=tcp:${sqlIdentity.properties.server},1433;Initial Catalog=${sqlIdentity.properties.database};User Id=${adminLogin};Password=${adminPassword};Encrypt=true'
-          MvcClient: 'http://${CLUSTER_IP}${webmvcHttp.properties.gateway.path}'
-          SpaClient: 'http://${CLUSTER_IP}${webspaHttp.properties.gateway.path}'
-          BasketApiClient: 'http://${CLUSTER_IP}${basketHttp.properties.gateway.path}'
-          OrderingApiClient: 'http://${CLUSTER_IP}${orderingHttp.properties.gateway.path}'
-          WebShoppingAggClient: 'http://${CLUSTER_IP}${webshoppingaggHttp.properties.gateway.path}'
-          WebhooksApiClient: 'http://${CLUSTER_IP}${webhooksHttp.properties.gateway.path}'
-          WebhooksWebClient: 'http://${CLUSTER_IP}${webhooksclientHttp.properties.gateway.path}'
+          MvcClient: 'http://${CLUSTERDNS}${webmvcHttp.properties.gateway.path}'
+          SpaClient: CLUSTERDNS
+          BasketApiClient: 'http://${CLUSTERDNS}${basketHttp.properties.gateway.path}'
+          OrderingApiClient: 'http://${CLUSTERDNS}${orderingHttp.properties.gateway.path}'
+          WebShoppingAggClient: 'http://${CLUSTERDNS}${webshoppingaggHttp.properties.gateway.path}'
+          WebhooksApiClient: 'http://${CLUSTERDNS}${webhooksHttp.properties.gateway.path}'
+          WebhooksWebClient: 'http://${CLUSTERDNS}${webhooksclientHttp.properties.gateway.path}'
         }
         ports: {
           http: {
@@ -332,7 +328,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       port: 5105
       gateway: {
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/identity'
+        path: '/identity-api'
       }
     }
   }
@@ -358,7 +354,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           GRPC_PORT: '81'
           PORT: '80'
           ConnectionString: 'Server=tcp:${sqlOrdering.properties.server},1433;Initial Catalog=${sqlOrdering.properties.database};User Id=${adminLogin};Password=${adminPassword};Encrypt=true'
-          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
+          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
         }
@@ -422,7 +418,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           GRPC_PORT: '81'
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
           ConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
-          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
+          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
         }
@@ -481,7 +477,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           OrchestratorType: OCHESTRATOR_TYPE
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
           ConnectionString: 'Server=tcp:${sqlWebhooks.properties.server},1433;Initial Catalog=${sqlWebhooks.properties.database};User Id=${adminLogin};Password=${adminPassword};Encrypt=true'
-          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
+          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
         }
@@ -531,7 +527,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'Serilog__MinimumLevel__Override__Microsoft.eShopOnContainers.BuildingBlocks.EventBusRabbitMQ': 'Verbose'
           OrchestratorType: OCHESTRATOR_TYPE
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
+          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
         }
         ports: {
           http: {
@@ -571,7 +567,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           OrchestratorType: OCHESTRATOR_TYPE
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
           ConnectionString: 'Server=tcp:${sqlOrdering.properties.server},1433;Initial Catalog=${sqlOrdering.properties.database};User Id=${adminLogin};Password=${adminPassword};Encrypt=true'
-          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
+          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
         }
         ports: {
           http: {
@@ -719,7 +715,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           OrchestratorType: OCHESTRATOR_TYPE
           IsClusterEnv: 'True'
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
+          EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
           SignalrStoreConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
           IdentityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
@@ -880,10 +876,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           OrchestratorType: OCHESTRATOR_TYPE
           IsClusterEnv: 'True'
+          CallBackUrl: '${CLUSTERDNS}/'
           DPConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
           IdentityUrl: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
           IdentityUrlHC: '${identityHttp.properties.url}/hc'
-          CallBackUrl: CLUSTERDNS
           PurchaseUrl: '${CLUSTERDNS}${webshoppingapigwHttp.properties.gateway.path}'
           SignalrHubUrl: orderingsignalrhubHttp.properties.url
         }
@@ -943,8 +939,8 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           DPConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
           OrchestratorType: OCHESTRATOR_TYPE
           IsClusterEnv: 'True'
-          CallBackUrl: 'http://${CLUSTER_IP}${webmvcHttp.properties.gateway.path}'
-          IdentityUrl: 'http://${CLUSTER_IP}${identityHttp.properties.gateway.path}'
+          CallBackUrl: '${CLUSTERDNS}${webmvcHttp.properties.gateway.path}'
+          IdentityUrl: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
           IdentityUrlHC: '${identityHttp.properties.url}/hc'
           PurchaseUrl: webshoppingapigwHttp.properties.url
           ExternalPurchaseUrl: '${CLUSTERDNS}${webshoppingapigwHttp.properties.gateway.path}'

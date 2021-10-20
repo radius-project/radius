@@ -48,6 +48,10 @@ helm upgrade radius-ingress-nginx ingress-nginx/ingress-nginx --install --create
 
 ### Configure ingress controller
 
+{{% alert title="⚠️ Temporary workaround" color="info" %}}
+The following steps are temporary, pending updates to Radius gateway resources.
+{{% /alert %}}
+
 eShop requires the nginx ingress controller to accept large headers, which are used by the identity microservice. Run the following commands to override the default ConfigMap:
 
 #### (Azure envs only) Get kubectl context
@@ -69,6 +73,17 @@ data:
   proxy-buffer-size: 128k
   proxy-buffers: 4 256k
 ```
+
+Now get the pod of the nginx ingress controller in order to restart it:
+
+```bash
+$ kubectl get pods -n radius-system
+NAME                                    READY   STATUS    RESTARTS   AGE
+radius-ingress-nginx-controller-ID      1/1     Running   0          3m
+$ kubectl delete pod radius-ingress-nginx-controller-ID -n radius-system
+```
+
+The pod should restart and now accept large headers.
 
 ### Get cluster IP
 
@@ -105,7 +120,7 @@ $ rad deploy eshop-kubernetes.bicep -p adminPassword=CHOOSE-A-PASSWORD -p CLUSTE
 {{% /tabs %}}
 
 {{% alert title="Note" color="info" %}}
-Azure Redis cache can ~30 minutes to deploy. You can monitor your deployment process in the `Deployments` blade of your environment's resource group.
+Azure Redis cache can take ~20-30 minutes to deploy. You can monitor your deployment process in the `Deployments` blade of your environment's resource group.
 {{% /alert %}}
 
 ## Verify app resources
