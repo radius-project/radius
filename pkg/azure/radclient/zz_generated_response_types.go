@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -9,429 +10,1583 @@ package radclient
 
 import (
 	"context"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"net/http"
 	"time"
 )
 
-// ApplicationListResponse is the response envelope for operations that return a ApplicationList type.
+// ApplicationCreateOrUpdatePollerResponse contains the response from method Application.CreateOrUpdate.
+type ApplicationCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *ApplicationCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l ApplicationCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (ApplicationCreateOrUpdateResponse, error) {
+	respType := ApplicationCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.ApplicationResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a ApplicationCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *ApplicationCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *ApplicationClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("ApplicationClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &ApplicationCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// ApplicationCreateOrUpdateResponse contains the response from method Application.CreateOrUpdate.
+type ApplicationCreateOrUpdateResponse struct {
+	ApplicationCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationCreateOrUpdateResult contains the result from method Application.CreateOrUpdate.
+type ApplicationCreateOrUpdateResult struct {
+	ApplicationResource
+}
+
+// ApplicationDeletePollerResponse contains the response from method Application.Delete.
+type ApplicationDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *ApplicationDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l ApplicationDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (ApplicationDeleteResponse, error) {
+	respType := ApplicationDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a ApplicationDeletePollerResponse from the provided client and resume token.
+func (l *ApplicationDeletePollerResponse) Resume(ctx context.Context, client *ApplicationClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("ApplicationClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &ApplicationDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// ApplicationDeleteResponse contains the response from method Application.Delete.
+type ApplicationDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationGetResponse contains the response from method Application.Get.
+type ApplicationGetResponse struct {
+	ApplicationGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationGetResult contains the result from method Application.Get.
+type ApplicationGetResult struct {
+	ApplicationResource
+}
+
+// ApplicationListResponse contains the response from method Application.List.
 type ApplicationListResponse struct {
-	// List of Application resources.
-	ApplicationList *ApplicationList
-
+	ApplicationListResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ApplicationResourcePollerResponse is the response envelope for operations that asynchronously return a ApplicationResource type.
-type ApplicationResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (ApplicationResourceResponse, error)
+// ApplicationListResult contains the result from method Application.List.
+type ApplicationListResult struct {
+	ApplicationList
+}
 
+// AzureComKeyVaultComponentCreateOrUpdatePollerResponse contains the response from method AzureComKeyVaultComponent.CreateOrUpdate.
+type AzureComKeyVaultComponentCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller ApplicationResourcePoller
+	Poller *AzureComKeyVaultComponentCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ApplicationResourceResponse is the response envelope for operations that return a ApplicationResource type.
-type ApplicationResourceResponse struct {
-	// Application resource.
-	ApplicationResource *ApplicationResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l AzureComKeyVaultComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (AzureComKeyVaultComponentCreateOrUpdateResponse, error) {
+	respType := AzureComKeyVaultComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.AzureKeyVaultComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a AzureComKeyVaultComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *AzureComKeyVaultComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *AzureComKeyVaultComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("AzureComKeyVaultComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &AzureComKeyVaultComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// AzureComKeyVaultComponentCreateOrUpdateResponse contains the response from method AzureComKeyVaultComponent.CreateOrUpdate.
+type AzureComKeyVaultComponentCreateOrUpdateResponse struct {
+	AzureComKeyVaultComponentCreateOrUpdateResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// AzureKeyVaultComponentListResponse is the response envelope for operations that return a AzureKeyVaultComponentList type.
-type AzureKeyVaultComponentListResponse struct {
-	// List of azure.com.KeyVaultComponent resources.
-	AzureKeyVaultComponentList *AzureKeyVaultComponentList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// AzureComKeyVaultComponentCreateOrUpdateResult contains the result from method AzureComKeyVaultComponent.CreateOrUpdate.
+type AzureComKeyVaultComponentCreateOrUpdateResult struct {
+	AzureKeyVaultComponentResource
 }
 
-// AzureKeyVaultComponentResourcePollerResponse is the response envelope for operations that asynchronously return a AzureKeyVaultComponentResource type.
-type AzureKeyVaultComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (AzureKeyVaultComponentResourceResponse, error)
-
+// AzureComKeyVaultComponentDeletePollerResponse contains the response from method AzureComKeyVaultComponent.Delete.
+type AzureComKeyVaultComponentDeletePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller AzureKeyVaultComponentResourcePoller
+	Poller *AzureComKeyVaultComponentDeletePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// AzureKeyVaultComponentResourceResponse is the response envelope for operations that return a AzureKeyVaultComponentResource type.
-type AzureKeyVaultComponentResourceResponse struct {
-	// Component for Azure KeyVault
-	AzureKeyVaultComponentResource *AzureKeyVaultComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l AzureComKeyVaultComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (AzureComKeyVaultComponentDeleteResponse, error) {
+	respType := AzureComKeyVaultComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a AzureComKeyVaultComponentDeletePollerResponse from the provided client and resume token.
+func (l *AzureComKeyVaultComponentDeletePollerResponse) Resume(ctx context.Context, client *AzureComKeyVaultComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("AzureComKeyVaultComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &AzureComKeyVaultComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// AzureComKeyVaultComponentDeleteResponse contains the response from method AzureComKeyVaultComponent.Delete.
+type AzureComKeyVaultComponentDeleteResponse struct {
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// AzureServiceBusComponentListResponse is the response envelope for operations that return a AzureServiceBusComponentList type.
-type AzureServiceBusComponentListResponse struct {
-	// List of azure.com.ServiceBusQueueComponent resources.
-	AzureServiceBusComponentList *AzureServiceBusComponentList
-
+// AzureComKeyVaultComponentGetResponse contains the response from method AzureComKeyVaultComponent.Get.
+type AzureComKeyVaultComponentGetResponse struct {
+	AzureComKeyVaultComponentGetResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// AzureServiceBusComponentResourcePollerResponse is the response envelope for operations that asynchronously return a AzureServiceBusComponentResource
-// type.
-type AzureServiceBusComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (AzureServiceBusComponentResourceResponse, error)
+// AzureComKeyVaultComponentGetResult contains the result from method AzureComKeyVaultComponent.Get.
+type AzureComKeyVaultComponentGetResult struct {
+	AzureKeyVaultComponentResource
+}
 
+// AzureComKeyVaultComponentListResponse contains the response from method AzureComKeyVaultComponent.List.
+type AzureComKeyVaultComponentListResponse struct {
+	AzureComKeyVaultComponentListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureComKeyVaultComponentListResult contains the result from method AzureComKeyVaultComponent.List.
+type AzureComKeyVaultComponentListResult struct {
+	AzureKeyVaultComponentList
+}
+
+// AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse contains the response from method AzureComServiceBusQueueComponent.CreateOrUpdate.
+type AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller AzureServiceBusComponentResourcePoller
+	Poller *AzureComServiceBusQueueComponentCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// AzureServiceBusComponentResourceResponse is the response envelope for operations that return a AzureServiceBusComponentResource type.
-type AzureServiceBusComponentResourceResponse struct {
-	// Component for Azure ServiceBus
-	AzureServiceBusComponentResource *AzureServiceBusComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (AzureComServiceBusQueueComponentCreateOrUpdateResponse, error) {
+	respType := AzureComServiceBusQueueComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.AzureServiceBusComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *AzureComServiceBusQueueComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("AzureComServiceBusQueueComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &AzureComServiceBusQueueComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// AzureComServiceBusQueueComponentCreateOrUpdateResponse contains the response from method AzureComServiceBusQueueComponent.CreateOrUpdate.
+type AzureComServiceBusQueueComponentCreateOrUpdateResponse struct {
+	AzureComServiceBusQueueComponentCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureComServiceBusQueueComponentCreateOrUpdateResult contains the result from method AzureComServiceBusQueueComponent.CreateOrUpdate.
+type AzureComServiceBusQueueComponentCreateOrUpdateResult struct {
+	AzureServiceBusComponentResource
+}
+
+// AzureComServiceBusQueueComponentDeletePollerResponse contains the response from method AzureComServiceBusQueueComponent.Delete.
+type AzureComServiceBusQueueComponentDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *AzureComServiceBusQueueComponentDeletePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ContainerComponentListResponse is the response envelope for operations that return a ContainerComponentList type.
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l AzureComServiceBusQueueComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (AzureComServiceBusQueueComponentDeleteResponse, error) {
+	respType := AzureComServiceBusQueueComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a AzureComServiceBusQueueComponentDeletePollerResponse from the provided client and resume token.
+func (l *AzureComServiceBusQueueComponentDeletePollerResponse) Resume(ctx context.Context, client *AzureComServiceBusQueueComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("AzureComServiceBusQueueComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &AzureComServiceBusQueueComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// AzureComServiceBusQueueComponentDeleteResponse contains the response from method AzureComServiceBusQueueComponent.Delete.
+type AzureComServiceBusQueueComponentDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureComServiceBusQueueComponentGetResponse contains the response from method AzureComServiceBusQueueComponent.Get.
+type AzureComServiceBusQueueComponentGetResponse struct {
+	AzureComServiceBusQueueComponentGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureComServiceBusQueueComponentGetResult contains the result from method AzureComServiceBusQueueComponent.Get.
+type AzureComServiceBusQueueComponentGetResult struct {
+	AzureServiceBusComponentResource
+}
+
+// AzureComServiceBusQueueComponentListResponse contains the response from method AzureComServiceBusQueueComponent.List.
+type AzureComServiceBusQueueComponentListResponse struct {
+	AzureComServiceBusQueueComponentListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureComServiceBusQueueComponentListResult contains the result from method AzureComServiceBusQueueComponent.List.
+type AzureComServiceBusQueueComponentListResult struct {
+	AzureServiceBusComponentList
+}
+
+// ContainerComponentCreateOrUpdatePollerResponse contains the response from method ContainerComponent.CreateOrUpdate.
+type ContainerComponentCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *ContainerComponentCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l ContainerComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (ContainerComponentCreateOrUpdateResponse, error) {
+	respType := ContainerComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.ContainerComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a ContainerComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *ContainerComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *ContainerComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("ContainerComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &ContainerComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// ContainerComponentCreateOrUpdateResponse contains the response from method ContainerComponent.CreateOrUpdate.
+type ContainerComponentCreateOrUpdateResponse struct {
+	ContainerComponentCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainerComponentCreateOrUpdateResult contains the result from method ContainerComponent.CreateOrUpdate.
+type ContainerComponentCreateOrUpdateResult struct {
+	ContainerComponentResource
+}
+
+// ContainerComponentDeletePollerResponse contains the response from method ContainerComponent.Delete.
+type ContainerComponentDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *ContainerComponentDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l ContainerComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (ContainerComponentDeleteResponse, error) {
+	respType := ContainerComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a ContainerComponentDeletePollerResponse from the provided client and resume token.
+func (l *ContainerComponentDeletePollerResponse) Resume(ctx context.Context, client *ContainerComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("ContainerComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &ContainerComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// ContainerComponentDeleteResponse contains the response from method ContainerComponent.Delete.
+type ContainerComponentDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainerComponentGetResponse contains the response from method ContainerComponent.Get.
+type ContainerComponentGetResponse struct {
+	ContainerComponentGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainerComponentGetResult contains the result from method ContainerComponent.Get.
+type ContainerComponentGetResult struct {
+	ContainerComponentResource
+}
+
+// ContainerComponentListResponse contains the response from method ContainerComponent.List.
 type ContainerComponentListResponse struct {
-	// List of ContainerComponent resources.
-	ContainerComponentList *ContainerComponentList
-
+	ContainerComponentListResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ContainerComponentResourcePollerResponse is the response envelope for operations that asynchronously return a ContainerComponentResource type.
-type ContainerComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (ContainerComponentResourceResponse, error)
+// ContainerComponentListResult contains the result from method ContainerComponent.List.
+type ContainerComponentListResult struct {
+	ContainerComponentList
+}
 
+// DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse contains the response from method DaprIoDaprHTTPRoute.CreateOrUpdate.
+type DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller ContainerComponentResourcePoller
+	Poller *DaprIoDaprHTTPRouteCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ContainerComponentResourceResponse is the response envelope for operations that return a ContainerComponentResource type.
-type ContainerComponentResourceResponse struct {
-	// The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform
-	ContainerComponentResource *ContainerComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (DaprIoDaprHTTPRouteCreateOrUpdateResponse, error) {
+	respType := DaprIoDaprHTTPRouteCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.DaprHTTPRouteResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *DaprIoDaprHTTPRouteClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("DaprIoDaprHTTPRouteClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &DaprIoDaprHTTPRouteCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// DaprIoDaprHTTPRouteCreateOrUpdateResponse contains the response from method DaprIoDaprHTTPRoute.CreateOrUpdate.
+type DaprIoDaprHTTPRouteCreateOrUpdateResponse struct {
+	DaprIoDaprHTTPRouteCreateOrUpdateResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprHTTPRouteListResponse is the response envelope for operations that return a DaprHTTPRouteList type.
-type DaprHTTPRouteListResponse struct {
-	// List of dapr.io.DaprHttpRoute resources.
-	DaprHTTPRouteList *DaprHTTPRouteList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// DaprIoDaprHTTPRouteCreateOrUpdateResult contains the result from method DaprIoDaprHTTPRoute.CreateOrUpdate.
+type DaprIoDaprHTTPRouteCreateOrUpdateResult struct {
+	DaprHTTPRouteResource
 }
 
-// DaprHTTPRouteResourcePollerResponse is the response envelope for operations that asynchronously return a DaprHTTPRouteResource type.
-type DaprHTTPRouteResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (DaprHTTPRouteResourceResponse, error)
-
+// DaprIoDaprHTTPRouteDeletePollerResponse contains the response from method DaprIoDaprHTTPRoute.Delete.
+type DaprIoDaprHTTPRouteDeletePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller DaprHTTPRouteResourcePoller
+	Poller *DaprIoDaprHTTPRouteDeletePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprHTTPRouteResourceResponse is the response envelope for operations that return a DaprHTTPRouteResource type.
-type DaprHTTPRouteResourceResponse struct {
-	// Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between components.
-	DaprHTTPRouteResource *DaprHTTPRouteResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l DaprIoDaprHTTPRouteDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (DaprIoDaprHTTPRouteDeleteResponse, error) {
+	respType := DaprIoDaprHTTPRouteDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a DaprIoDaprHTTPRouteDeletePollerResponse from the provided client and resume token.
+func (l *DaprIoDaprHTTPRouteDeletePollerResponse) Resume(ctx context.Context, client *DaprIoDaprHTTPRouteClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("DaprIoDaprHTTPRouteClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &DaprIoDaprHTTPRouteDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// DaprIoDaprHTTPRouteDeleteResponse contains the response from method DaprIoDaprHTTPRoute.Delete.
+type DaprIoDaprHTTPRouteDeleteResponse struct {
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprPubSubTopicComponentListResponse is the response envelope for operations that return a DaprPubSubTopicComponentList type.
-type DaprPubSubTopicComponentListResponse struct {
-	// List of dapr.io.PubSubTopicComponent resources.
-	DaprPubSubTopicComponentList *DaprPubSubTopicComponentList
-
+// DaprIoDaprHTTPRouteGetResponse contains the response from method DaprIoDaprHTTPRoute.Get.
+type DaprIoDaprHTTPRouteGetResponse struct {
+	DaprIoDaprHTTPRouteGetResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprPubSubTopicComponentResourcePollerResponse is the response envelope for operations that asynchronously return a DaprPubSubTopicComponentResource
-// type.
-type DaprPubSubTopicComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (DaprPubSubTopicComponentResourceResponse, error)
+// DaprIoDaprHTTPRouteGetResult contains the result from method DaprIoDaprHTTPRoute.Get.
+type DaprIoDaprHTTPRouteGetResult struct {
+	DaprHTTPRouteResource
+}
 
+// DaprIoDaprHTTPRouteListResponse contains the response from method DaprIoDaprHTTPRoute.List.
+type DaprIoDaprHTTPRouteListResponse struct {
+	DaprIoDaprHTTPRouteListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoDaprHTTPRouteListResult contains the result from method DaprIoDaprHTTPRoute.List.
+type DaprIoDaprHTTPRouteListResult struct {
+	DaprHTTPRouteList
+}
+
+// DaprIoPubSubTopicComponentCreateOrUpdatePollerResponse contains the response from method DaprIoPubSubTopicComponent.CreateOrUpdate.
+type DaprIoPubSubTopicComponentCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller DaprPubSubTopicComponentResourcePoller
+	Poller *DaprIoPubSubTopicComponentCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprPubSubTopicComponentResourceResponse is the response envelope for operations that return a DaprPubSubTopicComponentResource type.
-type DaprPubSubTopicComponentResourceResponse struct {
-	// Component for Dapr Pub/Sub
-	DaprPubSubTopicComponentResource *DaprPubSubTopicComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l DaprIoPubSubTopicComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (DaprIoPubSubTopicComponentCreateOrUpdateResponse, error) {
+	respType := DaprIoPubSubTopicComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.DaprPubSubTopicComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a DaprIoPubSubTopicComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *DaprIoPubSubTopicComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *DaprIoPubSubTopicComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("DaprIoPubSubTopicComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &DaprIoPubSubTopicComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// DaprIoPubSubTopicComponentCreateOrUpdateResponse contains the response from method DaprIoPubSubTopicComponent.CreateOrUpdate.
+type DaprIoPubSubTopicComponentCreateOrUpdateResponse struct {
+	DaprIoPubSubTopicComponentCreateOrUpdateResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprStateStoreComponentListResponse is the response envelope for operations that return a DaprStateStoreComponentList type.
-type DaprStateStoreComponentListResponse struct {
-	// List of dapr.io.StateStoreComponent resources.
-	DaprStateStoreComponentList *DaprStateStoreComponentList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// DaprIoPubSubTopicComponentCreateOrUpdateResult contains the result from method DaprIoPubSubTopicComponent.CreateOrUpdate.
+type DaprIoPubSubTopicComponentCreateOrUpdateResult struct {
+	DaprPubSubTopicComponentResource
 }
 
-// DaprStateStoreComponentResourcePollerResponse is the response envelope for operations that asynchronously return a DaprStateStoreComponentResource type.
-type DaprStateStoreComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (DaprStateStoreComponentResourceResponse, error)
-
+// DaprIoPubSubTopicComponentDeletePollerResponse contains the response from method DaprIoPubSubTopicComponent.Delete.
+type DaprIoPubSubTopicComponentDeletePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller DaprStateStoreComponentResourcePoller
+	Poller *DaprIoPubSubTopicComponentDeletePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprStateStoreComponentResourceResponse is the response envelope for operations that return a DaprStateStoreComponentResource type.
-type DaprStateStoreComponentResourceResponse struct {
-	// Component for Dapr state store
-	DaprStateStoreComponentResource *DaprStateStoreComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l DaprIoPubSubTopicComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (DaprIoPubSubTopicComponentDeleteResponse, error) {
+	respType := DaprIoPubSubTopicComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a DaprIoPubSubTopicComponentDeletePollerResponse from the provided client and resume token.
+func (l *DaprIoPubSubTopicComponentDeletePollerResponse) Resume(ctx context.Context, client *DaprIoPubSubTopicComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("DaprIoPubSubTopicComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &DaprIoPubSubTopicComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// DaprIoPubSubTopicComponentDeleteResponse contains the response from method DaprIoPubSubTopicComponent.Delete.
+type DaprIoPubSubTopicComponentDeleteResponse struct {
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// HTTPPollerResponse contains the asynchronous HTTP response from the call to the service endpoint.
-type HTTPPollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (*http.Response, error)
+// DaprIoPubSubTopicComponentGetResponse contains the response from method DaprIoPubSubTopicComponent.Get.
+type DaprIoPubSubTopicComponentGetResponse struct {
+	DaprIoPubSubTopicComponentGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
 
+// DaprIoPubSubTopicComponentGetResult contains the result from method DaprIoPubSubTopicComponent.Get.
+type DaprIoPubSubTopicComponentGetResult struct {
+	DaprPubSubTopicComponentResource
+}
+
+// DaprIoPubSubTopicComponentListResponse contains the response from method DaprIoPubSubTopicComponent.List.
+type DaprIoPubSubTopicComponentListResponse struct {
+	DaprIoPubSubTopicComponentListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoPubSubTopicComponentListResult contains the result from method DaprIoPubSubTopicComponent.List.
+type DaprIoPubSubTopicComponentListResult struct {
+	DaprPubSubTopicComponentList
+}
+
+// DaprIoStateStoreComponentCreateOrUpdatePollerResponse contains the response from method DaprIoStateStoreComponent.CreateOrUpdate.
+type DaprIoStateStoreComponentCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller HTTPPoller
+	Poller *DaprIoStateStoreComponentCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// HTTPRouteListResponse is the response envelope for operations that return a HTTPRouteList type.
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l DaprIoStateStoreComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (DaprIoStateStoreComponentCreateOrUpdateResponse, error) {
+	respType := DaprIoStateStoreComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.DaprStateStoreComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a DaprIoStateStoreComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *DaprIoStateStoreComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *DaprIoStateStoreComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("DaprIoStateStoreComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &DaprIoStateStoreComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// DaprIoStateStoreComponentCreateOrUpdateResponse contains the response from method DaprIoStateStoreComponent.CreateOrUpdate.
+type DaprIoStateStoreComponentCreateOrUpdateResponse struct {
+	DaprIoStateStoreComponentCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoStateStoreComponentCreateOrUpdateResult contains the result from method DaprIoStateStoreComponent.CreateOrUpdate.
+type DaprIoStateStoreComponentCreateOrUpdateResult struct {
+	DaprStateStoreComponentResource
+}
+
+// DaprIoStateStoreComponentDeletePollerResponse contains the response from method DaprIoStateStoreComponent.Delete.
+type DaprIoStateStoreComponentDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *DaprIoStateStoreComponentDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l DaprIoStateStoreComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (DaprIoStateStoreComponentDeleteResponse, error) {
+	respType := DaprIoStateStoreComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a DaprIoStateStoreComponentDeletePollerResponse from the provided client and resume token.
+func (l *DaprIoStateStoreComponentDeletePollerResponse) Resume(ctx context.Context, client *DaprIoStateStoreComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("DaprIoStateStoreComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &DaprIoStateStoreComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// DaprIoStateStoreComponentDeleteResponse contains the response from method DaprIoStateStoreComponent.Delete.
+type DaprIoStateStoreComponentDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoStateStoreComponentGetResponse contains the response from method DaprIoStateStoreComponent.Get.
+type DaprIoStateStoreComponentGetResponse struct {
+	DaprIoStateStoreComponentGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoStateStoreComponentGetResult contains the result from method DaprIoStateStoreComponent.Get.
+type DaprIoStateStoreComponentGetResult struct {
+	DaprStateStoreComponentResource
+}
+
+// DaprIoStateStoreComponentListResponse contains the response from method DaprIoStateStoreComponent.List.
+type DaprIoStateStoreComponentListResponse struct {
+	DaprIoStateStoreComponentListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoStateStoreComponentListResult contains the result from method DaprIoStateStoreComponent.List.
+type DaprIoStateStoreComponentListResult struct {
+	DaprStateStoreComponentList
+}
+
+// HTTPRouteCreateOrUpdatePollerResponse contains the response from method HTTPRoute.CreateOrUpdate.
+type HTTPRouteCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *HTTPRouteCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l HTTPRouteCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (HTTPRouteCreateOrUpdateResponse, error) {
+	respType := HTTPRouteCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.HTTPRouteResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a HTTPRouteCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *HTTPRouteCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *HTTPRouteClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("HTTPRouteClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &HTTPRouteCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// HTTPRouteCreateOrUpdateResponse contains the response from method HTTPRoute.CreateOrUpdate.
+type HTTPRouteCreateOrUpdateResponse struct {
+	HTTPRouteCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRouteCreateOrUpdateResult contains the result from method HTTPRoute.CreateOrUpdate.
+type HTTPRouteCreateOrUpdateResult struct {
+	HTTPRouteResource
+}
+
+// HTTPRouteDeletePollerResponse contains the response from method HTTPRoute.Delete.
+type HTTPRouteDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *HTTPRouteDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l HTTPRouteDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (HTTPRouteDeleteResponse, error) {
+	respType := HTTPRouteDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a HTTPRouteDeletePollerResponse from the provided client and resume token.
+func (l *HTTPRouteDeletePollerResponse) Resume(ctx context.Context, client *HTTPRouteClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("HTTPRouteClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &HTTPRouteDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// HTTPRouteDeleteResponse contains the response from method HTTPRoute.Delete.
+type HTTPRouteDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRouteGetResponse contains the response from method HTTPRoute.Get.
+type HTTPRouteGetResponse struct {
+	HTTPRouteGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRouteGetResult contains the result from method HTTPRoute.Get.
+type HTTPRouteGetResult struct {
+	HTTPRouteResource
+}
+
+// HTTPRouteListResponse contains the response from method HTTPRoute.List.
 type HTTPRouteListResponse struct {
-	// List of HttpRoute resources.
-	HTTPRouteList *HTTPRouteList
-
+	HTTPRouteListResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// HTTPRouteResourcePollerResponse is the response envelope for operations that asynchronously return a HTTPRouteResource type.
-type HTTPRouteResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (HTTPRouteResourceResponse, error)
+// HTTPRouteListResult contains the result from method HTTPRoute.List.
+type HTTPRouteListResult struct {
+	HTTPRouteList
+}
 
+// MicrosoftComSQLComponentCreateOrUpdatePollerResponse contains the response from method MicrosoftComSQLComponent.CreateOrUpdate.
+type MicrosoftComSQLComponentCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller HTTPRouteResourcePoller
+	Poller *MicrosoftComSQLComponentCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// HTTPRouteResourceResponse is the response envelope for operations that return a HTTPRouteResource type.
-type HTTPRouteResourceResponse struct {
-	// Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a component.
-	HTTPRouteResource *HTTPRouteResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l MicrosoftComSQLComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (MicrosoftComSQLComponentCreateOrUpdateResponse, error) {
+	respType := MicrosoftComSQLComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.MicrosoftSQLComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a MicrosoftComSQLComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *MicrosoftComSQLComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *MicrosoftComSQLComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("MicrosoftComSQLComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &MicrosoftComSQLComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// MicrosoftComSQLComponentCreateOrUpdateResponse contains the response from method MicrosoftComSQLComponent.CreateOrUpdate.
+type MicrosoftComSQLComponentCreateOrUpdateResponse struct {
+	MicrosoftComSQLComponentCreateOrUpdateResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MicrosoftSQLComponentListResponse is the response envelope for operations that return a MicrosoftSQLComponentList type.
-type MicrosoftSQLComponentListResponse struct {
-	// List of microsoft.com.SQLComponent resources.
-	MicrosoftSQLComponentList *MicrosoftSQLComponentList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// MicrosoftComSQLComponentCreateOrUpdateResult contains the result from method MicrosoftComSQLComponent.CreateOrUpdate.
+type MicrosoftComSQLComponentCreateOrUpdateResult struct {
+	MicrosoftSQLComponentResource
 }
 
-// MicrosoftSQLComponentResourcePollerResponse is the response envelope for operations that asynchronously return a MicrosoftSQLComponentResource type.
-type MicrosoftSQLComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (MicrosoftSQLComponentResourceResponse, error)
-
+// MicrosoftComSQLComponentDeletePollerResponse contains the response from method MicrosoftComSQLComponent.Delete.
+type MicrosoftComSQLComponentDeletePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller MicrosoftSQLComponentResourcePoller
+	Poller *MicrosoftComSQLComponentDeletePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MicrosoftSQLComponentResourceResponse is the response envelope for operations that return a MicrosoftSQLComponentResource type.
-type MicrosoftSQLComponentResourceResponse struct {
-	// Component for a Microsoft SQL compatible database.
-	MicrosoftSQLComponentResource *MicrosoftSQLComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l MicrosoftComSQLComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (MicrosoftComSQLComponentDeleteResponse, error) {
+	respType := MicrosoftComSQLComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a MicrosoftComSQLComponentDeletePollerResponse from the provided client and resume token.
+func (l *MicrosoftComSQLComponentDeletePollerResponse) Resume(ctx context.Context, client *MicrosoftComSQLComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("MicrosoftComSQLComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &MicrosoftComSQLComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// MicrosoftComSQLComponentDeleteResponse contains the response from method MicrosoftComSQLComponent.Delete.
+type MicrosoftComSQLComponentDeleteResponse struct {
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDBComponentListResponse is the response envelope for operations that return a MongoDBComponentList type.
-type MongoDBComponentListResponse struct {
-	// List of mongodb.com.MongoDBComponent resources.
-	MongoDBComponentList *MongoDBComponentList
-
+// MicrosoftComSQLComponentGetResponse contains the response from method MicrosoftComSQLComponent.Get.
+type MicrosoftComSQLComponentGetResponse struct {
+	MicrosoftComSQLComponentGetResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDBComponentResourcePollerResponse is the response envelope for operations that asynchronously return a MongoDBComponentResource type.
-type MongoDBComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (MongoDBComponentResourceResponse, error)
+// MicrosoftComSQLComponentGetResult contains the result from method MicrosoftComSQLComponent.Get.
+type MicrosoftComSQLComponentGetResult struct {
+	MicrosoftSQLComponentResource
+}
 
+// MicrosoftComSQLComponentListResponse contains the response from method MicrosoftComSQLComponent.List.
+type MicrosoftComSQLComponentListResponse struct {
+	MicrosoftComSQLComponentListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MicrosoftComSQLComponentListResult contains the result from method MicrosoftComSQLComponent.List.
+type MicrosoftComSQLComponentListResult struct {
+	MicrosoftSQLComponentList
+}
+
+// MongodbComMongoDBComponentCreateOrUpdatePollerResponse contains the response from method MongodbComMongoDBComponent.CreateOrUpdate.
+type MongodbComMongoDBComponentCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller MongoDBComponentResourcePoller
+	Poller *MongodbComMongoDBComponentCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDBComponentResourceResponse is the response envelope for operations that return a MongoDBComponentResource type.
-type MongoDBComponentResourceResponse struct {
-	// The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
-	MongoDBComponentResource *MongoDBComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l MongodbComMongoDBComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (MongodbComMongoDBComponentCreateOrUpdateResponse, error) {
+	respType := MongodbComMongoDBComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.MongoDBComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
 
+// Resume rehydrates a MongodbComMongoDBComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *MongodbComMongoDBComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *MongodbComMongoDBComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("MongodbComMongoDBComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &MongodbComMongoDBComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// MongodbComMongoDBComponentCreateOrUpdateResponse contains the response from method MongodbComMongoDBComponent.CreateOrUpdate.
+type MongodbComMongoDBComponentCreateOrUpdateResponse struct {
+	MongodbComMongoDBComponentCreateOrUpdateResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RabbitMQComponentListResponse is the response envelope for operations that return a RabbitMQComponentList type.
-type RabbitMQComponentListResponse struct {
-	// List of rabbitmq.com.MessageQueueComponent resources.
-	RabbitMQComponentList *RabbitMQComponentList
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// MongodbComMongoDBComponentCreateOrUpdateResult contains the result from method MongodbComMongoDBComponent.CreateOrUpdate.
+type MongodbComMongoDBComponentCreateOrUpdateResult struct {
+	MongoDBComponentResource
 }
 
-// RabbitMQComponentResourcePollerResponse is the response envelope for operations that asynchronously return a RabbitMQComponentResource type.
-type RabbitMQComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (RabbitMQComponentResourceResponse, error)
-
+// MongodbComMongoDBComponentDeletePollerResponse contains the response from method MongodbComMongoDBComponent.Delete.
+type MongodbComMongoDBComponentDeletePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller RabbitMQComponentResourcePoller
+	Poller *MongodbComMongoDBComponentDeletePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RabbitMQComponentResourceResponse is the response envelope for operations that return a RabbitMQComponentResource type.
-type RabbitMQComponentResourceResponse struct {
-	// The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
-	RabbitMQComponentResource *RabbitMQComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l MongodbComMongoDBComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (MongodbComMongoDBComponentDeleteResponse, error) {
+	respType := MongodbComMongoDBComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a MongodbComMongoDBComponentDeletePollerResponse from the provided client and resume token.
+func (l *MongodbComMongoDBComponentDeletePollerResponse) Resume(ctx context.Context, client *MongodbComMongoDBComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("MongodbComMongoDBComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &MongodbComMongoDBComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// MongodbComMongoDBComponentDeleteResponse contains the response from method MongodbComMongoDBComponent.Delete.
+type MongodbComMongoDBComponentDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongodbComMongoDBComponentGetResponse contains the response from method MongodbComMongoDBComponent.Get.
+type MongodbComMongoDBComponentGetResponse struct {
+	MongodbComMongoDBComponentGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongodbComMongoDBComponentGetResult contains the result from method MongodbComMongoDBComponent.Get.
+type MongodbComMongoDBComponentGetResult struct {
+	MongoDBComponentResource
+}
+
+// MongodbComMongoDBComponentListResponse contains the response from method MongodbComMongoDBComponent.List.
+type MongodbComMongoDBComponentListResponse struct {
+	MongodbComMongoDBComponentListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongodbComMongoDBComponentListResult contains the result from method MongodbComMongoDBComponent.List.
+type MongodbComMongoDBComponentListResult struct {
+	MongoDBComponentList
+}
+
+// RabbitmqComMessageQueueComponentCreateOrUpdatePollerResponse contains the response from method RabbitmqComMessageQueueComponent.CreateOrUpdate.
+type RabbitmqComMessageQueueComponentCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *RabbitmqComMessageQueueComponentCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RadiusResourceListResponse is the response envelope for operations that return a RadiusResourceList type.
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l RabbitmqComMessageQueueComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (RabbitmqComMessageQueueComponentCreateOrUpdateResponse, error) {
+	respType := RabbitmqComMessageQueueComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.RabbitMQComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a RabbitmqComMessageQueueComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *RabbitmqComMessageQueueComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *RabbitmqComMessageQueueComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("RabbitmqComMessageQueueComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &RabbitmqComMessageQueueComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// RabbitmqComMessageQueueComponentCreateOrUpdateResponse contains the response from method RabbitmqComMessageQueueComponent.CreateOrUpdate.
+type RabbitmqComMessageQueueComponentCreateOrUpdateResponse struct {
+	RabbitmqComMessageQueueComponentCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitmqComMessageQueueComponentCreateOrUpdateResult contains the result from method RabbitmqComMessageQueueComponent.CreateOrUpdate.
+type RabbitmqComMessageQueueComponentCreateOrUpdateResult struct {
+	RabbitMQComponentResource
+}
+
+// RabbitmqComMessageQueueComponentDeletePollerResponse contains the response from method RabbitmqComMessageQueueComponent.Delete.
+type RabbitmqComMessageQueueComponentDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *RabbitmqComMessageQueueComponentDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l RabbitmqComMessageQueueComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (RabbitmqComMessageQueueComponentDeleteResponse, error) {
+	respType := RabbitmqComMessageQueueComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a RabbitmqComMessageQueueComponentDeletePollerResponse from the provided client and resume token.
+func (l *RabbitmqComMessageQueueComponentDeletePollerResponse) Resume(ctx context.Context, client *RabbitmqComMessageQueueComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("RabbitmqComMessageQueueComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &RabbitmqComMessageQueueComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// RabbitmqComMessageQueueComponentDeleteResponse contains the response from method RabbitmqComMessageQueueComponent.Delete.
+type RabbitmqComMessageQueueComponentDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitmqComMessageQueueComponentGetResponse contains the response from method RabbitmqComMessageQueueComponent.Get.
+type RabbitmqComMessageQueueComponentGetResponse struct {
+	RabbitmqComMessageQueueComponentGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitmqComMessageQueueComponentGetResult contains the result from method RabbitmqComMessageQueueComponent.Get.
+type RabbitmqComMessageQueueComponentGetResult struct {
+	RabbitMQComponentResource
+}
+
+// RabbitmqComMessageQueueComponentListResponse contains the response from method RabbitmqComMessageQueueComponent.List.
+type RabbitmqComMessageQueueComponentListResponse struct {
+	RabbitmqComMessageQueueComponentListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitmqComMessageQueueComponentListResult contains the result from method RabbitmqComMessageQueueComponent.List.
+type RabbitmqComMessageQueueComponentListResult struct {
+	RabbitMQComponentList
+}
+
+// RadiusResourceDeletePollerResponse contains the response from method RadiusResource.Delete.
+type RadiusResourceDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *RadiusResourceDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l RadiusResourceDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (RadiusResourceDeleteResponse, error) {
+	respType := RadiusResourceDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a RadiusResourceDeletePollerResponse from the provided client and resume token.
+func (l *RadiusResourceDeletePollerResponse) Resume(ctx context.Context, client *RadiusResourceClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("RadiusResourceClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &RadiusResourceDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// RadiusResourceDeleteResponse contains the response from method RadiusResource.Delete.
+type RadiusResourceDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RadiusResourceGetResponse contains the response from method RadiusResource.Get.
+type RadiusResourceGetResponse struct {
+	RadiusResourceGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RadiusResourceGetResult contains the result from method RadiusResource.Get.
+type RadiusResourceGetResult struct {
+	RadiusResource
+}
+
+// RadiusResourceListResponse contains the response from method RadiusResource.List.
 type RadiusResourceListResponse struct {
-	// List of RadiusResource resources.
-	RadiusResourceList *RadiusResourceList
-
+	RadiusResourceListResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RadiusResourceResponse is the response envelope for operations that return a RadiusResource type.
-type RadiusResourceResponse struct {
-	// Interface for generic resource -- useful for listing resources without specifying a type
-	RadiusResource *RadiusResource
-
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
+// RadiusResourceListResult contains the result from method RadiusResource.List.
+type RadiusResourceListResult struct {
+	RadiusResourceList
 }
 
-// RedisComponentListResponse is the response envelope for operations that return a RedisComponentList type.
-type RedisComponentListResponse struct {
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-
-	// List of redislabs.com.RedisComponent resources.
-	RedisComponentList *RedisComponentList
-}
-
-// RedisComponentResourcePollerResponse is the response envelope for operations that asynchronously return a RedisComponentResource type.
-type RedisComponentResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (RedisComponentResourceResponse, error)
-
+// RedislabsComRedisComponentCreateOrUpdatePollerResponse contains the response from method RedislabsComRedisComponent.CreateOrUpdate.
+type RedislabsComRedisComponentCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
-	Poller RedisComponentResourcePoller
+	Poller *RedislabsComRedisComponentCreateOrUpdatePoller
 
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RedisComponentResourceResponse is the response envelope for operations that return a RedisComponentResource type.
-type RedisComponentResourceResponse struct {
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-
-	// The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
-	RedisComponentResource *RedisComponentResource
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l RedislabsComRedisComponentCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (RedislabsComRedisComponentCreateOrUpdateResponse, error) {
+	respType := RedislabsComRedisComponentCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.RedisComponentResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
 }
 
-// VolumeListResponse is the response envelope for operations that return a VolumeList type.
+// Resume rehydrates a RedislabsComRedisComponentCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *RedislabsComRedisComponentCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *RedislabsComRedisComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("RedislabsComRedisComponentClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &RedislabsComRedisComponentCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// RedislabsComRedisComponentCreateOrUpdateResponse contains the response from method RedislabsComRedisComponent.CreateOrUpdate.
+type RedislabsComRedisComponentCreateOrUpdateResponse struct {
+	RedislabsComRedisComponentCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedislabsComRedisComponentCreateOrUpdateResult contains the result from method RedislabsComRedisComponent.CreateOrUpdate.
+type RedislabsComRedisComponentCreateOrUpdateResult struct {
+	RedisComponentResource
+}
+
+// RedislabsComRedisComponentDeletePollerResponse contains the response from method RedislabsComRedisComponent.Delete.
+type RedislabsComRedisComponentDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *RedislabsComRedisComponentDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l RedislabsComRedisComponentDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (RedislabsComRedisComponentDeleteResponse, error) {
+	respType := RedislabsComRedisComponentDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a RedislabsComRedisComponentDeletePollerResponse from the provided client and resume token.
+func (l *RedislabsComRedisComponentDeletePollerResponse) Resume(ctx context.Context, client *RedislabsComRedisComponentClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("RedislabsComRedisComponentClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &RedislabsComRedisComponentDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// RedislabsComRedisComponentDeleteResponse contains the response from method RedislabsComRedisComponent.Delete.
+type RedislabsComRedisComponentDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedislabsComRedisComponentGetResponse contains the response from method RedislabsComRedisComponent.Get.
+type RedislabsComRedisComponentGetResponse struct {
+	RedislabsComRedisComponentGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedislabsComRedisComponentGetResult contains the result from method RedislabsComRedisComponent.Get.
+type RedislabsComRedisComponentGetResult struct {
+	RedisComponentResource
+}
+
+// RedislabsComRedisComponentListResponse contains the response from method RedislabsComRedisComponent.List.
+type RedislabsComRedisComponentListResponse struct {
+	RedislabsComRedisComponentListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedislabsComRedisComponentListResult contains the result from method RedislabsComRedisComponent.List.
+type RedislabsComRedisComponentListResult struct {
+	RedisComponentList
+}
+
+// VolumeCreateOrUpdatePollerResponse contains the response from method Volume.CreateOrUpdate.
+type VolumeCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *VolumeCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l VolumeCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (VolumeCreateOrUpdateResponse, error) {
+	respType := VolumeCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.VolumeResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a VolumeCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *VolumeCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *VolumeClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("VolumeClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &VolumeCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// VolumeCreateOrUpdateResponse contains the response from method Volume.CreateOrUpdate.
+type VolumeCreateOrUpdateResponse struct {
+	VolumeCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// VolumeCreateOrUpdateResult contains the result from method Volume.CreateOrUpdate.
+type VolumeCreateOrUpdateResult struct {
+	VolumeResource
+}
+
+// VolumeDeletePollerResponse contains the response from method Volume.Delete.
+type VolumeDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *VolumeDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l VolumeDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (VolumeDeleteResponse, error) {
+	respType := VolumeDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a VolumeDeletePollerResponse from the provided client and resume token.
+func (l *VolumeDeletePollerResponse) Resume(ctx context.Context, client *VolumeClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("VolumeClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &VolumeDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// VolumeDeleteResponse contains the response from method Volume.Delete.
+type VolumeDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// VolumeGetResponse contains the response from method Volume.Get.
+type VolumeGetResponse struct {
+	VolumeGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// VolumeGetResult contains the result from method Volume.Get.
+type VolumeGetResult struct {
+	VolumeResource
+}
+
+// VolumeListResponse contains the response from method Volume.List.
 type VolumeListResponse struct {
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-
-	// List of Volume resources.
-	VolumeList *VolumeList
-}
-
-// VolumeResourcePollerResponse is the response envelope for operations that asynchronously return a VolumeResource type.
-type VolumeResourcePollerResponse struct {
-	// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received
-	PollUntilDone func(ctx context.Context, frequency time.Duration) (VolumeResourceResponse, error)
-
-	// Poller contains an initialized poller.
-	Poller VolumeResourcePoller
-
+	VolumeListResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// VolumeResourceResponse is the response envelope for operations that return a VolumeResource type.
-type VolumeResourceResponse struct {
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-
-	// The Volume provides an abstraction for a volume that can be mounted to a container
-	VolumeResource *VolumeResource
+// VolumeListResult contains the result from method Volume.List.
+type VolumeListResult struct {
+	VolumeList
 }
 

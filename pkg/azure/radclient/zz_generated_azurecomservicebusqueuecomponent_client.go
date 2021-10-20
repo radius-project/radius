@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // AzureComServiceBusQueueComponentClient contains the methods for the AzureComServiceBusQueueComponent group.
 // Don't use this type directly, use NewAzureComServiceBusQueueComponentClient() instead.
 type AzureComServiceBusQueueComponentClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewAzureComServiceBusQueueComponentClient creates a new instance of AzureComServiceBusQueueComponentClient with the specified values.
-func NewAzureComServiceBusQueueComponentClient(con *armcore.Connection, subscriptionID string) *AzureComServiceBusQueueComponentClient {
-	return &AzureComServiceBusQueueComponentClient{con: con, subscriptionID: subscriptionID}
+func NewAzureComServiceBusQueueComponentClient(con *arm.Connection, subscriptionID string) *AzureComServiceBusQueueComponentClient {
+	return &AzureComServiceBusQueueComponentClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a azure.com.ServiceBusQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComServiceBusQueueComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (AzureServiceBusComponentResourcePollerResponse, error) {
+func (client *AzureComServiceBusQueueComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, parameters, options)
 	if err != nil {
-		return AzureServiceBusComponentResourcePollerResponse{}, err
+		return AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse{}, err
 	}
-	result := AzureServiceBusComponentResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("AzureComServiceBusQueueComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return AzureServiceBusComponentResourcePollerResponse{}, err
-	}
-	poller := &azureServiceBusComponentResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (AzureServiceBusComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new AzureServiceBusComponentResourcePoller from the specified resume token.
-// token - The value must come from a previous call to AzureServiceBusComponentResourcePoller.ResumeToken().
-func (client *AzureComServiceBusQueueComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (AzureServiceBusComponentResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("AzureComServiceBusQueueComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return AzureServiceBusComponentResourcePollerResponse{}, err
-	}
-	poller := &azureServiceBusComponentResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return AzureServiceBusComponentResourcePollerResponse{}, err
-	}
-	result := AzureServiceBusComponentResourcePollerResponse{
+	result := AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (AzureServiceBusComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("AzureComServiceBusQueueComponentClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return AzureComServiceBusQueueComponentCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &AzureComServiceBusQueueComponentCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a azure.com.ServiceBusQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComServiceBusQueueComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *AzureComServiceBusQueueComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *AzureComServiceBusQueueComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *AzureComServiceBusQueueComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, parameters AzureServiceBusComponentResource, options *AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent/{azureServiceBusComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -115,98 +90,69 @@ func (client *AzureComServiceBusQueueComponentClient) createOrUpdateCreateReques
 		return nil, errors.New("parameter azureServiceBusComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{azureServiceBusComponentName}", url.PathEscape(azureServiceBusComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *AzureComServiceBusQueueComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *AzureComServiceBusQueueComponentClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a azure.com.ServiceBusQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComServiceBusQueueComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *AzureComServiceBusQueueComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (AzureComServiceBusQueueComponentDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return AzureComServiceBusQueueComponentDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("AzureComServiceBusQueueComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *AzureComServiceBusQueueComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("AzureComServiceBusQueueComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := AzureComServiceBusQueueComponentDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("AzureComServiceBusQueueComponentClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return AzureComServiceBusQueueComponentDeletePollerResponse{}, err
+	}
+	result.Poller = &AzureComServiceBusQueueComponentDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a azure.com.ServiceBusQueueComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComServiceBusQueueComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (*azcore.Response, error) {
+func (client *AzureComServiceBusQueueComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *AzureComServiceBusQueueComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (*azcore.Request, error) {
+func (client *AzureComServiceBusQueueComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent/{azureServiceBusComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -224,50 +170,49 @@ func (client *AzureComServiceBusQueueComponentClient) deleteCreateRequest(ctx co
 		return nil, errors.New("parameter azureServiceBusComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{azureServiceBusComponentName}", url.PathEscape(azureServiceBusComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *AzureComServiceBusQueueComponentClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *AzureComServiceBusQueueComponentClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a azure.com.ServiceBusQueueComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComServiceBusQueueComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentGetOptions) (AzureServiceBusComponentResourceResponse, error) {
+func (client *AzureComServiceBusQueueComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentGetOptions) (AzureComServiceBusQueueComponentGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, azureServiceBusComponentName, options)
 	if err != nil {
-		return AzureServiceBusComponentResourceResponse{}, err
+		return AzureComServiceBusQueueComponentGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return AzureServiceBusComponentResourceResponse{}, err
+		return AzureComServiceBusQueueComponentGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return AzureServiceBusComponentResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return AzureComServiceBusQueueComponentGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *AzureComServiceBusQueueComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentGetOptions) (*azcore.Request, error) {
+func (client *AzureComServiceBusQueueComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureServiceBusComponentName string, options *AzureComServiceBusQueueComponentGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent/{azureServiceBusComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -285,59 +230,58 @@ func (client *AzureComServiceBusQueueComponentClient) getCreateRequest(ctx conte
 		return nil, errors.New("parameter azureServiceBusComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{azureServiceBusComponentName}", url.PathEscape(azureServiceBusComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *AzureComServiceBusQueueComponentClient) getHandleResponse(resp *azcore.Response) (AzureServiceBusComponentResourceResponse, error) {
-	var val *AzureServiceBusComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return AzureServiceBusComponentResourceResponse{}, err
+func (client *AzureComServiceBusQueueComponentClient) getHandleResponse(resp *http.Response) (AzureComServiceBusQueueComponentGetResponse, error) {
+	result := AzureComServiceBusQueueComponentGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AzureServiceBusComponentResource); err != nil {
+		return AzureComServiceBusQueueComponentGetResponse{}, err
 	}
-return AzureServiceBusComponentResourceResponse{RawResponse: resp.Response, AzureServiceBusComponentResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *AzureComServiceBusQueueComponentClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *AzureComServiceBusQueueComponentClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the azure.com.ServiceBusQueueComponent resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComServiceBusQueueComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *AzureComServiceBusQueueComponentListOptions) (AzureServiceBusComponentListResponse, error) {
+func (client *AzureComServiceBusQueueComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *AzureComServiceBusQueueComponentListOptions) (AzureComServiceBusQueueComponentListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return AzureServiceBusComponentListResponse{}, err
+		return AzureComServiceBusQueueComponentListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return AzureServiceBusComponentListResponse{}, err
+		return AzureComServiceBusQueueComponentListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return AzureServiceBusComponentListResponse{}, client.listHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return AzureComServiceBusQueueComponentListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *AzureComServiceBusQueueComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *AzureComServiceBusQueueComponentListOptions) (*azcore.Request, error) {
+func (client *AzureComServiceBusQueueComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *AzureComServiceBusQueueComponentListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -351,37 +295,36 @@ func (client *AzureComServiceBusQueueComponentClient) listCreateRequest(ctx cont
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *AzureComServiceBusQueueComponentClient) listHandleResponse(resp *azcore.Response) (AzureServiceBusComponentListResponse, error) {
-	var val *AzureServiceBusComponentList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return AzureServiceBusComponentListResponse{}, err
+func (client *AzureComServiceBusQueueComponentClient) listHandleResponse(resp *http.Response) (AzureComServiceBusQueueComponentListResponse, error) {
+	result := AzureComServiceBusQueueComponentListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AzureServiceBusComponentList); err != nil {
+		return AzureComServiceBusQueueComponentListResponse{}, err
 	}
-return AzureServiceBusComponentListResponse{RawResponse: resp.Response, AzureServiceBusComponentList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *AzureComServiceBusQueueComponentClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *AzureComServiceBusQueueComponentClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 

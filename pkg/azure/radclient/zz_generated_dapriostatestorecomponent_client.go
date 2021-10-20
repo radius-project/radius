@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // DaprIoStateStoreComponentClient contains the methods for the DaprIoStateStoreComponent group.
 // Don't use this type directly, use NewDaprIoStateStoreComponentClient() instead.
 type DaprIoStateStoreComponentClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewDaprIoStateStoreComponentClient creates a new instance of DaprIoStateStoreComponentClient with the specified values.
-func NewDaprIoStateStoreComponentClient(con *armcore.Connection, subscriptionID string) *DaprIoStateStoreComponentClient {
-	return &DaprIoStateStoreComponentClient{con: con, subscriptionID: subscriptionID}
+func NewDaprIoStateStoreComponentClient(con *arm.Connection, subscriptionID string) *DaprIoStateStoreComponentClient {
+	return &DaprIoStateStoreComponentClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a dapr.io.StateStoreComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoStateStoreComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (DaprStateStoreComponentResourcePollerResponse, error) {
+func (client *DaprIoStateStoreComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (DaprIoStateStoreComponentCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, parameters, options)
 	if err != nil {
-		return DaprStateStoreComponentResourcePollerResponse{}, err
+		return DaprIoStateStoreComponentCreateOrUpdatePollerResponse{}, err
 	}
-	result := DaprStateStoreComponentResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("DaprIoStateStoreComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return DaprStateStoreComponentResourcePollerResponse{}, err
-	}
-	poller := &daprStateStoreComponentResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprStateStoreComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new DaprStateStoreComponentResourcePoller from the specified resume token.
-// token - The value must come from a previous call to DaprStateStoreComponentResourcePoller.ResumeToken().
-func (client *DaprIoStateStoreComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (DaprStateStoreComponentResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoStateStoreComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return DaprStateStoreComponentResourcePollerResponse{}, err
-	}
-	poller := &daprStateStoreComponentResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return DaprStateStoreComponentResourcePollerResponse{}, err
-	}
-	result := DaprStateStoreComponentResourcePollerResponse{
+	result := DaprIoStateStoreComponentCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprStateStoreComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("DaprIoStateStoreComponentClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return DaprIoStateStoreComponentCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &DaprIoStateStoreComponentCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a dapr.io.StateStoreComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoStateStoreComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *DaprIoStateStoreComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprIoStateStoreComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *DaprIoStateStoreComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, parameters DaprStateStoreComponentResource, options *DaprIoStateStoreComponentBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent/{daprStateStoreComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -115,98 +90,69 @@ func (client *DaprIoStateStoreComponentClient) createOrUpdateCreateRequest(ctx c
 		return nil, errors.New("parameter daprStateStoreComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprStateStoreComponentName}", url.PathEscape(daprStateStoreComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *DaprIoStateStoreComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *DaprIoStateStoreComponentClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a dapr.io.StateStoreComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoStateStoreComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *DaprIoStateStoreComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (DaprIoStateStoreComponentDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return DaprIoStateStoreComponentDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("DaprIoStateStoreComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *DaprIoStateStoreComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoStateStoreComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := DaprIoStateStoreComponentDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("DaprIoStateStoreComponentClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return DaprIoStateStoreComponentDeletePollerResponse{}, err
+	}
+	result.Poller = &DaprIoStateStoreComponentDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a dapr.io.StateStoreComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoStateStoreComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (*azcore.Response, error) {
+func (client *DaprIoStateStoreComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprIoStateStoreComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (*azcore.Request, error) {
+func (client *DaprIoStateStoreComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent/{daprStateStoreComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -224,50 +170,49 @@ func (client *DaprIoStateStoreComponentClient) deleteCreateRequest(ctx context.C
 		return nil, errors.New("parameter daprStateStoreComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprStateStoreComponentName}", url.PathEscape(daprStateStoreComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *DaprIoStateStoreComponentClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *DaprIoStateStoreComponentClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a dapr.io.StateStoreComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoStateStoreComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentGetOptions) (DaprStateStoreComponentResourceResponse, error) {
+func (client *DaprIoStateStoreComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentGetOptions) (DaprIoStateStoreComponentGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, daprStateStoreComponentName, options)
 	if err != nil {
-		return DaprStateStoreComponentResourceResponse{}, err
+		return DaprIoStateStoreComponentGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return DaprStateStoreComponentResourceResponse{}, err
+		return DaprIoStateStoreComponentGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return DaprStateStoreComponentResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return DaprIoStateStoreComponentGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprIoStateStoreComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentGetOptions) (*azcore.Request, error) {
+func (client *DaprIoStateStoreComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreComponentName string, options *DaprIoStateStoreComponentGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent/{daprStateStoreComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -285,59 +230,58 @@ func (client *DaprIoStateStoreComponentClient) getCreateRequest(ctx context.Cont
 		return nil, errors.New("parameter daprStateStoreComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprStateStoreComponentName}", url.PathEscape(daprStateStoreComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *DaprIoStateStoreComponentClient) getHandleResponse(resp *azcore.Response) (DaprStateStoreComponentResourceResponse, error) {
-	var val *DaprStateStoreComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprStateStoreComponentResourceResponse{}, err
+func (client *DaprIoStateStoreComponentClient) getHandleResponse(resp *http.Response) (DaprIoStateStoreComponentGetResponse, error) {
+	result := DaprIoStateStoreComponentGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.DaprStateStoreComponentResource); err != nil {
+		return DaprIoStateStoreComponentGetResponse{}, err
 	}
-return DaprStateStoreComponentResourceResponse{RawResponse: resp.Response, DaprStateStoreComponentResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *DaprIoStateStoreComponentClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *DaprIoStateStoreComponentClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the dapr.io.StateStoreComponent resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoStateStoreComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoStateStoreComponentListOptions) (DaprStateStoreComponentListResponse, error) {
+func (client *DaprIoStateStoreComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoStateStoreComponentListOptions) (DaprIoStateStoreComponentListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return DaprStateStoreComponentListResponse{}, err
+		return DaprIoStateStoreComponentListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return DaprStateStoreComponentListResponse{}, err
+		return DaprIoStateStoreComponentListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return DaprStateStoreComponentListResponse{}, client.listHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return DaprIoStateStoreComponentListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *DaprIoStateStoreComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoStateStoreComponentListOptions) (*azcore.Request, error) {
+func (client *DaprIoStateStoreComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoStateStoreComponentListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -351,37 +295,36 @@ func (client *DaprIoStateStoreComponentClient) listCreateRequest(ctx context.Con
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *DaprIoStateStoreComponentClient) listHandleResponse(resp *azcore.Response) (DaprStateStoreComponentListResponse, error) {
-	var val *DaprStateStoreComponentList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprStateStoreComponentListResponse{}, err
+func (client *DaprIoStateStoreComponentClient) listHandleResponse(resp *http.Response) (DaprIoStateStoreComponentListResponse, error) {
+	result := DaprIoStateStoreComponentListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.DaprStateStoreComponentList); err != nil {
+		return DaprIoStateStoreComponentListResponse{}, err
 	}
-return DaprStateStoreComponentListResponse{RawResponse: resp.Response, DaprStateStoreComponentList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *DaprIoStateStoreComponentClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *DaprIoStateStoreComponentClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 

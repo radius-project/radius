@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // ContainerComponentClient contains the methods for the ContainerComponent group.
 // Don't use this type directly, use NewContainerComponentClient() instead.
 type ContainerComponentClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewContainerComponentClient creates a new instance of ContainerComponentClient with the specified values.
-func NewContainerComponentClient(con *armcore.Connection, subscriptionID string) *ContainerComponentClient {
-	return &ContainerComponentClient{con: con, subscriptionID: subscriptionID}
+func NewContainerComponentClient(con *arm.Connection, subscriptionID string) *ContainerComponentClient {
+	return &ContainerComponentClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a ContainerComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainerComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, parameters ContainerComponentResource, options *ContainerComponentBeginCreateOrUpdateOptions) (ContainerComponentResourcePollerResponse, error) {
+func (client *ContainerComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, parameters ContainerComponentResource, options *ContainerComponentBeginCreateOrUpdateOptions) (ContainerComponentCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, containerComponentName, parameters, options)
 	if err != nil {
-		return ContainerComponentResourcePollerResponse{}, err
+		return ContainerComponentCreateOrUpdatePollerResponse{}, err
 	}
-	result := ContainerComponentResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("ContainerComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return ContainerComponentResourcePollerResponse{}, err
-	}
-	poller := &containerComponentResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (ContainerComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new ContainerComponentResourcePoller from the specified resume token.
-// token - The value must come from a previous call to ContainerComponentResourcePoller.ResumeToken().
-func (client *ContainerComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (ContainerComponentResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("ContainerComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return ContainerComponentResourcePollerResponse{}, err
-	}
-	poller := &containerComponentResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return ContainerComponentResourcePollerResponse{}, err
-	}
-	result := ContainerComponentResourcePollerResponse{
+	result := ContainerComponentCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (ContainerComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("ContainerComponentClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return ContainerComponentCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &ContainerComponentCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a ContainerComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainerComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, parameters ContainerComponentResource, options *ContainerComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *ContainerComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, parameters ContainerComponentResource, options *ContainerComponentBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, containerComponentName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ContainerComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, parameters ContainerComponentResource, options *ContainerComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *ContainerComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, parameters ContainerComponentResource, options *ContainerComponentBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/ContainerComponent/{containerComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -115,98 +90,69 @@ func (client *ContainerComponentClient) createOrUpdateCreateRequest(ctx context.
 		return nil, errors.New("parameter containerComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerComponentName}", url.PathEscape(containerComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *ContainerComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *ContainerComponentClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a ContainerComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainerComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *ContainerComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentBeginDeleteOptions) (ContainerComponentDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, containerComponentName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return ContainerComponentDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("ContainerComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *ContainerComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("ContainerComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := ContainerComponentDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("ContainerComponentClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return ContainerComponentDeletePollerResponse{}, err
+	}
+	result.Poller = &ContainerComponentDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a ContainerComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainerComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentBeginDeleteOptions) (*azcore.Response, error) {
+func (client *ContainerComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, containerComponentName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ContainerComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentBeginDeleteOptions) (*azcore.Request, error) {
+func (client *ContainerComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/ContainerComponent/{containerComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -224,50 +170,49 @@ func (client *ContainerComponentClient) deleteCreateRequest(ctx context.Context,
 		return nil, errors.New("parameter containerComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerComponentName}", url.PathEscape(containerComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *ContainerComponentClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *ContainerComponentClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a ContainerComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainerComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentGetOptions) (ContainerComponentResourceResponse, error) {
+func (client *ContainerComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentGetOptions) (ContainerComponentGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, containerComponentName, options)
 	if err != nil {
-		return ContainerComponentResourceResponse{}, err
+		return ContainerComponentGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return ContainerComponentResourceResponse{}, err
+		return ContainerComponentGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return ContainerComponentResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return ContainerComponentGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *ContainerComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentGetOptions) (*azcore.Request, error) {
+func (client *ContainerComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerComponentName string, options *ContainerComponentGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/ContainerComponent/{containerComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -285,38 +230,37 @@ func (client *ContainerComponentClient) getCreateRequest(ctx context.Context, re
 		return nil, errors.New("parameter containerComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerComponentName}", url.PathEscape(containerComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *ContainerComponentClient) getHandleResponse(resp *azcore.Response) (ContainerComponentResourceResponse, error) {
-	var val *ContainerComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return ContainerComponentResourceResponse{}, err
+func (client *ContainerComponentClient) getHandleResponse(resp *http.Response) (ContainerComponentGetResponse, error) {
+	result := ContainerComponentGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ContainerComponentResource); err != nil {
+		return ContainerComponentGetResponse{}, err
 	}
-return ContainerComponentResourceResponse{RawResponse: resp.Response, ContainerComponentResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *ContainerComponentClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *ContainerComponentClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the ContainerComponent resources deployed in the application.
@@ -326,18 +270,18 @@ func (client *ContainerComponentClient) List(ctx context.Context, resourceGroupN
 	if err != nil {
 		return ContainerComponentListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ContainerComponentListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
 		return ContainerComponentListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *ContainerComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ContainerComponentListOptions) (*azcore.Request, error) {
+func (client *ContainerComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ContainerComponentListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/ContainerComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -351,37 +295,36 @@ func (client *ContainerComponentClient) listCreateRequest(ctx context.Context, r
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *ContainerComponentClient) listHandleResponse(resp *azcore.Response) (ContainerComponentListResponse, error) {
-	var val *ContainerComponentList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
+func (client *ContainerComponentClient) listHandleResponse(resp *http.Response) (ContainerComponentListResponse, error) {
+	result := ContainerComponentListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ContainerComponentList); err != nil {
 		return ContainerComponentListResponse{}, err
 	}
-return ContainerComponentListResponse{RawResponse: resp.Response, ContainerComponentList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *ContainerComponentClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *ContainerComponentClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 

@@ -42,7 +42,8 @@ generate-openapi-specs:
 
 .PHONY: generate-radclient
 generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).
-	autorest --use=@autorest/go@4.0.0-preview.22 \
+	autorest --use=@autorest/go@4.0.0-preview.29 \
+        --module-version=$(AUTOREST_MODULE_VERSION) \
 		--input-file=schemas/rest-api-specs/radius.json \
 		--tag=package-2018-09-01-preview \
 		--go  \

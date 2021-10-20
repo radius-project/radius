@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -48,6 +49,25 @@ func unmarshalComponentTraitClassificationArray(rawMsg json.RawMessage) ([]Compo
 	return fArray, nil
 }
 
+func unmarshalComponentTraitClassificationMap(rawMsg json.RawMessage) (map[string]ComponentTraitClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]ComponentTraitClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalComponentTraitClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
 func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (HealthProbePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
@@ -89,6 +109,25 @@ func unmarshalHealthProbePropertiesClassificationArray(rawMsg json.RawMessage) (
 	return fArray, nil
 }
 
+func unmarshalHealthProbePropertiesClassificationMap(rawMsg json.RawMessage) (map[string]HealthProbePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]HealthProbePropertiesClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalHealthProbePropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
 func unmarshalVolumeClassification(rawMsg json.RawMessage) (VolumeClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
@@ -126,5 +165,24 @@ func unmarshalVolumeClassificationArray(rawMsg json.RawMessage) ([]VolumeClassif
 		fArray[index] = f
 	}
 	return fArray, nil
+}
+
+func unmarshalVolumeClassificationMap(rawMsg json.RawMessage) (map[string]VolumeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]VolumeClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalVolumeClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
 }
 
