@@ -31,17 +31,26 @@ type DeploymentTemplate struct {
 	Parameters map[string]map[string]interface{} `json:"parameters"`
 	Variables  map[string]interface{}            `json:"variables"`
 	Functions  []interface{}                     `json:"functions"`
+	Imports    map[string]Provider               `json:"imports"`
 	Resources  []map[string]interface{}          `json:"resources"`
 	Outputs    map[string]interface{}            `json:"outputs"`
 }
 
+// Providers are extension imported in the Bicep file.
+// Currently we only support 'Kubernetes'.
+type Provider struct {
+	Name    string `json:"provider"`
+	Version string `json:"version"`
+}
+
 // Resource represents a (parsed) resource within an ARM template.
 type Resource struct {
-	ID         string   `json:"id"`
-	Type       string   `json:"type"`
-	APIVersion string   `json:"apiVersion"`
-	Name       string   `json:"name"`
-	DependsOn  []string `json:"dependsOn"`
+	ID         string    `json:"id"`
+	Type       string    `json:"type"`
+	APIVersion string    `json:"apiVersion"`
+	Name       string    `json:"name"`
+	DependsOn  []string  `json:"dependsOn"`
+	Provider   *Provider `json:"provider,omitempty"`
 
 	// Contains the actual payload that should be submitted (properties, kind, etc)
 	// note that properties like type, name, and apiversion are present in deployment
@@ -166,9 +175,23 @@ func (eva *evaluator) VisitResource(input map[string]interface{}) (Resource, err
 
 	apiVersion, ok := evaluated["apiVersion"].(string)
 	if !ok {
-		return Resource{}, errors.New("resource does not contain an apiVersion")
+		if !strings.Contains(t, "@") {
+			return Resource{}, fmt.Errorf("resource %#v does not contain an apiVersion", input)
+		}
+		// This is a K8s resource, whom API version is embedded in type string.
+		tokens := strings.SplitN(t, "@", 2)
+		apiVersion = tokens[1]
+		t = tokens[0]
 	}
 
+	providerKey := ""
+	if importSpec, ok := evaluated["import"].(map[string]interface{}); ok {
+		providerKey, _ = importSpec["provider"].(string)
+	}
+	var providerPtr *Provider
+	if provider, hasProvider := eva.Template.Imports[providerKey]; hasProvider {
+		providerPtr = &provider
+	}
 	dependsOn := []string{}
 	obj, ok := evaluated["dependsOn"]
 	if ok {
@@ -208,7 +231,7 @@ func (eva *evaluator) VisitResource(input map[string]interface{}) (Resource, err
 	delete(body, "type")
 	delete(body, "apiVersion")
 	delete(body, "dependsOn")
-
+	delete(body, "import")
 	result := Resource{
 		ID:         id,
 		Type:       t,
@@ -216,8 +239,8 @@ func (eva *evaluator) VisitResource(input map[string]interface{}) (Resource, err
 		Name:       name,
 		DependsOn:  dependsOn,
 		Body:       body,
+		Provider:   providerPtr,
 	}
-
 	return result, nil
 }
 

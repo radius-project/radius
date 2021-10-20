@@ -9,14 +9,82 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+func resourceGVK(resource Resource) (schema.GroupVersionKind, error) {
+	matches := regexp.MustCompile(`\.([^/.]+)/([^/]+)$`).FindAllStringSubmatch(resource.Type, -1)
+	if len(matches) != 1 || len(matches[0]) != 3 {
+		return schema.GroupVersionKind{}, fmt.Errorf("invalid resource type, expect 'provider.group/Kind', saw %q", resource.Type)
+	}
+	gvk := schema.GroupVersionKind{
+		Group:   matches[0][1],
+		Version: resource.APIVersion,
+		Kind:    matches[0][2],
+	}
+	if gvk.Group == "core" {
+		gvk.Group = ""
+	}
+	return gvk, nil
+}
+
+// unwrapK8sUnstructured unwraps a unstructured.Unstructured that was previous wrapped
+// in a Resource's "properties" block.
+func unwrapK8sUnstructured(resource Resource) (*unstructured.Unstructured, error) {
+	gvk, err := resourceGVK(resource)
+	if err != nil {
+		return nil, err
+	}
+	// All wrapped K8s resource must have "properties", since at least
+	// the metadata must always be there.
+	properties, ok := resource.Body["properties"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("resource %s/%s has no property", resource.Type, resource.Name)
+	}
+	r := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": gvk.GroupVersion().String(),
+			"kind":       gvk.Kind,
+		},
+	}
+	// The "data" property of Secret needs to be unwrapped into `map[string][]byte`
+	// to work well with the dynamic.Interface client.
+	data, _ := properties["data"].(map[string]interface{})
+	if len(data) > 0 && gvk.Group == "" && gvk.Kind == "Secret" && gvk.Version == "v1" {
+		secretData := make(map[string][]byte, len(data))
+
+		for k, v := range data {
+			switch src := v.(type) {
+			case string:
+				secretData[k] = []byte(src)
+			case []byte:
+				secretData[k] = src
+			}
+		}
+		r.Object["data"] = secretData
+	}
+	// Now fill in the rest of the properties.
+	for k, v := range properties {
+		if _, hasK := r.Object[k]; !hasK {
+			r.Object[k] = v
+		}
+	}
+	return r, nil
+}
 
 func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, error) {
 	annotations := map[string]string{}
+
+	// K8s extension resources are not part of an application, so we can skip all the
+	// application-related annotation logic.
+	if resource.Provider != nil && resource.Provider.Name == "Kubernetes" {
+		return unwrapK8sUnstructured(resource)
+	}
 
 	data, err := json.Marshal(resource)
 	if err != nil {

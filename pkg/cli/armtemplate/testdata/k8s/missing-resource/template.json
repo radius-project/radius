@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.993.16348",
+      "templateHash": "10571555160690846414"
+    }
+  },
+  "functions": [],
+  "imports": {
+    "kubernetes": {
+      "provider": "Kubernetes",
+      "version": "0.1"
+    }
+  },
+  "resources": [
+    {
+      "type": "kubernetes.core/Secret@v1",
+      "import": {
+        "provider": "kubernetes"
+      },
+      "name": "connectionString",
+      "properties": {
+        "metadata": {
+          "name": "connectionString",
+          "namespace": "default"
+        },
+        "data": {
+          "conn": "[format('{0}.{1}.svc.cluster.local,password={2}', reference(resourceId('kubernetes.core/Service', 'redis-master'), 'v1', 'full').properties.metadata.name, reference(resourceId('kubernetes.core/Service', 'redis-master'), 'v1', 'full').properties.metadata.namespace, reference(resourceId('kubernetes.core/Secret', 'redis'), 'v1', 'full').properties.data.redisPassword)]"
+        }
+      }
+    }
+  ]
+}

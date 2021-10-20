@@ -16,7 +16,7 @@
     "backendRoute": {
       "type": "string",
       "defaultValue": "backend"
-    } 
+    }
   },
   "resources": [
     {

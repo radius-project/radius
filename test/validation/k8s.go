@@ -14,12 +14,19 @@ import (
 	"time"
 
 	kuberneteskeys "github.com/Azure/radius/pkg/kubernetes"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/restmapper"
 )
 
 const (
@@ -347,6 +354,50 @@ func ValidateServicesRunning(ctx context.Context, t *testing.T, k8s *kubernetes.
 					t.Logf("failed to match service in namespace %v with labels %v, retrying", namespace, remainingService.Labels)
 				}
 
+			case <-ctx.Done():
+				assert.Fail(t, "timed out after waiting for services to be created")
+				return
+			}
+		}
+	}
+}
+
+// ValidateResourcesCreated validates that the required Kubernetes resources were created correctly.
+func ValidateResourcesCreated(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected []unstructured.Unstructured) {
+	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
+	for _, r := range expected {
+		resourceId := fmt.Sprintf("%q/%s/%s", r.GroupVersionKind(), r.GetNamespace(), r.GetName())
+		t.Logf("validating resources %s", resourceId)
+		for {
+			select {
+			case <-time.After(IntervalForResourceCreation):
+				mapping, err := restMapper.RESTMapping(r.GroupVersionKind().GroupKind(), r.GroupVersionKind().Version)
+				if err != nil {
+					t.Errorf("unknown kind %q: %v", r.GroupVersionKind().String(), err)
+				}
+				var output *unstructured.Unstructured
+				if mapping.Scope == meta.RESTScopeNamespace {
+					output, err = dynamic.Resource(mapping.Resource).Namespace(r.GetNamespace()).Get(context.TODO(), r.GetName(), metav1.GetOptions{})
+				} else {
+					output, err = dynamic.Resource(mapping.Resource).Get(context.TODO(), r.GetName(), metav1.GetOptions{})
+				}
+				if err != nil {
+					if errors.IsNotFound(err) {
+						t.Logf("resource %q/%s/%s not yet created", r.GroupVersionKind(), r.GetNamespace(), r.GetName())
+						continue
+					}
+					assert.Failf(t, "fail to look for resource %s: %v", resourceId, err)
+				}
+				meta, _ := output.Object["metadata"].(map[string]interface{})
+				// ignore some fields that only known at runtime.
+				delete(meta, "managedFields")
+				delete(meta, "resourceVersion")
+				delete(meta, "creationTimestamp")
+				delete(meta, "uid")
+				if diff := cmp.Diff(r, *output); diff != "" {
+					assert.Failf(t, "resource %s mismatch (-want,+diff): %s", resourceId, diff)
+				}
+				return
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
 				return

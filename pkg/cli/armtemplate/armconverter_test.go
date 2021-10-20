@@ -74,6 +74,146 @@ func Test_ArmToK8sConversion(t *testing.T) {
 	}
 }
 
+func TestUnwrapK8sUnstructured(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		input       Resource
+		expected    unstructured.Unstructured
+		expectedErr string
+	}{{
+		name: "invalid resource.Type",
+		input: Resource{
+			APIVersion: "v1",
+			Type:       "this/looks/like/an/arm/Type",
+			Provider: &Provider{
+				Name: "Kubernetes",
+			},
+		},
+		expectedErr: "invalid resource type",
+	}, {
+		name: "has no properties",
+		input: Resource{
+			APIVersion: "v1",
+			Type:       "kubernetes.core/Secret",
+			Provider: &Provider{
+				Name: "Kubernetes",
+			},
+		},
+		expectedErr: "has no property",
+	}, {
+		name: "empty secret",
+		input: Resource{
+			APIVersion: "v1",
+			Type:       "kubernetes.core/Secret",
+			Provider: &Provider{
+				Name: "Kubernetes",
+			},
+			Body: map[string]interface{}{
+				"properties": map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"name":      "foo",
+						"namespace": "default",
+					},
+				},
+			},
+		},
+		expected: unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Secret",
+				"metadata": map[string]interface{}{
+					"name":      "foo",
+					"namespace": "default",
+				},
+			},
+		},
+	}, {
+		name: "secret",
+		input: Resource{
+			APIVersion: "v1",
+			Type:       "kubernetes.core/Secret",
+			Provider: &Provider{
+				Name: "Kubernetes",
+			},
+			Body: map[string]interface{}{
+				"properties": map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"name":      "moria",
+						"namespace": "middle-earth",
+					},
+					"data": map[string]interface{}{
+						"password": []byte("Mellon"),
+						"username": "Gandalf",
+					},
+				},
+			},
+		},
+		expected: unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Secret",
+				"metadata": map[string]interface{}{
+					"name":      "moria",
+					"namespace": "middle-earth",
+				},
+				"data": map[string][]byte{
+					"password": []byte("Mellon"),
+					"username": []byte("Gandalf"),
+				},
+			},
+		},
+	}, {
+		name: "service",
+		input: Resource{
+			APIVersion: "v1",
+			Type:       "kubernetes.core/Service",
+			Provider: &Provider{
+				Name: "Kubernetes",
+			},
+			Body: map[string]interface{}{
+				"properties": map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"name":      "redis-master",
+						"namespace": "redis",
+					},
+					"spec": map[string]interface{}{
+						"type": "ClusterIP",
+						"selector": map[string]interface{}{
+							"app.kubernetes.io/component": "master",
+						},
+					},
+				},
+			},
+		},
+		expected: unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Service",
+				"metadata": map[string]interface{}{
+					"name":      "redis-master",
+					"namespace": "redis",
+				},
+				"spec": map[string]interface{}{
+					"type": "ClusterIP",
+					"selector": map[string]interface{}{
+						"app.kubernetes.io/component": "master",
+					},
+				},
+			},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := ConvertToK8s(tc.input, "default")
+			if err != nil {
+				require.True(t, tc.expectedErr != "", "unexpected err %v", err)
+				require.Regexp(t, tc.expectedErr, err.Error())
+				return
+			}
+			require.Equal(t, tc.expected, *output)
+		})
+	}
+}
+
 func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
 	content, err := ioutil.ReadFile(filePath)
 	if err != nil {

@@ -19,7 +19,14 @@ import (
 	"github.com/Azure/radius/test/testcontext"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/meta"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/discovery"
+	memory "k8s.io/client-go/discovery/cached"
+	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/restmapper"
 )
 
 var radiusControllerLogSync sync.Once
@@ -31,6 +38,7 @@ const (
 type Step struct {
 	Executor               StepExecutor
 	RadiusResources        *validation.ResourceSet
+	K8sOutputResources     []unstructured.Unstructured
 	Pods                   *validation.K8sObjectSet
 	Ingress                *validation.K8sObjectSet
 	Services               *validation.K8sObjectSet
@@ -48,13 +56,16 @@ type ApplicationTest struct {
 	Options          TestOptions
 	Application      string
 	Description      string
+	InitialResources []unstructured.Unstructured
 	Steps            []Step
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
 }
 
 type TestOptions struct {
-	ConfigFilePath string
-	K8sClient      *k8s.Clientset
+	ConfigFilePath  string
+	K8sClient       *k8s.Clientset
+	DynamicClient   dynamic.Interface
+	DiscoveryClient discovery.DiscoveryInterface
 }
 
 func NewTestOptions(t *testing.T) TestOptions {
@@ -67,9 +78,13 @@ func NewTestOptions(t *testing.T) TestOptions {
 	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 	require.NoError(t, err, "failed to create kubernetes client")
 
+	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
+	require.NoError(t, err, "failed to create kubernetes dyamic client")
+
 	return TestOptions{
 		ConfigFilePath: config.ConfigFileUsed(),
 		K8sClient:      k8s,
+		DynamicClient:  dynamicClient,
 	}
 }
 
@@ -123,12 +138,50 @@ func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options 
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
 
-func NewApplicationTest(t *testing.T, application string, steps []Step) ApplicationTest {
+func NewApplicationTest(t *testing.T, application string, steps []Step, initialResources ...unstructured.Unstructured) ApplicationTest {
 	return ApplicationTest{
-		Options:     NewTestOptions(t),
-		Application: application,
-		Description: application,
-		Steps:       steps,
+		Options:          NewTestOptions(t),
+		Application:      application,
+		Description:      application,
+		InitialResources: initialResources,
+		Steps:            steps,
+	}
+}
+
+func (at ApplicationTest) CreateInitialResources() error {
+	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(at.Options.K8sClient.Discovery()))
+	for _, r := range at.InitialResources {
+		mapping, err := restMapper.RESTMapping(r.GroupVersionKind().GroupKind(), r.GroupVersionKind().Version)
+		if err != nil {
+			return fmt.Errorf("unknown kind %q: %w", r.GroupVersionKind().String(), err)
+		}
+		if mapping.Scope == meta.RESTScopeNamespace {
+			_, err = at.Options.DynamicClient.Resource(mapping.Resource).
+				Namespace(r.GetNamespace()).
+				Create(context.TODO(), &r, v1.CreateOptions{})
+		} else {
+			_, err = at.Options.DynamicClient.Resource(mapping.Resource).
+				Create(context.TODO(), &r, v1.CreateOptions{})
+		}
+		if err != nil {
+			return fmt.Errorf("failed to create %q resource %#v:  %w", mapping.Resource.String(), r, err)
+		}
+	}
+	return nil
+}
+
+func (at ApplicationTest) CleanUpResources(resources []unstructured.Unstructured) {
+	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(at.Options.K8sClient.Discovery()))
+	for _, r := range resources {
+		mapping, _ := restMapper.RESTMapping(r.GroupVersionKind().GroupKind(), r.GroupVersionKind().Version)
+		if mapping.Scope == meta.RESTScopeNamespace {
+			_ = at.Options.DynamicClient.Resource(mapping.Resource).
+				Namespace(r.GetNamespace()).
+				Delete(context.TODO(), r.GetName(), v1.DeleteOptions{})
+		} else {
+			_ = at.Options.DynamicClient.Resource(mapping.Resource).
+				Delete(context.TODO(), r.GetName(), v1.DeleteOptions{})
+		}
 	}
 }
 
@@ -167,10 +220,13 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
 	require.GreaterOrEqual(t, len(at.Steps), 1, "at least one step is required")
-
+	defer at.CleanUpResources(at.InitialResources)
+	err = at.CreateInitialResources()
+	require.NoError(t, err, "failed to create initial resources")
 	success := true
 	for i, step := range at.Steps {
 		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
+			defer at.CleanUpResources(step.K8sOutputResources)
 			if !success {
 				t.Skip("skipping due to previous step failure")
 				return
@@ -196,7 +252,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 			if step.SkipResourceValidation {
 				t.Logf("skipping validation of resources...")
-			} else if step.Pods == nil && step.Ingress == nil && step.Services == nil {
+			} else if step.Pods == nil && step.Ingress == nil && step.Services == nil && len(step.K8sOutputResources) == 0 {
 				require.Fail(t, "no resources specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
 			} else {
 				if step.Pods != nil {
@@ -215,6 +271,12 @@ func (at ApplicationTest) Test(t *testing.T) {
 					t.Logf("validating creation of services for %s", step.Executor.GetDescription())
 					validation.ValidateServicesRunning(ctx, t, at.Options.K8sClient, *step.Services)
 					t.Logf("finished creation of validating services for %s", step.Executor.GetDescription())
+				}
+
+				if step.K8sOutputResources != nil {
+					t.Logf("validating creation of resources for %s", step.Executor.GetDescription())
+					validation.ValidateResourcesCreated(ctx, t, at.Options.K8sClient, at.Options.DynamicClient, step.K8sOutputResources)
+					t.Logf("kubernetes extension resources were created correctly for %s", step.Executor.GetDescription())
 				}
 			}
 
