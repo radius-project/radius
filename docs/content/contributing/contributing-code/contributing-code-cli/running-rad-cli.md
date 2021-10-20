@@ -17,7 +17,7 @@ Create the following script and place it on your path with a name like `dev-rad`
 ```sh
 #!/bin/sh
 set -eu
-go run ~/github.com/Azure/radius/cmd/cli/main.go $@
+go run ~/github.com/Azure/radius/rad/cli/main.go $@
 ```
 
 Replace `~/github.com/Azure/radius` with the path to your repository root.

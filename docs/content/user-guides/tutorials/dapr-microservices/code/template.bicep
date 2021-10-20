@@ -17,14 +17,14 @@ resource app 'radius.dev/Applications@v1alpha1' = {
       ]
       traits: [
         {
-          kind: 'dapr.io/App@v1alpha1'
+          kind: 'dapr.io/Sidecar@v1alpha1'
           appId: 'frontend'
         }
       ]
     }
   }
 
-  resource backend 'Components' = {
+  resource backend 'ContainerComponent' = {
     name: 'backend'
     kind: 'radius.dev/Container@v1alpha1'
     properties: {

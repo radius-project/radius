@@ -53,6 +53,18 @@ Once the state store is defined as a component, you can connect to it by referen
 
 {{< rad file="snippets/app.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-statestore="//STATESTORE" replace-value-statestore="resource statestore 'dapr.io.StateStoreComponent' = {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
 
+### Injected settings from connections
+
+Adding a connection to the state store also [configures environment variables]({{< ref "dapr-statestore#provided-data" >}}) inside the the `statestore` component.
+
+Because the connection is called `orders` inside `backend`, Radius will inject information related to the state store using environment variables like `CONNECTION_ORDERS_STATESTORENAME`. The application code inside `backend` uses this environment variable to access the state store name and avoid hardcoding.
+
+```js
+const stateStoreName =  process.env.CONNECTION_ORDERS_STATESTORENAME;
+```
+
+See the [connections]({{< ref "connections-model#injected-values" >}}) page for more information about this feature.
+
 ## Deploy application with Dapr
 
 {{% alert title="Make sure Dapr is initialized" color="warning" %}}
@@ -82,7 +94,7 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
    You should see both `backend` and `statestore` components in your `dapr-tutorial` application. Example output:
 
    ```
-   RESOURCE   KIND
+   RESOURCE   TYPE
    backend     ContainerComponent
    statestore  dapr.io.StateStoreComponent
    ```
@@ -90,7 +102,7 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 1. To test out the state store, open a local tunnel on port 3000 again:
 
    ```sh
-   rad resource expose backend --application dapr-tutorial --port 3000
+   rad resource expose ContainerComponent backend --application dapr-tutorial --port 3000
    ```
 
 1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:

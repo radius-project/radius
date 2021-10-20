@@ -16,7 +16,7 @@ We'll discuss template.bicep changes and then provide the full, updated file bef
 ## Add db component
 A `db` database component is used to specify a few properties about the database: 
 
-- **kind:** `mongodb.com.MongoDBComponent` represents a MongoDB compatible database.
+- **resource type:** `mongodb.com.MongoDBComponent` represents a MongoDB compatible database.
 - **managed:** `true` tells Radius to [manage the lifetime]({{< ref "components-model#radius-managed" >}}) of the component for you.
 
 {{< rad file="snippets/app.bicep" embed=true marker="//MONGO" >}}
@@ -41,11 +41,21 @@ Once the database is defined as a Component, you can connect to it by referencin
 
 [`connections`]({{< ref connections-model >}}) is used to configure relationships between two components. The `db` is of kind `mongodb.com.MongoDBComponent`, which supports the `mongodb.com/Mongo` MongoDB protocol. Configuring a dependency on this protocal is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db`.
 
-Once you connect to `db` you can now reference the `db.connectionStrings()` method from within the `todoapp` Component's `env` definition. This places the `db` connection string in the `todoapp` Component's environment
+Here's what the `todoapp` component will look like with the `connections` section added within its properties:
 
-Here's what the `todoapp` component will look like with the `connections` section added within its properties and an environment variable defined in `env`:
+{{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" replace-key-ports="//PORTS" replace-value-ports="ports: {...}"  >}}
 
-{{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" replace-key-ports="//PORTS" replace-value-ports="ports: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" >}}
+Now that you have created a connection called `itemstore`, Radius will inject additional settings into the `todoapp` container. The container reads the database connection string from an environment variable named `CONNECTION_ITEMSTORE_CONNECTIONSTRING`:
+
+
+```js
+if (process.env.CONNECTION_ITEMSTORE_CONNECTIONSTRING) {
+  connectionString = process.env.CONNECTION_ITEMSTORE_CONNECTIONSTRING
+  console.log("Retrieved DB connection string from environment variable")
+}
+```
+
+`CONNECTION_ITEMSTORE_CONNECTIONSTRING` is a setting injected by Radius based on the name of the connection (`itemstroe`) and it's type. See the [`connections`]({{< ref connections-model >}}) section of the documentation for more information about these features.
 
 ## Update your template.bicep file 
 
@@ -80,7 +90,7 @@ Update your `template.bicep` file to match the full application definition:
 1. To test the database, open a local tunnel on port 3000 again:
 
    ```sh
-   rad resource expose todoapp --application webapp --port 3000
+   rad resource expose ContainerComponent todoapp --application webapp --port 3000
    ```
 
 1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. You should see a page like:

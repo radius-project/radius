@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/radius/cmd/cli/cmd"
+	"github.com/Azure/radius/cmd/rad/cmd"
 	"github.com/spf13/cobra/doc"
 )
 

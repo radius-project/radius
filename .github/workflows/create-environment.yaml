@@ -76,7 +76,7 @@ jobs:
             --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
       - name: Create Environment
         run: |
-          go run cmd/cli/main.go \
+          go run cmd/rad/main.go \
             env init azure \
             -e ${{ steps.generate-resource-group-name.outputs.result }} \
             --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
@@ -84,7 +84,7 @@ jobs:
             --location "${{ steps.select-location.outputs.result }}" \
             --loganalytics-workspace-id "${{ env.INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID }}"
       - name: Display Environment (Sanity Check)
-        run: go run cmd/cli/main.go env list
+        run: go run cmd/rad/main.go env list
       - name: Register Environment
         run: |
           go run cmd/testenv/main.go \

@@ -28,14 +28,14 @@ CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
 	-ldflags "-s -w -X main.version=edge" \
 	-o ./dist/darwin_amd64/release/radius-rp \
 	./cmd/rp/main.go;
-=> Building CLI from 'cmd/cli/main.go'
+=> Building CLI from 'cmd/rad/main.go'
 => Built CLI in './dist/darwin_amd64/release/rad'
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
 	go build \
 	-gcflags "" \
 	-ldflags "-s -w -X main.version=edge" \
 	-o ./dist/darwin_amd64/release/rad \
-	./cmd/cli/main.go;
+	./cmd/rad/main.go;
 ```
 
 Our makefile also has a built-in help command. Run `make` or `make help` to see the list of targets.

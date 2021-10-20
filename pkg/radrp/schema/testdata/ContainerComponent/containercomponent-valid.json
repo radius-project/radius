@@ -51,12 +51,12 @@
           "mountPath": "/tmp"
         }
       }
-    }
-  },
-  "traits": [
-    {
-      "kind": "dapr.io/Sidecar@v1alpha1",
-      "appId": "cool-app"
-    }
-  ]
+    },
+    "traits": [
+      {
+        "kind": "dapr.io/Sidecar@v1alpha1",
+        "appId": "cool-app"
+      }
+    ]
+  }
 }

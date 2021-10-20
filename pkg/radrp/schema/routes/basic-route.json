@@ -6,7 +6,6 @@
         "type": "object",
         "properties": {
           "status": {
-            "type": "object",
             "$ref": "#/definitions/RouteStatus",
             "description": "Status of the component"
           }
@@ -39,4 +38,3 @@
       }
     }
   }
-  

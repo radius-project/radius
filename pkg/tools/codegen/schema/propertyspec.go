@@ -10,6 +10,8 @@ import "encoding/json"
 // PropertySpec contains the specifications of a type's property.
 type PropertySpec struct {
 	Enum                 []interface{}
+	Description          string
+	Type                 string
 	AdditionalProperties map[string]interface{}
 }
 
@@ -26,6 +28,12 @@ func (p *PropertySpec) MarshalJSON() ([]byte, error) {
 	if len(p.Enum) > 0 {
 		m["enum"] = p.Enum
 	}
+	if p.Description != "" {
+		m["description"] = p.Description
+	}
+	if p.Type != "" {
+		m["type"] = p.Type
+	}
 	for k, v := range p.AdditionalProperties {
 		m[k] = v
 	}
@@ -39,7 +47,9 @@ func (p *PropertySpec) UnmarshalJSON(b []byte) error {
 	//
 	// This isn't ideal, so don't use this code on a performance sensitive path.
 	inner := struct {
-		Enum []interface{} `json:"enum"`
+		Enum        []interface{} `json:"enum"`
+		Description string        `json:"description"`
+		Type        string        `json:"type"`
 	}{}
 	if err := json.Unmarshal(b, &inner); err != nil {
 		return err
@@ -49,8 +59,15 @@ func (p *PropertySpec) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	delete(additionalProperties, "enum")
+	delete(additionalProperties, "description")
+	delete(additionalProperties, "type")
+	if len(additionalProperties) == 0 {
+		additionalProperties = nil
+	}
 	*p = PropertySpec{
 		Enum:                 inner.Enum,
+		Description:          inner.Description,
+		Type:                 inner.Type,
 		AdditionalProperties: additionalProperties,
 	}
 	return nil

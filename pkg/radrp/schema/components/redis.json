@@ -20,6 +20,7 @@
       }
     },
     "RedisComponentProperties": {
+      "type": "object",
       "allOf": [
         {
           "$ref": "basic-component.json#/definitions/BasicComponentProperties"

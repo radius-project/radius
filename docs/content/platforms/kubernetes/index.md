@@ -33,7 +33,7 @@ If you choose a container registry provided by a cloud provider (other than Dock
 
 ### Initialize an environment
 
-1. Initialze a Radius environment interactively:
+1. Initialize a Radius environment interactively:
 
    ```bash
    rad env init kubernetes -i

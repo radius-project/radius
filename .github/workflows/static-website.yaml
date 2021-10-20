@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'docs/**'
-      - 'cmd/cli/**'
+      - 'cmd/rad/**'
       - 'cmd/docgen/**'
       - '.github/workflows/**'
   pull_request:
@@ -15,7 +15,7 @@ on:
       - main
     paths:
       - 'docs/**'
-      - 'cmd/cli/**'
+      - 'cmd/rad/**'
       - 'cmd/docgen/**'
       - '.github/workflows/**'
 

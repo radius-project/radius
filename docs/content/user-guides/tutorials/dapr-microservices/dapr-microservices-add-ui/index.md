@@ -17,10 +17,17 @@ Another container component is used to specify a few properties about the order 
 
 - **resource type**: `ContainerComponent` indicates you are using a generic container.
 - **container image**: `radius.azurecr.io/daprtutorial-frontend` is a Docker image the container will run.
-- **connections**: `backendDapr.id` declares the intention for `frontend` to communicate with `backend` through the `backendDapr` Dapr HTTP Route.
+- **connections**: `daprBackend.id` declares the intention for `frontend` to communicate with `backend` through the `daprBackend` Dapr HTTP Route.
 - **traits**: `dapr.io/Sidecar` configures Dapr on the container.
 
 {{< rad file="snippets/app.bicep" marker="//FRONTEND" embed=true >}}
+
+As before with connections, the `frontend` component is using an environment variable to get information about the the `backend`'s route. This avoids hardcoding:
+
+```C#
+var appId = Environment.GetEnvironmentVariable("CONNECTION_BACKEND_APPID");
+services.AddSingleton<HttpClient>(DaprClient.CreateInvokeHttpClient(appId));
+```
   
 ## Deploy application
 
@@ -37,7 +44,7 @@ Another container component is used to specify a few properties about the order 
 1. To test out the frontend microservice, open a local tunnel on port 80:
 
    ```sh
-   rad resource expose frontend --application dapr-tutorial --port 5000 --remote-port 80
+   rad resource expose ContainerComponent frontend --application dapr-tutorial --port 5000 --remote-port 80
    ```
 
 1. Visit [http://localhost:5000](http://localhost:5000) in your browser and submit orders.

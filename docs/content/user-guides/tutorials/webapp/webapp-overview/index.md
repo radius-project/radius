@@ -20,7 +20,7 @@ The example website (`todoapp`) is a containerized single-page-application (SPA)
 
 The website listens on port 3000 for HTTP requests. 
 
-The website uses the MongoDB protocol to read and store data in a database. The website reads the environment variable `DBCONNECTION` to discover the database connection string.
+The website uses the MongoDB protocol to read and store data in a database. The website reads the environment variable `CONNECTION_ITEMSTORE_CONNECTIONSTRING` to discover the database connection string.
 
 #### (optional) Download the source code
 
