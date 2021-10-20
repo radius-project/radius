@@ -213,6 +213,13 @@ func NewAccountsClient(subscriptionID string, authorizer autorest.Authorizer) st
 	return ac
 }
 
+func NewFileSharesClient(subscriptionID string, authorizer autorest.Authorizer) storage.FileSharesClient {
+	fc := storage.NewFileSharesClient(subscriptionID)
+	fc.Authorizer = authorizer
+	fc.PollingDuration = 0
+	return fc
+}
+
 func NewRoleDefinitionsClient(subscriptionID string, authorizer autorest.Authorizer) authorization.RoleDefinitionsClient {
 	rc := authorization.NewRoleDefinitionsClient(subscriptionID)
 	rc.Authorizer = authorizer

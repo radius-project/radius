@@ -23,7 +23,10 @@ import (
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -78,6 +81,7 @@ func makeResourceID(t *testing.T, resourceType string, resourceName string) azre
 }
 
 func Test_GetDependencyIDs_Success(t *testing.T) {
+	testResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 	properties := ContainerProperties{
 		Connections: map[string]ContainerConnection{
 			"A": {
@@ -97,6 +101,13 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 					Provides:      makeResourceID(t, "HttpRoute", "C").ID,
 				},
 			},
+			Volumes: map[string]map[string]interface{}{
+				"vol1": {
+					"kind":      "persistent",
+					"mountPath": "/tmpfs",
+					"source":    testResourceID,
+				},
+			},
 		},
 	}
 	resource := makeResource(t, properties)
@@ -105,10 +116,27 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	ids, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.NoError(t, err)
 
+	storageID, _ := azresources.Parse(azresources.MakeID(
+		"test-sub-id",
+		"test-rg",
+		azresources.ResourceType{
+			Type: "Microsoft.Storage/storageaccounts",
+			Name: "testaccount",
+		},
+		azresources.ResourceType{
+			Type: "fileservices",
+			Name: "default",
+		},
+		azresources.ResourceType{
+			Type: "shares",
+			Name: "testShareName",
+		}))
+
 	expected := []azresources.ResourceID{
 		makeResourceID(t, "HttpRoute", "A"),
 		makeResourceID(t, "HttpRoute", "B"),
 		makeResourceID(t, "HttpRoute", "C"),
+		storageID,
 	}
 	require.ElementsMatch(t, expected, ids)
 }
@@ -575,9 +603,12 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	})
 }
 
-func Test_Render_NonEphemeralVolumes(t *testing.T) {
+func Test_Render_PersistentVolumes(t *testing.T) {
 	const tempVolName = "TempVolume"
 	const tempVolMountPath = "/tmpfs"
+	const testShareName = "myshare"
+	testResourceID := fmt.Sprintf("/subscriptions/%s/resourceGroups/test/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/share/%s", uuid.New(), testShareName)
+
 	properties := ContainerProperties{
 		Container: Container{
 			Image: "someimage:latest",
@@ -587,26 +618,44 @@ func Test_Render_NonEphemeralVolumes(t *testing.T) {
 			},
 			Volumes: map[string]map[string]interface{}{
 				tempVolName: {
-					"kind":         "persistent",
-					"mountPath":    tempVolMountPath,
-					"managedStore": "memory",
+					"kind":      "persistent",
+					"mountPath": tempVolMountPath,
+					"source":    testResourceID,
 				},
 			},
 		},
 	}
 	resource := makeResource(t, properties)
+	resourceID, _ := azresources.Parse(testResourceID)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").ID): {
-			ResourceID:     makeResourceID(t, "ResourceType", "A"),
-			Definition:     map[string]interface{}{},
-			ComputedValues: map[string]interface{}{},
+		testResourceID: {
+			ResourceID: resourceID,
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"azurestorageaccountname": "accountname",
+				"azurestorageaccountkey":  "storagekey",
+			},
 		},
 	}
 
 	renderer := Renderer{}
-	_, err := renderer.Render(createContext(t), resource, dependencies)
-	require.Error(t, err)
-	require.Equal(t, "Only ephemeral volumes are supported. Got kind: persistent", err.Error())
+	renderOutput, err := renderer.Render(createContext(t), resource, dependencies)
+	require.Lenf(t, renderOutput.Resources, 2, "expected 2 output resource, instead got %+v", len(renderOutput.Resources))
+
+	// Verify deployment
+	require.Equal(t, outputresource.LocalIDDeployment, renderOutput.Resources[0].LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
+	volumes := renderOutput.Resources[0].Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes
+	require.Lenf(t, volumes, 1, "expected 1 volume, instead got %+v", len(volumes))
+	require.Equal(t, tempVolName, volumes[0].Name)
+	require.NotNil(t, volumes[0].VolumeSource.AzureFile, "expected volumesource azurefile to be not nil")
+	require.Equal(t, volumes[0].VolumeSource.AzureFile.SecretName, resourceName)
+	require.Equal(t, volumes[0].VolumeSource.AzureFile.ShareName, testShareName)
+
+	// Verify Kubernetes secret
+	require.Equal(t, outputresource.LocalIDSecret, renderOutput.Resources[1].LocalID, "expected output resource of kind secret instead got :%v", renderOutput.Resources[0].LocalID)
+	secret := renderOutput.Resources[1].Resource.(*corev1.Secret)
+	require.Lenf(t, secret.Data, 2, "expected 2 secret key-value pairs, instead got %+v", len(secret.Data))
+	require.NoError(t, err)
 }
 
 func outputResourcesToKindMap(resources []outputresource.OutputResource) map[string][]outputresource.OutputResource {
