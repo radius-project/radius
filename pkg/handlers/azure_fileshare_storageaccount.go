@@ -7,16 +7,14 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2021-04-01/storage"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/resourcemodel"
-	"github.com/gofrs/uuid"
 )
 
 const (
@@ -43,7 +41,7 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 
 	var account *storage.Account
 	if properties[FileShareStorageAccountIDKey] == "" {
-		generated, err := handler.GenerateStorageAccountName(ctx, properties[ResourceName])
+		generated, err := generateStorageAccountName(ctx, handler.arm, properties[ResourceName])
 		if err != nil {
 			return nil, err
 		}
@@ -60,21 +58,21 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 		properties[FileShareStorageAccountIDKey] = *account.ID
 	} else {
 		_, err = getStorageAccountByID(ctx, handler.arm, properties[FileShareStorageAccountIDKey])
-			return nil, err
+		return nil, err
+	}
 	options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareStorageAccountIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 	return properties, nil
 }
 
 func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.ExistingOutputResource.PersistedProperties
-	accountName := properties[FileShareStorageAccountNameKey]
 
 	if properties[ManagedKey] != "true" {
 		// For an 'unmanaged' resource we don't need to do anything, just forget it.
 		return nil
 	}
 
-	return deleteStorageAccount(ctx, handler.arm, properties[StorageAccountNameKey])
+	return deleteStorageAccount(ctx, handler.arm, properties[FileShareStorageAccountNameKey])
 }
 
 func (handler *azureFileShareStorageAccountHandler) CreateStorageAccount(ctx context.Context, accountName string, options PutOptions) (*storage.Account, error) {

@@ -63,7 +63,6 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	}
 
 	computedValues, secretValues := MakeSecretsAndValues(storageAccountDependency.LocalID)
-	// computedValues, secretValues := MakeSecretsAndValues(storageAccountID.Types[0].Name)
 
 	return renderers.RendererOutput{
 		Resources:      resources,
@@ -71,7 +70,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		SecretValues:   secretValues,
 	}, nil
 }
-func RenderManaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
+func RenderManaged(name string, properties AzureFileShareProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}

@@ -305,21 +305,6 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
 			// Add the volume to the list of volumes to be added to the Volumes spec
 			volumes = append(volumes, volumeSpec)
-		} else if volume[kindProperty] == VolumeKindPersistent {
-			persistentVolume, err := asPersistentVolume(volume)
-			if err != nil {
-				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to deserialize properties for persistent volume: %s - %w", volumeName, err)
-			}
-
-			// Create spec for persistent volume
-			volumeSpec, volumeMountSpec, err := r.makePersistentVolume(volumeName, *persistentVolume, resource, dependencies)
-			if err != nil {
-				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
-			}
-			// Add the volume mount to the Container spec
-			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
-			// Add the volume to the list of volumes to be added to the Volumes spec
-			volumes = append(volumes, volumeSpec)
 
 			// Add azurestorageaccountname and azurestorageaccountkey as secrets
 			// These will be added as key-value pairs to the kubernetes secret created for the container

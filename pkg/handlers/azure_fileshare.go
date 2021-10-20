@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -69,6 +70,21 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 	return properties, nil
 }
 
+func (handler *azureFileShareHandler) deleteFileShare(ctx context.Context, fileshareID string) error {
+	parsed, err := azresources.Parse(fileshareID)
+	if err != nil {
+		return fmt.Errorf("failed to parse file share resource id: %w", err)
+	}
+
+	fc := clients.NewFileSharesClient(parsed.SubscriptionID, handler.arm.Auth)
+	_, err = fc.Delete(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[2].Name, "", "")
+	if err != nil {
+		return fmt.Errorf("failed to DELETE file share: %w", err)
+	}
+
+	return nil
+}
+
 func (handler *azureFileShareHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.ExistingOutputResource.PersistedProperties
 	if properties[ManagedKey] != "true" {
@@ -76,8 +92,15 @@ func (handler *azureFileShareHandler) Delete(ctx context.Context, options Delete
 		return nil
 	}
 
-	armHandler := NewARMHandler(handler.arm)
-	return armHandler.Delete(ctx, options)
+	fileshareID := properties[FileShareIDKey]
+
+	// Delete Azure File Share
+	err := handler.deleteFileShare(ctx, fileshareID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func NewAzureFileShareHealthHandler(arm armauth.ArmConfig) HealthHandler {
