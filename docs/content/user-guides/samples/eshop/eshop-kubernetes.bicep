@@ -34,7 +34,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           AzureStorageEnabled: AZURESTORAGEENABLED
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          ConnectionString: 'Server=${sqlRoute.properties.url};Initial Catalog=CatalogDb;User Id=${adminLogin};Password=${adminPassword};'
+          ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=CatalogDb;User Id=${adminLogin};Password=${adminPassword};'
           EventBusConnection: 'eshop-rabbitmq'
         }
         ports: {
@@ -95,9 +95,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           XamarinCallback: ''
           EnableDevspaces: ENABLEDEVSPACES
-          ConnectionString: 'Server=${sqlRoute.properties.url};Initial Catalog=IdentityDb;User Id=${adminLogin};Password=${adminPassword};'
+          ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=IdentityDb;User Id=${adminLogin};Password=${adminPassword};'
+          //Server=sql-data;Initial Catalog=IdentityDb;User Id=sa;Password=Pass@word;
           MvcClient: '${CLUSTERDNS}${webmvcHttp.properties.gateway.path}'
-          SpaClient: '${CLUSTERDNS}/'
+          SpaClient: CLUSTERDNS
           BasketApiClient: '${CLUSTERDNS}${basketHttp.properties.gateway.path}'
           OrderingApiClient: '${CLUSTERDNS}${orderingHttp.properties.gateway.path}'
           WebShoppingAggClient: '${CLUSTERDNS}${webshoppingaggHttp.properties.gateway.path}'
@@ -180,7 +181,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           PATH_BASE: '/ordering-api'
           GRPC_PORT: '81'
           PORT: '80'
-          ConnectionString: 'Server=${sqlRoute.properties.url};Initial Catalog=OrderingDb;User Id=${adminLogin};Password=${adminPassword};'
+          ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=OrderingDb;User Id=${adminLogin};Password=${adminPassword};'
           EventBusConnection: 'eshop-rabbitmq'
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
@@ -312,7 +313,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ASPNETCORE_URLS: 'http://0.0.0.0:80'
           OrchestratorType: OCHESTRATOR_TYPE
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          ConnectionString: 'Server=${sqlRoute.properties.url};Initial Catalog=WebhookDb;User Id=${adminLogin};Password=${adminPassword};'
+          ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=WebhookDb;User Id=${adminLogin};Password=${adminPassword};'
           EventBusConnection: 'eshop-rabbitmq'
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
@@ -328,7 +329,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       connections: {
         sql: {
           kind: 'Http'
-          source: sqlRoute.properties.url
+          source: sqlRoute.id
         }
         servicebus: {
           kind: 'rabbitmq.com/MessageQueue'
@@ -408,7 +409,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'Serilog__MinimumLevel__Override__Microsoft.eShopOnContainers.BuildingBlocks.EventBusRabbitMQ': 'Verbose'
           OrchestratorType: OCHESTRATOR_TYPE
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          ConnectionString: 'Server=${sqlRoute.properties.url};Initial Catalog=OrderingDb;User Id=${adminLogin};Password=${adminPassword};'
+          ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=OrderingDb;User Id=${adminLogin};Password=${adminPassword};'
           EventBusConnection: 'eshop-rabbitmq'
         }
         ports: {

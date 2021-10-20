@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Add eShop infrastructure to application"
-linkTitle: "Add infrastructure"
+linkTitle: "Infrastructure"
 slug: "infrastructure"
 description: "Learn how to model the eShop infrastructure in Bicep"
 weight: 200
@@ -9,19 +9,15 @@ weight: 200
 
 In this section you will be creating an eShop Radius Application, and add all the resources and services that compose it. You will be adding a mixture of [user-managed Radius resources]({{< ref "components-model#user-managed" >}}), [Radius-managed resources]({{< ref "components-model#radius-managed" >}}), and [platform-specific resources]({{< ref "components-model#platform-specific" >}}) in your application to learn all the ways you can create an application.
 
-## Create Radius application
+## Radius application
 
-Create a file named `eshop.radius` and add a [Radius Application resource]({{< ref application-model >}}):
+The primary resource in eShop is the [Radius Application resource]({{< ref application-model >}}):
 
 {{< rad file="snippets/blank.bicep" embed=true >}}
 
-{{% alert title="🚨 Skip to deployment" color="info" %}}
-Want to skip building the app and download the full template and deploy it to your environment right away? Head to [the deploy step]({{< ref 4-deploy >}}).
-{{% /alert %}}
+## Infrastructure
 
-## Add infrastructure
-
-Now you'll add the required infrastucture:
+The first resources to model are the infrastructure resources:
 
 - SQL databases
 - Redis cache
@@ -56,7 +52,7 @@ You can also connect to already deployed SQL instances with the [existing keywor
 {{< /codetab >}}
 
 {{< codetab >}}
-Radius-managed SQL via `microsoft.com.SQLComponent is still in development.
+Radius-managed SQL via microsoft.com.SQLComponent is still in development.
 
 {{% alert title="📋 Feedback" color="info" %}}
 Want to see a SQL managed component? Let us know over in the [GitHub discussions](https://github.com/Azure/radius/discussions/1269).
@@ -88,7 +84,7 @@ Here you are manually defining a ContainerComponent which will provide a SQL dat
 {{< tabs "Radius-managed" "User-managed Azure" >}}
 
 {{< codetab >}}
-The redislabs.com.RedisComponent Radius resource will deploy an Azure Redis Cache in Azure environments, and a Redis container in Kubernetes environments. Add the following resource to your eShop application:
+The redislabs.com.RedisComponent Radius resource will deploy an Azure Redis Cache in Azure environments, and a Redis container in Kubernetes environments.
 
 {{% alert title="💡 Concept" color="info" %}}
 Here you are defining a <a href="{{< ref "components-model#radius-managed" >}}">Radius-managed Redis Component</a>, where Radius manages the deployment and deletion of the resource as part of the Application.
@@ -97,7 +93,7 @@ Here you are defining a <a href="{{< ref "components-model#radius-managed" >}}">
 {{< rad file="snippets/redis-managed.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..." >}}
 {{< /codetab >}}
 {{< codetab >}}
-If you prefer to bring your own Redis Cache, you can reference an existing Redis Cache resource in Bicep and provide it as a resource to the Radius resource. Add the following resources to your eShop file and application:
+If you prefer to bring your own Redis Cache, you can reference an existing Redis Cache resource in Bicep and provide it as a resource to the Radius resource.
 
 {{% alert title="💡 Concept" color="info" %}}
 Here you are using a <a href="{{< ref "components-model#user-managed" >}}">user-managed Radius Component</a>, but there the resource has already been deployed to Azure. Make sure to [specify the correct scope](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/deploy-to-resource-group?tabs=azure-cli#scope-to-different-resource-group), as the default scope is the environment's resource group.
@@ -113,13 +109,13 @@ Here you are using a <a href="{{< ref "components-model#user-managed" >}}">user-
 {{< tabs "Radius-managed" "User-managed Azure" >}}
 
 {{< codetab >}}
-The mongodb.com.MongoDBComponent Radius resource will deploy an Azure CosmosDB with Mongo API in Azure environments, and a Mongo container in Kubernetes environments. Add the following resource to your eShop application:
+The mongodb.com.MongoDBComponent Radius resource will deploy an Azure CosmosDB with Mongo API in Azure environments, and a Mongo container in Kubernetes environments.
 
 {{< rad file="snippets/mongo-managed.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
 {{< /codetab >}}
 
 {{< codetab >}}
-If you prefer to bring your own Cosmos DB with Mongo API, you can reference an existing Cosmos resource in Bicep and provide it as a resource to the Radius resource. Add the following resources to your eShop file and application:
+If you prefer to bring your own Cosmos DB with Mongo API, you can reference an existing Cosmos resource in Bicep and provide it as a resource to the Radius resource.
 
 {{< rad file="snippets/mongo-azure.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
 {{< /codetab >}}
@@ -153,7 +149,7 @@ RabbitMQ is only compatible with Kubernetes environments. For Azure environments
 
 ## Next steps
 
-You now have a Bicep file which contains all the infrastructure for your eShop application. The following tempaltes include the default choices for each environment. Feel free to customize them if you want to try an alternate resource option described above.
+The following tempaltes include the default choices for each environment. Feel free to customize them if you want to try an alternate resource option described above.
 
 {{< tabs "Azure environment" "Kubernetes environment" >}}
 

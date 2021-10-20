@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Model eShop services in Radius"
-linkTitle: "Model services"
+linkTitle: "Services"
 slug: "model-services"
 description: "Learn how to model the eShop services in Radius"
 weight: 300
@@ -9,15 +9,23 @@ weight: 300
 
 ## Add parameters
 
-Add the following parameters to the top of your `eshop.bicep` file along with the other parameters you've specified, which will be used by eShop.
+The following parameters are added to the eShop file and referenced by multiple services:
 
 {{< rad file="snippets/catalog.bicep" embed=true marker="//PARAMS" replace-key-rest="//REST" replace-value-rest="..." >}}
 
-## Add catalog service
+{{% alert title="Note" color="info" %}}
+Improved gateway DNS support is in development. In the meantime, [nip.io](https://nip.io) is recommended for DNS resolution to your Cluster IP address.
+{{% /alert %}}
 
-Within your `eshop` resource, add the following [ContainerComponent]({{< ref container >}}) resource for the catalog service. Note the use of other Radius Components for connection information.
+## Catalog service
+
+Taking a closer look at a service, the catalog microservice is modeled as a [ContainerComponent]({{< ref container >}}) resource:
 
 {{< rad file="snippets/catalog.bicep" embed=true marker="//CATALOG" replace-key-provides="//PROVIDES" replace-value-provides="" >}}
+
+{{% alert title="⚠️ Connections to non-Radius resoures" color="info" %}}
+While connections to non-Radius Bicep resources are not supported today, we are actively working on supporting this feature. In the meantime you can still access parameters and keys/passwords via the [list* functions](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-resource#list).
+{{% /alert %}}
 
 ### Image
 
@@ -34,19 +42,21 @@ Within the `env` section of the container definition, note the different types o
 
 ### Ports
 
-The Catalog api service offers two ports: http and grpc. Other services can access these ports though *Routes*, which we'll cover soon.
+The Catalog API service offers two ports: http and grpc. Other services can access these ports though *Routes*, which we'll cover soon.
 
 ### Connections
 
 The Catalog service can connect to other Radius resources via the `connections` section. For Azure this will be SQL (platform-specific resources like Service Bus don't yet support connections). For Kubernetes this will be RabbitMQ and the sqlRoute.
 
-## Add an HTTP Route
+## HTTP Route
 
-Other services will communicate with the catalog service via HTTP. The catalog endpoint also needs to be accessible publicly for users to interact with. Add the following [HttpRouteComponent]({{< ref http-route >}}) resource to the `eshop` resource for other services to connect to, with a `gateway` defined to create the public endpoint:
+Other services will communicate with the catalog service via HTTP. The catalog endpoint also needs to be accessible publicly for users to interact with.
+
+An [HttpRouteComponent]({{< ref http-route >}}) resource allows other resources to connect to the `eshop` resource, and also defines a `gateway` to create the public endpoint:
 
 {{< rad file="snippets/catalog.bicep" embed=true marker="//ROUTE" replace-key-provides="//PROVIDES" replace-value-provides="provides: catalogHttp.id" >}}
 
-Update your catalog `ports` definition so the `http` port provides `catalogHTTP`:
+Catalog's `ports` definition provides `catalogHTTP`:
 
 ```sh
 http: {
@@ -55,24 +65,8 @@ http: {
 }
 ```
 
-## Add remaining services
-
-Now that you've defined the catalog service, you can add the remaining services. Download the full `eshop.bicep` template to see all the eShop services:
-
-{{< tabs Azure Kubernetes >}}
-
-{{% codetab %}}
-{{< rad file="../eshop-azure.bicep" download=true >}}
-{{% /codetab %}}
-
-{{% codetab %}}
-{{< rad file="../eshop-kubernetes.bicep" download=true >}}
-{{% /codetab %}}
-
-{{< /tabs >}}
-
 ## Next steps
 
-Now that you have the eShop infrastructure and services modeled, you can deploy eShop to a Radius environment.
+Now that we have looked at the eShop infrastructure, and how we can model its services, let's now deploy it to a Radius environment.
 
 {{< button text="Next: Deploy eShop application" page="4-deploy" >}}

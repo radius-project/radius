@@ -44,7 +44,7 @@ Adding Project Radius to the eShop on containers application will allow teams to
 - Easily manage configuration and credentials between infrastructure and services, all within the app model
 - Simplify deployment with Bicep and Azure Resource Manager (ARM)
 
-By the end of this tutorial you will be able to deploy eShop on containers with just a single command:
+By the end of this sample you will be able to deploy eShop on containers with just a single command:
 
 ```sh
 $ rad env init azure -n cloud
@@ -56,4 +56,3 @@ Deployment Complete
 ```
 
 {{< button text="Next: Model eShop infrastructure" page="2-infrastructure" >}}
-

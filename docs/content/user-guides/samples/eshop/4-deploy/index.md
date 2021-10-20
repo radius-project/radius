@@ -7,9 +7,9 @@ description: "Learn how to deploy thr eShop application to a Radius environment"
 weight: 400
 ---
 
-## Download complete Application
+## Download eShop
 
-Make sure you have downloaded the latest eShop application:
+Download the eShop template for your desired environment:
 
 {{< tabs Azure Kubernetes >}}
 {{% codetab %}}
@@ -25,6 +25,50 @@ This template uses containerized versions of SQL, Redis, RabbitMQ, and MongoDB:
 ## Initialize environment
 
 Visit the [getting started guide]({{< ref create-environment >}}) to deploy or connect to a Radius environment running the latest release.
+
+### Deploy ingress controller
+
+The eShop application requires an ingress controller to be deployed to your environment, so you can access it over the internet without port-forwarding.
+
+{{< tabs Azure Kubernetes >}}
+
+{{% codetab %}}
+An Ingress controller is configured for you by default when you initialize an environment.
+{{% /codetab %}}
+
+{{% codetab %}}
+Run the following command to initialize an Ingress controller:
+```sh
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm upgrade radius-ingress-nginx ingress-nginx/ingress-nginx --install --create-namespace --namespace radius-system --version 3.29.0 --wait
+```
+{{% /codetab %}}
+
+{{< /tabs >}}
+
+### Configure ingress controller
+
+eShop requires the nginx ingress controller to accept large headers, which are used by the identity microservice. Run the following commands to override the default ConfigMap:
+
+#### (Azure envs only) Get kubectl context
+
+```sh
+rad env merge-credentials
+```
+
+#### Edit ConfigMap
+
+```sh
+kubectl edit configmap radius-ingress-nginx-controller -n radius-system
+```
+
+Past in the following yaml at the end of the document that opens, and then save and exit:
+
+```yml
+data:
+  proxy-buffer-size: 128k
+  proxy-buffers: 4 256k
+```
 
 ### Get cluster IP
 
@@ -50,12 +94,12 @@ Using the [`rad deploy`]({{< ref rad_deploy >}}) command, deploy the eShop appli
 {{< tabs Azure Kubernetes >}}
 {{% codetab %}}
 ```sh
-$ rad deploy eshop-azure.bicep -p adminLogin=admin -p adminLoginPassword=YOUR-PASSWORD
+$ rad deploy eshop-azure.bicep -p adminPassword=CHOOSE-A-PASSWORD -p CLUSTER_IP=ip-address-you-retrieved
 ```
 {{% /codetab %}}
 {{% codetab %}}
 ```sh
-$ rad deploy eshop-kubernetes.bicep --parameters adminLogin=admin adminLoginPassword=YOUR-PASSWORD
+$ rad deploy eshop-kubernetes.bicep -p adminPassword=CHOOSE-A-PASSWORD -p CLUSTER_IP=ip-address-you-retrieved
 ```
 {{% /codetab %}}
 {{% /tabs %}}
@@ -64,15 +108,9 @@ $ rad deploy eshop-kubernetes.bicep --parameters adminLogin=admin adminLoginPass
 Azure Redis cache can ~30 minutes to deploy. You can monitor your deployment process in the `Deployments` blade of your environment's resource group.
 {{% /alert %}}
 
-## Verify app health
+## Verify app resources
 
-Once deployed, verify eshop is up and running:
-
-```sh
-rad application show -a eshop
-```
-
-Then verify the health of the application resources:
+Verify the eShop resources are deployed:
 
 ```sh
 rad resource list -a eshop
@@ -80,10 +118,8 @@ rad resource list -a eshop
 
 ## Visit eShop
 
-Now that eShop is deployed, you can visit the eShop application in your browser at the URL of your gateway:
+Now that eShop is deployed, you can visit the eShop application in your browser at `https://CLUSTER-IP.nip.io`:
 
-```sh
-rad resource show webmvc -a eshop
-```
+<img src="eshop.png" alt="Screenshot of the eShop application" width=800 >
 
-<img src="eshop.png" alt="Screenshot of the eShop application" width=1000 >
+Login and try buying an item!

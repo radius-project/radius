@@ -16,7 +16,9 @@ param APPLICATION_INSIGHTS_KEY string = ''
 param AZURESTORAGEENABLED string = 'False'
 param ENABLEDEVSPACES string = 'False'
 param TAG string = 'linux-dev'
-var PICBASEURL =  'http://${CLUSTER_IP}.nip.io/webshoppingapigw/c/api/v1/catalog/items/[0]/pic/'
+
+var CLUSTERDNS = 'http://${CLUSTER_IP}.nip.io'
+var PICBASEURL = '${CLUSTERDNS}/webshoppingapigw/c/api/v1/catalog/items/[0]/pic'
 //PARAMS
 
 resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
@@ -235,6 +237,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           kind: 'microsoft.com/SQL'
           source: sqlCatalog.id
         }
+        // Connections to non-Radius Bicep resources coming soon
       }
     }
   }

@@ -14,7 +14,7 @@ param serverName string = uniqueString('sql', resourceGroup().id)
 param location string = resourceGroup().location
 param skuName string = 'Standard'
 param skuTier string = 'Standard'
-param adminLogin string = 'SA'
+param adminLogin string = 'sqladmin'
 @secure()
 param adminPassword string
 
@@ -24,6 +24,7 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   properties: {
     administratorLogin: adminLogin
     administratorLoginPassword: adminPassword
+    publicNetworkAccess: 'Enabled'
   }
 
   resource identity 'databases' = {
@@ -214,7 +215,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           AzureStorageEnabled: AZURESTORAGEENABLED
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          ConnectionString: 'Data Source=tcp:${sqlCatalog.properties.server},1433;Initial Catalog=${sqlCatalog.properties.database};User Id=${adminLogin}@${sqlCatalog.properties.server};Password=${adminPassword};'
+          ConnectionString: 'Server=tcp:${sqlCatalog.properties.server},1433;Initial Catalog=${sqlCatalog.properties.database};User Id=${adminLogin};Password=${adminPassword};'
           EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
         }
         ports: {
@@ -271,7 +272,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           XamarinCallback: ''
           EnableDevspaces: ENABLEDEVSPACES
-          ConnectionString: 'Data Source=tcp:${sqlIdentity.properties.server},1433;Initial Catalog=${sqlIdentity.properties.database};User Id=${adminUsername}@${sqlIdentity.properties.server};Password=${adminPassword};Encrypt=true'
+          ConnectionString: 'Server=tcp:${sqlIdentity.properties.server},1433;Initial Catalog=${sqlIdentity.properties.database};User Id=${adminLogin};Password=${adminPassword};Encrypt=true'
           MvcClient: 'http://${CLUSTER_IP}${webmvcHttp.properties.gateway.path}'
           SpaClient: 'http://${CLUSTER_IP}${webspaHttp.properties.gateway.path}'
           BasketApiClient: 'http://${CLUSTER_IP}${basketHttp.properties.gateway.path}'
@@ -356,7 +357,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           PATH_BASE: '/ordering-api'
           GRPC_PORT: '81'
           PORT: '80'
-          ConnectionString: 'Data Source=tcp:${sqlOrdering.properties.server},1433;Initial Catalog=${sqlOrdering.properties.database};User Id=${adminUsername}@${sqlOrdering.properties.server};Password=${adminPassword};Encrypt=true'
+          ConnectionString: 'Server=tcp:${sqlOrdering.properties.server},1433;Initial Catalog=${sqlOrdering.properties.database};User Id=${adminLogin};Password=${adminPassword};Encrypt=true'
           EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
@@ -479,7 +480,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ASPNETCORE_URLS: 'http://0.0.0.0:80'
           OrchestratorType: OCHESTRATOR_TYPE
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          ConnectionString: 'Data Source=tcp:${sqlWebhooks.properties.server},1433;Initial Catalog=${sqlWebhooks.properties.database};User Id=${adminUsername}@${sqlWebhooks.properties.server};Password=${adminPassword};Encrypt=true'
+          ConnectionString: 'Server=tcp:${sqlWebhooks.properties.server},1433;Initial Catalog=${sqlWebhooks.properties.database};User Id=${adminLogin};Password=${adminPassword};Encrypt=true'
           EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
@@ -569,7 +570,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           'Serilog__MinimumLevel__Override__Microsoft.eShopOnContainers.BuildingBlocks.EventBusRabbitMQ': 'Verbose'
           OrchestratorType: OCHESTRATOR_TYPE
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          ConnectionString: 'Data Source=tcp:${sqlOrdering.properties.server},1433;Initial Catalog=${sqlOrdering.properties.database};User Id=${adminUsername}@${sqlOrdering.properties.server};Password=${adminPassword};Encrypt=true'
+          ConnectionString: 'Server=tcp:${sqlOrdering.properties.server},1433;Initial Catalog=${sqlOrdering.properties.database};User Id=${adminLogin};Password=${adminPassword};Encrypt=true'
           EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
         }
         ports: {
@@ -1030,21 +1031,21 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   resource sqlCatalog 'microsoft.com.SQLComponent' = {
     name: 'sql-catalog'
     properties: {
-      resource: sql::identity.id
+      resource: sql::catalog.id
     }
   }
 
   resource sqlOrdering 'microsoft.com.SQLComponent' = {
     name: 'sql-ordering'
     properties: {
-      resource: sql::identity.id
+      resource: sql::ordering.id
     }
   }
 
   resource sqlWebhooks 'microsoft.com.SQLComponent' = {
     name: 'sql-webhooks'
     properties: {
-      resource: sql::identity.id
+      resource: sql::webhooks.id
     }
   }
 
