@@ -40,18 +40,16 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 		return nil, err
 	}
 
-	var storageAccountName string
-	for _, resource := range options.Dependencies {
-		if resource.LocalID == outputresource.LocalIDAzureFileShareStorageAccount {
-			storageAccountName = resource.Properties[FileShareStorageAccountNameKey]
-		}
-	}
-
-	if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureFileShareStorageAccount]; ok {
-		storageAccountName = properties[FileShareStorageAccountNameKey]
-	}
-
 	if properties[FileShareIDKey] == "" {
+		var storageAccountName string
+		for _, resource := range options.Dependencies {
+			if resource.LocalID == outputresource.LocalIDAzureFileShareStorageAccount {
+				storageAccountName = resource.Properties[FileShareStorageAccountNameKey]
+			}
+		}
+		if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureFileShareStorageAccount]; ok {
+			storageAccountName = properties[FileShareStorageAccountNameKey]
+		}
 		fsc := clients.NewFileSharesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 		fileshare, err := fsc.Create(ctx, handler.arm.ResourceGroup, storageAccountName, properties[FileShareNameKey], storage.FileShare{}, "")
 		if err != nil {

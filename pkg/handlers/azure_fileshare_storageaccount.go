@@ -9,17 +9,19 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2021-04-01/storage"
 	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 const (
-	FileShareStorageAccountNameKey = "filesharestorageaccount"
-	FileShareStorageAccountIDKey   = "filesharestorageaccountid"
+	FileShareStorageAccountNameKey       = "filesharestorageaccount"
+	FileShareStorageAccountIDKey         = "filesharestorageaccountid"
+	AzureFileShareStorageAccountBaseName = "azurestorageaccount"
 )
 
 func NewAzureFileShareStorageAccountHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -41,14 +43,32 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 
 	var account *storage.Account
 	if properties[FileShareStorageAccountIDKey] == "" {
-		generated, err := generateStorageAccountName(ctx, handler.arm, properties[ResourceName])
-		if err != nil {
-			return nil, err
+		accountName, ok := properties[ResourceName]
+		var err error
+		if !ok {
+			accountName, err = generateUniqueAzureResourceName(ctx, properties[AzureFileShareStorageAccountBaseName], func(name string) error {
+				ac := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+				checkNameParams := storage.AccountCheckNameAvailabilityParameters{
+					Name: to.StringPtr(name),
+					Type: to.StringPtr(azresources.StorageStorageAccounts),
+				}
+
+				checkNameResult, err := ac.CheckNameAvailability(ctx, checkNameParams)
+				if err != nil {
+					return err
+				}
+
+				if checkNameResult.StatusCode != 200 {
+					return fmt.Errorf("name not available with status code: %v", checkNameResult.StatusCode)
+				}
+				return nil
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		name := *generated
-
-		account, err = handler.CreateStorageAccount(ctx, name, *options)
+		account, err = createStorageAccount(ctx, handler.arm, accountName, *options)
 		if err != nil {
 			return nil, err
 		}
@@ -73,40 +93,6 @@ func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, 
 	}
 
 	return deleteStorageAccount(ctx, handler.arm, properties[FileShareStorageAccountNameKey])
-}
-
-func (handler *azureFileShareStorageAccountHandler) CreateStorageAccount(ctx context.Context, accountName string, options PutOptions) (*storage.Account, error) {
-	location, err := clients.GetResourceGroupLocation(ctx, handler.arm)
-	if err != nil {
-		return nil, err
-	}
-
-	sc := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
-
-	future, err := sc.Create(ctx, handler.arm.ResourceGroup, accountName, storage.AccountCreateParameters{
-		Location: location,
-		Tags:     keys.MakeTagsForRadiusResource(options.ApplicationName, options.ResourceName),
-		Kind:     storage.KindStorageV2,
-		Sku: &storage.Sku{
-			Name: storage.SkuNameStandardLRS,
-		},
-		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create/update storage account: %w", err)
-	}
-
-	err = future.WaitForCompletionRef(ctx, sc.Client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create/update storage account: %w", err)
-	}
-
-	account, err := future.Result(sc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create/update storage account: %w", err)
-	}
-
-	return &account, nil
 }
 
 func NewAzureFileShareStorageAccountHealthHandler(arm armauth.ArmConfig) HealthHandler {
