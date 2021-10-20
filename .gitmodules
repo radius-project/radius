@@ -3,4 +3,4 @@
 	url = https://github.com/google/docsy.git
 [submodule "third_party/kcp"]
 	path = third_party/kcp
-	url = git@github.com:kcp-dev/kcp.git
+	url = https://github.com/kcp-dev/kcp.git
