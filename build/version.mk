@@ -12,7 +12,7 @@ GIT_VERSION = $(shell git describe --always --abbrev=7 --dirty --tags)
 # as a telemetry key in the generated API client.
 #
 # It has the format major.minor.patch-beta.N.
-AUTOREST_MODULE_VERSION = $(shell git describe --always --abbrev=0 --tags | sed "s/^v//")
+AUTOREST_MODULE_VERSION = 0.6.0
 
 REL_VERSION ?= edge
 REL_CHANNEL ?= edge
