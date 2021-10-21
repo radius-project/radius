@@ -92,7 +92,6 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           XamarinCallback: ''
           EnableDevspaces: ENABLEDEVSPACES
           ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=IdentityDb;User Id=${adminLogin};Password=${adminPassword};'
-          //Server=sql-data;Initial Catalog=IdentityDb;User Id=sa;Password=Pass@word;
           MvcClient: '${CLUSTERDNS}${webmvcHttp.properties.gateway.path}'
           SpaClient: CLUSTERDNS
           BasketApiClient: '${CLUSTERDNS}${basketHttp.properties.gateway.path}'
