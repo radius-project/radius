@@ -64,7 +64,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups="apps",resources=statefulsets,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="dapr.io",resources=components,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;watch;list;create;update;patch;delete
-//+kubebuilder:rbac:groups="networking.x-k8s.io",resources=gateways;gatewayclasses;httproutes,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.x-k8s.io",resources=gateways,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.x-k8s.io",resources=gatewayclasses,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.x-k8s.io",resources=httproutes,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/finalizers,verbs=update

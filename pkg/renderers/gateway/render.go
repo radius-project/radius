@@ -63,7 +63,8 @@ func (r *Renderer) makeGateway(resource renderers.RendererResource, gateway Gate
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: gatewayv1alpha1.GatewaySpec{
-			Listeners: listeners,
+			GatewayClassName: "foo", // for some reason this is required.
+			Listeners:        listeners,
 		},
 	}
 

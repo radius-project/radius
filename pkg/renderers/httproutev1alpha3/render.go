@@ -61,6 +61,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		// If not source specified, create an ingress by default.
 		gatewayId := route.Gateway.Source
 		if gatewayId != "" {
+			// TODO: dependency doesn't have ingress here
 			existingIngress := dependencies[gatewayId]
 			ingress := r.makeIngressRule(resource, route, existingIngress)
 			outputs = append(outputs, ingress)

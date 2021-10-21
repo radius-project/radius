@@ -876,14 +876,69 @@
           "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
           "type": "string"
         },
-        "path": {
-          "description": "Specifies the path to match on from the incoming request. Use '/' to match on all paths.",
-          "type": "string"
+        "rules": {
+          "additionalProperties": {
+            "$ref": "#/definitions/HttpRouteGatewayRule"
+          },
+          "type": "object"
+        },
+        "source": {
+          "description": "The gateway which this route is part of."
         }
       },
       "required": [
         "hostname"
       ],
+      "type": "object"
+    },
+    "HttpRouteGatewayHeader": {
+      "additionalProperties": false,
+      "description": "",
+      "properties": {
+        "type": {
+          "description": "Specifies the type of matching for headers.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "HttpRouteGatewayPath": {
+      "additionalProperties": false,
+      "description": "",
+      "properties": {
+        "type": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "HttpRouteGatewayRule": {
+      "additionalProperties": false,
+      "description": "",
+      "properties": {
+        "headers": {
+          "items": {
+            "$ref": "#/definitions/HttpRouteGatewayHeader"
+          },
+          "type": "array"
+        },
+        "method": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/definitions/HttpRouteGatewayPath"
+        }
+      },
       "type": "object"
     },
     "HttpRouteList": {

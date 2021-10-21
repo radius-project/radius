@@ -1170,8 +1170,53 @@ type HTTPRouteGateway struct {
 	// REQUIRED; Specifies the public hostname for the route. Use '*' to listen on all hostnames.
 	Hostname *string `json:"hostname,omitempty"`
 
-	// Specifies the path to match on from the incoming request. Use '/' to match on all paths.
-	Path *string `json:"path,omitempty"`
+	// Dictionary of
+	Rules map[string]*HTTPRouteGatewayRule `json:"rules,omitempty"`
+
+	// The gateway which this route is part of.
+	Source interface{} `json:"source,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteGateway.
+func (h HTTPRouteGateway) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "hostname", h.Hostname)
+	populate(objectMap, "rules", h.Rules)
+	populate(objectMap, "source", h.Source)
+	return json.Marshal(objectMap)
+}
+
+type HTTPRouteGatewayHeader struct {
+	// Specifies the type of matching for headers.
+	Type *string `json:"type,omitempty"`
+
+	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
+	Value *string `json:"value,omitempty"`
+}
+
+type HTTPRouteGatewayPath struct {
+	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
+	Type *string `json:"type,omitempty"`
+
+	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
+	Value *string `json:"value,omitempty"`
+}
+
+type HTTPRouteGatewayRule struct {
+	Headers []*HTTPRouteGatewayHeader `json:"headers,omitempty"`
+
+	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
+	Method *string `json:"method,omitempty"`
+	Path *HTTPRouteGatewayPath `json:"path,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteGatewayRule.
+func (h HTTPRouteGatewayRule) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "headers", h.Headers)
+	populate(objectMap, "method", h.Method)
+	populate(objectMap, "path", h.Path)
+	return json.Marshal(objectMap)
 }
 
 // HTTPRouteGetOptions contains the optional parameters for the HTTPRoute.Get method.

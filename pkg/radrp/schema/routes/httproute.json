@@ -54,12 +54,67 @@
         "hostname"
       ],
       "properties": {
+        "source": {
+          "description": "The gateway which this route is part of."
+        },
         "hostname": {
           "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
           "type": "string"
         },
+        "rules": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/HttpRouteGatewayRule"
+          }
+        }
+      }
+    },
+    "HttpRouteGatewayRule": {
+      "description": "",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
         "path": {
-          "description": "Specifies the path to match on from the incoming request. Use '/' to match on all paths.",
+          "$ref": "#/definitions/HttpRouteGatewayPath"
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HttpRouteGatewayHeader"
+          }
+        },
+        "method": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        }
+      }
+    },
+    "HttpRouteGatewayPath": {
+      "description": "",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        }
+      }
+    },
+    "HttpRouteGatewayHeader": {
+      "description": "",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "description": "Specifies the type of matching for headers.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
           "type": "string"
         }
       }
