@@ -10,7 +10,7 @@ package radclient
 
 const (
 	module = "radclient"
-	version = "v0.6.0"
+	version = "v0.0.1"
 )
 
 // ActionType - Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
