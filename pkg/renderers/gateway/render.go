@@ -8,13 +8,13 @@ package gateway
 import (
 	"context"
 
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 type Renderer struct {
@@ -32,12 +32,10 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return renderers.RendererOutput{}, err
 	}
 
-	computedValues := map[string]renderers.ComputedValueReference{}
+	computedValues := map[string]renderers.ComputedValueReference{} // TODO add computed values
 
 	outputs := []outputresource.OutputResource{}
-	// TODO can't specify listener here as ingress doesn't allow you to specify port to listen on, should we just remove?
-	ingress := r.makeIngress(resource, gateway)
-	outputs = append(outputs, ingress)
+	outputs = append(outputs, r.makeGateway(resource, gateway))
 
 	return renderers.RendererOutput{
 		Resources:      outputs,
@@ -45,21 +43,29 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	}, nil
 }
 
-func (r *Renderer) makeIngress(resource renderers.RendererResource, gateway Gateway) outputresource.OutputResource {
-	ingress := &networkingv1.Ingress{
+func (r *Renderer) makeGateway(resource renderers.RendererResource, gateway Gateway) outputresource.OutputResource {
+	var listeners []gatewayv1alpha1.Listener
+	for _, listener := range gateway.Listeners {
+		listeners = append(listeners, gatewayv1alpha1.Listener{
+			Port:     gatewayv1alpha1.PortNumber(*listener.Port),
+			Protocol: gatewayv1alpha1.ProtocolType(listener.Protocol),
+		})
+	}
+
+	gate := &gatewayv1alpha1.Gateway{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Ingress",
-			APIVersion: networkingv1.SchemeGroupVersion.String(),
+			Kind:       "Gateway",
+			APIVersion: gatewayv1alpha1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Namespace: resource.ApplicationName,
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
-	}
-	ingress.Spec = networkingv1.IngressSpec{
-		DefaultBackend: &networkingv1.IngressBackend{},
+		Spec: gatewayv1alpha1.GatewaySpec{
+			Listeners: listeners,
+		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
+	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDGateway, gate, gate.ObjectMeta)
 }

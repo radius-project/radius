@@ -112,6 +112,20 @@ rules:
   - update
   - watch
 - apiGroups:
+  - networking.x-k8s.io
+  resources:
+  - gatewayclasses
+  - gateways
+  - httproutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - radius.dev
   resources:
   - applications
