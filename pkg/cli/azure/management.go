@@ -12,14 +12,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/clients"
 )
 
 type ARMManagementClient struct {
-	Connection      *armcore.Connection
+	Connection      *arm.Connection
 	ResourceGroup   string
 	SubscriptionID  string
 	EnvironmentName string
@@ -38,7 +38,7 @@ func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context
 		}
 		return nil, err
 	}
-	return response.RadiusResourceList, err
+	return &response.RadiusResourceList, err
 }
 
 func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient.ApplicationList, error) {
@@ -51,7 +51,7 @@ func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient
 		}
 		return nil, err
 	}
-	return response.ApplicationList, nil
+	return &response.ApplicationList, nil
 }
 
 func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error) {
@@ -64,7 +64,7 @@ func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationN
 		}
 		return nil, err
 	}
-	return response.ApplicationResource, err
+	return &response.ApplicationResource, err
 }
 
 func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName string) error {

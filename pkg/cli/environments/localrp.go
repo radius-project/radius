@@ -8,7 +8,7 @@ package environments
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/radius/pkg/azure/aks"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/azure"
@@ -59,7 +59,7 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	azcred := &radclient.AnonymousCredential{}
-	connection := armcore.NewConnection(e.URL, azcred, nil)
+	connection := arm.NewConnection(e.URL, azcred, nil)
 
 	return &localrp.LocalRPDeploymentClient{
 		Authorizer:     nil,
@@ -89,7 +89,7 @@ func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clien
 
 func (e *LocalRPEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
 	azcred := &radclient.AnonymousCredential{}
-	con := armcore.NewConnection(e.URL, azcred, nil)
+	con := arm.NewConnection(e.URL, azcred, nil)
 
 	return &azure.ARMManagementClient{
 		Connection:      con,

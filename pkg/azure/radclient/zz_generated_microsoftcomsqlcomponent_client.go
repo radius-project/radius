@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // MicrosoftComSQLComponentClient contains the methods for the MicrosoftComSQLComponent group.
 // Don't use this type directly, use NewMicrosoftComSQLComponentClient() instead.
 type MicrosoftComSQLComponentClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewMicrosoftComSQLComponentClient creates a new instance of MicrosoftComSQLComponentClient with the specified values.
-func NewMicrosoftComSQLComponentClient(con *armcore.Connection, subscriptionID string) *MicrosoftComSQLComponentClient {
-	return &MicrosoftComSQLComponentClient{con: con, subscriptionID: subscriptionID}
+func NewMicrosoftComSQLComponentClient(con *arm.Connection, subscriptionID string) *MicrosoftComSQLComponentClient {
+	return &MicrosoftComSQLComponentClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a microsoft.com.SQLComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MicrosoftComSQLComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, parameters MicrosoftSQLComponentResource, options *MicrosoftComSQLComponentBeginCreateOrUpdateOptions) (MicrosoftSQLComponentResourcePollerResponse, error) {
+func (client *MicrosoftComSQLComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, parameters MicrosoftSQLComponentResource, options *MicrosoftComSQLComponentBeginCreateOrUpdateOptions) (MicrosoftComSQLComponentCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, microsoftSQLComponentName, parameters, options)
 	if err != nil {
-		return MicrosoftSQLComponentResourcePollerResponse{}, err
+		return MicrosoftComSQLComponentCreateOrUpdatePollerResponse{}, err
 	}
-	result := MicrosoftSQLComponentResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("MicrosoftComSQLComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return MicrosoftSQLComponentResourcePollerResponse{}, err
-	}
-	poller := &microsoftSQLComponentResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (MicrosoftSQLComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new MicrosoftSQLComponentResourcePoller from the specified resume token.
-// token - The value must come from a previous call to MicrosoftSQLComponentResourcePoller.ResumeToken().
-func (client *MicrosoftComSQLComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (MicrosoftSQLComponentResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("MicrosoftComSQLComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return MicrosoftSQLComponentResourcePollerResponse{}, err
-	}
-	poller := &microsoftSQLComponentResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return MicrosoftSQLComponentResourcePollerResponse{}, err
-	}
-	result := MicrosoftSQLComponentResourcePollerResponse{
+	result := MicrosoftComSQLComponentCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (MicrosoftSQLComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("MicrosoftComSQLComponentClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return MicrosoftComSQLComponentCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &MicrosoftComSQLComponentCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a microsoft.com.SQLComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MicrosoftComSQLComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, parameters MicrosoftSQLComponentResource, options *MicrosoftComSQLComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *MicrosoftComSQLComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, parameters MicrosoftSQLComponentResource, options *MicrosoftComSQLComponentBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, microsoftSQLComponentName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *MicrosoftComSQLComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, parameters MicrosoftSQLComponentResource, options *MicrosoftComSQLComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *MicrosoftComSQLComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, parameters MicrosoftSQLComponentResource, options *MicrosoftComSQLComponentBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLComponent/{microsoftSQLComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -115,98 +90,69 @@ func (client *MicrosoftComSQLComponentClient) createOrUpdateCreateRequest(ctx co
 		return nil, errors.New("parameter microsoftSQLComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{microsoftSQLComponentName}", url.PathEscape(microsoftSQLComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *MicrosoftComSQLComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *MicrosoftComSQLComponentClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a microsoft.com.SQLComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MicrosoftComSQLComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *MicrosoftComSQLComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentBeginDeleteOptions) (MicrosoftComSQLComponentDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, microsoftSQLComponentName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return MicrosoftComSQLComponentDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("MicrosoftComSQLComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *MicrosoftComSQLComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("MicrosoftComSQLComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := MicrosoftComSQLComponentDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("MicrosoftComSQLComponentClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return MicrosoftComSQLComponentDeletePollerResponse{}, err
+	}
+	result.Poller = &MicrosoftComSQLComponentDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a microsoft.com.SQLComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MicrosoftComSQLComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentBeginDeleteOptions) (*azcore.Response, error) {
+func (client *MicrosoftComSQLComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, microsoftSQLComponentName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *MicrosoftComSQLComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentBeginDeleteOptions) (*azcore.Request, error) {
+func (client *MicrosoftComSQLComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLComponent/{microsoftSQLComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -224,50 +170,49 @@ func (client *MicrosoftComSQLComponentClient) deleteCreateRequest(ctx context.Co
 		return nil, errors.New("parameter microsoftSQLComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{microsoftSQLComponentName}", url.PathEscape(microsoftSQLComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *MicrosoftComSQLComponentClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *MicrosoftComSQLComponentClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a microsoft.com.SQLComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MicrosoftComSQLComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentGetOptions) (MicrosoftSQLComponentResourceResponse, error) {
+func (client *MicrosoftComSQLComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentGetOptions) (MicrosoftComSQLComponentGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, microsoftSQLComponentName, options)
 	if err != nil {
-		return MicrosoftSQLComponentResourceResponse{}, err
+		return MicrosoftComSQLComponentGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return MicrosoftSQLComponentResourceResponse{}, err
+		return MicrosoftComSQLComponentGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return MicrosoftSQLComponentResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return MicrosoftComSQLComponentGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *MicrosoftComSQLComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentGetOptions) (*azcore.Request, error) {
+func (client *MicrosoftComSQLComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLComponentName string, options *MicrosoftComSQLComponentGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLComponent/{microsoftSQLComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -285,59 +230,58 @@ func (client *MicrosoftComSQLComponentClient) getCreateRequest(ctx context.Conte
 		return nil, errors.New("parameter microsoftSQLComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{microsoftSQLComponentName}", url.PathEscape(microsoftSQLComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *MicrosoftComSQLComponentClient) getHandleResponse(resp *azcore.Response) (MicrosoftSQLComponentResourceResponse, error) {
-	var val *MicrosoftSQLComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return MicrosoftSQLComponentResourceResponse{}, err
+func (client *MicrosoftComSQLComponentClient) getHandleResponse(resp *http.Response) (MicrosoftComSQLComponentGetResponse, error) {
+	result := MicrosoftComSQLComponentGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.MicrosoftSQLComponentResource); err != nil {
+		return MicrosoftComSQLComponentGetResponse{}, err
 	}
-return MicrosoftSQLComponentResourceResponse{RawResponse: resp.Response, MicrosoftSQLComponentResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *MicrosoftComSQLComponentClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *MicrosoftComSQLComponentClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the microsoft.com.SQLComponent resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MicrosoftComSQLComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *MicrosoftComSQLComponentListOptions) (MicrosoftSQLComponentListResponse, error) {
+func (client *MicrosoftComSQLComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *MicrosoftComSQLComponentListOptions) (MicrosoftComSQLComponentListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return MicrosoftSQLComponentListResponse{}, err
+		return MicrosoftComSQLComponentListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return MicrosoftSQLComponentListResponse{}, err
+		return MicrosoftComSQLComponentListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return MicrosoftSQLComponentListResponse{}, client.listHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return MicrosoftComSQLComponentListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *MicrosoftComSQLComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *MicrosoftComSQLComponentListOptions) (*azcore.Request, error) {
+func (client *MicrosoftComSQLComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *MicrosoftComSQLComponentListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -351,37 +295,36 @@ func (client *MicrosoftComSQLComponentClient) listCreateRequest(ctx context.Cont
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *MicrosoftComSQLComponentClient) listHandleResponse(resp *azcore.Response) (MicrosoftSQLComponentListResponse, error) {
-	var val *MicrosoftSQLComponentList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return MicrosoftSQLComponentListResponse{}, err
+func (client *MicrosoftComSQLComponentClient) listHandleResponse(resp *http.Response) (MicrosoftComSQLComponentListResponse, error) {
+	result := MicrosoftComSQLComponentListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.MicrosoftSQLComponentList); err != nil {
+		return MicrosoftComSQLComponentListResponse{}, err
 	}
-return MicrosoftSQLComponentListResponse{RawResponse: resp.Response, MicrosoftSQLComponentList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *MicrosoftComSQLComponentClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *MicrosoftComSQLComponentClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
