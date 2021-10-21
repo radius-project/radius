@@ -22,6 +22,11 @@ const SemanticVersionRegex = `(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|
 // Run rad-bicep with the given args and return the stdout. The stderr
 // is not capture but instead redirected to that of the current process.
 func runBicep(args ...string) (string, error) {
+
+	if installed, _ := IsBicepInstalled(); !installed {
+		return "", fmt.Errorf("rad-bicep not installed, run \"rad bicep download\" to install")
+	}
+
 	binPath, err := GetLocalBicepFilepath()
 	if err != nil {
 		return "", fmt.Errorf("failed to find rad-bicep: %w", err)

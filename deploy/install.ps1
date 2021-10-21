@@ -93,4 +93,13 @@ else {
 }
 
 Write-Output "`r`nRadius CLI is installed successfully."
+
+Write-Output "Installing rad-bicep (""rad bicep download"")..."
+$cmd = (Start-Process -NoNewWindow -FilePath $RadiusCliFilePath -ArgumentList "bicep download" -PassThru -Wait)
+if ($cmd.ExitCode -ne 0) {
+    Write-Warning "`r`nFailed to install rad-cli"
+} else {
+    Write-Output "`r`nrad-bicep installed successfully"
+}
+
 Write-Output "To get started with Radius, please visit https://docs.radapp.dev/getting-started/."

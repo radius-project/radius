@@ -134,13 +134,12 @@ func GetLocalBicepFilepath() (string, error) {
 }
 
 func getBicepFilename() (string, error) {
-	if runtime.GOOS == "darwin" {
+	switch runtime.GOOS {
+	case "darwin", "linux":
 		return "rad-bicep", nil
-	} else if runtime.GOOS == "linux" {
-		return "rad-bicep", nil
-	} else if runtime.GOOS == "windows" {
+	case "windows":
 		return "rad-bicep.exe", nil
-	} else {
+	default:
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 }
