@@ -53,19 +53,6 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   }
 }
 
-
-resource redisCache 'Microsoft.Cache/redis@2020-06-01' existing = {
-  name: 'eshop'
-}
-
-resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-06-15' existing = {
-  name: 'eshop'
-
-  resource db 'mongodbDatabases' existing = {
-    name: 'db'
-  }
-}
-
 resource servicebus 'Microsoft.ServiceBus/namespaces@2021-06-01-preview' = {
   name: 'eshop${uniqueString(resourceGroup().id)}'
   location: resourceGroup().location
@@ -228,10 +215,17 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource redis 'redislabs.com.RedisComponent' = {
-    name: 'redis'
+  resource redisKeystore 'redislabs.com.RedisComponent' = {
+    name: 'redis-keystore'
     properties: {
-      resource: redisCache.id
+      managed: true
+    }
+  }
+
+  resource redisBasket 'redislabs.com.RedisComponent' = {
+    name: 'redis-basket'
+    properties: {
+      managed: true
     }
   }
 

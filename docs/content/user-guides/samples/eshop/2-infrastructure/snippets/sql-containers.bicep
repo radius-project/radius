@@ -25,5 +25,8 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource sqlRoute 'HttpRoute' = {
     name: 'sql-route'
+    properties: {
+      port: 1433
+    }
   }
 }

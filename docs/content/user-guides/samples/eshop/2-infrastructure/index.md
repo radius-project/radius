@@ -20,7 +20,7 @@ The primary resource in eShop is the [Radius Application resource]({{< ref appli
 The first resources to model are the infrastructure resources:
 
 - SQL databases
-- Redis cache
+- Redis caches
 - Message bus, either Azure Service Bus or RabbitMQ
 - MongoDB, either Azure Cosmos DB or MongoDB container
 
@@ -35,7 +35,7 @@ Azure SQL databases are compatible with Azure environments only. For Kubernetes 
 <br /><br />
 Update your eshop.bicep file with:
 <ul>
-<li><b>1 Azure SQL server resource</b> - the parent "container" resource which will deploy an Azure SQL server in your Azure resource group.</li>
+<li><b>1 Azure SQL server resource</b> - the parent "container" resource which will deploy an [Azure SQL server](https://docs.microsoft.com/en-us/azure/azure-sql/database/logical-servers) in your Azure resource group.</li>
 <li><b>4 SQL database resources</b> - the child resources which eShop services will connect to.</li>
 <li><b>4 SQL Radius resources</b> - What your containers will connect to and get connection details from.</li>
 </ul>
@@ -79,7 +79,7 @@ Here you are manually defining a ContainerComponent which will provide a SQL dat
 
 {{< /tabs >}}
 
-### Redis cache
+### Redis caches
 
 {{< tabs "Radius-managed" "User-managed Azure" >}}
 
@@ -87,16 +87,16 @@ Here you are manually defining a ContainerComponent which will provide a SQL dat
 The redislabs.com.RedisComponent Radius resource will deploy an Azure Redis Cache in Azure environments, and a Redis container in Kubernetes environments.
 
 {{% alert title="💡 Concept" color="info" %}}
-Here you are defining a <a href="{{< ref "components-model#radius-managed" >}}">Radius-managed Redis Component</a>, where Radius manages the deployment and deletion of the resource as part of the Application.
+Here you are defining two <a href="{{< ref "components-model#radius-managed" >}}">Radius-managed Redis Components</a>, where Radius manages the deployment and deletion of the resources as part of the Application.
 {{% /alert %}}
 
 {{< rad file="snippets/redis-managed.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..." >}}
 {{< /codetab >}}
 {{< codetab >}}
-If you prefer to bring your own Redis Cache, you can reference an existing Redis Cache resource in Bicep and provide it as a resource to the Radius resource.
+If you prefer to bring your own Redis Caches, you can reference existing Redis Cache resources in Bicep and provide them as a source to the Radius resources.
 
 {{% alert title="💡 Concept" color="info" %}}
-Here you are using a <a href="{{< ref "components-model#user-managed" >}}">user-managed Radius Component</a>, but there the resource has already been deployed to Azure. Make sure to [specify the correct scope](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/deploy-to-resource-group?tabs=azure-cli#scope-to-different-resource-group), as the default scope is the environment's resource group.
+Here you are using <a href="{{< ref "components-model#user-managed" >}}">user-managed Radius Components</a> where the resources have already been deployed to Azure. Make sure to [specify the correct scope](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/deploy-to-resource-group?tabs=azure-cli#scope-to-different-resource-group), as the default scope is the environment's resource group.
 {{% /alert %}}
 
 {{< rad file="snippets/redis-azure.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
@@ -149,7 +149,7 @@ RabbitMQ is only compatible with Kubernetes environments. For Azure environments
 
 ## Next steps
 
-The following tempaltes include the default choices for each environment. Feel free to customize them if you want to try an alternate resource option described above.
+The following templates include the default choices for each environment. Feel free to customize them if you want to try an alternate resource option described above.
 
 {{< tabs "Azure environment" "Kubernetes environment" >}}
 

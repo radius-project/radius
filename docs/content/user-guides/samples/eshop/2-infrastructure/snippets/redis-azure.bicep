@@ -1,8 +1,12 @@
 //REST
 //REST
 
-resource redisCache 'Microsoft.Cache/redis@2020-06-01' existing = {
-  name: 'eshop'
+resource redisCacheKeystore 'Microsoft.Cache/redis@2020-06-01' existing = {
+  name: 'eshop-keystore'
+}
+
+resource redisCacheBasket 'Microsoft.Cache/redis@2020-06-01' existing = {
+  name: 'eshop-basket'
 }
 
 resource eshop 'radius.dev/Application@v1alpha3' = {
@@ -11,10 +15,17 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   //REST
   //REST
 
-  resource redis 'redislabs.com.RedisComponent' = {
-    name: 'redis'
+  resource redisKeystore 'redislabs.com.RedisComponent' = {
+    name: 'redis-keystore'
     properties: {
-      resource: redisCache.id
+      resource: redisCacheKeystore.id
+    }
+  }
+
+  resource redisBasket 'redislabs.com.RedisComponent' = {
+    name: 'redis-basket'
+    properties: {
+      resource: redisCacheBasket.id
     }
   }
 

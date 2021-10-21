@@ -27,15 +27,22 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   resource sqlRoute 'HttpRoute' = {
     name: 'sql-route'
-    properties:{
-      
+    properties: {
+      port: 1433
     }
   }
 
-  resource redis 'redislabs.com.RedisComponent' = {
-    name: 'redis'
+  resource redisKeystore 'redislabs.com.RedisComponent' = {
+    name: 'redis-keystore'
     properties: {
-      resource: redisCache.id
+      managed: true
+    }
+  }
+
+  resource redisBasket 'redislabs.com.RedisComponent' = {
+    name: 'redis-basket'
+    properties: {
+      managed: true
     }
   }
 
