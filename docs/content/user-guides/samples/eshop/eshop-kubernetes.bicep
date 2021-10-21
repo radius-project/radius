@@ -87,7 +87,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ASPNETCORE_URLS: 'http://0.0.0.0:80'
           OrchestratorType: 'K8S'
           IsClusterEnv: 'True' 
-          DPConnectionString: '${redis.properties.host}'
+          DPConnectionString: '${redisKeystore.properties.host}'
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           XamarinCallback: ''
           EnableDevspaces: ENABLEDEVSPACES
@@ -110,6 +110,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       }
       traits: []
       connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redisKeystore.id
+        }
         sql: {
           kind: 'Http'
           source: sqlRoute.id
@@ -245,7 +249,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           PORT: '80'
           GRPC_PORT: '81'
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          ConnectionString: '${redis.properties.host}:${redis.properties.port}'
+          ConnectionString: '${redisBasket.properties.host}:${redisBasket.properties.port}'
           EventBusConnection: 'eshop-rabbitmq'
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
@@ -265,7 +269,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       connections: {
         redis: {
           kind: 'redislabs.com/Redis'
-          source: redis.id
+          source: redisBasket.id
         }
         servicebus: {
           kind: 'rabbitmq.com/MessageQueue'
@@ -564,7 +568,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           IsClusterEnv: 'True'
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
           EventBusConnection: 'eshop-rabbitmq'
-          SignalrStoreConnectionString: '${redis.properties.host}'
+          SignalrStoreConnectionString: '${redisKeystore.properties.host}'
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
         }
@@ -577,6 +581,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       }
       traits: []
       connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redisKeystore.id
+        }
         servicebus: {
           kind: 'rabbitmq.com/MessageQueue'
           source: rabbitmq.id
@@ -729,7 +737,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           OrchestratorType: OCHESTRATOR_TYPE
           IsClusterEnv: 'True'
           CallBackUrl: '${CLUSTERDNS}/'
-          DPConnectionString: '${redis.properties.host}'
+          DPConnectionString: '${redisKeystore.properties.host}'
           IdentityUrl: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
           IdentityUrlHC: '${identityHttp.properties.url}/hc'
           PurchaseUrl: '${CLUSTERDNS}${webshoppingapigwHttp.properties.gateway.path}'
@@ -744,6 +752,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       }
       traits: []
       connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redisKeystore.id
+        }
         webshoppingagg: {
           kind: 'Http'
           source: webshoppingaggHttp.id
@@ -786,7 +798,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ASPNETCORE_URLS: 'http://0.0.0.0:80'
           PATH_BASE: '/webmvc'
           UseCustomizationData: 'False'
-          DPConnectionString: '${redis.properties.host}'
+          DPConnectionString: '${redisKeystore.properties.host}'
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           UseLoadTest: 'False'
           OrchestratorType: OCHESTRATOR_TYPE
@@ -807,6 +819,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       }
       traits: []
       connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redisKeystore.id
+        }
         webshoppingagg: {
           kind: 'Http'
           source: webshoppingaggHttp.id
@@ -896,8 +912,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource redis 'redislabs.com.RedisComponent' = {
-    name: 'redis'
+  resource redisKeystore 'redislabs.com.RedisComponent' = {
+    name: 'redis-keystore'
+    properties: {
+      managed: true
+    }
+  }
+
+  resource redisBasket 'redislabs.com.RedisComponent' = {
+    name: 'redis-basket'
     properties: {
       managed: true
     }

@@ -264,7 +264,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ASPNETCORE_URLS: 'http://0.0.0.0:80'
           OrchestratorType: OCHESTRATOR_TYPE
           IsClusterEnv: 'True'
-          DPConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
+          DPConnectionString: '${redisKeystore.properties.host}:${redisKeystore.properties.port},password=${redisKeystore.password()},ssl=True,abortConnect=False'
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           XamarinCallback: ''
           EnableDevspaces: ENABLEDEVSPACES
@@ -286,6 +286,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       }
       traits: []
       connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redisKeystore.id
+        }
         sql: {
           kind: 'microsoft.com/SQL'
           source: sqlIdentity.id
@@ -406,7 +410,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     name: 'basket-api'
     properties: {
       container: {
-        image: 'eshop/basket.api:${TAG}'
+        image: 'radius.azurecr.io/eshop-basket:linux-latest'
         env: {
           ASPNETCORE_ENVIRONMENT: 'Development'
           ASPNETCORE_URLS: 'http://0.0.0.0:80'
@@ -417,7 +421,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           PORT: '80'
           GRPC_PORT: '81'
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
-          ConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
+          ConnectionString: '${redisBasket.properties.host}:${redisBasket.properties.port},password=${redisBasket.password()},ssl=True,abortConnect=False,sslprotocols=tls12'
           EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
           identityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
@@ -437,7 +441,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       connections: {
         redis: {
           kind: 'redislabs.com/Redis'
-          source: redis.id
+          source: redisBasket.id
         }
         identity: {
           kind: 'Http'
@@ -716,7 +720,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           IsClusterEnv: 'True'
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
           EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryConnectionString
-          SignalrStoreConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
+          SignalrStoreConnectionString: '${redisKeystore.properties.host}:${redisKeystore.properties.port},password=${redisKeystore.password()},ssl=True,abortConnect=False'
           IdentityUrl: identityHttp.properties.url
           IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
         }
@@ -729,6 +733,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       }
       traits: []
       connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redisKeystore.id
+        }
         identity: {
           kind: 'Http'
           source: identityHttp.id
@@ -877,7 +885,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           OrchestratorType: OCHESTRATOR_TYPE
           IsClusterEnv: 'True'
           CallBackUrl: '${CLUSTERDNS}/'
-          DPConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
+          DPConnectionString: '${redisKeystore.properties.host}:${redisKeystore.properties.port},password=${redisKeystore.password()},ssl=True,abortConnect=False'
           IdentityUrl: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
           IdentityUrlHC: '${identityHttp.properties.url}/hc'
           PurchaseUrl: '${CLUSTERDNS}${webshoppingapigwHttp.properties.gateway.path}'
@@ -892,6 +900,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       }
       traits: []
       connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redisKeystore.id
+        }
         webshoppingagg: {
           kind: 'Http'
           source: webshoppingaggHttp.id
@@ -936,7 +948,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           UseCustomizationData: 'False'
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           UseLoadTest: 'False'
-          DPConnectionString: '${redis.properties.host}:${redis.properties.port},password=${redis.password()},ssl=True,abortConnect=False'
+          DPConnectionString: '${redisKeystore.properties.host}:${redisKeystore.properties.port},password=${redisKeystore.password()},ssl=True,abortConnect=False'
           OrchestratorType: OCHESTRATOR_TYPE
           IsClusterEnv: 'True'
           CallBackUrl: '${CLUSTERDNS}${webmvcHttp.properties.gateway.path}'
@@ -955,6 +967,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
       }
       traits: []
       connections: {
+        redis: {
+          kind: 'redislabs.com/Redis'
+          source: redisKeystore.id
+        }
         webshoppingagg: {
           kind: 'Http'
           source: webshoppingaggHttp.id
@@ -1045,8 +1061,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource redis 'redislabs.com.RedisComponent' = {
-    name: 'redis'
+  resource redisBasket 'redislabs.com.RedisComponent' = {
+    name: 'basket-data'
+    properties: {
+      managed: true
+    }
+  }
+
+  resource redisKeystore 'redislabs.com.RedisComponent' = {
+    name: 'keystore-data'
     properties: {
       managed: true
     }
