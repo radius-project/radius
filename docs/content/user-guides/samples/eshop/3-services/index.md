@@ -50,9 +50,9 @@ The Catalog service can connect to other Radius resources via the `connections` 
 
 ## HTTP Route
 
-Other services will communicate with the catalog service via HTTP. The catalog endpoint also needs to be accessible publicly for users to interact with.
+Other services will communicate with the catalog service via HTTP.
 
-An [HttpRouteComponent]({{< ref http-route >}}) resource allows other resources to connect to the `eshop` resource, and also defines a `gateway` to create the public endpoint:
+An [HttpRouteComponent]({{< ref http-route >}}) resource allows other resources to connect to the `eshop` resource:
 
 {{< rad file="snippets/catalog.bicep" embed=true marker="//ROUTE" replace-key-provides="//PROVIDES" replace-value-provides="provides: catalogHttp.id" >}}
 
@@ -64,6 +64,8 @@ http: {
   provides: catalogHttp.id
 }
 ```
+
+While catalog is not exposed to the internet, you can optionally add a `gateway` property to the HttpRoute to expose it to the internet. Other services in eShop use gateways.
 
 ## Next steps
 
