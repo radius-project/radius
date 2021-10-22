@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
@@ -59,13 +60,37 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 		options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 	} else {
 		armhandler := NewARMHandler(handler.arm)
-		properties, err = armhandler.Put(ctx, options)
-		if err != nil {
-			return nil, err
+		if options.Resource.Managed {
+			// This is an existing output resource
+			// TODO: Need this code till armhandler does not support unmanaged resource
+			options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+			_, err := handler.GetByID(ctx, options.Resource.Identity)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			properties, err = armhandler.Put(ctx, options)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return properties, nil
+}
+
+func (handler *azureFileShareHandler) GetByID(ctx context.Context, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
+	id, apiVersion, err := identity.RequireARM()
+	if err != nil {
+		return nil, err
+	}
+
+	rc := clients.NewGenericResourceClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	resource, err := rc.GetByID(ctx, id, apiVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access resource %q", id)
+	}
+	return &resource, nil
 }
 
 func (handler *azureFileShareHandler) deleteFileShare(ctx context.Context, fileshareID string) error {
