@@ -104,13 +104,15 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 }
 
 func (r *Renderer) makeIngressRule(resource renderers.RendererResource, route HttpRoute, existingIngress renderers.RendererDependency) outputresource.OutputResource {
-	gatewayName := kubernetes.MakeResourceName(resource.ApplicationName, existingIngress.ResourceID.Name())
+	// gatewayName := kubernetes.MakeResourceName(resource.ApplicationName, existingIngress.ResourceID.Name())
+	serviceName := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
 	var rules []gatewayv1alpha1.HTTPRouteRule
 	for _, rule := range route.Gateway.Rules {
 		pathMatch := gatewayv1alpha1.PathMatchPrefix
 		if strings.EqualFold(rule.Path.Type, "exact") {
 			pathMatch = gatewayv1alpha1.PathMatchExact
 		}
+		port := gatewayv1alpha1.PortNumber(route.GetEffectivePort())
 		rules = append(rules, gatewayv1alpha1.HTTPRouteRule{
 			Matches: []gatewayv1alpha1.HTTPRouteMatch{
 				{
@@ -120,12 +122,18 @@ func (r *Renderer) makeIngressRule(resource renderers.RendererResource, route Ht
 					},
 				},
 			},
+			ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
+				{
+					ServiceName: &serviceName,
+					Port:        &port,
+				},
+			},
 		})
 	}
 
 	httpRoute := &gatewayv1alpha1.HTTPRoute{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "HttpRoute",
+			Kind:       "HTTPRoute",
 			APIVersion: gatewayv1alpha1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -137,8 +145,8 @@ func (r *Renderer) makeIngressRule(resource renderers.RendererResource, route Ht
 			Gateways: &gatewayv1alpha1.RouteGateways{
 				GatewayRefs: []gatewayv1alpha1.GatewayReference{
 					{
-						Name:      gatewayName,
-						Namespace: resource.ApplicationName,
+						Name:      "gateway",
+						Namespace: "default",
 					},
 				},
 			},

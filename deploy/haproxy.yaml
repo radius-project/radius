@@ -2,3 +2,4 @@ controller:
   hostNetwork: true
   extraArgs:
     watch-gateway: "true"
+    v: 2

@@ -49,6 +49,9 @@ func (r *Renderer) makeGateway(resource renderers.RendererResource, gateway Gate
 		listeners = append(listeners, gatewayv1alpha1.Listener{
 			Port:     gatewayv1alpha1.PortNumber(*listener.Port),
 			Protocol: gatewayv1alpha1.ProtocolType(listener.Protocol),
+			Routes: gatewayv1alpha1.RouteBindingSelector{
+				Kind: "HTTPRoute",
+			},
 		})
 	}
 
@@ -63,7 +66,7 @@ func (r *Renderer) makeGateway(resource renderers.RendererResource, gateway Gate
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: gatewayv1alpha1.GatewaySpec{
-			GatewayClassName: "foo", // for some reason this is required.
+			GatewayClassName: "haproxy", // for some reason this is required.
 			Listeners:        listeners,
 		},
 	}

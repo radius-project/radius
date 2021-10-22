@@ -6,7 +6,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       listeners: {
         http: {
-          port: 8080
+          port: 80
           protocol: 'HTTP'
         }
       }
