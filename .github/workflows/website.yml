@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.17'
-      TUTORIAL_PATH: './docs/content/getting-started/tutorial/'
+      TUTORIAL_PATH: './docs/content/user-guides/tutorials/'
       CODE_ZIP_PATH: './docs/static/tutorial/'
       HUGO_ENV: production
     steps:
