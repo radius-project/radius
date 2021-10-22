@@ -669,7 +669,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     name: 'webshoppingapigw'
     properties: {
       container: {
-        image: 'jkotalik/envoy:0.1.3'
+        image: 'radius.azurecr.io/eshop-envoy:0.1.3'
         env: {}
         ports: {
           http: {
