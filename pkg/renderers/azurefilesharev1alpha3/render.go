@@ -81,7 +81,7 @@ func RenderManaged(name string, properties AzureFileShareProperties) ([]outputre
 		Managed:      true,
 		Resource: map[string]string{
 			handlers.ManagedKey:                           "true",
-			handlers.AzureFileShareStorageAccountBaseName: "storageaccount-",
+			handlers.AzureFileShareStorageAccountBaseName: "azurestorageaccount",
 		},
 	}
 
