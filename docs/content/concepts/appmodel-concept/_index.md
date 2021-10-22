@@ -51,7 +51,7 @@ Each node on the diagram maps to one Component and describe the code, data, and 
 {{< /cardpane >}}
 {{< cardpane >}}
 {{< card header="[**Connections**](./connections-model)" >}}
-Connections describe a logical unit of communication between Components and model the vertices between nodes in an architecture diagram.
+Connections describe a logical unit of communication between Components and model the edges between nodes in an architecture diagram.
 {{< /card >}}
 {{< card header="[**Traits**](./traits-model)" >}}
 A Trait is a piece of configuration that specifies an operational behavior. Once defined, a trait can be added to Component definitions.
