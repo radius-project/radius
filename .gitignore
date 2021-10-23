@@ -45,3 +45,6 @@ default.profraw
 
 # gomock files
 pkg/handlers/gomock_*
+
+# kcp state
+.kcp/
