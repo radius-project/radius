@@ -141,28 +141,14 @@ func StartController() error {
 		return err
 	}
 
-	resourceTypes := []struct {
-		client.Object
-		client.ObjectList
-	}{
-		{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
-		{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
-		{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
-		{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
-		{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
-		{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
-		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
-		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
-		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
-	}
-
+	model := radcontroller.NewKubernetesModel()
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create discovery client: %w", err)
 	}
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 
-	for _, resourceType := range resourceTypes {
+	for _, resourceType := range model.GetReconciledTypes() {
 		gvks, _, err := scheme.ObjectKinds(resourceType.Object)
 		if err != nil {
 			return fmt.Errorf("failed to initialize find objects : %w", err)
@@ -180,11 +166,11 @@ func StartController() error {
 
 			if err = (&radcontroller.ResourceReconciler{
 				Client:  mgr.GetClient(),
-				Log:     ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
+				Log:     ctrl.Log.WithName("controllers").WithName(resourceType.Object.GetObjectKind().GroupVersionKind().String()),
 				Scheme:  mgr.GetScheme(),
 				Dynamic: dynamicClient,
 				GVR:     gvr.Resource,
-			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList); err != nil {
+			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList, model); err != nil {
 				return fmt.Errorf("can't create controller: %w", err)
 			}
 		}

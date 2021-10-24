@@ -1,12 +1,14 @@
-/*
-Copyright 2021.
-*/
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 
 package main
 
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -15,8 +17,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/restmapper"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -47,10 +47,7 @@ var (
 )
 
 func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
-
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
@@ -59,11 +56,14 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var modelName string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&modelName, "model", "kubernetes", "The resource model to use.")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -74,6 +74,13 @@ func main() {
 
 	// Get certificate from volume mounted environment variable
 	certDir := os.Getenv("TLS_CERT_DIR")
+
+	model := radcontroller.NewKubernetesModel()
+	if modelName == "kubernetes" {
+		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	} else if modelName == "local" {
+		model = radcontroller.NewLocalModel()
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -98,33 +105,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Index deployments by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		setupLog.Error(err, "unable to create ownership of deployments", "controller")
-		os.Exit(1)
-	}
-
-	// Index services by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		setupLog.Error(err, "unable to create ownership of services", "controller")
-		os.Exit(1)
-	}
-
-	resourceTypes := []struct {
-		client.Object
-		client.ObjectList
-	}{
-		{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
-		{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
-		{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
-		{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
-		{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
-		{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
-		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
-		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
-		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
+	for _, obj := range model.GetWatchedTypes() {
+		err = mgr.GetFieldIndexer().IndexField(context.Background(), obj, CacheKeyController, extractOwnerKey)
+		if err != nil {
+			setupLog.Error(err, fmt.Sprintf("unable to create ownership of %q", obj.GetObjectKind().GroupVersionKind()), "controller", "Application")
+			os.Exit(1)
+		}
 	}
 
 	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
@@ -141,7 +127,7 @@ func main() {
 	}
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 
-	for _, resourceType := range resourceTypes {
+	for _, resourceType := range model.GetReconciledTypes() {
 		gvks, _, err := scheme.ObjectKinds(resourceType.Object)
 		if err != nil {
 			setupLog.Error(err, "unable to get GVK for component type", "componentType", resourceType.Object)
@@ -163,11 +149,11 @@ func main() {
 
 			if err = (&radcontroller.ResourceReconciler{
 				Client:  mgr.GetClient(),
-				Log:     ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
+				Log:     ctrl.Log.WithName("controllers").WithName(resourceType.Object.GetObjectKind().GroupVersionKind().Kind),
 				Scheme:  mgr.GetScheme(),
 				Dynamic: unstructuredClient,
 				GVR:     gvr.Resource,
-			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList); err != nil {
+			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList, model); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Component")
 				os.Exit(1)
 			}

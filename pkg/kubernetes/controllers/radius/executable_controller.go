@@ -8,7 +8,9 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path"
 	"sync"
 	"time"
 
@@ -228,7 +230,14 @@ func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *rad
 		"args", fmt.Sprintf("%v", executable.Spec.Args),
 		"env", fmt.Sprintf("%v", executable.Spec.Env))
 
-	cmd := makeCommand(ctx, executable)
+	logfile, err := os.CreateTemp("", path.Base(executable.Spec.Executable))
+	if err != nil {
+		log.Error(err, "failed to start a replica")
+		rs.PID = InvalidPID
+		rs.ExitCode = ExitCodeFailedToStart
+	}
+
+	cmd := makeCommand(ctx, executable, logfile)
 	pid, startWaiting, err := r.ProcessExecutor.StartProcess(ctx, cmd, r)
 	if err != nil {
 		log.Error(err, "failed to start a replica")
@@ -239,6 +248,9 @@ func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *rad
 		rs.PID = pid
 		rs.ExitCode = ExitCodeRunning
 	}
+
+	// TODO: nothing currently cleans up these log files.
+	rs.LogFile = logfile.Name()
 
 	executable.Status.AddReplica(rs)
 	if err == nil {
@@ -357,12 +369,19 @@ func toEnvArray(env map[string]string) []string {
 	return retval
 }
 
-func makeCommand(ctx context.Context, executable *radiusv1alpha3.Executable) *exec.Cmd {
+func makeCommand(ctx context.Context, executable *radiusv1alpha3.Executable, logfile *os.File) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, executable.Spec.Executable)
 	cmdArgs := []string{executable.Spec.Executable}
 	cmdArgs = append(cmdArgs, executable.Spec.Args...)
 	cmd.Args = cmdArgs
-	env := toEnvArray(executable.Spec.Env)
+	cmd.Stdout = logfile
+	cmd.Stderr = logfile
+
+	// We need to also capture some of the current environment like PATH - otherwise it's
+	// pretty shocking.
+	//
+	// We append anything the user provided so that it will take precedence.
+	env := append(os.Environ(), toEnvArray(executable.Spec.Env)...)
 	cmd.Env = env
 	cmd.Dir = executable.Spec.WorkingDirectory
 	return cmd

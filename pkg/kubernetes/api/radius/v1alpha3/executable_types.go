@@ -39,6 +39,8 @@ type ReplicaStatus struct {
 
 	// Exit code of a process
 	ExitCode int `json:"exitCode,omitempty"`
+
+	LogFile string `json:"logfile,omitempty"`
 }
 
 type ExecutableStatus struct {

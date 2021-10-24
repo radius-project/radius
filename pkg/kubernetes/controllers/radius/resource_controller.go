@@ -481,7 +481,7 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Object, listObject client.ObjectList) error {
+func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Object, listObject client.ObjectList, model Model) error {
 	r.Model = k8smodel.NewKubernetesModel(&r.Client)
 	r.recorder = mgr.GetEventRecorderFor("radius")
 
@@ -515,12 +515,14 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Ob
 		return requests
 	})
 
-	return ctrl.NewControllerManagedBy(mgr).
+	c := ctrl.NewControllerManagedBy(mgr).
 		For(object).
-		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.Service{}).
-		Watches(applicationSource, applicationHandler).
-		Complete(r)
+		Watches(applicationSource, applicationHandler)
+	for _, obj := range model.GetWatchedTypes() {
+		c = c.Owns(obj)
+	}
+
+	return c.Complete(r)
 }
 
 func extractApplicationKey(obj client.Object) []string {

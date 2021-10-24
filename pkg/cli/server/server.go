@@ -43,6 +43,16 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to start radiusd: %w", err)
 	}
 
+	controller, err := startRadiusController(ctx, wd)
+	if err != nil {
+		return fmt.Errorf("failed to start radius-controller: %w", err)
+	}
+
+	err = controller.Wait()
+	if err != nil {
+		return fmt.Errorf("failed to run radius-controller: %w", err)
+	}
+
 	err = radiusd.Wait()
 	if err != nil {
 		return fmt.Errorf("failed to run radiusd: %w", err)
@@ -67,8 +77,7 @@ func startKCP(ctx context.Context, wd string) (*exec.Cmd, error) {
 	}
 	cmd := exec.CommandContext(ctx, executable, args...)
 	cmd.Dir = wd
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Don't log stdout/stderr for now, it's really spammy.
 	err = cmd.Start()
 	if err != nil {
 		return nil, err
@@ -85,9 +94,35 @@ func startRadiusD(ctx context.Context, wd string) (*exec.Cmd, error) {
 
 	kubeConfigPath := path.Join(wd, ".kcp", "data", "admin.kubeconfig")
 	args := []string{
+		"-zap-devel",
 		"--kubeconfig", kubeConfigPath,
 	}
 	cmd := exec.CommandContext(ctx, executable, args...)
+	cmd.Dir = wd
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	return cmd, nil
+}
+
+func startRadiusController(ctx context.Context, wd string) (*exec.Cmd, error) {
+	executable, err := GetLocalRadiusControllerFilepath()
+	if err != nil {
+		return nil, err
+	}
+
+	kubeConfigPath := path.Join(wd, ".kcp", "data", "admin.kubeconfig")
+	args := []string{
+		"-zap-devel",
+		"-model", "local",
+		"--kubeconfig", kubeConfigPath,
+	}
+	cmd := exec.CommandContext(ctx, executable, args...)
+	cmd.Env = []string{"SKIP_WEBHOOKS=true"}
 	cmd.Dir = wd
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
