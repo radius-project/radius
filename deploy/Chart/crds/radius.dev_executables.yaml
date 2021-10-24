@@ -64,6 +64,27 @@ spec:
               executable:
                 description: Path to Executable binary
                 type: string
+              ports:
+                description: Ports specifies ports to bind to the executable.
+                items:
+                  description: ExecutablePort defines the desired state of a port
+                    for an executable.
+                  properties:
+                    dynamic:
+                      type: boolean
+                    env:
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      type: string
+                    port:
+                      type: integer
+                  required:
+                  - dynamic
+                  - name
+                  type: object
+                type: array
               replicas:
                 default: 1
                 description: Number of replicas to launch for the Executable
@@ -92,6 +113,18 @@ spec:
                     pid:
                       description: The process ID
                       type: integer
+                    ports:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          port:
+                            type: integer
+                        required:
+                        - name
+                        - port
+                        type: object
+                      type: array
                   required:
                   - pid
                   type: object

@@ -156,7 +156,7 @@ func (a AzureKeyVaultComponentList) MarshalJSON() ([]byte, error) {
 type AzureKeyVaultComponentProperties struct {
 	BasicComponentProperties
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
-	Managed *Enum3 `json:"managed,omitempty"`
+	Managed *Enum5 `json:"managed,omitempty"`
 
 	// The ID of the user-managed KeyVault to use
 	Resource *string `json:"resource,omitempty"`
@@ -228,7 +228,7 @@ func (a AzureServiceBusComponentList) MarshalJSON() ([]byte, error) {
 type AzureServiceBusComponentProperties struct {
 	BasicComponentProperties
 	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-	Managed *Enum4 `json:"managed,omitempty"`
+	Managed *Enum6 `json:"managed,omitempty"`
 
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
@@ -869,7 +869,7 @@ type DaprStateStoreComponentProperties struct {
 	Kind *DaprStateStoreComponentPropertiesKind `json:"kind,omitempty"`
 
 	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-	Managed *Enum4 `json:"managed,omitempty"`
+	Managed *Enum6 `json:"managed,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentProperties.
@@ -1870,7 +1870,7 @@ func (r RabbitMQComponentList) MarshalJSON() ([]byte, error) {
 type RabbitMQComponentProperties struct {
 	BasicComponentProperties
 	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
-	Managed *Enum7 `json:"managed,omitempty"`
+	Managed *Enum9 `json:"managed,omitempty"`
 
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
@@ -2530,6 +2530,185 @@ func (v VolumeResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	v.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", v.Properties)
+	return json.Marshal(objectMap)
+}
+
+// WebsiteBeginCreateOrUpdateOptions contains the optional parameters for the Website.BeginCreateOrUpdate method.
+type WebsiteBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// WebsiteBeginDeleteOptions contains the optional parameters for the Website.BeginDelete method.
+type WebsiteBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// WebsiteConnection - Specifies a connection from the website to another resource
+type WebsiteConnection struct {
+	// The kind of connection
+	Kind *WebsiteConnectionKind `json:"kind,omitempty"`
+
+	// The source of the connection
+	Source *string `json:"source,omitempty"`
+}
+
+// WebsiteGetOptions contains the optional parameters for the Website.Get method.
+type WebsiteGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// WebsiteList - List of Website resources.
+type WebsiteList struct {
+	// REQUIRED; List of Website resources.
+	Value []*WebsiteResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type WebsiteList.
+func (w WebsiteList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", w.Value)
+	return json.Marshal(objectMap)
+}
+
+// WebsiteListOptions contains the optional parameters for the Website.List method.
+type WebsiteListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// WebsitePort - Specifies a listening port for the container
+type WebsitePort struct {
+	// Configures a dynamically assigned port number
+	Dynamic *bool `json:"dynamic,omitempty"`
+
+	// The listening port number
+	Port *float32 `json:"port,omitempty"`
+
+	// Protocol in use by the port
+	Protocol *WebsitePortProtocol `json:"protocol,omitempty"`
+
+	// Specifies a route provided by this port
+	Provides *string `json:"provides,omitempty"`
+}
+
+type WebsiteProperties struct {
+	BasicComponentProperties
+	// Dictionary of
+	Connections map[string]*WebsiteConnection `json:"connections,omitempty"`
+	Container *WebsitePropertiesContainer `json:"container,omitempty"`
+
+	// Dictionary of
+	Env map[string]*string `json:"env,omitempty"`
+	Executable *WebsitePropertiesExecutable `json:"executable,omitempty"`
+
+	// Properties for readiness/liveness probe
+	LivenessProbe HealthProbePropertiesClassification `json:"livenessProbe,omitempty"`
+
+	// Dictionary of
+	Ports map[string]*WebsitePort `json:"ports,omitempty"`
+
+	// Properties for readiness/liveness probe
+	ReadinessProbe HealthProbePropertiesClassification `json:"readinessProbe,omitempty"`
+
+	// Traits spec of the component
+	Traits []ComponentTraitClassification `json:"traits,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type WebsiteProperties.
+func (w WebsiteProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	w.BasicComponentProperties.marshalInternal(objectMap)
+	populate(objectMap, "connections", w.Connections)
+	populate(objectMap, "container", w.Container)
+	populate(objectMap, "env", w.Env)
+	populate(objectMap, "executable", w.Executable)
+	populate(objectMap, "livenessProbe", w.LivenessProbe)
+	populate(objectMap, "ports", w.Ports)
+	populate(objectMap, "readinessProbe", w.ReadinessProbe)
+	populate(objectMap, "traits", w.Traits)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type WebsiteProperties.
+func (w *WebsiteProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "connections":
+				err = unpopulate(val, &w.Connections)
+				delete(rawMsg, key)
+		case "container":
+				err = unpopulate(val, &w.Container)
+				delete(rawMsg, key)
+		case "env":
+				err = unpopulate(val, &w.Env)
+				delete(rawMsg, key)
+		case "executable":
+				err = unpopulate(val, &w.Executable)
+				delete(rawMsg, key)
+		case "livenessProbe":
+				w.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+				delete(rawMsg, key)
+		case "ports":
+				err = unpopulate(val, &w.Ports)
+				delete(rawMsg, key)
+		case "readinessProbe":
+				w.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+				delete(rawMsg, key)
+		case "traits":
+				w.Traits, err = unmarshalComponentTraitClassificationArray(val)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := w.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+type WebsitePropertiesContainer struct {
+	// REQUIRED; The registry and image to download and run in your container
+	Image *string `json:"image,omitempty"`
+}
+
+type WebsitePropertiesExecutable struct {
+	// REQUIRED; The name of the executable to launch
+	Name *string `json:"name,omitempty"`
+
+	// The arguments passed to the executable
+	Args []*string `json:"args,omitempty"`
+
+	// The working directory of the executable
+	WorkingDirectory *string `json:"workingDirectory,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type WebsitePropertiesExecutable.
+func (w WebsitePropertiesExecutable) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "args", w.Args)
+	populate(objectMap, "name", w.Name)
+	populate(objectMap, "workingDirectory", w.WorkingDirectory)
+	return json.Marshal(objectMap)
+}
+
+// WebsiteResource - The radius.dev/Website resource provides an abstraction for a website that can run as an executable or container on any Radius platform
+type WebsiteResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *WebsiteProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type WebsiteResource.
+func (w WebsiteResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	w.ProxyResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", w.Properties)
 	return json.Marshal(objectMap)
 }
 

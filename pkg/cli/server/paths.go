@@ -23,6 +23,15 @@ func GetLocalWorkingDirectory() (string, error) {
 	return path.Join(home, ".rad", "server"), nil
 }
 
+func GetLocalKubeConfigPath() (string, error) {
+	home, err := homedir.Dir()
+	if err != nil {
+		return "", fmt.Errorf("could not find home directory: %v", err)
+	}
+
+	return path.Join(home, ".rad", "server", ".kcp", "data", "admin.kubeconfig"), nil
+}
+
 func getLocalToolFilepath(tool string, envvar string) (string, error) {
 	override, err := getToolOverridePath(tool, envvar)
 	if err != nil {

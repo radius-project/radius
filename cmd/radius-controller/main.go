@@ -28,9 +28,8 @@ import (
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
-
-	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
+	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
+	localmodel "github.com/Azure/radius/pkg/model/local"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -68,14 +67,6 @@ func main() {
 	// Get certificate from volume mounted environment variable
 	certDir := os.Getenv("TLS_CERT_DIR")
 
-	model := radcontroller.NewKubernetesModel()
-	if modelName == "kubernetes" {
-		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-		utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
-	} else if modelName == "local" {
-		model = radcontroller.NewLocalModel()
-	}
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -88,6 +79,15 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
+	}
+
+	appmodel := k8smodel.NewKubernetesModel(mgr.GetClient())
+	model := radcontroller.NewKubernetesModel()
+	if modelName == "kubernetes" {
+		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	} else if modelName == "local" {
+		model = radcontroller.NewLocalModel()
+		appmodel = localmodel.NewLocalModel(mgr.GetClient())
 	}
 
 	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
@@ -105,7 +105,7 @@ func main() {
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 
 	options := radcontroller.Options{
-		AppModel:      kubernetesmodel.NewKubernetesModel(mgr.GetClient()),
+		AppModel:      appmodel,
 		Client:        mgr.GetClient(),
 		Dynamic:       unstructuredClient,
 		Scheme:        mgr.GetScheme(),

@@ -8,6 +8,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -237,6 +238,15 @@ func (r *ExecutableReconciler) startReplica(ctx context.Context, executable *rad
 		rs.ExitCode = ExitCodeFailedToStart
 	}
 
+	ports, err := allocatePorts(ctx, executable)
+	if err != nil {
+		log.Error(err, "failed to allocate ports for a replica")
+		rs.PID = InvalidPID
+		rs.ExitCode = ExitCodeFailedToStart
+	}
+
+	rs.Ports = ports
+
 	cmd := makeCommand(ctx, executable, logfile)
 	pid, startWaiting, err := r.ProcessExecutor.StartProcess(ctx, cmd, r)
 	if err != nil {
@@ -367,6 +377,51 @@ func toEnvArray(env map[string]string) []string {
 		i++
 	}
 	return retval
+}
+
+func allocatePorts(ctx context.Context, executable *radiusv1alpha3.Executable) ([]radiusv1alpha3.ReplicaPort, error) {
+	status := []radiusv1alpha3.ReplicaPort{}
+	for i := range executable.Spec.Ports {
+		if executable.Spec.Ports[i].Dynamic {
+			free, err := getFreePort()
+			if err != nil {
+				return nil, err
+			}
+
+			executable.Spec.Ports[i].Port = &free
+
+			if executable.Spec.Env == nil {
+				executable.Spec.Env = map[string]string{}
+			}
+
+			for _, e := range executable.Spec.Ports[i].Env {
+				executable.Spec.Env[e] = fmt.Sprintf("%d", free)
+			}
+		}
+
+		if executable.Spec.Ports[i].Port == nil {
+			continue
+		}
+
+		assigned := *executable.Spec.Ports[i].Port
+		status = append(status, radiusv1alpha3.ReplicaPort{Name: executable.Spec.Ports[i].Name, Port: assigned})
+	}
+
+	return status, nil
+}
+
+func getFreePort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
 func makeCommand(ctx context.Context, executable *radiusv1alpha3.Executable, logfile *os.File) *exec.Cmd {

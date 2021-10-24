@@ -4,6 +4,7 @@
     "Application": "application.json#/definitions/ApplicationResource",
     "RadiusResource": "components/radius.json#/definitions/RadiusResource",
     "ContainerComponent": "components/container-component.json#/definitions/ContainerComponentResource",
+    "Website": "components/website.json#/definitions/WebsiteResource",
     "azure.com.KeyVaultComponent": "components/azure-keyvault.json#/definitions/AzureKeyVaultComponentResource",
     "azure.com.ServiceBusQueueComponent": "components/azure-servicebus.json#/definitions/AzureServiceBusComponentResource",
     "dapr.io.PubSubTopicComponent": "components/dapr-pubsubtopic.json#/definitions/DaprPubSubTopicComponentResource",

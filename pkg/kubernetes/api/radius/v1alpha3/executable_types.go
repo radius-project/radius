@@ -31,6 +31,17 @@ type ExecutableSpec struct {
 	//+kubebuilder:validation:Maximum=100
 	// Number of replicas to launch for the Executable
 	Replicas int `json:"replicas,omitempty"`
+
+	// Ports specifies ports to bind to the executable.
+	Ports []ExecutablePort `json:"ports,omitempty"`
+}
+
+// ExecutablePort defines the desired state of a port for an executable.
+type ExecutablePort struct {
+	Name    string   `json:"name"`
+	Port    *int     `json:"port,omitempty"`
+	Dynamic bool     `json:"dynamic"`
+	Env     []string `json:"env,omitempty"`
 }
 
 type ReplicaStatus struct {
@@ -41,6 +52,13 @@ type ReplicaStatus struct {
 	ExitCode int `json:"exitCode,omitempty"`
 
 	LogFile string `json:"logfile,omitempty"`
+
+	Ports []ReplicaPort `json:"ports,omitempty"`
+}
+
+type ReplicaPort struct {
+	Name string `json:"name"`
+	Port int    `json:"port"`
 }
 
 type ExecutableStatus struct {

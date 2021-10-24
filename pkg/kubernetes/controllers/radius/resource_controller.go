@@ -20,7 +20,6 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -54,8 +53,8 @@ type ResourceReconciler struct {
 	RestMapper   meta.RESTMapper
 	ObjectType   client.Object
 	ObjectList   client.ObjectList
-	WatchedTypes []client.Object
-	Model        model.ApplicationModel
+	WatchedTypes []WatchedType
+	AppModel     model.ApplicationModel
 	GVR          schema.GroupVersionResource
 }
 
@@ -177,28 +176,32 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	log.Info("fetching existing resources for resource")
 	results := []client.Object{}
 
-	deployments := &appsv1.DeploymentList{}
-	err := r.Client.List(ctx, deployments, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
-	if err != nil {
-		log.Error(err, "failed to retrieve deployments")
-		return nil, err
-	}
+	for _, t := range r.WatchedTypes {
+		// We have to do this dance because there's no generic way to 'foreach' a client.ObjectList
+		list := t.ObjectList.DeepCopyObject().(client.ObjectList)
+		err := r.Client.List(ctx, list, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
+		if err != nil {
+			log.Error(err, fmt.Sprintf("failed to retrieve list of %T", t.Object))
+			return nil, err
+		}
 
-	for _, d := range (*deployments).Items {
-		obj := d
-		results = append(results, &obj)
-	}
+		uns := unstructured.UnstructuredList{}
+		err = r.Scheme.Convert(list, &uns, ctx)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("failed to convert list of %T", t.Object))
+			return nil, err
+		}
 
-	services := &corev1.ServiceList{}
-	err = r.Client.List(ctx, services, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
-	if err != nil {
-		log.Error(err, "failed to retrieve services")
-		return nil, err
-	}
+		for _, item := range uns.Items {
+			copy := t.Object.DeepCopyObject().(client.Object)
+			err := r.Scheme.Convert(&item, copy, ctx)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("failed to convert item of %T", t.Object))
+				return nil, err
+			}
 
-	for _, s := range (*services).Items {
-		obj := s
-		results = append(results, &obj)
+			results = append(results, copy)
+		}
 	}
 
 	log.Info("found existing resource for resource", "count", len(results))
@@ -220,7 +223,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
-	resourceType, err := r.Model.LookupResource(w.ResourceType)
+	resourceType, err := r.AppModel.LookupResource(w.ResourceType)
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource type '%s' is not supported'", w.ResourceType)
 		log.Error(err, "unsupported type for resource")
@@ -329,6 +332,25 @@ func (r *ResourceReconciler) ApplyState(
 			}
 		}
 
+		// We want all of our objects to have a GVK explicitly specified for ease of use.
+		// This allows us to maintain that invariant without requiring the renderer code
+		// to hardcode this data.
+		gvks, unversioned, err := r.Scheme.ObjectKinds(obj)
+		if err != nil {
+			err := fmt.Errorf("failed to retrieve GVK for object: %T", obj)
+			log.Error(err, "failed to render resources for resource")
+			return err
+		} else if unversioned {
+			err := fmt.Errorf("object %T is unversioned, we don't support that", obj)
+			log.Error(err, "failed to render resources for resource")
+			return err
+		} else if len(gvks) != 1 {
+			err := fmt.Errorf("object %T has multiple GVKs, we don't support that", obj)
+			log.Error(err, "failed to render resources for resource")
+			return err
+		}
+		obj.GetObjectKind().SetGroupVersionKind(gvks[0])
+
 		log := log.WithValues(
 			"resourcenamespace", obj.GetNamespace(),
 			"resourcename", obj.GetName(),
@@ -337,7 +359,7 @@ func (r *ResourceReconciler) ApplyState(
 
 		// Make sure to NOT use the resource type here, as the resource type
 		// Otherwise, we get into a loop where resources are created and are immediately terminated.
-		err := controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
+		err = controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
 		if err != nil {
 			log.Error(err, "failed to set owner reference for resource")
 			return err
@@ -550,8 +572,8 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := ctrl.NewControllerManagedBy(mgr).
 		For(r.ObjectType).
 		Watches(applicationSource, applicationHandler)
-	for _, obj := range r.WatchedTypes {
-		c = c.Owns(obj)
+	for _, watchedType := range r.WatchedTypes {
+		c = c.Owns(watchedType.Object)
 	}
 
 	return c.Complete(r)

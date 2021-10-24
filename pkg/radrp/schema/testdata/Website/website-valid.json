@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "connections": {
+      "backend": {
+        "kind": "Http",
+        "source": "something"
+      }
+    },
+    "container": {
+      "image": "something"
+    },
+    "env": {
+      "TEST": "Value"
+    },
+    "ports": {
+      "web": {
+        "port": 80,
+        "provides": "something",
+        "protocol": "TCP"
+      }
+    }
+  }
+}

@@ -35,7 +35,7 @@ type Options struct {
 	RestConfig    *rest.Config
 	RestMapper    meta.RESTMapper
 	ResourceTypes []ReconcilableType
-	WatchedTypes  []client.Object
+	WatchedTypes  []WatchedType
 	SkipWebhooks  bool
 }
 
@@ -49,7 +49,7 @@ func NewRadiusController(options *Options) *RadiusController {
 	resources := []*ResourceReconciler{}
 	for _, resourceType := range options.ResourceTypes {
 		resource := &ResourceReconciler{
-			Model:        options.AppModel,
+			AppModel:     options.AppModel,
 			Client:       options.Client,
 			Dynamic:      options.Dynamic,
 			Scheme:       options.Scheme,
