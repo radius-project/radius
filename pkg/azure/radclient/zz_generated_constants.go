@@ -226,60 +226,60 @@ func (c EncryptionStatus) ToPtr() *EncryptionStatus {
 	return &c
 }
 
-// Enum3 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
-type Enum3 bool
+// Enum5 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
+type Enum5 bool
 
 const (
-	Enum3True Enum3 = true
+	Enum5True Enum5 = true
 )
 
-// PossibleEnum3Values returns the possible values for the Enum3 const type.
-func PossibleEnum3Values() []Enum3 {
-	return []Enum3{	
-		Enum3True,
+// PossibleEnum5Values returns the possible values for the Enum5 const type.
+func PossibleEnum5Values() []Enum5 {
+	return []Enum5{	
+		Enum5True,
 	}
 }
 
-// ToPtr returns a *Enum3 pointing to the current value.
-func (c Enum3) ToPtr() *Enum3 {
+// ToPtr returns a *Enum5 pointing to the current value.
+func (c Enum5) ToPtr() *Enum5 {
 	return &c
 }
 
-// Enum4 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-type Enum4 bool
+// Enum6 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component
+type Enum6 bool
 
 const (
-	Enum4True Enum4 = true
+	Enum6True Enum6 = true
 )
 
-// PossibleEnum4Values returns the possible values for the Enum4 const type.
-func PossibleEnum4Values() []Enum4 {
-	return []Enum4{	
-		Enum4True,
+// PossibleEnum6Values returns the possible values for the Enum6 const type.
+func PossibleEnum6Values() []Enum6 {
+	return []Enum6{	
+		Enum6True,
 	}
 }
 
-// ToPtr returns a *Enum4 pointing to the current value.
-func (c Enum4) ToPtr() *Enum4 {
+// ToPtr returns a *Enum6 pointing to the current value.
+func (c Enum6) ToPtr() *Enum6 {
 	return &c
 }
 
-// Enum7 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
-type Enum7 bool
+// Enum9 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
+type Enum9 bool
 
 const (
-	Enum7True Enum7 = true
+	Enum9True Enum9 = true
 )
 
-// PossibleEnum7Values returns the possible values for the Enum7 const type.
-func PossibleEnum7Values() []Enum7 {
-	return []Enum7{	
-		Enum7True,
+// PossibleEnum9Values returns the possible values for the Enum9 const type.
+func PossibleEnum9Values() []Enum9 {
+	return []Enum9{	
+		Enum9True,
 	}
 }
 
-// ToPtr returns a *Enum7 pointing to the current value.
-func (c Enum7) ToPtr() *Enum7 {
+// ToPtr returns a *Enum9 pointing to the current value.
+func (c Enum9) ToPtr() *Enum9 {
 	return &c
 }
 
@@ -389,6 +389,66 @@ func PossibleVolumePropertiesKindValues() []VolumePropertiesKind {
 
 // ToPtr returns a *VolumePropertiesKind pointing to the current value.
 func (c VolumePropertiesKind) ToPtr() *VolumePropertiesKind {
+	return &c
+}
+
+// WebsiteConnectionKind - The kind of connection
+type WebsiteConnectionKind string
+
+const (
+	WebsiteConnectionKindAzureComKeyVault WebsiteConnectionKind = "azure.com/KeyVault"
+	WebsiteConnectionKindAzureComServiceBusQueue WebsiteConnectionKind = "azure.com/ServiceBusQueue"
+	WebsiteConnectionKindDaprIoDaprHTTP WebsiteConnectionKind = "dapr.io/DaprHttp"
+	WebsiteConnectionKindDaprIoPubSubTopic WebsiteConnectionKind = "dapr.io/PubSubTopic"
+	WebsiteConnectionKindDaprIoStateStore WebsiteConnectionKind = "dapr.io/StateStore"
+	WebsiteConnectionKindGrpc WebsiteConnectionKind = "Grpc"
+	WebsiteConnectionKindHTTP WebsiteConnectionKind = "Http"
+	WebsiteConnectionKindMicrosoftComSQL WebsiteConnectionKind = "microsoft.com/SQL"
+	WebsiteConnectionKindMongoComMongoDB WebsiteConnectionKind = "mongo.com/MongoDB"
+	WebsiteConnectionKindRabbitmqComMessageQueue WebsiteConnectionKind = "rabbitmq.com/MessageQueue"
+	WebsiteConnectionKindRedislabsComRedis WebsiteConnectionKind = "redislabs.com/Redis"
+)
+
+// PossibleWebsiteConnectionKindValues returns the possible values for the WebsiteConnectionKind const type.
+func PossibleWebsiteConnectionKindValues() []WebsiteConnectionKind {
+	return []WebsiteConnectionKind{	
+		WebsiteConnectionKindAzureComKeyVault,
+		WebsiteConnectionKindAzureComServiceBusQueue,
+		WebsiteConnectionKindDaprIoDaprHTTP,
+		WebsiteConnectionKindDaprIoPubSubTopic,
+		WebsiteConnectionKindDaprIoStateStore,
+		WebsiteConnectionKindGrpc,
+		WebsiteConnectionKindHTTP,
+		WebsiteConnectionKindMicrosoftComSQL,
+		WebsiteConnectionKindMongoComMongoDB,
+		WebsiteConnectionKindRabbitmqComMessageQueue,
+		WebsiteConnectionKindRedislabsComRedis,
+	}
+}
+
+// ToPtr returns a *WebsiteConnectionKind pointing to the current value.
+func (c WebsiteConnectionKind) ToPtr() *WebsiteConnectionKind {
+	return &c
+}
+
+// WebsitePortProtocol - Protocol in use by the port
+type WebsitePortProtocol string
+
+const (
+	WebsitePortProtocolTCP WebsitePortProtocol = "TCP"
+	WebsitePortProtocolUDP WebsitePortProtocol = "UDP"
+)
+
+// PossibleWebsitePortProtocolValues returns the possible values for the WebsitePortProtocol const type.
+func PossibleWebsitePortProtocolValues() []WebsitePortProtocol {
+	return []WebsitePortProtocol{	
+		WebsitePortProtocolTCP,
+		WebsitePortProtocolUDP,
+	}
+}
+
+// ToPtr returns a *WebsitePortProtocol pointing to the current value.
+func (c WebsitePortProtocol) ToPtr() *WebsitePortProtocol {
 	return &c
 }
 

@@ -1812,6 +1812,174 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
+    "WebsiteConnection": {
+      "additionalProperties": false,
+      "description": "Specifies a connection from the website to another resource",
+      "properties": {
+        "kind": {
+          "description": "The kind of connection",
+          "enum": [
+            "azure.com/KeyVault",
+            "azure.com/ServiceBusQueue",
+            "dapr.io/DaprHttp",
+            "dapr.io/PubSubTopic",
+            "dapr.io/StateStore",
+            "Grpc",
+            "Http",
+            "microsoft.com/SQL",
+            "mongo.com/MongoDB",
+            "rabbitmq.com/MessageQueue",
+            "redislabs.com/Redis"
+          ],
+          "type": "string"
+        },
+        "source": {
+          "description": "The source of the connection",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "WebsiteList": {
+      "description": "List of Website resources.",
+      "properties": {
+        "value": {
+          "description": "List of Website resources.",
+          "items": {
+            "$ref": "#/definitions/WebsiteResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "WebsitePort": {
+      "additionalProperties": false,
+      "description": "Specifies a listening port for the container",
+      "properties": {
+        "dynamic": {
+          "description": "Configures a dynamically assigned port number",
+          "type": "boolean"
+        },
+        "port": {
+          "description": "The listening port number",
+          "type": "number"
+        },
+        "protocol": {
+          "description": "Protocol in use by the port",
+          "enum": [
+            "TCP",
+            "UDP"
+          ],
+          "type": "string"
+        },
+        "provides": {
+          "description": "Specifies a route provided by this port",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "WebsiteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicComponentProperties"
+        }
+      ],
+      "properties": {
+        "connections": {
+          "additionalProperties": {
+            "$ref": "#/definitions/WebsiteConnection"
+          },
+          "type": "object"
+        },
+        "container": {
+          "additionalProperties": false,
+          "properties": {
+            "image": {
+              "description": "The registry and image to download and run in your container",
+              "type": "string"
+            }
+          },
+          "required": [
+            "image"
+          ],
+          "type": "object"
+        },
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "executable": {
+          "additionalProperties": false,
+          "properties": {
+            "args": {
+              "description": "The arguments passed to the executable",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "name": {
+              "description": "The name of the executable to launch",
+              "type": "string"
+            },
+            "workingDirectory": {
+              "description": "The working directory of the executable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "type": "object"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties"
+        },
+        "ports": {
+          "additionalProperties": {
+            "$ref": "#/definitions/WebsitePort"
+          },
+          "type": "object"
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties"
+        },
+        "traits": {
+          "description": "Traits spec of the component",
+          "items": {
+            "$ref": "#/definitions/ComponentTrait"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "WebsiteResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The radius.dev/Website resource provides an abstraction for a website that can run as an executable or container on any Radius platform",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/WebsiteProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
     "encryptionProperties": {
       "description": "Configuration of key for data encryption",
       "properties": {
@@ -2085,6 +2253,14 @@
       "description": "The name of the Volume resource.",
       "in": "path",
       "name": "volumeName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "WebsiteNameParameter": {
+      "description": "The name of the Website resource.",
+      "in": "path",
+      "name": "websiteName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -2837,6 +3013,188 @@
         },
         "tags": [
           "Volume"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Website": {
+      "get": {
+        "description": "List the Website resources deployed in the application.",
+        "operationId": "Website_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Website resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/WebsiteList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Website"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Website/{websiteName}": {
+      "delete": {
+        "description": "Deletes a Website resource.",
+        "operationId": "Website_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/WebsiteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Website will complete asynchronously."
+          },
+          "204": {
+            "description": "The Website resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Website"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Website resource by name.",
+        "operationId": "Website_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/WebsiteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Website resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/WebsiteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Website"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Website resource.",
+        "operationId": "Website_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/WebsiteNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Website resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WebsiteResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Website resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/WebsiteResource"
+            }
+          },
+          "201": {
+            "description": "The new Website resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/WebsiteResource"
+            }
+          },
+          "202": {
+            "description": "The existing Website resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/WebsiteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Website"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {

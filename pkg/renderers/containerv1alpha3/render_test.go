@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/iam"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
@@ -434,7 +435,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	}
 
 	renderer := Renderer{
-		RoleAssignmentMap: map[string]RoleAssignmentData{
+		RoleAssignmentMap: map[string]iam.RoleAssignmentData{
 			"A": {
 				LocalID:   "TargetLocalID",
 				RoleNames: []string{"TestRole1", "TestRole2"},

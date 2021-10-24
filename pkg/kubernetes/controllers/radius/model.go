@@ -12,31 +12,32 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Model interface {
-	GetWatchedTypes() []client.Object
+type ResourceModel interface {
+	GetWatchedTypes() []WatchedType
 	GetReconciledTypes() []ReconcilableType
 }
 
 type coolmodel struct {
-	WatchedTypes    []client.Object
+	WatchedTypes    []WatchedType
 	ReconciledTypes []ReconcilableType
 }
 
-func NewModel(watchedTypes []client.Object, reconciledTypes []ReconcilableType) Model {
+func NewModel(watchedTypes []WatchedType, reconciledTypes []ReconcilableType) ResourceModel {
 	return &coolmodel{
 		WatchedTypes:    watchedTypes,
 		ReconciledTypes: reconciledTypes,
 	}
 }
 
-func NewKubernetesModel() Model {
+func NewKubernetesModel() ResourceModel {
 	return NewModel(
-		[]client.Object{
-			&corev1.Service{},
-			&appsv1.Deployment{},
+		[]WatchedType{
+			{&corev1.Service{}, &corev1.ServiceList{}},
+			{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
 		},
 		[]ReconcilableType{
 			{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
+			{&radiusv1alpha3.Website{}, &radiusv1alpha3.WebsiteList{}},
 			{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
 			{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
 			{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
@@ -49,11 +50,14 @@ func NewKubernetesModel() Model {
 	)
 }
 
-func NewLocalModel() Model {
+func NewLocalModel() ResourceModel {
 	return NewModel(
-		[]client.Object{},
+		[]WatchedType{
+			{&radiusv1alpha3.Executable{}, &radiusv1alpha3.ExecutableList{}},
+		},
 		[]ReconcilableType{
 			{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
+			{&radiusv1alpha3.Website{}, &radiusv1alpha3.WebsiteList{}},
 			{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
 			{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
 			{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
@@ -66,12 +70,17 @@ func NewLocalModel() Model {
 	)
 }
 
-func (m *coolmodel) GetWatchedTypes() []client.Object {
+func (m *coolmodel) GetWatchedTypes() []WatchedType {
 	return m.WatchedTypes
 }
 
 func (m *coolmodel) GetReconciledTypes() []ReconcilableType {
 	return m.ReconciledTypes
+}
+
+type WatchedType struct {
+	Object     client.Object
+	ObjectList client.ObjectList
 }
 
 type ReconcilableType struct {

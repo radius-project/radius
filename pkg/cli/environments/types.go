@@ -16,6 +16,7 @@ const (
 	KindAzureCloud                   = "azure"
 	KindKubernetes                   = "kubernetes"
 	KindLocalRP                      = "localrp"
+	KindLocal                        = "local"
 	EnvironmentKeyDefaultApplication = "defaultapplication"
 )
 

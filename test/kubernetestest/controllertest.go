@@ -38,6 +38,7 @@ import (
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/webhook"
+	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -164,13 +165,14 @@ func StartController() error {
 				return fmt.Errorf("can't find gvr: %w", err)
 			}
 
+			client := mgr.GetClient()
 			if err = (&radcontroller.ResourceReconciler{
-				Client:  mgr.GetClient(),
+				Client:  client,
 				Log:     ctrl.Log.WithName("controllers").WithName(resourceType.Object.GetObjectKind().GroupVersionKind().String()),
 				Scheme:  mgr.GetScheme(),
 				Dynamic: dynamicClient,
 				GVR:     gvr.Resource,
-			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList, model); err != nil {
+			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList, model, k8smodel.NewKubernetesModel(&client)); err != nil {
 				return fmt.Errorf("can't create controller: %w", err)
 			}
 		}

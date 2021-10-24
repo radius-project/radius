@@ -1175,3 +1175,89 @@ func (p *VolumeDeletePoller) ResumeToken() (string, error) {
 	return p.pt.ResumeToken()
 }
 
+// WebsiteCreateOrUpdatePoller provides polling facilities until the operation reaches a terminal state.
+type WebsiteCreateOrUpdatePoller struct {
+	pt *azcore.Poller
+}
+
+// Done returns true if the LRO has reached a terminal state.
+func (p *WebsiteCreateOrUpdatePoller) Done() bool {
+	return p.pt.Done()
+}
+
+// Poll fetches the latest state of the LRO.  It returns an HTTP response or error.
+// If the LRO has completed successfully, the poller's state is updated and the HTTP
+// response is returned.
+// If the LRO has completed with failure or was cancelled, the poller's state is
+// updated and the error is returned.
+// If the LRO has not reached a terminal state, the poller's state is updated and
+// the latest HTTP response is returned.
+// If Poll fails, the poller's state is unmodified and the error is returned.
+// Calling Poll on an LRO that has reached a terminal state will return the final
+// HTTP response or error.
+func (p *WebsiteCreateOrUpdatePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final WebsiteCreateOrUpdateResponse will be returned.
+func (p *WebsiteCreateOrUpdatePoller) FinalResponse(ctx context.Context) (WebsiteCreateOrUpdateResponse, error) {
+	respType := WebsiteCreateOrUpdateResponse{}
+	resp, err := p.pt.FinalResponse(ctx, &respType.WebsiteResource)
+	if err != nil {
+		return WebsiteCreateOrUpdateResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// ResumeToken returns a value representing the poller that can be used to resume
+// the LRO at a later time. ResumeTokens are unique per service operation.
+func (p *WebsiteCreateOrUpdatePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+
+// WebsiteDeletePoller provides polling facilities until the operation reaches a terminal state.
+type WebsiteDeletePoller struct {
+	pt *azcore.Poller
+}
+
+// Done returns true if the LRO has reached a terminal state.
+func (p *WebsiteDeletePoller) Done() bool {
+	return p.pt.Done()
+}
+
+// Poll fetches the latest state of the LRO.  It returns an HTTP response or error.
+// If the LRO has completed successfully, the poller's state is updated and the HTTP
+// response is returned.
+// If the LRO has completed with failure or was cancelled, the poller's state is
+// updated and the error is returned.
+// If the LRO has not reached a terminal state, the poller's state is updated and
+// the latest HTTP response is returned.
+// If Poll fails, the poller's state is unmodified and the error is returned.
+// Calling Poll on an LRO that has reached a terminal state will return the final
+// HTTP response or error.
+func (p *WebsiteDeletePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final WebsiteDeleteResponse will be returned.
+func (p *WebsiteDeletePoller) FinalResponse(ctx context.Context) (WebsiteDeleteResponse, error) {
+	respType := WebsiteDeleteResponse{}
+	resp, err := p.pt.FinalResponse(ctx, nil)
+	if err != nil {
+		return WebsiteDeleteResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// ResumeToken returns a value representing the poller that can be used to resume
+// the LRO at a later time. ResumeTokens are unique per service operation.
+func (p *WebsiteDeletePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+

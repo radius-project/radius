@@ -1590,3 +1590,119 @@ type VolumeListResult struct {
 	VolumeList
 }
 
+// WebsiteCreateOrUpdatePollerResponse contains the response from method Website.CreateOrUpdate.
+type WebsiteCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *WebsiteCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l WebsiteCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (WebsiteCreateOrUpdateResponse, error) {
+	respType := WebsiteCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.WebsiteResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a WebsiteCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *WebsiteCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *WebsiteClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("WebsiteClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &WebsiteCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// WebsiteCreateOrUpdateResponse contains the response from method Website.CreateOrUpdate.
+type WebsiteCreateOrUpdateResponse struct {
+	WebsiteCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// WebsiteCreateOrUpdateResult contains the result from method Website.CreateOrUpdate.
+type WebsiteCreateOrUpdateResult struct {
+	WebsiteResource
+}
+
+// WebsiteDeletePollerResponse contains the response from method Website.Delete.
+type WebsiteDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *WebsiteDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l WebsiteDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (WebsiteDeleteResponse, error) {
+	respType := WebsiteDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a WebsiteDeletePollerResponse from the provided client and resume token.
+func (l *WebsiteDeletePollerResponse) Resume(ctx context.Context, client *WebsiteClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("WebsiteClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &WebsiteDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// WebsiteDeleteResponse contains the response from method Website.Delete.
+type WebsiteDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// WebsiteGetResponse contains the response from method Website.Get.
+type WebsiteGetResponse struct {
+	WebsiteGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// WebsiteGetResult contains the result from method Website.Get.
+type WebsiteGetResult struct {
+	WebsiteResource
+}
+
+// WebsiteListResponse contains the response from method Website.List.
+type WebsiteListResponse struct {
+	WebsiteListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// WebsiteListResult contains the result from method Website.List.
+type WebsiteListResult struct {
+	WebsiteList
+}
+

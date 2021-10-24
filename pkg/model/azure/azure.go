@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/Azure/radius/pkg/renderers/iam"
 	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/microsoftsqlv1alpha3"
@@ -33,7 +34,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 	// Configuration for how connections of different types map to role assignments.
 	//
 	// For a primer on how to read this data, see the KeyVault case.
-	roleAssignmentMap := map[string]containerv1alpha3.RoleAssignmentData{
+	roleAssignmentMap := map[string]iam.RoleAssignmentData{
 
 		// Example of how to read this data:
 		//

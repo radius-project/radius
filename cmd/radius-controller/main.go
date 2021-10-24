@@ -34,6 +34,8 @@ import (
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	"github.com/Azure/radius/pkg/kubernetes/webhook"
+	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
+	localmodel "github.com/Azure/radius/pkg/model/local"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -75,13 +77,6 @@ func main() {
 	// Get certificate from volume mounted environment variable
 	certDir := os.Getenv("TLS_CERT_DIR")
 
-	model := radcontroller.NewKubernetesModel()
-	if modelName == "kubernetes" {
-		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	} else if modelName == "local" {
-		model = radcontroller.NewLocalModel()
-	}
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -96,6 +91,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	client := mgr.GetClient()
+	appmodel := k8smodel.NewKubernetesModel(&client)
+	model := radcontroller.NewKubernetesModel()
+	if modelName == "kubernetes" {
+		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	} else if modelName == "local" {
+		model = radcontroller.NewLocalModel()
+		appmodel = localmodel.NewLocalModel(&client)
+	}
+
 	if err = (&radcontroller.ApplicationReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
@@ -105,10 +110,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, obj := range model.GetWatchedTypes() {
-		err = mgr.GetFieldIndexer().IndexField(context.Background(), obj, CacheKeyController, extractOwnerKey)
+	for _, watchedType := range model.GetWatchedTypes() {
+		err = mgr.GetFieldIndexer().IndexField(context.Background(), watchedType.Object, CacheKeyController, extractOwnerKey)
 		if err != nil {
-			setupLog.Error(err, fmt.Sprintf("unable to create ownership of %q", obj.GetObjectKind().GroupVersionKind()), "controller", "Application")
+			setupLog.Error(err, fmt.Sprintf("unable to create ownership of %q", watchedType.Object.GetObjectKind().GroupVersionKind()), "controller", "Application")
 			os.Exit(1)
 		}
 	}
@@ -153,7 +158,7 @@ func main() {
 				Scheme:  mgr.GetScheme(),
 				Dynamic: unstructuredClient,
 				GVR:     gvr.Resource,
-			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList, model); err != nil {
+			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList, model, appmodel); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Component")
 				os.Exit(1)
 			}

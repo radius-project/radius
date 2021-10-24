@@ -127,6 +127,7 @@ func GetKindFromArmType(armType string) string {
 	kindMap := map[string]string{
 		"Application":                        "Application",
 		"ContainerComponent":                 "ContainerComponent",
+		"Website":                            "Website",
 		"dapr.io.PubSubTopicComponent":       "DaprIOPubSubTopicComponent",
 		"dapr.io.StateStoreComponent":        "DaprIOStateStoreComponent",
 		"dapr.io.DaprHttpRoute":              "DaprIODaprHttpRoute",

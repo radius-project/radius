@@ -711,6 +711,11 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
+                "name": "Application/Website",
+                "routingType": "Proxy",
+                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
+            },
+            {
                 "name": "Application/azure.com.KeyVaultComponent",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
