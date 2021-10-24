@@ -11,8 +11,6 @@ import (
 
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
@@ -27,22 +25,6 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes/webhook"
 )
 
-var DefaultResourceTypes = []struct {
-	client.Object
-	client.ObjectList
-}{
-	{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
-	{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
-	{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
-	{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
-	{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
-	{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
-	{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
-	{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
-	{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
-	{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
-}
-
 type Options struct {
 	AppModel      model.ApplicationModel
 	Client        client.Client
@@ -52,11 +34,9 @@ type Options struct {
 	Log           logr.Logger
 	RestConfig    *rest.Config
 	RestMapper    meta.RESTMapper
-	ResourceTypes []struct {
-		client.Object
-		client.ObjectList
-	}
-	SkipWebhooks bool
+	ResourceTypes []ReconcilableType
+	WatchedTypes  []client.Object
+	SkipWebhooks  bool
 }
 
 func NewRadiusController(options *Options) *RadiusController {
@@ -69,14 +49,15 @@ func NewRadiusController(options *Options) *RadiusController {
 	resources := []*ResourceReconciler{}
 	for _, resourceType := range options.ResourceTypes {
 		resource := &ResourceReconciler{
-			Model:      options.AppModel,
-			Client:     options.Client,
-			Dynamic:    options.Dynamic,
-			Scheme:     options.Scheme,
-			Recorder:   options.Recorder,
-			ObjectType: resourceType.Object,
-			ObjectList: resourceType.ObjectList,
-			Log:        ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
+			Model:        options.AppModel,
+			Client:       options.Client,
+			Dynamic:      options.Dynamic,
+			Scheme:       options.Scheme,
+			Recorder:     options.Recorder,
+			ObjectType:   resourceType.Object,
+			ObjectList:   resourceType.ObjectList,
+			WatchedTypes: options.WatchedTypes,
+			Log:          ctrl.Log.WithName("controllers").WithName(fmt.Sprintf("%T", resourceType.Object)),
 		}
 		resources = append(resources, resource)
 	}
@@ -98,10 +79,11 @@ func NewRadiusController(options *Options) *RadiusController {
 }
 
 type RadiusController struct {
-	application *ApplicationReconciler
-	resources   []*ResourceReconciler
-	template    *bicepcontroller.DeploymentTemplateReconciler
-	options     *Options
+	application  *ApplicationReconciler
+	resources    []*ResourceReconciler
+	watchedTypes []client.Object
+	template     *bicepcontroller.DeploymentTemplateReconciler
+	options      *Options
 }
 
 func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
@@ -112,17 +94,11 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 
 	// We create some indexes for watched types - this is done once because
 	// we create a reconciler per-resource-type right now.
-
-	// Index deployments by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		return fmt.Errorf("failed to register index for %s: %w", "Deployment", err)
-	}
-
-	// Index services by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		return fmt.Errorf("failed to register index for %s: %w", "Service", err)
+	for _, obj := range c.watchedTypes {
+		err = mgr.GetFieldIndexer().IndexField(context.Background(), obj, CacheKeyController, extractOwnerKey)
+		if err != nil {
+			return fmt.Errorf("unable to create ownership of %T: %w", obj, err)
+		}
 	}
 
 	for _, resource := range c.resources {

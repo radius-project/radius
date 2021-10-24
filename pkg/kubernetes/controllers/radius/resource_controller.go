@@ -47,15 +47,16 @@ const (
 // ResourceReconciler reconciles a Resource object
 type ResourceReconciler struct {
 	client.Client
-	Log        logr.Logger
-	Scheme     *runtime.Scheme
-	Recorder   record.EventRecorder
-	Dynamic    dynamic.Interface
-	RestMapper meta.RESTMapper
-	ObjectType client.Object
-	ObjectList client.ObjectList
-	Model      model.ApplicationModel
-	GVR        schema.GroupVersionResource
+	Log          logr.Logger
+	Scheme       *runtime.Scheme
+	Recorder     record.EventRecorder
+	Dynamic      dynamic.Interface
+	RestMapper   meta.RESTMapper
+	ObjectType   client.Object
+	ObjectList   client.ObjectList
+	WatchedTypes []client.Object
+	Model        model.ApplicationModel
+	GVR          schema.GroupVersionResource
 }
 
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -516,7 +517,6 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	// Index resources by application
 	err := mgr.GetFieldIndexer().IndexField(context.Background(), r.ObjectType, CacheKeySpecApplication, extractApplicationKey)
 	if err != nil {
@@ -547,12 +547,14 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return requests
 	})
 
-	return ctrl.NewControllerManagedBy(mgr).
+	c := ctrl.NewControllerManagedBy(mgr).
 		For(r.ObjectType).
-		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.Service{}).
-		Watches(applicationSource, applicationHandler).
-		Complete(r)
+		Watches(applicationSource, applicationHandler)
+	for _, obj := range r.WatchedTypes {
+		c = c.Owns(obj)
+	}
+
+	return c.Complete(r)
 }
 
 func extractApplicationKey(obj client.Object) []string {

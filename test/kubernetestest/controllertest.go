@@ -123,6 +123,7 @@ func StartController() error {
 		return fmt.Errorf("failed to initialize manager: %w", err)
 	}
 
+	model := radcontroller.NewKubernetesModel()
 	controllerOptions := radcontroller.Options{
 		AppModel:      kubernetesmodel.NewKubernetesModel(mgr.GetClient()),
 		Client:        mgr.GetClient(),
@@ -132,7 +133,8 @@ func StartController() error {
 		Recorder:      mgr.GetEventRecorderFor("radius"),
 		RestConfig:    cfg,
 		RestMapper:    mapper,
-		ResourceTypes: radcontroller.DefaultResourceTypes,
+		ResourceTypes: model.GetReconciledTypes(),
+		WatchedTypes:  model.GetWatchedTypes(),
 		SkipWebhooks:  false,
 	}
 

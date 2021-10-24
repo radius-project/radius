@@ -1,0 +1,24 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+##@ Install
+
+.PHONY: install
+install: build-binaries ## Installs a local build for development
+	mkdir -p $(HOME)/.rad/crd
+	mkdir -p $(HOME)/.rad/bin/server
+
+	@echo "$(ARROW) Installing kcp"
+	cp $(KCP_OUT_PATH) $(HOME)/.rad/bin/
+	@echo "$(ARROW) Installing radiusd"
+	cp $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)/radiusd$(BINARY_EXT) $(HOME)/.rad/bin/
+	@echo "$(ARROW) Installing radius-controller"
+	cp $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)/radius-controller$(BINARY_EXT) $(HOME)/.rad/bin/
+
+	@echo "$(ARROW) Installing CRDs"
+	cp -R deploy/Chart/CRDs/ $(HOME)/.rad/crd/
+
+	@echo "$(ARROW) Displaying output"
+	tree $(HOME)/.rad -a

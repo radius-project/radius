@@ -87,6 +87,8 @@ spec:
                     exitCode:
                       description: Exit code of a process
                       type: integer
+                    logfile:
+                      type: string
                     pid:
                       description: The process ID
                       type: integer

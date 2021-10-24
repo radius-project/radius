@@ -1,6 +1,7 @@
-/*
-Copyright 2021.
-*/
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 
 package main
 
@@ -39,12 +40,7 @@ var (
 )
 
 func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
-	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
-
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
-
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
@@ -53,11 +49,14 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var modelName string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&modelName, "model", "kubernetes", "The resource model to use.")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -68,6 +67,14 @@ func main() {
 
 	// Get certificate from volume mounted environment variable
 	certDir := os.Getenv("TLS_CERT_DIR")
+
+	model := radcontroller.NewKubernetesModel()
+	if modelName == "kubernetes" {
+		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+		utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
+	} else if modelName == "local" {
+		model = radcontroller.NewLocalModel()
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -106,7 +113,8 @@ func main() {
 		Recorder:      mgr.GetEventRecorderFor("radius"),
 		RestConfig:    ctrl.GetConfigOrDie(),
 		RestMapper:    mapper,
-		ResourceTypes: radcontroller.DefaultResourceTypes,
+		ResourceTypes: model.GetReconciledTypes(),
+		WatchedTypes:  model.GetWatchedTypes(),
 		SkipWebhooks:  os.Getenv("SKIP_WEBHOOKS") == "true",
 	}
 
