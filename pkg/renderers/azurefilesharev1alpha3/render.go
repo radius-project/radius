@@ -70,6 +70,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		SecretValues:   secretValues,
 	}, nil
 }
+
 func RenderManaged(name string, properties AzureFileShareProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource

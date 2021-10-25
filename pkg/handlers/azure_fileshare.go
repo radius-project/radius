@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
 	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -41,45 +40,40 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 		return nil, err
 	}
 
-	if properties[FileShareIDKey] == "" {
-		var storageAccountName string
-		for _, resource := range options.Dependencies {
-			if resource.LocalID == outputresource.LocalIDAzureFileShareStorageAccount {
-				storageAccountName = resource.Properties[FileShareStorageAccountNameKey]
+	if options.Resource.Managed {
+		if properties[FileShareIDKey] == "" {
+			var storageAccountName string
+			if dependencyProperties, ok := options.DependencyProperties[outputresource.LocalIDAzureFileShareStorageAccount]; ok {
+				storageAccountName = dependencyProperties[FileShareStorageAccountNameKey]
+			}
+			fsc := clients.NewFileSharesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+			fileshare, err := fsc.Create(ctx, handler.arm.ResourceGroup, storageAccountName, properties[FileShareNameKey], storage.FileShare{}, "")
+			if err != nil {
+				return nil, fmt.Errorf("failed to create a file share with err: %w", err)
+			}
+			properties[FileShareIDKey] = *fileshare.ID
+			properties[FileShareStorageAccountNameKey] = storageAccountName
+			options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+		} else {
+			options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+			// Existing resource. Verify it exists
+			_, err := handler.getByID(ctx, options.Resource.Identity)
+			if err != nil {
+				return nil, err
 			}
 		}
-		if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureFileShareStorageAccount]; ok {
-			storageAccountName = properties[FileShareStorageAccountNameKey]
-		}
-		fsc := clients.NewFileSharesClient(handler.arm.SubscriptionID, handler.arm.Auth)
-		fileshare, err := fsc.Create(ctx, handler.arm.ResourceGroup, storageAccountName, properties[FileShareNameKey], storage.FileShare{}, "")
-		if err != nil {
-			return nil, fmt.Errorf("failed to create a file share with err: %w", err)
-		}
-		properties[FileShareIDKey] = *fileshare.ID
-		options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 	} else {
 		armhandler := NewARMHandler(handler.arm)
-		if options.Resource.Managed {
-			// This is an existing output resource
-			// TODO: Need this code till armhandler does not support unmanaged resource
-			options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
-			_, err := handler.GetByID(ctx, options.Resource.Identity)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			properties, err = armhandler.Put(ctx, options)
-			if err != nil {
-				return nil, err
-			}
+		properties, err = armhandler.Put(ctx, options)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	return properties, nil
 }
 
-func (handler *azureFileShareHandler) GetByID(ctx context.Context, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
+func (handler *azureFileShareHandler) getByID(ctx context.Context, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
 	id, apiVersion, err := identity.RequireARM()
 	if err != nil {
 		return nil, err
@@ -93,14 +87,9 @@ func (handler *azureFileShareHandler) GetByID(ctx context.Context, identity reso
 	return &resource, nil
 }
 
-func (handler *azureFileShareHandler) deleteFileShare(ctx context.Context, fileshareID string) error {
-	parsed, err := azresources.Parse(fileshareID)
-	if err != nil {
-		return fmt.Errorf("failed to parse file share resource id: %w", err)
-	}
-
-	fc := clients.NewFileSharesClient(parsed.SubscriptionID, handler.arm.Auth)
-	_, err = fc.Delete(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[2].Name, "", "")
+func (handler *azureFileShareHandler) deleteFileShare(ctx context.Context, accountName, fileshareName string) error {
+	fc := clients.NewFileSharesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	_, err := fc.Delete(ctx, handler.arm.ResourceGroup, accountName, fileshareName, "", "")
 	if err != nil {
 		return fmt.Errorf("failed to DELETE file share: %w", err)
 	}
@@ -115,10 +104,10 @@ func (handler *azureFileShareHandler) Delete(ctx context.Context, options Delete
 		return nil
 	}
 
-	fileshareID := properties[FileShareIDKey]
-
+	accountName := properties[FileShareStorageAccountNameKey]
+	fileshareName := properties[FileShareNameKey]
 	// Delete Azure File Share
-	err := handler.deleteFileShare(ctx, fileshareID)
+	err := handler.deleteFileShare(ctx, accountName, fileshareName)
 	if err != nil {
 		return err
 	}

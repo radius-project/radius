@@ -18,7 +18,7 @@ import (
 const (
 	FileShareStorageAccountNameKey       = "filesharestorageaccount"
 	FileShareStorageAccountIDKey         = "filesharestorageaccountid"
-	AzureFileShareStorageAccountBaseName = "storageaccount"
+	AzureFileShareStorageAccountBaseName = "storageaccountbase"
 )
 
 func NewAzureFileShareStorageAccountHandler(arm armauth.ArmConfig) ResourceHandler {
