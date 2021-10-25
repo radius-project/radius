@@ -27,7 +27,9 @@ const ChannelBufferSize = 100
 type HealthInfo struct {
 	stopProbeForResource    chan struct{}
 	ticker                  *time.Ticker
+	forcedUpdateTicker      *time.Ticker
 	handler                 handlers.HealthHandler
+	listeners               []chan struct{} // List of all goroutines listening for a stop signal to exit
 	HealthState             string
 	HealthStateErrorDetails string
 	Registration            handlers.HealthRegistration
@@ -47,6 +49,7 @@ type Monitor struct {
 
 // Run starts the HealthService
 func (h Monitor) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
 	logger := radlogger.GetLogger(ctx)
 	logger.Info("RadHealth Service started...")
 	for {
@@ -54,7 +57,7 @@ func (h Monitor) Run(ctx context.Context) error {
 		case msg := <-h.resourceRegistrationChannel:
 			// Received a registration/de-registration message
 			if msg.Action == healthcontract.ActionRegister {
-				h.RegisterResource(ctx, msg, make(chan struct{}, 1))
+				h.RegisterResource(ctx, msg, make(chan struct{}, 1), &sync.WaitGroup{})
 			} else if msg.Action == healthcontract.ActionUnregister {
 				h.UnregisterResource(ctx, msg)
 			}
@@ -65,6 +68,7 @@ func (h Monitor) Run(ctx context.Context) error {
 			}
 		case <-ctx.Done():
 			logger.Info("RadHealth Service stopped...")
+			cancel()
 			return nil
 		}
 	}
@@ -74,7 +78,7 @@ func (h Monitor) Run(ctx context.Context) error {
 // It should be called at the time of creation of the output resource
 //
 // The return value here is for testing purposes.
-func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}) *handlers.HealthRegistration {
+func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}, wg *sync.WaitGroup) *handlers.HealthRegistration {
 	ctx = radlogger.WrapLogContext(ctx, registerMsg.Resource.Identity.AsLogValues()...)
 	logger := radlogger.GetLogger(ctx)
 
@@ -111,14 +115,14 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 
 	healthInfo := HealthInfo{
 		stopProbeForResource: stopCh,
-		// Create a new ticker for the resource which will start the health check at the specified interval
-		// TODO: Optimize and not create a ticker per resource
-		handler:      healthHandler,
-		HealthState:  healthcontract.HealthStateUnknown,
-		Registration: registration,
-		Options:      ho,
+		forcedUpdateTicker:   time.NewTicker(ho.ForcedUpdateInterval),
+		handler:              healthHandler,
+		HealthState:          healthcontract.HealthStateUnknown,
+		Registration:         registration,
+		Options:              ho,
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
 	// Lookup whether the health can be watched or needs to be actively probed
 	if mode == handlers.HealthHandlerModePush {
 		h.activeHealthProbesMutex.Lock()
@@ -126,31 +130,73 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		h.activeHealthProbesMutex.Unlock()
 
 		options := handlers.Options{
-			StopChannel:               healthInfo.stopProbeForResource,
 			WatchHealthChangesChannel: h.watchHealthChangesChannel,
+			ForcedUpdateInterval:      healthInfo.Options.ForcedUpdateInterval,
 		}
 
 		// Watch health state
 		go healthHandler.GetHealthState(ctx, healthInfo.Registration, options)
 	} else if mode == handlers.HealthHandlerModePull {
 		// Need to actively probe the health periodically
-		h.probeHealth(ctx, healthHandler, healthInfo)
+		h.probeHealth(ctx, healthHandler, healthInfo, wg)
 	}
+
+	// Forced updates if there are no state changes for specified forced update
+	go h.forcePeriodicUpdates(ctx, healthInfo, h.getWaitGroup(wg))
+
+	go func(stopProbeForResource <-chan struct{}) {
+		for {
+			select {
+			case <-stopProbeForResource:
+				cancel()
+				wg.Wait()
+				return
+			}
+		}
+	}(stopCh)
 
 	logger.Info("Registered resource with health service successfully")
 	return &registration
 }
 
-func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthHandler, healthInfo HealthInfo) {
+func (h Monitor) getWaitGroup(wg *sync.WaitGroup) *sync.WaitGroup {
+	wg.Add(1)
+	return wg
+}
+
+func (h Monitor) forcePeriodicUpdates(ctx context.Context, healthInfo HealthInfo, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for {
+		select {
+		case <-healthInfo.forcedUpdateTicker.C:
+			h.activeHealthProbesMutex.Lock()
+			currentHealthInfo := h.activeHealthProbes[healthInfo.Registration.Token]
+			h.activeHealthProbesMutex.Unlock()
+			message := healthcontract.ResourceHealthDataMessage{
+				Resource:                currentHealthInfo.Registration.HealthResource,
+				HealthState:             currentHealthInfo.HealthState,
+				HealthStateErrorDetails: currentHealthInfo.HealthStateErrorDetails,
+			}
+
+			h.SendHealthStateChangeNotification(ctx, message)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthHandler, healthInfo HealthInfo, wg *sync.WaitGroup) {
 	logger := radlogger.GetLogger(ctx)
 	// Create a ticker with a period as specified in the health options by the resource
+	// TODO: Optimize and not create a ticker per resource
 	healthInfo.ticker = time.NewTicker(healthInfo.Options.Interval)
 	h.activeHealthProbesMutex.Lock()
 	h.activeHealthProbes[healthInfo.Registration.Token] = healthInfo
 	h.activeHealthProbesMutex.Unlock()
 
 	// Create a new health handler for the resource
-	go func(ticker *time.Ticker, healthHandler handlers.HealthHandler, stopProbeForResource <-chan struct{}) {
+	go func(ticker *time.Ticker, healthHandler handlers.HealthHandler, wg *sync.WaitGroup) {
+		defer wg.Done()
 		for {
 			select {
 			case <-ticker.C:
@@ -160,11 +206,11 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 				}
 				newHealthState := healthHandler.GetHealthState(ctx, healthInfo.Registration, options)
 				h.handleStateChanges(ctx, newHealthState)
-			case <-stopProbeForResource:
+			case <-ctx.Done():
 				return
 			}
 		}
-	}(healthInfo.ticker, healthInfo.handler, healthInfo.stopProbeForResource)
+	}(healthInfo.ticker, healthInfo.handler, h.getWaitGroup(wg))
 }
 
 func (h Monitor) handleStateChanges(ctx context.Context, newHealthState handlers.HealthState) {
@@ -177,6 +223,7 @@ func (h Monitor) handleStateChanges(ctx context.Context, newHealthState handlers
 		logger.Error(errors.New("NotFound"), "Unable to find active health probe for resource")
 		return
 	}
+	// Send a health notification if the health state has changed or if no notification has been sent for DefaultForceHealthStateUpdateInterval time
 	if currentHealthInfo.HealthState != newHealthState.HealthState {
 		logger.Info(fmt.Sprintf("HealthState changed from :%s to %s. Sending notification...", currentHealthInfo.HealthState, newHealthState.HealthState))
 

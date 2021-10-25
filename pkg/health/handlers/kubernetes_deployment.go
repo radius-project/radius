@@ -93,7 +93,7 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 			onDeploymentEvent(ctx, DeploymentEventDelete, obj, registration, options.WatchHealthChangesChannel)
 		},
 	})
-	deploymentInformer.Run(options.StopChannel)
+	deploymentInformer.Run(ctx.Done())
 	return HealthState{}
 }
 

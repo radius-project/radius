@@ -46,7 +46,10 @@ var InternalToUserHealthStateTranslation = map[string]string{
 
 // HealthCheckOptions defines the options available for performing health check of a resource
 type HealthCheckOptions struct {
+	// Periodic interval at which the health state is probed
 	Interval time.Duration
+	// Forced health state update interval
+	ForcedUpdateInterval time.Duration
 }
 
 // HealthChannels defines the interface to connect to the health service

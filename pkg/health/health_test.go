@@ -7,6 +7,7 @@ package health
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -51,13 +52,15 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 		},
 	}
 
-	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
+	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
+		wg.Wait()
 	})
 
-	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh)
+	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
 
 	monitor.activeHealthProbesMutex.RLock()
 	probesLen := len(monitor.activeHealthProbes)
@@ -99,7 +102,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 			ResourceKind:     "NotImplementedType",
 		},
 	}
-	monitor.RegisterResource(ctx, registrationMsg, make(chan struct{}, 1))
+	monitor.RegisterResource(ctx, registrationMsg, make(chan struct{}, 1), &sync.WaitGroup{})
 	monitor.activeHealthProbesMutex.RLock()
 	defer monitor.activeHealthProbesMutex.RUnlock()
 	require.Equal(t, 0, len(monitor.activeHealthProbes))
@@ -177,14 +180,16 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 		},
 	}
 
-	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
+	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
+		wg.Wait()
 	})
 
 	ctx := logr.NewContext(context.Background(), logger)
-	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh)
+	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
 
 	monitor.activeHealthProbesMutex.RLock()
 	hi := monitor.activeHealthProbes[registration.Token]
@@ -226,10 +231,12 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 			Interval: time.Nanosecond * 1,
 		},
 	}
-	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
+	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
+		wg.Wait()
 	})
 
 	mockHandler.EXPECT().GetHealthState(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -238,7 +245,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		HealthState:             "Healthy",
 		HealthStateErrorDetails: "None",
 	})
-	monitor.RegisterResource(ctx, registrationMsg, stopCh)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
 	// Wait till health state change notification is received
 	notification := <-hpc
 
@@ -288,12 +295,14 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 		HealthStateErrorDetails: "None",
 	})
 
-	// Create an unbuffered channel so that the test can wait till the ticker routine is stopped
+	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
+	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
+		wg.Wait()
 	})
-	monitor.RegisterResource(ctx, registrationMsg, stopCh)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
 
 	// Wait till health state change notification is received
 	<-hpc
@@ -305,4 +314,54 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 
 	require.Equal(t, "Healthy", hi.HealthState)
 	require.Equal(t, "None", hi.HealthStateErrorDetails)
+}
+
+func Test_HealthServiceSendsNotificationsAfterForcedUpdateInterval(t *testing.T) {
+	logger, err := radlogger.NewTestLogger(t)
+	require.NoError(t, err)
+
+	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
+	hpc := make(chan healthcontract.ResourceHealthDataMessage, 1000) // Using a big buffer size here to ensure that periodic update thread is not stuck in blocking on the message
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockHandler := handlers.NewMockHealthHandler(ctrl)
+	options := MonitorOptions{
+		Logger:                      logger,
+		ResourceRegistrationChannel: rrc,
+		HealthProbeChannel:          hpc,
+		HealthModel: model.NewHealthModel(map[string]handlers.HealthHandler{
+			"dummy": mockHandler,
+		}),
+	}
+	monitor := NewMonitor(options, armauth.ArmConfig{})
+	ctx := logr.NewContext(context.Background(), logger)
+	resource := healthcontract.HealthResource{
+		RadiusResourceID: "abc",
+		Identity:         resourcemodel.NewARMIdentity("xyz", "2020-01-01"),
+		ResourceKind:     "dummy",
+	}
+
+	// Wait till the waitgroup is done
+	stopCh := make(chan struct{})
+	wg := sync.WaitGroup{}
+	t.Cleanup(func() {
+		stopCh <- struct{}{}
+		wg.Wait()
+	})
+
+	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
+		Action:   healthcontract.ActionRegister,
+		Resource: resource,
+		Options: healthcontract.HealthCheckOptions{
+			Interval:             time.Second * 100,   // Making this very big on purpose so that the period ticker is not fired
+			ForcedUpdateInterval: time.Nanosecond * 1, // Making this very small on purpose so that the forced update ticker fires immediately
+		},
+	}
+
+	monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
+
+	// Wait till forced health state change notification is received
+	notification := <-hpc
+	require.Equal(t, "Unknown", notification.HealthState)
+	require.Equal(t, "", notification.HealthStateErrorDetails)
 }
