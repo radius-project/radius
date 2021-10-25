@@ -18,12 +18,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
             provides: http.id
           }
         }
-      }
-      volumes: {
-        tempdir: {
-          kind: 'ephemeral'
-          mountPath: '/tmpfs'
-          managedStore: 'memory'
+        volumes: {
+          tempdir: {
+            kind: 'ephemeral'
+            mountPath: '/tmpfs'
+            managedStore: 'memory'
+          }
         }
       }
       connections: {
