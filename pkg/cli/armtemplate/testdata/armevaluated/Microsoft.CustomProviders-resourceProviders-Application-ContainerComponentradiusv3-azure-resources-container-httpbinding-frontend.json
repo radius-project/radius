@@ -18,7 +18,8 @@
             },
             "container": {
                 "env": {
-                    "SERVICE__BACKEND__PORT": 80
+                    "SERVICE__BACKEND__PORT": 80,
+                    "ANOTHER__PORT": 80
                 },
                 "image": "rynowak/frontend:0.5.0-dev",
                 "ports": {

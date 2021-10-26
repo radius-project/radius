@@ -118,11 +118,10 @@ func ParseExpression(t *tokenizer) (ExpressionNode, error) {
 		t.SkipWhitespace()
 		r, length = t.Peek()
 
-		if r == utf8.RuneError && length == 0 || r != '.' {
+		if r == utf8.RuneError && length == 0 || (r != '.' && r != '[') {
 			// we've reached the end, return what we have.
 			break
 		}
-
 		v, err = ParsePropertyAccess(t, v)
 		if err != nil {
 			return nil, err
@@ -271,15 +270,54 @@ func ParseString(t *tokenizer) (ExpressionNode, error) {
 	}, nil
 }
 
+func ParseBracketPropertyAccess(t *tokenizer, base ExpressionNode) (*PropertyAccessNode, error) {
+	// Use the start of the base expression as the start of this node since
+	// this is right-associative.
+	//
+	// eg:
+	// ^foo()['bar']
+	//
+	// If the cursor is | then technically the start of the node is ^
+	start := base.GetSpan().Start
+	err := t.Expect('[')
+	if err != nil {
+		return nil, err
+	}
+	t.SkipWhitespace()
+
+	s, err := ParseString(t)
+	if err != nil {
+		return nil, err
+	}
+
+	err = t.Expect(']')
+	if err != nil {
+		return nil, err
+	}
+
+	return &PropertyAccessNode{
+		Span: Span{
+			Start:  start,
+			Length: t.Current - start,
+		},
+		Base:   base,
+		String: s,
+	}, nil
+}
+
 func ParsePropertyAccess(t *tokenizer, base ExpressionNode) (*PropertyAccessNode, error) {
 	// Use the start of the base expression as the start of this node since
 	// this is right-associative.
 	//
 	// eg:
-	// ^foo()|.bar
+	// ^foo()|.bar, or
+	// ^foo()['bar']
 	//
 	// If the cursor is | then technically the start of the node is ^
 	start := base.GetSpan().Start
+	if r, _ := t.Peek(); r == '[' {
+		return ParseBracketPropertyAccess(t, base)
+	}
 	err := t.Expect('.')
 	if err != nil {
 		return nil, err

@@ -18,7 +18,8 @@
             },
             "container": {
                 "env": {
-                    "SERVICE__BACKEND__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))).port]"
+                    "SERVICE__BACKEND__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute'))).port]",
+                    "ANOTHER__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', parameters('backendRoute')))['port']]"
                 },
                 "image": "rynowak/frontend:0.5.0-dev",
                 "ports": {
