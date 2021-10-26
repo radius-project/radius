@@ -98,6 +98,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 	// to fill in variables ex: ([reference(...)])
 	deployed := map[string]map[string]interface{}{}
 	evaluator := &armtemplate.DeploymentEvaluator{
+		Context:   ctx,
 		Template:  template,
 		Options:   options,
 		Deployed:  deployed,
@@ -118,6 +119,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		evaluator.Variables[name] = value
 	}
 
+	mustRequeue := false
 	for i, resource := range resources {
 		body, err := evaluator.VisitMap(resource.Body)
 		if err != nil {
@@ -172,12 +174,11 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-
-			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+			mustRequeue = true
+			continue
 		}
 
 		arm.Status.Operations[i].Provisioned = true
-
 		// TODO could remove this dependecy on radiusv1alpha3
 		k8sResource := &radiusv1alpha3.Resource{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, k8sResource)
@@ -198,10 +199,12 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		deployed[resource.ID] = resource.Body
 
 		if k8sResource.Status.Phrase != "Ready" {
-			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+			mustRequeue = true
 		}
 	}
-
+	if mustRequeue {
+		return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+	}
 	return reconcile.Result{}, nil
 }
 

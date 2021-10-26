@@ -81,8 +81,8 @@ func TestGetDeployedResource(t *testing.T) {
 					Name:      "redis",
 					Namespace: "default",
 				},
-				Data: map[string][]byte{
-					"redis-password": []byte("unsecure"),
+				StringData: map[string]string{
+					"redis-password": "unsecure",
 				},
 			},
 		},
@@ -98,7 +98,7 @@ func TestGetDeployedResource(t *testing.T) {
 					// This was defaulted, but wasn't omitted in their marshaller.
 					"creationTimestamp": nil,
 				},
-				"data": map[string]interface{}{
+				"stringData": map[string]interface{}{
 					"redis-password": "unsecure",
 				},
 			},
@@ -111,7 +111,7 @@ func TestGetDeployedResource(t *testing.T) {
 				fakeDynamicClient,
 				fakeRestMapper(),
 			)
-			output, err := store.GetDeployedResource(tc.ref, tc.version)
+			output, err := store.GetDeployedResource(context.Background(), tc.ref, tc.version)
 			if tc.expectedErr == "" {
 				require.NoError(t, err)
 			}

@@ -99,7 +99,7 @@ func TestUnwrapK8sUnstructured(t *testing.T) {
 				Name: "Kubernetes",
 			},
 		},
-		expectedErr: "has no property",
+		expectedErr: "lacks required property 'properties'",
 	}, {
 		name: "empty secret",
 		input: Resource{
@@ -142,7 +142,7 @@ func TestUnwrapK8sUnstructured(t *testing.T) {
 						"namespace": "middle-earth",
 					},
 					"data": map[string]interface{}{
-						"password": []byte("Mellon"),
+						"password": "Mellon",
 						"username": "Gandalf",
 					},
 				},
@@ -156,9 +156,9 @@ func TestUnwrapK8sUnstructured(t *testing.T) {
 					"name":      "moria",
 					"namespace": "middle-earth",
 				},
-				"data": map[string][]byte{
-					"password": []byte("Mellon"),
-					"username": []byte("Gandalf"),
+				"data": map[string]interface{}{
+					"password": "Mellon",
+					"username": "Gandalf",
 				},
 			},
 		},

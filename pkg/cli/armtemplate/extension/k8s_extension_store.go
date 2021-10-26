@@ -7,7 +7,6 @@ package extension
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"regexp"
 
@@ -56,28 +55,14 @@ func (store *K8sStore) extractGroupVersionResourceName(ref string, version strin
 //
 // The properties of this K8s resource are wrapped in a field called 'properties' as expected by the
 // ARM-JSON evaluation logic.
-func (store *K8sStore) GetDeployedResource(ref interface{}, version string) (map[string]interface{}, error) {
+func (store *K8sStore) GetDeployedResource(ctx context.Context, ref interface{}, version string) (map[string]interface{}, error) {
 	gvr, name, err := store.extractGroupVersionResourceName(fmt.Sprintf("%v", ref), version)
 	if err != nil {
 		return nil, err
 	}
-	r, err := store.client.Resource(gvr).Namespace("default").Get(context.TODO(), name, v1.GetOptions{})
+	r, err := store.client.Resource(gvr).Namespace("default").Get(ctx, name, v1.GetOptions{})
 	if err != nil {
 		return nil, err
-	}
-	if gvr.Group == "" && gvr.Version == "v1" && gvr.Resource == "secrets" {
-		// Need to decode the secret data
-		secretData := r.Object["data"].(map[string]interface{})
-		data := make(map[string]interface{}, len(secretData))
-		for k, v := range secretData {
-			s, _ := v.(string)
-			decoded, err := base64.StdEncoding.Strict().DecodeString(s)
-			if err != nil {
-				return nil, err
-			}
-			data[k] = string(decoded)
-		}
-		r.Object["data"] = data
 	}
 	return map[string]interface{}{
 		// We have to nest all output inside "properties", since the compiled version

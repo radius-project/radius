@@ -44,7 +44,7 @@ func unwrapK8sUnstructured(resource Resource) (*unstructured.Unstructured, error
 	// the metadata must always be there.
 	properties, ok := resource.Body["properties"].(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("resource %s/%s has no property", resource.Type, resource.Name)
+		return nil, fmt.Errorf("resource %s/%s lacks required property 'properties'", resource.Type, resource.Name)
 	}
 	r := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -52,23 +52,6 @@ func unwrapK8sUnstructured(resource Resource) (*unstructured.Unstructured, error
 			"kind":       gvk.Kind,
 		},
 	}
-	// The "data" property of Secret needs to be unwrapped into `map[string][]byte`
-	// to work well with the dynamic.Interface client.
-	data, _ := properties["data"].(map[string]interface{})
-	if len(data) > 0 && gvk.Group == "" && gvk.Kind == "Secret" && gvk.Version == "v1" {
-		secretData := make(map[string][]byte, len(data))
-
-		for k, v := range data {
-			switch src := v.(type) {
-			case string:
-				secretData[k] = []byte(src)
-			case []byte:
-				secretData[k] = src
-			}
-		}
-		r.Object["data"] = secretData
-	}
-	// Now fill in the rest of the properties.
 	for k, v := range properties {
 		if _, hasK := r.Object[k]; !hasK {
 			r.Object[k] = v

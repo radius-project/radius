@@ -6,6 +6,8 @@
 package armtemplate
 
 import (
+	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"regexp"
@@ -17,6 +19,7 @@ import (
 )
 
 type DeploymentEvaluator struct {
+	Context   context.Context
 	Template  DeploymentTemplate
 	Options   TemplateOptions
 	Deployed  map[string]map[string]interface{}
@@ -263,6 +266,16 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 
 		eva.Value = eva.EvaluateString(args[0])
 		return nil
+	} else if name == "base64ToString" {
+		if len(args) != 1 {
+			return fmt.Errorf("exactly 1 argument is required for %s", "base64ToString")
+		}
+		out, err := base64.StdEncoding.DecodeString(eva.EvaluateString(args[0]))
+		if err != nil {
+			return err
+		}
+		eva.Value = string(out)
+		return nil
 	} else if name == "variables" {
 		if len(args) != 1 {
 			return fmt.Errorf("exactle 1 argument is required for %s", "variables")
@@ -357,7 +370,7 @@ func (eva *DeploymentEvaluator) EvaluateReference(id interface{}, version string
 		}
 		// TODO(tcnghia): Use a better way to look up the extension by the ref.
 		//                For now, Kubernetes is the only extension, so this is probably ok.
-		return eva.ExtensionStore.GetDeployedResource(id, version)
+		return eva.ExtensionStore.GetDeployedResource(eva.Context, id, version)
 	}
 	// Note: we assume 'full' mode for references
 	// see: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/template-functions-resource#reference

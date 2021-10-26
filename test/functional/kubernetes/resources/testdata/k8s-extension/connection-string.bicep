@@ -12,7 +12,7 @@ resource redisSecret 'kubernetes.core/Secret@v1' existing = {
   }
 }
 
-resource connectionString 'kubernetes.core/Secret@v1' = {
+resource secret 'kubernetes.core/Secret@v1' = {
   metadata: {
     name: 'redis-conn'
     namespace: 'default'
@@ -21,11 +21,15 @@ resource connectionString 'kubernetes.core/Secret@v1' = {
     }
   }
 
-  data: {
-    'connectionString': '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local,password=${redisSecret.data.redisPassword}'
+  stringData: {
+    connectionString: '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local,password=${base64ToString(redisSecret.data.redisPassword)}'
   }
 }
 
+// Our test framework wants an app, but we don't need an app just yet.
+//
+// In the future when we implements the usage of unmanaged K8s resources
+// in an application we will turn this app to something useful.
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dummy'
 }
