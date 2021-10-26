@@ -29,7 +29,6 @@ type HealthInfo struct {
 	ticker                  *time.Ticker
 	forcedUpdateTicker      *time.Ticker
 	handler                 handlers.HealthHandler
-	listeners               []chan struct{} // List of all goroutines listening for a stop signal to exit
 	HealthState             string
 	HealthStateErrorDetails string
 	Registration            handlers.HealthRegistration
@@ -145,13 +144,10 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	go h.forcePeriodicUpdates(ctx, healthInfo, h.getWaitGroup(wg))
 
 	go func(stopProbeForResource <-chan struct{}) {
-		for {
-			select {
-			case <-stopProbeForResource:
-				cancel()
-				wg.Wait()
-				return
-			}
+		for range stopProbeForResource {
+			cancel()
+			wg.Wait()
+			return
 		}
 	}(stopCh)
 
