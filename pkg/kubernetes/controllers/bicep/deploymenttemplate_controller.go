@@ -26,7 +26,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
-	"github.com/Azure/radius/pkg/cli/armtemplate/extension"
+	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
@@ -107,7 +107,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		CustomActionCallback: func(id string, apiVersion string, action string, payload interface{}) (interface{}, error) {
 			return r.InvokeCustomAction(ctx, req.Namespace, id, apiVersion, action, payload)
 		},
-		ExtensionStore: extension.NewK8sStore(r.Log, r.DynamicClient, r.RESTMapper),
+		ProviderStore: providers.NewK8sStore(r.Log, r.DynamicClient, r.RESTMapper),
 	}
 
 	for name, variable := range template.Variables {

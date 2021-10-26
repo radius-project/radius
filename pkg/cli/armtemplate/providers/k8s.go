@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package extension
+package providers
 
 import (
 	"context"
@@ -36,6 +36,8 @@ func NewK8sStore(log logr.Logger, client dynamic.Interface, restMapper meta.REST
 }
 
 func (store *K8sStore) extractGroupVersionResourceName(ref string, version string) (schema.GroupVersionResource, string, error) {
+	// We name these like kubernetes.core/Secret/name or kubernetes.apps/Deployment/name
+	// So this code path is sensitive to how these are designed in Bicep.
 	matches := regexp.MustCompile(`\.([^/.]+)/([^/]+)/([^/]+)$`).FindAllStringSubmatch(ref, -1)
 	if len(matches) != 1 || len(matches[0]) != 4 {
 		return schema.GroupVersionResource{}, "", fmt.Errorf("wrong reference format, expected: kubernetes.group/Kind/name, saw: %q", ref)
@@ -55,8 +57,8 @@ func (store *K8sStore) extractGroupVersionResourceName(ref string, version strin
 //
 // The properties of this K8s resource are wrapped in a field called 'properties' as expected by the
 // ARM-JSON evaluation logic.
-func (store *K8sStore) GetDeployedResource(ctx context.Context, ref interface{}, version string) (map[string]interface{}, error) {
-	gvr, name, err := store.extractGroupVersionResourceName(fmt.Sprintf("%v", ref), version)
+func (store *K8sStore) GetDeployedResource(ctx context.Context, ref string, version string) (map[string]interface{}, error) {
+	gvr, name, err := store.extractGroupVersionResourceName(ref, version)
 	if err != nil {
 		return nil, err
 	}

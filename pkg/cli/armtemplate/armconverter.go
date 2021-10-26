@@ -18,6 +18,8 @@ import (
 )
 
 func resourceGVK(resource Resource) (schema.GroupVersionKind, error) {
+	// We name these like kubernetes.core/Secret or kubernetes.apps/Deployment.
+	// So this code path is sensitive to how these are designed in Bicep.
 	matches := regexp.MustCompile(`\.([^/.]+)/([^/]+)$`).FindAllStringSubmatch(resource.Type, -1)
 	if len(matches) != 1 || len(matches[0]) != 3 {
 		return schema.GroupVersionKind{}, fmt.Errorf("invalid resource type, expect 'provider.group/Kind', saw %q", resource.Type)

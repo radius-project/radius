@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/cli/armtemplate/extension"
+	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
 	"github.com/Azure/radius/pkg/radrp/armexpr"
 )
 
@@ -30,8 +30,8 @@ type DeploymentEvaluator struct {
 	// Intermediate expression evaluation state
 	Value interface{}
 
-	// An extension.Store can provide more resources that we don't deploy ourselves.
-	ExtensionStore extension.Store
+	// A providers.Store can provide more resources that we don't deploy ourselves.
+	ProviderStore providers.Store
 }
 
 func (eva *DeploymentEvaluator) VisitValue(input interface{}) (interface{}, error) {
@@ -365,12 +365,13 @@ func (eva *DeploymentEvaluator) EvaluateParameter(name string) (interface{}, err
 func (eva *DeploymentEvaluator) EvaluateReference(id interface{}, version string) (map[string]interface{}, error) {
 	obj, ok := eva.Deployed[id.(string)]
 	if !ok {
-		if eva.ExtensionStore == nil {
+		if eva.ProviderStore == nil {
 			return nil, fmt.Errorf("no resource matches id: %s", id)
 		}
 		// TODO(tcnghia): Use a better way to look up the extension by the ref.
 		//                For now, Kubernetes is the only extension, so this is probably ok.
-		return eva.ExtensionStore.GetDeployedResource(eva.Context, id, version)
+		strId, _ := id.(string)
+		return eva.ProviderStore.GetDeployedResource(eva.Context, strId, version)
 	}
 	// Note: we assume 'full' mode for references
 	// see: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/template-functions-resource#reference

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/radius/pkg/cli/armtemplate/extension"
+	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -62,11 +62,11 @@ func Test_DeploymentEvaluator_KubernetesReference(t *testing.T) {
 			require.NoError(t, err)
 
 			evaluator := &DeploymentEvaluator{
-				Template:       template,
-				Options:        options,
-				Deployed:       map[string]map[string]interface{}{},
-				Variables:      map[string]interface{}{},
-				ExtensionStore: loadFakeK8sStore(tc.resourceDir),
+				Template:      template,
+				Options:       options,
+				Deployed:      map[string]map[string]interface{}{},
+				Variables:     map[string]interface{}{},
+				ProviderStore: loadFakeK8sStore(tc.resourceDir),
 			}
 			output := map[string]interface{}{}
 			errs := []string{}
@@ -188,7 +188,7 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 	}
 }
 
-func loadFakeK8sStore(dir string) extension.Store {
+func loadFakeK8sStore(dir string) providers.Store {
 	objects := []runtime.Object{}
 	_ = filepath.Walk(dir, func(path string, info os.FileInfo, _ error) error {
 		if !strings.HasSuffix(info.Name(), ".yaml") {
@@ -201,7 +201,7 @@ func loadFakeK8sStore(dir string) extension.Store {
 		return nil
 	})
 	fakeDynamicClient := fake.NewSimpleDynamicClient(fakeScheme(), objects...)
-	return extension.NewK8sStore(
+	return providers.NewK8sStore(
 		logr.FromContext(context.Background()),
 		fakeDynamicClient,
 		fakeRestMapper(),

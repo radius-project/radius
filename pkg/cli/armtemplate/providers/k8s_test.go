@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
-package extension
+package providers
 
 import (
 	"context"

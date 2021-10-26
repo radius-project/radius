@@ -3,9 +3,9 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package extension
+package providers
 
 /*
-Package extension contains the code to allow the DeploymentEvaluator
+Package providers contains the code to allow the DeploymentEvaluator
 to interact with resources provided by an extension like Kubernetes.
 */
