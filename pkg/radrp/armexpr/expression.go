@@ -85,6 +85,7 @@ type PropertyAccessNode struct {
 	Span       Span
 	Base       ExpressionNode
 	Identifier IdentifierNode
+	String     ExpressionNode
 }
 
 func (node *PropertyAccessNode) GetSpan() Span {
@@ -98,3 +99,7 @@ func (node *PropertyAccessNode) GetKind() ExpressionKind {
 func (node *PropertyAccessNode) Accept(visitor Visitor) error {
 	return visitor.VisitPropertyAccess(node)
 }
+
+var _ ExpressionNode = &StringLiteralNode{}
+var _ ExpressionNode = &PropertyAccessNode{}
+var _ ExpressionNode = &FunctionCallNode{}

@@ -154,12 +154,25 @@ func (eva *DeploymentEvaluator) VisitPropertyAccess(node *armexpr.PropertyAccess
 		return fmt.Errorf("value to access should be a map, was: %+v", eva.Value)
 	}
 
-	value, ok := obj[node.Identifier.Text]
+	key := node.Identifier.Text
+	if key == "" {
+		// must be a string
+		err = node.String.Accept(eva)
+		if err != nil {
+			return err
+		}
+		key, ok = eva.Value.(string)
+		if !ok {
+			return fmt.Errorf("map key must be string, was %+v", key)
+		}
+	}
+	value, ok := obj[key]
 	if !ok {
-		return fmt.Errorf("value did not contain property '%s', was: %+v", node.Identifier.Text, obj)
+		return fmt.Errorf("value did not contain property '%s', was: %+v", key, obj)
 	}
 
 	eva.Value = value
+
 	return nil
 }
 
