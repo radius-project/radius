@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // AzureComKeyVaultComponentClient contains the methods for the AzureComKeyVaultComponent group.
 // Don't use this type directly, use NewAzureComKeyVaultComponentClient() instead.
 type AzureComKeyVaultComponentClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewAzureComKeyVaultComponentClient creates a new instance of AzureComKeyVaultComponentClient with the specified values.
-func NewAzureComKeyVaultComponentClient(con *armcore.Connection, subscriptionID string) *AzureComKeyVaultComponentClient {
-	return &AzureComKeyVaultComponentClient{con: con, subscriptionID: subscriptionID}
+func NewAzureComKeyVaultComponentClient(con *arm.Connection, subscriptionID string) *AzureComKeyVaultComponentClient {
+	return &AzureComKeyVaultComponentClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a azure.com.KeyVaultComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComKeyVaultComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, parameters AzureKeyVaultComponentResource, options *AzureComKeyVaultComponentBeginCreateOrUpdateOptions) (AzureKeyVaultComponentResourcePollerResponse, error) {
+func (client *AzureComKeyVaultComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, parameters AzureKeyVaultComponentResource, options *AzureComKeyVaultComponentBeginCreateOrUpdateOptions) (AzureComKeyVaultComponentCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, azureKeyVaultComponentName, parameters, options)
 	if err != nil {
-		return AzureKeyVaultComponentResourcePollerResponse{}, err
+		return AzureComKeyVaultComponentCreateOrUpdatePollerResponse{}, err
 	}
-	result := AzureKeyVaultComponentResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("AzureComKeyVaultComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return AzureKeyVaultComponentResourcePollerResponse{}, err
-	}
-	poller := &azureKeyVaultComponentResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (AzureKeyVaultComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new AzureKeyVaultComponentResourcePoller from the specified resume token.
-// token - The value must come from a previous call to AzureKeyVaultComponentResourcePoller.ResumeToken().
-func (client *AzureComKeyVaultComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (AzureKeyVaultComponentResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("AzureComKeyVaultComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return AzureKeyVaultComponentResourcePollerResponse{}, err
-	}
-	poller := &azureKeyVaultComponentResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return AzureKeyVaultComponentResourcePollerResponse{}, err
-	}
-	result := AzureKeyVaultComponentResourcePollerResponse{
+	result := AzureComKeyVaultComponentCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (AzureKeyVaultComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("AzureComKeyVaultComponentClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return AzureComKeyVaultComponentCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &AzureComKeyVaultComponentCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a azure.com.KeyVaultComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComKeyVaultComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, parameters AzureKeyVaultComponentResource, options *AzureComKeyVaultComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *AzureComKeyVaultComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, parameters AzureKeyVaultComponentResource, options *AzureComKeyVaultComponentBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, azureKeyVaultComponentName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *AzureComKeyVaultComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, parameters AzureKeyVaultComponentResource, options *AzureComKeyVaultComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *AzureComKeyVaultComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, parameters AzureKeyVaultComponentResource, options *AzureComKeyVaultComponentBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVaultComponent/{azureKeyVaultComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -115,98 +90,69 @@ func (client *AzureComKeyVaultComponentClient) createOrUpdateCreateRequest(ctx c
 		return nil, errors.New("parameter azureKeyVaultComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{azureKeyVaultComponentName}", url.PathEscape(azureKeyVaultComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *AzureComKeyVaultComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *AzureComKeyVaultComponentClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a azure.com.KeyVaultComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComKeyVaultComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *AzureComKeyVaultComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentBeginDeleteOptions) (AzureComKeyVaultComponentDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, azureKeyVaultComponentName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return AzureComKeyVaultComponentDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("AzureComKeyVaultComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *AzureComKeyVaultComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("AzureComKeyVaultComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := AzureComKeyVaultComponentDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("AzureComKeyVaultComponentClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return AzureComKeyVaultComponentDeletePollerResponse{}, err
+	}
+	result.Poller = &AzureComKeyVaultComponentDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a azure.com.KeyVaultComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComKeyVaultComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentBeginDeleteOptions) (*azcore.Response, error) {
+func (client *AzureComKeyVaultComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, azureKeyVaultComponentName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *AzureComKeyVaultComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentBeginDeleteOptions) (*azcore.Request, error) {
+func (client *AzureComKeyVaultComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVaultComponent/{azureKeyVaultComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -224,50 +170,49 @@ func (client *AzureComKeyVaultComponentClient) deleteCreateRequest(ctx context.C
 		return nil, errors.New("parameter azureKeyVaultComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{azureKeyVaultComponentName}", url.PathEscape(azureKeyVaultComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *AzureComKeyVaultComponentClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *AzureComKeyVaultComponentClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a azure.com.KeyVaultComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComKeyVaultComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentGetOptions) (AzureKeyVaultComponentResourceResponse, error) {
+func (client *AzureComKeyVaultComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentGetOptions) (AzureComKeyVaultComponentGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, azureKeyVaultComponentName, options)
 	if err != nil {
-		return AzureKeyVaultComponentResourceResponse{}, err
+		return AzureComKeyVaultComponentGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return AzureKeyVaultComponentResourceResponse{}, err
+		return AzureComKeyVaultComponentGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return AzureKeyVaultComponentResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return AzureComKeyVaultComponentGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *AzureComKeyVaultComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentGetOptions) (*azcore.Request, error) {
+func (client *AzureComKeyVaultComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureKeyVaultComponentName string, options *AzureComKeyVaultComponentGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVaultComponent/{azureKeyVaultComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -285,59 +230,58 @@ func (client *AzureComKeyVaultComponentClient) getCreateRequest(ctx context.Cont
 		return nil, errors.New("parameter azureKeyVaultComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{azureKeyVaultComponentName}", url.PathEscape(azureKeyVaultComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *AzureComKeyVaultComponentClient) getHandleResponse(resp *azcore.Response) (AzureKeyVaultComponentResourceResponse, error) {
-	var val *AzureKeyVaultComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return AzureKeyVaultComponentResourceResponse{}, err
+func (client *AzureComKeyVaultComponentClient) getHandleResponse(resp *http.Response) (AzureComKeyVaultComponentGetResponse, error) {
+	result := AzureComKeyVaultComponentGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AzureKeyVaultComponentResource); err != nil {
+		return AzureComKeyVaultComponentGetResponse{}, err
 	}
-return AzureKeyVaultComponentResourceResponse{RawResponse: resp.Response, AzureKeyVaultComponentResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *AzureComKeyVaultComponentClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *AzureComKeyVaultComponentClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the azure.com.KeyVaultComponent resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *AzureComKeyVaultComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *AzureComKeyVaultComponentListOptions) (AzureKeyVaultComponentListResponse, error) {
+func (client *AzureComKeyVaultComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *AzureComKeyVaultComponentListOptions) (AzureComKeyVaultComponentListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return AzureKeyVaultComponentListResponse{}, err
+		return AzureComKeyVaultComponentListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return AzureKeyVaultComponentListResponse{}, err
+		return AzureComKeyVaultComponentListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return AzureKeyVaultComponentListResponse{}, client.listHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return AzureComKeyVaultComponentListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *AzureComKeyVaultComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *AzureComKeyVaultComponentListOptions) (*azcore.Request, error) {
+func (client *AzureComKeyVaultComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *AzureComKeyVaultComponentListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVaultComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -351,37 +295,36 @@ func (client *AzureComKeyVaultComponentClient) listCreateRequest(ctx context.Con
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *AzureComKeyVaultComponentClient) listHandleResponse(resp *azcore.Response) (AzureKeyVaultComponentListResponse, error) {
-	var val *AzureKeyVaultComponentList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return AzureKeyVaultComponentListResponse{}, err
+func (client *AzureComKeyVaultComponentClient) listHandleResponse(resp *http.Response) (AzureComKeyVaultComponentListResponse, error) {
+	result := AzureComKeyVaultComponentListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AzureKeyVaultComponentList); err != nil {
+		return AzureComKeyVaultComponentListResponse{}, err
 	}
-return AzureKeyVaultComponentListResponse{RawResponse: resp.Response, AzureKeyVaultComponentList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *AzureComKeyVaultComponentClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *AzureComKeyVaultComponentClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 

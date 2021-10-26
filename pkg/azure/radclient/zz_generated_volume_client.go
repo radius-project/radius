@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // VolumeClient contains the methods for the Volume group.
 // Don't use this type directly, use NewVolumeClient() instead.
 type VolumeClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewVolumeClient creates a new instance of VolumeClient with the specified values.
-func NewVolumeClient(con *armcore.Connection, subscriptionID string) *VolumeClient {
-	return &VolumeClient{con: con, subscriptionID: subscriptionID}
+func NewVolumeClient(con *arm.Connection, subscriptionID string) *VolumeClient {
+	return &VolumeClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a Volume resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *VolumeClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, parameters VolumeResource, options *VolumeBeginCreateOrUpdateOptions) (VolumeResourcePollerResponse, error) {
+func (client *VolumeClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, parameters VolumeResource, options *VolumeBeginCreateOrUpdateOptions) (VolumeCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, volumeName, parameters, options)
 	if err != nil {
-		return VolumeResourcePollerResponse{}, err
+		return VolumeCreateOrUpdatePollerResponse{}, err
 	}
-	result := VolumeResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("VolumeClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return VolumeResourcePollerResponse{}, err
-	}
-	poller := &volumeResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (VolumeResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new VolumeResourcePoller from the specified resume token.
-// token - The value must come from a previous call to VolumeResourcePoller.ResumeToken().
-func (client *VolumeClient) ResumeCreateOrUpdate(ctx context.Context, token string) (VolumeResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("VolumeClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return VolumeResourcePollerResponse{}, err
-	}
-	poller := &volumeResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return VolumeResourcePollerResponse{}, err
-	}
-	result := VolumeResourcePollerResponse{
+	result := VolumeCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (VolumeResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("VolumeClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return VolumeCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &VolumeCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a Volume resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *VolumeClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, parameters VolumeResource, options *VolumeBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *VolumeClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, parameters VolumeResource, options *VolumeBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, volumeName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *VolumeClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, parameters VolumeResource, options *VolumeBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *VolumeClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, parameters VolumeResource, options *VolumeBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -115,98 +90,69 @@ func (client *VolumeClient) createOrUpdateCreateRequest(ctx context.Context, res
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{volumeName}", url.PathEscape(volumeName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *VolumeClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *VolumeClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a Volume resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *VolumeClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *VolumeClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeBeginDeleteOptions) (VolumeDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, volumeName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return VolumeDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("VolumeClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *VolumeClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("VolumeClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := VolumeDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("VolumeClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return VolumeDeletePollerResponse{}, err
+	}
+	result.Poller = &VolumeDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a Volume resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *VolumeClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeBeginDeleteOptions) (*azcore.Response, error) {
+func (client *VolumeClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, volumeName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *VolumeClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeBeginDeleteOptions) (*azcore.Request, error) {
+func (client *VolumeClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -224,50 +170,49 @@ func (client *VolumeClient) deleteCreateRequest(ctx context.Context, resourceGro
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{volumeName}", url.PathEscape(volumeName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *VolumeClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *VolumeClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a Volume resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *VolumeClient) Get(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeGetOptions) (VolumeResourceResponse, error) {
+func (client *VolumeClient) Get(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeGetOptions) (VolumeGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, volumeName, options)
 	if err != nil {
-		return VolumeResourceResponse{}, err
+		return VolumeGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return VolumeResourceResponse{}, err
+		return VolumeGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return VolumeResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return VolumeGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *VolumeClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeGetOptions) (*azcore.Request, error) {
+func (client *VolumeClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -285,38 +230,37 @@ func (client *VolumeClient) getCreateRequest(ctx context.Context, resourceGroupN
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{volumeName}", url.PathEscape(volumeName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *VolumeClient) getHandleResponse(resp *azcore.Response) (VolumeResourceResponse, error) {
-	var val *VolumeResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return VolumeResourceResponse{}, err
+func (client *VolumeClient) getHandleResponse(resp *http.Response) (VolumeGetResponse, error) {
+	result := VolumeGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.VolumeResource); err != nil {
+		return VolumeGetResponse{}, err
 	}
-return VolumeResourceResponse{RawResponse: resp.Response, VolumeResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *VolumeClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *VolumeClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the Volume resources deployed in the application.
@@ -326,18 +270,18 @@ func (client *VolumeClient) List(ctx context.Context, resourceGroupName string, 
 	if err != nil {
 		return VolumeListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return VolumeListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
 		return VolumeListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *VolumeClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *VolumeListOptions) (*azcore.Request, error) {
+func (client *VolumeClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *VolumeListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -351,37 +295,36 @@ func (client *VolumeClient) listCreateRequest(ctx context.Context, resourceGroup
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *VolumeClient) listHandleResponse(resp *azcore.Response) (VolumeListResponse, error) {
-	var val *VolumeList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
+func (client *VolumeClient) listHandleResponse(resp *http.Response) (VolumeListResponse, error) {
+	result := VolumeListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.VolumeList); err != nil {
 		return VolumeListResponse{}, err
 	}
-return VolumeListResponse{RawResponse: resp.Response, VolumeList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *VolumeClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *VolumeClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 

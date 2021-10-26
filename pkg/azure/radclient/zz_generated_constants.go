@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -7,7 +8,11 @@
 
 package radclient
 
-const telemetryInfo = "azsdk-go-radclient/<version>"
+const (
+	module = "radclient"
+	version = "v0.0.1"
+)
+
 // ActionType - Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
 type ActionType string
 
@@ -221,6 +226,63 @@ func (c EncryptionStatus) ToPtr() *EncryptionStatus {
 	return &c
 }
 
+// Enum3 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
+type Enum3 bool
+
+const (
+	Enum3True Enum3 = true
+)
+
+// PossibleEnum3Values returns the possible values for the Enum3 const type.
+func PossibleEnum3Values() []Enum3 {
+	return []Enum3{	
+		Enum3True,
+	}
+}
+
+// ToPtr returns a *Enum3 pointing to the current value.
+func (c Enum3) ToPtr() *Enum3 {
+	return &c
+}
+
+// Enum4 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component
+type Enum4 bool
+
+const (
+	Enum4True Enum4 = true
+)
+
+// PossibleEnum4Values returns the possible values for the Enum4 const type.
+func PossibleEnum4Values() []Enum4 {
+	return []Enum4{	
+		Enum4True,
+	}
+}
+
+// ToPtr returns a *Enum4 pointing to the current value.
+func (c Enum4) ToPtr() *Enum4 {
+	return &c
+}
+
+// Enum7 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
+type Enum7 bool
+
+const (
+	Enum7True Enum7 = true
+)
+
+// PossibleEnum7Values returns the possible values for the Enum7 const type.
+func PossibleEnum7Values() []Enum7 {
+	return []Enum7{	
+		Enum7True,
+	}
+}
+
+// ToPtr returns a *Enum7 pointing to the current value.
+func (c Enum7) ToPtr() *Enum7 {
+	return &c
+}
+
 // EphemeralVolumeManagedStore - Backing store for the ephemeral volume
 type EphemeralVolumeManagedStore string
 
@@ -308,6 +370,25 @@ func PossibleSKUTierValues() []SKUTier {
 
 // ToPtr returns a *SKUTier pointing to the current value.
 func (c SKUTier) ToPtr() *SKUTier {
+	return &c
+}
+
+// VolumePropertiesKind - The kind of volume component
+type VolumePropertiesKind string
+
+const (
+	VolumePropertiesKindAzureComFileshare VolumePropertiesKind = "azure.com.fileshare"
+)
+
+// PossibleVolumePropertiesKindValues returns the possible values for the VolumePropertiesKind const type.
+func PossibleVolumePropertiesKindValues() []VolumePropertiesKind {
+	return []VolumePropertiesKind{	
+		VolumePropertiesKindAzureComFileshare,
+	}
+}
+
+// ToPtr returns a *VolumePropertiesKind pointing to the current value.
+func (c VolumePropertiesKind) ToPtr() *VolumePropertiesKind {
 	return &c
 }
 

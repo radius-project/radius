@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // MongodbComMongoDBComponentClient contains the methods for the MongodbComMongoDBComponent group.
 // Don't use this type directly, use NewMongodbComMongoDBComponentClient() instead.
 type MongodbComMongoDBComponentClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewMongodbComMongoDBComponentClient creates a new instance of MongodbComMongoDBComponentClient with the specified values.
-func NewMongodbComMongoDBComponentClient(con *armcore.Connection, subscriptionID string) *MongodbComMongoDBComponentClient {
-	return &MongodbComMongoDBComponentClient{con: con, subscriptionID: subscriptionID}
+func NewMongodbComMongoDBComponentClient(con *arm.Connection, subscriptionID string) *MongodbComMongoDBComponentClient {
+	return &MongodbComMongoDBComponentClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a mongodb.com.MongoDBComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MongodbComMongoDBComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (MongoDBComponentResourcePollerResponse, error) {
+func (client *MongodbComMongoDBComponentClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (MongodbComMongoDBComponentCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, mongoDBComponentName, parameters, options)
 	if err != nil {
-		return MongoDBComponentResourcePollerResponse{}, err
+		return MongodbComMongoDBComponentCreateOrUpdatePollerResponse{}, err
 	}
-	result := MongoDBComponentResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("MongodbComMongoDBComponentClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return MongoDBComponentResourcePollerResponse{}, err
-	}
-	poller := &mongoDBComponentResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (MongoDBComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new MongoDBComponentResourcePoller from the specified resume token.
-// token - The value must come from a previous call to MongoDBComponentResourcePoller.ResumeToken().
-func (client *MongodbComMongoDBComponentClient) ResumeCreateOrUpdate(ctx context.Context, token string) (MongoDBComponentResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("MongodbComMongoDBComponentClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return MongoDBComponentResourcePollerResponse{}, err
-	}
-	poller := &mongoDBComponentResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return MongoDBComponentResourcePollerResponse{}, err
-	}
-	result := MongoDBComponentResourcePollerResponse{
+	result := MongodbComMongoDBComponentCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (MongoDBComponentResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("MongodbComMongoDBComponentClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return MongodbComMongoDBComponentCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &MongodbComMongoDBComponentCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a mongodb.com.MongoDBComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MongodbComMongoDBComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *MongodbComMongoDBComponentClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, mongoDBComponentName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *MongodbComMongoDBComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *MongodbComMongoDBComponentClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, parameters MongoDBComponentResource, options *MongodbComMongoDBComponentBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent/{mongoDBComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -115,98 +90,69 @@ func (client *MongodbComMongoDBComponentClient) createOrUpdateCreateRequest(ctx 
 		return nil, errors.New("parameter mongoDBComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDBComponentName}", url.PathEscape(mongoDBComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *MongodbComMongoDBComponentClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *MongodbComMongoDBComponentClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a mongodb.com.MongoDBComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MongodbComMongoDBComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *MongodbComMongoDBComponentClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (MongodbComMongoDBComponentDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, mongoDBComponentName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return MongodbComMongoDBComponentDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("MongodbComMongoDBComponentClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *MongodbComMongoDBComponentClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("MongodbComMongoDBComponentClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := MongodbComMongoDBComponentDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("MongodbComMongoDBComponentClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return MongodbComMongoDBComponentDeletePollerResponse{}, err
+	}
+	result.Poller = &MongodbComMongoDBComponentDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a mongodb.com.MongoDBComponent resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MongodbComMongoDBComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (*azcore.Response, error) {
+func (client *MongodbComMongoDBComponentClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, mongoDBComponentName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *MongodbComMongoDBComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (*azcore.Request, error) {
+func (client *MongodbComMongoDBComponentClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent/{mongoDBComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -224,50 +170,49 @@ func (client *MongodbComMongoDBComponentClient) deleteCreateRequest(ctx context.
 		return nil, errors.New("parameter mongoDBComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDBComponentName}", url.PathEscape(mongoDBComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *MongodbComMongoDBComponentClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *MongodbComMongoDBComponentClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a mongodb.com.MongoDBComponent resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MongodbComMongoDBComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentGetOptions) (MongoDBComponentResourceResponse, error) {
+func (client *MongodbComMongoDBComponentClient) Get(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentGetOptions) (MongodbComMongoDBComponentGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, mongoDBComponentName, options)
 	if err != nil {
-		return MongoDBComponentResourceResponse{}, err
+		return MongodbComMongoDBComponentGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return MongoDBComponentResourceResponse{}, err
+		return MongodbComMongoDBComponentGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return MongoDBComponentResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return MongodbComMongoDBComponentGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *MongodbComMongoDBComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentGetOptions) (*azcore.Request, error) {
+func (client *MongodbComMongoDBComponentClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDBComponentName string, options *MongodbComMongoDBComponentGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent/{mongoDBComponentName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -285,59 +230,58 @@ func (client *MongodbComMongoDBComponentClient) getCreateRequest(ctx context.Con
 		return nil, errors.New("parameter mongoDBComponentName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDBComponentName}", url.PathEscape(mongoDBComponentName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *MongodbComMongoDBComponentClient) getHandleResponse(resp *azcore.Response) (MongoDBComponentResourceResponse, error) {
-	var val *MongoDBComponentResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return MongoDBComponentResourceResponse{}, err
+func (client *MongodbComMongoDBComponentClient) getHandleResponse(resp *http.Response) (MongodbComMongoDBComponentGetResponse, error) {
+	result := MongodbComMongoDBComponentGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDBComponentResource); err != nil {
+		return MongodbComMongoDBComponentGetResponse{}, err
 	}
-return MongoDBComponentResourceResponse{RawResponse: resp.Response, MongoDBComponentResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *MongodbComMongoDBComponentClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *MongodbComMongoDBComponentClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the mongodb.com.MongoDBComponent resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *MongodbComMongoDBComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *MongodbComMongoDBComponentListOptions) (MongoDBComponentListResponse, error) {
+func (client *MongodbComMongoDBComponentClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *MongodbComMongoDBComponentListOptions) (MongodbComMongoDBComponentListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return MongoDBComponentListResponse{}, err
+		return MongodbComMongoDBComponentListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return MongoDBComponentListResponse{}, err
+		return MongodbComMongoDBComponentListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return MongoDBComponentListResponse{}, client.listHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return MongodbComMongoDBComponentListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *MongodbComMongoDBComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *MongodbComMongoDBComponentListOptions) (*azcore.Request, error) {
+func (client *MongodbComMongoDBComponentClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *MongodbComMongoDBComponentListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -351,37 +295,36 @@ func (client *MongodbComMongoDBComponentClient) listCreateRequest(ctx context.Co
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *MongodbComMongoDBComponentClient) listHandleResponse(resp *azcore.Response) (MongoDBComponentListResponse, error) {
-	var val *MongoDBComponentList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return MongoDBComponentListResponse{}, err
+func (client *MongodbComMongoDBComponentClient) listHandleResponse(resp *http.Response) (MongodbComMongoDBComponentListResponse, error) {
+	result := MongodbComMongoDBComponentListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDBComponentList); err != nil {
+		return MongodbComMongoDBComponentListResponse{}, err
 	}
-return MongoDBComponentListResponse{RawResponse: resp.Response, MongoDBComponentList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *MongodbComMongoDBComponentClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *MongodbComMongoDBComponentClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 

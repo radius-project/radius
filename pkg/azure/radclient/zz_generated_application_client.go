@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // ApplicationClient contains the methods for the Application group.
 // Don't use this type directly, use NewApplicationClient() instead.
 type ApplicationClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewApplicationClient creates a new instance of ApplicationClient with the specified values.
-func NewApplicationClient(con *armcore.Connection, subscriptionID string) *ApplicationClient {
-	return &ApplicationClient{con: con, subscriptionID: subscriptionID}
+func NewApplicationClient(con *arm.Connection, subscriptionID string) *ApplicationClient {
+	return &ApplicationClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a Application resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (ApplicationResourcePollerResponse, error) {
+func (client *ApplicationClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (ApplicationCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, parameters, options)
 	if err != nil {
-		return ApplicationResourcePollerResponse{}, err
+		return ApplicationCreateOrUpdatePollerResponse{}, err
 	}
-	result := ApplicationResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("ApplicationClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return ApplicationResourcePollerResponse{}, err
-	}
-	poller := &applicationResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (ApplicationResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new ApplicationResourcePoller from the specified resume token.
-// token - The value must come from a previous call to ApplicationResourcePoller.ResumeToken().
-func (client *ApplicationClient) ResumeCreateOrUpdate(ctx context.Context, token string) (ApplicationResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("ApplicationClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return ApplicationResourcePollerResponse{}, err
-	}
-	poller := &applicationResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return ApplicationResourcePollerResponse{}, err
-	}
-	result := ApplicationResourcePollerResponse{
+	result := ApplicationCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (ApplicationResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("ApplicationClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return ApplicationCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &ApplicationCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a Application resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *ApplicationClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ApplicationClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *ApplicationClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, parameters ApplicationResource, options *ApplicationBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -111,98 +86,69 @@ func (client *ApplicationClient) createOrUpdateCreateRequest(ctx context.Context
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *ApplicationClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *ApplicationClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a Application resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *ApplicationClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (ApplicationDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return ApplicationDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("ApplicationClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *ApplicationClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("ApplicationClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := ApplicationDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("ApplicationClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return ApplicationDeletePollerResponse{}, err
+	}
+	result.Poller = &ApplicationDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a Application resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (*azcore.Response, error) {
+func (client *ApplicationClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ApplicationClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (*azcore.Request, error) {
+func (client *ApplicationClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -216,50 +162,49 @@ func (client *ApplicationClient) deleteCreateRequest(ctx context.Context, resour
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *ApplicationClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *ApplicationClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a Application resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationClient) Get(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationGetOptions) (ApplicationResourceResponse, error) {
+func (client *ApplicationClient) Get(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationGetOptions) (ApplicationGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return ApplicationResourceResponse{}, err
+		return ApplicationGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return ApplicationResourceResponse{}, err
+		return ApplicationGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return ApplicationResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return ApplicationGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *ApplicationClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationGetOptions) (*azcore.Request, error) {
+func (client *ApplicationClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -273,38 +218,37 @@ func (client *ApplicationClient) getCreateRequest(ctx context.Context, resourceG
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *ApplicationClient) getHandleResponse(resp *azcore.Response) (ApplicationResourceResponse, error) {
-	var val *ApplicationResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return ApplicationResourceResponse{}, err
+func (client *ApplicationClient) getHandleResponse(resp *http.Response) (ApplicationGetResponse, error) {
+	result := ApplicationGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResource); err != nil {
+		return ApplicationGetResponse{}, err
 	}
-return ApplicationResourceResponse{RawResponse: resp.Response, ApplicationResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *ApplicationClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *ApplicationClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the Application resources deployed in the application.
@@ -314,18 +258,18 @@ func (client *ApplicationClient) List(ctx context.Context, resourceGroupName str
 	if err != nil {
 		return ApplicationListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ApplicationListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
 		return ApplicationListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *ApplicationClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *ApplicationListOptions) (*azcore.Request, error) {
+func (client *ApplicationClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *ApplicationListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -335,37 +279,36 @@ func (client *ApplicationClient) listCreateRequest(ctx context.Context, resource
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *ApplicationClient) listHandleResponse(resp *azcore.Response) (ApplicationListResponse, error) {
-	var val *ApplicationList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
+func (client *ApplicationClient) listHandleResponse(resp *http.Response) (ApplicationListResponse, error) {
+	result := ApplicationListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationList); err != nil {
 		return ApplicationListResponse{}, err
 	}
-return ApplicationListResponse{RawResponse: resp.Response, ApplicationList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *ApplicationClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *ApplicationClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 

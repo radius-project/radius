@@ -1,4 +1,5 @@
-// +build go1.13
+//go:build go1.16
+// +build go1.16
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -11,93 +12,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // DaprIoDaprHTTPRouteClient contains the methods for the DaprIoDaprHTTPRoute group.
 // Don't use this type directly, use NewDaprIoDaprHTTPRouteClient() instead.
 type DaprIoDaprHTTPRouteClient struct {
-	con *armcore.Connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewDaprIoDaprHTTPRouteClient creates a new instance of DaprIoDaprHTTPRouteClient with the specified values.
-func NewDaprIoDaprHTTPRouteClient(con *armcore.Connection, subscriptionID string) *DaprIoDaprHTTPRouteClient {
-	return &DaprIoDaprHTTPRouteClient{con: con, subscriptionID: subscriptionID}
+func NewDaprIoDaprHTTPRouteClient(con *arm.Connection, subscriptionID string) *DaprIoDaprHTTPRouteClient {
+	return &DaprIoDaprHTTPRouteClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // BeginCreateOrUpdate - Creates or updates a dapr.io.DaprHttpRoute resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoDaprHTTPRouteClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, parameters DaprHTTPRouteResource, options *DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions) (DaprHTTPRouteResourcePollerResponse, error) {
+func (client *DaprIoDaprHTTPRouteClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, parameters DaprHTTPRouteResource, options *DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions) (DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse, error) {
 	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, daprHTTPRouteName, parameters, options)
 	if err != nil {
-		return DaprHTTPRouteResourcePollerResponse{}, err
+		return DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse{}, err
 	}
-	result := DaprHTTPRouteResourcePollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("DaprIoDaprHTTPRouteClient.CreateOrUpdate", "location", resp, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return DaprHTTPRouteResourcePollerResponse{}, err
-	}
-	poller := &daprHTTPRouteResourcePoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprHTTPRouteResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeCreateOrUpdate creates a new DaprHTTPRouteResourcePoller from the specified resume token.
-// token - The value must come from a previous call to DaprHTTPRouteResourcePoller.ResumeToken().
-func (client *DaprIoDaprHTTPRouteClient) ResumeCreateOrUpdate(ctx context.Context, token string) (DaprHTTPRouteResourcePollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoDaprHTTPRouteClient.CreateOrUpdate", token, client.con.Pipeline(), client.createOrUpdateHandleError)
-	if err != nil {
-		return DaprHTTPRouteResourcePollerResponse{}, err
-	}
-	poller := &daprHTTPRouteResourcePoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return DaprHTTPRouteResourcePollerResponse{}, err
-	}
-	result := DaprHTTPRouteResourcePollerResponse{
+	result := DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (DaprHTTPRouteResourceResponse, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("DaprIoDaprHTTPRouteClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return DaprIoDaprHTTPRouteCreateOrUpdatePollerResponse{}, err
+	}
+	result.Poller = &DaprIoDaprHTTPRouteCreateOrUpdatePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // CreateOrUpdate - Creates or updates a dapr.io.DaprHttpRoute resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoDaprHTTPRouteClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, parameters DaprHTTPRouteResource, options *DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions) (*azcore.Response, error) {
+func (client *DaprIoDaprHTTPRouteClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, parameters DaprHTTPRouteResource, options *DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, daprHTTPRouteName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusOK, http.StatusCreated, http.StatusAccepted) {
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, client.createOrUpdateHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprIoDaprHTTPRouteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, parameters DaprHTTPRouteResource, options *DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions) (*azcore.Request, error) {
+func (client *DaprIoDaprHTTPRouteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, parameters DaprHTTPRouteResource, options *DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.DaprHttpRoute/{daprHttpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -115,98 +90,69 @@ func (client *DaprIoDaprHTTPRouteClient) createOrUpdateCreateRequest(ctx context
 		return nil, errors.New("parameter daprHTTPRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprHttpRouteName}", url.PathEscape(daprHTTPRouteName))
-	req, err := azcore.NewRequest(ctx, http.MethodPut, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
-	return req, req.MarshalAsJSON(parameters)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, runtime.MarshalAsJSON(req, parameters)
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *DaprIoDaprHTTPRouteClient) createOrUpdateHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *DaprIoDaprHTTPRouteClient) createOrUpdateHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // BeginDelete - Deletes a dapr.io.DaprHttpRoute resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoDaprHTTPRouteClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteBeginDeleteOptions) (HTTPPollerResponse, error) {
+func (client *DaprIoDaprHTTPRouteClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteBeginDeleteOptions) (DaprIoDaprHTTPRouteDeletePollerResponse, error) {
 	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, daprHTTPRouteName, options)
 	if err != nil {
-		return HTTPPollerResponse{}, err
+		return DaprIoDaprHTTPRouteDeletePollerResponse{}, err
 	}
-	result := HTTPPollerResponse{
-		RawResponse: resp.Response,
-	}
-	pt, err := armcore.NewLROPoller("DaprIoDaprHTTPRouteClient.Delete", "location", resp, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
-	}
-	return result, nil
-}
-
-// ResumeDelete creates a new HTTPPoller from the specified resume token.
-// token - The value must come from a previous call to HTTPPoller.ResumeToken().
-func (client *DaprIoDaprHTTPRouteClient) ResumeDelete(ctx context.Context, token string) (HTTPPollerResponse, error) {
-	pt, err := armcore.NewLROPollerFromResumeToken("DaprIoDaprHTTPRouteClient.Delete", token, client.con.Pipeline(), client.deleteHandleError)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	poller := &httpPoller{
-		pt: pt,
-	}
-	resp, err := poller.Poll(ctx)
-	if err != nil {
-		return HTTPPollerResponse{}, err
-	}
-	result := HTTPPollerResponse{
+	result := DaprIoDaprHTTPRouteDeletePollerResponse{
 		RawResponse: resp,
 	}
-	result.Poller = poller
-	result.PollUntilDone = func(ctx context.Context, frequency time.Duration) (*http.Response, error) {
-		return poller.pollUntilDone(ctx, frequency)
+	pt, err := armruntime.NewPoller("DaprIoDaprHTTPRouteClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return DaprIoDaprHTTPRouteDeletePollerResponse{}, err
+	}
+	result.Poller = &DaprIoDaprHTTPRouteDeletePoller {
+		pt: pt,
 	}
 	return result, nil
 }
 
 // Delete - Deletes a dapr.io.DaprHttpRoute resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoDaprHTTPRouteClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteBeginDeleteOptions) (*azcore.Response, error) {
+func (client *DaprIoDaprHTTPRouteClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, daprHTTPRouteName, options)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if !resp.HasStatusCode(http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, client.deleteHandleError(resp)
 	}
 	 return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprIoDaprHTTPRouteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteBeginDeleteOptions) (*azcore.Request, error) {
+func (client *DaprIoDaprHTTPRouteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.DaprHttpRoute/{daprHttpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -224,50 +170,49 @@ func (client *DaprIoDaprHTTPRouteClient) deleteCreateRequest(ctx context.Context
 		return nil, errors.New("parameter daprHTTPRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprHttpRouteName}", url.PathEscape(daprHTTPRouteName))
-	req, err := azcore.NewRequest(ctx, http.MethodDelete, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *DaprIoDaprHTTPRouteClient) deleteHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *DaprIoDaprHTTPRouteClient) deleteHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // Get - Gets a dapr.io.DaprHttpRoute resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoDaprHTTPRouteClient) Get(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteGetOptions) (DaprHTTPRouteResourceResponse, error) {
+func (client *DaprIoDaprHTTPRouteClient) Get(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteGetOptions) (DaprIoDaprHTTPRouteGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, daprHTTPRouteName, options)
 	if err != nil {
-		return DaprHTTPRouteResourceResponse{}, err
+		return DaprIoDaprHTTPRouteGetResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return DaprHTTPRouteResourceResponse{}, err
+		return DaprIoDaprHTTPRouteGetResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return DaprHTTPRouteResourceResponse{}, client.getHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return DaprIoDaprHTTPRouteGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprIoDaprHTTPRouteClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteGetOptions) (*azcore.Request, error) {
+func (client *DaprIoDaprHTTPRouteClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprHTTPRouteName string, options *DaprIoDaprHTTPRouteGetOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.DaprHttpRoute/{daprHttpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -285,59 +230,58 @@ func (client *DaprIoDaprHTTPRouteClient) getCreateRequest(ctx context.Context, r
 		return nil, errors.New("parameter daprHTTPRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprHttpRouteName}", url.PathEscape(daprHTTPRouteName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *DaprIoDaprHTTPRouteClient) getHandleResponse(resp *azcore.Response) (DaprHTTPRouteResourceResponse, error) {
-	var val *DaprHTTPRouteResource
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprHTTPRouteResourceResponse{}, err
+func (client *DaprIoDaprHTTPRouteClient) getHandleResponse(resp *http.Response) (DaprIoDaprHTTPRouteGetResponse, error) {
+	result := DaprIoDaprHTTPRouteGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.DaprHTTPRouteResource); err != nil {
+		return DaprIoDaprHTTPRouteGetResponse{}, err
 	}
-return DaprHTTPRouteResourceResponse{RawResponse: resp.Response, DaprHTTPRouteResource: val}, nil
+	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *DaprIoDaprHTTPRouteClient) getHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *DaprIoDaprHTTPRouteClient) getHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
 // List - List the dapr.io.DaprHttpRoute resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprIoDaprHTTPRouteClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoDaprHTTPRouteListOptions) (DaprHTTPRouteListResponse, error) {
+func (client *DaprIoDaprHTTPRouteClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoDaprHTTPRouteListOptions) (DaprIoDaprHTTPRouteListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return DaprHTTPRouteListResponse{}, err
+		return DaprIoDaprHTTPRouteListResponse{}, err
 	}
-	resp, err := client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return DaprHTTPRouteListResponse{}, err
+		return DaprIoDaprHTTPRouteListResponse{}, err
 	}
-	if !resp.HasStatusCode(http.StatusOK) {
-		return DaprHTTPRouteListResponse{}, client.listHandleError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return DaprIoDaprHTTPRouteListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *DaprIoDaprHTTPRouteClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoDaprHTTPRouteListOptions) (*azcore.Request, error) {
+func (client *DaprIoDaprHTTPRouteClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoDaprHTTPRouteListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.DaprHttpRoute"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
@@ -351,37 +295,36 @@ func (client *DaprIoDaprHTTPRouteClient) listCreateRequest(ctx context.Context, 
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := azcore.NewRequest(ctx, http.MethodGet, azcore.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
-	req.Telemetry(telemetryInfo)
-	reqQP := req.URL.Query()
+	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", "2018-09-01-preview")
-	req.URL.RawQuery = reqQP.Encode()
-	req.Header.Set("Accept", "application/json")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *DaprIoDaprHTTPRouteClient) listHandleResponse(resp *azcore.Response) (DaprHTTPRouteListResponse, error) {
-	var val *DaprHTTPRouteList
-	if err := resp.UnmarshalAsJSON(&val); err != nil {
-		return DaprHTTPRouteListResponse{}, err
+func (client *DaprIoDaprHTTPRouteClient) listHandleResponse(resp *http.Response) (DaprIoDaprHTTPRouteListResponse, error) {
+	result := DaprIoDaprHTTPRouteListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.DaprHTTPRouteList); err != nil {
+		return DaprIoDaprHTTPRouteListResponse{}, err
 	}
-return DaprHTTPRouteListResponse{RawResponse: resp.Response, DaprHTTPRouteList: val}, nil
+	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *DaprIoDaprHTTPRouteClient) listHandleError(resp *azcore.Response) error {
-	body, err := resp.Payload()
+func (client *DaprIoDaprHTTPRouteClient) listHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
 	if err != nil {
-		return azcore.NewResponseError(err, resp.Response)
+		return runtime.NewResponseError(err, resp)
 	}
 		errType := ErrorResponse{raw: string(body)}
-	if err := resp.UnmarshalAsJSON(&errType); err != nil {
-		return azcore.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp.Response)
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
 	}
-	return azcore.NewResponseError(&errType, resp.Response)
+	return runtime.NewResponseError(&errType, resp)
 }
 
