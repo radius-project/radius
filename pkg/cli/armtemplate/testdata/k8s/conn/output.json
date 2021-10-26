@@ -1,0 +1,16 @@
+{
+    "connectionString": {
+        "properties": {
+            "metadata": {
+                "name": "connectionString",
+                "namespace": "default",
+                "labels": {
+                    "format": "custom"
+                }
+            },
+            "data": {
+                "conn": "redis-master.default.svc.cluster.local,password=awesome"
+            }
+        }
+    }
+}

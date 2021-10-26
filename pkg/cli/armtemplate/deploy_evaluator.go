@@ -6,16 +6,20 @@
 package armtemplate
 
 import (
+	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
 	"github.com/Azure/radius/pkg/radrp/armexpr"
 )
 
 type DeploymentEvaluator struct {
+	Context   context.Context
 	Template  DeploymentTemplate
 	Options   TemplateOptions
 	Deployed  map[string]map[string]interface{}
@@ -25,6 +29,9 @@ type DeploymentEvaluator struct {
 
 	// Intermediate expression evaluation state
 	Value interface{}
+
+	// A providers.Store can provide more resources that we don't deploy ourselves.
+	ProviderStore providers.Store
 }
 
 func (eva *DeploymentEvaluator) VisitValue(input interface{}) (interface{}, error) {
@@ -233,11 +240,20 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 		eva.Value = result
 		return nil
 	} else if name == "reference" {
-		if len(args) != 1 {
-			return fmt.Errorf("exactly 1 argument required for %s", "reference")
+		var result interface{}
+		var err error
+		switch len(args) {
+		case 1:
+			result, err = eva.EvaluateReference(args[0], "")
+		case 3:
+			if ver, ok := args[1].(string); ok {
+				result, err = eva.EvaluateReference(args[0], ver)
+			} else {
+				err = fmt.Errorf("expect version %v to be string, has %T", args[1], args[1])
+			}
+		default:
+			return fmt.Errorf("exact 1 or 3 arguments is required for %s", "reference")
 		}
-
-		result, err := eva.EvaluateReference(args[0])
 		if err != nil {
 			return err
 		}
@@ -262,6 +278,16 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 		}
 
 		eva.Value = eva.EvaluateString(args[0])
+		return nil
+	} else if name == "base64ToString" {
+		if len(args) != 1 {
+			return fmt.Errorf("exactly 1 argument is required for %s", "base64ToString")
+		}
+		out, err := base64.StdEncoding.DecodeString(eva.EvaluateString(args[0]))
+		if err != nil {
+			return err
+		}
+		eva.Value = string(out)
 		return nil
 	} else if name == "variables" {
 		if len(args) != 1 {
@@ -349,12 +375,17 @@ func (eva *DeploymentEvaluator) EvaluateParameter(name string) (interface{}, err
 	return nil, fmt.Errorf("parameter %q is not defined by the template", name)
 }
 
-func (eva *DeploymentEvaluator) EvaluateReference(id interface{}) (map[string]interface{}, error) {
+func (eva *DeploymentEvaluator) EvaluateReference(id interface{}, version string) (map[string]interface{}, error) {
 	obj, ok := eva.Deployed[id.(string)]
 	if !ok {
-		return nil, fmt.Errorf("no resource matches id: %s", id)
+		if eva.ProviderStore == nil {
+			return nil, fmt.Errorf("no resource matches id: %s", id)
+		}
+		// TODO(tcnghia): Use a better way to look up the extension by the ref.
+		//                For now, Kubernetes is the only extension, so this is probably ok.
+		strId, _ := id.(string)
+		return eva.ProviderStore.GetDeployedResource(eva.Context, strId, version)
 	}
-
 	// Note: we assume 'full' mode for references
 	// see: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/template-functions-resource#reference
 	properties, ok := obj["properties"].(map[string]interface{})

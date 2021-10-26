@@ -175,9 +175,11 @@ func main() {
 	}
 
 	if err = (&bicepcontroller.DeploymentTemplateReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("DeploymentTemplate"),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		DynamicClient: unstructuredClient,
+		RESTMapper:    mapper,
+		Log:           ctrl.Log.WithName("controllers").WithName("DeploymentTemplate"),
+		Scheme:        mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DeploymentTemplate")
 		os.Exit(1)

@@ -6,14 +6,99 @@
 package armtemplate
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/dynamic/fake"
 )
+
+func Test_DeploymentEvaluator_KubernetesReference(t *testing.T) {
+	options := TemplateOptions{
+		SubscriptionID: "test-sub",
+		ResourceGroup:  "test-group",
+	}
+	for _, tc := range []struct {
+		name           string
+		template       string
+		resourceDir    string
+		expectedOutput string
+		expectedErr    string
+	}{{
+		name:           "k8s ref working",
+		template:       "testdata/k8s/conn/template.json",
+		resourceDir:    "testdata/k8s/conn",
+		expectedOutput: "testdata/k8s/conn/output.json",
+	}, {
+		name:        "missing resource",
+		template:    "testdata/k8s/missing-resource/template.json",
+		resourceDir: "testdata/k8s/missing-resource",
+		expectedErr: "testdata/k8s/missing-resource/errors.json",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			content, err := ioutil.ReadFile(tc.template)
+			require.NoError(t, err)
+
+			template, err := Parse(string(content))
+			require.NoError(t, err)
+
+			resources, err := Eval(template, options)
+			require.NoError(t, err)
+
+			evaluator := &DeploymentEvaluator{
+				Template:      template,
+				Options:       options,
+				Deployed:      map[string]map[string]interface{}{},
+				Variables:     map[string]interface{}{},
+				ProviderStore: loadFakeK8sStore(tc.resourceDir),
+			}
+			output := map[string]interface{}{}
+			errs := []string{}
+			for _, resource := range resources {
+				body, err := evaluator.VisitMap(resource.Body)
+				if tc.expectedErr == "" {
+					require.NoError(t, err)
+					output[resource.Name] = body
+					continue
+				}
+				errs = append(errs, err.Error())
+			}
+			if tc.expectedErr != "" {
+				expected := []string{}
+				expectedContent, err := ioutil.ReadFile(tc.expectedErr)
+				require.NoError(t, err)
+				err = json.Unmarshal(expectedContent, &expected)
+				require.NoError(t, err)
+				assert.DeepEqual(t, expected, errs)
+				return
+			}
+			if tc.expectedOutput != "" {
+				expected := map[string]interface{}{}
+				expectedContent, err := ioutil.ReadFile(tc.expectedOutput)
+				require.NoError(t, err)
+				err = json.Unmarshal(expectedContent, &expected)
+				require.NoError(t, err)
+				assert.DeepEqual(t, expected, output)
+			}
+		})
+	}
+}
 
 // Main purpose of deploy evaluator is to verify reference works between deployed resources
 func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
@@ -101,4 +186,69 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 
 		require.JSONEq(t, string(expectedUns), string(actualUns))
 	}
+}
+
+func loadFakeK8sStore(dir string) providers.Store {
+	objects := []runtime.Object{}
+	_ = filepath.Walk(dir, func(path string, info os.FileInfo, _ error) error {
+		if !strings.HasSuffix(info.Name(), ".yaml") {
+			return nil
+		}
+		var r unstructured.Unstructured
+		b, _ := ioutil.ReadFile(path)
+		_ = yaml.Unmarshal(b, &r.Object)
+		objects = append(objects, &r)
+		return nil
+	})
+	fakeDynamicClient := fake.NewSimpleDynamicClient(fakeScheme(), objects...)
+	return providers.NewK8sStore(
+		logr.FromContext(context.Background()),
+		fakeDynamicClient,
+		fakeRestMapper(),
+	)
+}
+
+func fakeScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	_ = appsv1.AddToScheme(scheme)
+	return scheme
+}
+
+func fakeRestMapper() meta.RESTMapper {
+	restMapper := meta.NewDefaultRESTMapper(nil)
+	restMapper.AddSpecific(schema.GroupVersionKind{
+		Version: "v1",
+		Kind:    "Secret",
+	}, schema.GroupVersionResource{
+		Version:  "v1",
+		Resource: "secrets",
+	}, schema.GroupVersionResource{
+		Version:  "v1",
+		Resource: "secrets",
+	}, meta.RESTScopeNamespace)
+	restMapper.AddSpecific(schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "Deployment",
+	}, schema.GroupVersionResource{
+		Group:    "apps",
+		Version:  "v1",
+		Resource: "deployments",
+	}, schema.GroupVersionResource{
+		Group:    "apps",
+		Version:  "v1",
+		Resource: "deployments",
+	}, meta.RESTScopeNamespace)
+	restMapper.AddSpecific(schema.GroupVersionKind{
+		Version: "v1",
+		Kind:    "Service",
+	}, schema.GroupVersionResource{
+		Version:  "v1",
+		Resource: "services",
+	}, schema.GroupVersionResource{
+		Version:  "v1",
+		Resource: "services",
+	}, meta.RESTScopeNamespace)
+	return restMapper
 }

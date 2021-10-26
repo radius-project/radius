@@ -14,9 +14,11 @@ import (
 
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -24,6 +26,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
+	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
@@ -34,8 +37,10 @@ import (
 // DeploymentTemplateReconciler reconciles a Arm object
 type DeploymentTemplateReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	meta.RESTMapper
+	DynamicClient dynamic.Interface
+	Log           logr.Logger
+	Scheme        *runtime.Scheme
 }
 
 //+kubebuilder:rbac:groups=bicep.dev,resources=deploymenttemplates,verbs=get;list;watch;create;update;patch;delete
@@ -93,6 +98,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 	// to fill in variables ex: ([reference(...)])
 	deployed := map[string]map[string]interface{}{}
 	evaluator := &armtemplate.DeploymentEvaluator{
+		Context:   ctx,
 		Template:  template,
 		Options:   options,
 		Deployed:  deployed,
@@ -101,6 +107,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		CustomActionCallback: func(id string, apiVersion string, action string, payload interface{}) (interface{}, error) {
 			return r.InvokeCustomAction(ctx, req.Namespace, id, apiVersion, action, payload)
 		},
+		ProviderStore: providers.NewK8sStore(r.Log, r.DynamicClient, r.RESTMapper),
 	}
 
 	for name, variable := range template.Variables {
@@ -143,8 +150,9 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		if apierrors.IsNotFound(err) {
 			appName, _, resourceType := resource.GetRadiusResourceParts()
 
+			// If this is not an extension resource, which lives outside an application,
 			// make sure the application that contains the resource has been created
-			if resourceType != "Application" {
+			if resourceType != "Application" && resource.Provider == nil {
 				application := &radiusv1alpha3.Application{}
 
 				err = r.Client.Get(ctx, client.ObjectKey{
@@ -165,12 +173,10 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-
 			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
 		}
 
 		arm.Status.Operations[i].Provisioned = true
-
 		// TODO could remove this dependecy on radiusv1alpha3
 		k8sResource := &radiusv1alpha3.Resource{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, k8sResource)
@@ -194,7 +200,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
 		}
 	}
-
 	return reconcile.Result{}, nil
 }
 

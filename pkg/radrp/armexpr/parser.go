@@ -344,14 +344,19 @@ func ParseIdentifier(t *tokenizer) (*IdentifierNode, error) {
 	t.SkipWhitespace()
 
 	start := t.Current
+	pos := 0
 	for {
 		r, length := t.Peek()
 		if r == utf8.RuneError && length == 0 {
 			break
-		} else if !unicode.IsLetter(r) {
+		} else if pos == 0 && !unicode.IsLetter(r) {
+			// an identifier must start with a number.
+			break
+		} else if !unicode.IsLetter(r) && !unicode.IsNumber(r) {
+			// after that either letter or number is fine.
 			break
 		}
-
+		pos++
 		t.Advance(length)
 	}
 
