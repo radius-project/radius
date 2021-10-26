@@ -119,7 +119,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		evaluator.Variables[name] = value
 	}
 
-	mustRequeue := false
 	for i, resource := range resources {
 		body, err := evaluator.VisitMap(resource.Body)
 		if err != nil {
@@ -174,8 +173,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			mustRequeue = true
-			continue
+			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
 		}
 
 		arm.Status.Operations[i].Provisioned = true
@@ -199,11 +197,8 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		deployed[resource.ID] = resource.Body
 
 		if k8sResource.Status.Phrase != "Ready" {
-			mustRequeue = true
+			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
 		}
-	}
-	if mustRequeue {
-		return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
 	}
 	return reconcile.Result{}, nil
 }

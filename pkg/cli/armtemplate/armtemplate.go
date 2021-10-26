@@ -179,6 +179,9 @@ func (eva *evaluator) VisitResource(input map[string]interface{}) (Resource, err
 			return Resource{}, fmt.Errorf("resource %#v does not contain an apiVersion", input)
 		}
 		// This is a K8s resource, whom API version is embedded in type string.
+		// For example: "kubernetes.core/Service@v1", which translates to
+		// - type=kubernetes.core/Service, and
+		// - apiVersion=v1.
 		tokens := strings.SplitN(t, "@", 2)
 		apiVersion = tokens[1]
 		t = tokens[0]

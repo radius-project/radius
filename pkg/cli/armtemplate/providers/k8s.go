@@ -19,6 +19,7 @@ import (
 
 // K8sStore allows Kubernetes `existing` resources to be used in an ARM-JSON evaluator.
 type K8sStore struct {
+	namespace  string
 	log        logr.Logger
 	client     dynamic.Interface
 	restMapper meta.RESTMapper
@@ -29,6 +30,11 @@ var _ Store = &K8sStore{}
 // NewK8sStore creates a new instance of K8sStore.
 func NewK8sStore(log logr.Logger, client dynamic.Interface, restMapper meta.RESTMapper) *K8sStore {
 	return &K8sStore{
+		// When rad-bicep supports passing through the namespace, we will need to plumb it in here.
+		//
+		// Note that since these are `external` resources that live outside an application, we can
+		// not use the application namespace.
+		namespace:  "default",
 		log:        log,
 		client:     client,
 		restMapper: restMapper,
@@ -42,6 +48,7 @@ func (store *K8sStore) extractGroupVersionResourceName(ref string, version strin
 	if len(matches) != 1 || len(matches[0]) != 4 {
 		return schema.GroupVersionResource{}, "", fmt.Errorf("wrong reference format, expected: kubernetes.group/Kind/name, saw: %q", ref)
 	}
+	// matches[0][0] is entire match, following that are the individual matched parts.
 	group, kind, name := matches[0][1], matches[0][2], matches[0][3]
 	if group == "core" {
 		group = ""
@@ -62,7 +69,7 @@ func (store *K8sStore) GetDeployedResource(ctx context.Context, ref string, vers
 	if err != nil {
 		return nil, err
 	}
-	r, err := store.client.Resource(gvr).Namespace("default").Get(ctx, name, v1.GetOptions{})
+	r, err := store.client.Resource(gvr).Namespace(store.namespace).Get(ctx, name, v1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

@@ -24,6 +24,7 @@ func resourceGVK(resource Resource) (schema.GroupVersionKind, error) {
 	if len(matches) != 1 || len(matches[0]) != 3 {
 		return schema.GroupVersionKind{}, fmt.Errorf("invalid resource type, expect 'provider.group/Kind', saw %q", resource.Type)
 	}
+	// matches[0][0] is entire match, following that are the individual matched parts.
 	gvk := schema.GroupVersionKind{
 		Group:   matches[0][1],
 		Version: resource.APIVersion,
