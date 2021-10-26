@@ -1,3 +1,4 @@
+// Parameters ------------------------------------------------------
 param serverName string = uniqueString('sql', resourceGroup().id)
 param location string = resourceGroup().location
 param skuName string = 'Standard'
@@ -6,6 +7,7 @@ param adminLogin string
 @secure()
 param adminPassword string
 
+// Azure Bicep resources ------------------------------------------------------
 resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   name: serverName
   location: location
@@ -51,6 +53,7 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
   }
 }
 
+// Radius resources ------------------------------------------------------
 resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 

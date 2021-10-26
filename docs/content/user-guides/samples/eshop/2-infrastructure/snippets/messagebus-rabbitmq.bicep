@@ -18,3 +18,8 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
 }
+//ESHOP
+resource app 'radius.dev/Application@v1alpha3' = {
+  name: AZURESERVICEBUSENABLED
+}
+//ESHOP

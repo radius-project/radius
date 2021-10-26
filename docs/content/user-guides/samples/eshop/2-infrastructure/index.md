@@ -136,32 +136,19 @@ Azure Service Bus is only compatible with Azure environments. For Kubernetes env
 Here you are deploying a <a href="{{< ref "components-model#platform-specific-resources" >}}">platform-specific Service Bus Topic resource</a>, which does not have a portable, Radius component. Other Components can bind directly to this resource.
 {{% /alert %}}
 
-{{< rad file="snippets/messagebus-servicebus.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
+{{< rad file="snippets/messagebus-servicebus.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..." replace-key-eshop="//ESHOP"  >}}
 {{< /codetab >}}
 
 {{< codetab >}}
 RabbitMQ is only compatible with Kubernetes environments. For Azure environments use Azure Service Bus (previous tab).
 
-{{< rad file="snippets/messagebus-rabbitmq.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
+{{< rad file="snippets/messagebus-rabbitmq.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..." replace-key-eshop="//ESHOP"  >}}
 {{< /codetab >}}
 
 {{< /tabs >}}
 
 ## Next steps
 
-The following templates include the default choices for each environment. Feel free to customize them if you want to try an alternate resource option described above.
-
-{{< tabs "Azure environment" "Kubernetes environment" >}}
-
-{{< codetab >}}
-{{< rad file="snippets/infra-azure.bicep" download=true >}}
-{{< /codetab >}}
-{{< codetab >}}
-{{< rad file="snippets/infra-kubernetes.bicep" download=true >}}
-{{< /codetab >}}
-
-{{< /tabs >}}
-
-In the next step, you will add your eShop services and relationships to the Bicep file.
+In the next step, you will learn about the eShop services.
 
 {{< button text="Next: Model eShop services" page="3-services" >}}

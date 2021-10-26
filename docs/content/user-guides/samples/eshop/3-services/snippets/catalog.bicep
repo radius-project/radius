@@ -10,7 +10,6 @@ param AZURESERVICEBUSENABLED string = 'True'
 //REST
 //REST
 param CLUSTER_IP string
-param ESHOP_EXTERNAL_DNS_NAME_OR_IP string = '*'
 param OCHESTRATOR_TYPE string = 'K8S'
 param APPLICATION_INSIGHTS_KEY string = ''
 param AZURESTORAGEENABLED string = 'False'
@@ -217,6 +216,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           AzureStorageEnabled: AZURESTORAGEENABLED
           ApplicationInsights__InstrumentationKey: APPLICATION_INSIGHTS_KEY
           AzureServiceBusEnabled: AZURESERVICEBUSENABLED
+          EnableDevSpaces: ENABLEDEVSPACES
           ConnectionString: 'Server=tcp:${sqlCatalog.properties.server},1433;Initial Catalog=CatalogDb;Persist Security Info=False;User ID=${adminLogin};Password=${adminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
           EventBusConnection: listKeys(servicebus::topic::rootRule.id, servicebus::topic::rootRule.apiVersion).primaryKey
         }

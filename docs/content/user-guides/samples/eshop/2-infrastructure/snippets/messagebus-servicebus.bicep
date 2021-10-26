@@ -3,6 +3,7 @@ param AZURESERVICEBUSENABLED string = 'True'
 //REST
 //REST
 
+// Azure Bicep resources ----------------------------------------------------
 resource servicebus 'Microsoft.ServiceBus/namespaces@2021-06-01-preview' = {
   name: 'eshop${uniqueString(resourceGroup().id)}'
   location: resourceGroup().location
@@ -133,3 +134,8 @@ resource servicebus 'Microsoft.ServiceBus/namespaces@2021-06-01-preview' = {
   }
 
 }
+//ESHOP
+resource app 'radius.dev/Application@v1alpha3' = {
+  name: AZURESERVICEBUSENABLED
+}
+//ESHOP
