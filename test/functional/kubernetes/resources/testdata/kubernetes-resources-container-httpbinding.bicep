@@ -29,7 +29,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
           }
         }
         env: {
-          SERVICE__BACKEND__HOST: backendhttp.properties.host
+          // Here we demonstrate/cover different ways of accessing properties:
+          // - embedded in string through '${}'
+          // - using the .properties syntax
+          // - using the ['properties'] syntax.
+          SERVICE__BACKEND__HOST: backendhttp.properties['host']
           SERVICE__BACKEND__PORT: '${backendhttp.properties.port}'
         }
       }
