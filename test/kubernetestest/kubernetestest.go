@@ -170,7 +170,7 @@ func (at ApplicationTest) CreateInitialResources() error {
 	return nil
 }
 
-func (at ApplicationTest) CleanUpResources(resources []unstructured.Unstructured) {
+func (at ApplicationTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(at.Options.K8sClient.Discovery()))
 	for _, r := range resources {
 		mapping, _ := restMapper.RESTMapping(r.GroupVersionKind().GroupKind(), r.GroupVersionKind().Version)
@@ -220,13 +220,13 @@ func (at ApplicationTest) Test(t *testing.T) {
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
 	require.GreaterOrEqual(t, len(at.Steps), 1, "at least one step is required")
-	defer at.CleanUpResources(at.InitialResources)
+	defer at.CleanUpExtensionResources(at.InitialResources)
 	err = at.CreateInitialResources()
 	require.NoError(t, err, "failed to create initial resources")
 	success := true
 	for i, step := range at.Steps {
 		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
-			defer at.CleanUpResources(step.K8sOutputResources)
+			defer at.CleanUpExtensionResources(step.K8sOutputResources)
 			if !success {
 				t.Skip("skipping due to previous step failure")
 				return
