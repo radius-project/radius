@@ -14,6 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 // FindDeployment finds deployment in a list of output resources
@@ -83,6 +84,42 @@ func FindIngress(resources []outputresource.OutputResource) (*networkingv1.Ingre
 		}
 
 		return ingress, r
+	}
+
+	return nil, outputresource.OutputResource{}
+}
+
+// FindHttpRoute finds an HttpRoute in a list of output resources
+func FindHttpRoute(resources []outputresource.OutputResource) (*gatewayv1alpha1.HTTPRoute, outputresource.OutputResource) {
+	for _, r := range resources {
+		if r.ResourceKind != resourcekinds.Kubernetes {
+			continue
+		}
+
+		httpRoute, ok := r.Resource.(*gatewayv1alpha1.HTTPRoute)
+		if !ok {
+			continue
+		}
+
+		return httpRoute, r
+	}
+
+	return nil, outputresource.OutputResource{}
+}
+
+// FindHttpRoute finds an HttpRoute in a list of output resources
+func FindGateway(resources []outputresource.OutputResource) (*gatewayv1alpha1.Gateway, outputresource.OutputResource) {
+	for _, r := range resources {
+		if r.ResourceKind != resourcekinds.Kubernetes {
+			continue
+		}
+
+		gateway, ok := r.Resource.(*gatewayv1alpha1.Gateway)
+		if !ok {
+			continue
+		}
+
+		return gateway, r
 	}
 
 	return nil, outputresource.OutputResource{}

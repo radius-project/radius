@@ -19,19 +19,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
       gateway: {
         source: gateway.id
         hostname: '*'
-        rules: {
-          foo: {
-            path: {
-              type: 'prefix'
-              value: '/'
-            }
-            headers: [
-              {
-                value: 'headers'
-              }
-            ]
-          }
-        }
       }
     }
   }

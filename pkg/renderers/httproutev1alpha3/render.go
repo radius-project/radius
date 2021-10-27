@@ -57,15 +57,14 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	service := r.makeService(resource, route)
 	outputs = append(outputs, service)
 
-	if route.Gateway != nil {
-		// If not source specified, create an ingress by default.
+	if route.Gateway == nil {
 		gatewayId := route.Gateway.Source
-		if gatewayId != "" {
-			// TODO: dependency doesn't have ingress here
-			existingIngress := dependencies[gatewayId]
-			ingress := r.makeIngressRule(resource, route, existingIngress)
-			outputs = append(outputs, ingress)
+		if gatewayId == "" {
+			return renderers.RendererOutput{}, fmt.Errorf("must specify gateway source")
 		}
+		existingGateway := dependencies[gatewayId]
+		httpRoute := r.makeHttpRoute(resource, route, existingGateway)
+		outputs = append(outputs, httpRoute)
 	}
 
 	return renderers.RendererOutput{
@@ -103,11 +102,13 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
-func (r *Renderer) makeIngressRule(resource renderers.RendererResource, route HttpRoute, existingIngress renderers.RendererDependency) outputresource.OutputResource {
+func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route HttpRoute, existingGateway renderers.RendererDependency) outputresource.OutputResource {
 	// gatewayName := kubernetes.MakeResourceName(resource.ApplicationName, existingIngress.ResourceID.Name())
+
 	serviceName := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
 	var rules []gatewayv1alpha1.HTTPRouteRule
 	for _, rule := range route.Gateway.Rules {
+		// Default to prefix match
 		pathMatch := gatewayv1alpha1.PathMatchPrefix
 		if strings.EqualFold(rule.Path.Type, "exact") {
 			pathMatch = gatewayv1alpha1.PathMatchExact
@@ -145,7 +146,7 @@ func (r *Renderer) makeIngressRule(resource renderers.RendererResource, route Ht
 			Gateways: &gatewayv1alpha1.RouteGateways{
 				GatewayRefs: []gatewayv1alpha1.GatewayReference{
 					{
-						Name:      "gateway",
+						Name:      existingGateway.ResourceID.Name(),
 						Namespace: "default",
 					},
 				},
@@ -156,66 +157,3 @@ func (r *Renderer) makeIngressRule(resource renderers.RendererResource, route Ht
 
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 }
-
-// // Instead of making the ingress here, we need to get the previous ingress and update it
-// func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {
-// 	ingress := &networkingv1.Ingress{
-// 		TypeMeta: metav1.TypeMeta{
-// 			Kind:       "Ingress",
-// 			APIVersion: networkingv1.SchemeGroupVersion.String(),
-// 		},
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
-// 			Namespace: resource.ApplicationName,
-// 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
-// 		},
-// 	}
-
-// 	backend := networkingv1.IngressBackend{
-// 		Service: &networkingv1.IngressServiceBackend{
-// 			Name: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
-// 			Port: networkingv1.ServiceBackendPort{
-// 				Number: int32(route.GetEffectivePort()),
-// 			},
-// 		},
-// 	}
-
-// 	// Default path to / if not specified
-// 	path := route.Gateway.Path
-// 	if path == "" {
-// 		path = "/"
-// 	}
-
-// 	var defaultBackend *networkingv1.IngressBackend
-// 	host := route.Gateway.Hostname
-// 	if route.Gateway.Hostname == "*" {
-// 		defaultBackend = &backend
-// 		// * isn't allowed in the hostname, remove it.
-// 		host = ""
-// 	}
-// 	pathType := networkingv1.PathTypePrefix
-
-// 	spec := networkingv1.IngressSpec{
-// 		DefaultBackend: defaultBackend,
-// 		Rules: []networkingv1.IngressRule{
-// 			{
-// 				Host: host,
-// 				IngressRuleValue: networkingv1.IngressRuleValue{
-// 					HTTP: &networkingv1.HTTPIngressRuleValue{
-// 						Paths: []networkingv1.HTTPIngressPath{
-// 							{
-// 								Path:     path,
-// 								PathType: &pathType,
-// 								Backend:  backend,
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-
-// 	ingress.Spec = spec
-
-// 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, ingress, ingress.ObjectMeta)
-// }

@@ -108,8 +108,6 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 		},
 	}
 
-	// TODO make sure deletion of a patch works correctly here, can't just delete
-	//
 	return client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 }
 

@@ -7,6 +7,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -14,14 +15,16 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 type Renderer struct {
+	Client client.Client
 }
 
 // Need a step to take rendered routes to be usable by resource
-func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
+func (r Renderer) GetDependencyIDs(Clientctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
 	return nil, nil
 }
 
@@ -32,10 +35,23 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return renderers.RendererOutput{}, err
 	}
 
-	computedValues := map[string]renderers.ComputedValueReference{} // TODO add computed values
+	// We require a gateway class to be present before creating a gateway
+	// Look up the first gateway class in the cluster and use that for now
+	var gateways gatewayv1alpha1.GatewayClassList
+	err = r.Client.List(ctx, &gateways)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+	if len(gateways.Items) == 0 {
+		return renderers.RendererOutput{}, errors.New("no gateway classes found")
+	}
+
+	gatewayClass := gateways.Items[0]
+
+	computedValues := map[string]renderers.ComputedValueReference{}
 
 	outputs := []outputresource.OutputResource{}
-	outputs = append(outputs, r.makeGateway(resource, gateway))
+	outputs = append(outputs, r.makeGateway(ctx, resource, gateway, gatewayClass))
 
 	return renderers.RendererOutput{
 		Resources:      outputs,
@@ -43,7 +59,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	}, nil
 }
 
-func (r *Renderer) makeGateway(resource renderers.RendererResource, gateway Gateway) outputresource.OutputResource {
+func (r *Renderer) makeGateway(ctx context.Context, resource renderers.RendererResource, gateway Gateway, gatewayClass gatewayv1alpha1.GatewayClass) outputresource.OutputResource {
 	var listeners []gatewayv1alpha1.Listener
 	for _, listener := range gateway.Listeners {
 		listeners = append(listeners, gatewayv1alpha1.Listener{
@@ -66,7 +82,7 @@ func (r *Renderer) makeGateway(resource renderers.RendererResource, gateway Gate
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: gatewayv1alpha1.GatewaySpec{
-			GatewayClassName: "haproxy", // for some reason this is required.
+			GatewayClassName: gatewayClass.Name,
 			Listeners:        listeners,
 		},
 	}

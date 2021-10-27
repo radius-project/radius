@@ -31,7 +31,7 @@ func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 		rabbitmqv1alpha1.ResourceType:       &renderers.V1RendererAdapter{Inner: &rabbitmqv1alpha1.Renderer{}},
 		redisv1alpha3.ResourceType:          &redisv1alpha3.KubernetesRenderer{},
 		httproutev1alpha3.ResourceType:      &httproutev1alpha3.Renderer{},
-		gateway.ResourceType:                &gateway.Renderer{},
+		gateway.ResourceType:                &gateway.Renderer{Client: *k8s},
 	}
 
 	handlers := map[string]model.Handlers{
