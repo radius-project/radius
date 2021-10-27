@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
@@ -57,7 +56,7 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 		} else {
 			options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 			// Existing resource. Verify it exists
-			_, err := handler.getByID(ctx, options.Resource.Identity)
+			_, err := getByID(ctx, handler.arm.K8sSubscriptionID, handler.arm.Auth, options.Resource.Identity)
 			if err != nil {
 				return nil, err
 			}
@@ -71,20 +70,6 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 	}
 
 	return properties, nil
-}
-
-func (handler *azureFileShareHandler) getByID(ctx context.Context, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
-	id, apiVersion, err := identity.RequireARM()
-	if err != nil {
-		return nil, err
-	}
-
-	rc := clients.NewGenericResourceClient(handler.arm.SubscriptionID, handler.arm.Auth)
-	resource, err := rc.GetByID(ctx, id, apiVersion)
-	if err != nil {
-		return nil, fmt.Errorf("failed to access resource %q", id)
-	}
-	return &resource, nil
 }
 
 func (handler *azureFileShareHandler) deleteFileShare(ctx context.Context, accountName, fileshareName string) error {

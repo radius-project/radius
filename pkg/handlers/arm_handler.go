@@ -12,9 +12,11 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 // NewARMHandler creates a ResourceHandler for 'generic' ARM resources. This currently only supports
@@ -33,19 +35,13 @@ func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[st
 		return nil, fmt.Errorf("ARM handler only supports user-managed resources")
 	}
 
-	id, apiVersion, err := options.Resource.Identity.RequireARM()
+	resource, err := getByID(ctx, handler.arm.SubscriptionID, handler.arm.Auth, options.Resource.Identity)
 	if err != nil {
 		return nil, err
 	}
 
-	rc := clients.NewGenericResourceClient(handler.arm.SubscriptionID, handler.arm.Auth)
-	resource, err := rc.GetByID(ctx, id, apiVersion)
-	if err != nil {
-		return nil, fmt.Errorf("failed to access resource %q", id)
-	}
-
 	// Return the resource so renderers can use it for computed values.
-	serialized, err := handler.serializeResource(resource)
+	serialized, err := handler.serializeResource(*resource)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +74,19 @@ func (handler *armHandler) serializeResource(resource resources.GenericResource)
 	}
 
 	return data, nil
+}
+
+func getByID(ctx context.Context, subscriptionID string, auth autorest.Authorizer, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
+	id, apiVersion, err := identity.RequireARM()
+	if err != nil {
+		return nil, err
+	}
+	rc := clients.NewGenericResourceClient(subscriptionID, auth)
+	resource, err := rc.GetByID(ctx, id, apiVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access resource %q", id)
+	}
+	return &resource, nil
 }
 
 func NewARMHealthHandler(arm armauth.ArmConfig) HealthHandler {
