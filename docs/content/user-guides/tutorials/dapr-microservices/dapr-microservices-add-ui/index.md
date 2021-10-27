@@ -31,7 +31,7 @@ services.AddSingleton<HttpClient>(DaprClient.CreateInvokeHttpClient(appId));
   
 ## Deploy application
 
-1. Make sure your `template.json` file matches the full tutorial file:
+1. Make sure your `template.bicep` file matches the full tutorial file:
 
    {{< rad file="snippets/app.bicep" download=true >}}
 

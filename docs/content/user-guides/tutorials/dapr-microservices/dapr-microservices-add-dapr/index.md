@@ -73,7 +73,7 @@ For Kubernetes environments, make sure to [initialize Dapr](https://docs.dapr.io
 For Azure environments, Dapr is managed for you and you do not need to manually initialize it.
 {{% /alert %}}
 
-1. Make sure your `template.json` file matches the full tutorial file:
+1. Make sure your `template.bicep` file matches the full tutorial file:
 
    {{< rad file="snippets/app.bicep" download=true >}}
 
