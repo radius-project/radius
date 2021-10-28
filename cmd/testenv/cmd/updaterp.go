@@ -161,13 +161,18 @@ func updateRP(ctx context.Context, auth autorest.Authorizer, env environments.Az
 			Transport: transport,
 		}
 
-		for i := 0; i < 10; i++ {
+		maxTryCount := 10
+		for tryCount := 1; tryCount <= maxTryCount; tryCount++ {
 			info, err := queryVersion(client, url)
 			if err != nil {
-				fmt.Println("error: " + err.Error())
-				fmt.Printf("waiting %s\n", VersionQueryDelay)
-				time.Sleep(VersionQueryDelay)
-				continue
+				if tryCount == maxTryCount {
+					return fmt.Errorf("failed to query version: %w", err)
+				} else {
+					fmt.Println("error: " + err.Error())
+					fmt.Printf("waiting %s\n", VersionQueryDelay)
+					time.Sleep(VersionQueryDelay)
+					continue
+				}
 			}
 
 			if info.Release != checkVersion {
