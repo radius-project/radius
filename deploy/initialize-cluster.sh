@@ -67,11 +67,15 @@ do
   fi
 done
 
+kubectl kustomize\
+  "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
+  kubectl apply -f -
+
 # Install nginx-ingress
 helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
 helm repo update
 
-cat <<EOF | helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress \
+cat <<EOF | helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
   --create-namespace --namespace radius-system \
   --version 0.13.4 \
   -f -

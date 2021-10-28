@@ -1,11 +1,23 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-container-httproute-gateway'
 
+  resource gateway 'Gateway' = {
+    name: 'gateway'
+    properties: {
+      listeners: {
+        http: {
+          port: 80
+          protocol: 'HTTP'
+        }
+      }
+    }
+  }
   resource frontend_http 'HttpRoute' = {
     name: 'frontend'
     properties: {
       gateway: {
         hostname: '*'
+        source: gateway.id
       }
     }
   }

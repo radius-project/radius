@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/azurefilesharev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/Azure/radius/pkg/renderers/gateway"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -161,7 +162,15 @@ func Test_ContainerInboundRoute(t *testing.T) {
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDIngress: validation.NewOutputResource(outputresource.LocalIDIngress, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDHttpRoute: validation.NewOutputResource(outputresource.LocalIDHttpRoute, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+					{
+						ApplicationName: application,
+						ResourceName:    "gateway",
+						ResourceType:    gateway.ResourceType,
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDGateway: validation.NewOutputResource(outputresource.LocalIDGateway, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
