@@ -198,7 +198,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
 	if logPrefix == "" {
-		logPrefix = "./container_logs"
+		logPrefix = "./logs"
 	}
 
 	// Only start capturing controller logs once.

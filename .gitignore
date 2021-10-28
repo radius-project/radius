@@ -20,6 +20,7 @@ vendor/
 # Build Output
 bin/
 dist/
+logs/
 radius-rp
 !radius-rp/
 radius-rp.exe
