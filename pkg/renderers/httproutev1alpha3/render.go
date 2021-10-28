@@ -26,7 +26,20 @@ type Renderer struct {
 }
 
 // Need a step to take rendered routes to be usable by resource
-func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+	route := HttpRoute{}
+	err := resource.ConvertDefinition(&route)
+	if err != nil {
+		return nil, err
+	}
+
+	if route.Gateway != nil {
+		resourceId, err := azresources.Parse(route.Gateway.Source)
+		if err != nil {
+			return nil, err
+		}
+		return []azresources.ResourceID{resourceId}, nil
+	}
 	return nil, nil
 }
 
@@ -57,7 +70,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	service := r.makeService(resource, route)
 	outputs = append(outputs, service)
 
-	if route.Gateway == nil {
+	if route.Gateway != nil {
 		gatewayId := route.Gateway.Source
 		if gatewayId == "" {
 			return renderers.RendererOutput{}, fmt.Errorf("must specify gateway source")
@@ -103,13 +116,12 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 }
 
 func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route HttpRoute, existingGateway renderers.RendererDependency) outputresource.OutputResource {
-	// gatewayName := kubernetes.MakeResourceName(resource.ApplicationName, existingIngress.ResourceID.Name())
 
 	serviceName := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
+	pathMatch := gatewayv1alpha1.PathMatchPrefix
 	var rules []gatewayv1alpha1.HTTPRouteRule
 	for _, rule := range route.Gateway.Rules {
 		// Default to prefix match
-		pathMatch := gatewayv1alpha1.PathMatchPrefix
 		if strings.EqualFold(rule.Path.Type, "exact") {
 			pathMatch = gatewayv1alpha1.PathMatchExact
 		}
@@ -132,6 +144,33 @@ func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route Http
 		})
 	}
 
+	// Add a default rule which maps to the service if none specified
+	if len(rules) == 0 {
+		path := "/"
+		port := gatewayv1alpha1.PortNumber(route.GetEffectivePort())
+		rules = append(rules, gatewayv1alpha1.HTTPRouteRule{
+			Matches: []gatewayv1alpha1.HTTPRouteMatch{
+				{
+					Path: &gatewayv1alpha1.HTTPPathMatch{
+						Type:  &pathMatch,
+						Value: &path,
+					},
+				},
+			},
+			ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
+				{
+					ServiceName: &serviceName,
+					Port:        &port,
+				},
+			},
+		})
+	}
+	var hostnames []gatewayv1alpha1.Hostname
+	hostname := route.Gateway.Hostname
+	if hostname != "" && hostname != "*" {
+		hostnames = append(hostnames, gatewayv1alpha1.Hostname(hostname))
+	}
+
 	httpRoute := &gatewayv1alpha1.HTTPRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "HTTPRoute",
@@ -151,7 +190,8 @@ func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route Http
 					},
 				},
 			},
-			Rules: rules,
+			Rules:     rules,
+			Hostnames: hostnames,
 		},
 	}
 

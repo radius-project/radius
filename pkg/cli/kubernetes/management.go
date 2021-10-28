@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 type KubernetesManagementClient struct {
@@ -46,6 +47,7 @@ func init() {
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = radiusv1alpha3.AddToScheme(Scheme)
 	_ = bicepv1alpha3.AddToScheme(Scheme)
+	_ = gatewayv1alpha1.AddToScheme(Scheme)
 }
 
 func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*radclient.ApplicationList, error) {

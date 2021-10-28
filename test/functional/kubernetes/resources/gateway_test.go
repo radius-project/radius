@@ -15,51 +15,6 @@ import (
 	"github.com/Azure/radius/test/validation"
 )
 
-func Test_Gateway(t *testing.T) {
-	template := "testdata/kubernetes-resources-gateway.bicep"
-	application := "kubernetes-resources-gateway"
-	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
-		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
-			RadiusResources: &validation.ResourceSet{
-				Resources: []validation.RadiusResource{
-					{
-						ApplicationName: application,
-						ResourceName:    "exposed",
-						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-						},
-					},
-				},
-			},
-			Pods: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "exposed"),
-					},
-				},
-			},
-			Ingress: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "exposedroute"),
-					},
-				},
-			},
-			Services: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "exposedroute"),
-					},
-				},
-			},
-		},
-	})
-
-	test.Test(t)
-}
-
 func Test_Gateway_Explicit(t *testing.T) {
 	template := "testdata/kubernetes-resources-gateway-explicit.bicep"
 	application := "kubernetes-resources-gateway-explicit"
@@ -70,7 +25,7 @@ func Test_Gateway_Explicit(t *testing.T) {
 				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ResourceName:    "exposed",
+						ResourceName:    "backend",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -81,21 +36,28 @@ func Test_Gateway_Explicit(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "exposed"),
+						validation.NewK8sObjectForResource(application, "backend"),
 					},
 				},
 			},
-			Ingress: &validation.K8sObjectSet{
+			Gateway: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "exposedroute"),
+						validation.NewK8sObjectForResource(application, "gateway"),
+					},
+				},
+			},
+			HttpRoute: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sObjectForResource(application, "backendhttp"),
 					},
 				},
 			},
 			Services: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "exposedroute"),
+						validation.NewK8sObjectForResource(application, "backendhttp"),
 					},
 				},
 			},
