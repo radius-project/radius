@@ -77,7 +77,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		StorageAccountName: {
 			LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
-			Value:   "test-account",
+			Value:   "AzureFileShareStorageAccount",
 		},
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
@@ -127,4 +127,50 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	_, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a Azure File Share", err.Error())
+}
+
+func Test_Render_Managed_Success(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-share",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": true,
+		},
+	}
+
+	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	require.NoError(t, err)
+
+	require.Equal(t, outputresource.LocalIDAzureFileShareStorageAccount, output.Resources[0].LocalID)
+	require.Equal(t, resourcekinds.AzureFileShareStorageAccount, output.Resources[0].ResourceKind)
+	require.Equal(t, outputresource.LocalIDAzureFileShare, output.Resources[1].LocalID)
+	require.Equal(t, resourcekinds.AzureFileShare, output.Resources[1].ResourceKind)
+
+	expectedProperties := map[string]string{
+		handlers.ManagedKey:                           "true",
+		handlers.AzureFileShareStorageAccountBaseName: "azurestorageaccount",
+	}
+	require.Equal(t, expectedProperties, output.Resources[0].Resource)
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		StorageAccountName: {
+			LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
+			Value:   "AzureFileShareStorageAccount",
+		},
+	}
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+
+	expectedSecretValues := map[string]renderers.SecretValueReference{
+		StorageKeyValue: {
+			LocalID:       storageAccountDependency.LocalID,
+			Action:        "listKeys",
+			ValueSelector: "/keys/0/value",
+			Transformer:   "",
+		},
+	}
+	require.Equal(t, expectedSecretValues, output.SecretValues)
 }

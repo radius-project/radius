@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	FileShareStorageAccountNameKey = "filesharestorageaccount"
-	FileShareStorageAccountIDKey   = "filesharestorageaccountid"
+	FileShareStorageAccountNameKey       = "filesharestorageaccount"
+	FileShareStorageAccountIDKey         = "filesharestorageaccountid"
+	AzureFileShareStorageAccountBaseName = "storageaccountbase"
 )
 
 func NewAzureFileShareStorageAccountHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -37,15 +38,26 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 		return nil, err
 	}
 
+	var account *storage.Account
 	if properties[FileShareStorageAccountIDKey] == "" {
-		// TODO Managed resource
+		accountName, err := generateStorageAccountName(ctx, handler.arm, properties[AzureFileShareStorageAccountBaseName])
+		if err != nil {
+			return nil, err
+		}
+		account, err = createStorageAccount(ctx, handler.arm, *accountName, *options)
+		if err != nil {
+			return nil, err
+		}
+
+		// store storage account so we can delete later
+		properties[FileShareStorageAccountNameKey] = *account.Name
+		properties[FileShareStorageAccountIDKey] = *account.ID
 	} else {
 		_, err = getStorageAccountByID(ctx, handler.arm, properties[FileShareStorageAccountIDKey])
 		if err != nil {
 			return nil, err
 		}
 	}
-
 	options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareStorageAccountIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 	return properties, nil
 }
@@ -58,7 +70,7 @@ func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, 
 		return nil
 	}
 
-	return deleteStorageAccount(ctx, handler.arm, properties[StorageAccountNameKey])
+	return deleteStorageAccount(ctx, handler.arm, properties[FileShareStorageAccountNameKey])
 }
 
 func NewAzureFileShareStorageAccountHealthHandler(arm armauth.ArmConfig) HealthHandler {

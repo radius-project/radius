@@ -41,8 +41,22 @@ resource app 'radius.dev/Application@v1alpha3' = {
             mountPath:'/tmpfs'
             managedStore:'memory'
           }
+          'my-volume2':{
+            kind: 'persistent'
+            mountPath:'/tmpfs2'
+            source: myshare.id
+            rbac: 'read'
+          }
         }
       }
+    }
+  }
+
+  resource myshare 'Volume' = {
+    name: 'myshare'
+    properties:{
+      kind: 'azure.com.fileshare'
+      managed:true
     }
   }
 }

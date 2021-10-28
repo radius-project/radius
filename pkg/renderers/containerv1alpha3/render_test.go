@@ -612,10 +612,6 @@ func Test_Render_PersistentVolumes(t *testing.T) {
 	properties := ContainerProperties{
 		Container: Container{
 			Image: "someimage:latest",
-			Env: map[string]interface{}{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
-			},
 			Volumes: map[string]map[string]interface{}{
 				tempVolName: {
 					"kind":      "persistent",

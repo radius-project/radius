@@ -80,6 +80,13 @@ type ExecHealthProbe struct {
 	PeriodSeconds *int `json:"periodSeconds"`
 }
 
+type PersistentVolume struct {
+	Kind      string `json:"kind"`
+	MountPath string `json:"mountPath"`
+	Source    string `json:"source"`
+	Rbac      string `json:"rbac"`
+}
+
 type ContainerTrait struct {
 	Kind                 string
 	AdditionalProperties map[string]interface{}
@@ -89,13 +96,6 @@ type EphemeralVolume struct {
 	Kind         string `json:"kind"`
 	MountPath    string `json:"mountPath"`
 	ManagedStore string `json:"managedStore"`
-}
-
-type PersistentVolume struct {
-	Kind      string `json:"kind"`
-	MountPath string `json:"mountPath"`
-	Source    string `json:"source"`
-	Rbac      string `json:"rbac"`
 }
 
 func asEphemeralVolume(volume map[string]interface{}) (*EphemeralVolume, error) {
