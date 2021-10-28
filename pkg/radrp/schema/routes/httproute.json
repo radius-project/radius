@@ -77,12 +77,6 @@
         "path": {
           "$ref": "#/definitions/HttpRouteGatewayPath"
         },
-        "headers": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/HttpRouteGatewayHeader"
-          }
-        },
         "method": {
           "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
           "type": "string"
@@ -96,21 +90,6 @@
       "properties": {
         "type": {
           "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
-          "type": "string"
-        },
-        "value": {
-          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
-          "type": "string"
-        }
-      }
-    },
-    "HttpRouteGatewayHeader": {
-      "description": "",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "type": {
-          "description": "Specifies the type of matching for headers.",
           "type": "string"
         },
         "value": {

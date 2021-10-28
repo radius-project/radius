@@ -1081,6 +1081,73 @@ func (e *ExecHealthProbeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// GatewayBeginCreateOrUpdateOptions contains the optional parameters for the Gateway.BeginCreateOrUpdate method.
+type GatewayBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewayBeginDeleteOptions contains the optional parameters for the Gateway.BeginDelete method.
+type GatewayBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewayGetOptions contains the optional parameters for the Gateway.Get method.
+type GatewayGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewayList - List of Gateway resources.
+type GatewayList struct {
+	// REQUIRED; List of Gateway resources.
+	Value []*GatewayResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayList.
+func (g GatewayList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", g.Value)
+	return json.Marshal(objectMap)
+}
+
+// GatewayListOptions contains the optional parameters for the Gateway.List method.
+type GatewayListOptions struct {
+	// placeholder for future optional parameters
+}
+
+type GatewayListener struct {
+	// The port to listen on.
+	Port *float32 `json:"port,omitempty"`
+
+	// The protocol to use for this listener.
+	Protocol *string `json:"protocol,omitempty"`
+}
+
+type GatewayProperties struct {
+	// Dictionary of
+	Listeners map[string]*GatewayListener `json:"listeners,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayProperties.
+func (g GatewayProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "listeners", g.Listeners)
+	return json.Marshal(objectMap)
+}
+
+// GatewayResource - Resource that specifies how traffic is exposed to the application.
+type GatewayResource struct {
+	ProxyResource
+	Properties *GatewayProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayResource.
+func (g GatewayResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	g.ProxyResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", g.Properties)
+	return json.Marshal(objectMap)
+}
+
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
 type HTTPGetHealthProbeProperties struct {
 	HealthProbeProperties
@@ -1186,14 +1253,6 @@ func (h HTTPRouteGateway) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-type HTTPRouteGatewayHeader struct {
-	// Specifies the type of matching for headers.
-	Type *string `json:"type,omitempty"`
-
-	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
-	Value *string `json:"value,omitempty"`
-}
-
 type HTTPRouteGatewayPath struct {
 	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
 	Type *string `json:"type,omitempty"`
@@ -1203,20 +1262,9 @@ type HTTPRouteGatewayPath struct {
 }
 
 type HTTPRouteGatewayRule struct {
-	Headers []*HTTPRouteGatewayHeader `json:"headers,omitempty"`
-
 	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
 	Method *string `json:"method,omitempty"`
 	Path *HTTPRouteGatewayPath `json:"path,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteGatewayRule.
-func (h HTTPRouteGatewayRule) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "headers", h.Headers)
-	populate(objectMap, "method", h.Method)
-	populate(objectMap, "path", h.Path)
-	return json.Marshal(objectMap)
 }
 
 // HTTPRouteGetOptions contains the optional parameters for the HTTPRoute.Get method.
