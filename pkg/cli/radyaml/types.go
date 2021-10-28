@@ -26,6 +26,17 @@ type RADYamlLayer struct {
 type RADYamlLayerBuildTarget struct {
 	Name   string                  `yaml:"name"`
 	Docker *map[string]interface{} `yaml:"docker,omitempty"`
+	NPM    *RADYamlNPMBuild        `yaml:"npm,omitempty"`
+}
+
+type RADYamlNPMBuild struct {
+	WorkingDirectory string            `yaml:"workingDirectory"`
+	Args             []string          `yaml:"args,omitempty"`
+	Docker           *RADYamlNPMDocker `yaml:"docker,omitempty"`
+}
+
+type RADYamlNPMDocker struct {
+	Repository string `yaml:"repository"`
 }
 
 func Read(reader io.Reader) (RADYaml, error) {

@@ -31,10 +31,16 @@ func init() {
 	applicationCmd.AddCommand(appDeployCmd)
 
 	appDeployCmd.Flags().Bool("all", false, "Deploy all layers")
+	appDeployCmd.Flags().StringP("radfile", "r", "rad.yaml", "path to rad.yaml")
 }
 
 func deployApplication(cmd *cobra.Command, args []string) error {
 	all, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		return err
+	}
+
+	radFile, err := cmd.Flags().GetString("radfile")
 	if err != nil {
 		return err
 	}
@@ -44,10 +50,12 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 		layer = args[0]
 	}
 
-	output.LogInfo("Reading rad.yaml...")
+	output.LogInfo("Reading %s...", radFile)
 
-	file, err := os.Open("rad.yaml")
-	if err != nil {
+	file, err := os.Open(radFile)
+	if err == os.ErrNotExist {
+		return fmt.Errorf("could not find rad.yaml at %q", radFile)
+	} else if err != nil {
 		return err
 	}
 	defer file.Close()
