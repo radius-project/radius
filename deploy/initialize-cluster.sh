@@ -68,22 +68,33 @@ do
 done
 
 # Install nginx-ingress
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
 helm repo update
 
-helm upgrade \
-  radius-ingress-nginx ingress-nginx/ingress-nginx \
-  --install \
-  --create-namespace \
-  --namespace radius-system \
-  --version 3.29.0 \
-  --wait
+cat <<EOF | helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress \
+  --create-namespace --namespace radius-system \
+  --version 0.13.4 \
+  -f -
+controller:
+  hostNetwork: true
+  extraArgs:
+    watch-gateway: "true"
+EOF
+
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.x-k8s.io/v1alpha1
+kind: GatewayClass
+metadata:
+  name: haproxy
+spec:
+  controller: haproxy-ingress.github.io/controller
+EOF
 
 # Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
 # ex: https://github.com/Azure/radius/issues/29 https://github.com/Azure/radius/issues/39
 for i in {1..5}
 do
-  echo "listing radius-ingress-nginx pods - attempt $i"
+  echo "listing radius-haproxy-ingress pods - attempt $i"
   if ./kubectl get pods -n radius-system
   then
     break

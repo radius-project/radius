@@ -16,14 +16,17 @@ import (
 )
 
 type Step struct {
-	Executor            StepExecutor
-	AzureResources      *validation.AzureResourceSet
-	RadiusResources     *validation.ResourceSet
-	Pods                *validation.K8sObjectSet
-	PostStepVerify      func(ctx context.Context, t *testing.T, at ApplicationTest)
-	SkipAzureResources  bool
-	SkipRadiusResources bool
-	SkipPods            bool
+	Executor               StepExecutor
+	AzureResources         *validation.AzureResourceSet
+	RadiusResources        *validation.ResourceSet
+	Pods                   *validation.K8sObjectSet
+	HttpRoute              *validation.K8sObjectSet
+	Gateway                *validation.K8sObjectSet
+	Services               *validation.K8sObjectSet
+	PostStepVerify         func(ctx context.Context, t *testing.T, at ApplicationTest)
+	SkipAzureResources     bool
+	SkipRadiusResources    bool
+	SkipResourceValidation bool
 }
 
 type StepExecutor interface {
@@ -118,15 +121,35 @@ func (at ApplicationTest) Test(t *testing.T) {
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 
-			if step.Pods == nil && step.SkipPods {
+			if step.Pods == nil && step.SkipResourceValidation {
 				t.Logf("skipping validation of pods...")
-			} else if step.Pods == nil {
+			} else if step.Pods == nil && step.Gateway == nil && step.HttpRoute == nil && step.Services == nil {
 				require.Fail(t, "no pod set was specified and SkipPods == false, either specify a pod set or set SkipPods = true ")
 			} else {
 				// ValidatePodsRunning triggers its own assertions, no need to handle errors
-				t.Logf("validating creation of pods for %s", step.Executor.GetDescription())
-				validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
-				t.Logf("finished creation of validating pods for %s", step.Executor.GetDescription())
+				if step.Pods != nil {
+					t.Logf("validating creation of pods for %s", step.Executor.GetDescription())
+					validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
+					t.Logf("finished creation of validating pods for %s", step.Executor.GetDescription())
+				}
+
+				if step.Gateway != nil {
+					t.Logf("validating creation of ingress for %s", step.Executor.GetDescription())
+					validation.ValidateGatewaysRunning(ctx, t, at.Options.Client, *step.Gateway)
+					t.Logf("finished creation of validating ingress for %s", step.Executor.GetDescription())
+				}
+
+				if step.HttpRoute != nil {
+					t.Logf("validating creation of ingress for %s", step.Executor.GetDescription())
+					validation.ValidateHttpRoutesRunning(ctx, t, at.Options.Client, *step.HttpRoute)
+					t.Logf("finished creation of validating ingress for %s", step.Executor.GetDescription())
+				}
+
+				if step.Services != nil {
+					t.Logf("validating creation of services for %s", step.Executor.GetDescription())
+					validation.ValidateServicesRunning(ctx, t, at.Options.K8sClient, *step.Services)
+					t.Logf("finished creation of validating services for %s", step.Executor.GetDescription())
+				}
 			}
 
 			// Custom verification is expected to use `t` to trigger its own assertions
@@ -165,7 +188,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 		t.Logf("finished validating deletion of Azure resources for %s", last.Executor.GetDescription())
 	}
 
-	if last.SkipPods {
+	if last.SkipResourceValidation {
 		t.Logf("skipping validation of pods...")
 	} else {
 		t.Logf("validating deletion of pods for %s", at.Description)

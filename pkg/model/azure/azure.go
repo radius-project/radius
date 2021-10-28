@@ -70,12 +70,12 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 				StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues,
 			},
 		},
-		gateway.ResourceType: &gateway.Renderer{},
 
 		// Portable
 		microsoftsqlv1alpha3.ResourceType: &microsoftsqlv1alpha3.Renderer{},
 		mongodbv1alpha3.ResourceType:      &mongodbv1alpha3.AzureRenderer{},
 		redisv1alpha3.ResourceType:        &redisv1alpha3.AzureRenderer{},
+		gateway.ResourceType:              &gateway.Renderer{Client: k8s},
 
 		// Azure
 		keyvaultv1alpha3.ResourceType:        &keyvaultv1alpha3.Renderer{},

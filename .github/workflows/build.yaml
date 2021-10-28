@@ -249,16 +249,30 @@ jobs:
       uses: dapr/setup-dapr@v1
     - name: Install dapr into cluster
       run: dapr init -k --wait --timeout 600
-    - name: Install nginx into cluster
+    - name: Install haproxy into cluster
       run: |
-        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
         helm repo update
-        helm upgrade \
-          radius-ingress-nginx ingress-nginx/ingress-nginx \
-          --install \
-          --create-namespace \
-          --namespace radius-system \
-          --version 3.29.0 \
+
+        cat <<EOF | helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress \
+          --create-namespace --namespace radius-system \
+          --version 0.13.4 \
+          -f -
+        controller:
+          hostNetwork: true
+          extraArgs:
+            watch-gateway: "true"
+        EOF
+    - name: Install haproxy gateway class
+      run: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: networking.x-k8s.io/v1alpha1
+        kind: GatewayClass
+        metadata:
+          name: haproxy
+        spec:
+          controller: haproxy-ingress.github.io/controller
+        EOF
 
     - name: Update rad env with Kubernetes
       run: |
