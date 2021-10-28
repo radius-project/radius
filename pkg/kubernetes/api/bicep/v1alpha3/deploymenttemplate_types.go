@@ -22,13 +22,12 @@ type DeploymentTemplateSpec struct {
 
 // DeploymentTemplateStatus defines the observed state of Arm
 type DeploymentTemplateStatus struct {
-	Operations []DeploymentTemplateOperation `json:"resources,omitempty"`
-}
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-type DeploymentTemplateOperation struct {
-	Name        string `json:"name,omitempty"`
-	Namespace   string `json:"namespace,omitempty"`
-	Provisioned bool   `json:"provisioned,omitempty"`
+	// ObservedGeneration captures the last generation
+	// that was captured and completed by the reconciler
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 //+kubebuilder:object:root=true

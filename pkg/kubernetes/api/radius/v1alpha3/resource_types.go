@@ -37,8 +37,9 @@ type ResourceStatus struct {
 	// +optional
 	Resources map[string]corev1.ObjectReference `json:"resources,omitempty"`
 
-	// +optional
-	Phrase string `json:"phrase,omitempty"`
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

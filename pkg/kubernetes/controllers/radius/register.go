@@ -164,7 +164,7 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	}
 
-	err = c.template.SetupWithManager(mgr)
+	err = c.template.SetupWithManager(mgr, c.options.ResourceTypes)
 	if err != nil {
 		return err
 	}
