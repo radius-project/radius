@@ -6,7 +6,7 @@
 ##@ Controller
 
 controller-run: generate-k8s-manifests generate-controller ## Run the controller locally
-	SKIP_WEBHOOKS=true go run ./cmd/k8s/main.go
+	SKIP_WEBHOOKS=true go run ./cmd/radius-controller/main.go
 
 controller-crd-install: generate-k8s-manifests  ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	kubectl apply -f deploy/Chart/crds/
