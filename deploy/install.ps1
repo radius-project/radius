@@ -16,7 +16,6 @@ $RadiusRoot = $RadiusRoot -replace ' ', '` '
 
 # Constants
 $RadiusCliFileName = "rad.exe"
-$KcpFileName = "kcp.exe"
 $RadiusCliFilePath = "${RadiusRoot}\${RadiusCliFileName}"
 $OsArch = "windows-x64"
 $BaseDownloadUrl = "https://get.radapp.dev/tools/rad"
@@ -54,34 +53,30 @@ if($Version -eq "")
     $Version = Invoke-WebRequest $StableVersionUrl -UseBasicParsing
     $Version = $Version.Trim()
 }
+$urlParts = @(
+    $BaseDownloadUrl,
+    $Version,
+    $OsArch,
+    $RadiusCliFileName
+)
+$binaryUrl =  $urlParts -join "/"
 
-foreach($fileName in @($RadiusCliFileName, $KcpFileName)) {
-    $urlParts = @(
-        $BaseDownloadUrl,
-        $Version,
-        $OsArch,
-        $fileName
-    )
-    $binaryUrl =  $urlParts -join "/"
+$binaryFilePath = $RadiusRoot + "\" + $RadiusCliFileName
+Write-Output "Downloading $binaryUrl ..."
 
-    $binaryFilePath = $RadiusRoot + "\" + $fileName
-    Write-Output "Downloading $binaryUrl ..."
-
-    $uri = [uri]$binaryUrl
-    try
-    {
-        $ProgressPreference = "SilentlyContinue" # Do not show progress bar
-        Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath -UseBasicParsing
-        if (!(Test-Path $binaryFilePath -PathType Leaf)) {
-            throw "Failed to download Radius Cli binary - $binaryFilePath"
-        }
-    }
-    catch [Net.WebException]
-    {
-        throw "ERROR: The release version $Version of $fileName does not exist."
+$uri = [uri]$binaryUrl
+try
+{
+    $ProgressPreference = "SilentlyContinue" # Do not show progress bar
+    Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath -UseBasicParsing
+    if (!(Test-Path $binaryFilePath -PathType Leaf)) {
+        throw "Failed to download Radius Cli binary - $binaryFilePath"
     }
 }
-
+catch [Net.WebException]
+{
+    throw "ERROR: The specified release version: $Version does not exist."
+}
 
 # TODO Check the Radius CLI version: Invoke-Expression "$RadiusCliFilePath --version"
 
