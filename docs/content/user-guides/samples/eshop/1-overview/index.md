@@ -9,7 +9,7 @@ weight: 100
 
 ## Background
 
-The [eShop on Containers](https://github.com/dotnet-architecture/eShopOnContainers) reference application is a sample .NET Core reference application based on a simplified microservices architecture and Docker containers.
+The [eShop on Containers](https://github.com/dotnet-architecture/eShopOnContainers) reference application is a sample .NET Core microservices application.
 
 ### Architecture
 
