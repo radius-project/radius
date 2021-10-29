@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azurefilesharev1alpha3
+package volumev1alpha3
 
 import (
 	"context"
@@ -38,9 +38,8 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 	return nil, nil
 }
 
-func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := AzureFileShareProperties{}
-	resource := options.Resource
+func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+	properties := VolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -72,7 +71,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}, nil
 }
 
-func RenderManaged(name string, properties AzureFileShareProperties) ([]outputresource.OutputResource, error) {
+func RenderManaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
@@ -101,7 +100,7 @@ func RenderManaged(name string, properties AzureFileShareProperties) ([]outputre
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
-func RenderUnmanaged(name string, properties AzureFileShareProperties) ([]outputresource.OutputResource, error) {
+func RenderUnmanaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
@@ -140,23 +139,4 @@ func RenderUnmanaged(name string, properties AzureFileShareProperties) ([]output
 		Identity:     resourcemodel.NewARMIdentity(fileshareID.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent())),
 	}
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
-}
-
-func MakeSecretsAndValues(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	computedValues := map[string]renderers.ComputedValueReference{
-		StorageAccountName: {
-			LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
-			Value:   name,
-		},
-	}
-	secretValues := map[string]renderers.SecretValueReference{
-		StorageKeyValue: {
-			LocalID: storageAccountDependency.LocalID,
-			// https://docs.microsoft.com/en-us/rest/api/storagerp/storage-accounts/list-keys
-			Action:        "listKeys",
-			ValueSelector: "/keys/0/value",
-		},
-	}
-
-	return computedValues, secretValues
 }

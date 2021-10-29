@@ -6,12 +6,13 @@
 package azure
 
 import (
+	"context"
+
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/renderers/azurefilesharev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/dapr"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
@@ -23,6 +24,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/microsoftsqlv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
 
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha1"
@@ -80,7 +82,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		// Azure
 		keyvaultv1alpha3.ResourceType:        &keyvaultv1alpha3.Renderer{},
 		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
-		azurefilesharev1alpha3.ResourceType:  &azurefilesharev1alpha3.Renderer{},
+		volumev1alpha3.ResourceType:          &volumev1alpha3.Renderer{VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){"azure.com.fileshare": volumev1alpha3.GetAzureFileShareVolume}},
 	}
 
 	handlerMap := map[string]model.Handlers{

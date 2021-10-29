@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azurefilesharev1alpha3
+package volumev1alpha3
 
 import (
 	"context"
@@ -42,6 +42,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/fileservices/default/shares/test-share",
+			"kind":     "azure.com.fileshare",
 		},
 	}
 
@@ -103,6 +104,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"managed": false,
+			"kind":    "azure.com.fileshare",
 		},
 	}
 
@@ -121,6 +123,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/storageAccounts/fileshares/test-share",
+			"kind":     "azure.com.fileshare",
 		},
 	}
 
@@ -139,6 +142,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"managed": true,
+			"kind":    "azure.com.fileshare",
 		},
 	}
 
