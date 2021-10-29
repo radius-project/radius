@@ -16,6 +16,7 @@ RADIUS_HTTP_REQUEST_CLI=curl
 
 # Radius CLI filename
 RADIUS_CLI_FILENAME=rad
+KCP_FILE_NAME=kcp
 
 RADIUS_CLI_FILE="${RADIUS_INSTALL_DIR}/${RADIUS_CLI_FILENAME}"
 
@@ -110,24 +111,22 @@ getLatestRelease() {
 
 downloadFile() {
     LATEST_RELEASE_TAG=$1
+    ARTIFACT=$2
 
     OS_ARCH="${OS}-${ARCH}"
-    RADIUS_CLI_ARTIFACT="rad"
     DOWNLOAD_BASE="https://get.radapp.dev/tools/rad"
-    DOWNLOAD_URL="${DOWNLOAD_BASE}/${LATEST_RELEASE_TAG}/${OS_ARCH}/${RADIUS_CLI_ARTIFACT}"
+    DOWNLOAD_URL="${DOWNLOAD_BASE}/${LATEST_RELEASE_TAG}/${OS_ARCH}/${ARTIFACT}"
 
-    # Create the temp directory
-    RADIUS_TMP_ROOT=$(mktemp -dt Radius-install-XXXXXX)
-    ARTIFACT_TMP_FILE="$RADIUS_TMP_ROOT/$RADIUS_CLI_ARTIFACT"
+    ARTIFACT_TMP_FILE="$RADIUS_TMP_ROOT/$ARTIFACT"
 
     if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
         if ! curl --output /dev/null --silent --head --fail "$DOWNLOAD_URL"; then
-            echo "ERROR: The specified release version: $LATEST_RELEASE_TAG does not exist."
+            echo "ERROR: The release version $LATEST_RELEASE_TAG of $ARTIFACT does not exist."
             exit 1
         fi
     else
         if ! wget --spider "$DOWNLOAD_URL" 2>/dev/null; then
-            echo "ERROR: The specified release version: $LATEST_RELEASE_TAG does not exist."
+            echo "ERROR: The release version $LATEST_RELEASE_TAG of $ARTIFACT does not exist."
             exit 1
         fi
     fi
@@ -147,34 +146,37 @@ downloadFile() {
 }
 
 installFile() {
-    local tmp_root_Radius_cli="$RADIUS_TMP_ROOT/$RADIUS_CLI_FILENAME"
+    local filename=$1
+    local tmp_root_filename="$RADIUS_TMP_ROOT/$filename"
 
-    if [ ! -f "$tmp_root_Radius_cli" ]; then
-        echo "Failed to download Radius CLI executable."
+    if [ ! -f "$tmp_root_filename" ]; then
+        echo "Failed to download $filename executable."
         exit 1
     fi
 
-    chmod a+x $tmp_root_Radius_cli
-    runAsRoot cp "$tmp_root_Radius_cli" "$RADIUS_INSTALL_DIR"
+    chmod a+x $tmp_root_filename
+    runAsRoot cp "$tmp_root_filename" "$RADIUS_INSTALL_DIR"
 
-    if [ -f "$RADIUS_CLI_FILE" ]; then
-        echo "$RADIUS_CLI_FILENAME installed into $RADIUS_INSTALL_DIR successfully."
-        
-        echo "Installing rad-bicep (\"rad bicep download\")..."
-        $RADIUS_CLI_FILE bicep download
-        result=$?
-        if [ $result -eq 0 ]; then
-            echo "rad-bicep installed successfully"
-        else
-           echo "Failed to install rad-bicep"
-           exit 1
-        fi
-
-        # TODO: $RADIUS_CLI_FILE --version
+    if [ -f "${RADIUS_INSTALL_DIR}/$filename" ]; then
+        echo "$FILENAME installed into $RADIUS_INSTALL_DIR successfully."
     else 
-        echo "Failed to install $RADIUS_CLI_FILENAME"
+        echo "Failed to install $FILENAME"
         exit 1
     fi
+}
+
+installBicep() {
+    echo "Installing rad-bicep (\"rad bicep download\")..."
+    $RADIUS_CLI_FILE bicep download
+    result=$?
+    if [ $result -eq 0 ]; then
+        echo "rad-bicep installed successfully"
+    else
+        echo "Failed to install rad-bicep"
+        exit 1
+    fi
+
+    # TODO: $RADIUS_CLI_FILE --version
 }
 
 fail_trap() {
@@ -216,10 +218,18 @@ else
     echo "Getting the Radius CLI release version: $1..."
 fi
 
-echo "Installing $ret_val Radius CLI..."
+# Create the temp directory for downloading files
+RADIUS_TMP_ROOT=$(mktemp -dt Radius-install-XXXXXX)
 
-downloadFile $ret_val
-installFile
+echo "Installing $ret_val Radius CLI..."
+binaries=($RADIUS_CLI_FILENAME $KCP_FILE_NAME)
+for binaryfile in "${binaries[@]}"; do
+    downloadFile $ret_val $binaryfile
+    installFile $binaryfile
+done
+
+installBicep
+
 cleanup
 
 installCompleted

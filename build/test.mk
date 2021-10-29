@@ -33,5 +33,5 @@ test-controller: generate-k8s-manifests generate-controller test-get-envtools ##
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
 
-test-localdev: test-get-envtools ## Runs local development environment tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test $(GOTEST_OPTS) -v ./test/integration/localdev/...
+test-localenv: test-get-envtools ## Runs local development environment tests
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test $(GOTEST_OPTS) -v ./test/integration/localenv/...
