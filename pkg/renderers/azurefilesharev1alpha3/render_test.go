@@ -142,7 +142,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.NoError(t, err)
 
 	require.Equal(t, outputresource.LocalIDAzureFileShareStorageAccount, output.Resources[0].LocalID)
