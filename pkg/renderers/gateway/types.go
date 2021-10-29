@@ -16,9 +16,4 @@ type Gateway struct {
 type Listener struct {
 	Port     *int   `json:"port,omitempty"`
 	Protocol string `json:"protocol"`
-	Tls      TLS    `json:"tls"`
-}
-
-type TLS struct {
-	Source string `json:"certificate,omitempty"`
 }

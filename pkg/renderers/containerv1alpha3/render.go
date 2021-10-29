@@ -110,6 +110,8 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	outputResources := []outputresource.OutputResource{}
+	resource := options.Resource
+	dependencies := options.Dependencies
 
 	cw, err := r.convert(resource)
 	if err != nil {
@@ -170,6 +172,8 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 		Name string
 		Type string
 	}{}
+	resource := options.Resource
+	dependencies := options.Dependencies
 
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
@@ -499,7 +503,7 @@ func (r Renderer) makePersistentVolume(volumeName string, persistentVolume Persi
 	volumeSpec := corev1.Volume{}
 	volumeSpec.Name = volumeName
 	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
-	volumeSpec.AzureFile.SecretName = resource.ResourceName
+	volumeSpec.AzureFile.SecretName = options.Resource.ResourceName
 	resourceID, err := azresources.Parse(persistentVolume.Source)
 	if err != nil {
 		return corev1.Volume{}, corev1.VolumeMount{}, err

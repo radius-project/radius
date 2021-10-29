@@ -7,6 +7,7 @@ package httproutev1alpha3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"strings"
@@ -77,8 +78,13 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	if route.Gateway != nil {
 		gatewayId := route.Gateway.Source
 		if gatewayId == "" {
-			gatewayClass := options.AdditionalProperties[] // TODO
-			gateway.MakeGateway(ctx, resource, route.Gateway, outputs)
+			gatewayClass, ok := options.AdditionalProperties[gateway.GatewayClassKey].(gatewayv1alpha1.GatewayClass)
+			if !ok {
+				return renderers.RendererOutput{}, errors.New("gateway class not found")
+			}
+
+			defaultGateway := r.createDefaultGateway()
+			gateway.MakeGateway(ctx, resource, defaultGateway, gatewayClass)
 		} else {
 			existingGateway := dependencies[gatewayId]
 			httpRoute := r.makeHttpRoute(resource, route, existingGateway)
@@ -90,6 +96,20 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		Resources:      outputs,
 		ComputedValues: computedValues,
 	}, nil
+}
+
+func (r *Renderer) createDefaultGateway() gateway.Gateway {
+	port := 80
+	gateway := gateway.Gateway{
+		Listeners: map[string]gateway.Listener{
+			"http": {
+				Port:     &port,
+				Protocol: "HTTP",
+			},
+		},
+	}
+
+	return gateway
 }
 
 func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {

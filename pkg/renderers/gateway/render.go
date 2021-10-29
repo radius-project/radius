@@ -23,6 +23,10 @@ type Renderer struct {
 	Client client.Client
 }
 
+const (
+	GatewayClassKey = "GatewayClass"
+)
+
 // Need a step to take rendered routes to be usable by resource
 func (r Renderer) GetDependencyIDs(Clientctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
 	return nil, nil
@@ -30,17 +34,19 @@ func (r Renderer) GetDependencyIDs(Clientctx context.Context, workload renderers
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	gateway := Gateway{}
-	err := resource.ConvertDefinition(&gateway)
+	err := options.Resource.ConvertDefinition(&gateway)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	gatewayClass, err := MakeGatewayClass()
-
+	gatewayClass, ok := options.AdditionalProperties[GatewayClassKey].(gatewayv1alpha1.GatewayClass)
+	if !ok {
+		return renderers.RendererOutput{}, errors.New("gateway class not found")
+	}
 	computedValues := map[string]renderers.ComputedValueReference{}
 
 	outputs := []outputresource.OutputResource{}
-	outputs = append(outputs, r.makeGateway(ctx, resource, gateway, gatewayClass))
+	outputs = append(outputs, MakeGateway(ctx, options.Resource, gateway, gatewayClass))
 
 	return renderers.RendererOutput{
 		Resources:      outputs,
@@ -48,24 +54,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}, nil
 }
 
-func MakeGatewayClass(ctx context.Context, client client.Client) (*gatewayv1alpha1.GatewayClass, error) {
-
-	// We require a gateway class to be present before creating a gateway
-	// Look up the first gateway class in the cluster and use that for now
-	var gateways gatewayv1alpha1.GatewayClassList
-	err := client.List(ctx, &gateways)
-	if err != nil {
-		return nil, err
-	}
-	if len(gateways.Items) == 0 {
-		return nil, errors.New("no gateway classes found")
-	}
-
-	gatewayClass := gateways.Items[0]
-	return &gatewayClass, nil
-}
-
-func (r *Renderer) MakeGateway(ctx context.Context, resource renderers.RendererResource, gateway Gateway, gatewayClass gatewayv1alpha1.GatewayClass) outputresource.OutputResource {
+func MakeGateway(ctx context.Context, resource renderers.RendererResource, gateway Gateway, gatewayClass gatewayv1alpha1.GatewayClass) outputresource.OutputResource {
 	var listeners []gatewayv1alpha1.Listener
 	for _, listener := range gateway.Listeners {
 		listeners = append(listeners, gatewayv1alpha1.Listener{

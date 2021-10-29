@@ -186,7 +186,7 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 		return renderers.RendererOutput{}, armerr, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, rendererResource, rendererDependencies)
+	rendererOutput, err := renderer.Render(ctx, renderers.RenderOptions{Resource: rendererResource, Dependencies: rendererDependencies})
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Invalid,

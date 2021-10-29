@@ -19,6 +19,7 @@ import (
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/gateway"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 const (
@@ -232,6 +234,12 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
+	additionalProperties, err := r.GetAdditionalProperties(ctx)
+	if err != nil {
+		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get additional properties: %v", err)
+		log.Error(err, "failed to render resource")
+	}
+
 	deps := map[string]renderers.RendererDependency{}
 	for _, reference := range references {
 		dependency, err := r.GetRenderDependency(ctx, req.Namespace, reference)
@@ -245,7 +253,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		deps[reference.ID] = *dependency
 	}
 
-	output, err := resourceType.Renderer().Render(ctx, *w, deps)
+	output, err := resourceType.Renderer().Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, AdditionalProperties: additionalProperties})
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")
@@ -254,6 +262,24 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 
 	log.Info("rendered output resources", "count", len(output.Resources))
 	return &output, true, nil
+}
+
+func (r *ResourceReconciler) GetAdditionalProperties(ctx context.Context) (map[string]interface{}, error) {
+	additionalProperties := map[string]interface{}{}
+	// We require a gateway class to be present before creating a gateway
+	// Look up the first gateway class in the cluster and use that for now
+	var gateways gatewayv1alpha1.GatewayClassList
+	err := r.Client.List(ctx, &gateways)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(gateways.Items) > 0 {
+		gatewayClass := gateways.Items[0]
+		additionalProperties[gateway.GatewayClassKey] = gatewayClass
+	}
+
+	return additionalProperties, nil
 }
 
 func (r *ResourceReconciler) ApplyState(
