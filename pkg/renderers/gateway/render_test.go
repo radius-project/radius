@@ -14,10 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -37,29 +33,7 @@ func Test_GetDependencyIDs_Empty(t *testing.T) {
 }
 
 func Test_Render_Defaults(t *testing.T) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
-
-	gatewayClass := gatewayv1alpha1.GatewayClass{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "gateway-class",
-			Namespace: namespace,
-		},
-		TypeMeta: v1.TypeMeta{
-			Kind:       "GatewayClass",
-			APIVersion: gatewayv1alpha1.GroupVersion.Version,
-		},
-		Spec: gatewayv1alpha1.GatewayClassSpec{
-			Controller: "test-controller",
-		},
-	}
-
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&gatewayClass).Build()
-
-	r := &Renderer{
-		Client: c,
-	}
+	r := &Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -69,8 +43,9 @@ func Test_Render_Defaults(t *testing.T) {
 	}
 
 	dependencies := map[string]renderers.RendererDependency{}
+	additionalProperties := GetAdditionalProperties()
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -89,29 +64,7 @@ func Test_Render_Defaults(t *testing.T) {
 }
 
 func Test_Render_WithListener(t *testing.T) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
-
-	gatewayClass := gatewayv1alpha1.GatewayClass{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "gateway-class",
-			Namespace: namespace,
-		},
-		TypeMeta: v1.TypeMeta{
-			Kind:       "GatewayClass",
-			APIVersion: gatewayv1alpha1.GroupVersion.Version,
-		},
-		Spec: gatewayv1alpha1.GatewayClassSpec{
-			Controller: "test-controller",
-		},
-	}
-
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&gatewayClass).Build()
-
-	r := &Renderer{
-		Client: c,
-	}
+	r := &Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -128,8 +81,9 @@ func Test_Render_WithListener(t *testing.T) {
 	}
 
 	dependencies := map[string]renderers.RendererDependency{}
+	additionalProperties := GetAdditionalProperties()
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -149,4 +103,23 @@ func Test_Render_WithListener(t *testing.T) {
 	listener := gateway.Spec.Listeners[0]
 	require.Equal(t, gatewayv1alpha1.PortNumber(80), listener.Port)
 	require.Equal(t, gatewayv1alpha1.ProtocolType("http"), listener.Protocol)
+}
+
+func GetAdditionalProperties() map[string]interface{} {
+	additionalProperties := map[string]interface{}{
+		"GatewayClass": gatewayv1alpha1.GatewayClass{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "gateway-class",
+				Namespace: namespace,
+			},
+			TypeMeta: v1.TypeMeta{
+				Kind:       "GatewayClass",
+				APIVersion: gatewayv1alpha1.GroupVersion.Version,
+			},
+			Spec: gatewayv1alpha1.GatewayClassSpec{
+				Controller: "test-controller",
+			},
+		},
+	}
+	return additionalProperties
 }

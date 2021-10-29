@@ -15,12 +15,10 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 type Renderer struct {
-	Client client.Client
 }
 
 const (

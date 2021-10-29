@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -55,7 +56,9 @@ func Test_Render_Defaults(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	additionalProperties := GetAdditionalProperties()
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -92,6 +95,25 @@ func Test_Render_Defaults(t *testing.T) {
 	require.Equal(t, expectedPort, port)
 }
 
+func GetAdditionalProperties() map[string]interface{} {
+	additionalProperties := map[string]interface{}{
+		"GatewayClass": gatewayv1alpha1.GatewayClass{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "gateway-class",
+				Namespace: namespace,
+			},
+			TypeMeta: v1.TypeMeta{
+				Kind:       "GatewayClass",
+				APIVersion: gatewayv1alpha1.GroupVersion.Version,
+			},
+			Spec: gatewayv1alpha1.GatewayClassSpec{
+				Controller: "test-controller",
+			},
+		},
+	}
+	return additionalProperties
+}
+
 func Test_Render_NonDefaults(t *testing.T) {
 	r := &Renderer{}
 
@@ -105,7 +127,9 @@ func Test_Render_NonDefaults(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	additionalProperties := GetAdditionalProperties()
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -171,7 +195,9 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	additionalProperties := GetAdditionalProperties()
+
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
@@ -245,7 +271,9 @@ func Test_Render_WithHostname(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	additionalProperties := GetAdditionalProperties()
+
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 
@@ -316,7 +344,10 @@ func Test_Render_Rule(t *testing.T) {
 			OutputResources: map[string]resourcemodel.ResourceIdentity{},
 		},
 	}
-	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+
+	additionalProperties := GetAdditionalProperties()
+
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 
