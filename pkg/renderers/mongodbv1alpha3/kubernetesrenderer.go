@@ -42,8 +42,9 @@ func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, resource rend
 	return nil, nil
 }
 
-func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := MongoDBComponentProperties{}
+	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -53,7 +54,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 		return renderers.RendererOutput{}, errors.New("only Radius managed resources are supported for MongoDB on Kubernetes")
 	}
 
-	options := KubernetesOptions{
+	k8sOptions := KubernetesOptions{
 		DescriptiveLabels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		SelectorLabels:    kubernetes.MakeSelectorLabels(resource.ApplicationName, resource.ResourceName),
 
@@ -66,15 +67,15 @@ func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.Rend
 	// The secret is used to hold the password, just so it's not stored in plaintext.
 	//
 	// TODO: for now this is VERY hardcoded.
-	secret := r.MakeSecret(options, "admin", "password")
+	secret := r.MakeSecret(k8sOptions, "admin", "password")
 	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, secret, secret.ObjectMeta))
 
 	// This is a headless service, clients of Mongo will just use it for DNS.
 	// Mongo is a replicated service and clients need to know the addresses of the replicas.
-	service := r.MakeService(options)
+	service := r.MakeService(k8sOptions)
 	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta))
 
-	set := r.MakeStatefulSet(options, service.Name, secret.Name)
+	set := r.MakeStatefulSet(k8sOptions, service.Name, secret.Name)
 	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDStatefulSet, set, set.ObjectMeta))
 
 	computedValues := map[string]renderers.ComputedValueReference{

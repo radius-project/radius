@@ -31,8 +31,9 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 	return nil, nil
 }
 
-func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := MicrosoftSQLComponentProperties{}
+	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err

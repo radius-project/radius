@@ -70,7 +70,7 @@ func Test_Render_Defaults(t *testing.T) {
 
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := r.Render(context.Background(), resource, dependencies)
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -129,7 +129,7 @@ func Test_Render_WithListener(t *testing.T) {
 
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := r.Render(context.Background(), resource, dependencies)
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)

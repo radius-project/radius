@@ -29,8 +29,9 @@ func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers
 	return nil, nil
 }
 
-func (r AzureRenderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := MongoDBComponentProperties{}
+	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err

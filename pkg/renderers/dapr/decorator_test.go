@@ -26,7 +26,7 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.Renderer
 	return nil, nil
 }
 
-func (r *noop) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r *noop) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the Dapr trait can modify it
 	deployment := appsv1.Deployment{}
 
@@ -64,7 +64,7 @@ func Test_Render_Success(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -109,7 +109,7 @@ func Test_Render_Success_AppID_FromRoute(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -155,7 +155,7 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(context.Background(), resource, dependencies)
+	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
 	require.Equal(t, "the appId specified on a \"dapr.io.DaprHttpRoute\" must match the appId specified on the \"dapr.io/Sidecar@v1alpha1\" trait. Route: \"routeappId\", Trait: \"testappId\"", err.Error())
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/gateway"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -43,8 +44,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 	return nil, nil
 }
 
-func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	route := HttpRoute{}
+	resource := options.Resource
+	dependencies := options.Dependencies
+
 	err := resource.ConvertDefinition(&route)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -73,11 +77,13 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	if route.Gateway != nil {
 		gatewayId := route.Gateway.Source
 		if gatewayId == "" {
-			return renderers.RendererOutput{}, fmt.Errorf("must specify gateway source")
+			gatewayClass := options.AdditionalProperties[] // TODO
+			gateway.MakeGateway(ctx, resource, route.Gateway, outputs)
+		} else {
+			existingGateway := dependencies[gatewayId]
+			httpRoute := r.makeHttpRoute(resource, route, existingGateway)
+			outputs = append(outputs, httpRoute)
 		}
-		existingGateway := dependencies[gatewayId]
-		httpRoute := r.makeHttpRoute(resource, route, existingGateway)
-		outputs = append(outputs, httpRoute)
 	}
 
 	return renderers.RendererOutput{

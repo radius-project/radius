@@ -29,12 +29,13 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 	return r.Inner.GetDependencyIDs(ctx, resource)
 }
 
-func (r *Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Let the inner renderer do its work
-	output, err := r.Inner.Render(ctx, resource, dependencies)
+	output, err := r.Inner.Render(ctx, options)
 	if err != nil {
 		return renderers.RendererOutput{}, nil
 	}
+	resource := options.Resource
 
 	container := containerv1alpha3.ContainerProperties{}
 	err = resource.ConvertDefinition(&container)

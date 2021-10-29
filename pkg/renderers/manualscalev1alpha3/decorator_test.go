@@ -27,7 +27,7 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.Renderer
 	return nil, nil
 }
 
-func (r *noop) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r *noop) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the manualscale trait can modify it
 	deployment := appsv1.Deployment{}
 	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
@@ -52,7 +52,7 @@ func Test_Render_Success(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 
@@ -80,7 +80,7 @@ func Test_Render_CanSpecifyZero(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 
@@ -101,7 +101,7 @@ func Test_Render_NoTrait(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 

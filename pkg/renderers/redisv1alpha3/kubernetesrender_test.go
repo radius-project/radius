@@ -40,7 +40,10 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	output, err := renderer.Render(ctx, renderers.RenderOptions{
+		Resource:     resource,
+		Dependencies: map[string]renderers.RendererDependency{},
+	})
 	require.NoError(t, err)
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
@@ -124,7 +127,10 @@ func Test_Render_KubernetesRedis_Unmanaged_Failure(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	_, err := renderer.Render(ctx, renderers.RenderOptions{
+		Resource:     resource,
+		Dependencies: map[string]renderers.RendererDependency{},
+	})
 	require.Error(t, err)
 	require.Equal(t, "only managed = true is supported for the Kubernetes Redis Component", err.Error())
 }

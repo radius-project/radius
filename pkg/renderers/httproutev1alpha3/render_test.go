@@ -55,7 +55,7 @@ func Test_Render_Defaults(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := r.Render(context.Background(), resource, dependencies)
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -105,7 +105,7 @@ func Test_Render_NonDefaults(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := r.Render(context.Background(), resource, dependencies)
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -171,7 +171,7 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
@@ -245,7 +245,7 @@ func Test_Render_WithHostname(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 
@@ -316,7 +316,7 @@ func Test_Render_Rule(t *testing.T) {
 			OutputResources: map[string]resourcemodel.ResourceIdentity{},
 		},
 	}
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 
