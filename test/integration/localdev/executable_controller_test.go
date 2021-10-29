@@ -102,6 +102,14 @@ func startController() error {
 		return fmt.Errorf("failed to initialize Executable reconciler: %w", err)
 	}
 
+	if err = (&radcontroller.DockerContainerReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Executable"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("failed to initialize Executable reconciler: %w", err)
+	}
+
 	go func() {
 		_ = mgr.Start(ctrl.SetupSignalHandler())
 	}()

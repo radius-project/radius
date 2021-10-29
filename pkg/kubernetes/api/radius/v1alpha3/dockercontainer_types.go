@@ -11,9 +11,46 @@ import (
 
 // DockerContainerSpec defines the desired state of an DockerContainer
 type DockerContainerSpec struct {
+	Image            string            `json:"image"`
+	WorkingDirectory string            `json:"workingDirectory,omitempty"`
+	Args             []string          `json:"args,omitempty"`
+	Env              map[string]string `json:"env,omitempty"`
+	//+kubebuilder:default=1
+	//+kubebuilder:validation:Minimum=1
+	//+kubebuilder:validation:Maximum=100
+	// Number of replicas to launch for the DockerContainer
+	Replicas int `json:"replicas,omitempty"`
+
+	// Ports specifies ports to bind to the executable.
+	Ports []DockerContainerPort `json:"ports,omitempty"`
+}
+
+type DockerContainerPort struct {
+	Port          *int `json:"port"`
+	ContainerPort *int `json:"containerPort"`
+	Dynamic       bool `json:"dynamic"`
 }
 
 type DockerContainerStatus struct {
+	FinishTimestamp *metav1.Time    `json:"finishTimestamp,omitempty"`
+	Replicas        []ReplicaStatus `json:"replicas,omitempty"`
+}
+
+type DockerReplicaPort struct {
+	Name string `json:"name"`
+	Port int    `json:"port"`
+}
+
+type DockerReplicaStatus struct {
+	// The process ID
+	PID int `json:"pid"`
+
+	// Exit code of a process
+	ExitCode int `json:"exitCode,omitempty"`
+
+	LogFile string `json:"logfile,omitempty"`
+
+	Ports []DockerReplicaPort `json:"ports,omitempty"`
 }
 
 //+kubebuilder:object:root=true
