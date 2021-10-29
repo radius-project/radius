@@ -84,7 +84,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 			}
 
 			defaultGateway := r.createDefaultGateway()
-			gateway.MakeGateway(ctx, resource, defaultGateway, gatewayClass)
+			gatewayK8s := gateway.MakeGateway(ctx, resource, defaultGateway, gatewayClass)
+			httpRoute := r.makeHttpRoute(resource, route, gatewayK8s)
+			outputs = append(outputs, gatewayK8s)
+			outputs = append(outputs, httpRoute)
 		} else {
 			existingGateway := dependencies[gatewayId]
 			httpRoute := r.makeHttpRoute(resource, route, existingGateway)

@@ -380,3 +380,74 @@ func Test_Render_Rule(t *testing.T) {
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
 	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
 }
+
+func Test_Render_Rule_NoSource(t *testing.T) {
+	renderer := &Renderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"port": 81,
+			"gateway": map[string]interface{}{
+				"hostname": "example.com",
+				"rules": map[string]interface{}{
+					"foo": map[string]interface{}{
+						"path": map[string]interface{}{
+							"value": "/foo",
+							"type":  "exact",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	id, err := azresources.Parse(resourceID)
+	require.NoError(t, err)
+
+	dependencies := map[string]renderers.RendererDependency{
+		"foo-bar": {
+			ResourceID:      id,
+			Definition:      map[string]interface{}{},
+			ComputedValues:  map[string]interface{}{},
+			OutputResources: map[string]resourcemodel.ResourceIdentity{},
+		},
+	}
+
+	additionalProperties := GetAdditionalProperties()
+
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 3)
+
+	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
+	require.Equal(t, expectedOutputResource, outputResource)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
+	require.Equal(t, applicationName, httpRoute.Namespace)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
+
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, id.Name())
+
+	rule := httpRoute.Spec.Rules[0]
+
+	require.NotNil(t, rule.Matches)
+	require.Len(t, rule.Matches, 1)
+
+	path := rule.Matches[0]
+
+	require.Equal(t, "/foo", *path.Path.Value)
+	require.Equal(t, gatewayv1alpha1.PathMatchExact, *path.Path.Type)
+
+	backend := rule.ForwardTo[0]
+	require.NotNil(t, backend)
+
+	service := backend.ServiceName
+	require.NotNil(t, service)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
+	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+}
