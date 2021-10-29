@@ -62,6 +62,8 @@ func (e *TestProcessExecutor) StartProcess(ctx context.Context, cmd *exec.Cmd, h
 	e.Executions = append(e.Executions, pe)
 
 	startWaitingForExit = func() {
+		e.m.Lock()
+		defer e.m.Unlock()
 		i := e.findByPid(pid)
 		pe := e.Executions[i]
 		pe.StartWaitingCalled = true
