@@ -54,6 +54,7 @@ func NewLocalModel() ResourceModel {
 	return NewModel(
 		[]WatchedType{
 			{&radiusv1alpha3.Executable{}, &radiusv1alpha3.ExecutableList{}},
+			{&radiusv1alpha3.DockerContainer{}, &radiusv1alpha3.DockerContainerList{}},
 		},
 		[]ReconcilableType{
 			{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},

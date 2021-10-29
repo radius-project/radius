@@ -244,6 +244,32 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
+  - dockercontainers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - dockercontainers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - dockercontainers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
   - grpcroutes
   verbs:
   - create
