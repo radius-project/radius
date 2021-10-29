@@ -85,12 +85,14 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 
 			defaultGateway := r.createDefaultGateway()
 			gatewayK8s := gateway.MakeGateway(ctx, resource, defaultGateway, gatewayClass)
-			httpRoute := r.makeHttpRoute(resource, route, gatewayK8s)
 			outputs = append(outputs, gatewayK8s)
+
+			httpRoute := r.makeHttpRoute(resource, route, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName))
 			outputs = append(outputs, httpRoute)
 		} else {
 			existingGateway := dependencies[gatewayId]
-			httpRoute := r.makeHttpRoute(resource, route, existingGateway)
+			// TODO confirm that this name passed in is correct
+			httpRoute := r.makeHttpRoute(resource, route, kubernetes.MakeResourceName(resource.ApplicationName, existingGateway.ResourceID.Name()))
 			outputs = append(outputs, httpRoute)
 		}
 	}
@@ -144,7 +146,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
-func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route HttpRoute, existingGateway renderers.RendererDependency) outputresource.OutputResource {
+func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route HttpRoute, gatewayName string) outputresource.OutputResource {
 
 	serviceName := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
 	pathMatch := gatewayv1alpha1.PathMatchPrefix
@@ -214,7 +216,7 @@ func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route Http
 			Gateways: &gatewayv1alpha1.RouteGateways{
 				GatewayRefs: []gatewayv1alpha1.GatewayReference{
 					{
-						Name:      existingGateway.ResourceID.Name(),
+						Name:      gatewayName,
 						Namespace: "default",
 					},
 				},

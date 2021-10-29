@@ -221,7 +221,7 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	require.Equal(t, applicationName, httpRoute.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, id.Name())
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
 	rule := httpRoute.Spec.Rules[0]
 
@@ -287,7 +287,7 @@ func Test_Render_WithHostname(t *testing.T) {
 
 	require.Equal(t, gatewayv1alpha1.Hostname("example.com"), httpRoute.Spec.Hostnames[0])
 
-	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, id.Name())
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
 	rule := httpRoute.Spec.Rules[0]
 
@@ -359,7 +359,7 @@ func Test_Render_Rule(t *testing.T) {
 	require.Equal(t, applicationName, httpRoute.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, id.Name())
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
 	rule := httpRoute.Spec.Rules[0]
 
@@ -430,7 +430,7 @@ func Test_Render_Rule_NoSource(t *testing.T) {
 	require.Equal(t, applicationName, httpRoute.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, id.Name())
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
 	rule := httpRoute.Spec.Rules[0]
 
@@ -450,4 +450,10 @@ func Test_Render_Rule_NoSource(t *testing.T) {
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
 	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+
+	gateway, expectedGatewayOutputResource := kubernetes.FindGateway(output.Resources)
+	expectedGateway := outputresource.NewKubernetesOutputResource(outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
+	require.Equal(t, expectedGateway, expectedGatewayOutputResource)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, id.Name()), gateway.Name)
 }
