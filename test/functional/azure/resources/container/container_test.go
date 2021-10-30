@@ -14,10 +14,10 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/renderers/azurefilesharev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/gateway"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -76,7 +76,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					{
 						ApplicationName: application,
 						ResourceName:    "myshare",
-						ResourceType:    azurefilesharev1alpha3.ResourceType,
+						ResourceType:    volumev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureFileShare:               validation.NewOutputResource(outputresource.LocalIDAzureFileShare, outputresource.TypeARM, resourcekinds.AzureFileShare, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDAzureFileShareStorageAccount: validation.NewOutputResource(outputresource.LocalIDAzureFileShareStorageAccount, outputresource.TypeARM, resourcekinds.AzureFileShareStorageAccount, true, false, rest.OutputResourceStatus{}),
