@@ -91,18 +91,8 @@ BINARIES := docgen rad radius-controller radius-rp testenv radiusd
 $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
 $(foreach ARCH,$(GOARCHES),$(foreach OS,$(GOOSES),$(foreach ITEM,$(BINARIES),$(eval $(call generatePlatformBuildTarget,$(OS),$(ARCH),$(ITEM),./cmd/$(ITEM))))))
 
-# 'kcp' (minimal Kubernetes API server, a 3rd party component) deviates from our convention
-KCP_OUT_PATH := $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)/kcp$(BINARY_EXT)
-.PHONY: build-kcp
-build-kcp: ## Builds KCP executable
-	@echo "$(ARROW) Building kcp to $(KCP_OUT_PATH)"
-	cd ./third_party/kcp && go build \
-		-o ../../$(KCP_OUT_PATH) \
-		github.com/kcp-dev/kcp/cmd/kcp
-
 # list of 'outputs' to build for all binaries
 BINARY_TARGETS:=$(foreach ITEM,$(BINARIES),build-$(ITEM))
-BINARY_TARGETS:=$(foreach ITEM,$(BINARIES),build-$(ITEM)) build-kcp
 
 .PHONY: build-binaries
 build-binaries: $(BINARY_TARGETS) ## Builds all go binaries.
