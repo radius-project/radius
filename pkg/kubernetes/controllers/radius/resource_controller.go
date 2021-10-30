@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
-	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcemodel"
@@ -42,20 +41,21 @@ import (
 )
 
 const (
-	CacheKeySpecApplication = "metadata.application"
-	CacheKeyController      = "metadata.controller"
-	AnnotationLocalID       = "radius.dev/local-id"
+	AnnotationLocalID = "radius.dev/local-id"
 )
 
 // ResourceReconciler reconciles a Resource object
 type ResourceReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	recorder record.EventRecorder
-	Dynamic  dynamic.Interface
-	Model    model.ApplicationModel
-	GVR      schema.GroupVersionResource
+	Log        logr.Logger
+	Scheme     *runtime.Scheme
+	Recorder   record.EventRecorder
+	Dynamic    dynamic.Interface
+	RestMapper meta.RESTMapper
+	ObjectType client.Object
+	ObjectList client.ObjectList
+	Model      model.ApplicationModel
+	GVR        schema.GroupVersionResource
 }
 
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -132,7 +132,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	err = r.Get(ctx, key, application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Application is not found
-		r.recorder.Eventf(resource, "Normal", "Waiting", "Application %s does not exist", applicationName)
+		r.Recorder.Eventf(resource, "Normal", "Waiting", "Application %s does not exist", applicationName)
 		log.Info("application does not exist... waiting")
 
 		// Keep going, we'll turn this into an "empty" render
@@ -165,7 +165,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	if rendered {
-		r.recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
+		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
 		return ctrl.Result{}, nil
 	}
 
@@ -207,35 +207,35 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Request, log logr.Logger, application *radiusv1alpha3.Application, resource *radiusv1alpha3.Resource, applicationName string, resourceName string) (*renderers.RendererOutput, bool, error) {
 	// If the application hasn't been defined yet, then just produce no output.
 	if application == nil {
-		r.recorder.Eventf(resource, "Normal", "Waiting", "Resource is waiting for application: %s", applicationName)
+		r.Recorder.Eventf(resource, "Normal", "Waiting", "Resource is waiting for application: %s", applicationName)
 		return nil, false, nil
 	}
 
 	w := &renderers.RendererResource{}
 	err := converters.ConvertToRenderResource(resource, w)
 	if err != nil {
-		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not be converted: %v", err)
+		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource could not be converted: %v", err)
 		log.Error(err, "failed to convert resource")
 		return nil, false, err
 	}
 
 	resourceType, err := r.Model.LookupResource(w.ResourceType)
 	if err != nil {
-		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource type '%s' is not supported'", w.ResourceType)
+		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource type '%s' is not supported'", w.ResourceType)
 		log.Error(err, "unsupported type for resource")
 		return nil, false, err
 	}
 
 	references, err := resourceType.Renderer().GetDependencyIDs(ctx, *w)
 	if err != nil {
-		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies: %v", err)
+		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies: %v", err)
 		log.Error(err, "failed to render resource")
 		return nil, false, err
 	}
 
 	runtimeOptions, err := r.GetRuntimeOptions(ctx)
 	if err != nil {
-		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get additional properties: %v", err)
+		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get additional properties: %v", err)
 		log.Error(err, "failed to render resource")
 	}
 
@@ -244,7 +244,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		dependency, err := r.GetRenderDependency(ctx, req.Namespace, reference)
 		if err != nil {
 			err = fmt.Errorf("failed to fetch rendering dependency %q of resource %q: %w", reference, resource.Name, err)
-			r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies", err)
+			r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies", err)
 			log.Error(err, "failed to render resource")
 			return nil, false, err
 		}
@@ -254,7 +254,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 
 	output, err := resourceType.Renderer().Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, Runtime: runtimeOptions})
 	if err != nil {
-		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
+		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")
 		return nil, false, err
 	}
@@ -515,12 +515,10 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Object, listObject client.ObjectList) error {
-	r.Model = k8smodel.NewKubernetesModel(&r.Client)
-	r.recorder = mgr.GetEventRecorderFor("radius")
+func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Index resources by application
-	err := mgr.GetFieldIndexer().IndexField(context.Background(), object, CacheKeySpecApplication, extractApplicationKey)
+	err := mgr.GetFieldIndexer().IndexField(context.Background(), r.ObjectType, CacheKeySpecApplication, extractApplicationKey)
 	if err != nil {
 		return err
 	}
@@ -530,14 +528,14 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Ob
 	applicationHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []ctrl.Request {
 		// Queue notification on each resource when the application changes.
 		application := obj.(*radiusv1alpha3.Application)
-		err := cache.List(context.Background(), listObject, client.InNamespace(application.Namespace), client.MatchingFields{CacheKeySpecApplication: application.Name})
+		err := cache.List(context.Background(), r.ObjectList, client.InNamespace(application.Namespace), client.MatchingFields{CacheKeySpecApplication: application.Name})
 		if err != nil {
 			mgr.GetLogger().Error(err, "failed to list resources")
 			return nil
 		}
 
 		requests := []ctrl.Request{}
-		err = meta.EachListItem(listObject, func(obj runtime.Object) error {
+		err = meta.EachListItem(r.ObjectList, func(obj runtime.Object) error {
 			o := obj.(client.Object)
 			requests = append(requests, ctrl.Request{NamespacedName: types.NamespacedName{Namespace: application.Namespace, Name: o.GetName()}})
 			return nil
@@ -550,7 +548,7 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, object client.Ob
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(object).
+		For(r.ObjectType).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Watches(applicationSource, applicationHandler).
