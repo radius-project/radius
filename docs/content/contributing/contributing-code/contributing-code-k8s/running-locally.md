@@ -67,7 +67,7 @@ kubectl apply -f deploy/k8s/config/samples/
 
 This will deploy a sample radius application and components for a frontend and backend. You'll be able to see output from the controller handling each application and component. 
 
-You can also debug the controller in VSCode by running the cmd/k8s/main.go file. A launch.json configuration:
+You can also debug the controller in VSCode by running the cmd/radius-controller/main.go file. A launch.json configuration:
 
 ```json
 {

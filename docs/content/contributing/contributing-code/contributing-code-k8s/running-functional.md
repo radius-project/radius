@@ -51,7 +51,7 @@ Instead of building and installing the Radius Kubernetes controller, you can run
 
 1. Create a Kubernetes cluster (KinD, AKS, etc.).
 1. Add CRDs to the cluster with `make controller-install`.
-1. Run the controller locally on command line or VSCode (cmd/k8s/main.go).
+1. Run the controller locally on command line or VSCode (cmd/radius-controller/main.go).
 1. Place `rad` on your path.
 1. Make sure `rad-bicep` is downloaded (`rad bicep download`).
 1. Add the kubernetes configuration to your config.yaml file by running `rad env init kubernetes`.
