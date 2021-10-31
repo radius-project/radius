@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	azclients "github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/cli/clients"
@@ -39,20 +40,20 @@ type LocalRPDeploymentClient struct {
 
 var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
 
-func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string, parameters clients.DeploymentParameters) error {
-	template, err := armtemplate.Parse(content)
+func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
+	template, err := armtemplate.Parse(options.Template)
 	if err != nil {
-		return err
+		return clients.DeploymentResult{}, err
 	}
 
 	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{
 		SubscriptionID:         dc.SubscriptionID,
 		ResourceGroup:          dc.ResourceGroup,
-		Parameters:             parameters,
+		Parameters:             options.Parameters,
 		EvaluatePropertiesNode: false,
 	})
 	if err != nil {
-		return err
+		return clients.DeploymentResult{}, err
 	}
 
 	deployed := map[string]map[string]interface{}{}
@@ -61,7 +62,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string, p
 		Options: armtemplate.TemplateOptions{
 			SubscriptionID:         dc.SubscriptionID,
 			ResourceGroup:          dc.ResourceGroup,
-			Parameters:             parameters,
+			Parameters:             options.Parameters,
 			EvaluatePropertiesNode: true,
 		},
 		CustomActionCallback: func(id, apiVersion string, action string, body interface{}) (interface{}, error) {
@@ -74,18 +75,19 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string, p
 	for name, variable := range template.Variables {
 		value, err := evaluator.VisitValue(variable)
 		if err != nil {
-			return err
+			return clients.DeploymentResult{}, err
 		}
 
 		evaluator.Variables[name] = value
 	}
 
 	// NOTE: this is currently test-only code so we're fairly noisy about what we output here.
+	ids := []azresources.ResourceID{}
 	fmt.Printf("Starting deployment...\n")
 	for _, resource := range resources {
 		body, err := evaluator.VisitMap(resource.Body)
 		if err != nil {
-			return err
+			return clients.DeploymentResult{}, err
 		}
 
 		resource.Body = body
@@ -93,14 +95,22 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, content string, p
 		fmt.Printf("Deploying %s %s...\n", resource.Type, resource.Name)
 		response, result, err := dc.deployResource(ctx, dc.Connection, resource)
 		if err != nil {
-			return fmt.Errorf("failed to PUT resource %s %s: %w", resource.Type, resource.Name, err)
+			return clients.DeploymentResult{}, fmt.Errorf("failed to PUT resource %s %s: %w", resource.Type, resource.Name, err)
 		}
 
 		fmt.Printf("succeed with status code %d\n", response.StatusCode)
 		evaluator.Deployed[resource.ID] = result
+
+		parsed, err := azresources.Parse(resource.ID)
+		if err != nil {
+			// We don't expect this to fail, but just in case...
+			return clients.DeploymentResult{}, err
+		}
+
+		ids = append(ids, parsed)
 	}
 
-	return nil
+	return clients.DeploymentResult{Resources: ids}, err
 }
 
 func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connection *arm.Connection, resource armtemplate.Resource) (*http.Response, map[string]interface{}, error) {

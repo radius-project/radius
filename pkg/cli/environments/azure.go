@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/aks"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	azclients "github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
@@ -94,9 +95,21 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	return &kubernetes.KubernetesDiagnosticsClient{
-		Client:     k8sClient,
-		RestConfig: config,
+	azcred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
+	}
+
+	con := arm.NewDefaultConnection(azcred, nil)
+
+	return &azure.AKSDiagnosticsClient{
+		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
+			Client:     k8sClient,
+			RestConfig: config,
+		},
+		ResourceClient: *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
+		ResourceGroup:  e.ResourceGroup,
+		SubscriptionID: e.SubscriptionID,
 	}, nil
 }
 

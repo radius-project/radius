@@ -35,6 +35,10 @@ type KubernetesDiagnosticsClient struct {
 
 var _ clients.DiagnosticsClient = (*KubernetesDiagnosticsClient)(nil)
 
+func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
+	return nil, nil
+}
+
 func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {
 	namespace := dc.Namespace
 	if namespace == "" {
