@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package daprpubsubv1alpha1
+package daprpubsubv1alpha3
 
 import (
 	"github.com/Azure/radius/pkg/azure/azresources"
@@ -27,8 +27,8 @@ var TopicResourceType = azresources.KnownType{
 }
 
 type Properties struct {
-	Kind    string `json:"kind"`
-	Managed bool   `json:"managed"`
+	Kind     string `json:"kind"`
+	Managed  bool   `json:"managed"`
 	Resource string `json:"resource"`
 	Topic    string `json:"topic"`
 }

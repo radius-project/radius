@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package rabbitmqv1alpha1
+package rabbitmqv1alpha3
 
 const ResourceType = "rabbitmq.com.MessageQueueComponent"
 

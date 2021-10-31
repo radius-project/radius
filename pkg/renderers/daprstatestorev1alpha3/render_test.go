@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package daprstatestorev1alpha1
+package daprstatestorev1alpha3
 
 import (
 	"context"

@@ -3,31 +3,27 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package servicebusqueuev1alpha1
+package daprstatestorev1alpha3
 
 import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
 const (
-	ResourceType = "azure.com.ServiceBusQueueComponent"
+	ResourceType = "dapr.io.StateStoreComponent"
 )
 
-var QueueResourceType = azresources.KnownType{
+var StorageAccountResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
 		{
-			Type: azresources.ServiceBusNamespaces,
-			Name: "*",
-		},
-		{
-			Type: azresources.ServiceBusNamespacesQueues,
+			Type: azresources.StorageStorageAccounts,
 			Name: "*",
 		},
 	},
 }
 
 type Properties struct {
+	Kind     string `json:"kind"`
 	Managed  bool   `json:"managed"`
-	Queue    string `json:"queue"`
 	Resource string `json:"resource"`
 }

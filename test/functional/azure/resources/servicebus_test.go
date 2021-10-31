@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha1"
+	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/test/azuretest"
 	"github.com/Azure/radius/test/validation"
@@ -60,7 +60,7 @@ func Test_ServiceBusManaged(t *testing.T) {
 					{
 						ApplicationName: application,
 						ResourceName:    "sbq",
-						ResourceType:    servicebusqueuev1alpha1.ResourceType,
+						ResourceType:    servicebusqueuev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureServiceBusQueue: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusQueue,
 								outputresource.TypeARM,

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package daprpubsubv1alpha1
+package daprpubsubv1alpha3
 
 import (
 	"context"

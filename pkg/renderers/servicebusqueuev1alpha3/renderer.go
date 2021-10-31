@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package servicebusqueuev1alpha1
+package servicebusqueuev1alpha3
 
 import (
 	"context"

@@ -15,8 +15,8 @@ import (
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/dapr"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1"
-	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
+	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/gateway"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha3"
@@ -26,7 +26,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
 
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha1"
+	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -65,9 +65,9 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 
 		// Dapr
 		daprhttproutev1alpha3.ResourceType: &daprhttproutev1alpha3.Renderer{},
-		daprpubsubv1alpha1.ResourceType:    &daprpubsubv1alpha1.Renderer{},
-		daprstatestorev1alpha1.ResourceType: &daprstatestorev1alpha1.Renderer{
-			StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues,
+		daprpubsubv1alpha3.ResourceType:    &daprpubsubv1alpha3.Renderer{},
+		daprstatestorev1alpha3.ResourceType: &daprstatestorev1alpha3.Renderer{
+			StateStores: daprstatestorev1alpha3.SupportedAzureStateStoreKindValues,
 		},
 
 		// Portable
@@ -79,7 +79,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		// Azure
 		keyvaultv1alpha3.ResourceType:        &keyvaultv1alpha3.Renderer{},
 		volumev1alpha3.ResourceType:          &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.SupportedVolumeRenderers},
-		servicebusqueuev1alpha1.ResourceType: &servicebusqueuev1alpha1.Renderer{},
+		servicebusqueuev1alpha3.ResourceType: &servicebusqueuev1alpha3.Renderer{},
 	}
 
 	handlerMap := map[string]model.Handlers{

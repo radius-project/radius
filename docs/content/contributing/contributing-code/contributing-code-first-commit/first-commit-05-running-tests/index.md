@@ -38,12 +38,12 @@ ok  	github.com/Azure/radius/pkg/cli	0.250s
 ?   	github.com/Azure/radius/pkg/cli/util	[no test files]
 ?   	github.com/Azure/radius/pkg/azure/radclient	[no test files]
 ?   	github.com/Azure/radius/pkg/renderers	[no test files]
-ok  	github.com/Azure/radius/pkg/renderers/containerv1alpha1
-ok   	github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha1
+ok  	github.com/Azure/radius/pkg/renderers/containerv1alpha3
+ok   	github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha3
 ok   	github.com/Azure/radius/pkg/renderers/dapr
-ok   	github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha1
-ok   	github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1
-ok   	github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha1
+ok   	github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha3
+ok   	github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha3
+ok   	github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha3
 ```
 
 The Go test tools do not make much fanfare when all the tests pass - it just says `ok` for every package that has tests.
