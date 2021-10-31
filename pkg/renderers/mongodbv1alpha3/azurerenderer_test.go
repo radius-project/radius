@@ -85,7 +85,7 @@ func Test_Azure_Render_Managed_Success(t *testing.T) {
 			LocalID:       cosmosAccountDependency.LocalID,
 			Action:        "listConnectionStrings",
 			ValueSelector: "/connectionStrings/0/connectionString",
-			Transformer:   CosmosMongoResourceType.Type(),
+			Transformer:   resourcekinds.AzureCosmosDBMongo,
 		},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
@@ -146,7 +146,7 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 			LocalID:       cosmosAccountDependency.LocalID,
 			Action:        "listConnectionStrings",
 			ValueSelector: "/connectionStrings/0/connectionString",
-			Transformer:   CosmosMongoResourceType.Type(),
+			Transformer:   resourcekinds.AzureCosmosDBMongo,
 		},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)

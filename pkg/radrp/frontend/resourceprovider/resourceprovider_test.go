@@ -19,7 +19,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/backend/deployment"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
@@ -917,7 +916,7 @@ func applicationListID() string {
 		resourceGroup,
 		azresources.CustomProvidersResourceProviders,
 		providerName,
-		resources.V3ApplicationResourceType)
+		azresources.ApplicationResourceType)
 }
 
 func applicationID(applicationName string) string {
@@ -933,7 +932,7 @@ func resourceID(applicationName string, resourceType string, resourceName string
 }
 
 func operationID(applicationName string, resourceType string, resourceName string, operationName string) string {
-	return fmt.Sprintf("%s/%s/%s", resourceID(applicationName, resourceType, resourceName), resources.V3OperationResourceType, operationName)
+	return fmt.Sprintf("%s/%s/%s", resourceID(applicationName, resourceType, resourceName), azresources.OperationResourceType, operationName)
 }
 
 func createContext(t *testing.T) context.Context {

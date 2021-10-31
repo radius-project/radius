@@ -17,7 +17,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/backend/deployment"
 	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/go-logr/logr"
@@ -231,7 +230,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, err
 	}
 
-	oid := id.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	oid := id.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 	operation := db.NewOperation(oid, db.OperationKindUpdate, string(rest.DeployingStatus))
 	_, err = r.db.PatchOperationByID(ctx, oid, &operation)
 	if err != nil {
@@ -268,7 +267,7 @@ func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (res
 		return nil, err
 	}
 
-	oid := id.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	oid := id.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 	operation := db.NewOperation(oid, db.OperationKindDelete, string(rest.DeletingStatus))
 	_, err = r.db.PatchOperationByID(ctx, oid, &operation)
 	if err != nil {
@@ -468,7 +467,7 @@ func (r *rp) complete() {
 func (r *rp) validateApplicationType(id azresources.ResourceID) error {
 	if len(id.Types) != 2 ||
 		!strings.EqualFold(id.Types[0].Type, azresources.CustomProvidersResourceProviders) ||
-		!strings.EqualFold(id.Types[1].Type, resources.V3ApplicationResourceType) {
+		!strings.EqualFold(id.Types[1].Type, azresources.ApplicationResourceType) {
 		return fmt.Errorf("unsupported resource type")
 	}
 
@@ -480,7 +479,7 @@ func (r *rp) validateApplicationType(id azresources.ResourceID) error {
 func (r *rp) validateResourceType(id azresources.ResourceID) error {
 	if len(id.Types) != 3 ||
 		!strings.EqualFold(id.Types[0].Type, azresources.CustomProvidersResourceProviders) ||
-		!strings.EqualFold(id.Types[1].Type, resources.V3ApplicationResourceType) ||
+		!strings.EqualFold(id.Types[1].Type, azresources.ApplicationResourceType) ||
 		!schema.HasType(id.Types[2].Type) {
 		return fmt.Errorf("unsupported resource type")
 	}
@@ -493,9 +492,9 @@ func (r *rp) validateResourceType(id azresources.ResourceID) error {
 func (r *rp) validateOperationType(id azresources.ResourceID) error {
 	if len(id.Types) != 4 ||
 		!strings.EqualFold(id.Types[0].Type, azresources.CustomProvidersResourceProviders) ||
-		!strings.EqualFold(id.Types[1].Type, resources.V3ApplicationResourceType) ||
+		!strings.EqualFold(id.Types[1].Type, azresources.ApplicationResourceType) ||
 		!schema.HasType(id.Types[2].Type) ||
-		!strings.EqualFold(id.Types[3].Type, resources.V3OperationResourceType) {
+		!strings.EqualFold(id.Types[3].Type, azresources.OperationResourceType) {
 		return fmt.Errorf("unsupported resource type")
 	}
 

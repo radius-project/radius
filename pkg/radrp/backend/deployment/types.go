@@ -95,7 +95,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 	deployedOutputResources := resource.Status.OutputResources
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
 		outputResource := deployedOutputResources[i]
-		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
+		outputResourceType, err := dp.appmodel.LookupOutputResource(outputResource.ResourceKind)
 		if err != nil {
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
@@ -107,9 +107,9 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 		}
 
 		logger.Info(fmt.Sprintf("Deleting output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
-		err = resourceHandlers.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
+		err = outputResourceType.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
 			Application:            resource.ApplicationName,
-			ResourceName:           resource.ResourceName,
+			ResourceName:           resource.ResourceGroup,
 			ExistingOutputResource: &outputResource,
 		})
 		if err != nil {
@@ -152,7 +152,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource) (renderers.RendererOutput, *armerrors.ErrorDetails, error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
-	renderer, err := dp.appmodel.LookupRenderer(resourceID.Types[len(resourceID.Types)-1].Type) // Using the last type segment as key
+	resourceType, err := dp.appmodel.LookupRadiusResource(resourceID.Types[len(resourceID.Types)-1].Type) // Using the last type segment as key
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Invalid,
@@ -171,7 +171,7 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 	}
 
 	// Get resources that the resource being deployed has connection with.
-	dependencyResourceIDs, err := renderer.GetDependencyIDs(ctx, rendererResource)
+	dependencyResourceIDs, err := resourceType.Renderer.GetDependencyIDs(ctx, rendererResource)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Invalid,
@@ -201,7 +201,7 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 		return renderers.RendererOutput{}, armerr, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, renderers.RenderOptions{Resource: rendererResource, Dependencies: rendererDependencies, Runtime: runtimeOptions})
+	rendererOutput, err := resourceType.Renderer.Render(ctx, renderers.RenderOptions{Resource: rendererResource, Dependencies: rendererDependencies, Runtime: runtimeOptions})
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Invalid,
@@ -261,7 +261,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			}
 		}
 
-		resourceHandlers, err := dp.appmodel.LookupHandlers(outputResource.ResourceKind)
+		outputResourceType, err := dp.appmodel.LookupOutputResource(outputResource.ResourceKind)
 		if err != nil {
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
@@ -271,7 +271,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			return db.RadiusResource{}, armerr, err
 		}
 
-		properties, err := resourceHandlers.ResourceHandler.Put(ctx, &handlers.PutOptions{
+		properties, err := outputResourceType.ResourceHandler.Put(ctx, &handlers.PutOptions{
 			ApplicationName:        resource.ApplicationName,
 			ResourceName:           resource.ResourceName,
 			Resource:               &outputResource,
@@ -340,9 +340,17 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			RadiusResourceID: resource.ID,
 		}
 
-		skippedHealthRegistration := dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
+		supportsHealthMonitor := true
+		if !outputResourceType.SupportsHealthMonitor(outputResource.Identity) {
+			// Health state is not applicable to this resource and can be skipped from registering with health service
+			logger.Info(fmt.Sprintf("Health state is not applicable for resource kind: %s. Skipping registration with health service", outputResource.Identity.Kind))
+			// Return skipped = true
+			supportsHealthMonitor = false
+		}
 
-		// }
+		if supportsHealthMonitor {
+			dp.registerOutputResourceForHealthChecks(ctx, healthResource, outputResourceType.HealthHandler.GetHealthOptions(ctx))
+		}
 
 		// Build database resource - copy updated properties to Resource field
 		dbOutputResource := db.OutputResource{
@@ -356,7 +364,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 				ProvisioningErrorDetails: "",
 			},
 		}
-		if skippedHealthRegistration {
+		if !supportsHealthMonitor {
 			dbOutputResource.Status.HealthState = healthcontract.HealthStateNotApplicable
 		}
 		deployedOutputResources = append(deployedOutputResources, dbOutputResource)
@@ -393,15 +401,8 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 	return deployedRadiusResource, nil, nil
 }
 
-func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) bool {
+func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) {
 	logger := radlogger.GetLogger(ctx)
-
-	if dp.appmodel.LookupSkipHealthStateCheckResources(resource.Identity) {
-		// Health state is not applicable to this resource and can be skipped from registering with health service
-		logger.Info(fmt.Sprintf("Health state is not applicable for resource kind: %s. Skipping registration with health service", resource.Identity.Kind))
-		// Return skipped = true
-		return true
-	}
 
 	msg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:   healthcontract.ActionRegister,
@@ -411,8 +412,6 @@ func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context
 	dp.healthChannels.ResourceRegistrationWithHealthChannel <- msg
 
 	logger.Info("Registered output resource for health checks", resource.Identity.AsLogValues()...)
-	// Return skipped = false
-	return false
 }
 
 func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource) {
@@ -529,12 +528,14 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.
 		}
 
 		if secretReference.Transformer != "" {
-			transformer, err := dp.appmodel.LookupSecretTransformer(secretReference.Transformer)
+			outputResourceType, err := dp.appmodel.LookupOutputResource(secretReference.Transformer)
 			if err != nil {
 				return nil, err
+			} else if outputResourceType.SecretValueTransformer == nil {
+				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
 			}
 
-			secret, err = transformer.Transform(ctx, rendererDependency, secret)
+			secret, err = outputResourceType.SecretValueTransformer.Transform(ctx, rendererDependency, secret)
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform secret %q of dependency resource %q: %W", k, id.ID, err)
 			}

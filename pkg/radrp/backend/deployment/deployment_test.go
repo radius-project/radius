@@ -18,7 +18,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
@@ -73,6 +72,7 @@ var (
 )
 
 type SharedMocks struct {
+	model              model.ApplicationModel
 	db                 *db.MockRadrpDB
 	resourceHandler    *handlers.MockResourceHandler
 	healthHandler      *handlers.MockHealthHandler
@@ -83,11 +83,47 @@ type SharedMocks struct {
 func setup(t *testing.T) SharedMocks {
 	ctrl := gomock.NewController(t)
 
+	renderer := renderers.NewMockRenderer(ctrl)
+	resourceHandler := handlers.NewMockResourceHandler(ctrl)
+	healthHandler := handlers.NewMockHealthHandler(ctrl)
+
+	// NOTE: right now these tests have some reliance on the Kubernetes-based logic for whether a resource is monitored by
+	// the health system.
+	skipHealthCheckKubernetesKinds := map[string]bool{
+		resourcekinds.Service: true,
+		resourcekinds.Secret:  true,
+		resourcekinds.Ingress: true,
+	}
+	model := model.NewModel(
+		[]model.RadiusResourceModel{
+			{
+				ResourceType: containerv1alpha3.ResourceType,
+				Renderer:     renderer,
+			},
+		},
+		[]model.OutputResourceModel{
+			{
+				Kind:            resourcekinds.Kubernetes,
+				HealthHandler:   healthHandler,
+				ResourceHandler: resourceHandler,
+				// We can monitor specific kinds of Kubernetes resources for health tracking, but not all of them.
+				ShouldSupportHealthMonitorFunc: func(identity resourcemodel.ResourceIdentity) bool {
+					if identity.Kind == resourcemodel.IdentityKindKubernetes {
+						skip := skipHealthCheckKubernetesKinds[identity.Data.(resourcemodel.KubernetesIdentity).Kind]
+						return !skip
+					}
+
+					return false
+				},
+			},
+		})
+
 	return SharedMocks{
+		model:              model,
 		db:                 db.NewMockRadrpDB(ctrl),
-		resourceHandler:    handlers.NewMockResourceHandler(ctrl),
-		healthHandler:      handlers.NewMockHealthHandler(ctrl),
-		renderer:           renderers.NewMockRenderer(ctrl),
+		resourceHandler:    resourceHandler,
+		healthHandler:      healthHandler,
+		renderer:           renderer,
 		secretsValueClient: renderers.NewMockSecretValueClient(ctrl),
 	}
 }
@@ -104,7 +140,7 @@ func getResourceID(azureID string) azresources.ResourceID {
 func fullyQualifiedAzureID(resourceType string, resourceName string) string {
 	return azresources.MakeID(subscriptionID, resourceGroup,
 		azresources.ResourceType{Type: azresources.CustomProvidersResourceProviders, Name: radiusProviderName},
-		azresources.ResourceType{Type: resources.V3ApplicationResourceType, Name: testApplicationName},
+		azresources.ResourceType{Type: azresources.ApplicationResourceType, Name: testApplicationName},
 		azresources.ResourceType{Type: resourceType, Name: resourceName})
 }
 
@@ -120,24 +156,13 @@ func createContext(t *testing.T) context.Context {
 func Test_DeployExistingResource_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}, mocks.secretsValueClient, nil}
 
-	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	operationID := testResourceID.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 	expectedDependencyIDs := []azresources.ResourceID{
 		getResourceID(fullyQualifiedAzureID("HttpRoute", "A")),
 		getResourceID(fullyQualifiedAzureID("HttpRoute", "B")),
@@ -183,19 +208,10 @@ func Test_DeployExistingResource_Success(t *testing.T) {
 func Test_DeployNewResource_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{})
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
-	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+
+	operationID := testResourceID.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 
 	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
 	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, nil)
@@ -213,20 +229,10 @@ func Test_DeployNewResource_Success(t *testing.T) {
 func Test_DeployFailure_OperationUpdated(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
-	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+
+	operationID := testResourceID.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 
 	t.Run("verify get dependencies failure", func(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, errors.New("failed to get dependencies"))
@@ -264,18 +270,8 @@ func Test_DeployFailure_OperationUpdated(t *testing.T) {
 func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	azureID := fullyQualifiedAzureID("foo", resourceName)
 	resourceID := getResourceID(azureID)
@@ -306,18 +302,8 @@ func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	expectedDependencyIDs := []azresources.ResourceID{getResourceID(fullyQualifiedAzureID("HttpRoute", "A"))}
 
@@ -337,18 +323,8 @@ func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 func Test_RendererFailure_InvalidError(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
 	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render resource"))
@@ -366,20 +342,9 @@ func Test_RendererFailure_InvalidError(t *testing.T) {
 func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{ResourceRegistrationWithHealthChannel: registrationChannel}, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{ResourceRegistrationWithHealthChannel: registrationChannel}, mocks.secretsValueClient, nil}
 
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDeployment,
@@ -438,18 +403,8 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDeployment,
@@ -598,24 +553,13 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 func Test_Delete_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}, mocks.secretsValueClient, nil}
 
-	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	operationID := testResourceID.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 
 	mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 	mocks.db.EXPECT().DeleteV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(nil)
@@ -635,23 +579,12 @@ func Test_Delete_Success(t *testing.T) {
 func Test_Delete_Error(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}, mocks.secretsValueClient, nil}
-	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	operationID := testResourceID.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 
 	t.Run("validate error on handler delete failure", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("handler delete failure"))
@@ -684,23 +617,12 @@ func Test_Delete_Error(t *testing.T) {
 func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}, mocks.secretsValueClient, nil}
-	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	operationID := testResourceID.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 
 	localTestResource := testRadiusResource
 	localTestResource.Status.OutputResources = []db.OutputResource{
@@ -727,20 +649,9 @@ func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 func Test_UpdateOperationFailure_NoOp(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
 
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
-	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+	operationID := testResourceID.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
 
 	t.Run("verify database get operation failure", func(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(3).Return([]azresources.ResourceID{}, nil)
@@ -770,22 +681,9 @@ func Test_UpdateOperationFailure_NoOp(t *testing.T) {
 func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{
-			resourcekinds.Secret: true,
-		},
-	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}, mocks.secretsValueClient, nil}
 
@@ -810,7 +708,7 @@ func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).AnyTimes().Return(db.RadiusResource{}, nil)
 	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).AnyTimes().Return(testRadiusResource, nil)
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
-	mocks.healthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(1).Return(healthcontract.HealthCheckOptions{})
+	mocks.healthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(0).Return(healthcontract.HealthCheckOptions{})
 
 	radResource, _, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
 	require.NoError(t, err)
@@ -823,20 +721,9 @@ func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 func Test_Deploy_WithHealthMonitoring(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	model := model.NewModel(map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType: mocks.renderer,
-	}, map[string]model.Handlers{
-		resourcekinds.Kubernetes: {
-			ResourceHandler: mocks.resourceHandler,
-			HealthHandler:   mocks.healthHandler,
-		},
-	},
-		map[string]renderers.SecretValueTransformer{},
-		map[string]bool{},
-	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}, mocks.secretsValueClient, nil}
 

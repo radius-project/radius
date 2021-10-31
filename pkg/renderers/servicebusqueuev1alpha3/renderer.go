@@ -34,7 +34,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		return renderers.RendererOutput{}, err
 	}
 
-	resources := []outputresource.OutputResource{}
+	var output outputresource.OutputResource
 	if properties.Managed {
 		if properties.Queue == "" {
 			return renderers.RendererOutput{}, errors.New("the 'topic' field is required when 'managed=true'")
@@ -45,7 +45,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		}
 
 		// generate data we can use to manage a servicebus queue
-		output := outputresource.OutputResource{
+		output = outputresource.OutputResource{
 			LocalID:      outputresource.LocalIDAzureServiceBusQueue,
 			ResourceKind: resourcekinds.AzureServiceBusQueue,
 			Managed:      true,
@@ -54,8 +54,6 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 				handlers.ServiceBusQueueNameKey: properties.Queue,
 			},
 		}
-
-		resources = append(resources, output)
 	} else {
 		if properties.Resource == "" {
 			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
@@ -67,7 +65,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		}
 
 		// TODO : Need to create an output resource for service bus namespace
-		output := outputresource.OutputResource{
+		output = outputresource.OutputResource{
 			LocalID:      outputresource.LocalIDAzureServiceBusQueue,
 			ResourceKind: resourcekinds.AzureServiceBusQueue,
 			Managed:      false,
@@ -81,8 +79,6 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 				handlers.ServiceBusQueueNameKey:     queueID.Types[1].Name,
 			},
 		}
-
-		resources = append(resources, output)
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
@@ -110,7 +106,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	secretValues := map[string]renderers.SecretValueReference{}
 
 	return renderers.RendererOutput{
-		Resources:      resources,
+		Resources:      []outputresource.OutputResource{output},
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil
