@@ -8,103 +8,66 @@ package servicebusqueuev1alpha1
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
-var _ renderers.AdaptableRenderer = (*Renderer)(nil)
+var _ renderers.Renderer = (*Renderer)(nil)
 
-// Renderer is the WorkloadRenderer implementation for the service bus workload.
 type Renderer struct {
-	Arm armauth.ArmConfig
 }
 
-// Allocate is the WorkloadRenderer implementation for servicebus workload.
-func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	if len(workload.Workload.Bindings) > 0 {
-		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
-	}
-
-	if len(resources) != 1 || resources[0].Type != resourcekinds.AzureServiceBusQueue {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", resourcekinds.AzureServiceBusQueue)
-	}
-
-	properties := resources[0].Properties
-	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
-	queueName := properties[handlers.ServiceBusQueueNameKey]
-	namespaceConnectionString := properties[handlers.ServiceBusNamespaceConnectionStringKey]
-	queueConnectionString := properties[handlers.ServiceBusQueueConnectionStringKey]
-
-	bindings := map[string]components.BindingState{
-		"default": {
-			Component: workload.Name,
-			Binding:   "default",
-			Kind:      "azure.com/ServiceBusQueue",
-			Properties: map[string]interface{}{
-				"connectionString":          namespaceConnectionString,
-				"namespaceConnectionString": namespaceConnectionString,
-				"queueConnectionString":     queueConnectionString,
-				"namespace":                 namespaceName,
-				"queue":                     queueName,
-			},
-		},
-	}
-
-	return bindings, nil
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+	return nil, nil
 }
 
-// Render is the WorkloadRenderer implementation for servicebus workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := ServiceBusQueueComponent{}
-	err := w.Workload.AsRequired(Kind, &component)
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	resource := options.Resource
+
+	properties := Properties{}
+	err := resource.ConvertDefinition(&properties)
 	if err != nil {
-		return nil, err
+		return renderers.RendererOutput{}, err
 	}
 
-	if component.Config.Managed {
-		if component.Config.Queue == "" {
-			return nil, errors.New("the 'topic' field is required when 'managed=true'")
+	resources := []outputresource.OutputResource{}
+	if properties.Managed {
+		if properties.Queue == "" {
+			return renderers.RendererOutput{}, errors.New("the 'topic' field is required when 'managed=true'")
 		}
 
-		if component.Config.Resource != "" {
-			return nil, renderers.ErrResourceSpecifiedForManagedResource
+		if properties.Resource != "" {
+			return renderers.RendererOutput{}, renderers.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a servicebus queue
-
-		resource := outputresource.OutputResource{
+		output := outputresource.OutputResource{
 			LocalID:      outputresource.LocalIDAzureServiceBusQueue,
 			ResourceKind: resourcekinds.AzureServiceBusQueue,
 			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:             "true",
-				handlers.ServiceBusQueueNameKey: component.Config.Queue,
+				handlers.ServiceBusQueueNameKey: properties.Queue,
 			},
 		}
 
-		// It's already in the correct format
-		return []outputresource.OutputResource{resource}, nil
+		resources = append(resources, output)
 	} else {
-		if component.Config.Resource == "" {
-			return nil, renderers.ErrResourceMissingForUnmanagedResource
+		if properties.Resource == "" {
+			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
 		}
 
-		queueID, err := renderers.ValidateResourceID(component.Config.Resource, QueueResourceType, "ServiceBus Queue")
+		queueID, err := renderers.ValidateResourceID(properties.Resource, QueueResourceType, "ServiceBus Queue")
 		if err != nil {
-			return nil, err
+			return renderers.RendererOutput{}, err
 		}
 
 		// TODO : Need to create an output resource for service bus namespace
-
-		resource := outputresource.OutputResource{
+		output := outputresource.OutputResource{
 			LocalID:      outputresource.LocalIDAzureServiceBusQueue,
 			ResourceKind: resourcekinds.AzureServiceBusQueue,
 			Managed:      false,
@@ -119,15 +82,9 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 			},
 		}
 
-		// It's already in the correct format
-		return []outputresource.OutputResource{resource}, nil
+		resources = append(resources, output)
 	}
-}
 
-func (r *Renderer) GetKind() string {
-	return Kind
-}
-func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.InstantiatedWorkload) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference, error) {
 	computedValues := map[string]renderers.ComputedValueReference{
 		"namespace": {
 			LocalID:           outputresource.LocalIDAzureServiceBusQueue,
@@ -152,5 +109,9 @@ func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.Ins
 	}
 	secretValues := map[string]renderers.SecretValueReference{}
 
-	return computedValues, secretValues, nil
+	return renderers.RendererOutput{
+		Resources:      resources,
+		ComputedValues: computedValues,
+		SecretValues:   secretValues,
+	}, nil
 }

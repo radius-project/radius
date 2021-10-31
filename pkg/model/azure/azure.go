@@ -65,11 +65,9 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 
 		// Dapr
 		daprhttproutev1alpha3.ResourceType: &daprhttproutev1alpha3.Renderer{},
-		daprpubsubv1alpha1.ResourceType:    &renderers.V1RendererAdapter{Inner: &daprpubsubv1alpha1.Renderer{}},
-		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{
-			Inner: &daprstatestorev1alpha1.Renderer{
-				StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues,
-			},
+		daprpubsubv1alpha1.ResourceType:    &daprpubsubv1alpha1.Renderer{},
+		daprstatestorev1alpha1.ResourceType: &daprstatestorev1alpha1.Renderer{
+			StateStores: daprstatestorev1alpha1.SupportedAzureStateStoreKindValues,
 		},
 
 		// Portable
@@ -80,8 +78,8 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 
 		// Azure
 		keyvaultv1alpha3.ResourceType:        &keyvaultv1alpha3.Renderer{},
-		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
 		volumev1alpha3.ResourceType:          &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.SupportedVolumeRenderers},
+		servicebusqueuev1alpha1.ResourceType: &servicebusqueuev1alpha1.Renderer{},
 	}
 
 	handlerMap := map[string]model.Handlers{

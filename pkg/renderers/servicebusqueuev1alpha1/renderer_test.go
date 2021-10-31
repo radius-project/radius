@@ -10,12 +10,10 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloads"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )
@@ -33,63 +31,57 @@ func Test_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": true,
-				"queue":   "cool-queue",
-			},
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": true,
+			"queue":   "cool-queue",
 		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(ctx, workload)
+	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 
-	require.Len(t, resources, 1)
-	resource := resources[0]
+	require.Len(t, result.Resources, 1)
+	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, resource.LocalID)
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, resource.ResourceKind)
-	require.True(t, resource.Managed)
+	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, output.LocalID)
+	require.Equal(t, resourcekinds.AzureServiceBusQueue, output.ResourceKind)
+	require.True(t, output.Managed)
 
 	expected := map[string]string{
 		handlers.ManagedKey:             "true",
 		handlers.ServiceBusQueueNameKey: "cool-queue",
 	}
-	require.Equal(t, expected, resource.Resource)
+	require.Equal(t, expected, output.Resource)
 }
 
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
-			},
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
 		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(ctx, workload)
+	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 
-	require.Len(t, resources, 1)
-	resource := resources[0]
+	require.Len(t, result.Resources, 1)
+	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, resource.LocalID)
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, resource.ResourceKind)
-	require.False(t, resource.Managed)
+	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, output.LocalID)
+	require.Equal(t, resourcekinds.AzureServiceBusQueue, output.ResourceKind)
+	require.False(t, output.Managed)
 
 	expected := map[string]string{
 		handlers.ManagedKey:                 "false",
@@ -98,28 +90,25 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		handlers.ServiceBusQueueIDKey:       "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
 		handlers.ServiceBusQueueNameKey:     "test-queue",
 	}
-	require.Equal(t, expected, resource.Resource)
+	require.Equal(t, expected, output.Resource)
 }
 
 func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": false,
-				// Resource is required
-			},
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": false,
+			// Resource is required
 		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(ctx, workload)
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
 	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }
@@ -128,20 +117,17 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/queues/test-queue",
-			},
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/queues/test-queue",
 		},
-		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	_, err := renderer.Render(ctx, workload)
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Queue", err.Error())
 }

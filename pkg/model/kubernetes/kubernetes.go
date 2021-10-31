@@ -27,9 +27,9 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 	renderers := map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType:      &dapr.Renderer{Inner: &containerv1alpha3.Renderer{}},
 		daprhttproutev1alpha3.ResourceType:  &daprhttproutev1alpha3.Renderer{},
-		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues}},
+		daprstatestorev1alpha1.ResourceType: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues},
 		mongodbv1alpha3.ResourceType:        &mongodbv1alpha3.KubernetesRenderer{},
-		rabbitmqv1alpha1.ResourceType:       &renderers.V1RendererAdapter{Inner: &rabbitmqv1alpha1.Renderer{}},
+		rabbitmqv1alpha1.ResourceType:       &rabbitmqv1alpha1.Renderer{},
 		redisv1alpha3.ResourceType:          &redisv1alpha3.KubernetesRenderer{},
 		httproutev1alpha3.ResourceType:      &httproutev1alpha3.Renderer{},
 		gateway.ResourceType:                &gateway.Renderer{},

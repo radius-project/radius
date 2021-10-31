@@ -11,83 +11,72 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/Azure/radius/pkg/model/components"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
-var SupportedAzureStateStoreKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error){
+type StateStoreFunc = func(renderers.RendererResource, Properties) ([]outputresource.OutputResource, error)
+
+var SupportedAzureStateStoreKindValues = map[string]StateStoreFunc{
 	"any":                      GetDaprStateStoreAzureStorage,
 	"state.azure.tablestorage": GetDaprStateStoreAzureStorage,
 	"state.sqlserver":          GetDaprStateStoreSQLServer,
 }
 
-var SupportedKubernetesStateStoreKindValues = map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error){
+var SupportedKubernetesStateStoreKindValues = map[string]StateStoreFunc{
 	"any":         GetDaprStateStoreKubernetesRedis,
 	"state.redis": GetDaprStateStoreKubernetesRedis,
 }
 
-var _ renderers.AdaptableRenderer = (*Renderer)(nil)
+var _ renderers.Renderer = (*Renderer)(nil)
 
-// Renderer is the WorkloadRenderer implementation for the dapr statestore workload.
 type Renderer struct {
-	StateStores map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error)
+	StateStores map[string]StateStoreFunc
 }
 
-// Allocate is the WorkloadRenderer implementation for dapr statestore workload.
-func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	if len(workload.Workload.Bindings) > 0 {
-		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
-	}
-
-	bindings := map[string]components.BindingState{
-		"default": {
-			Component: workload.Name,
-			Binding:   "default",
-			Properties: map[string]interface{}{
-				"stateStoreName": workload.Name,
-			},
-		},
-	}
-
-	return bindings, nil
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+	return nil, nil
 }
 
-// Render is the WorkloadRenderer implementation for dapr statestore workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := DaprStateStoreComponent{}
-	err := w.Workload.AsRequired(Kind, &component)
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	resource := options.Resource
+
+	properties := Properties{}
+	err := resource.ConvertDefinition(&properties)
 	if err != nil {
-		return []outputresource.OutputResource{}, err
+		return renderers.RendererOutput{}, err
 	}
 
 	if r.StateStores == nil {
-		return []outputresource.OutputResource{}, errors.New("must support either kubernetes or ARM")
+		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
 
-	stateStoreFunc := r.StateStores[component.Config.Kind]
+	stateStoreFunc := r.StateStores[properties.Kind]
 	if stateStoreFunc == nil {
-		return nil, fmt.Errorf("%s is not supported. Supported kind values: %s", component.Config.Kind, getAlphabeticallySortedKeys(r.StateStores))
+		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.StateStores))
 	}
-	return stateStoreFunc(w, component)
-}
 
-func (r *Renderer) GetKind() string {
-	return Kind
-}
+	resoures, err := stateStoreFunc(resource, properties)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 
-func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.InstantiatedWorkload) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference, error) {
 	values := map[string]renderers.ComputedValueReference{
 		"stateStoreName": {
-			Value: workload.Name,
+			Value: resource.ResourceName,
 		},
 	}
 	secrets := map[string]renderers.SecretValueReference{}
-	return values, secrets, nil
+
+	return renderers.RendererOutput{
+		Resources:      resoures,
+		ComputedValues: values,
+		SecretValues:   secrets,
+	}, nil
 }
 
-func getAlphabeticallySortedKeys(store map[string]func(workloads.InstantiatedWorkload, DaprStateStoreComponent) ([]outputresource.OutputResource, error)) []string {
+func getAlphabeticallySortedKeys(store map[string]StateStoreFunc) []string {
 	keys := make([]string, len(store))
 
 	i := 0

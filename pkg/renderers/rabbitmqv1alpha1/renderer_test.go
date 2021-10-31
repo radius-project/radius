@@ -10,9 +10,8 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/workloads"
+	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -32,40 +31,38 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Application: "test-app",
-		Name:        "test-component",
-		Workload: components.GenericComponent{
-			Kind: Kind,
-			Name: "test-component",
-			Config: map[string]interface{}{
-				"managed": true,
-			},
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": true,
+			"queue":   "cool-queue",
 		},
-		Namespace:     "default",
-		BindingValues: map[components.BindingKey]components.BindingState{},
 	}
 
-	resources, err := renderer.Render(ctx, workload)
+	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
-	require.Len(t, resources, 3)
 
-	deployment, _ := kubernetes.FindDeployment(resources)
+	require.Len(t, result.Resources, 3)
+
+	deployment, _ := kubernetes.FindDeployment(result.Resources)
 	require.NotNil(t, deployment)
 
-	service, _ := kubernetes.FindService(resources)
+	service, _ := kubernetes.FindService(result.Resources)
 	require.NotNil(t, service)
 
-	secret, _ := kubernetes.FindSecret(resources)
+	secret, _ := kubernetes.FindSecret(result.Resources)
 	require.NotNil(t, secret)
 
-	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-component")
+	labels := kubernetes.MakeDescriptiveLabels("test-app", "test-resource")
 
-	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-component")
+	matchLabels := kubernetes.MakeSelectorLabels("test-app", "test-resource")
 
 	t.Run("verify deployment", func(t *testing.T) {
-		require.Equal(t, "test-app-test-component", deployment.Name)
-		require.Equal(t, "default", deployment.Namespace)
+		require.Equal(t, "test-app-test-resource", deployment.Name)
+		require.Equal(t, "test-app", deployment.Namespace)
 		require.Equal(t, labels, deployment.Labels)
 		require.Empty(t, deployment.Annotations)
 
@@ -87,8 +84,8 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	})
 
 	t.Run("verify service", func(t *testing.T) {
-		require.Equal(t, "test-app-test-component", service.Name)
-		require.Equal(t, "default", service.Namespace)
+		require.Equal(t, "test-app-test-resource", service.Name)
+		require.Equal(t, "test-app", service.Namespace)
 		require.Equal(t, labels, service.Labels)
 		require.Empty(t, service.Annotations)
 
@@ -104,27 +101,30 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	})
 
 	t.Run("verify secret", func(t *testing.T) {
-		require.Equal(t, "test-component", secret.Name)
-		require.Equal(t, "default", secret.Namespace)
+		require.Equal(t, "test-resource", secret.Name)
+		require.Equal(t, "test-app", service.Namespace)
 		require.Equal(t, labels, secret.Labels)
 		require.Empty(t, secret.Annotations)
 
 		data := secret.Data
-		require.Equal(t, "amqp://test-app-test-component:5672", string(data[SecretKeyRabbitMQConnectionString]))
+		require.Equal(t, "amqp://test-app-test-resource:5672", string(data[SecretKeyRabbitMQConnectionString]))
 	})
 }
 
-func TestInvalidKubernetesComponentKindFailure(t *testing.T) {
+func TestInvalidKubernetesMissingQueueName(t *testing.T) {
 	renderer := Renderer{}
 
-	workload := workloads.InstantiatedWorkload{
-		Workload: components.GenericComponent{
-			Name: "test-component",
-			Kind: "foo",
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"managed": true,
 		},
 	}
 
-	_, err := renderer.Render(context.Background(), workload)
+	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "the component was expected to have kind 'rabbitmq.com/MessageQueue@v1alpha1', instead it is 'foo'", err.Error())
+	require.Equal(t, "queue name must be specified", err.Error())
 }

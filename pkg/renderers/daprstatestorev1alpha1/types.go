@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	Kind         = "dapr.io/StateStore@v1alpha1"
 	ResourceType = "dapr.io.StateStoreComponent"
 )
 
@@ -23,19 +22,7 @@ var StorageAccountResourceType = azresources.KnownType{
 	},
 }
 
-// DaprStateStoreComponent is the definition of the container component
-type DaprStateStoreComponent struct {
-	Name     string                   `json:"name"`
-	Kind     string                   `json:"kind"`
-	Config   DaprStateStoreConfig     `json:"config,omitempty"`
-	Run      map[string]interface{}   `json:"run,omitempty"`
-	Uses     []map[string]interface{} `json:"uses,omitempty"`
-	Bindings []map[string]interface{} `json:"bindings,omitempty"`
-	Traits   []map[string]interface{} `json:"traits,omitempty"`
-}
-
-// DaprStateStoreConfig is the defintion of the config section
-type DaprStateStoreConfig struct {
+type Properties struct {
 	Kind     string `json:"kind"`
 	Managed  bool   `json:"managed"`
 	Resource string `json:"resource"`

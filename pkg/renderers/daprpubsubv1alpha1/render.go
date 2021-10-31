@@ -8,113 +8,80 @@ package daprpubsubv1alpha1
 import (
 	"context"
 	"errors"
-	"fmt"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/model/components"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
-var _ renderers.AdaptableRenderer = (*Renderer)(nil)
+var _ renderers.Renderer = (*Renderer)(nil)
 
-// Renderer is the WorkloadRenderer implementation for the dapr pubsub workload.
 type Renderer struct {
 }
 
-// AllocateBindings is the WorkloadRenderer implementation for dapr pubsub workload.
-func (r Renderer) AllocateBindings(ctx context.Context, workload workloads.InstantiatedWorkload, resources []workloads.WorkloadResourceProperties) (map[string]components.BindingState, error) {
-	if len(workload.Workload.Bindings) > 0 {
-		return nil, fmt.Errorf("component of kind %s does not support user-defined bindings", Kind)
-	}
-
-	if len(resources) != 1 || resources[0].Type != resourcekinds.DaprPubSubTopicAzureServiceBus {
-		return nil, fmt.Errorf("cannot fulfill binding - expected properties for %s", resourcekinds.DaprPubSubTopicAzureServiceBus)
-	}
-
-	properties := resources[0].Properties
-	namespaceName := properties[handlers.ServiceBusNamespaceNameKey]
-	pubsubName := properties[handlers.ResourceName]
-	topicName := properties[handlers.ServiceBusTopicNameKey]
-
-	bindings := map[string]components.BindingState{
-		"default": {
-			Component: workload.Name,
-			Binding:   "default",
-			Kind:      "dapr.io/PubSubTopic",
-			Properties: map[string]interface{}{
-				"namespace":  namespaceName,
-				"pubSubName": pubsubName,
-				"topic":      topicName,
-			},
-		},
-	}
-
-	return bindings, nil
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+	return nil, nil
 }
 
-// Render is the WorkloadRenderer implementation for dapr pubsub workload.
-func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) ([]outputresource.OutputResource, error) {
-	component := DaprPubSubTopicComponent{}
-	err := w.Workload.AsRequired(Kind, &component)
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	resource := options.Resource
+
+	properties := Properties{}
+	err := resource.ConvertDefinition(&properties)
 	if err != nil {
-		return []outputresource.OutputResource{}, err
+		return renderers.RendererOutput{}, err
 	}
 
-	// The Dapr pubsub name can default to the component name.
-	if component.Config.Name == "" {
-		component.Config.Name = component.Name
-	}
-
-	if component.Config.Managed {
-		if component.Config.Topic == "" {
-			return []outputresource.OutputResource{}, errors.New("the 'topic' field is required when 'managed=true'")
+	resources := []outputresource.OutputResource{}
+	if properties.Managed {
+		if properties.Topic == "" {
+			return renderers.RendererOutput{}, errors.New("the 'topic' field is required when 'managed=true'")
 		}
 
-		if component.Config.Resource != "" {
-			return nil, renderers.ErrResourceSpecifiedForManagedResource
+		if properties.Resource != "" {
+			return renderers.RendererOutput{}, renderers.ErrResourceSpecifiedForManagedResource
 		}
 
 		// generate data we can use to manage a servicebus topic
-		resource := outputresource.OutputResource{
+		output := outputresource.OutputResource{
 			LocalID:      outputresource.LocalIDAzureServiceBusTopic,
 			ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
-				handlers.ResourceName:            component.Config.Name,
-				handlers.KubernetesNamespaceKey:  w.Application,
+				handlers.ResourceName:            resource.ResourceName,
+				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
-				handlers.ServiceBusTopicNameKey:  component.Config.Topic,
+				handlers.ServiceBusTopicNameKey:  properties.Topic,
 			},
 		}
 
-		return []outputresource.OutputResource{resource}, nil
+		resources = append(resources, output)
 	} else {
-		if component.Config.Topic != "" {
-			return nil, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
+		if properties.Topic != "" {
+			return renderers.RendererOutput{}, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
 		}
 
-		if component.Config.Resource == "" {
-			return nil, renderers.ErrResourceMissingForUnmanagedResource
+		if properties.Resource == "" {
+			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
 		}
 
-		topicID, err := renderers.ValidateResourceID(component.Config.Resource, TopicResourceType, "ServiceBus Topic")
+		topicID, err := renderers.ValidateResourceID(properties.Resource, TopicResourceType, "ServiceBus Topic")
 		if err != nil {
-			return nil, err
+			return renderers.RendererOutput{}, err
 		}
 
-		resource := outputresource.OutputResource{
+		output := outputresource.OutputResource{
 			LocalID:      outputresource.LocalIDAzureServiceBusTopic,
 			ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Managed:      false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
-				handlers.ResourceName:            component.Config.Name,
-				handlers.KubernetesNamespaceKey:  w.Application,
+				handlers.ResourceName:            resource.ResourceName,
+				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
 
@@ -125,15 +92,10 @@ func (r Renderer) Render(ctx context.Context, w workloads.InstantiatedWorkload) 
 				handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,
 			},
 		}
-		return []outputresource.OutputResource{resource}, nil
+
+		resources = append(resources, output)
 	}
-}
 
-func (r *Renderer) GetKind() string {
-	return Kind
-}
-
-func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.InstantiatedWorkload) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference, error) {
 	values := map[string]renderers.ComputedValueReference{
 		"namespace": {
 			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
@@ -149,5 +111,10 @@ func (r *Renderer) GetComputedValues(ctx context.Context, workload workloads.Ins
 		},
 	}
 	secrets := map[string]renderers.SecretValueReference{}
-	return values, secrets, nil
+
+	return renderers.RendererOutput{
+		Resources:      resources,
+		ComputedValues: values,
+		SecretValues:   secrets,
+	}, nil
 }
