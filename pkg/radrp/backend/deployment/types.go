@@ -106,7 +106,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 		logger.Info(fmt.Sprintf("Deleting output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
 		err = resourceHandlers.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
 			Application:            resource.ApplicationName,
-			ResourceName:              resource.ResourceGroup,
+			ResourceName:           resource.ResourceName,
 			ExistingOutputResource: &outputResource,
 		})
 		if err != nil {
@@ -257,8 +257,8 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		}
 
 		properties, err := resourceHandlers.ResourceHandler.Put(ctx, &handlers.PutOptions{
-			ApplicationName:            resource.ApplicationName,
-			ResourceName:              resource.ResourceName,
+			ApplicationName:        resource.ApplicationName,
+			ResourceName:           resource.ResourceName,
 			Resource:               &outputResource,
 			ExistingOutputResource: &existingOutputResourceState,
 			DependencyProperties:   deployedOutputResourceProperties,
