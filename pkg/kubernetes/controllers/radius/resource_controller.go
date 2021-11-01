@@ -270,7 +270,8 @@ func (r *ResourceReconciler) GetRuntimeOptions(ctx context.Context) (renderers.R
 	var gateways gatewayv1alpha1.GatewayClassList
 	err := r.Client.List(ctx, &gateways)
 	if err != nil {
-		return renderers.RuntimeOptions{}, err
+		// Ignore failures to list gateway classes
+		return renderers.RuntimeOptions{}, nil
 	}
 
 	if len(gateways.Items) > 0 {

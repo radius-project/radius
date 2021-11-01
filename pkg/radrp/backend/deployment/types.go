@@ -38,7 +38,7 @@ type DeploymentProcessor interface {
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, db db.RadrpDB, healthChannels *healthcontract.HealthChannels, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, db: db, healthChannels: healthChannels, secretClient: secretClient}
+	return &deploymentProcessor{appmodel: appmodel, db: db, healthChannels: healthChannels, secretClient: secretClient, k8s: k8s}
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)
@@ -554,7 +554,8 @@ func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers
 	var gateways gatewayv1alpha1.GatewayClassList
 	err := dp.k8s.List(ctx, &gateways)
 	if err != nil {
-		return renderers.RuntimeOptions{}, err
+		// Ignore failures to list gateway classes
+		return renderers.RuntimeOptions{}, nil
 	}
 
 	if len(gateways.Items) > 0 {
