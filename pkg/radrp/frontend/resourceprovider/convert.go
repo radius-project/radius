@@ -138,7 +138,7 @@ func NewRestRadiusResourceStatus(resourceName string, original db.RadiusResource
 		// We do not expect a combination of not supported and supported health reporting for output resources
 		// This will result in an aggregation logic error
 		healthState = healthcontract.InternalToUserHealthStateTranslation[healthcontract.HealthStateError]
-		healthStateErrorDetails = fmt.Sprintf("radius resource: %q has a combination of supported and unsupported health reporting for its output resources. Health aggregation error", resourceName)
+		healthStateErrorDetails = "Health aggregation error"
 	}
 
 	provisioningState := rest.Provisioned
