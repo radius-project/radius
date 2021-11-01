@@ -13,17 +13,9 @@ Radius offers multiple ways to monitor the health of your Application Components
 
 The [ContainerComponent]({{< ref container >}}) running your application code can be configured with [readiness and liveness probes]({{< ref "container.md#container" >}}) to monitor the health of your services. The service code can report its health via HTTP or exec options.
 
-For example, for the readiness probe config as follows:-
+For example, a ContainerComponent can be configured with a readiness probe:
 
-```json
-readinessProbe:{
-    kind:'httpGet'
-    containerPort:8080
-    path: '/readyz'
-    initialDelaySeconds:3
-    failureThreshold:4
-    periodSeconds:20
-}
-```
+{{< rad file="snippets/probe.bicep" embed=true marker="//SAMPLE" >}}
+
 
 The container runtime will probe the path `http://localhost:8080/readyz` to determine if the service is healthy. The service code should implement logic to return a 200 OK response on this HTTP path for reporting readiness of the application.
