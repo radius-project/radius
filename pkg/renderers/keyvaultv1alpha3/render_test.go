@@ -40,7 +40,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.NoError(t, err)
 
 	require.Equal(t, outputresource.LocalIDKeyVault, output.Resources[0].LocalID)
@@ -75,7 +75,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.NoError(t, err)
 
 	require.Equal(t, outputresource.LocalIDKeyVault, output.Resources[0].LocalID)
@@ -112,7 +112,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
 	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }
@@ -130,7 +130,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, resource, map[string]renderers.RendererDependency{})
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a KeyVault", err.Error())
 }

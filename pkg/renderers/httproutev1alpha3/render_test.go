@@ -10,19 +10,30 @@ import (
 	"fmt"
 	"testing"
 
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
+	namespace       = "test-namespace"
 	applicationName = "test-application"
 	resourceName    = "test-route"
 )
+
+var resourceID = azresources.MakeID(
+	"kubernetes",
+	namespace,
+	azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
+	azresources.ResourceType{Type: "Application", Name: applicationName},
+	azresources.ResourceType{Type: "ContainerComponent", Name: resourceName})
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
@@ -44,7 +55,9 @@ func Test_Render_Defaults(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := r.Render(context.Background(), resource, dependencies)
+	additionalProperties := GetRuntimeOptions()
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -81,6 +94,15 @@ func Test_Render_Defaults(t *testing.T) {
 	require.Equal(t, expectedPort, port)
 }
 
+func GetRuntimeOptions() renderers.RuntimeOptions {
+	additionalProperties := renderers.RuntimeOptions{
+		Gateway: renderers.GatewayOptions{
+			GatewayClass: "gateway-class",
+		},
+	}
+	return additionalProperties
+}
+
 func Test_Render_NonDefaults(t *testing.T) {
 	r := &Renderer{}
 
@@ -94,7 +116,9 @@ func Test_Render_NonDefaults(t *testing.T) {
 	}
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := r.Render(context.Background(), resource, dependencies)
+	additionalProperties := GetRuntimeOptions()
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -143,12 +167,26 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 			"port": 81,
 			"gateway": map[string]interface{}{
 				"hostname": "*",
+				"source":   "foo-bar",
 			},
 		},
 	}
-	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	id, err := azresources.Parse(resourceID)
+	require.NoError(t, err)
+
+	dependencies := map[string]renderers.RendererDependency{
+		"foo-bar": {
+			ResourceID:      id,
+			Definition:      map[string]interface{}{},
+			ComputedValues:  map[string]interface{}{},
+			OutputResources: map[string]resourcemodel.ResourceIdentity{},
+		},
+	}
+
+	additionalProperties := GetRuntimeOptions()
+
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
@@ -162,36 +200,39 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	}
 	require.Equal(t, expectedValues, output.ComputedValues)
 
-	ingress, outputResource := kubernetes.FindIngress(output.Resources)
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
+	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
+
+	require.Empty(t, httpRoute.Spec.Hostnames)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), ingress.Name)
-	require.Equal(t, applicationName, ingress.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), ingress.Labels)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
+	require.Equal(t, applicationName, httpRoute.Namespace)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	rule := ingress.Spec.Rules[0]
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
-	require.NotNil(t, rule.HTTP)
-	require.Len(t, rule.HTTP.Paths, 1)
+	rule := httpRoute.Spec.Rules[0]
 
-	path := rule.HTTP.Paths[0]
-	prefix := v1.PathType("Prefix")
+	require.NotNil(t, rule.Matches)
+	require.Len(t, rule.Matches, 1)
 
-	require.Equal(t, "/", path.Path)
-	require.Equal(t, &prefix, path.PathType)
+	path := rule.Matches[0]
 
-	backend := ingress.Spec.DefaultBackend
+	require.Equal(t, "/", *path.Path.Value)
+	require.Equal(t, gatewayv1alpha1.PathMatchType("Prefix"), *path.Path.Type)
+
+	backend := rule.ForwardTo[0]
 	require.NotNil(t, backend)
 
-	service := backend.Service
-	require.NotNil(t, service)
+	serviceName := backend.ServiceName
+	require.NotNil(t, serviceName)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service.Name)
-	require.Equal(t, int32(81), service.Port.Number)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *serviceName)
+	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
 }
 
-func Test_Render_WithHostname(t *testing.T) {
+func Test_Render_WithHostname_NoRule_DefaultToSlash(t *testing.T) {
 	renderer := &Renderer{}
 
 	resource := renderers.RendererResource{
@@ -202,40 +243,206 @@ func Test_Render_WithHostname(t *testing.T) {
 			"port": 81,
 			"gateway": map[string]interface{}{
 				"hostname": "example.com",
+				"source":   "foo-bar",
 			},
 		},
 	}
-	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, dependencies)
+	id, err := azresources.Parse(resourceID)
+	require.NoError(t, err)
+
+	dependencies := map[string]renderers.RendererDependency{
+		"foo-bar": {
+			ResourceID:      id,
+			Definition:      map[string]interface{}{},
+			ComputedValues:  map[string]interface{}{},
+			OutputResources: map[string]resourcemodel.ResourceIdentity{},
+		},
+	}
+
+	additionalProperties := GetRuntimeOptions()
+
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 
-	ingress, outputResource := kubernetes.FindIngress(output.Resources)
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
+	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), ingress.Name)
-	require.Equal(t, applicationName, ingress.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), ingress.Labels)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
+	require.Equal(t, applicationName, httpRoute.Namespace)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	require.Nil(t, ingress.Spec.DefaultBackend)
+	require.Equal(t, gatewayv1alpha1.Hostname("example.com"), httpRoute.Spec.Hostnames[0])
 
-	require.Len(t, ingress.Spec.Rules, 1)
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
-	rule := ingress.Spec.Rules[0]
-	require.Equal(t, "example.com", rule.Host)
+	rule := httpRoute.Spec.Rules[0]
 
-	require.NotNil(t, rule.HTTP)
-	require.Len(t, rule.HTTP.Paths, 1)
+	require.NotNil(t, rule.Matches)
+	require.Len(t, rule.Matches, 1)
 
-	path := rule.HTTP.Paths[0]
-	prefix := v1.PathType("Prefix")
-	require.Equal(t, "/", path.Path)
-	require.Equal(t, &prefix, path.PathType)
+	path := rule.Matches[0]
 
-	service := path.Backend.Service
+	require.Equal(t, "/", *path.Path.Value)
+	require.Equal(t, gatewayv1alpha1.PathMatchPrefix, *path.Path.Type)
+
+	backend := rule.ForwardTo[0]
+	require.NotNil(t, backend)
+
+	service := backend.ServiceName
 	require.NotNil(t, service)
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service.Name)
-	require.Equal(t, int32(81), service.Port.Number)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
+	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+}
+
+func Test_Render_Rule(t *testing.T) {
+	renderer := &Renderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"port": 81,
+			"gateway": map[string]interface{}{
+				"hostname": "example.com",
+				"source":   "foo-bar",
+				"rules": map[string]interface{}{
+					"foo": map[string]interface{}{
+						"path": map[string]interface{}{
+							"value": "/foo",
+							"type":  "exact",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	id, err := azresources.Parse(resourceID)
+	require.NoError(t, err)
+
+	dependencies := map[string]renderers.RendererDependency{
+		"foo-bar": {
+			ResourceID:      id,
+			Definition:      map[string]interface{}{},
+			ComputedValues:  map[string]interface{}{},
+			OutputResources: map[string]resourcemodel.ResourceIdentity{},
+		},
+	}
+
+	additionalProperties := GetRuntimeOptions()
+
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+
+	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
+	require.Equal(t, expectedOutputResource, outputResource)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
+	require.Equal(t, applicationName, httpRoute.Namespace)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
+
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
+
+	rule := httpRoute.Spec.Rules[0]
+
+	require.NotNil(t, rule.Matches)
+	require.Len(t, rule.Matches, 1)
+
+	path := rule.Matches[0]
+
+	require.Equal(t, "/foo", *path.Path.Value)
+	require.Equal(t, gatewayv1alpha1.PathMatchExact, *path.Path.Type)
+
+	backend := rule.ForwardTo[0]
+	require.NotNil(t, backend)
+
+	service := backend.ServiceName
+	require.NotNil(t, service)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
+	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+}
+
+func Test_Render_Rule_NoSource(t *testing.T) {
+	renderer := &Renderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"port": 81,
+			"gateway": map[string]interface{}{
+				"hostname": "example.com",
+				"rules": map[string]interface{}{
+					"foo": map[string]interface{}{
+						"path": map[string]interface{}{
+							"value": "/foo",
+							"type":  "exact",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	id, err := azresources.Parse(resourceID)
+	require.NoError(t, err)
+
+	dependencies := map[string]renderers.RendererDependency{
+		"foo-bar": {
+			ResourceID:      id,
+			Definition:      map[string]interface{}{},
+			ComputedValues:  map[string]interface{}{},
+			OutputResources: map[string]resourcemodel.ResourceIdentity{},
+		},
+	}
+
+	additionalProperties := GetRuntimeOptions()
+
+	output, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 3)
+
+	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
+	require.Equal(t, expectedOutputResource, outputResource)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
+	require.Equal(t, applicationName, httpRoute.Namespace)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
+
+	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
+
+	rule := httpRoute.Spec.Rules[0]
+
+	require.NotNil(t, rule.Matches)
+	require.Len(t, rule.Matches, 1)
+
+	path := rule.Matches[0]
+
+	require.Equal(t, "/foo", *path.Path.Value)
+	require.Equal(t, gatewayv1alpha1.PathMatchExact, *path.Path.Type)
+
+	backend := rule.ForwardTo[0]
+	require.NotNil(t, backend)
+
+	service := backend.ServiceName
+	require.NotNil(t, service)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
+	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+
+	gateway, expectedGatewayOutputResource := kubernetes.FindGateway(output.Resources)
+	expectedGateway := outputresource.NewKubernetesOutputResource(outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
+	require.Equal(t, expectedGateway, expectedGatewayOutputResource)
+
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, id.Name()), gateway.Name)
 }

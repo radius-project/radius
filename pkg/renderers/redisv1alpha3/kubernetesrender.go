@@ -29,7 +29,8 @@ func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload rend
 	return nil, nil
 }
 
-func (r *KubernetesRenderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	resource := options.Resource
 
 	properties := RedisComponentProperties{}
 	err := resource.ConvertDefinition(&properties)

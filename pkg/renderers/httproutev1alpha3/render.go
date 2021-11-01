@@ -7,12 +7,12 @@ package httproutev1alpha3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -20,18 +20,36 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/gateway"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 type Renderer struct {
 }
 
 // Need a step to take rendered routes to be usable by resource
-func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+	route := HttpRoute{}
+	err := resource.ConvertDefinition(&route)
+	if err != nil {
+		return nil, err
+	}
+
+	if route.Gateway != nil && route.Gateway.Source != "" {
+		resourceId, err := azresources.Parse(route.Gateway.Source)
+		if err != nil {
+			return nil, err
+		}
+		return []azresources.ResourceID{resourceId}, nil
+	}
 	return nil, nil
 }
 
-func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	route := HttpRoute{}
+	resource := options.Resource
+	dependencies := options.Dependencies
+
 	err := resource.ConvertDefinition(&route)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -58,14 +76,44 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	outputs = append(outputs, service)
 
 	if route.Gateway != nil {
-		ingress := r.makeIngress(resource, route)
-		outputs = append(outputs, ingress)
+		gatewayId := route.Gateway.Source
+		if gatewayId == "" {
+			gatewayClassName := options.Runtime.Gateway.GatewayClass
+			if gatewayClassName == "" {
+				return renderers.RendererOutput{}, errors.New("gateway class not found")
+			}
+
+			defaultGateway := r.createDefaultGateway()
+			gatewayK8s := gateway.MakeGateway(ctx, resource, defaultGateway, gatewayClassName)
+			outputs = append(outputs, gatewayK8s)
+
+			httpRoute := r.makeHttpRoute(resource, route, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName))
+			outputs = append(outputs, httpRoute)
+		} else {
+			existingGateway := dependencies[gatewayId]
+			httpRoute := r.makeHttpRoute(resource, route, kubernetes.MakeResourceName(resource.ApplicationName, existingGateway.ResourceID.Name()))
+			outputs = append(outputs, httpRoute)
+		}
 	}
 
 	return renderers.RendererOutput{
 		Resources:      outputs,
 		ComputedValues: computedValues,
 	}, nil
+}
+
+func (r *Renderer) createDefaultGateway() gateway.Gateway {
+	port := 80
+	gateway := gateway.Gateway{
+		Listeners: map[string]gateway.Listener{
+			"http": {
+				Port:     &port,
+				Protocol: "HTTP",
+			},
+		},
+	}
+
+	return gateway
 }
 
 func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {
@@ -97,64 +145,85 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
-func (r *Renderer) makeIngress(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {
-	ingress := &networkingv1.Ingress{
+func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route HttpRoute, gatewayName string) outputresource.OutputResource {
+
+	serviceName := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
+	pathMatch := gatewayv1alpha1.PathMatchPrefix
+	var rules []gatewayv1alpha1.HTTPRouteRule
+	for _, rule := range route.Gateway.Rules {
+		// Default to prefix match
+		if strings.EqualFold(rule.Path.Type, "exact") {
+			pathMatch = gatewayv1alpha1.PathMatchExact
+		}
+		port := gatewayv1alpha1.PortNumber(route.GetEffectivePort())
+		rules = append(rules, gatewayv1alpha1.HTTPRouteRule{
+			Matches: []gatewayv1alpha1.HTTPRouteMatch{
+				{
+					Path: &gatewayv1alpha1.HTTPPathMatch{
+						Type:  &pathMatch,
+						Value: &rule.Path.Value,
+					},
+				},
+			},
+			ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
+				{
+					ServiceName: &serviceName,
+					Port:        &port,
+				},
+			},
+		})
+	}
+
+	// Add a default rule which maps to the service if none specified
+	if len(rules) == 0 {
+		path := "/"
+		port := gatewayv1alpha1.PortNumber(route.GetEffectivePort())
+		rules = append(rules, gatewayv1alpha1.HTTPRouteRule{
+			Matches: []gatewayv1alpha1.HTTPRouteMatch{
+				{
+					Path: &gatewayv1alpha1.HTTPPathMatch{
+						Type:  &pathMatch,
+						Value: &path,
+					},
+				},
+			},
+			ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
+				{
+					ServiceName: &serviceName,
+					Port:        &port,
+				},
+			},
+		})
+	}
+	var hostnames []gatewayv1alpha1.Hostname
+	hostname := route.Gateway.Hostname
+	if hostname != "" && hostname != "*" {
+		hostnames = append(hostnames, gatewayv1alpha1.Hostname(hostname))
+	}
+
+	httpRoute := &gatewayv1alpha1.HTTPRoute{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Ingress",
-			APIVersion: networkingv1.SchemeGroupVersion.String(),
+			Kind:       "HTTPRoute",
+			APIVersion: gatewayv1alpha1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Namespace: resource.ApplicationName,
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
-	}
-
-	backend := networkingv1.IngressBackend{
-		Service: &networkingv1.IngressServiceBackend{
-			Name: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
-			Port: networkingv1.ServiceBackendPort{
-				Number: int32(route.GetEffectivePort()),
-			},
-		},
-	}
-
-	// Default path to / if not specified
-	path := route.Gateway.Path
-	if path == "" {
-		path = "/"
-	}
-
-	var defaultBackend *networkingv1.IngressBackend
-	host := route.Gateway.Hostname
-	if route.Gateway.Hostname == "*" {
-		defaultBackend = &backend
-		// * isn't allowed in the hostname, remove it.
-		host = ""
-	}
-	pathType := networkingv1.PathTypePrefix
-
-	spec := networkingv1.IngressSpec{
-		DefaultBackend: defaultBackend,
-		Rules: []networkingv1.IngressRule{
-			{
-				Host: host,
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{
-							{
-								Path:     path,
-								PathType: &pathType,
-								Backend:  backend,
-							},
-						},
+		Spec: gatewayv1alpha1.HTTPRouteSpec{
+			Gateways: &gatewayv1alpha1.RouteGateways{
+				GatewayRefs: []gatewayv1alpha1.GatewayReference{
+					{
+						Name:      gatewayName,
+						Namespace: "default",
 					},
 				},
 			},
+			Rules:     rules,
+			Hostnames: hostnames,
 		},
 	}
 
-	ingress.Spec = spec
-
-	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDIngress, ingress, ingress.ObjectMeta)
+	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 }

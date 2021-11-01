@@ -33,6 +33,8 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+
 	"github.com/Azure/radius/pkg/kubernetes/webhook"
 	//+kubebuilder:scaffold:imports
 )
@@ -48,6 +50,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+
+	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
 
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 
@@ -125,6 +129,7 @@ func main() {
 		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
 		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
 		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
+		{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 	}
 
 	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())

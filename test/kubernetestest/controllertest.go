@@ -47,6 +47,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/restmapper"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -88,6 +89,7 @@ func StartController() error {
 	scheme := runtime.NewScheme()
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 
@@ -154,6 +156,7 @@ func StartController() error {
 		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
 		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
 		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
+		{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 	}
 
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)

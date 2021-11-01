@@ -1,0 +1,14 @@
+{
+  "id": "id", 
+  "name": "name",
+  "properties": {
+    "listeners": {
+      "extra1": {
+        "port": "bad",
+        "protocol": 80
+      },
+      "foo": "bar"
+    },
+    "extra2": "no way"
+  }
+}

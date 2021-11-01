@@ -27,6 +27,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/restmapper"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 const (
@@ -268,29 +270,30 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 	}
 }
 
-// ValidateIngressesRunning validates the namespaces and ingresses specified in each namespace are running
-func ValidateIngressesRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
-	for namespace, expectedIngresses := range expected.Namespaces {
-		t.Logf("validating ingresses in namespace %v", namespace)
+// ValidateGatewaysRunning validates the namespaces and gateways specified in each namespace are running
+func ValidateGatewaysRunning(ctx context.Context, t *testing.T, client client.Client, expected K8sObjectSet) {
+	for namespace, expectedGateways := range expected.Namespaces {
+		t.Logf("validating gateways in namespace %v", namespace)
 		for {
 			select {
 			case <-time.After(IntervalForResourceCreation):
-				t.Logf("at %s waiting for ingresses in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
+				t.Logf("at %s waiting for gateways in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
-				actualIngresses, err := k8s.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
-				require.NoErrorf(t, err, "failed to list ingresses in namespace %v", namespace)
+				var actualGateways gatewayv1alpha1.GatewayList
+				err = client.List(ctx, &actualGateways)
+				require.NoErrorf(t, err, "failed to list gateways in namespace %v", namespace)
 
-				remaining := make([]K8sObject, len(expectedIngresses))
-				copy(remaining, expectedIngresses)
+				remaining := make([]K8sObject, len(expectedGateways))
+				copy(remaining, expectedGateways)
 
-				for _, ingress := range actualIngresses.Items {
-					index := matchesExpectedLabels(remaining, ingress.Labels)
+				for _, gateway := range actualGateways.Items {
+					index := matchesExpectedLabels(remaining, gateway.Labels)
 					if index == nil {
-						t.Logf("unrecognized ingress, could not find a match for Ingress with namespace: %v name: %v labels: %v",
-							ingress.Namespace,
-							ingress.Name,
-							ingress.Labels)
+						t.Logf("unrecognized gateway, could not find a match for gateway with namespace: %v name: %v labels: %v",
+							gateway.Namespace,
+							gateway.Name,
+							gateway.Labels)
 						continue
 					}
 
@@ -301,11 +304,56 @@ func ValidateIngressesRunning(ctx context.Context, t *testing.T, k8s *kubernetes
 					return
 				}
 				for _, remainingIngress := range remaining {
-					t.Logf("failed to match ingress in namespace %v with labels %v, retrying", namespace, remainingIngress.Labels)
+					t.Logf("failed to match gateway in namespace %v with labels %v, retrying", namespace, remainingIngress.Labels)
 				}
 
 			case <-ctx.Done():
-				assert.Fail(t, "timed out after waiting for ingresses to be created")
+				assert.Fail(t, "timed out after waiting for gateways to be created")
+				return
+			}
+		}
+	}
+}
+
+// ValidateHttpRoutesRunning validates the namespaces and gateways specified in each namespace are running
+func ValidateHttpRoutesRunning(ctx context.Context, t *testing.T, client client.Client, expected K8sObjectSet) {
+	for namespace, expectedHttpRoutes := range expected.Namespaces {
+		t.Logf("validating gateways in namespace %v", namespace)
+		for {
+			select {
+			case <-time.After(IntervalForResourceCreation):
+				t.Logf("at %s waiting for gateways in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
+
+				var err error
+				var actualRoutes gatewayv1alpha1.HTTPRouteList
+				err = client.List(ctx, &actualRoutes)
+				require.NoErrorf(t, err, "failed to list httproutes in namespace %v", namespace)
+
+				remaining := make([]K8sObject, len(expectedHttpRoutes))
+				copy(remaining, expectedHttpRoutes)
+
+				for _, httproute := range actualRoutes.Items {
+					index := matchesExpectedLabels(remaining, httproute.Labels)
+					if index == nil {
+						t.Logf("unrecognized httproute, could not find a match for Ingress with namespace: %v name: %v labels: %v",
+							httproute.Namespace,
+							httproute.Name,
+							httproute.Labels)
+						continue
+					}
+
+					remaining = append(remaining[:*index], remaining[*index+1:]...)
+				}
+
+				if len(remaining) == 0 {
+					return
+				}
+				for _, remainingIngress := range remaining {
+					t.Logf("failed to match httproute in namespace %v with labels %v, retrying", namespace, remainingIngress.Labels)
+				}
+
+			case <-ctx.Done():
+				assert.Fail(t, "timed out after waiting for httproutes to be created")
 				return
 			}
 		}

@@ -108,8 +108,10 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	outputResources := []outputresource.OutputResource{}
+	resource := options.Resource
+	dependencies := options.Dependencies
 
 	cw, err := r.convert(resource)
 	if err != nil {
@@ -117,7 +119,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	}
 
 	// Create the deployment as the primary workload
-	deployment, secretData, err := r.makeDeployment(ctx, resource, dependencies, cw)
+	deployment, secretData, err := r.makeDeployment(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies}, cw)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -164,12 +166,14 @@ func (r Renderer) convert(resource renderers.RendererResource) (*ContainerProper
 	return properties, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency, cc *ContainerProperties) (outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOptions, cc *ContainerProperties) (outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
 		Type string
 	}{}
+	resource := options.Resource
+	dependencies := options.Dependencies
 
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
@@ -297,7 +301,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource renderers.Rendere
 			}
 
 			// Create spec for persistent volume
-			volumeSpec, volumeMountSpec, err := r.makePersistentVolume(volumeName, *persistentVolume, resource)
+			volumeSpec, volumeMountSpec, err := r.makePersistentVolume(volumeName, *persistentVolume, options)
 			if err != nil {
 				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
 			}
@@ -494,12 +498,12 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makePersistentVolume(volumeName string, persistentVolume PersistentVolume, resource renderers.RendererResource) (corev1.Volume, corev1.VolumeMount, error) {
+func (r Renderer) makePersistentVolume(volumeName string, persistentVolume PersistentVolume, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
 	volumeSpec.Name = volumeName
 	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
-	volumeSpec.AzureFile.SecretName = resource.ResourceName
+	volumeSpec.AzureFile.SecretName = options.Resource.ResourceName
 	resourceID, err := azresources.Parse(persistentVolume.Source)
 	if err != nil {
 		return corev1.Volume{}, corev1.VolumeMount{}, err

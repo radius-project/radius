@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/restmapper"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var radiusControllerLogSync sync.Once
@@ -40,7 +41,8 @@ type Step struct {
 	RadiusResources        *validation.ResourceSet
 	K8sOutputResources     []unstructured.Unstructured
 	Pods                   *validation.K8sObjectSet
-	Ingress                *validation.K8sObjectSet
+	HttpRoute              *validation.K8sObjectSet
+	Gateway                *validation.K8sObjectSet
 	Services               *validation.K8sObjectSet
 	PostStepVerify         func(ctx context.Context, t *testing.T, at ApplicationTest)
 	SkipOutputResources    bool
@@ -66,6 +68,7 @@ type TestOptions struct {
 	K8sClient       *k8s.Clientset
 	DynamicClient   dynamic.Interface
 	DiscoveryClient discovery.DiscoveryInterface
+	Client          client.Client
 }
 
 func NewTestOptions(t *testing.T) TestOptions {
@@ -81,10 +84,14 @@ func NewTestOptions(t *testing.T) TestOptions {
 	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
 	require.NoError(t, err, "failed to create kubernetes dyamic client")
 
+	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
+	require.NoError(t, err, "failed to create runtime client")
+
 	return TestOptions{
 		ConfigFilePath: config.ConfigFileUsed(),
 		K8sClient:      k8s,
 		DynamicClient:  dynamicClient,
+		Client:         client,
 	}
 }
 
@@ -252,7 +259,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 			if step.SkipResourceValidation {
 				t.Logf("skipping validation of resources...")
-			} else if step.Pods == nil && step.Ingress == nil && step.Services == nil && len(step.K8sOutputResources) == 0 {
+			} else if step.Pods == nil && step.Gateway == nil && step.HttpRoute == nil && step.Services == nil && len(step.K8sOutputResources) == 0 {
 				require.Fail(t, "no resources specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
 			} else {
 				if step.Pods != nil {
@@ -261,9 +268,15 @@ func (at ApplicationTest) Test(t *testing.T) {
 					t.Logf("finished creation of validating pods for %s", step.Executor.GetDescription())
 				}
 
-				if step.Ingress != nil {
+				if step.Gateway != nil {
 					t.Logf("validating creation of ingress for %s", step.Executor.GetDescription())
-					validation.ValidateIngressesRunning(ctx, t, at.Options.K8sClient, *step.Ingress)
+					validation.ValidateGatewaysRunning(ctx, t, at.Options.Client, *step.Gateway)
+					t.Logf("finished creation of validating ingress for %s", step.Executor.GetDescription())
+				}
+
+				if step.HttpRoute != nil {
+					t.Logf("validating creation of ingress for %s", step.Executor.GetDescription())
+					validation.ValidateHttpRoutesRunning(ctx, t, at.Options.Client, *step.HttpRoute)
 					t.Logf("finished creation of validating ingress for %s", step.Executor.GetDescription())
 				}
 

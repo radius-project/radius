@@ -1,0 +1,12 @@
+{
+  "id": "id", 
+  "name": "name",
+  "properties": {
+    "listeners": {
+      "foo": {
+        "protocol": "HTTP",
+        "port": 80
+      }
+    }
+  }
+}

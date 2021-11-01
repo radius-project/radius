@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 const (
@@ -64,6 +65,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups="apps",resources=statefulsets,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="dapr.io",resources=components,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.x-k8s.io",resources=gateways,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.x-k8s.io",resources=gatewayclasses,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.x-k8s.io",resources=httproutes,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/finalizers,verbs=update
@@ -94,6 +98,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=gateways,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=gateways/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=gateways/finalizers,verbs=update
 
 func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("resource", req.NamespacedName)
@@ -226,6 +233,12 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
+	runtimeOptions, err := r.GetRuntimeOptions(ctx)
+	if err != nil {
+		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get additional properties: %v", err)
+		log.Error(err, "failed to render resource")
+	}
+
 	deps := map[string]renderers.RendererDependency{}
 	for _, reference := range references {
 		dependency, err := r.GetRenderDependency(ctx, req.Namespace, reference)
@@ -239,7 +252,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		deps[reference.ID] = *dependency
 	}
 
-	output, err := resourceType.Renderer().Render(ctx, *w, deps)
+	output, err := resourceType.Renderer().Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, Runtime: runtimeOptions})
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")
@@ -248,6 +261,27 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 
 	log.Info("rendered output resources", "count", len(output.Resources))
 	return &output, true, nil
+}
+
+func (r *ResourceReconciler) GetRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {
+	options := renderers.RuntimeOptions{}
+	// We require a gateway class to be present before creating a gateway
+	// Look up the first gateway class in the cluster and use that for now
+	var gateways gatewayv1alpha1.GatewayClassList
+	err := r.Client.List(ctx, &gateways)
+	if err != nil {
+		// Ignore failures to list gateway classes
+		return renderers.RuntimeOptions{}, nil
+	}
+
+	if len(gateways.Items) > 0 {
+		gatewayClass := gateways.Items[0]
+		options.Gateway = renderers.GatewayOptions{
+			GatewayClass: gatewayClass.Name,
+		}
+	}
+
+	return options, nil
 }
 
 func (r *ResourceReconciler) ApplyState(

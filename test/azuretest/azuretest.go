@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/stretchr/testify/require"
 	k8s "k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func NewTestOptions(t *testing.T) TestOptions {
@@ -42,12 +43,16 @@ func NewTestOptions(t *testing.T) TestOptions {
 	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 	require.NoError(t, err, "failed to create kubernetes client")
 
+	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
+	require.NoError(t, err, "failed to create runtime client")
+
 	return TestOptions{
 		ConfigFilePath: config.ConfigFileUsed(),
 		ARMAuthorizer:  auth,
 		ARMConnection:  con,
 		Environment:    az,
 		K8sClient:      k8s,
+		Client:         client,
 	}
 }
 
@@ -57,4 +62,5 @@ type TestOptions struct {
 	ARMConnection  *arm.Connection
 	Environment    *environments.AzureCloudEnvironment
 	K8sClient      *k8s.Clientset
+	Client         client.Client
 }

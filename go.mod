@@ -13,6 +13,9 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.2
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/fatih/color v1.9.0 // indirect
+	github.com/fatih/structs v1.1.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gibson042/canonicaljson-go v1.0.3
 	github.com/go-logr/logr v0.4.0
@@ -55,4 +58,5 @@ require (
 	k8s.io/kubectl v0.21.0
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/controller-runtime v0.9.2
+	sigs.k8s.io/gateway-api v0.3.0 // indirect
 )

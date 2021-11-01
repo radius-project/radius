@@ -41,8 +41,9 @@ func (r *V1RendererAdapter) GetDependencyIDs(ctx context.Context, resource Rende
 	return nil, nil
 }
 
-func (r *V1RendererAdapter) Render(ctx context.Context, resource RendererResource, dependencies map[string]RendererDependency) (RendererOutput, error) {
+func (r *V1RendererAdapter) Render(ctx context.Context, options RenderOptions) (RendererOutput, error) {
 	// Our task here is to call into the wrapper render function and then interpret the results into our new format.
+	resource := options.Resource
 
 	// The supported component types only use the 'config' section in our old format (see comments on AdaptableRenderer)
 	workload := workloads.InstantiatedWorkload{

@@ -53,8 +53,10 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 	return append(dependencies, parsed), nil
 }
 
-func (r *Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	output, err := r.Inner.Render(ctx, resource, dependencies)
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	resource := options.Resource
+	dependencies := options.Dependencies
+	output, err := r.Inner.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	if err != nil {
 		return renderers.RendererOutput{}, nil
 	}

@@ -179,7 +179,7 @@ func Test_Render_Basic(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -232,7 +232,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -274,7 +274,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -338,7 +338,7 @@ func Test_Render_Connections(t *testing.T) {
 	}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -441,7 +441,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 		},
 	}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -564,7 +564,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 		},
 	}
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -635,7 +635,7 @@ func Test_Render_PersistentVolumes(t *testing.T) {
 	}
 
 	renderer := Renderer{}
-	renderOutput, err := renderer.Render(createContext(t), resource, dependencies)
+	renderOutput, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Lenf(t, renderOutput.Resources, 2, "expected 2 output resource, instead got %+v", len(renderOutput.Resources))
 
 	// Verify deployment
@@ -697,7 +697,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 	}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -762,7 +762,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 	}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -820,7 +820,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 	}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -875,7 +875,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, dependencies)
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)

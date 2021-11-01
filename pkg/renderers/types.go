@@ -18,7 +18,21 @@ import (
 //go:generate mockgen -destination=../../pkg/renderers/mock_renderer_v3.go -package=renderers github.com/Azure/radius/pkg/renderers Renderer
 type Renderer interface {
 	GetDependencyIDs(ctx context.Context, resource RendererResource) ([]azresources.ResourceID, error)
-	Render(ctx context.Context, resource RendererResource, dependencies map[string]RendererDependency) (RendererOutput, error)
+	Render(ctx context.Context, options RenderOptions) (RendererOutput, error)
+}
+
+type RenderOptions struct {
+	Resource     RendererResource
+	Dependencies map[string]RendererDependency
+	Runtime      RuntimeOptions
+}
+
+type RuntimeOptions struct {
+	Gateway GatewayOptions
+}
+
+type GatewayOptions struct {
+	GatewayClass string
 }
 
 type RendererResource struct {

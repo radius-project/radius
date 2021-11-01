@@ -26,6 +26,23 @@ func (h HttpRoute) GetEffectivePort() int {
 }
 
 type Gateway struct {
-	Hostname string `json:"hostname"`
-	Path     string `json:"path"`
+	Source   string          `json:"source"`
+	Hostname string          `json:"hostname"`
+	Rules    map[string]Rule `json:"rules"`
+}
+
+type Rule struct {
+	Method  string   `json:"method"`
+	Path    Path     `json:"path"`
+	Headers []Header `json:"headers"`
+}
+
+type Path struct {
+	Value string `json:"value"`
+	Type  string `json:"type"`
+}
+
+type Header struct {
+	Value string `json:"value"`
+	Type  string `json:"type"`
 }

@@ -1,0 +1,19 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package gateway
+
+const (
+	ResourceType = "Gateway"
+)
+
+type Gateway struct {
+	Listeners map[string]Listener `json:"listeners,omitempty"`
+}
+
+type Listener struct {
+	Port     *int   `json:"port,omitempty"`
+	Protocol string `json:"protocol"`
+}

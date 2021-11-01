@@ -809,6 +809,63 @@
       "type": "object",
       "x-ms-discriminator-value": "exec"
     },
+    "GatewayList": {
+      "description": "List of Gateway resources.",
+      "properties": {
+        "value": {
+          "description": "List of Gateway resources.",
+          "items": {
+            "$ref": "#/definitions/GatewayResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "GatewayListener": {
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "description": "The port to listen on.",
+          "type": "number"
+        },
+        "protocol": {
+          "description": "The protocol to use for this listener.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "GatewayProperties": {
+      "additionalProperties": false,
+      "properties": {
+        "listeners": {
+          "additionalProperties": {
+            "$ref": "#/definitions/GatewayListener"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "GatewayResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource that specifies how traffic is exposed to the application.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/GatewayProperties"
+        }
+      },
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
     "HealthProbeProperties": {
       "description": "Properties for readiness/liveness probe",
       "discriminator": "kind",
@@ -876,14 +933,48 @@
           "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
           "type": "string"
         },
-        "path": {
-          "description": "Specifies the path to match on from the incoming request. Use '/' to match on all paths.",
-          "type": "string"
+        "rules": {
+          "additionalProperties": {
+            "$ref": "#/definitions/HttpRouteGatewayRule"
+          },
+          "type": "object"
+        },
+        "source": {
+          "description": "The gateway which this route is part of."
         }
       },
       "required": [
         "hostname"
       ],
+      "type": "object"
+    },
+    "HttpRouteGatewayPath": {
+      "additionalProperties": false,
+      "description": "Specifies path matching options to match requests on.",
+      "properties": {
+        "type": {
+          "description": "Specifies the path to match the incoming request.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Specifies the type of matching to match the path on. Supported values: 'prefix', 'exact'.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "HttpRouteGatewayRule": {
+      "additionalProperties": false,
+      "description": "Specifies the rule to match requests on.",
+      "properties": {
+        "method": {
+          "description": "Specifies the method to match on the incoming request.",
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/definitions/HttpRouteGatewayPath"
+        }
+      },
       "type": "object"
     },
     "HttpRouteList": {
@@ -1988,6 +2079,14 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
+    "GatewayNameParameter": {
+      "description": "The name of the Gateway resource.",
+      "in": "path",
+      "name": "gatewayName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
     "HttpRouteNameParameter": {
       "description": "The name of the HttpRoute resource.",
       "in": "path",
@@ -2436,6 +2535,188 @@
         },
         "tags": [
           "ContainerComponent"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Gateway": {
+      "get": {
+        "description": "List the Gateway resources deployed in the application.",
+        "operationId": "Gateway_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Gateway resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Gateway/{gatewayName}": {
+      "delete": {
+        "description": "Deletes a Gateway resource.",
+        "operationId": "Gateway_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Gateway will complete asynchronously."
+          },
+          "204": {
+            "description": "The Gateway resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Gateway resource by name.",
+        "operationId": "Gateway_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Gateway resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Gateway resource.",
+        "operationId": "Gateway_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Gateway resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Gateway resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "201": {
+            "description": "The new Gateway resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "202": {
+            "description": "The existing Gateway resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {

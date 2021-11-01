@@ -112,6 +112,42 @@ rules:
   - update
   - watch
 - apiGroups:
+  - networking.x-k8s.io
+  resources:
+  - gatewayclasses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.x-k8s.io
+  resources:
+  - gateways
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.x-k8s.io
+  resources:
+  - httproutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - radius.dev
   resources:
   - applications
@@ -237,6 +273,32 @@ rules:
   - radius.dev
   resources:
   - dapriostatestorecomponents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - gateways
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - gateways/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - gateways/status
   verbs:
   - get
   - patch

@@ -15,6 +15,8 @@
 
     "HttpRoute": "routes/httproute.json#/definitions/HttpRouteResource",
     "dapr.io.DaprHttpRoute": "routes/dapr-daprhttproute.json#/definitions/DaprHttpRouteResource",
-    "Volume": "components/volume.json#/definitions/VolumeResource"
+    "Volume": "components/volume.json#/definitions/VolumeResource",
+
+    "Gateway": "components/gateway.json#/definitions/GatewayResource"
   }
 }
