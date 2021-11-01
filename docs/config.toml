@@ -8,11 +8,6 @@ disableFastRender = true
 # Ignore sample code
 ignoreFiles = ["/code/*"]
 
-# GitHub Information
-github_repo = "https://github.com/Azure/radius"
-github_subdir = "docs"
-github_branch = "main"
-
 # Google Analytics
 [services.googleAnalytics]
 id = "G-9JR8B6TPF9"
@@ -55,6 +50,11 @@ disableKinds = ["taxonomy", "term"]
 
 [params]
 copyright = "Project Radius"
+
+# GitHub Information
+github_repo = "https://github.com/Azure/radius"
+github_subdir = "docs"
+github_branch = "main"
 
 # Versioning
 version_menu = "Releases"
