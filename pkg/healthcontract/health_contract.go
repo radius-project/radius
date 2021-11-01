@@ -24,7 +24,9 @@ const (
 // We will represent the health internally in a manner that gives us the full picture of what is happening
 // This is not representative of the values shown to the user
 const (
-	HealthStateUnknown       = "Unknown" // Health reporting is implemented but the state is not yet known. This is different from the case where health reporting is not supported.
+	// Health reporting is implemented but the state is not yet known. This is different from the case where health reporting is not supported.
+	// This could be the case at init time or if RP misses notifications from the health service
+	HealthStateUnknown       = "Unknown"
 	HealthStateHealthy       = "Healthy"
 	HealthStateUnhealthy     = "Unhealthy"
 	HealthStateDegraded      = "Degraded"      // Functionality is working but some resources are unhealthy
