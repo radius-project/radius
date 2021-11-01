@@ -19,7 +19,6 @@ import (
 const (
 	applicationName = "test-application"
 	resourceName    = "test-route"
-	namespace       = "test-namespace"
 )
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
