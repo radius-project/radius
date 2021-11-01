@@ -94,7 +94,7 @@ func Test_Gateway_Implicit(t *testing.T) {
 			Gateway: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "gateway"),
+						validation.NewK8sObjectForResource(application, "backendhttp"),
 					},
 				},
 			},
