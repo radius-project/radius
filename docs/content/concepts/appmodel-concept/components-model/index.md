@@ -78,11 +78,11 @@ Radius-managed components are good for development purposes or to write an *all-
 User-managed resources allow you to represent cloud resources as part of your application and have an easier experience connecting to them. You can create user-managed resources using the same `.bicep` files as your application or create them separately.
 {{% /alert %}}
 
-| | Health tracking | Access creds/properties | Configure RBAC | Deploy/delete with Application | Customize properties | Future features... |
-|-|:---------------:|:-----------------------:|:--------------:|:------------------------------:|:--------------------:|:------------------:|
-| User-managed | ✅ | ✅ | ✅ | ❌ | ✅ | ❔
-| Radius-managed | ✅ | ✅ | ✅ | ✅ | ❌ | ❔
-| Platform-specific | ❌‡ | ❔*‡ | ❌‡ | ❌ | ✅ | ❔
+| | Health tracking | Access creds/properties | Configure RBAC | Customize resource configuration |
+|-|:---------------:|:-----------------------:|:--------------:|:--------------------:|
+| User-managed | ✅ | ✅ | ✅ | ✅ |
+| Radius-managed | ✅ | ✅ | ✅ | ❌ |
+| Platform-specific | ❌‡ | ❔*‡ | ❌‡ | ✅ |
 
 \* resource specific - See [this doc](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-resource#list)
 <br />
