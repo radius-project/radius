@@ -953,11 +953,11 @@
       "description": "",
       "properties": {
         "type": {
-          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "description": "Specifies the path to match the incoming request.",
           "type": "string"
         },
         "value": {
-          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "description": "Specifies the type of matching to match the path on. Supported values: 'prefix', 'exact'.",
           "type": "string"
         }
       },
@@ -968,7 +968,7 @@
       "description": "",
       "properties": {
         "method": {
-          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "description": "Specifies the method to match on the incoming request.",
           "type": "string"
         },
         "path": {

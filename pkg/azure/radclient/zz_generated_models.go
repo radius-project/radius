@@ -1254,15 +1254,15 @@ func (h HTTPRouteGateway) MarshalJSON() ([]byte, error) {
 }
 
 type HTTPRouteGatewayPath struct {
-	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
+	// Specifies the path to match the incoming request.
 	Type *string `json:"type,omitempty"`
 
-	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
+	// Specifies the type of matching to match the path on. Supported values: 'prefix', 'exact'.
 	Value *string `json:"value,omitempty"`
 }
 
 type HTTPRouteGatewayRule struct {
-	// Specifies the public hostname for the route. Use '*' to listen on all hostnames.
+	// Specifies the method to match on the incoming request.
 	Method *string `json:"method,omitempty"`
 	Path *HTTPRouteGatewayPath `json:"path,omitempty"`
 }
