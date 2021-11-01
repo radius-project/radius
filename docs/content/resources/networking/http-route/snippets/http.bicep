@@ -49,7 +49,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
     }
   }
-  //ROUTE
 
   //FRONTEND
   resource frontend 'ContainerComponent' = {
