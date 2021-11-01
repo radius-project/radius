@@ -124,7 +124,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			if step.Pods == nil && step.SkipResourceValidation {
 				t.Logf("skipping validation of pods...")
 			} else if step.Pods == nil && step.Gateway == nil && step.HttpRoute == nil && step.Services == nil {
-				require.Fail(t, "no pod set was specified and SkipPods == false, either specify a pod set or set SkipPods = true ")
+				require.Fail(t, "no pod set was specified and SkipResourceValidation == false, either specify a pod set or set SkipResourceValidation = true ")
 			} else {
 				// ValidatePodsRunning triggers its own assertions, no need to handle errors
 				if step.Pods != nil {
@@ -189,13 +189,13 @@ func (at ApplicationTest) Test(t *testing.T) {
 	}
 
 	if last.SkipResourceValidation {
-		t.Logf("skipping validation of pods...")
+		t.Logf("skipping validation of resources...")
 	} else {
-		t.Logf("validating deletion of pods for %s", at.Description)
+		t.Logf("validating deletion of resources for %s", at.Description)
 		for _, ns := range at.CollectAllNamespaces() {
 			validation.ValidateNoPodsInNamespace(ctx, t, at.Options.K8sClient, ns)
 		}
-		t.Logf("finished deletion of pods for %s", at.Description)
+		t.Logf("finished deletion of resources for %s", at.Description)
 	}
 
 	// Custom verification is expected to use `t` to trigger its own assertions

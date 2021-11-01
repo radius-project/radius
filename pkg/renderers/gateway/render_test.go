@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -43,9 +42,9 @@ func Test_Render_Defaults(t *testing.T) {
 	}
 
 	dependencies := map[string]renderers.RendererDependency{}
-	additionalProperties := GetAdditionalProperties()
+	additionalProperties := GetRuntimeOptions()
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -81,9 +80,9 @@ func Test_Render_WithListener(t *testing.T) {
 	}
 
 	dependencies := map[string]renderers.RendererDependency{}
-	additionalProperties := GetAdditionalProperties()
+	additionalProperties := GetRuntimeOptions()
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, AdditionalProperties: additionalProperties})
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -105,20 +104,10 @@ func Test_Render_WithListener(t *testing.T) {
 	require.Equal(t, gatewayv1alpha1.ProtocolType("http"), listener.Protocol)
 }
 
-func GetAdditionalProperties() map[string]interface{} {
-	additionalProperties := map[string]interface{}{
-		"GatewayClass": gatewayv1alpha1.GatewayClass{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      "gateway-class",
-				Namespace: namespace,
-			},
-			TypeMeta: v1.TypeMeta{
-				Kind:       "GatewayClass",
-				APIVersion: gatewayv1alpha1.GroupVersion.Version,
-			},
-			Spec: gatewayv1alpha1.GatewayClassSpec{
-				Controller: "test-controller",
-			},
+func GetRuntimeOptions() renderers.RuntimeOptions {
+	additionalProperties := renderers.RuntimeOptions{
+		Gateway: renderers.GatewayOptions{
+			GatewayClass: "gateway-class",
 		},
 	}
 	return additionalProperties

@@ -78,20 +78,19 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	if route.Gateway != nil {
 		gatewayId := route.Gateway.Source
 		if gatewayId == "" {
-			gatewayClass, ok := options.AdditionalProperties[gateway.GatewayClassKey].(gatewayv1alpha1.GatewayClass)
-			if !ok {
+			gatewayClassName := options.Runtime.Gateway.GatewayClass
+			if gatewayClassName == "" {
 				return renderers.RendererOutput{}, errors.New("gateway class not found")
 			}
 
 			defaultGateway := r.createDefaultGateway()
-			gatewayK8s := gateway.MakeGateway(ctx, resource, defaultGateway, gatewayClass)
+			gatewayK8s := gateway.MakeGateway(ctx, resource, defaultGateway, gatewayClassName)
 			outputs = append(outputs, gatewayK8s)
 
 			httpRoute := r.makeHttpRoute(resource, route, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName))
 			outputs = append(outputs, httpRoute)
 		} else {
 			existingGateway := dependencies[gatewayId]
-			// TODO confirm that this name passed in is correct
 			httpRoute := r.makeHttpRoute(resource, route, kubernetes.MakeResourceName(resource.ApplicationName, existingGateway.ResourceID.Name()))
 			outputs = append(outputs, httpRoute)
 		}

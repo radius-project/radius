@@ -22,9 +22,17 @@ type Renderer interface {
 }
 
 type RenderOptions struct {
-	Resource             RendererResource
-	Dependencies         map[string]RendererDependency
-	AdditionalProperties map[string]interface{}
+	Resource     RendererResource
+	Dependencies map[string]RendererDependency
+	Runtime      RuntimeOptions
+}
+
+type RuntimeOptions struct {
+	Gateway GatewayOptions
+}
+
+type GatewayOptions struct {
+	GatewayClass string
 }
 
 type RendererResource struct {
