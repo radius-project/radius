@@ -26,4 +26,4 @@ readinessProbe:{
 }
 ```
 
-The container runtime will probe the path http://localhost:8080/readyz to determine if the application is healthy. The application code should implement logic to return a 200 OK response on this HTTP path for reporting readiness of the application.
+The container runtime will probe the path `http://localhost:8080/readyz` to determine if the service is healthy. The service code should implement logic to return a 200 OK response on this HTTP path for reporting readiness of the application.
