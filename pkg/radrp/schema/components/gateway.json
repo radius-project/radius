@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+      "GatewayResource": {
+        "description": "Resource that specifies how traffic is exposed to the application.",
+        "type": "object",
+        "x-ms-azure-resource": true,
+        "allOf": [
+          {
+            "$ref": "../common-types.json#/definitions/ProxyResource"
+          }
+        ],
+        "properties": {
+          "properties": {
+            "$ref": "#/definitions/GatewayProperties"
+          }
+        }
+      },
+      "GatewayProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "listeners": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/definitions/GatewayListener"
+            }
+          }
+        }
+      },
+      "GatewayListener": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "port": {
+            "description": "The port to listen on.",
+            "type": "number"
+          },
+          "protocol": {
+            "description": "The protocol to use for this listener.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
