@@ -20,19 +20,20 @@ const (
 	VolumeKindPersistent = "persistent"
 )
 
-var storageAccountDependency outputresource.Dependency = outputresource.Dependency{
-	LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
-}
-
 var _ renderers.Renderer = (*Renderer)(nil)
+var storageAccountDependency outputresource.Dependency
 
 type Renderer struct {
 	Arm             armauth.ArmConfig
 	VolumeRenderers map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
 }
 
-var SupportedVolumeKinds = map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+var SupportedVolumeRenderers = map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
 	"azure.com.fileshare": GetAzureFileShareVolume,
+}
+
+var SupportedVolumeMakeSecretsAndValues = map[string]func(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference){
+	"azure.com.fileshare": MakeSecretsAndValuesForAzureFileShare,
 }
 
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
@@ -47,7 +48,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 	}
 
 	if !isSupported(properties.Kind) {
-		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeKinds)
+		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeRenderers)
 	}
 
 	renderOutput, err := r.VolumeRenderers[properties.Kind](ctx, resource, dependencies)
@@ -55,7 +56,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return renderers.RendererOutput{}, err
 	}
 
-	computedValues, secretValues := MakeSecretsAndValues(storageAccountDependency.LocalID)
+	computedValues, secretValues := SupportedVolumeMakeSecretsAndValues[properties.Kind](storageAccountDependency.LocalID)
 
 	return renderers.RendererOutput{
 		Resources:      renderOutput.Resources,
@@ -65,29 +66,10 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 }
 
 func isSupported(kind string) bool {
-	for k, _ := range SupportedVolumeKinds {
+	for k, _ := range SupportedVolumeRenderers {
 		if kind == k {
 			return true
 		}
 	}
 	return false
-}
-
-func MakeSecretsAndValues(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	computedValues := map[string]renderers.ComputedValueReference{
-		StorageAccountName: {
-			LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
-			Value:   name,
-		},
-	}
-	secretValues := map[string]renderers.SecretValueReference{
-		StorageKeyValue: {
-			LocalID: storageAccountDependency.LocalID,
-			// https://docs.microsoft.com/en-us/rest/api/storagerp/storage-accounts/list-keys
-			Action:        "listKeys",
-			ValueSelector: "/keys/0/value",
-		},
-	}
-
-	return computedValues, secretValues
 }

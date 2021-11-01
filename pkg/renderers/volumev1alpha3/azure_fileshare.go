@@ -62,7 +62,7 @@ func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererRes
 		resources = append(resources, results...)
 	}
 
-	computedValues, secretValues := MakeSecretsAndValues(storageAccountDependency.LocalID)
+	computedValues, secretValues := MakeSecretsAndValuesForAzureFileShare(storageAccountDependency.LocalID)
 
 	return renderers.RendererOutput{
 		Resources:      resources,
@@ -123,6 +123,9 @@ func RenderUnmanaged(name string, properties VolumeProperties) ([]outputresource
 			handlers.FileShareStorageAccountNameKey: storageAccountID.Types[0].Name,
 		},
 	}
+	storageAccountDependency = outputresource.Dependency{
+		LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
+	}
 
 	fileshareResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureFileShare,
@@ -135,8 +138,28 @@ func RenderUnmanaged(name string, properties VolumeProperties) ([]outputresource
 			handlers.FileShareIDKey:                 fileshareID.ID,
 			handlers.FileShareNameKey:               fileshareID.Types[2].Name,
 		},
+
 		Dependencies: []outputresource.Dependency{storageAccountDependency},
 		Identity:     resourcemodel.NewARMIdentity(fileshareID.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent())),
 	}
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
+}
+
+func MakeSecretsAndValuesForAzureFileShare(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+	computedValues := map[string]renderers.ComputedValueReference{
+		StorageAccountName: {
+			LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
+			Value:   name,
+		},
+	}
+	secretValues := map[string]renderers.SecretValueReference{
+		StorageKeyValue: {
+			LocalID: storageAccountDependency.LocalID,
+			// https://docs.microsoft.com/en-us/rest/api/storagerp/storage-accounts/list-keys
+			Action:        "listKeys",
+			ValueSelector: "/keys/0/value",
+		},
+	}
+
+	return computedValues, secretValues
 }

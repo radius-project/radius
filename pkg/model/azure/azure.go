@@ -80,7 +80,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		// Azure
 		keyvaultv1alpha3.ResourceType:        &keyvaultv1alpha3.Renderer{},
 		servicebusqueuev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &servicebusqueuev1alpha1.Renderer{}},
-		volumev1alpha3.ResourceType:          &volumev1alpha3.Renderer{VolumeRenderers: volumev1alpha3.SupportedVolumeKinds},
+		volumev1alpha3.ResourceType:          &volumev1alpha3.Renderer{VolumeRenderers: volumev1alpha3.SupportedVolumeRenderers},
 	}
 
 	handlerMap := map[string]model.Handlers{
