@@ -827,6 +827,122 @@ type DaprIoStateStoreComponentListResult struct {
 	DaprStateStoreComponentList
 }
 
+// GatewayCreateOrUpdatePollerResponse contains the response from method Gateway.CreateOrUpdate.
+type GatewayCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *GatewayCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l GatewayCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (GatewayCreateOrUpdateResponse, error) {
+	respType := GatewayCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.GatewayResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a GatewayCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *GatewayCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *GatewayClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("GatewayClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &GatewayCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// GatewayCreateOrUpdateResponse contains the response from method Gateway.CreateOrUpdate.
+type GatewayCreateOrUpdateResponse struct {
+	GatewayCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewayCreateOrUpdateResult contains the result from method Gateway.CreateOrUpdate.
+type GatewayCreateOrUpdateResult struct {
+	GatewayResource
+}
+
+// GatewayDeletePollerResponse contains the response from method Gateway.Delete.
+type GatewayDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *GatewayDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l GatewayDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (GatewayDeleteResponse, error) {
+	respType := GatewayDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a GatewayDeletePollerResponse from the provided client and resume token.
+func (l *GatewayDeletePollerResponse) Resume(ctx context.Context, client *GatewayClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("GatewayClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &GatewayDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// GatewayDeleteResponse contains the response from method Gateway.Delete.
+type GatewayDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewayGetResponse contains the response from method Gateway.Get.
+type GatewayGetResponse struct {
+	GatewayGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewayGetResult contains the result from method Gateway.Get.
+type GatewayGetResult struct {
+	GatewayResource
+}
+
+// GatewayListResponse contains the response from method Gateway.List.
+type GatewayListResponse struct {
+	GatewayListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewayListResult contains the result from method Gateway.List.
+type GatewayListResult struct {
+	GatewayList
+}
+
 // HTTPRouteCreateOrUpdatePollerResponse contains the response from method HTTPRoute.CreateOrUpdate.
 type HTTPRouteCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.

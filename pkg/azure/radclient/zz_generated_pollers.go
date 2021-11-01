@@ -616,6 +616,92 @@ func (p *DaprIoStateStoreComponentDeletePoller) ResumeToken() (string, error) {
 	return p.pt.ResumeToken()
 }
 
+// GatewayCreateOrUpdatePoller provides polling facilities until the operation reaches a terminal state.
+type GatewayCreateOrUpdatePoller struct {
+	pt *azcore.Poller
+}
+
+// Done returns true if the LRO has reached a terminal state.
+func (p *GatewayCreateOrUpdatePoller) Done() bool {
+	return p.pt.Done()
+}
+
+// Poll fetches the latest state of the LRO.  It returns an HTTP response or error.
+// If the LRO has completed successfully, the poller's state is updated and the HTTP
+// response is returned.
+// If the LRO has completed with failure or was cancelled, the poller's state is
+// updated and the error is returned.
+// If the LRO has not reached a terminal state, the poller's state is updated and
+// the latest HTTP response is returned.
+// If Poll fails, the poller's state is unmodified and the error is returned.
+// Calling Poll on an LRO that has reached a terminal state will return the final
+// HTTP response or error.
+func (p *GatewayCreateOrUpdatePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final GatewayCreateOrUpdateResponse will be returned.
+func (p *GatewayCreateOrUpdatePoller) FinalResponse(ctx context.Context) (GatewayCreateOrUpdateResponse, error) {
+	respType := GatewayCreateOrUpdateResponse{}
+	resp, err := p.pt.FinalResponse(ctx, &respType.GatewayResource)
+	if err != nil {
+		return GatewayCreateOrUpdateResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// ResumeToken returns a value representing the poller that can be used to resume
+// the LRO at a later time. ResumeTokens are unique per service operation.
+func (p *GatewayCreateOrUpdatePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+
+// GatewayDeletePoller provides polling facilities until the operation reaches a terminal state.
+type GatewayDeletePoller struct {
+	pt *azcore.Poller
+}
+
+// Done returns true if the LRO has reached a terminal state.
+func (p *GatewayDeletePoller) Done() bool {
+	return p.pt.Done()
+}
+
+// Poll fetches the latest state of the LRO.  It returns an HTTP response or error.
+// If the LRO has completed successfully, the poller's state is updated and the HTTP
+// response is returned.
+// If the LRO has completed with failure or was cancelled, the poller's state is
+// updated and the error is returned.
+// If the LRO has not reached a terminal state, the poller's state is updated and
+// the latest HTTP response is returned.
+// If Poll fails, the poller's state is unmodified and the error is returned.
+// Calling Poll on an LRO that has reached a terminal state will return the final
+// HTTP response or error.
+func (p *GatewayDeletePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final GatewayDeleteResponse will be returned.
+func (p *GatewayDeletePoller) FinalResponse(ctx context.Context) (GatewayDeleteResponse, error) {
+	respType := GatewayDeleteResponse{}
+	resp, err := p.pt.FinalResponse(ctx, nil)
+	if err != nil {
+		return GatewayDeleteResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// ResumeToken returns a value representing the poller that can be used to resume
+// the LRO at a later time. ResumeTokens are unique per service operation.
+func (p *GatewayDeletePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+
 // HTTPRouteCreateOrUpdatePoller provides polling facilities until the operation reaches a terminal state.
 type HTTPRouteCreateOrUpdatePoller struct {
 	pt *azcore.Poller
