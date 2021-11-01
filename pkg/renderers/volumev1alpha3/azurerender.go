@@ -31,8 +31,8 @@ type Renderer struct {
 	VolumeRenderers map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
 }
 
-var SupportedVolumeKinds = []string{
-	"azure.com.fileshare",
+var SupportedVolumeKinds = map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+	"azure.com.fileshare": GetAzureFileShareVolume,
 }
 
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
@@ -50,7 +50,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeKinds)
 	}
 
-	renderOutput, err := GetAzureFileShareVolume(ctx, resource, dependencies)
+	renderOutput, err := r.VolumeRenderers[properties.Kind](ctx, resource, dependencies)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -65,8 +65,8 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 }
 
 func isSupported(kind string) bool {
-	for _, supported := range SupportedVolumeKinds {
-		if kind == supported {
+	for k, _ := range SupportedVolumeKinds {
+		if kind == k {
 			return true
 		}
 	}
