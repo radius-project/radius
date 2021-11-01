@@ -6,7 +6,12 @@ description: "Learn how to use Radius to monitor application health"
 weight: 500
 ---
 
-The container running the application code could be configured with readiness and liveness probes that can be used by consumers to monitor the health of the application. The application code can report its health on the readiness/liveness endpoint configured.
+
+Radius offers multiple ways to monitor the health of your Application Components, both at the control-plane layer for your hosting provider and at the runtime layer for your services and workloads.
+
+## Container health
+
+The [ContainerComponent]({{< ref container >}}) running your application code can be configured with [readiness and liveness probes]({{< ref "container.md#container" >}}) to monitor the health of your services. The service code can report its health via HTTP or exec options.
 
 For example, for the readiness probe config as follows:-
 
