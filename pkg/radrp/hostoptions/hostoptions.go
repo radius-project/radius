@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -146,8 +145,7 @@ func getArm() (*armauth.ArmConfig, error) {
 func getKubernetes() (*rest.Config, error) {
 	cfg, err := k8sauth.GetConfig()
 	if err != nil {
-		log.Printf("error getting kubernetes config: %s", err)
-		panic(err)
+		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
 	}
 
 	// Verify that we can connect to the cluster before handing out the config
