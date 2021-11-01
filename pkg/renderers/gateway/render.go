@@ -25,7 +25,7 @@ const (
 	GatewayClassKey = "GatewayClass"
 )
 
-func (r Renderer) GetDependencyIDs(Clientctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
 	return nil, nil
 }
 

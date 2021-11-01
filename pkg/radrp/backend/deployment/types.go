@@ -189,15 +189,7 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 		return renderers.RendererOutput{}, armerr, err
 	}
 
-	runtimeOptions, err := dp.getRuntimeOptions(ctx)
-	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
-		return renderers.RendererOutput{}, armerr, err
-	}
+	runtimeOptions := dp.getRuntimeOptions(ctx)
 
 	rendererOutput, err := renderer.Render(ctx, renderers.RenderOptions{Resource: rendererResource, Dependencies: rendererDependencies, Runtime: runtimeOptions})
 	if err != nil {
@@ -547,7 +539,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
-func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {
+func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) renderers.RuntimeOptions {
 	options := renderers.RuntimeOptions{}
 	// We require a gateway class to be present before creating a gateway
 	// Look up the first gateway class in the cluster and use that for now
@@ -556,7 +548,7 @@ func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers
 		err := dp.k8s.List(ctx, &gateways)
 		if err != nil {
 			// Ignore failures to list gateway classes
-			return renderers.RuntimeOptions{}, nil
+			return renderers.RuntimeOptions{}
 		}
 
 		if len(gateways.Items) > 0 {
@@ -567,5 +559,5 @@ func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers
 		}
 	}
 
-	return options, nil
+	return options
 }
