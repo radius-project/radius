@@ -1072,7 +1072,7 @@ func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
 			"status": rest.ComponentStatus{
 				ProvisioningState:  rest.Provisioned,
 				HealthState:        healthcontract.HealthStateUnhealthy, // Aggregation should show Unhealthy
-				HealthErrorDetails: "radius resource: \"test-resource\" has a combination of supported and unsupported health reporting for its output resources. Aggregation error",
+				HealthErrorDetails: "radius resource: \"test-resource\" has a combination of supported and unsupported health reporting for its output resources. Health aggregation error",
 				OutputResources: []rest.OutputResource{
 					{
 						LocalID:      outputresource.LocalIDKeyVault,
