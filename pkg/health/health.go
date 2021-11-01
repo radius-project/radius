@@ -27,7 +27,7 @@ const ChannelBufferSize = 100
 type HealthInfo struct {
 	stopProbeForResource    chan struct{}
 	ticker                  *time.Ticker
-	forcedUpdateTicker      *time.Ticker
+	forcedUpdateTicker      *time.Ticker // We will start a ticker after which we force state updates to the RP even if there are no changes.
 	handler                 handlers.HealthHandler
 	HealthState             string
 	HealthStateErrorDetails string
@@ -75,6 +75,8 @@ func (h Monitor) Run(ctx context.Context) error {
 
 // RegisterResource is called to register an output resource with the health checker
 // It should be called at the time of creation of the output resource
+// The health service has multiple goroutines running. The wait group parameter here is used to ensure that all goroutines are stopped
+// when an exit signal is received. This parameter could also be used by tests to wait till all goroutines stop and then stop the test.
 //
 // The return value here is for testing purposes.
 func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}, wg *sync.WaitGroup) *handlers.HealthRegistration {
