@@ -233,7 +233,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
-	runtimeOptions, err := r.GetAdditionalProperties(ctx)
+	runtimeOptions, err := r.GetRuntimeOptions(ctx)
 	if err != nil {
 		r.recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get additional properties: %v", err)
 		log.Error(err, "failed to render resource")
@@ -263,7 +263,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 	return &output, true, nil
 }
 
-func (r *ResourceReconciler) GetAdditionalProperties(ctx context.Context) (renderers.RuntimeOptions, error) {
+func (r *ResourceReconciler) GetRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {
 	options := renderers.RuntimeOptions{}
 	// We require a gateway class to be present before creating a gateway
 	// Look up the first gateway class in the cluster and use that for now

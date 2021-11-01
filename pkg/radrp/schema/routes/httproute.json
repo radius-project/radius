@@ -70,7 +70,7 @@
       }
     },
     "HttpRouteGatewayRule": {
-      "description": "",
+      "description": "Specifies the rule to match requests on.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -84,7 +84,7 @@
       }
     },
     "HttpRouteGatewayPath": {
-      "description": "",
+      "description": "Specifies path matching options to match requests on.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

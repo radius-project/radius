@@ -134,7 +134,7 @@ func Test_DeployExistingResource_Success(t *testing.T) {
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mocks.secretsValueClient}
+	}, mocks.secretsValueClient, nil}
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 	expectedDependencyIDs := []azresources.ResourceID{
@@ -191,7 +191,7 @@ func Test_DeployNewResource_Success(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{})
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
@@ -221,7 +221,7 @@ func Test_DeployFailure_OperationUpdated(t *testing.T) {
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
@@ -271,7 +271,7 @@ func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	azureID := fullyQualifiedAzureID("foo", resourceName)
 	resourceID := getResourceID(azureID)
@@ -312,7 +312,7 @@ func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	expectedDependencyIDs := []azresources.ResourceID{getResourceID(fullyQualifiedAzureID("HttpRoute", "A"))}
 
@@ -342,7 +342,7 @@ func Test_RendererFailure_InvalidError(t *testing.T) {
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, nil)
 	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render resource"))
@@ -372,7 +372,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{ResourceRegistrationWithHealthChannel: registrationChannel}, mocks.secretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{ResourceRegistrationWithHealthChannel: registrationChannel}, mocks.secretsValueClient, nil}
 
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDeployment,
@@ -436,7 +436,7 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	},
 		map[string]renderers.SecretValueTransformer{},
 	)
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDeployment,
@@ -599,7 +599,7 @@ func Test_Delete_Success(t *testing.T) {
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mocks.secretsValueClient}
+	}, mocks.secretsValueClient, nil}
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
@@ -635,7 +635,7 @@ func Test_Delete_Error(t *testing.T) {
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mocks.secretsValueClient}
+	}, mocks.secretsValueClient, nil}
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
 	t.Run("validate error on handler delete failure", func(t *testing.T) {
@@ -683,7 +683,7 @@ func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mocks.secretsValueClient}
+	}, mocks.secretsValueClient, nil}
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
 	localTestResource := testRadiusResource
@@ -722,7 +722,7 @@ func Test_UpdateOperationFailure_NoOp(t *testing.T) {
 		map[string]renderers.SecretValueTransformer{},
 	)
 
-	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient}
+	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
 
 	t.Run("verify database get operation failure", func(t *testing.T) {

@@ -22,6 +22,8 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-openapi/jsonpointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/Azure/radius/pkg/radrp/backend/deployment github.com/Azure/radius/pkg/radrp/backend/deployment DeploymentProcessor
@@ -35,7 +37,7 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, id azresources.ResourceID, resource db.RadiusResource) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, db db.RadrpDB, healthChannels *healthcontract.HealthChannels, secretClient renderers.SecretValueClient) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, db db.RadrpDB, healthChannels *healthcontract.HealthChannels, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, db: db, healthChannels: healthChannels, secretClient: secretClient}
 }
 
@@ -46,6 +48,7 @@ type deploymentProcessor struct {
 	db             db.RadrpDB
 	healthChannels *healthcontract.HealthChannels
 	secretClient   renderers.SecretValueClient
+	k8s            client.Client
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
@@ -186,7 +189,17 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 		return renderers.RendererOutput{}, armerr, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, renderers.RenderOptions{Resource: rendererResource, Dependencies: rendererDependencies})
+	runtimeOptions, err := dp.getRuntimeOptions(ctx)
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		return renderers.RendererOutput{}, armerr, err
+	}
+
+	rendererOutput, err := renderer.Render(ctx, renderers.RenderOptions{Resource: rendererResource, Dependencies: rendererDependencies, Runtime: runtimeOptions})
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Invalid,
@@ -532,4 +545,24 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 	}
 
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
+}
+
+func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {
+	options := renderers.RuntimeOptions{}
+	// We require a gateway class to be present before creating a gateway
+	// Look up the first gateway class in the cluster and use that for now
+	var gateways gatewayv1alpha1.GatewayClassList
+	err := dp.k8s.List(ctx, &gateways)
+	if err != nil {
+		return renderers.RuntimeOptions{}, err
+	}
+
+	if len(gateways.Items) > 0 {
+		gatewayClass := gateways.Items[0]
+		options.Gateway = renderers.GatewayOptions{
+			GatewayClass: gatewayClass.Name,
+		}
+	}
+
+	return options, nil
 }

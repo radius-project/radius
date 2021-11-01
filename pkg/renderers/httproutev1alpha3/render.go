@@ -35,7 +35,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 		return nil, err
 	}
 
-	if route.Gateway != nil {
+	if route.Gateway != nil && route.Gateway.Source != "" {
 		resourceId, err := azresources.Parse(route.Gateway.Source)
 		if err != nil {
 			return nil, err

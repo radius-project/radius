@@ -290,7 +290,7 @@ func ValidateGatewaysRunning(ctx context.Context, t *testing.T, client client.Cl
 				for _, gateway := range actualGateways.Items {
 					index := matchesExpectedLabels(remaining, gateway.Labels)
 					if index == nil {
-						t.Logf("unrecognized gateway, could not find a match for Ingress with namespace: %v name: %v labels: %v",
+						t.Logf("unrecognized gateway, could not find a match for gateway with namespace: %v name: %v labels: %v",
 							gateway.Namespace,
 							gateway.Name,
 							gateway.Labels)
