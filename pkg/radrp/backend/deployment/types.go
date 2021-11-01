@@ -551,17 +551,19 @@ func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers
 	options := renderers.RuntimeOptions{}
 	// We require a gateway class to be present before creating a gateway
 	// Look up the first gateway class in the cluster and use that for now
-	var gateways gatewayv1alpha1.GatewayClassList
-	err := dp.k8s.List(ctx, &gateways)
-	if err != nil {
-		// Ignore failures to list gateway classes
-		return renderers.RuntimeOptions{}, nil
-	}
+	if dp.k8s != nil {
+		var gateways gatewayv1alpha1.GatewayClassList
+		err := dp.k8s.List(ctx, &gateways)
+		if err != nil {
+			// Ignore failures to list gateway classes
+			return renderers.RuntimeOptions{}, nil
+		}
 
-	if len(gateways.Items) > 0 {
-		gatewayClass := gateways.Items[0]
-		options.Gateway = renderers.GatewayOptions{
-			GatewayClass: gatewayClass.Name,
+		if len(gateways.Items) > 0 {
+			gatewayClass := gateways.Items[0]
+			options.Gateway = renderers.GatewayOptions{
+				GatewayClass: gatewayClass.Name,
+			}
 		}
 	}
 

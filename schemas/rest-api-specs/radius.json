@@ -950,7 +950,7 @@
     },
     "HttpRouteGatewayPath": {
       "additionalProperties": false,
-      "description": "",
+      "description": "Specifies path matching options to match requests on.",
       "properties": {
         "type": {
           "description": "Specifies the path to match the incoming request.",
@@ -965,7 +965,7 @@
     },
     "HttpRouteGatewayRule": {
       "additionalProperties": false,
-      "description": "",
+      "description": "Specifies the rule to match requests on.",
       "properties": {
         "method": {
           "description": "Specifies the method to match on the incoming request.",

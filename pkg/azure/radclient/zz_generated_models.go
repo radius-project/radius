@@ -1253,6 +1253,7 @@ func (h HTTPRouteGateway) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// HTTPRouteGatewayPath - Specifies path matching options to match requests on.
 type HTTPRouteGatewayPath struct {
 	// Specifies the path to match the incoming request.
 	Type *string `json:"type,omitempty"`
@@ -1261,9 +1262,12 @@ type HTTPRouteGatewayPath struct {
 	Value *string `json:"value,omitempty"`
 }
 
+// HTTPRouteGatewayRule - Specifies the rule to match requests on.
 type HTTPRouteGatewayRule struct {
 	// Specifies the method to match on the incoming request.
 	Method *string `json:"method,omitempty"`
+
+	// Specifies path matching options to match requests on.
 	Path *HTTPRouteGatewayPath `json:"path,omitempty"`
 }
 
