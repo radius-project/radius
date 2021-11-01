@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Monitoring application health"
-linkTitle: "Monitoring application health"
+linkTitle: "Monitor app health"
 description: "Learn how to use Radius to monitor application health"
 weight: 500
 ---
