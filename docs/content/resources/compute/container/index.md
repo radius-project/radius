@@ -36,8 +36,8 @@ Details on what to run and how to run it are defined in the `container` property
 | image | y | The registry and image to download and run in your container. | `radiusteam/frontend`
 | env | n | The environment variables to be set for the container. | `"ENV_VAR": "value"`
 | ports | n | Ports the container provides | [See below](#ports).
-| readinessProbe | n | Readiness checks config | [See below](#readiness-probe).
-| livenessProbe | n | Liveness checks config | [See below](#liveness-probe).
+| readinessProbe | n | Readiness probe configuration. | [See below](#readiness-probe).
+| livenessProbe | n | Liveness probe configuration. | [See below](#liveness-probe).
 
 ### Ports
 
