@@ -142,7 +142,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta, true)
+	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
 func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route HttpRoute, gatewayName string) outputresource.OutputResource {

@@ -24,13 +24,12 @@ type OutputResource struct {
 	Identity resourcemodel.ResourceIdentity
 
 	// ResourceKind specifies the 'kind' used to look up the resource handler for processing.
-	ResourceKind         string
-	Deployed             bool
-	Managed              bool
-	Resource             interface{}
-	Dependencies         []Dependency // resources that are required to be deployed before this resource can be deployed
-	Status               OutputResourceStatus
-	SkipHealthMonitoring bool // Skip registration of this output resource with the health service
+	ResourceKind string
+	Deployed     bool
+	Managed      bool
+	Resource     interface{}
+	Dependencies []Dependency // resources that are required to be deployed before this resource can be deployed
+	Status       OutputResourceStatus
 }
 
 type Dependency struct {
@@ -103,14 +102,13 @@ func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, e
 	return orderedOutput, nil
 }
 
-func NewKubernetesOutputResource(localID string, obj runtime.Object, objectMeta metav1.ObjectMeta, skipHealthMonitoring bool) OutputResource {
+func NewKubernetesOutputResource(localID string, obj runtime.Object, objectMeta metav1.ObjectMeta) OutputResource {
 	return OutputResource{
-		LocalID:              localID,
-		Deployed:             false,
-		Managed:              true,
-		ResourceKind:         resourcekinds.Kubernetes,
-		Identity:             resourcemodel.NewKubernetesIdentity(obj, objectMeta),
-		Resource:             obj,
-		SkipHealthMonitoring: skipHealthMonitoring,
+		LocalID:      localID,
+		Deployed:     false,
+		Managed:      true,
+		ResourceKind: resourcekinds.Kubernetes,
+		Identity:     resourcemodel.NewKubernetesIdentity(obj, objectMeta),
+		Resource:     obj,
 	}
 }

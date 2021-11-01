@@ -129,6 +129,7 @@ func Test_DeployExistingResource_Success(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
@@ -220,6 +221,7 @@ func Test_DeployFailure_OperationUpdated(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
@@ -270,6 +272,7 @@ func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
@@ -311,6 +314,7 @@ func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
@@ -341,6 +345,7 @@ func Test_RendererFailure_InvalidError(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
@@ -369,6 +374,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
@@ -440,6 +446,7 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
@@ -599,6 +606,7 @@ func Test_Delete_Success(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
@@ -635,6 +643,7 @@ func Test_Delete_Error(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
@@ -683,6 +692,7 @@ func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
@@ -725,6 +735,7 @@ func Test_UpdateOperationFailure_NoOp(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
@@ -767,6 +778,9 @@ func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{
+			resourcekinds.Secret: true,
+		},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
@@ -782,11 +796,11 @@ func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 		Identity: resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
 			Data: resourcemodel.KubernetesIdentity{
+				Kind:      resourcekinds.Secret,
 				Name:      resourceName,
 				Namespace: testApplicationName,
 			},
 		},
-		SkipHealthMonitoring: true,
 	}
 	rendererOutput := renderers.RendererOutput{
 		Resources: []outputresource.OutputResource{testOutputResource},
@@ -795,7 +809,7 @@ func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).AnyTimes().Return(db.RadiusResource{}, nil)
 	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).AnyTimes().Return(testRadiusResource, nil)
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
-	// Note that GetHealthOptions call is missing
+	mocks.healthHandler.EXPECT().GetHealthOptions(gomock.Any()).Times(1).Return(healthcontract.HealthCheckOptions{})
 
 	radResource, _, err := dp.deployRenderedResources(ctx, testResourceID, testRadiusResource, rendererOutput)
 	require.NoError(t, err)
@@ -817,6 +831,7 @@ func Test_Deploy_WithHealthMonitoring(t *testing.T) {
 		},
 	},
 		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{},
 	)
 
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
@@ -836,7 +851,6 @@ func Test_Deploy_WithHealthMonitoring(t *testing.T) {
 				Namespace: testApplicationName,
 			},
 		},
-		SkipHealthMonitoring: false,
 	}
 	rendererOutput := renderers.RendererOutput{
 		Resources: []outputresource.OutputResource{testOutputResource},

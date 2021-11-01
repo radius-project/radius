@@ -122,7 +122,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 			return err
 		}
 
-		if !outputResource.SkipHealthMonitoring {
+		if outputResource.Status.HealthState != healthcontract.HealthStateNotApplicable {
 			healthResource := healthcontract.HealthResource{
 				ResourceKind:     outputResource.ResourceKind,
 				Identity:         outputResource.Identity,
@@ -325,16 +325,16 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			}
 		}
 
-		if !outputResource.SkipHealthMonitoring {
-			// Register health checks for the output resource
-			healthResource := healthcontract.HealthResource{
-				Identity:         outputResource.Identity,
-				ResourceKind:     outputResource.ResourceKind,
-				RadiusResourceID: resource.ID,
-			}
-
-			dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
+		// Register health checks for the output resource
+		healthResource := healthcontract.HealthResource{
+			Identity:         outputResource.Identity,
+			ResourceKind:     outputResource.ResourceKind,
+			RadiusResourceID: resource.ID,
 		}
+
+		skippedHealthRegistration := dp.registerOutputResourceForHealthChecks(ctx, healthResource, resourceHandlers.HealthHandler.GetHealthOptions(ctx))
+
+		// }
 
 		// Build database resource - copy updated properties to Resource field
 		dbOutputResource := db.OutputResource{
@@ -347,9 +347,8 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 				ProvisioningState:        db.Provisioned,
 				ProvisioningErrorDetails: "",
 			},
-			SkipHealthMonitoring: outputResource.SkipHealthMonitoring,
 		}
-		if outputResource.SkipHealthMonitoring {
+		if skippedHealthRegistration {
 			dbOutputResource.Status.HealthState = healthcontract.HealthStateNotApplicable
 		}
 		deployedOutputResources = append(deployedOutputResources, dbOutputResource)
@@ -386,8 +385,15 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 	return deployedRadiusResource, nil, nil
 }
 
-func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) {
+func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) bool {
 	logger := radlogger.GetLogger(ctx)
+
+	if dp.appmodel.LookupSkipHealthStateCheckResources(resource.ResourceKind, resource.Identity) {
+		// Health state is not applicable to this resource and can be skipped from registering with health service
+		logger.Info(fmt.Sprintf("Health state is not applicable for resource kind: %s. Skipping registration with health service", resource.ResourceKind))
+		// Return skipped = true
+		return true
+	}
 
 	msg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:   healthcontract.ActionRegister,
@@ -397,6 +403,8 @@ func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context
 	dp.healthChannels.ResourceRegistrationWithHealthChannel <- msg
 
 	logger.Info("Registered output resource for health checks", resource.Identity.AsLogValues()...)
+	// Return skipped = false
+	return false
 }
 
 func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource) {

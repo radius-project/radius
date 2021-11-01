@@ -10,6 +10,8 @@ import (
 
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 // ApplicationModel defines the set of supported resource types and related features.
@@ -17,12 +19,14 @@ type ApplicationModel interface {
 	LookupRenderer(resourceType string) (renderers.Renderer, error)
 	LookupHandlers(resourceKind string) (Handlers, error)
 	LookupSecretTransformer(transformerName string) (renderers.SecretValueTransformer, error)
+	LookupSkipHealthStateCheckResources(resourceKind string, identity resourcemodel.ResourceIdentity) bool
 }
 
 type applicationModel struct {
-	renderersByResourceType map[string]renderers.Renderer
-	handlersByResourceKind  map[string]Handlers
-	transformersByName      map[string]renderers.SecretValueTransformer
+	renderersByResourceType      map[string]renderers.Renderer
+	handlersByResourceKind       map[string]Handlers
+	transformersByName           map[string]renderers.SecretValueTransformer
+	skipHealthCheckResourceKinds map[string]bool
 }
 
 type Handlers struct {
@@ -33,11 +37,13 @@ type Handlers struct {
 func NewModel(
 	renderers map[string]renderers.Renderer,
 	handlers map[string]Handlers,
-	transformers map[string]renderers.SecretValueTransformer) ApplicationModel {
+	transformers map[string]renderers.SecretValueTransformer,
+	skipHealthCheckResourceKinds map[string]bool) ApplicationModel {
 	return &applicationModel{
-		renderersByResourceType: renderers,
-		handlersByResourceKind:  handlers,
-		transformersByName:      transformers,
+		renderersByResourceType:      renderers,
+		handlersByResourceKind:       handlers,
+		transformersByName:           transformers,
+		skipHealthCheckResourceKinds: skipHealthCheckResourceKinds,
 	}
 }
 
@@ -66,4 +72,16 @@ func (model *applicationModel) LookupSecretTransformer(transformerName string) (
 	}
 
 	return transformer, nil
+}
+
+func (model *applicationModel) LookupSkipHealthStateCheckResources(resourceKind string, identity resourcemodel.ResourceIdentity) bool {
+	var kind string
+	if resourceKind == resourcekinds.Kubernetes {
+		kID := identity.Data.(resourcemodel.KubernetesIdentity)
+		kind = kID.Kind
+	} else {
+		kind = resourceKind
+	}
+	_, ok := model.skipHealthCheckResourceKinds[kind]
+	return ok
 }
