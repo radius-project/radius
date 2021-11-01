@@ -154,8 +154,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5105
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/identity-api'
+        rules: {
+          identity: {
+            path: {
+              value: '/identity-api'
+            }
+          }
+        }
       }
     }
   }
@@ -219,8 +226,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5102
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/ordering-api'
+        rules: {
+          ordering: {
+            path: {
+              value: '/ordering-api'
+            }
+          }
+        }
       }
     }
   }
@@ -286,9 +300,16 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     name: 'basket-http'
     properties: {
       port: 5103
-      gateway:  {
+      gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/basket-api'
+        rules: {
+          basket: {
+            path: {
+              value: '/basket-api'
+            }
+          }
+        }
       }
     }
   }
@@ -347,8 +368,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5113
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webhooks-api'
+        rules: {
+          webhooks: {
+            path: {
+              value: '/webhooks-api'
+            }
+          }
+        }
       }
     }
   }
@@ -505,8 +533,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5121
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webshoppingagg'
+        rules: {
+          webshoppingagg: {
+            path: {
+              value: '/webshoppingagg'
+            }
+          }
+        }
       }
     }
   }
@@ -539,8 +574,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5202
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webshoppingapigw'
+        rules: {
+          webshoppingapigw: {
+            path: {
+              value: '/webshoppingapigw'
+            }
+          }
+        }
       }
     }
   }
@@ -658,8 +700,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5114
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webhooks-web'
+        rules: {
+          webhooks: {
+            path: {
+              value: '/webhooks-web'
+            }
+          }
+        }
       }
     }
   }
@@ -715,8 +764,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 8107
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webstatus'
+        rules: {
+          webstatus: {
+            path: {
+              value: '/webstatus'
+            }
+          }
+        }
       }
     }
   }
@@ -780,8 +836,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5104
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/'
+        rules: {
+          webspa: {
+            path: {
+              value: '/'
+            }
+          }
+        }
       }
     }
   }
@@ -847,11 +910,32 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5100
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webmvc'
+        rules: {
+          webmvc: {
+            path: {
+              value: '/webmvc'
+            }
+          }
+        }
       }
     }
   }
+
+    // Gateway --------------------------------------------
+
+    resource gateway 'Gateway' = {
+      name: 'gateway'
+      properties: {
+        listeners: {
+          http: {
+            protocol: 'HTTP'
+            port: 80
+          }
+        }
+      }
+    }
 
   // Logging --------------------------------------------
 
