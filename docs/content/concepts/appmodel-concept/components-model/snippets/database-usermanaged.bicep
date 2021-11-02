@@ -1,8 +1,8 @@
-//COSMOS
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'account-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   kind: 'MongoDB'
+  //PROPERTIES
   properties: {
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
@@ -16,9 +16,11 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     ]
     databaseAccountOfferType: 'Standard'
   }
+  //PROPERTIES
 
   resource mongodb 'mongodbDatabases' = {
     name: 'mydb'
+    //PROPERTIES
     properties: {
       resource: {
         id: 'mydb'
@@ -27,36 +29,18 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
         throughput: 400
       }
     }
+    //PROPERTIES
   }
 }
-//COSMOS
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'mongo-container-usermanaged'
+  name: 'myapp'
 
-  //SAMPLE
   resource db 'mongodb.com.MongoDBComponent' = {
     name: 'db'
     properties: {
       resource: account::mongodb.id
     }
   }
-  //SAMPLE
 
-  resource webapp 'ContainerComponent@v1alpha3' = {
-    name: 'todoapp'
-    properties: {
-      //HIDE
-      container: {
-        image: 'rynowak/node-todo:latest'
-      }
-      //HIDE
-      connections: {
-        db: {
-          kind: 'mongo.com/MongoDB'
-          source: db.id
-        }
-      }
-    }
-  }
 }

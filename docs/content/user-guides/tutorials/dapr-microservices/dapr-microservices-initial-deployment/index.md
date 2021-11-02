@@ -25,6 +25,7 @@ Your `backend` resource, which has resource type ContainerComponent, will specif
 
 - **kind:** `ContainerComponent`, a generic container.
 - **container image:** `radius.azurecr.io/daprtutorial-backend`, a Docker image the container will run. This is where your application's backend code lives.
+- **ports**: orders will be received on port 3000.
 
 Update your template.bicep file to match the full application definition:
 

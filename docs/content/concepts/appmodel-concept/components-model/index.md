@@ -70,30 +70,57 @@ An example of a non-runnable Radius Component is an inventory database, modeled 
 
 ### Resource lifecycle
 
-Radius offers two methods for managing the lifecycle of a Component: Radius-managed and user-managed.
+Radius offers two methods for managing the lifecycle of a Component: Radius-managed and user-managed. Separately, you can use platform specific resources for any Bicep resources that do not have Radius Components that model them.
 
 Radius-managed components are good for development purposes or to write an *all-in-one* deployable application. User-manged resources allow you to bind to infrastructure, such as cloud resources that are deployed separately from your code.
 
 {{% alert title="💡 Key concept" color="info" %}}
 User-managed resources allow you to represent cloud resources as part of your application and have an easier experience connecting to them. You can create user-managed resources using the same `.bicep` files as your application or create them separately.
-{{% /alert %}} 
+{{% /alert %}}
+
+| | Health tracking | Access creds/properties | Configure RBAC | Customize resource configuration |
+|-|:---------------:|:-----------------------:|:--------------:|:--------------------:|
+| User-managed | ✅ | ✅ | ✅ | ✅ |
+| Radius-managed | ✅ | ✅ | ✅ | ❌ |
+| Platform-specific | ❌‡ | ❔*‡ | ❌‡ | ✅ |
+
+\* resource specific - See [this doc](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-resource#list)
+<br />
+‡ still in development/review
 
 #### User-managed
 
 When `managed` is set to `false` or omitted, you can explicitly specify an existing `resource` which you manage. This allows you to connect your Radius Components to existing databases, queues, and other non-compute resources. When you delete your Application Radius will not change or delete your existing resource.
 
+{{< rad file="snippets/database-usermanaged.bicep" embed=true replace-key-properties="//PROPERTIES" replace-value-properties="properties: {...}" >}}
+
 #### Radius-managed
 
 When `managed` is set to `true`, like in the example above, Radius will manage the lifecycle of the underlying resource, meaning it will deploy and manage the resource itself on the [hosting platform]({{< ref platforms >}}).
 
-{{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
+{{% alert title="📋 Feedback" color="primary" %}}
+We'd love to hear your feedback on User-managed resources. Please visit [GitHub Discussions](https://github.com/Azure/radius/discussions/1269) and let us know how you currently use and want to use them!
+{{% /alert %}}
 
+{{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
 
 ### Portability
 
 Non-runnable Components can work across hosting models without any configuration changes, and will be satisfied using the best means available by the host. They are generally OSS services that are not tied to any particular SaaS or hosting platform and usually have multiple implementations.
 
 For example the resource type [`mongodb.com.MongoDBComponent`]({{< ref mongodb >}}) specifies a generic MongoDB-compatible database. From the point-of-view of application code, it does not matter if the database is hosted using Kubernetes primitives like a `StatefulSet`, or a MongoDB operator, or a cloud-provider hosted offering like Azure CosmosDB. Radius will provision (or connect to) the appropriate implementation depending on the environment where the application is deployed.
+
+## Platform-specific resources
+
+Some resources you use in your application don't have a Radius type to bind to. For example, Azure Cognitive Services offers a service that isn't portable across environments, having only a service in Azure.
+
+These resources can still be used in Radius Applications. Instead of being modeled as a resources within an Application, they can be placed *beside* an Application, and other Components can still reference resource connection strings and other data.
+
+Additionally, through the use of the [Bicep existing keyword](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?#reference-existing-resources), you can connect to resources that are deployed and managed separately from the Application.
+
+{{% alert title="🚧 Under Construction 🏗" color="info" %}}
+Platform-specific resources are still under construction. Stay tuned for more information.
+{{% /alert %}}
 
 ## Next step
 
