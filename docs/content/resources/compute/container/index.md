@@ -76,7 +76,7 @@ Currently, the supported persistent volume kinds are:-
 |------|:--------:|-------------|---------|
 | mountPath | y | The container path to mount the volume to. | `\tmp\mystore`
 | source | y | The resource if of the resource providing the volume. | `filestore.id`
-| rbac | n | The rbac permissions for the file share | `read`
+| rbac | n | The role-based access control level for the file share. Allowed values are `'read'` and `'write'`. | `'read'`
 
 ### Connections
 
