@@ -8,6 +8,7 @@ package health
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/Azure/radius/pkg/health/db"
 	"github.com/Azure/radius/pkg/health/handlers"
@@ -43,7 +44,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 	db := db.NewRadHealthDB(dbclient)
 
-	healthmodel := azure.NewAzureHealthModel(*s.Options.Arm, k8s)
+	healthmodel := azure.NewAzureHealthModel(*s.Options.Arm, k8s, &sync.WaitGroup{})
 
 	monitorOptions := MonitorOptions{
 		Logger:                      radlogger.GetLogger(ctx),

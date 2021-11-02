@@ -19,7 +19,7 @@ type ApplicationModel interface {
 	LookupRenderer(resourceType string) (renderers.Renderer, error)
 	LookupHandlers(resourceKind string) (Handlers, error)
 	LookupSecretTransformer(transformerName string) (renderers.SecretValueTransformer, error)
-	LookupSkipHealthStateCheckResources(resourceKind string, identity resourcemodel.ResourceIdentity) bool
+	LookupSkipHealthStateCheckResources(identity resourcemodel.ResourceIdentity) bool
 }
 
 type applicationModel struct {
@@ -74,13 +74,13 @@ func (model *applicationModel) LookupSecretTransformer(transformerName string) (
 	return transformer, nil
 }
 
-func (model *applicationModel) LookupSkipHealthStateCheckResources(resourceKind string, identity resourcemodel.ResourceIdentity) bool {
+func (model *applicationModel) LookupSkipHealthStateCheckResources(identity resourcemodel.ResourceIdentity) bool {
 	var kind string
-	if resourceKind == resourcekinds.Kubernetes {
+	if identity.Kind == resourcekinds.Kubernetes {
 		kID := identity.Data.(resourcemodel.KubernetesIdentity)
 		kind = kID.Kind
 	} else {
-		kind = resourceKind
+		kind = string(identity.Kind)
 	}
 	_, ok := model.skipHealthCheckResourceKinds[kind]
 	return ok

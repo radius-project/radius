@@ -36,10 +36,11 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	require.NoError(t, err)
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
+	wg := sync.WaitGroup{}
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient(), &wg),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -54,13 +55,12 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 
 	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
-	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
 		wg.Wait()
 	})
 
-	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
+	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh)
 
 	monitor.activeHealthProbesMutex.RLock()
 	probesLen := len(monitor.activeHealthProbes)
@@ -90,7 +90,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient(), &sync.WaitGroup{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -102,7 +102,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 			ResourceKind:     "NotImplementedType",
 		},
 	}
-	monitor.RegisterResource(ctx, registrationMsg, make(chan struct{}, 1), &sync.WaitGroup{})
+	monitor.RegisterResource(ctx, registrationMsg, make(chan struct{}, 1))
 	monitor.activeHealthProbesMutex.RLock()
 	defer monitor.activeHealthProbesMutex.RUnlock()
 	require.Equal(t, 0, len(monitor.activeHealthProbes))
@@ -119,7 +119,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient(), &sync.WaitGroup{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	stopCh := make(chan struct{}, 1)
@@ -160,11 +160,12 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	hrpc := make(chan healthcontract.ResourceHealthDataMessage, 1)
+	wg := sync.WaitGroup{}
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient()),
+		HealthModel:                 azure.NewAzureHealthModel(armauth.ArmConfig{}, getKubernetesClient(), &wg),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	optionsInterval := time.Microsecond * 5
@@ -182,14 +183,13 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 
 	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
-	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
 		wg.Wait()
 	})
 
 	ctx := logr.NewContext(context.Background(), logger)
-	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
+	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh)
 
 	monitor.activeHealthProbesMutex.RLock()
 	hi := monitor.activeHealthProbes[registration.Token]
@@ -212,7 +212,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		HealthProbeChannel:          hpc,
 		HealthModel: model.NewHealthModel(map[string]handlers.HealthHandler{
 			"dummy": mockHandler,
-		}),
+		}, &sync.WaitGroup{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -245,7 +245,7 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 		HealthState:             "Healthy",
 		HealthStateErrorDetails: "None",
 	})
-	monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 	// Wait till health state change notification is received
 	notification := <-hpc
 
@@ -268,7 +268,7 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 		HealthProbeChannel:          hpc,
 		HealthModel: model.NewHealthModel(map[string]handlers.HealthHandler{
 			"dummy": mockHandler,
-		}),
+		}, &sync.WaitGroup{}),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -302,7 +302,7 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 		stopCh <- struct{}{}
 		wg.Wait()
 	})
-	monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 
 	// Wait till health state change notification is received
 	<-hpc
@@ -325,13 +325,14 @@ func Test_HealthServiceSendsNotificationsAfterForcedUpdateInterval(t *testing.T)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockHandler := handlers.NewMockHealthHandler(ctrl)
+	wg := sync.WaitGroup{}
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hpc,
 		HealthModel: model.NewHealthModel(map[string]handlers.HealthHandler{
 			"dummy": mockHandler,
-		}),
+		}, &wg),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -343,7 +344,6 @@ func Test_HealthServiceSendsNotificationsAfterForcedUpdateInterval(t *testing.T)
 
 	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
-	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
 		wg.Wait()
@@ -358,7 +358,7 @@ func Test_HealthServiceSendsNotificationsAfterForcedUpdateInterval(t *testing.T)
 		},
 	}
 
-	monitor.RegisterResource(ctx, registrationMsg, stopCh, &wg)
+	monitor.RegisterResource(ctx, registrationMsg, stopCh)
 
 	// Wait till forced health state change notification is received
 	notification := <-hpc

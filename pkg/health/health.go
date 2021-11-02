@@ -18,6 +18,8 @@ import (
 	"github.com/Azure/radius/pkg/health/model"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 // ChannelBufferSize defines the buffer size for the Watch channel to receive health state changes from push mode watchers
@@ -56,7 +58,7 @@ func (h Monitor) Run(ctx context.Context) error {
 		case msg := <-h.resourceRegistrationChannel:
 			// Received a registration/de-registration message
 			if msg.Action == healthcontract.ActionRegister {
-				h.RegisterResource(ctx, msg, make(chan struct{}, 1), &sync.WaitGroup{})
+				h.RegisterResource(ctx, msg, make(chan struct{}, 1))
 			} else if msg.Action == healthcontract.ActionUnregister {
 				h.UnregisterResource(ctx, msg)
 			}
@@ -75,11 +77,10 @@ func (h Monitor) Run(ctx context.Context) error {
 
 // RegisterResource is called to register an output resource with the health checker
 // It should be called at the time of creation of the output resource
-// The health service has multiple goroutines running. The wait group parameter here is used to ensure that all goroutines are stopped
-// when an exit signal is received. This parameter could also be used by tests to wait till all goroutines stop and then stop the test.
 //
 // The return value here is for testing purposes.
-func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}, wg *sync.WaitGroup) *handlers.HealthRegistration {
+func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}) *handlers.HealthRegistration {
+	wg := h.model.GetWaitGroup()
 	ctx = radlogger.WrapLogContext(ctx, registerMsg.Resource.Identity.AsLogValues()...)
 	logger := radlogger.GetLogger(ctx)
 
@@ -88,6 +89,14 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	healthHandler, mode := h.model.LookupHandler(ctx, registerMsg)
 	if healthHandler == nil {
 		// No health handler was found. Return NotSupported state to distinguish from Unhealthy
+		// TODO: Convert this log to error once health checks are implemented for all resource kinds
+		// https://github.com/Azure/radius/issues/827
+		kind := registerMsg.Resource.ResourceKind
+		if registerMsg.Resource.ResourceKind == resourcekinds.Kubernetes {
+			kID := registerMsg.Resource.Identity.Data.(resourcemodel.KubernetesIdentity)
+			kind += "-" + kID.Kind
+		}
+		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource not monitored by HealthService", kind))
 		msg := healthcontract.ResourceHealthDataMessage{
 			Resource:                registerMsg.Resource,
 			HealthState:             healthcontract.HealthStateNotSupported,

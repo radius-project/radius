@@ -388,9 +388,9 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) bool {
 	logger := radlogger.GetLogger(ctx)
 
-	if dp.appmodel.LookupSkipHealthStateCheckResources(resource.ResourceKind, resource.Identity) {
+	if dp.appmodel.LookupSkipHealthStateCheckResources(resource.Identity) {
 		// Health state is not applicable to this resource and can be skipped from registering with health service
-		logger.Info(fmt.Sprintf("Health state is not applicable for resource kind: %s. Skipping registration with health service", resource.ResourceKind))
+		logger.Info(fmt.Sprintf("Health state is not applicable for resource kind: %s. Skipping registration with health service", resource.Identity.Kind))
 		// Return skipped = true
 		return true
 	}

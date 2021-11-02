@@ -7,32 +7,29 @@ package model
 
 import (
 	"context"
-	"fmt"
+	"sync"
 
 	"github.com/Azure/radius/pkg/health/handlers"
 	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 type HealthModel interface {
 	LookupHandler(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage) (handlers.HealthHandler, string)
+	GetWaitGroup() *sync.WaitGroup
 }
 
 type healthModel struct {
 	handlersList map[string]handlers.HealthHandler
+	wg           *sync.WaitGroup
 }
 
 func (hm *healthModel) LookupHandler(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage) (handlers.HealthHandler, string) {
-	logger := radlogger.GetLogger(ctx)
 	// For Kubernetes, return Push mode
 	if registerMsg.Resource.ResourceKind == resourcekinds.Kubernetes {
 		kID := registerMsg.Resource.Identity.Data.(resourcemodel.KubernetesIdentity)
 		if hm.handlersList[kID.Kind] == nil {
-			// TODO: Convert this log to error once health checks are implemented for all resource kinds
-			// https://github.com/Azure/radius/issues/827
-			logger.Info(fmt.Sprintf("ResourceKind: %s-%s does not support health checks. Resource: %+v not monitored by HealthService", registerMsg.Resource.ResourceKind, kID.Kind, registerMsg.Resource.Identity))
 			return nil, handlers.HealthHandlerModePush
 		}
 		return hm.handlersList[kID.Kind], handlers.HealthHandlerModePush
@@ -40,17 +37,21 @@ func (hm *healthModel) LookupHandler(ctx context.Context, registerMsg healthcont
 
 	// For all other resource kinds, the mode is Pull
 	if hm.handlersList[registerMsg.Resource.ResourceKind] == nil {
-		// TODO: Convert this log to error once health checks are implemented for all resource kinds
-		// https://github.com/Azure/radius/issues/827
-		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource: %+v not monitored by HealthService", registerMsg.Resource.ResourceKind, registerMsg.Resource.Identity))
 		return nil, handlers.HealthHandlerModePull
 	}
 	return hm.handlersList[registerMsg.Resource.ResourceKind], handlers.HealthHandlerModePull
 
 }
 
-func NewHealthModel(handlers map[string]handlers.HealthHandler) HealthModel {
+func (hm *healthModel) GetWaitGroup() *sync.WaitGroup {
+	return hm.wg
+}
+
+// The health service has multiple goroutines running. The wait group parameter here is used to ensure that all goroutines are stopped
+// when an exit signal is received. This parameter could also be used by tests to wait till all goroutines stop and then stop the test.
+func NewHealthModel(handlers map[string]handlers.HealthHandler, wg *sync.WaitGroup) HealthModel {
 	return &healthModel{
 		handlersList: handlers,
+		wg:           wg,
 	}
 }
