@@ -69,7 +69,7 @@ done
 
 ./kubectl kustomize\
   "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
-  kubectl apply -f -
+  ./kubectl apply -f -
 
 # Install nginx-ingress
 helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
