@@ -17,4 +17,4 @@ For example, a ContainerComponent can be configured with a readiness probe:
 
 {{< rad file="snippets/probe.bicep" embed=true marker="//SAMPLE" >}}
 
-The container runtime will probe the path `http://localhost:8080/readyz` to determine if the service is healthy. The service code should implement logic to return a 200 OK response on this HTTP path for reporting readiness of the application.
+The container runtime will probe the path `http://localhost:8080/healthz` to determine if the service is healthy. The service code should implement logic to return a 200 OK response on this HTTP path for reporting readiness of the application.
