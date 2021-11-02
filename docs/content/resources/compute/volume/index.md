@@ -8,6 +8,12 @@ weight: 100
 
 `Volume` provides an abstraction for a persistent volume to be referenced and mounted by a [ContainerComponent]({{< ref container >}}). Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the volume.
 
+## Supported resources
+
+| Resource | kind |
+|-----------|------|
+| [Azure File Share](https://docs.microsoft.com/en-us/azure/storage/files/storage-files-introduction) | `'azure.com.fileshare'`
+
 ## Component format
 
 {{< rad file="snippets/volume.bicep" embed=true marker="//SAMPLE" >}}
