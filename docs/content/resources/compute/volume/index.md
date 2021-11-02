@@ -10,6 +10,10 @@ weight: 100
 
 ## Component format
 
+{{< rad file="snippets/volume.bicep" embed=true marker="//SAMPLE" >}}
+
+### Properties
+
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | kind | y | The kind of persistent volume. Currently, the supported types are: Azure File Share | `azure.com.fileshare`
