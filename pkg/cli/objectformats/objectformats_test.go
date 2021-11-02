@@ -68,8 +68,8 @@ func Test_FormatResourceTable(t *testing.T) {
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `RESOURCE       TYPE          PROVISIONING_STATE
-test-resource  CoolResource  Provisioned
+	expected := `RESOURCE       TYPE          PROVISIONING_STATE  HEALTH_STATE
+test-resource  CoolResource  Provisioned         Healthy
 `
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }

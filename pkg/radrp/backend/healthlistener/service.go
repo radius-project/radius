@@ -46,7 +46,7 @@ func (s *Service) Run(ctx context.Context) error {
 		select {
 		case msg := <-s.Options.HealthChannels.HealthToRPNotificationChannel:
 			updated := s.UpdateHealth(ctx, msg)
-			logger.Info(fmt.Sprintf("Updated application health state changes successfully: %v", updated))
+			logger.Info(fmt.Sprintf("Updated application health state changes with health state: %v successfully: %v", msg.HealthState, updated), msg.Resource.Identity.AsLogValues()...)
 		case <-ctx.Done():
 			logger.Info("Stopping to listen for health state change notifications")
 			return nil
@@ -56,7 +56,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontract.ResourceHealthDataMessage) bool {
 	logger := radlogger.GetLogger(ctx).WithValues(healthUpdateMsg.Resource.Identity.AsLogValues()...)
-	logger.Info("Received health update message")
+	logger.Info(fmt.Sprintf("Received health state change notification from health service. Updating health in DB with state: %s", healthUpdateMsg.HealthState))
 
 	// This is the ID of the Radius Resource (Component/Scope/Route) that 'owns' the output resource being updated.
 	resourceID, err := azresources.Parse(healthUpdateMsg.Resource.RadiusResourceID)

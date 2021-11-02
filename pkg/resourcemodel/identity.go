@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"go.mongodb.org/mongo-driver/bson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -144,7 +145,13 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 		}
 
 	case IdentityKindKubernetes:
-		return nil
+		data := r.Data.(KubernetesIdentity)
+		return []interface{}{
+			radlogger.LogFieldResourceName, data.Name,
+			radlogger.LogFieldNamespace, data.Namespace,
+			radlogger.LogFieldKind, data.Kind,
+			radlogger.LogFieldResourceKind, resourcekinds.Kubernetes,
+		}
 
 	case IdentityKindAADPodIdentity:
 		return nil

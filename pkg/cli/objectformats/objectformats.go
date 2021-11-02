@@ -41,6 +41,10 @@ func GetResourceTableFormat() output.FormatterOptions {
 				Heading:  "PROVISIONING_STATE",
 				JSONPath: "{ .properties.status.provisioningState }",
 			},
+			{
+				Heading:  "HEALTH_STATE",
+				JSONPath: "{ .properties.status.healthState }",
+			},
 		},
 	}
 }

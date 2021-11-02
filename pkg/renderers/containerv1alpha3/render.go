@@ -535,6 +535,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererRes
 		Data: secrets,
 	}
 
+	// Skip registration of the secret resource with the HealthService since health as a concept is not quite applicable to it
 	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, &secret, secret.ObjectMeta)
 	return output
 }

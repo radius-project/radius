@@ -20,15 +20,40 @@ const (
 	ActionUnregister = "Unregister"
 )
 
-// Possible values for HealthState
+// Possible values for HealthState for internal representation of the health state
+// We will represent the health internally in a manner that gives us the full picture of what is happening
+// This is not representative of the values shown to the user
 const (
-	HealthStateHealthy   = "Healthy"
-	HealthStateUnhealthy = "Unhealthy"
+	// Health reporting is implemented but the state is not yet known. This is different from the case where health reporting is not supported.
+	// This could be the case at init time or if RP misses notifications from the health service
+	HealthStateUnknown       = "Unknown"
+	HealthStateHealthy       = "Healthy"
+	HealthStateUnhealthy     = "Unhealthy"
+	HealthStateDegraded      = "Degraded"      // Functionality is working but some resources are unhealthy
+	HealthStateNotSupported  = "NotSupported"  // Health reporting has not yet been implemented
+	HealthStateNotApplicable = "NotApplicable" // Health as a concept does not apply to this resource eg: Secrets
+	// A combination of supported and unsupported output resources is seen for a Radius resource.
+	// Do not know how to aggregate the health status in this case at the resource level
+	HealthStateError = "Error"
 )
+
+// Translation of internal representation of health state to user facing values
+var InternalToUserHealthStateTranslation = map[string]string{
+	HealthStateUnknown:       HealthStateUnhealthy,
+	HealthStateHealthy:       HealthStateHealthy,
+	HealthStateUnhealthy:     HealthStateUnhealthy,
+	HealthStateDegraded:      HealthStateDegraded,
+	HealthStateNotSupported:  "",
+	HealthStateNotApplicable: HealthStateHealthy,
+	HealthStateError:         HealthStateUnhealthy,
+}
 
 // HealthCheckOptions defines the options available for performing health check of a resource
 type HealthCheckOptions struct {
+	// Periodic interval at which the health state is probed
 	Interval time.Duration
+	// Forced health state update interval
+	ForcedUpdateInterval time.Duration
 }
 
 // HealthChannels defines the interface to connect to the health service

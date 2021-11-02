@@ -46,8 +46,8 @@ const (
 type Options struct {
 	// Poll interval as specified by the resource
 	Interval time.Duration
-	// Channel to receive a notification to stop watching the resource
-	StopChannel chan struct{}
+	// Interval after which health state notification is sent out even if there are no state changes
+	ForcedUpdateInterval time.Duration
 	// Channel to communicate detected changes by the push mode watcher on to the health service
 	WatchHealthChangesChannel chan<- HealthState
 }

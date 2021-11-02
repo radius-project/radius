@@ -110,5 +110,11 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		mongodbv1alpha3.CosmosMongoResourceType.Type(): &mongodbv1alpha3.AzureTransformer{},
 	}
 
-	return model.NewModel(rendererMap, handlerMap, transformerMap)
+	skipHealthCheckResourceKinds := map[string]bool{
+		resourcekinds.Service: true,
+		resourcekinds.Secret:  true,
+		resourcekinds.Ingress: true,
+	}
+
+	return model.NewModel(rendererMap, handlerMap, transformerMap, skipHealthCheckResourceKinds)
 }

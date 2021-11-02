@@ -11,6 +11,8 @@ const (
 	Kubernetes                       = "kubernetes"
 	Deployment                       = "Deployment"
 	Service                          = "Service"
+	Secret                           = "Secret"
+	Ingress                          = "Ingress"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
 	DaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
 	DaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"

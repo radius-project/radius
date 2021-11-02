@@ -8,16 +8,26 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/resourcemodel"
-	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 const KubernetesLabelName = "app.kubernetes.io/name"
+const DefaultResyncInterval = time.Minute * 10
+const (
+	DeploymentEventAdd    = "Add"
+	DeploymentEventUpdate = "Update"
+	DeploymentEventDelete = "Delete"
+)
 
 func NewKubernetesDeploymentHandler(k8s kubernetes.Interface) HealthHandler {
 	return &kubernetesDeploymentHandler{k8s: k8s}
@@ -27,22 +37,36 @@ type kubernetesDeploymentHandler struct {
 	k8s kubernetes.Interface
 }
 
+func getHealthStateFromDeploymentStatus(d *appsv1.Deployment) (string, string) {
+	healthState := healthcontract.HealthStateUnhealthy
+	healthStateErrorDetails := "Deployment condition unknown"
+	for _, c := range d.Status.Conditions {
+		// When the deployment is healthy, the DeploymentAvailable condition has a status True
+		if c.Type == appsv1.DeploymentAvailable {
+			if c.Status == v1.ConditionTrue {
+				healthState = healthcontract.HealthStateHealthy
+				healthStateErrorDetails = ""
+			} else {
+				healthState = healthcontract.HealthStateUnhealthy
+				healthStateErrorDetails = c.Reason
+			}
+			break
+		}
+	}
+	return healthState, healthStateErrorDetails
+}
+
 func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, registration HealthRegistration, options Options) HealthState {
 	kID := registration.Identity.Data.(resourcemodel.KubernetesIdentity)
-	logger := radlogger.GetLogger(ctx)
-
-	pod, err := handler.k8s.CoreV1().Pods(kID.Namespace).Get(ctx, kID.Name, metav1.GetOptions{})
 	var healthState string
 	var healthStateErrorDetails string
+	deploycl := handler.k8s.AppsV1().Deployments(kID.Namespace)
+	d, err := deploycl.Get(ctx, kID.Name, metav1.GetOptions{})
 	if err != nil {
 		healthState = healthcontract.HealthStateUnhealthy
 		healthStateErrorDetails = err.Error()
-	} else if pod.Status.Phase == corev1.PodRunning {
-		healthState = healthcontract.HealthStateHealthy
-		healthStateErrorDetails = ""
 	} else {
-		healthState = healthcontract.HealthStateUnhealthy
-		healthStateErrorDetails = pod.Status.Reason
+		healthState, healthStateErrorDetails = getHealthStateFromDeploymentStatus(d)
 	}
 
 	// Notify initial health state transition. This needs to be done explicitly since
@@ -54,55 +78,52 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		HealthStateErrorDetails: healthStateErrorDetails,
 	}
 	options.WatchHealthChangesChannel <- msg
-	logger.Info(fmt.Sprintf("Detected health change event for Resource: %+v. Notifying watcher.", registration.Identity))
 
-	// Start watching deployment changes
-	w, err := handler.k8s.CoreV1().Pods(kID.Namespace).Watch(ctx, metav1.ListOptions{
-		Watch:         true,
-		LabelSelector: fmt.Sprintf("%s=%s", KubernetesLabelName, kID.Name),
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.k8s, DefaultResyncInterval, informers.WithNamespace(kID.Namespace))
+
+	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
+	deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			onDeploymentEvent(ctx, DeploymentEventAdd, obj, registration, options.WatchHealthChangesChannel)
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			onDeploymentEvent(ctx, DeploymentEventUpdate, newObj, registration, options.WatchHealthChangesChannel)
+		},
+		DeleteFunc: func(obj interface{}) {
+			onDeploymentEvent(ctx, DeploymentEventDelete, obj, registration, options.WatchHealthChangesChannel)
+		},
 	})
-	if err != nil {
-		msg := HealthState{
-			Registration:            registration,
-			HealthState:             healthcontract.HealthStateUnhealthy,
-			HealthStateErrorDetails: err.Error(),
-		}
-		options.WatchHealthChangesChannel <- msg
-		return msg
-	}
-	defer w.Stop()
+	deploymentInformer.Run(ctx.Done())
+	return HealthState{}
+}
 
-	podsChan := w.ResultChan()
-	for {
-		select {
-		case podEvent := <-podsChan:
-			healthState := ""
-			healthStateErrorDetails := ""
-			pod, ok := podEvent.Object.(*corev1.Pod)
-			if !ok {
-				healthState = healthcontract.HealthStateUnhealthy
-				healthStateErrorDetails = "Object is not a pod"
-			} else {
-				if pod.Status.Phase == corev1.PodRunning {
-					healthState = healthcontract.HealthStateHealthy
-					healthStateErrorDetails = ""
-				} else {
-					healthState = healthcontract.HealthStateUnhealthy
-					healthStateErrorDetails = pod.Status.Reason
-				}
-			}
+func onDeploymentEvent(ctx context.Context, event string, obj interface{}, registration HealthRegistration, watchHealthChangesChannel chan<- HealthState) {
+	logger := radlogger.GetLogger(ctx)
+	deployment := obj.(*appsv1.Deployment)
 
-			// Notify the watcher. Let the watcher determine if an action is needed
-			msg := HealthState{
-				Registration:            registration,
-				HealthState:             healthState,
-				HealthStateErrorDetails: healthStateErrorDetails,
-			}
-			options.WatchHealthChangesChannel <- msg
-			logger.Info(fmt.Sprintf("Detected health change event for Resource: %+v. Notifying watcher.", registration.Identity))
-		case <-options.StopChannel:
-			logger.Info(fmt.Sprintf("Stopped health monitoring for namespace: %s", kID.Namespace))
-			return HealthState{}
-		}
+	// Ignore events that are not meant for the current deployment
+	identity := registration.Identity.Data.(resourcemodel.KubernetesIdentity)
+	if deployment.Name != identity.Name {
+		return
 	}
+	logger.Info(fmt.Sprintf("Detected health change event %s for Deployment: %+v. Notifying watcher.", event, registration.Identity))
+	var healthState string
+	var healthStateErrorDetails string
+	switch event {
+	case DeploymentEventAdd:
+	case DeploymentEventUpdate:
+		healthState, healthStateErrorDetails = getHealthStateFromDeploymentStatus(deployment)
+	case DeploymentEventDelete:
+		healthState = healthcontract.HealthStateUnhealthy
+		healthStateErrorDetails = "Deployment deleted"
+	default:
+		// We do not expect to see any other event
+		return
+	}
+	msg := HealthState{
+		Registration:            registration,
+		HealthState:             healthState,
+		HealthStateErrorDetails: healthStateErrorDetails,
+	}
+	watchHealthChangesChannel <- msg
 }

@@ -13,12 +13,15 @@ import (
 	"testing"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/backend/deployment"
 	"github.com/Azure/radius/pkg/radrp/db"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -806,6 +809,536 @@ func Test_GetOperation_DeployInProgress(t *testing.T) {
 		},
 	}
 	require.Equal(t, rest.NewAcceptedAsyncResponse(expected, id.ID), response)
+}
+
+func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+
+	data := db.RadiusResource{
+		ID:                id.Truncate().ID,
+		Type:              id.Truncate().Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: string(rest.SuccededStatus),
+		Status: db.RadiusResourceStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:      outputresource.LocalIDDeployment,
+					ResourceKind: resourcekinds.Kubernetes,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateHealthy,
+					},
+				},
+				{
+					LocalID:      outputresource.LocalIDSecret,
+					ResourceKind: resourcekinds.Kubernetes,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateNotApplicable,
+					},
+				},
+			},
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	}
+
+	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	response, err := test.rp.GetOperation(ctx, id)
+	require.NoError(t, err)
+
+	expected := RadiusResource{
+		ID:   id.Truncate().ID,
+		Type: id.Truncate().Type(),
+		Name: resourceName,
+		Properties: map[string]interface{}{
+			"data":              true,
+			"provisioningState": string(rest.SuccededStatus),
+			"status": rest.ComponentStatus{
+				ProvisioningState: rest.Provisioned,
+				HealthState:       healthcontract.HealthStateHealthy, // Aggregation should show Healthy
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:      outputresource.LocalIDDeployment,
+						ResourceKind: resourcekinds.Kubernetes,
+						Status: rest.OutputResourceStatus{
+							HealthState: healthcontract.HealthStateHealthy,
+						},
+					},
+					{
+						LocalID:      outputresource.LocalIDSecret,
+						ResourceKind: resourcekinds.Kubernetes,
+						Status: rest.OutputResourceStatus{
+							HealthState: healthcontract.HealthStateHealthy, // NotApplicable should be shown as Healthy
+						},
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expected), response)
+}
+
+func Test_AggregateResourceHealth_NotSupportedOnlyIsEmpty(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+
+	data := db.RadiusResource{
+		ID:                id.Truncate().ID,
+		Type:              id.Truncate().Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: string(rest.SuccededStatus),
+		Status: db.RadiusResourceStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:      outputresource.LocalIDKeyVault,
+					ResourceKind: resourcekinds.AzureKeyVault,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateNotSupported,
+					},
+				},
+			},
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	}
+
+	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	response, err := test.rp.GetOperation(ctx, id)
+	require.NoError(t, err)
+
+	expected := RadiusResource{
+		ID:   id.Truncate().ID,
+		Type: id.Truncate().Type(),
+		Name: resourceName,
+		Properties: map[string]interface{}{
+			"data":              true,
+			"provisioningState": string(rest.SuccededStatus),
+			"status": rest.ComponentStatus{
+				ProvisioningState: rest.Provisioned,
+				HealthState:       "", // Aggregation should show empty
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:      outputresource.LocalIDKeyVault,
+						ResourceKind: resourcekinds.AzureKeyVault,
+						Status: rest.OutputResourceStatus{
+							HealthState: "",
+						},
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expected), response)
+}
+
+func Test_AggregateResourceHealth_NotSupportedAndNotApplicableIsEmpty(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+
+	data := db.RadiusResource{
+		ID:                id.Truncate().ID,
+		Type:              id.Truncate().Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: string(rest.SuccededStatus),
+		Status: db.RadiusResourceStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:      outputresource.LocalIDKeyVault,
+					ResourceKind: resourcekinds.AzureKeyVault,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateNotSupported,
+					},
+				},
+				{
+					LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
+					ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateNotApplicable,
+					},
+				},
+			},
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	}
+
+	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	response, err := test.rp.GetOperation(ctx, id)
+	require.NoError(t, err)
+
+	expected := RadiusResource{
+		ID:   id.Truncate().ID,
+		Type: id.Truncate().Type(),
+		Name: resourceName,
+		Properties: map[string]interface{}{
+			"data":              true,
+			"provisioningState": string(rest.SuccededStatus),
+			"status": rest.ComponentStatus{
+				ProvisioningState: rest.Provisioned,
+				HealthState:       "", // Aggregation should show empty
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:      outputresource.LocalIDKeyVault,
+						ResourceKind: resourcekinds.AzureKeyVault,
+						Status: rest.OutputResourceStatus{
+							HealthState: "",
+						},
+					},
+					{
+						LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
+						ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+						Status: rest.OutputResourceStatus{
+							HealthState: healthcontract.HealthStateHealthy,
+						},
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expected), response)
+}
+
+// We do not expect to see a Radius Resource to have a combination of some output resources as Healthy/Unhealthy and some as NotSupported
+func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+
+	data := db.RadiusResource{
+		ID:                id.Truncate().ID,
+		Type:              id.Truncate().Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: string(rest.SuccededStatus),
+		Status: db.RadiusResourceStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:      outputresource.LocalIDKeyVault,
+					ResourceKind: resourcekinds.AzureKeyVault,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateHealthy,
+					},
+				},
+				{
+					LocalID:      outputresource.LocalIDKeyVaultSecret,
+					ResourceKind: resourcekinds.AzureKeyVaultSecret,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateNotSupported,
+					},
+				},
+			},
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	}
+
+	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	response, err := test.rp.GetOperation(ctx, id)
+	require.NoError(t, err)
+
+	expected := RadiusResource{
+		ID:   id.Truncate().ID,
+		Type: id.Truncate().Type(),
+		Name: resourceName,
+		Properties: map[string]interface{}{
+			"data":              true,
+			"provisioningState": string(rest.SuccededStatus),
+			"status": rest.ComponentStatus{
+				ProvisioningState:  rest.Provisioned,
+				HealthState:        healthcontract.HealthStateUnhealthy, // Aggregation should show Unhealthy
+				HealthErrorDetails: "Health aggregation error",
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:      outputresource.LocalIDKeyVault,
+						ResourceKind: resourcekinds.AzureKeyVault,
+						Status: rest.OutputResourceStatus{
+							HealthState: healthcontract.HealthStateHealthy,
+						},
+					},
+					{
+						LocalID:      outputresource.LocalIDKeyVaultSecret,
+						ResourceKind: resourcekinds.AzureKeyVaultSecret,
+						Status: rest.OutputResourceStatus{
+							HealthState: "", // NotSupported should show as ""
+						},
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expected), response)
+}
+
+func Test_AggregateResourceHealth_HealthyUnhealthyAndNotApplicableIsUnhealthy(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+
+	data := db.RadiusResource{
+		ID:                id.Truncate().ID,
+		Type:              id.Truncate().Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: string(rest.SuccededStatus),
+		Status: db.RadiusResourceStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:      outputresource.LocalIDService,
+					ResourceKind: resourcekinds.Kubernetes,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateHealthy,
+					},
+				},
+				{
+					LocalID:      outputresource.LocalIDSecret,
+					ResourceKind: resourcekinds.Kubernetes,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateNotApplicable,
+					},
+				},
+				{
+					LocalID:      outputresource.LocalIDDeployment,
+					ResourceKind: resourcekinds.Kubernetes,
+					Status: db.OutputResourceStatus{
+						HealthState: healthcontract.HealthStateUnhealthy,
+					},
+				},
+			},
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	}
+
+	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	response, err := test.rp.GetOperation(ctx, id)
+	require.NoError(t, err)
+
+	expected := RadiusResource{
+		ID:   id.Truncate().ID,
+		Type: id.Truncate().Type(),
+		Name: resourceName,
+		Properties: map[string]interface{}{
+			"data":              true,
+			"provisioningState": string(rest.SuccededStatus),
+			"status": rest.ComponentStatus{
+				ProvisioningState: rest.Provisioned,
+				HealthState:       healthcontract.HealthStateUnhealthy, // Aggregation should show Unhealthy
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:      outputresource.LocalIDService,
+						ResourceKind: resourcekinds.Kubernetes,
+						Status: rest.OutputResourceStatus{
+							HealthState: healthcontract.HealthStateHealthy,
+						},
+					},
+					{
+						LocalID:      outputresource.LocalIDSecret,
+						ResourceKind: resourcekinds.Kubernetes,
+						Status: rest.OutputResourceStatus{
+							HealthState: healthcontract.HealthStateHealthy, // NotApplicable should show as Healthy
+						},
+					},
+					{
+						LocalID:      outputresource.LocalIDDeployment,
+						ResourceKind: resourcekinds.Kubernetes,
+						Status: rest.OutputResourceStatus{
+							HealthState: healthcontract.HealthStateUnhealthy,
+						},
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expected), response)
+}
+
+func Test_AggregateResourceHealth_FailedAndProvisioningIsFailed(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+
+	data := db.RadiusResource{
+		ID:                id.Truncate().ID,
+		Type:              id.Truncate().Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: string(rest.SuccededStatus),
+		Status: db.RadiusResourceStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:      outputresource.LocalIDKeyVault,
+					ResourceKind: resourcekinds.AzureKeyVault,
+					Status: db.OutputResourceStatus{
+						HealthState:       healthcontract.HealthStateNotSupported,
+						ProvisioningState: db.Provisioning,
+					},
+				},
+				{
+					LocalID:      outputresource.LocalIDKeyVaultSecret,
+					ResourceKind: resourcekinds.AzureKeyVaultSecret,
+					Status: db.OutputResourceStatus{
+						HealthState:       healthcontract.HealthStateNotApplicable,
+						ProvisioningState: db.Failed,
+					},
+				},
+			},
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	}
+
+	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	response, err := test.rp.GetOperation(ctx, id)
+	require.NoError(t, err)
+
+	expected := RadiusResource{
+		ID:   id.Truncate().ID,
+		Type: id.Truncate().Type(),
+		Name: resourceName,
+		Properties: map[string]interface{}{
+			"data":              true,
+			"provisioningState": string(rest.SuccededStatus),
+			"status": rest.ComponentStatus{
+				ProvisioningState:  rest.Failed,
+				HealthState:        "", // Aggregation should show empty
+				HealthErrorDetails: "",
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:      outputresource.LocalIDKeyVault,
+						ResourceKind: resourcekinds.AzureKeyVault,
+						Status: rest.OutputResourceStatus{
+							HealthState:       "", // NotSupported should show as empty
+							ProvisioningState: rest.Provisioning,
+						},
+					},
+					{
+						LocalID:      outputresource.LocalIDKeyVaultSecret,
+						ResourceKind: resourcekinds.AzureKeyVaultSecret,
+						Status: rest.OutputResourceStatus{
+							HealthState:       healthcontract.HealthStateHealthy, // NotApplicable should show as Healthy
+							ProvisioningState: rest.Failed,
+						},
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expected), response)
+}
+
+func Test_AggregateResourceHealth_ProvisionedAndProvisioningIsFailed(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(operationID(applicationName, resourceType, resourceName, operationName))
+	test.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+
+	data := db.RadiusResource{
+		ID:                id.Truncate().ID,
+		Type:              id.Truncate().Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: string(rest.SuccededStatus),
+		Status: db.RadiusResourceStatus{
+			OutputResources: []db.OutputResource{
+				{
+					LocalID:      outputresource.LocalIDKeyVault,
+					ResourceKind: resourcekinds.AzureKeyVault,
+					Status: db.OutputResourceStatus{
+						HealthState:       healthcontract.HealthStateNotSupported,
+						ProvisioningState: db.Provisioning,
+					},
+				},
+				{
+					LocalID:      outputresource.LocalIDKeyVaultSecret,
+					ResourceKind: resourcekinds.AzureKeyVaultSecret,
+					Status: db.OutputResourceStatus{
+						HealthState:       healthcontract.HealthStateNotApplicable,
+						ProvisioningState: db.Provisioned,
+					},
+				},
+			},
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	}
+
+	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	response, err := test.rp.GetOperation(ctx, id)
+	require.NoError(t, err)
+
+	expected := RadiusResource{
+		ID:   id.Truncate().ID,
+		Type: id.Truncate().Type(),
+		Name: resourceName,
+		Properties: map[string]interface{}{
+			"data":              true,
+			"provisioningState": string(rest.SuccededStatus),
+			"status": rest.ComponentStatus{
+				ProvisioningState:  rest.Provisioning,
+				HealthState:        "", // Aggregation should show empty
+				HealthErrorDetails: "",
+				OutputResources: []rest.OutputResource{
+					{
+						LocalID:      outputresource.LocalIDKeyVault,
+						ResourceKind: resourcekinds.AzureKeyVault,
+						Status: rest.OutputResourceStatus{
+							HealthState:       "", // NotSupported should show as empty
+							ProvisioningState: rest.Provisioning,
+						},
+					},
+					{
+						LocalID:      outputresource.LocalIDKeyVaultSecret,
+						ResourceKind: resourcekinds.AzureKeyVaultSecret,
+						Status: rest.OutputResourceStatus{
+							HealthState:       healthcontract.HealthStateHealthy, // NotApplicable should show as Healthy
+							ProvisioningState: rest.Provisioned,
+						},
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expected), response)
 }
 
 type test struct {

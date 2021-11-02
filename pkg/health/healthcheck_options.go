@@ -17,7 +17,10 @@ import (
 
 // Default values for Health check options
 const (
-	HealthCheckFrequencyInSecs = 10 * time.Second
+	DefaultHealthCheckFrequencyInSecs = 10 * time.Second
+	// DefaultForceHealthStateUpdateInterval is the interval after which a health state change notification is sent to the RP
+	// even if there are no changes. This is for increased robustness in case the RP has missed earlier notifications
+	DefaultForceHealthStateUpdateInterval = time.Second * 30
 )
 
 // Option is an a function that applies a health check option
@@ -26,9 +29,15 @@ type HealthCheckOption func(o *healthcontract.HealthCheckOptions)
 func getHealthCheckOptions(o *healthcontract.HealthCheckOptions, msgOptions *healthcontract.HealthCheckOptions) {
 	// Read incoming message values or apply defaults
 	if msgOptions == nil || msgOptions.Interval == 0 {
-		o.Interval = HealthCheckFrequencyInSecs
+		o.Interval = DefaultHealthCheckFrequencyInSecs
 	} else {
 		o.Interval = msgOptions.Interval
+	}
+
+	if msgOptions == nil || msgOptions.ForcedUpdateInterval == 0 {
+		o.ForcedUpdateInterval = DefaultForceHealthStateUpdateInterval
+	} else {
+		o.ForcedUpdateInterval = msgOptions.ForcedUpdateInterval
 	}
 }
 
