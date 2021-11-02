@@ -69,8 +69,8 @@ Ephemeral volumes have the same lifecycle as the container, being deployed and d
 #### Persistent
 
 Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the volume.
-Currently, the supported persistent volume kinds are:-
-- Azure File Share: `azure.com.fileshare`
+
+Learn more about volumes and supported resources in the [Volume docs]({{< ref volume >}}).
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
