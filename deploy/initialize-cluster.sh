@@ -67,7 +67,7 @@ do
   fi
 done
 
-kubectl kustomize\
+./kubectl kustomize\
   "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
   kubectl apply -f -
 
@@ -85,7 +85,7 @@ controller:
     watch-gateway: "true"
 EOF
 
-cat <<EOF | kubectl apply -f -
+cat <<EOF | ./kubectl apply -f -
 apiVersion: networking.x-k8s.io/v1alpha1
 kind: GatewayClass
 metadata:
