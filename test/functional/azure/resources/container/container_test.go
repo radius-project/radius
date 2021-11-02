@@ -155,6 +155,21 @@ func Test_ContainerGateway(t *testing.T) {
 					},
 				},
 			},
+			Gateway: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					application: {
+						validation.NewK8sObjectForResource(application, "gateway"),
+					},
+				},
+			},
+			HttpRoute: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					application: {
+						validation.NewK8sObjectForResource(application, "frontend"),
+						validation.NewK8sObjectForResource(application, "backend"),
+					},
+				},
+			},
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -200,16 +215,6 @@ func Test_ContainerGateway(t *testing.T) {
 						},
 					},
 				},
-			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
-				// Verify that we've created an ingress resource. We don't verify reachability because allocating
-				// a public IP can take a few minutes.
-				labelset := kubernetes.MakeSelectorLabels(application, "frontend")
-				matches, err := at.Options.K8sClient.NetworkingV1().Ingresses(application).List(context.Background(), metav1.ListOptions{
-					LabelSelector: labels.SelectorFromSet(labelset).String(),
-				})
-				require.NoError(t, err, "failed to list ingresses")
-				require.Lenf(t, matches.Items, 1, "items should contain one match, instead it had: %+v", matches.Items)
 			},
 		},
 	})
