@@ -42,6 +42,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource backendhttp 'HttpRoute' = {
     name: 'backend'
   }
+
   resource backend 'ContainerComponent' = {
     name: 'backend'
     properties: {
@@ -51,6 +52,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
           web: {
             containerPort: 80
             provides: backendhttp.id
+          }
+        }
+        volumes:{
+          'my-volume':{
+            kind: 'ephemeral'
+            mountPath:'/tmpfs'
+            managedStore:'memory'
           }
         }
       }

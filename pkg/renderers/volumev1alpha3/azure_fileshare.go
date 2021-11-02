@@ -3,14 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azurefilesharev1alpha3
+package volumev1alpha3
 
 import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -19,31 +17,15 @@ import (
 	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
-const (
-	VolumeKindEphemeral  = "ephemeral"
-	VolumeKindPersistent = "persistent"
-)
-
-var storageAccountDependency outputresource.Dependency = outputresource.Dependency{
-	LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
-}
-
-var _ renderers.Renderer = (*Renderer)(nil)
-
-type Renderer struct {
-	Arm armauth.ArmConfig
-}
-
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
-}
-
-func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := AzureFileShareProperties{}
-	resource := options.Resource
+func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+	properties := VolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
+	}
+
+	storageAccountDependency = outputresource.Dependency{
+		LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
 	}
 
 	resources := []outputresource.OutputResource{}
@@ -63,7 +45,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		resources = append(resources, results...)
 	}
 
-	computedValues, secretValues := MakeSecretsAndValues(storageAccountDependency.LocalID)
+	computedValues, secretValues := MakeSecretsAndValuesForAzureFileShare(storageAccountDependency.LocalID)
 
 	return renderers.RendererOutput{
 		Resources:      resources,
@@ -72,7 +54,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}, nil
 }
 
-func RenderManaged(name string, properties AzureFileShareProperties) ([]outputresource.OutputResource, error) {
+func RenderManaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
@@ -101,7 +83,7 @@ func RenderManaged(name string, properties AzureFileShareProperties) ([]outputre
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
-func RenderUnmanaged(name string, properties AzureFileShareProperties) ([]outputresource.OutputResource, error) {
+func RenderUnmanaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
@@ -136,13 +118,14 @@ func RenderUnmanaged(name string, properties AzureFileShareProperties) ([]output
 			handlers.FileShareIDKey:                 fileshareID.ID,
 			handlers.FileShareNameKey:               fileshareID.Types[2].Name,
 		},
+
 		Dependencies: []outputresource.Dependency{storageAccountDependency},
 		Identity:     resourcemodel.NewARMIdentity(fileshareID.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent())),
 	}
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
-func MakeSecretsAndValues(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+func MakeSecretsAndValuesForAzureFileShare(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	computedValues := map[string]renderers.ComputedValueReference{
 		StorageAccountName: {
 			LocalID: outputresource.LocalIDAzureFileShareStorageAccount,

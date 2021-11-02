@@ -22,19 +22,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
             provides: frontendhttp.id
           }
         }
-        volumes:{
-          'my-volume':{
-            kind: 'ephemeral'
-            mountPath:'/tmpfs'
-            managedStore:'memory'
-          }
-          'my-volume2':{
-            kind: 'persistent'
-            mountPath:'/tmpfs2'
-            source: myshare.id
-            rbac: 'read'
-          }
-        }
         env: {
           SERVICE__BACKEND__HOST: backendhttp.properties.host
           SERVICE__BACKEND__PORT: '${backendhttp.properties.port}'
@@ -46,14 +33,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           replicas: 2
         }
       ]
-    }
-  }
-
-  resource myshare 'Volume' = {
-    name: 'myshare'
-    properties:{
-      kind: 'azure.com.fileshare'
-      managed:true
     }
   }
 

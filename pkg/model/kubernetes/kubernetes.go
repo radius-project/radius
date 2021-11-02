@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/rabbitmqv1alpha1"
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -32,6 +33,7 @@ func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 		redisv1alpha3.ResourceType:          &redisv1alpha3.KubernetesRenderer{},
 		httproutev1alpha3.ResourceType:      &httproutev1alpha3.Renderer{},
 		gateway.ResourceType:                &gateway.Renderer{},
+		volumev1alpha3.ResourceType:         &volumev1alpha3.KubernetesRenderer{VolumeRenderers: nil},
 	}
 
 	handlers := map[string]model.Handlers{

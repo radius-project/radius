@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azurefilesharev1alpha3
+package volumev1alpha3
 
 import "github.com/Azure/radius/pkg/azure/azresources"
 
@@ -30,7 +30,7 @@ var AzureFileShareResourceType = azresources.KnownType{
 	},
 }
 
-type AzureFileShareProperties struct {
+type VolumeProperties struct {
 	Kind     string `json:"kind"`
 	Managed  bool   `json:"managed"`
 	Resource string `json:"resource"`
