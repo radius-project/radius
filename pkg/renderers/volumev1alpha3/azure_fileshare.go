@@ -24,6 +24,10 @@ func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererRes
 		return renderers.RendererOutput{}, err
 	}
 
+	storageAccountDependency = outputresource.Dependency{
+		LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
+	}
+
 	resources := []outputresource.OutputResource{}
 	if properties.Managed {
 		results, err := RenderManaged(resource.ResourceName, properties)
@@ -101,9 +105,6 @@ func RenderUnmanaged(name string, properties VolumeProperties) ([]outputresource
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,
 			handlers.FileShareStorageAccountNameKey: storageAccountID.Types[0].Name,
 		},
-	}
-	storageAccountDependency = outputresource.Dependency{
-		LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
 	}
 
 	fileshareResource := outputresource.OutputResource{
