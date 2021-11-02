@@ -148,7 +148,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route HttpRoute, gatewayName string) outputresource.OutputResource {
 
 	serviceName := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
-	pathMatch := gatewayv1alpha1.PathMatchPrefix
+	pathMatch := gatewayv1alpha1.PathMatchImplementationSpecific
 	var rules []gatewayv1alpha1.HTTPRouteRule
 	for _, rule := range route.Gateway.Rules {
 		// Default to prefix match
