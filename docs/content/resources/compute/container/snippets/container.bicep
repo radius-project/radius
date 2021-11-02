@@ -24,6 +24,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
             mountPath: '/tmpfs'
             managedStore: 'memory'
           }
+          persistentVolume:{
+            kind: 'persistent'
+            mountPath:'/tmpfs2'
+            source: myshare.id
+            rbac: 'read'
+          }
         }
       }
       connections: {
@@ -31,6 +37,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
           kind: 'mongo.com/MongoDB'
           source: db.id
         }
+      }
+    }
+    resource myshare 'Volume' = {
+      name: 'myshare'
+      properties:{
+        kind: 'azure.com.fileshare'
+        managed:true
       }
     }
   }

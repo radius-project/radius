@@ -69,15 +69,13 @@ Ephemeral volumes have the same lifecycle as the container, being deployed and d
 #### Persistent
 
 Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the volume.
-
-{{% alert title="👷‍♂️ Under construction 🚧" color="warning" %}}
-Persistent volumes are still in development, check back soon for updates on available volume providers.
-{{% /alert %}}
+Currently, only persistent volume of kind `azure.com.file` is supported.
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | mountPath | y | The container path to mount the volume to. | `\tmp\mystore`
 | source | y | The resource if of the resource providing the volume. | `filestore.id`
+| rbac | n | The rbac permissions for the file share | `read`
 
 ### Connections
 
