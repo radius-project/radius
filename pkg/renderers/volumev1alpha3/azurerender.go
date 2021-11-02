@@ -65,7 +65,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 }
 
 func isSupported(kind string) bool {
-	for k, _ := range SupportedVolumeRenderers {
+	for k := range SupportedVolumeRenderers {
 		if kind == k {
 			return true
 		}
