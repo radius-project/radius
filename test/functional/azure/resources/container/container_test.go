@@ -136,7 +136,6 @@ func Test_ContainerHttpBinding(t *testing.T) {
 }
 
 func Test_ContainerGateway(t *testing.T) {
-	t.Skip("Skipping to merge azure gateway support which requires infra changes.")
 	application := "azure-resources-container-httproute-gateway"
 	template := "testdata/azure-resources-container-httproute-gateway.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
