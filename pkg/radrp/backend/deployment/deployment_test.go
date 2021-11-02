@@ -191,7 +191,8 @@ func Test_DeployNewResource_Success(t *testing.T) {
 			HealthHandler:   mocks.healthHandler,
 		},
 	},
-		map[string]renderers.SecretValueTransformer{})
+		map[string]renderers.SecretValueTransformer{},
+		map[string]bool{})
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
 
 	operationID := testResourceID.Append(azresources.ResourceType{Type: resources.V3OperationResourceType, Name: uuid.New().String()})
@@ -786,7 +787,7 @@ func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mocks.secretsValueClient}
+	}, mocks.secretsValueClient, nil}
 
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDSecret,
@@ -837,7 +838,7 @@ func Test_Deploy_WithHealthMonitoring(t *testing.T) {
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
 	dp := deploymentProcessor{model, mocks.db, &healthcontract.HealthChannels{
 		ResourceRegistrationWithHealthChannel: registrationChannel,
-	}, mocks.secretsValueClient}
+	}, mocks.secretsValueClient, nil}
 
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDeployment,
