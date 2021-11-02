@@ -206,13 +206,14 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockHandler := handlers.NewMockHealthHandler(ctrl)
+	wg := sync.WaitGroup{}
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hpc,
 		HealthModel: model.NewHealthModel(map[string]handlers.HealthHandler{
 			"dummy": mockHandler,
-		}, &sync.WaitGroup{}),
+		}, &wg),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -233,7 +234,6 @@ func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 	}
 	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
-	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
 		wg.Wait()
@@ -262,13 +262,14 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockHandler := handlers.NewMockHealthHandler(ctrl)
+	wg := sync.WaitGroup{}
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hpc,
 		HealthModel: model.NewHealthModel(map[string]handlers.HealthHandler{
 			"dummy": mockHandler,
-		}, &sync.WaitGroup{}),
+		}, &wg),
 	}
 	monitor := NewMonitor(options, armauth.ArmConfig{})
 	ctx := logr.NewContext(context.Background(), logger)
@@ -297,7 +298,6 @@ func Test_HealthServiceUpdatesHealthStateBasedOnGetHealthStateReturnValue(t *tes
 
 	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
-	wg := sync.WaitGroup{}
 	t.Cleanup(func() {
 		stopCh <- struct{}{}
 		wg.Wait()
