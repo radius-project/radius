@@ -36,6 +36,8 @@ Details on what to run and how to run it are defined in the `container` property
 | image | y | The registry and image to download and run in your container. | `radiusteam/frontend`
 | env | n | The environment variables to be set for the container. | `"ENV_VAR": "value"`
 | ports | n | Ports the container provides | [See below](#ports).
+| readinessProbe | n | Readiness probe configuration. | [See below](#readiness-probe).
+| livenessProbe | n | Liveness probe configuration. | [See below](#liveness-probe).
 
 ### Ports
 
@@ -78,6 +80,46 @@ Persistent volumes are still in development, check back soon for updates on avai
 |------|:--------:|-------------|---------|
 | mountPath | y | The container path to mount the volume to. | `\tmp\mystore`
 | source | y | The resource if of the resource providing the volume. | `filestore.id`
+
+### Readiness probe
+
+Readiness probes detect when a container begins reporting it is ready to receive traffic, such as after loading a large configuration file that may take a couple seconds to process.
+There are three types of probes available, `httpGet`, `tcp` and `exec`. For an `httpGet` probe, an HTTP GET request at the specified endpoint will be used to probe the application. If a success code is returned, the probe passes. If no code or an error code is returned, the probe fails, and the container won't receive any requests after a specified number of failures.
+Any code greater than or equal to 200 and less than 400 indicates success. Any other code indicates failure.
+
+For a `tcp` probe, the specified container port is probed to be listening. If not, the probe fails.
+
+For an `exec` probe, a command is run within the container. A return code of 0 indicates a success and the probe succeeds. Any other return indicates a failure, and the container doesn't receive any requests after a specified number of failures.
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| kind | y | Type of readiness check, `httpGet` or `tcp` or `exec`. | `httpGet`
+| containerPort | n | Used when kind is `httpGet` or `tcp`. The listening port number. | `8080`
+| path | n | Used when kind is `httpGet`. The route to make the HTTP request on | `'/healthz'`
+| command | n | Used when kind is `exec`. Command to execute to probe readiness | `'/healthz'`
+| initialDelaySeconds | n | Initial delay in seconds before probing for readiness. | `10`
+| failureThreshold | n | Threshold number of times the probe fails after which a failure would be reported. | `5`
+| periodSeconds | n | Interval for the readiness probe in seconds. | `5`
+
+### Liveness probe
+
+Liveness probes detect when a container is in a broken state, restarting the container to return it to a healthy state.
+There are three types of probes available, `httpGet`, `tcp` and `exec`. For an `httpGet` probe, an HTTP GET request at the specified endpoint will be used to probe the application. If a success code is returned, the probe passes. If no code or an error code is returned, the probe fails, and the container won't receive any requests after a specified number of failures.
+Any code greater than or equal to 200 and less than 400 indicates success. Any other code indicates failure.
+
+For a `tcp` probe, the specified container port is probed to be listening. If not, the probe fails.
+
+For an `exec` probe, a command is run within the container. A return code of 0 indicates a success and the probe succeeds. Any other return indicates a failure, and the container doesn't receive any requests after a specified number of failures.
+
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| kind | y | Type of liveness check, `httpGet` or `tcp` or `exec`. | `httpGet`
+| containerPort | n | Used when kind is `httpGet` or `tcp`. The listening port number. | `8080`
+| path | n | Used when kind is `httpGet`. The route to make the HTTP request on | `'/healthz'`
+| command | n | Used when kind is `exec`. Command to execute to probe liveness | `'/healthz'`
+| initialDelaySeconds | n | Initial delay in seconds before probing for liveness. | `10`
+| failureThreshold | n | Threshold number of times the probe fails after which a failure would be reported. | `5`
+| periodSeconds | n | Interval for the liveness probe in seconds. | `5`
 
 ### Connections
 
