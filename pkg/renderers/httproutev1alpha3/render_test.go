@@ -220,7 +220,7 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	path := rule.Matches[0]
 
 	require.Equal(t, "/", *path.Path.Value)
-	require.Equal(t, gatewayv1alpha1.PathMatchType("Prefix"), *path.Path.Type)
+	require.Equal(t, gatewayv1alpha1.PathMatchImplementationSpecific, *path.Path.Type)
 
 	backend := rule.ForwardTo[0]
 	require.NotNil(t, backend)
@@ -286,7 +286,7 @@ func Test_Render_WithHostname_NoRule_DefaultToSlash(t *testing.T) {
 	path := rule.Matches[0]
 
 	require.Equal(t, "/", *path.Path.Value)
-	require.Equal(t, gatewayv1alpha1.PathMatchPrefix, *path.Path.Type)
+	require.Equal(t, gatewayv1alpha1.PathMatchImplementationSpecific, *path.Path.Type)
 
 	backend := rule.ForwardTo[0]
 	require.NotNil(t, backend)

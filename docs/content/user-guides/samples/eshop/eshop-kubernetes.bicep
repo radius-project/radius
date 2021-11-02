@@ -92,13 +92,13 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           XamarinCallback: ''
           EnableDevspaces: ENABLEDEVSPACES
           ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=IdentityDb;User Id=${adminLogin};Password=${adminPassword};'
-          MvcClient: '${CLUSTERDNS}${webmvcHttp.properties.gateway.path}'
+          MvcClient: '${CLUSTERDNS}${webmvcHttp.properties.gateway.rules.webmvc.path.value}'
           SpaClient: CLUSTERDNS
-          BasketApiClient: '${CLUSTERDNS}${basketHttp.properties.gateway.path}'
-          OrderingApiClient: '${CLUSTERDNS}${orderingHttp.properties.gateway.path}'
-          WebShoppingAggClient: '${CLUSTERDNS}${webshoppingaggHttp.properties.gateway.path}'
-          WebhooksApiClient: '${CLUSTERDNS}${webhooksHttp.properties.gateway.path}'
-          WebhooksWebClient: '${CLUSTERDNS}${webhooksclientHttp.properties.gateway.path}'
+          BasketApiClient: '${CLUSTERDNS}${basketHttp.properties.gateway.rules.basket.path.value}'
+          OrderingApiClient: '${CLUSTERDNS}${orderingHttp.properties.gateway.rules.ordering.path.value}'
+          WebShoppingAggClient: '${CLUSTERDNS}${webshoppingaggHttp.properties.gateway.rules.webshoppingagg.path.value}'
+          WebhooksApiClient: '${CLUSTERDNS}${webhooksHttp.properties.gateway.rules.webhooks.path.value}'
+          WebhooksWebClient: '${CLUSTERDNS}${webhooksclientHttp.properties.gateway.rules.webhooks.path.value}'
         }
         ports: {
           http: {
@@ -154,8 +154,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5105
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/identity-api'
+        rules: {
+          identity: {
+            path: {
+              value: '/identity-api'
+            }
+          }
+        }
       }
     }
   }
@@ -183,7 +190,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=OrderingDb;User Id=${adminLogin};Password=${adminPassword};'
           EventBusConnection: 'eshop-rabbitmq'
           identityUrl: identityHttp.properties.url
-          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
+          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.rules.identity.path.value}'
         }
         ports: {
           http: {
@@ -219,8 +226,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5102
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/ordering-api'
+        rules: {
+          ordering: {
+            path: {
+              value: '/ordering-api'
+            }
+          }
+        }
       }
     }
   }
@@ -251,7 +265,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ConnectionString: '${redisBasket.properties.host}:${redisBasket.properties.port}'
           EventBusConnection: 'eshop-rabbitmq'
           identityUrl: identityHttp.properties.url
-          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
+          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.rules.identity.path.value}'
         }
         ports: {
           http: {
@@ -286,9 +300,16 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     name: 'basket-http'
     properties: {
       port: 5103
-      gateway:  {
+      gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/basket-api'
+        rules: {
+          basket: {
+            path: {
+              value: '/basket-api'
+            }
+          }
+        }
       }
     }
   }
@@ -315,7 +336,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ConnectionString: 'Server=${sqlRoute.properties.host};Initial Catalog=WebhookDb;User Id=${adminLogin};Password=${adminPassword};'
           EventBusConnection: 'eshop-rabbitmq'
           identityUrl: identityHttp.properties.url
-          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
+          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.rules.identity.path.value}'
         }
         ports: {
           http: {
@@ -347,8 +368,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5113
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webhooks-api'
+        rules: {
+          webhooks: {
+            path: {
+              value: '/webhooks-api'
+            }
+          }
+        }
       }
     }
   }
@@ -465,7 +493,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           IdentityUrlHC: '${identityHttp.properties.url}/hc'
           BasketUrlHC: '${basketHttp.properties.url}/hc'
           PaymentUrlHC: '${paymentHttp.properties.url}/hc'
-          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
+          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.rules.identity.path.value}'
         }
         ports: {
           http: {
@@ -505,8 +533,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5121
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webshoppingagg'
+        rules: {
+          webshoppingagg: {
+            path: {
+              value: '/webshoppingagg'
+            }
+          }
+        }
       }
     }
   }
@@ -539,8 +574,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5202
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webshoppingapigw'
+        rules: {
+          webshoppingapigw: {
+            path: {
+              value: '/webshoppingapigw'
+            }
+          }
+        }
       }
     }
   }
@@ -569,7 +611,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           EventBusConnection: 'eshop-rabbitmq'
           SignalrStoreConnectionString: '${redisKeystore.properties.host}'
           identityUrl: identityHttp.properties.url
-          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
+          IdentityUrlExternal: '${CLUSTERDNS}${identityHttp.properties.gateway.rules.identity.path.value}'
         }
         ports: {
           http: {
@@ -626,10 +668,10 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           ASPNETCORE_URLS: 'http://0.0.0.0:80'
           PATH_BASE: '/webhooks-web'
           Token: 'WebHooks-Demo-Web'
-          CallBackUrl: '${CLUSTERDNS}${webhooksclientHttp.properties.gateway.path}'
+          CallBackUrl: '${CLUSTERDNS}${webhooksclientHttp.properties.gateway.rules.webhooks.path.value}'
           SelfUrl: webhooksclientHttp.properties.url
           WebhooksUrl: webhooksHttp.properties.url
-          IdentityUrl: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
+          IdentityUrl: '${CLUSTERDNS}${identityHttp.properties.gateway.rules.identity.path.value}'
 
         }
         ports: {
@@ -658,8 +700,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5114
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webhooks-web'
+        rules: {
+          webhooks: {
+            path: {
+              value: '/webhooks-web'
+            }
+          }
+        }
       }
     }
   }
@@ -715,8 +764,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 8107
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webstatus'
+        rules: {
+          webstatus: {
+            path: {
+              value: '/webstatus'
+            }
+          }
+        }
       }
     }
   }
@@ -737,9 +793,9 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           IsClusterEnv: 'True'
           CallBackUrl: '${CLUSTERDNS}/'
           DPConnectionString: '${redisKeystore.properties.host}'
-          IdentityUrl: '${CLUSTERDNS}${identityHttp.properties.gateway.path}'
+          IdentityUrl: '${CLUSTERDNS}${identityHttp.properties.gateway.rules.identity.path.value}'
           IdentityUrlHC: '${identityHttp.properties.url}/hc'
-          PurchaseUrl: '${CLUSTERDNS}${webshoppingapigwHttp.properties.gateway.path}'
+          PurchaseUrl: '${CLUSTERDNS}${webshoppingapigwHttp.properties.gateway.rules.webshoppingapigw.path.value}'
           SignalrHubUrl: orderingsignalrhubHttp.properties.url
         }
         ports: {
@@ -780,8 +836,15 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5104
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/'
+        rules: {
+          webspa: {
+            path: {
+              value: '/'
+            }
+          }
+        }
       }
     }
   }
@@ -802,7 +865,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
           UseLoadTest: 'False'
           OrchestratorType: OCHESTRATOR_TYPE
           IsClusterEnv: 'True'
-          ExternalPurchaseUrl: '${CLUSTERDNS}${webshoppingapigwHttp.properties.gateway.path}'
+          ExternalPurchaseUrl: '${CLUSTERDNS}${webshoppingapigwHttp.properties.gateway.rules.webshoppingapigw.path.value}'
           CallBackUrl: 'http://${CLUSTER_IP}.nip.io/webmvc'
           IdentityUrl: 'http://${CLUSTER_IP}.nip.io/identity-api'
           IdentityUrlHC: '${identityHttp.properties.url}/hc'
@@ -847,11 +910,32 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     properties: {
       port: 5100
       gateway: {
+        source: gateway.id
         hostname: ESHOP_EXTERNAL_DNS_NAME_OR_IP
-        path: '/webmvc'
+        rules: {
+          webmvc: {
+            path: {
+              value: '/webmvc'
+            }
+          }
+        }
       }
     }
   }
+
+    // Gateway --------------------------------------------
+
+    resource gateway 'Gateway' = {
+      name: 'gateway'
+      properties: {
+        listeners: {
+          http: {
+            protocol: 'HTTP'
+            port: 80
+          }
+        }
+      }
+    }
 
   // Logging --------------------------------------------
 

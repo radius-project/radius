@@ -26,64 +26,37 @@ This template uses containerized versions of SQL, Redis, RabbitMQ, and MongoDB:
 
 Visit the [getting started guide]({{< ref create-environment >}}) to deploy or connect to a Radius environment running the latest release.
 
-### Deploy ingress controller
+### Deploy gateway controller
 
-The eShop application requires an ingress controller to be deployed to your environment, so you can access it over the internet without port-forwarding.
+The eShop application requires a gateway controller to be deployed to your environment, so you can access it over the internet without port-forwarding.
 
 {{< tabs Azure Kubernetes >}}
 
 {{% codetab %}}
-An Ingress controller is configured for you by default when you initialize an environment.
+A Gateway controller is configured for you by default when you initialize an environment.
 {{% /codetab %}}
 
 {{% codetab %}}
-Run the following command to initialize an Ingress controller:
+Run the following command to initialize the gateway controller:
 ```sh
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm upgrade radius-ingress-nginx ingress-nginx/ingress-nginx --install --create-namespace --namespace radius-system --version 3.29.0 --wait
+kubectl kustomize\
+  "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
+  kubectl apply -f -
+helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+helm repo update
+cat <<EOF | helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
+  --create-namespace --namespace radius-system \
+  --version 0.13.4 \
+  -f -
+controller:
+  hostNetwork: true
+  extraArgs:
+    watch-gateway: "true"
+EOF
 ```
 {{% /codetab %}}
 
 {{< /tabs >}}
-
-### Configure ingress controller
-
-{{% alert title="⚠️ Temporary workaround" color="info" %}}
-The following steps are temporary, pending updates to Radius gateway resources.
-{{% /alert %}}
-
-eShop requires the nginx ingress controller to accept large headers, which are used by the identity microservice. Run the following commands to override the default ConfigMap:
-
-#### (Azure envs only) Get kubectl context
-
-```sh
-rad env merge-credentials
-```
-
-#### Edit ConfigMap
-
-```sh
-kubectl edit configmap radius-ingress-nginx-controller -n radius-system
-```
-
-Past in the following yaml at the end of the document that opens, and then save and exit:
-
-```yml
-data:
-  proxy-buffer-size: 128k
-  proxy-buffers: 4 256k
-```
-
-Now get the pod of the nginx ingress controller in order to restart it:
-
-```bash
-$ kubectl get pods -n radius-system
-NAME                                    READY   STATUS    RESTARTS   AGE
-radius-ingress-nginx-controller-ID      1/1     Running   0          3m
-$ kubectl delete pod radius-ingress-nginx-controller-ID -n radius-system
-```
-
-The pod should restart and now accept large headers.
 
 ### Get cluster IP
 
