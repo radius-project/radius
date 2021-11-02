@@ -1,8 +1,6 @@
 # Description
 
-<!--
-Please explain the changes you've made.
--->
+_Please explain the changes you've made._
 
 ## Issue reference
 
@@ -19,5 +17,4 @@ Please make sure you've  completed the relevant tasks for this PR, out of the fo
 * [ ] Code compiles correctly
 * [ ] Created/updated tests
 * [ ] Unit tests passing
-* [ ] End-to-end tests passing
 * [ ] Extended the documentation / Created issue for it
