@@ -165,7 +165,6 @@ func Test_ContainerGateway(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
 						validation.NewK8sObjectForResource(application, "frontend"),
-						validation.NewK8sObjectForResource(application, "backend"),
 					},
 				},
 			},
