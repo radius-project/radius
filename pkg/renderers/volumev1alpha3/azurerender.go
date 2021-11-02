@@ -20,10 +20,9 @@ const (
 	VolumeKindPersistent = "persistent"
 )
 
-var _ renderers.Renderer = (*Renderer)(nil)
 var storageAccountDependency outputresource.Dependency
 
-type Renderer struct {
+type AzureRenderer struct {
 	Arm             armauth.ArmConfig
 	VolumeRenderers map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
 }
@@ -36,13 +35,13 @@ var SupportedVolumeMakeSecretsAndValues = map[string]func(name string) (map[stri
 	"azure.com.fileshare": MakeSecretsAndValuesForAzureFileShare,
 }
 
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
 	return nil, nil
 }
 
-func (r Renderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := VolumeProperties{}
-	err := resource.ConvertDefinition(&properties)
+	err := options.Resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -51,7 +50,7 @@ func (r Renderer) Render(ctx context.Context, resource renderers.RendererResourc
 		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeRenderers)
 	}
 
-	renderOutput, err := r.VolumeRenderers[properties.Kind](ctx, resource, dependencies)
+	renderOutput, err := r.VolumeRenderers[properties.Kind](ctx, options.Resource, options.Dependencies)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

@@ -9,8 +9,6 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -18,25 +16,6 @@ import (
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/resourcemodel"
 )
-
-const (
-	VolumeKindEphemeral  = "ephemeral"
-	VolumeKindPersistent = "persistent"
-)
-
-var storageAccountDependency outputresource.Dependency = outputresource.Dependency{
-	LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
-}
-
-var _ renderers.Renderer = (*Renderer)(nil)
-
-type Renderer struct {
-	Arm armauth.ArmConfig
-}
-
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
-}
 
 func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	properties := VolumeProperties{}

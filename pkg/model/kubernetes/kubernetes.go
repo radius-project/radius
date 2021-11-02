@@ -33,7 +33,7 @@ func NewKubernetesModel(k8s *client.Client) model.ApplicationModel {
 		redisv1alpha3.ResourceType:          &redisv1alpha3.KubernetesRenderer{},
 		httproutev1alpha3.ResourceType:      &httproutev1alpha3.Renderer{},
 		gateway.ResourceType:                &gateway.Renderer{},
-		volumev1alpha3.ResourceType:         &volumev1alpha3.Renderer{VolumeRenderers: nil},
+		volumev1alpha3.ResourceType:         &volumev1alpha3.KubernetesRenderer{VolumeRenderers: nil},
 	}
 
 	handlers := map[string]model.Handlers{
