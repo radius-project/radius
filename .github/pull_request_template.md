@@ -15,6 +15,7 @@ Please reference the issue this PR will close: #_[issue number]_
 Please make sure you've  completed the relevant tasks for this PR, out of the following list:
 
 * [ ] Code compiles correctly
-* [ ] Created/updated tests
+* [ ] Adds necessary unit tests for change
+* [ ] Adds necessary E2E tests for change
 * [ ] Unit tests passing
 * [ ] Extended the documentation / Created issue for it
