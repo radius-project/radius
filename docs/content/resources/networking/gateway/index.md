@@ -14,7 +14,7 @@ weight: 100
 
 ## Gateway format
 
-An Gateway is defined as a resource within your Application, defined at the same lavel as the Components providing and consuming the HTTP communication.
+A Gateway is defined as a resource within your Application, defined at the same level as the Components providing and consuming the HTTP communication.
 
 {{< rad file="snippets/gateway.bicep" embed=true marker="//GATEWAY" >}}
 
