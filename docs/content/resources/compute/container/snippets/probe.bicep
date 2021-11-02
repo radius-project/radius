@@ -20,16 +20,5 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
   //SAMPLE
 
-  resource http 'HttpRoute' = {
-    name: 'http'
-  }
-
-  resource db 'mongodb.com.MongoDBComponent' = {
-    name: 'database'
-    properties: {
-      managed: true
-    }
-  }
-
 }
 
