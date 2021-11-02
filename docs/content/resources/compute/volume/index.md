@@ -6,7 +6,7 @@ description: "Learn about the Radius Persistent Volume"
 weight: 100
 ---
 
-`Volume` provides an abstraction for a persistent volume to be referenced and mounted by a container component. Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the volume.
+`Volume` provides an abstraction for a persistent volume to be referenced and mounted by a [ContainerComponent]({{< ref container >}}). Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the volume.
 
 ## Volume Properties
 
