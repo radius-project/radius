@@ -32,7 +32,9 @@ const (
 	HealthStateDegraded      = "Degraded"      // Functionality is working but some resources are unhealthy
 	HealthStateNotSupported  = "NotSupported"  // Health reporting has not yet been implemented
 	HealthStateNotApplicable = "NotApplicable" // Health as a concept does not apply to this resource eg: Secrets
-	HealthStateError         = "Error"         // See unexpected errors
+	// A combination of supported and unsupported output resources is seen for a Radius resource.
+	// Do not know how to aggregate the health status in this case at the resource level
+	HealthStateError = "Error"
 )
 
 // Translation of internal representation of health state to user facing values
