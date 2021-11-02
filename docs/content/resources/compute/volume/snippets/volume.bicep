@@ -1,33 +1,31 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'myapp'
 
+  //SAMPLE
+  resource myshare 'Volume' = {
+    name: 'myshare'
+    properties: {
+      kind: 'azure.com.fileshare'
+      managed: true
+    }
+  }
+
   resource frontend 'ContainerComponent' = {
     name: 'frontend'
     properties: {
       container: {
         image: 'registry/container:tag'
-        env:{
-          DEPLOYMENT_ENV: 'prod'
-        }
-        // VOLUME
         volumes: {
-          myPersistentVolume:{
+          myPersistentVolume: {
             kind: 'persistent'
-            mountPath:'/tmpfs2'
+            mountPath: '/tmpfs2'
             source: myshare.id
             rbac: 'read'
           }
         }
-        // VOLUME
-      }
-    }
-    resource myshare 'Volume' = {
-      name: 'myshare'
-      properties:{
-        kind: 'azure.com.fileshare'
-        managed:true
       }
     }
   }
+  //SAMPLE
 }
 
