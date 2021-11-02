@@ -31,12 +31,25 @@ The following top-level information is available:
 
 #### Gateway
 
-You can optionally define a Gateway for external users to access the Route.
+You can optionally define a Gateway section for external users to access the Route.
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | hostname | n | The hostname of the Gateway. Wildcards supported | `'example.com'`
-| path | n | The path to provide the gateway on. | `'/orders'`
+| rules | n | The rules to match the request with. | [See below](#rules)
+| source | n | The gateway which this HttpRoute belongs to. If not defined, Radius will create a gateway implicitly to expose traffic. | `gateway.id`
+
+#### Gateway Rules
+
+You can optionally define specific rules for the gateway.
+| Key  | Required | Description |
+|------|:--------:|-------------|
+| path | n | The path to match the request on.|
+
+An example of path matching is shown below:
+
+{{< rad file="snippets/http.bicep" embed=true marker="//ROUTE-RULES" >}}
+
 
 ## Provided Data
 

@@ -18,37 +18,32 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
   //BACKEND
 
+  //GATEWAY
+  resource gateway 'Gateway' = {
+    name: 'httproute'
+    properties: {
+      listeners: {
+        http: {
+          port: 80
+          protocol: 'HTTP'
+        }
+      }
+    }
+  }
+  //GATEWAY
+
   //ROUTE
   resource http 'HttpRoute' = {
     name: 'httproute'
     properties: {
       port: 80
       gateway: {
+        source: gateway.id
         hostname: '*'
       }
     }
   }
   //ROUTE
-
-  resource httpRouted 'HttpRoute' = {
-    name: 'httprouted'
-    properties: {
-      port: 80
-      gateway: {
-        hostname: '*'
-        //ROUTE-RULES
-        rules: {
-          http: {
-            path: {
-              value: '/foo'
-              type: 'prefix'
-            }
-          }
-        }
-      //ROUTE-RULES
-      }
-    }
-  }
 
   //FRONTEND
   resource frontend 'ContainerComponent' = {
