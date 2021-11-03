@@ -127,7 +127,7 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 	}
 	fieldSelector := map[string]string{}
 	if resourceName != "" {
-		fieldSelector["metadata.name"] = resourceName
+		fieldSelector["metadata.name"] = applicationName + "-" + resourceName
 	}
 	labelSelector := map[string]string{kubernetes.LabelRadiusApplication: applicationName}
 	if resourceType != "" {
