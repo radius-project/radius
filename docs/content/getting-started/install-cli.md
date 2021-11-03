@@ -106,9 +106,9 @@ PowerShell for Cloud Shell is currently not supported.
 
 1. Download the `rad` CLI from one of these URLs:
 
-   - MacOS: https://get.radapp.dev/tools/rad/0.6/macos-x64/rad
-   - Linux: https://get.radapp.dev/tools/rad/0.6/linux-x64/rad
-   - Windows: https://get.radapp.dev/tools/rad/0.6/windows-x64/rad.exe
+   - MacOS: https://get.radapp.dev/tools/rad/0.7/macos-x64/rad
+   - Linux: https://get.radapp.dev/tools/rad/0.7/linux-x64/rad
+   - Windows: https://get.radapp.dev/tools/rad/0.7/windows-x64/rad.exe
 
 1. Ensure the user has permission to execute the binary and place it somewhere on your PATH so it can be invoked easily.
 

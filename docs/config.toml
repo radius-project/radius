@@ -1,4 +1,4 @@
-baseURL = "https://edge.radapp.dev/"
+baseURL = "https://radapp.dev/"
 languageCode = "en-us"
 title = "Project Radius"
 theme =  "docsy"
@@ -14,7 +14,7 @@ id = "G-9JR8B6TPF9"
 
 # Mounts
 [module]
-  [[module.mounts]]
+  [[module.mounts]] 
     source = "content"
     target = "content"
   [[module.mounts]]
