@@ -29,7 +29,7 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	k8smodel "github.com/Azure/radius/pkg/model/kubernetes"
-	localmodel "github.com/Azure/radius/pkg/model/local"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -39,6 +39,8 @@ var (
 )
 
 func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
@@ -83,12 +85,6 @@ func main() {
 
 	appmodel := k8smodel.NewKubernetesModel(mgr.GetClient())
 	model := radcontroller.NewKubernetesModel()
-	if modelName == "kubernetes" {
-		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	} else if modelName == "local" {
-		model = radcontroller.NewLocalModel()
-		appmodel = localmodel.NewLocalModel(mgr.GetClient())
-	}
 
 	unstructuredClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
 	if err != nil {

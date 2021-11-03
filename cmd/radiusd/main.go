@@ -31,9 +31,18 @@ func main() {
 	}
 	defer flushLogs()
 
-	cms, err := localenv.NewControllerManagerService(log, opts.MetricsAddr, opts.HealthProbeAddr)
+	certDir := os.Getenv("TLS_CERT_DIR")
+	controllerOptions := ctrl.Options{
+		MetricsBindAddress:     opts.MetricsAddr,
+		HealthProbeBindAddress: opts.HealthProbeAddr,
+		LeaderElection:         false,
+		CertDir:                certDir,
+		Logger:                 log,
+	}
+
+	cms, err := localenv.NewControllerManagerService(log, controllerOptions)
 	if err != nil {
-		log.Error(err, "unable to create controller manager")
+		log.Error(err, "unable to create controller manager service")
 		os.Exit(2)
 	}
 
