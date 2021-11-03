@@ -43,6 +43,13 @@ var DefaultResourceTypes = []struct {
 	{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 }
 
+var DefaultWatchTypes = []client.Object{
+	&corev1.Service{},
+	&appsv1.Deployment{},
+	&corev1.Secret{},
+	&appsv1.StatefulSet{},
+}
+
 type Options struct {
 	AppModel      model.ApplicationModel
 	Client        client.Client

@@ -53,11 +53,13 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var modelName string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&modelName, "model", "kubernetes", "The resource model to use.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -68,6 +70,13 @@ func main() {
 
 	// Get certificate from volume mounted environment variable
 	certDir := os.Getenv("TLS_CERT_DIR")
+
+	model := radcontroller.NewKubernetesModel()
+	if modelName == "kubernetes" {
+		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	} else if modelName == "local" {
+		model = radcontroller.NewLocalModel()
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
