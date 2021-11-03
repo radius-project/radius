@@ -39,15 +39,17 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
     }
-    resource myshare 'Volume' = {
-      name: 'myshare'
-      properties:{
-        kind: 'azure.com.fileshare'
-        managed:true
-      }
-    }
+
   }
   //CONTAINER
+  
+  resource myshare 'Volume' = {
+    name: 'myshare'
+    properties:{
+      kind: 'azure.com.fileshare'
+      managed:true
+    }
+  }
 
   resource http 'HttpRoute' = {
     name: 'http'
