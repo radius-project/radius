@@ -22,6 +22,6 @@ weight: 100
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
-| kind | y | The kind of persistent volume. See [supported volumes](#supported-volumes). | `'azure.com.fileshare'`
+| kind | y | The kind of persistent volume. See [supported volumes](#supported-resources). | `'azure.com.fileshare'`
 | managed | n | If set to 'true', Radius will manage the lifecycle and configuration of the underlying resource. Defaults to 'false'. | `'true'`, `'false'`
 | resource | n | Resource ID for the existing resource. Used for an unmanaged resource. | `'share.id'`, `'/subscriptions/<subscription>/resourceGroups/<rg/providers/Microsoft.Storage/storageAccounts/<storageAccountName>/fileServices/default/shares/<fileshareName>'`
