@@ -3,7 +3,7 @@ name: website
 on:
   push:
     branches:
-      - release/v0.7
+      - release/0.7
     paths:
       - 'docs/**'
       - 'test/**'
