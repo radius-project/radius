@@ -515,7 +515,7 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager, watchedTypes []client.Object) error {
 
 	// Index resources by application
 	err := mgr.GetFieldIndexer().IndexField(context.Background(), r.ObjectType, CacheKeySpecApplication, extractApplicationKey)
@@ -547,12 +547,14 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return requests
 	})
 
-	return ctrl.NewControllerManagedBy(mgr).
+	c := ctrl.NewControllerManagedBy(mgr).
 		For(r.ObjectType).
-		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.Service{}).
-		Watches(applicationSource, applicationHandler).
-		Complete(r)
+		Watches(applicationSource, applicationHandler)
+	for _, obj := range watchedTypes {
+		c = c.Owns(obj)
+	}
+
+	return c.Complete(r)
 }
 
 func extractApplicationKey(obj client.Object) []string {

@@ -25,6 +25,7 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	"github.com/Azure/radius/pkg/kubernetes/webhook"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 var DefaultResourceTypes = []struct {
@@ -48,6 +49,8 @@ var DefaultWatchTypes = []client.Object{
 	&appsv1.Deployment{},
 	&corev1.Secret{},
 	&appsv1.StatefulSet{},
+	&gatewayv1alpha1.Gateway{},
+	&gatewayv1alpha1.HTTPRoute{},
 }
 
 type Options struct {
@@ -63,6 +66,7 @@ type Options struct {
 		client.Object
 		client.ObjectList
 	}
+	WatchTypes   []client.Object
 	SkipWebhooks bool
 }
 
@@ -150,7 +154,7 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 			}
 
 			resource.GVR = gvr.Resource
-			err = resource.SetupWithManager(mgr)
+			err = resource.SetupWithManager(mgr, c.options.WatchTypes)
 			if err != nil {
 				return fmt.Errorf("failed to setup Resource controller for %T: %w", resource.ObjectType, err)
 			}
