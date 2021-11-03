@@ -12,14 +12,17 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/model"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/prometheus/common/log"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	healthhandlers "github.com/Azure/radius/pkg/health/handlers"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -56,9 +60,10 @@ type ResourceReconciler struct {
 	ObjectList   client.ObjectList
 	Model        model.ApplicationModel
 	GVR          schema.GroupVersionResource
-	WatchedTypes []struct {
-		client.Object
-		client.ObjectList
+	WatchedTypes map[string]struct {
+		Object        client.Object
+		ObjectList    client.ObjectList
+		HealthHandler func(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string)
 	}
 }
 
@@ -177,12 +182,61 @@ func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request
 		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
 	}
 
-	err = r.ApplyState(ctx, log, req, application, resource, unst, actual, *desired)
+	// Update health
+	r.UpdateResourceStatus(ctx, log, resource, actual, desired)
+
+	err = r.ApplyState(ctx, log, req, application, resource, unst, actual, desired)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ResourceReconciler) UpdateResourceStatus(ctx context.Context, log logr.Logger, resource *radiusv1alpha3.Resource, actual []client.Object, desired *renderers.RendererOutput) {
+	for _, a := range actual {
+		// Get the corresponding output resource and update the health state in the output resource
+		or, err := r.getOutputResource(desired, a)
+		if err != nil {
+			// No output resource to update the state for
+			log.Error(err, fmt.Sprintf("Unable to find output resource with name: %s-%s", a.GetNamespace(), a.GetName()))
+			return
+		}
+
+		var healthState string
+		var healthStateErrorDetails string
+		kind := a.GetObjectKind().GroupVersionKind().Kind
+
+		watchInfo, ok := DefaultWatchTypes[kind]
+		if !ok {
+			healthState = healthcontract.HealthStateNotSupported
+			healthStateErrorDetails = ""
+		} else {
+			if watchInfo.HealthHandler == nil {
+				// Health state as a concept does not make sense for this resource and therefore mark it as NotApplicable
+				healthState = healthcontract.HealthStateNotApplicable
+				healthStateErrorDetails = ""
+			} else {
+				healthState, healthStateErrorDetails = watchInfo.HealthHandler(ctx, r, a)
+			}
+		}
+		or.Status.HealthState = healthState
+		or.Status.HealthErrorDetails = healthStateErrorDetails
+	}
+}
+
+func (r *ResourceReconciler) getOutputResource(desired *renderers.RendererOutput, actual client.Object) (*outputresource.OutputResource, error) {
+	for i, cr := range desired.Resources {
+		obj, err := outputResourceToKubernetesObject(actual.GetNamespace(), cr)
+		if err != nil {
+			return nil, err
+		}
+
+		if actual.GetObjectKind().GroupVersionKind().String() == obj.GetObjectKind().GroupVersionKind().String() && actual.GetName() == obj.GetName() && actual.GetNamespace() == obj.GetNamespace() {
+			return &desired.Resources[i], nil
+		}
+	}
+	return nil, nil
 }
 
 func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log logr.Logger, resource *radiusv1alpha3.Resource) ([]client.Object, error) {
@@ -266,6 +320,10 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
+	for i := range output.Resources {
+		output.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateNotProvisioned
+	}
+
 	log.Info("rendered output resources", "count", len(output.Resources))
 	return &output, true, nil
 }
@@ -299,7 +357,7 @@ func (r *ResourceReconciler) ApplyState(
 	resource *radiusv1alpha3.Resource,
 	inputUnst *unstructured.Unstructured,
 	actual []client.Object,
-	desired renderers.RendererOutput) error {
+	desired *renderers.RendererOutput) error {
 
 	// First we go through the desired state and apply all of those resources.
 	//
@@ -308,24 +366,15 @@ func (r *ResourceReconciler) ApplyState(
 	//
 	// We also trample over the 'resources' part of the status so that it's clean.
 
-	resource.Status.Resources = map[string]corev1.ObjectReference{}
+	resource.Status.Resources = map[string]*radiusv1alpha3.OutputResource{}
 
-	for _, cr := range desired.Resources {
-		obj, ok := cr.Resource.(client.Object)
-		if !ok {
-			err := fmt.Errorf("resource is not a kubernetes resource, was: %T", cr.Resource)
+	for i, cr := range desired.Resources {
+
+		obj, err := outputResourceToKubernetesObject(resource.Namespace, cr)
+		if err != nil {
 			log.Error(err, "failed to render resources for resource")
 			return err
 		}
-
-		// TODO: configure all of the metadata at the top-level
-		obj.SetNamespace(resource.Namespace)
-		annotations := obj.GetAnnotations()
-		if annotations == nil {
-			annotations = map[string]string{}
-		}
-		annotations[AnnotationLocalID] = cr.LocalID
-		obj.SetAnnotations(annotations)
 
 		// Remove items with the same identity from the 'actual' list
 		for i, a := range actual {
@@ -343,17 +392,9 @@ func (r *ResourceReconciler) ApplyState(
 
 		// Make sure to NOT use the resource type here, as the resource type
 		// Otherwise, we get into a loop where resources are created and are immediately terminated.
-		err := controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
+		err = controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
 		if err != nil {
 			log.Error(err, "failed to set owner reference for resource")
-			return err
-		}
-
-		// We don't have to diff the actual resource - server side apply is magic.
-		log.Info("applying output resource for resource")
-		err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
-		if err != nil {
-			log.Error(err, "failed to apply resources for resource")
 			return err
 		}
 
@@ -363,8 +404,24 @@ func (r *ResourceReconciler) ApplyState(
 			return err
 		}
 
-		resource.Status.Resources[cr.LocalID] = *or
+		outputResource, ok := resource.Status.Resources[cr.LocalID]
+		if !ok {
+			outputResource = &radiusv1alpha3.OutputResource{}
+		}
+		outputResource.Resource = *or
+		resource.Status.Resources[cr.LocalID] = outputResource
 
+		desired.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateProvisioning
+		// We don't have to diff the actual resource - server side apply is magic.
+		log.Info("applying output resource for resource")
+		err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
+		if err != nil {
+			log.Error(err, "failed to apply resources for resource")
+			desired.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateFailed
+			desired.Resources[i].Status.ProvisioningErrorDetails = err.Error()
+			return err
+		}
+		desired.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateProvisioned
 		log.Info("applied output resource for resource")
 	}
 
@@ -401,6 +458,13 @@ func (r *ResourceReconciler) ApplyState(
 		}
 	}
 
+	if desired.Resources != nil {
+		err := converters.SetStatusForOutputResources(&resource.Status, desired.Resources)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Can't use resource type to update as it will assume the wrong type
 	unst, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
 	if err != nil {
@@ -417,6 +481,26 @@ func (r *ResourceReconciler) ApplyState(
 
 	log.Info("applied output resources", "count", len(desired.Resources), "deleted", len(actual))
 	return nil
+}
+
+func outputResourceToKubernetesObject(namespace string, outputResource outputresource.OutputResource) (client.Object, error) {
+	obj, ok := outputResource.Resource.(client.Object)
+	if !ok {
+		err := fmt.Errorf("resource is not a kubernetes resource, was: %T", outputResource.Resource)
+		log.Error(err, "failed to render resources for resource")
+		return nil, err
+	}
+
+	// TODO: configure all of the metadata at the top-level
+	obj.SetNamespace(namespace)
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[AnnotationLocalID] = outputResource.LocalID
+	obj.SetAnnotations(annotations)
+
+	return obj, nil
 }
 
 func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace string, id azresources.ResourceID) (*renderers.RendererDependency, error) {
@@ -474,10 +558,10 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 		outputResources[localID] = resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
 			Data: resourcemodel.KubernetesIdentity{
-				Kind:       outputResource.Kind,
-				APIVersion: outputResource.APIVersion,
-				Name:       outputResource.Name,
-				Namespace:  outputResource.Namespace,
+				Kind:       outputResource.Resource.Kind,
+				APIVersion: outputResource.Resource.APIVersion,
+				Name:       outputResource.Resource.Name,
+				Namespace:  outputResource.Resource.Namespace,
 			},
 		}
 	}
@@ -597,4 +681,19 @@ func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiu
 	}
 
 	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)
+}
+
+func GetHealthStateFromDeployment(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string) {
+	var deployment appsv1.Deployment
+	var healthState string
+	var healthStateErrorDetails string
+
+	if err := r.Get(ctx, types.NamespacedName{Namespace: a.GetNamespace(), Name: a.GetName()}, &deployment); err != nil {
+		healthState = healthcontract.HealthStateUnhealthy
+		healthStateErrorDetails = err.Error()
+	} else {
+		healthState, healthStateErrorDetails = healthhandlers.GetHealthStateFromDeploymentStatus(&deployment)
+	}
+
+	return healthState, healthStateErrorDetails
 }

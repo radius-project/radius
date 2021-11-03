@@ -32,8 +32,10 @@ import (
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	controllers "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
 	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -136,14 +138,15 @@ func StartController() error {
 		RestConfig:    cfg,
 		RestMapper:    mapper,
 		ResourceTypes: radcontroller.DefaultResourceTypes,
-		WatchTypes: []struct {
-			client.Object
-			client.ObjectList
+		WatchTypes: map[string]struct {
+			Object        client.Object
+			ObjectList    client.ObjectList
+			HealthHandler func(ctx context.Context, r *controllers.ResourceReconciler, a client.Object) (string, string)
 		}{
-			{&corev1.Service{}, &corev1.ServiceList{}},
-			{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
-			{&corev1.Secret{}, &corev1.SecretList{}},
-			{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
+			resourcekinds.Service:     {&corev1.Service{}, &corev1.ServiceList{}, nil},
+			resourcekinds.Deployment:  {&appsv1.Deployment{}, &appsv1.DeploymentList{}, nil},
+			resourcekinds.Secret:      {&corev1.Secret{}, &corev1.SecretList{}, nil},
+			resourcekinds.StatefulSet: {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
 		},
 		SkipWebhooks: false,
 	}

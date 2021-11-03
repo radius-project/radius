@@ -37,7 +37,7 @@ type kubernetesDeploymentHandler struct {
 	k8s kubernetes.Interface
 }
 
-func getHealthStateFromDeploymentStatus(d *appsv1.Deployment) (string, string) {
+func GetHealthStateFromDeploymentStatus(d *appsv1.Deployment) (string, string) {
 	healthState := healthcontract.HealthStateUnhealthy
 	healthStateErrorDetails := "Deployment condition unknown"
 	for _, c := range d.Status.Conditions {
@@ -66,7 +66,7 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		healthState = healthcontract.HealthStateUnhealthy
 		healthStateErrorDetails = err.Error()
 	} else {
-		healthState, healthStateErrorDetails = getHealthStateFromDeploymentStatus(d)
+		healthState, healthStateErrorDetails = GetHealthStateFromDeploymentStatus(d)
 	}
 
 	// Notify initial health state transition. This needs to be done explicitly since
@@ -112,7 +112,7 @@ func onDeploymentEvent(ctx context.Context, event string, obj interface{}, regis
 	switch event {
 	case DeploymentEventAdd:
 	case DeploymentEventUpdate:
-		healthState, healthStateErrorDetails = getHealthStateFromDeploymentStatus(deployment)
+		healthState, healthStateErrorDetails = GetHealthStateFromDeploymentStatus(deployment)
 	case DeploymentEventDelete:
 		healthState = healthcontract.HealthStateUnhealthy
 		healthStateErrorDetails = "Deployment deleted"

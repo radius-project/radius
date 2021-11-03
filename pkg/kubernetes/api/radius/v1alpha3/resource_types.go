@@ -35,7 +35,7 @@ type ResourceStatus struct {
 	SecretValues *runtime.RawExtension `json:"secretValues,omitempty"`
 
 	// +optional
-	Resources map[string]corev1.ObjectReference `json:"resources,omitempty"`
+	Resources map[string]*OutputResource `json:"resources,omitempty"`
 
 	// ObservedGeneration captures the last generation
 	// that was captured and completed by the reconciler
@@ -47,6 +47,20 @@ type ResourceStatus struct {
 
 	// The readable status "phrase" of the resource.
 	Phrase string `json:"phrase,omitempty"`
+}
+
+// OutputResourceStatus defines the observed state of an output resource
+type OutputResourceStatus struct {
+	ProvisioningState             string `json:"provisioningState,omitempty"`
+	ProvisioningStateErrorDetails string `json:"provisioningStateErrorDetails,omitempty"`
+	HealthState                   string `json:"healthState,omitempty"`
+	HealthStateErrorDetails       string `json:"healthStateErrorDetails,omitempty"`
+}
+
+// OutputResource defines the schema for individual output resource of a Radius resource
+type OutputResource struct {
+	Resource corev1.ObjectReference `json:"resource,omitempty"`
+	Status   OutputResourceStatus   `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

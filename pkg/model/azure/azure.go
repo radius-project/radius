@@ -118,11 +118,11 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 	}
 
-	// These are the known Kuberentes types that we don't support health monitoring for.
 	skipHealthCheckKubernetesKinds := map[string]bool{
-		resourcekinds.Service: true,
-		resourcekinds.Secret:  true,
-		resourcekinds.Ingress: true,
+		resourcekinds.Service:     true,
+		resourcekinds.Secret:      true,
+		resourcekinds.StatefulSet: true,
+		resourcekinds.HTTPRoute:   true,
 	}
 
 	outputResources := []model.OutputResourceModel{
