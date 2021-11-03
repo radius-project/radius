@@ -6,13 +6,16 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/version"
@@ -149,13 +152,44 @@ func deploy(cmd *cobra.Command, args []string) error {
 	}
 
 	step = output.BeginStep(progressText)
-	err = client.Deploy(cmd.Context(), template, parameters)
+	options := clients.DeploymentOptions{
+		Template:   template,
+		Parameters: parameters,
+	}
+
+	result, err := performDeployment(cmd.Context(), client, options)
 	if err != nil {
 		return err
 	}
+
 	output.CompleteStep(step)
 
 	output.LogInfo("Deployment Complete")
+	output.LogInfo("")
+
+	if len(result.Resources) > 0 {
+		output.LogInfo("Resources:")
+
+		for _, resource := range result.Resources {
+			if output.ShowResource(resource) {
+				output.LogInfo("    " + output.FormatResourceForDisplay(resource))
+			}
+		}
+
+		endpoints, err := findPublicEndpoints(cmd.Context(), env, result)
+		if err != nil {
+			return err
+		}
+
+		if len(endpoints) > 0 {
+			output.LogInfo("")
+			output.LogInfo("Public Endpoints:")
+
+			for _, entry := range endpoints {
+				output.LogInfo("    %s %s", output.FormatResourceForDisplay(entry.Resource), entry.Endpoint)
+			}
+		}
+	}
 
 	return nil
 }
@@ -171,4 +205,41 @@ func validateBicepFile(filePath string) error {
 	}
 
 	return nil
+}
+
+func performDeployment(ctx context.Context, client clients.DeploymentClient, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
+	result, err := client.Deploy(ctx, options)
+	if err != nil {
+		return clients.DeploymentResult{}, err
+	}
+
+	return result, nil
+}
+
+type publicEndpoint struct {
+	Resource azresources.ResourceID
+	Endpoint string
+}
+
+func findPublicEndpoints(ctx context.Context, env environments.Environment, result clients.DeploymentResult) ([]publicEndpoint, error) {
+	diag, err := environments.CreateDiagnosticsClient(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoints := []publicEndpoint{}
+	for _, resource := range result.Resources {
+		endpoint, err := diag.GetPublicEndpoint(ctx, clients.EndpointOptions{ResourceID: resource})
+		if err != nil {
+			return nil, err
+		}
+
+		if endpoint == nil {
+			continue
+		}
+
+		endpoints = append(endpoints, publicEndpoint{Resource: resource, Endpoint: *endpoint})
+	}
+
+	return endpoints, nil
 }
