@@ -6,12 +6,18 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"os"
+	"os/signal"
+	"path"
+	"syscall"
 
+	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	zap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/Azure/radius/pkg/hosting"
 	"github.com/Azure/radius/pkg/localenv"
 	"github.com/Azure/radius/pkg/radlogger"
 )
@@ -21,13 +27,24 @@ type startupOpts struct {
 	HealthProbeAddr string
 }
 
+type RadiusdExitCode int
+
+const (
+	KcpPathNotFound               RadiusdExitCode = 1
+	CannotCreateLogger            RadiusdExitCode = 2
+	CannotCreateControllerManager RadiusdExitCode = 3
+	CannotCreateKcpRunner         RadiusdExitCode = 4
+	AbruptShutdown                RadiusdExitCode = 99
+)
+
 func main() {
+	exeDir := getExeDir()
+
 	opts := getStartupOpts()
-	zap.New()
 	log, flushLogs, err := radlogger.NewLogger("radiusd")
 	if err != nil {
 		println(err.Error())
-		os.Exit(1)
+		os.Exit(int(CannotCreateLogger))
 	}
 	defer flushLogs()
 
@@ -43,15 +60,51 @@ func main() {
 	cms, err := localenv.NewControllerManagerService(log, controllerOptions)
 	if err != nil {
 		log.Error(err, "unable to create controller manager service")
-		os.Exit(2)
+		os.Exit(int(CannotCreateControllerManager))
 	}
 
-	ctx := ctrl.SetupSignalHandler()
+	kcpRunner, err := localenv.NewKcpRunner(exeDir, nil)
+	if err != nil {
+		log.Error(err, "unable to create KCP runner service")
+		os.Exit(int(CannotCreateKcpRunner))
+	}
 
-	log.Info("starting controller manager...")
-	if err := cms.Run(ctx); err != nil {
-		log.Error(err, "failed to start controller manager")
-		os.Exit(3)
+	host := hosting.Host{
+		Services: []hosting.Service{
+			kcpRunner,
+			cms,
+		},
+	}
+	// Create a channel to handle the shutdown
+	exitCh := make(chan os.Signal, 1)
+	signal.Notify(exitCh, os.Kill, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), log))
+
+	stopped, serviceErrors := host.RunAsync(ctx)
+
+	for {
+		select {
+		// Normal shutdown
+		case <-exitCh:
+			log.Info("Shutdown requested..")
+			cancel()
+
+		// A service terminated with a failure. Details of the failure have already been logged.
+		case <-serviceErrors:
+			fmt.Println("One of the services failed. Shutting down...")
+			cancel()
+
+		// Finished shutting down. An error returned here is a failure to terminate
+		// gracefully, so just crash if that happens.
+		case err := <-stopped:
+			if err == nil {
+				os.Exit(0)
+			} else {
+				log.Error(err, "Graceful shutdown failed. Aborting...")
+				flushLogs()
+				os.Exit(int(AbruptShutdown))
+			}
+		}
 	}
 }
 
@@ -62,4 +115,13 @@ func getStartupOpts() *startupOpts {
 	flag.StringVar(&opts.HealthProbeAddr, "health-probe-bind-address", ":43591", "The address the probe endpoint binds to.")
 	flag.Parse()
 	return &startupOpts{}
+}
+
+func getExeDir() string {
+	exePath, err := os.Executable()
+	if err != nil {
+		os.Exit(int(KcpPathNotFound))
+	}
+	exeDir := path.Dir(exePath)
+	return exeDir
 }
