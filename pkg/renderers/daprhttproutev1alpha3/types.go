@@ -8,7 +8,3 @@ package daprhttproutev1alpha3
 const (
 	ResourceType = "dapr.io.DaprHttpRoute"
 )
-
-type DaprHttpRouteProperties struct {
-	AppID string `json:"appID"`
-}

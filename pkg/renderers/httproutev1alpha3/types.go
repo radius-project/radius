@@ -5,44 +5,16 @@
 
 package httproutev1alpha3
 
+import "github.com/Azure/radius/pkg/azure/radclient"
+
 const (
 	ResourceType = "HttpRoute"
 )
 
-type HttpRoute struct {
-	Port    *int     `json:"port"`
-	Gateway *Gateway `json:"gateway,omitempty"`
-	Url     string   `json:"url"`
-	Host    string   `json:"host"`
-	Scheme  string   `json:"scheme"`
-}
-
-func (h HttpRoute) GetEffectivePort() int {
+func GetEffectivePort(h radclient.HTTPRouteProperties) int {
 	if h.Port != nil {
-		return *h.Port
+		return int(*h.Port)
 	} else {
 		return 80
 	}
-}
-
-type Gateway struct {
-	Source   string          `json:"source"`
-	Hostname string          `json:"hostname"`
-	Rules    map[string]Rule `json:"rules"`
-}
-
-type Rule struct {
-	Method  string   `json:"method"`
-	Path    Path     `json:"path"`
-	Headers []Header `json:"headers"`
-}
-
-type Path struct {
-	Value string `json:"value"`
-	Type  string `json:"type"`
-}
-
-type Header struct {
-	Value string `json:"value"`
-	Type  string `json:"type"`
 }

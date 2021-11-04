@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
@@ -30,7 +31,7 @@ func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers
 }
 
 func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := MongoDBComponentProperties{}
+	properties := radclient.MongoDBComponentProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
@@ -38,7 +39,7 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 	}
 
 	resources := []outputresource.OutputResource{}
-	if properties.Managed {
+	if properties.Managed != nil && *properties.Managed {
 		results, err := RenderManaged(resource.ResourceName, properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
@@ -63,8 +64,8 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 	}, nil
 }
 
-func RenderManaged(name string, properties MongoDBComponentProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource != "" {
+func RenderManaged(name string, properties radclient.MongoDBComponentProperties) ([]outputresource.OutputResource, error) {
+	if properties.Resource != nil && *properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
 
@@ -95,12 +96,12 @@ func RenderManaged(name string, properties MongoDBComponentProperties) ([]output
 	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
 
-func RenderUnmanaged(name string, properties MongoDBComponentProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource == "" {
+func RenderUnmanaged(name string, properties radclient.MongoDBComponentProperties) ([]outputresource.OutputResource, error) {
+	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
 
-	databaseID, err := renderers.ValidateResourceID(properties.Resource, CosmosMongoResourceType, "CosmosDB Mongo Database")
+	databaseID, err := renderers.ValidateResourceID(*properties.Resource, CosmosMongoResourceType, "CosmosDB Mongo Database")
 	if err != nil {
 		return nil, err
 	}

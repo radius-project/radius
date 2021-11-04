@@ -12,6 +12,7 @@ import (
 	"net/url"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
@@ -43,14 +44,14 @@ func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, resource rend
 }
 
 func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := MongoDBComponentProperties{}
+	properties := radclient.MongoDBComponentProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	if !properties.Managed {
+	if properties.Managed == nil || !*properties.Managed {
 		return renderers.RendererOutput{}, errors.New("only Radius managed resources are supported for MongoDB on Kubernetes")
 	}
 

@@ -19,8 +19,3 @@ var KeyVaultResourceType = azresources.KnownType{
 		},
 	},
 }
-
-type KeyVaultComponentProperties struct {
-	Managed  bool   `json:"managed"`
-	Resource string `json:"resource"`
-}

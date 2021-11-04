@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/renderers"
 )
 
@@ -23,11 +24,11 @@ func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload rend
 
 // Render is the WorkloadRenderer implementation for volume
 func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := VolumeProperties{}
+	properties := radclient.VolumeProperties{}
 	err := options.Resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	return renderers.RendererOutput{}, fmt.Errorf("Kind %s is not supported.", properties.Kind)
+	return renderers.RendererOutput{}, fmt.Errorf("kind %v is not supported", properties.Kind)
 }
