@@ -72,14 +72,13 @@ Ephemeral volumes have the same lifecycle as the container, being deployed and d
 
 Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the volume.
 
-{{% alert title="👷‍♂️ Under construction 🚧" color="warning" %}}
-Persistent volumes are still in development, check back soon for updates on available volume providers.
-{{% /alert %}}
+Learn more about volumes and supported resources in the [Volume docs]({{< ref volume >}}).
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | mountPath | y | The container path to mount the volume to. | `\tmp\mystore`
 | source | y | The resource if of the resource providing the volume. | `filestore.id`
+| rbac | n | The role-based access control level for the file share. Allowed values are `'read'` and `'write'`. | `'read'`
 
 ### Readiness probe
 

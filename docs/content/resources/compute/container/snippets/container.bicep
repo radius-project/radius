@@ -24,6 +24,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
             mountPath: '/tmpfs'
             managedStore: 'memory'
           }
+          persistentVolume:{
+            kind: 'persistent'
+            mountPath:'/tmpfs2'
+            source: myshare.id
+            rbac: 'read'
+          }
         }
         readinessProbe:{
           kind:'httpGet'
@@ -45,8 +51,17 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
     }
+
   }
   //CONTAINER
+  
+  resource myshare 'Volume' = {
+    name: 'myshare'
+    properties:{
+      kind: 'azure.com.fileshare'
+      managed:true
+    }
+  }
 
   resource http 'HttpRoute' = {
     name: 'http'
