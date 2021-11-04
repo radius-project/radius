@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
@@ -35,8 +36,8 @@ func createContext(t *testing.T) context.Context {
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
-		VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
-			"azure.com.fileshare": GetAzureFileShareVolume,
+		VolumeRenderers: map[radclient.VolumePropertiesKind]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+			radclient.VolumePropertiesKindAzureComFileshare: GetAzureFileShareVolume,
 		},
 	}
 
@@ -101,8 +102,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
-		VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
-			"azure.com.fileshare": GetAzureFileShareVolume,
+		VolumeRenderers: map[radclient.VolumePropertiesKind]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+			radclient.VolumePropertiesKindAzureComFileshare: GetAzureFileShareVolume,
 		},
 	}
 
@@ -124,8 +125,8 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
-		VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
-			"azure.com.fileshare": GetAzureFileShareVolume,
+		VolumeRenderers: map[radclient.VolumePropertiesKind]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+			radclient.VolumePropertiesKindAzureComFileshare: GetAzureFileShareVolume,
 		},
 	}
 
@@ -147,8 +148,8 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 func Test_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
-		VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
-			"azure.com.fileshare": GetAzureFileShareVolume,
+		VolumeRenderers: map[radclient.VolumePropertiesKind]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+			radclient.VolumePropertiesKindAzureComFileshare: GetAzureFileShareVolume,
 		},
 	}
 
@@ -158,7 +159,7 @@ func Test_Render_Managed_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"managed": true,
-			"kind":    "azure.com.fileshare",
+			"kind":    radclient.VolumePropertiesKindAzureComFileshare,
 		},
 	}
 

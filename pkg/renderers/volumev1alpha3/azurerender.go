@@ -26,7 +26,7 @@ var storageAccountDependency outputresource.Dependency
 
 type AzureRenderer struct {
 	Arm             armauth.ArmConfig
-	VolumeRenderers map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
+	VolumeRenderers map[radclient.VolumePropertiesKind]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
 }
 
 var SupportedVolumeRenderers = map[radclient.VolumePropertiesKind]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
@@ -53,7 +53,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 		return renderers.RendererOutput{}, fmt.Errorf("%v is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeRenderers)
 	}
 
-	renderOutput, err := r.VolumeRenderers[string(*properties.Kind)](ctx, options.Resource, options.Dependencies)
+	renderOutput, err := r.VolumeRenderers[*properties.Kind](ctx, options.Resource, options.Dependencies)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
