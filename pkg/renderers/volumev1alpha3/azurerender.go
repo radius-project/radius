@@ -48,7 +48,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 		return renderers.RendererOutput{}, err
 	}
 	if properties.Kind == nil {
-		return renderers.RendererOutput{}, errors.New("`kind` properties is required")
+		return renderers.RendererOutput{}, errors.New("`kind` property is required")
 	} else if !isSupported(*properties.Kind) {
 		return renderers.RendererOutput{}, fmt.Errorf("%v is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeRenderers)
 	}
