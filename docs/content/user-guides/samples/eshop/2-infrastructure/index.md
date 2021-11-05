@@ -7,7 +7,7 @@ description: "Learn how to model the eShop infrastructure in Bicep"
 weight: 200
 ---
 
-In this section you will be creating an eShop Radius Application, and add all the resources and services that compose it. You will be adding a mixture of [user-managed Radius resources]({{< ref "components-model#user-managed" >}}), [Radius-managed resources]({{< ref "components-model#radius-managed" >}}), and [platform-specific resources]({{< ref "components-model#platform-specific" >}}) in your application to learn all the ways you can create an application.
+In this section you will be creating an eShop Radius Application, and add all the resources and services that compose it. You will be adding a mixture of [user-managed Radius resources]({{< ref "components-model#user-managed" >}}), [Radius-managed resources]({{< ref "components-model#radius-managed" >}}), and [platform-specific resources]({{< ref "components-model#platform-specific" >}}) in your application.
 
 ## Radius application
 
@@ -21,8 +21,8 @@ The first resources to model are the infrastructure resources:
 
 - SQL databases
 - Redis caches
-- Message bus, either Azure Service Bus or RabbitMQ
-- MongoDB, either Azure Cosmos DB or MongoDB container
+- Message bus: either Azure Service Bus or RabbitMQ
+- MongoDB: either Azure Cosmos DB or MongoDB container
 
 ### SQL databases
 
