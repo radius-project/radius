@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -122,21 +123,32 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	return uns, nil
 }
 
+var kindMap = map[string]string{
+	"Application":                        "Application",
+	"ContainerComponent":                 "ContainerComponent",
+	"Website":                            "Website",
+	"dapr.io.PubSubTopicComponent":       "DaprIOPubSubTopicComponent",
+	"dapr.io.StateStoreComponent":        "DaprIOStateStoreComponent",
+	"dapr.io.DaprHttpRoute":              "DaprIODaprHttpRoute",
+	"mongodb.com.MongoDBComponent":       "MongoDBComponent",
+	"rabbitmq.com.MessageQueueComponent": "RabbitMQComponent",
+	"redislabs.com.RedisComponent":       "RedisComponent",
+	"HttpRoute":                          "HttpRoute",
+	"GrpcRoute":                          "GrpcRoute",
+	"Gateway":                            "Gateway",
+}
+
 // TODO this should be removed and instead we should use the CR definitions to know about the arm mapping
 func GetKindFromArmType(armType string) string {
-	kindMap := map[string]string{
-		"Application":                        "Application",
-		"ContainerComponent":                 "ContainerComponent",
-		"Website":                            "Website",
-		"dapr.io.PubSubTopicComponent":       "DaprIOPubSubTopicComponent",
-		"dapr.io.StateStoreComponent":        "DaprIOStateStoreComponent",
-		"dapr.io.DaprHttpRoute":              "DaprIODaprHttpRoute",
-		"mongodb.com.MongoDBComponent":       "MongoDBComponent",
-		"rabbitmq.com.MessageQueueComponent": "RabbitMQComponent",
-		"redislabs.com.RedisComponent":       "RedisComponent",
-		"HttpRoute":                          "HttpRoute",
-		"GrpcRoute":                          "GrpcRoute",
-		"Gateway":                            "Gateway",
+	caseInsensitive := map[string]string{}
+	for k, v := range kindMap {
+		k := strings.ToLower(k)
+		caseInsensitive[k] = v
 	}
-	return kindMap[armType]
+
+	return caseInsensitive[strings.ToLower(armType)]
+}
+
+func GetSupportedTypes() map[string]string {
+	return kindMap
 }

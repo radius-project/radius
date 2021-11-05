@@ -13,11 +13,13 @@ import (
 	"os/exec"
 	"path"
 	"sync/atomic"
+	"time"
 
 	"github.com/Azure/radius/pkg/cli/download"
 	"github.com/Azure/radius/pkg/process"
 	"github.com/go-logr/logr"
 	"github.com/gofrs/flock"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type runningState uint32
@@ -33,6 +35,7 @@ const (
 
 type KcpOptions struct {
 	Executor         process.Executor
+	KubeConfigPath   string
 	WorkingDirectory string
 	Started          chan<- struct{}
 }
@@ -41,6 +44,7 @@ type KcpRunner struct {
 	log               logr.Logger
 	workingDirectory  string
 	kcpExecutablePath string
+	kubeConfigPath    string
 	processExited     chan finishedProcessInfo
 	kcpPid            int
 	state             runningState
@@ -67,6 +71,7 @@ func NewKcpRunner(log logr.Logger, executablesDir string, options KcpOptions) (*
 		log:               log,
 		workingDirectory:  options.WorkingDirectory,
 		kcpExecutablePath: kcpPath,
+		kubeConfigPath:    options.KubeConfigPath,
 		processExecutor:   pe,
 		kcpPid:            process.InvalidPID,
 		state:             ready,
@@ -80,6 +85,7 @@ func (r *KcpRunner) Name() string {
 
 func (r *KcpRunner) Run(ctx context.Context) error {
 	log := logr.FromContextOrDiscard(ctx)
+
 	if !atomic.CompareAndSwapUint32((*uint32)(&r.state), uint32(ready), uint32(running)) {
 		return fmt.Errorf("KCP run in progress")
 	}
@@ -118,7 +124,12 @@ func (r *KcpRunner) Run(ctx context.Context) error {
 	r.processExited = make(chan finishedProcessInfo, 1)
 	startWaitForProcessExit()
 
-	r.started <- struct{}{}
+	err = r.waitKubeConfigReady(ctx)
+	if err != nil {
+		return err
+	}
+
+	close(r.started)
 	log.Info("Started API Server")
 
 	select {
@@ -178,4 +189,20 @@ func (r *KcpRunner) cleanup(pc processCheck) error {
 
 func kcpFilename() string {
 	return "kcp" + process.GetExecutableExt()
+}
+
+func (r *KcpRunner) waitKubeConfigReady(ctx context.Context) error {
+	waitProcessesStarted := func() (bool, error) {
+		if _, err := os.Stat(r.kubeConfigPath); err == nil {
+			return true, nil
+		} else {
+			if os.IsNotExist(err) {
+				return false, nil
+			} else {
+				return false, err
+			}
+		}
+	}
+
+	return wait.PollUntil(500*time.Millisecond, waitProcessesStarted, ctx.Done())
 }

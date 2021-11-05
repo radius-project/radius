@@ -23,7 +23,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/Azure/radius/pkg/hosting"
+	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/localenv"
+	apiruntime "k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
 type startupOpts struct {
@@ -60,11 +64,17 @@ func main() {
 		abort(err, "unable to create working directory", CannotCreateWorkingDirectory)
 	}
 
+	apiServerStarted := make(chan struct{})
 	apiServerReady := make(chan struct{})
+
+	scheme := apiruntime.NewScheme()
+	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
+	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 
 	certDir := os.Getenv("TLS_CERT_DIR")
 	controllerOptions := localenv.ControllerOptions{
 		Options: ctrl.Options{
+			Scheme:                 scheme,
 			MetricsBindAddress:     opts.MetricsAddr,
 			HealthProbeBindAddress: opts.HealthProbeAddr,
 			LeaderElection:         false,
@@ -83,7 +93,8 @@ func main() {
 
 	kcpOptions := localenv.KcpOptions{
 		WorkingDirectory: workingDir,
-		Started:          apiServerReady,
+		KubeConfigPath:   getKubeConfigPath(),
+		Started:          apiServerStarted,
 	}
 
 	kcpRunner, err := localenv.NewKcpRunner(log, exeDir, kcpOptions)
@@ -91,10 +102,18 @@ func main() {
 		abort(err, "unable to create KCP runner service", CannotCreateKcpRunner)
 	}
 
+	apiServerOptions := localenv.APIServerExtensionOptions{
+		KubeConfigPath: getKubeConfigPath(),
+		Scheme:         scheme,
+		Start:          apiServerReady,
+	}
+	apiServer := localenv.NewAPIServerExtension(log, apiServerOptions)
+
 	host := hosting.Host{
 		Services: []hosting.Service{
 			kcpRunner,
 			cms,
+			apiServer,
 		},
 	}
 	// Create a channel to handle the shutdown
@@ -109,6 +128,14 @@ func main() {
 
 	log.Info("Starting server...")
 	stopped, serviceErrors := host.RunAsync(ctx)
+
+	go func() {
+		<-apiServerStarted
+		log.Info("Applying CRDs...")
+		localenv.ApplyCRDs(ctx, getKubeConfigPath(), getCRDDir())
+		log.Info("CRDs Ready")
+		close(apiServerReady)
+	}()
 
 	select {
 	// Normal shutdown

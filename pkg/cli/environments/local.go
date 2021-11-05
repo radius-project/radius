@@ -10,11 +10,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
+	"github.com/Azure/radius/pkg/cli/localrp"
 	"github.com/Azure/radius/pkg/cli/server"
+	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // LocalEnvironment represents a local Radius environment
@@ -44,44 +48,69 @@ func (e *LocalEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+	azcred := &radclient.AnonymousCredential{}
+	connection := arm.NewConnection("http://localhost:9999", azcred, nil)
+
+	return &localrp.LocalRPDeploymentClient{
+		Authorizer:     nil,
+		BaseURL:        "http://localhost:9999",
+		Connection:     connection,
+		SubscriptionID: "test-subscription",
+		ResourceGroup:  "test-resource-group",
+	}, nil
+}
+
+func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
 	kubeConfig, err := e.GetKubeConfigPath()
 	if err != nil {
 		return nil, err
 	}
 
-	config, err := clientcmd.LoadFromFile(kubeConfig)
+	rawconfig, err := clientcmd.LoadFromFile(kubeConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	clientconfig := clientcmd.NewNonInteractiveClientConfig(*config, config.CurrentContext, nil, nil)
-	merged, err := clientconfig.ClientConfig()
+	context := rawconfig.Contexts[rawconfig.CurrentContext]
+	if context == nil {
+		return nil, fmt.Errorf("kubernetes context '%s' could not be found", rawconfig.CurrentContext)
+	}
+
+	clientconfig := clientcmd.NewNonInteractiveClientConfig(*rawconfig, rawconfig.CurrentContext, nil, nil)
+	config, err := clientconfig.ClientConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	c, err := client.New(merged, client.Options{Scheme: kubernetes.Scheme})
+	k8sClient, err := k8s.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
-	namespace, _, err := clientconfig.Namespace()
-	if err != nil {
-		return nil, err
-	}
+	azcred := &radclient.AnonymousCredential{}
+	con := arm.NewConnection("http://localhost:9999", azcred, nil)
 
-	return &kubernetes.KubernetesDeploymentClient{
-		Client:    c,
-		Namespace: namespace,
+	return &azure.AKSDiagnosticsClient{
+		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
+			Client:     k8sClient,
+			RestConfig: config,
+		},
+		ResourceClient: *radclient.NewRadiusResourceClient(con, "test-subscription"),
+		SubscriptionID: "test-subscription",
+		ResourceGroup:  "test-resource-group",
 	}, nil
 }
 
-func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	return nil, nil
-}
-
 func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	return nil, nil
+	azcred := &radclient.AnonymousCredential{}
+	con := arm.NewConnection("http://localhost:9999", azcred, nil)
+
+	return &azure.ARMManagementClient{
+		Connection:      con,
+		SubscriptionID:  "test-subscription",
+		ResourceGroup:   "test-resource-group",
+		EnvironmentName: e.Name,
+	}, nil
 }
 
 func (e *LocalEnvironment) GetKubeConfigPath() (string, error) {

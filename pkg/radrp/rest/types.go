@@ -45,18 +45,18 @@ type OutputResource struct {
 // OutputResourceStatus represents the status of the Output Resource
 type OutputResourceStatus struct {
 	ProvisioningState        string    `json:"provisioningState"`
-	ProvisioningErrorDetails string    `json:"provisioningErrorDetails"`
+	ProvisioningErrorDetails string    `json:"provisioningErrorDetails,omitempty"`
 	HealthState              string    `json:"healthState"`
-	HealthErrorDetails       string    `json:"healthErrorDetails"`
+	HealthErrorDetails       string    `json:"healthErrorDetails,omitempty"`
 	Replicas                 []Replica `json:"replicas,omitempty"`
 }
 
 // ComponentStatus represents the status of the Radius Component
 type ComponentStatus struct {
 	ProvisioningState        string           `json:"provisioningState"`
-	ProvisioningErrorDetails string           `json:"provisioningErrorDetails"`
-	HealthState              string           `json:"healthState"`
-	HealthErrorDetails       string           `json:"healthErrorDetails"`
+	ProvisioningErrorDetails string           `json:"provisioningErrorDetails,omitempty"`
+	HealthState              string           `json:"healthState,omitempty"`
+	HealthErrorDetails       string           `json:"healthErrorDetails,omitempty"`
 	OutputResources          []OutputResource `json:"outputResources,omitempty"`
 }
 

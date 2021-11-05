@@ -71,17 +71,18 @@ func NewRadiusController(options *Options) *RadiusController {
 	}
 
 	return &RadiusController{
-		application: application,
-		resources:   resources,
-		template:    template,
-		options:     options,
+		application:  application,
+		resources:    resources,
+		watchedTypes: options.WatchedTypes,
+		template:     template,
+		options:      options,
 	}
 }
 
 type RadiusController struct {
 	application  *ApplicationReconciler
 	resources    []*ResourceReconciler
-	watchedTypes []client.Object
+	watchedTypes []WatchedType
 	template     *bicepcontroller.DeploymentTemplateReconciler
 	options      *Options
 }
@@ -94,10 +95,10 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 
 	// We create some indexes for watched types - this is done once because
 	// we create a reconciler per-resource-type right now.
-	for _, obj := range c.watchedTypes {
-		err = mgr.GetFieldIndexer().IndexField(context.Background(), obj, CacheKeyController, extractOwnerKey)
+	for _, watchedType := range c.watchedTypes {
+		err = mgr.GetFieldIndexer().IndexField(context.Background(), watchedType.Object, CacheKeyController, extractOwnerKey)
 		if err != nil {
-			return fmt.Errorf("unable to create ownership of %T: %w", obj, err)
+			return fmt.Errorf("unable to create ownership of %T: %w", watchedType.Object, err)
 		}
 	}
 
