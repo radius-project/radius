@@ -8,12 +8,14 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"path"
 	"syscall"
 
 	"github.com/go-logr/logr"
+	"github.com/mitchellh/go-homedir"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/Azure/radius/pkg/hosting"
@@ -123,10 +125,11 @@ func getStartupOpts() *startupOpts {
 }
 
 func getExeDir() string {
-	exePath, err := os.Executable()
+	home, err := homedir.Dir()
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not determine user's home directory: %v", err)
 		os.Exit(int(KcpPathNotFound))
 	}
-	exeDir := path.Dir(exePath)
+	exeDir := path.Join(home, ".rad", "bin")
 	return exeDir
 }

@@ -20,6 +20,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/restmapper"
 	ctrl "sigs.k8s.io/controller-runtime"
+	clientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
@@ -43,7 +44,12 @@ func NewControllerManagerService(log logr.Logger, options ctrl.Options) (*Contro
 		utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
+	config, err := clientconfig.GetConfig()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get Kubernetes client config: %w", err)
+	}
+
+	mgr, err := ctrl.NewManager(config, options)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create controller manager: %w", err)
 	}
