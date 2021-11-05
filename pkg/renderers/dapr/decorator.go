@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
@@ -148,13 +149,15 @@ func (r *Renderer) resolveAppId(trait Trait, dependencies map[string]renderers.R
 			return "", fmt.Errorf("failed to find depenendency with id %q", trait.Provides)
 		}
 
-		route := daprhttproutev1alpha3.DaprHttpRouteProperties{}
+		route := radclient.DaprHTTPRouteProperties{}
 		err := routeDependency.ConvertDefinition(&route)
 		if err != nil {
 			return "", err
 		}
-
-		routeAppID = route.AppID
+		routeAppID = ""
+		if route.AppID != nil {
+			routeAppID = *route.AppID
+		}
 	}
 
 	if trait.AppID != "" && routeAppID != "" && trait.AppID != routeAppID {

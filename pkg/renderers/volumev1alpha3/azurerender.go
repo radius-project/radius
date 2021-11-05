@@ -7,10 +7,12 @@ package volumev1alpha3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 )
@@ -24,15 +26,15 @@ var storageAccountDependency outputresource.Dependency
 
 type AzureRenderer struct {
 	Arm             armauth.ArmConfig
-	VolumeRenderers map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
+	VolumeRenderers map[radclient.VolumePropertiesKind]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
 }
 
-var SupportedVolumeRenderers = map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
-	"azure.com.fileshare": GetAzureFileShareVolume,
+var SupportedVolumeRenderers = map[radclient.VolumePropertiesKind]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+	radclient.VolumePropertiesKindAzureComFileshare: GetAzureFileShareVolume,
 }
 
-var SupportedVolumeMakeSecretsAndValues = map[string]func(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference){
-	"azure.com.fileshare": MakeSecretsAndValuesForAzureFileShare,
+var SupportedVolumeMakeSecretsAndValues = map[radclient.VolumePropertiesKind]func(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference){
+	radclient.VolumePropertiesKindAzureComFileshare: MakeSecretsAndValuesForAzureFileShare,
 }
 
 func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
@@ -40,22 +42,23 @@ func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers
 }
 
 func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := VolumeProperties{}
+	properties := radclient.VolumeProperties{}
 	err := options.Resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-
-	if !isSupported(properties.Kind) {
-		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeRenderers)
+	if properties.Kind == nil {
+		return renderers.RendererOutput{}, errors.New("`kind` property is required")
+	} else if !isSupported(*properties.Kind) {
+		return renderers.RendererOutput{}, fmt.Errorf("%v is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeRenderers)
 	}
 
-	renderOutput, err := r.VolumeRenderers[properties.Kind](ctx, options.Resource, options.Dependencies)
+	renderOutput, err := r.VolumeRenderers[*properties.Kind](ctx, options.Resource, options.Dependencies)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	computedValues, secretValues := SupportedVolumeMakeSecretsAndValues[properties.Kind](storageAccountDependency.LocalID)
+	computedValues, secretValues := SupportedVolumeMakeSecretsAndValues[*properties.Kind](storageAccountDependency.LocalID)
 
 	return renderers.RendererOutput{
 		Resources:      renderOutput.Resources,
@@ -64,7 +67,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	}, nil
 }
 
-func isSupported(kind string) bool {
+func isSupported(kind radclient.VolumePropertiesKind) bool {
 	for k := range SupportedVolumeRenderers {
 		if kind == k {
 			return true

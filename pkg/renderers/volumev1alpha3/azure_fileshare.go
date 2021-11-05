@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
@@ -18,7 +19,7 @@ import (
 )
 
 func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	properties := VolumeProperties{}
+	properties := radclient.VolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -29,7 +30,7 @@ func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererRes
 	}
 
 	resources := []outputresource.OutputResource{}
-	if properties.Managed {
+	if properties.Managed != nil && *properties.Managed {
 		results, err := RenderManaged(resource.ResourceName, properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
@@ -54,8 +55,8 @@ func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererRes
 	}, nil
 }
 
-func RenderManaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource != "" {
+func RenderManaged(name string, properties radclient.VolumeProperties) ([]outputresource.OutputResource, error) {
+	if properties.Resource != nil && *properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
 
@@ -83,12 +84,12 @@ func RenderManaged(name string, properties VolumeProperties) ([]outputresource.O
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
-func RenderUnmanaged(name string, properties VolumeProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource == "" {
+func RenderUnmanaged(name string, properties radclient.VolumeProperties) ([]outputresource.OutputResource, error) {
+	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
 
-	fileshareID, err := renderers.ValidateResourceID(properties.Resource, AzureFileShareResourceType, "Azure File Share")
+	fileshareID, err := renderers.ValidateResourceID(*properties.Resource, AzureFileShareResourceType, "Azure File Share")
 	if err != nil {
 		return nil, err
 	}

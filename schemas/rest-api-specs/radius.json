@@ -120,6 +120,10 @@
             true
           ],
           "type": "boolean"
+        },
+        "resource": {
+          "description": "The ID of the user-managed KeyVault to use",
+          "type": "string"
         }
       },
       "type": "object"
@@ -940,7 +944,8 @@
           "type": "object"
         },
         "source": {
-          "description": "The gateway which this route is part of."
+          "description": "The gateway which this route is part of.",
+          "type": "string"
         }
       },
       "required": [

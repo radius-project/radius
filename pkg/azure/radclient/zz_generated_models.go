@@ -157,6 +157,9 @@ type AzureKeyVaultComponentProperties struct {
 	BasicComponentProperties
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
 	Managed *Enum3 `json:"managed,omitempty"`
+
+	// The ID of the user-managed KeyVault to use
+	Resource *string `json:"resource,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultComponentProperties.
@@ -164,6 +167,7 @@ func (a AzureKeyVaultComponentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	a.BasicComponentProperties.marshalInternal(objectMap)
 	populate(objectMap, "managed", a.Managed)
+	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
 
@@ -178,6 +182,9 @@ func (a *AzureKeyVaultComponentProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "managed":
 				err = unpopulate(val, &a.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &a.Resource)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1241,7 +1248,7 @@ type HTTPRouteGateway struct {
 	Rules map[string]*HTTPRouteGatewayRule `json:"rules,omitempty"`
 
 	// The gateway which this route is part of.
-	Source interface{} `json:"source,omitempty"`
+	Source *string `json:"source,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type HTTPRouteGateway.

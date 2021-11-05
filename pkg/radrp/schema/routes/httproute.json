@@ -55,7 +55,8 @@
       ],
       "properties": {
         "source": {
-          "description": "The gateway which this route is part of."
+          "description": "The gateway which this route is part of.",
+          "type": "string"
         },
         "hostname": {
           "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",

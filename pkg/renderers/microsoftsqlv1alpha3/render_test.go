@@ -88,7 +88,10 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	_, err := renderer.Render(ctx, renderers.RenderOptions{
+		Resource:     resource,
+		Dependencies: map[string]renderers.RendererDependency{},
+	})
 	require.Error(t, err)
 	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
 }

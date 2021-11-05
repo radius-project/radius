@@ -26,8 +26,3 @@ var SQLResourceType = azresources.KnownType{
 		},
 	},
 }
-
-type MicrosoftSQLComponentProperties struct {
-	Managed  bool   `json:"managed"`
-	Resource string `json:"resource"`
-}
