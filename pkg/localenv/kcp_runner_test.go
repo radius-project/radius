@@ -52,7 +52,11 @@ func TestErrorsIfKcpBinaryNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No "KCP binary" added
 
-	_, err := NewKcpRunner(tmpDir, nil)
+	runner, err := NewKcpRunner(tmpDir, nil)
+	require.NoErrorf(t, err, "unable to create KcpRunner")
+
+	ctx, _ := testcontext.GetContext(t)
+	err = runner.Run(ctx)
 	require.Errorf(t, err, "no KCP binary should result in runner creation error")
 }
 

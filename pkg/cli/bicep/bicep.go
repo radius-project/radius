@@ -6,21 +6,17 @@
 package bicep
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path"
 	"runtime"
 
-	"github.com/Azure/radius/pkg/version"
+	"github.com/Azure/radius/pkg/cli/download"
 	"github.com/mitchellh/go-homedir"
 )
 
 const radBicepEnvVar = "RAD_BICEP"
-
-// Placeholders are for: channel, platform, filename
-const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/bicep/%s/%s/%s"
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
 func IsBicepInstalled() (bool, error) {
@@ -56,55 +52,14 @@ func DeleteBicep() error {
 
 // DownloadBicep updates our local copy of bicep
 func DownloadBicep() error {
-	uri, err := getDownloadURI()
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Get(uri)
-	if err != nil {
-		return fmt.Errorf("failed to download bicep: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("failed to download bicep from '%s'with status code: %d", uri, resp.StatusCode)
-	}
-
 	filepath, err := GetLocalBicepFilepath()
 	if err != nil {
 		return err
 	}
 
-	// create folders
-	err = os.MkdirAll(path.Dir(filepath), os.ModePerm)
+	err = download.Binary(context.Background(), "bicep", filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
-	}
-
-	// will truncate the file if it exists
-	out, err := os.Create(filepath)
-	if err != nil {
-		return fmt.Errorf("failed to create file %s: %v", filepath, err)
-	}
-	defer out.Close()
-
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to write file %s: %v", filepath, err)
-	}
-
-	// get the filemode so we can mark it as executable
-	file, err := out.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
-	}
-
-	// make file executable by everyone
-	err = out.Chmod(file.Mode() | 0111)
-	if err != nil {
-		return fmt.Errorf("failed to change permissons for %s: %v", filepath, err)
+		return err
 	}
 
 	return nil
@@ -140,23 +95,6 @@ func getBicepFilename() (string, error) {
 	case "windows":
 		return "rad-bicep.exe", nil
 	default:
-		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
-	}
-}
-
-func getDownloadURI() (string, error) {
-	filename, err := getBicepFilename()
-	if err != nil {
-		return "", err
-	}
-
-	if runtime.GOOS == "darwin" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "macos-x64", filename), nil
-	} else if runtime.GOOS == "linux" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "linux-x64", filename), nil
-	} else if runtime.GOOS == "windows" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "windows-x64", filename), nil
-	} else {
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 }

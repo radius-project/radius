@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"path"
@@ -34,7 +33,8 @@ const (
 	CannotCreateLogger            RadiusdExitCode = 2
 	CannotCreateControllerManager RadiusdExitCode = 3
 	CannotCreateKcpRunner         RadiusdExitCode = 4
-	AbruptShutdown                RadiusdExitCode = 99
+	CannotDownloadKcpExecutable   RadiusdExitCode = 5
+	ForcedShutdown                RadiusdExitCode = 99
 )
 
 func main() {
@@ -48,6 +48,12 @@ func main() {
 	}
 	defer flushLogs()
 
+	abort := func(err error, msg string, code RadiusdExitCode) {
+		log.Error(err, msg)
+		flushLogs()
+		os.Exit(int(code))
+	}
+
 	certDir := os.Getenv("TLS_CERT_DIR")
 	controllerOptions := ctrl.Options{
 		MetricsBindAddress:     opts.MetricsAddr,
@@ -59,14 +65,12 @@ func main() {
 
 	cms, err := localenv.NewControllerManagerService(log, controllerOptions)
 	if err != nil {
-		log.Error(err, "unable to create controller manager service")
-		os.Exit(int(CannotCreateControllerManager))
+		abort(err, "unable to create controller manager service", CannotCreateControllerManager)
 	}
 
 	kcpRunner, err := localenv.NewKcpRunner(exeDir, nil)
 	if err != nil {
-		log.Error(err, "unable to create KCP runner service")
-		os.Exit(int(CannotCreateKcpRunner))
+		abort(err, "unable to create KCP runner service", CannotCreateKcpRunner)
 	}
 
 	host := hosting.Host{
@@ -80,6 +84,11 @@ func main() {
 	signal.Notify(exitCh, os.Kill, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), log))
 
+	err = kcpRunner.EnsureKcpExecutable(ctx)
+	if err != nil {
+		abort(err, "unable to ensure KCP executable", CannotDownloadKcpExecutable)
+	}
+
 	stopped, serviceErrors := host.RunAsync(ctx)
 
 	for {
@@ -91,18 +100,14 @@ func main() {
 
 		// A service terminated with a failure. Details of the failure have already been logged.
 		case <-serviceErrors:
-			fmt.Println("One of the services failed. Shutting down...")
+			log.Info("One of the services failed. Shutting down...")
 			cancel()
 
 		// Finished shutting down. An error returned here is a failure to terminate
 		// gracefully, so just crash if that happens.
 		case err := <-stopped:
-			if err == nil {
-				os.Exit(0)
-			} else {
-				log.Error(err, "Graceful shutdown failed. Aborting...")
-				flushLogs()
-				os.Exit(int(AbruptShutdown))
+			if err != nil {
+				abort(err, "Graceful shutdown failed. Aborting...", ForcedShutdown)
 			}
 		}
 	}

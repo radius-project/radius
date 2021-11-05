@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/Azure/radius/pkg/cli/download"
 	"github.com/Azure/radius/pkg/process"
 )
 
@@ -36,16 +37,15 @@ type KcpRunner struct {
 	processExecutor   process.Executor
 }
 
+var _ process.ProcessExitHandler = (*KcpRunner)(nil)
+
 type finishedProcessInfo struct {
 	err      error
 	exitCode int
 }
 
 func NewKcpRunner(executablesDir string, pe process.Executor) (*KcpRunner, error) {
-	kcpPath := path.Join(executablesDir, "kcp", process.GetExecutableExt())
-	if _, err := os.Stat(kcpPath); err != nil {
-		return &KcpRunner{}, fmt.Errorf("unable to locate KCP binary")
-	}
+	kcpPath := path.Join(executablesDir, kcpFilename())
 
 	if pe == nil {
 		pe = process.NewOSExecutor()
@@ -68,6 +68,10 @@ func (r *KcpRunner) Run(ctx context.Context) error {
 		return fmt.Errorf("KCP run in progress")
 	}
 	defer func() { atomic.StoreUint32((*uint32)(&r.state), uint32(ready)) }()
+
+	if _, err := os.Stat(r.kcpExecutablePath); err != nil {
+		return fmt.Errorf("unable to locate KCP binary")
+	}
 
 	if err := r.cleanup(performProcessCheck); err != nil {
 		return err
@@ -114,6 +118,20 @@ func (r *KcpRunner) OnProcessExited(pid int, exitCode int, err error) {
 	}
 }
 
+func (r *KcpRunner) EnsureKcpExecutable(ctx context.Context) error {
+	_, err := os.Stat(r.kcpExecutablePath)
+	if err == nil {
+		return nil // KCP executable exists
+	}
+
+	err = download.Binary(ctx, "kcp", r.kcpExecutablePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *KcpRunner) cleanup(pc processCheck) error {
 	kcpConfigPath := path.Join(path.Dir(r.kcpExecutablePath), ".kcp")
 
@@ -155,4 +173,8 @@ func (r *KcpRunner) isKcpRunning() (bool, error) {
 	}
 
 	return false, nil
+}
+
+func kcpFilename() string {
+	return "kcp" + process.GetExecutableExt()
 }
