@@ -594,7 +594,7 @@ type ContainerConnection struct {
 // ContainerPort - Specifies a listening port for the container
 type ContainerPort struct {
 	// REQUIRED; The listening port number
-	ContainerPort *float32 `json:"containerPort,omitempty"`
+	ContainerPort *int32 `json:"containerPort,omitempty"`
 
 	// Protocol in use by the port
 	Protocol *ContainerPortProtocol `json:"protocol,omitempty"`
@@ -1159,7 +1159,7 @@ func (g GatewayResource) MarshalJSON() ([]byte, error) {
 type HTTPGetHealthProbeProperties struct {
 	HealthProbeProperties
 	// REQUIRED; The listening port number
-	ContainerPort *float32 `json:"containerPort,omitempty"`
+	ContainerPort *int32 `json:"containerPort,omitempty"`
 
 	// REQUIRED; The route to make the HTTP request on
 	Path *string `json:"path,omitempty"`
@@ -2309,7 +2309,7 @@ func (s *SystemData) UnmarshalJSON(data []byte) error {
 type TCPHealthProbeProperties struct {
 	HealthProbeProperties
 	// REQUIRED; The listening port number
-	ContainerPort *float32 `json:"containerPort,omitempty"`
+	ContainerPort *int32 `json:"containerPort,omitempty"`
 
 	// Threshold number of times the probe fails after which a failure would be reported
 	FailureThreshold *float32 `json:"failureThreshold,omitempty"`

@@ -436,7 +436,7 @@
       "properties": {
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "protocol": {
           "description": "Protocol in use by the port",
@@ -895,7 +895,7 @@
       "properties": {
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "failureThreshold": {
           "description": "Threshold number of times the probe fails after which a failure would be reported",
@@ -1778,7 +1778,7 @@
       "properties": {
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "failureThreshold": {
           "description": "Threshold number of times the probe fails after which a failure would be reported",
