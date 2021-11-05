@@ -10,8 +10,8 @@ import (
 	"errors"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,34 +37,31 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	}
 	resource := options.Resource
 
-	container := containerv1alpha3.ContainerProperties{}
+	container := radclient.ContainerComponentProperties{}
 	err = resource.ConvertDefinition(&container)
 	if err != nil {
 		return renderers.RendererOutput{}, nil
 	}
 
-	trait := Trait{}
-	found, err := container.FindTrait(Kind, &trait)
-	if err != nil {
-		return renderers.RendererOutput{}, nil
-	} else if !found {
-		return output, nil
-	}
+	for _, t := range container.Traits {
+		switch trait := t.(type) {
+		case *radclient.ManualScalingTrait:
+			for _, resource := range output.Resources {
+				if resource.ResourceKind != resourcekinds.Kubernetes {
+					// Not a Kubernetes resource
+					continue
+				}
 
-	// ManualScaling detected, update deployment
-	for _, resource := range output.Resources {
-		if resource.ResourceKind != resourcekinds.Kubernetes {
-			// Not a Kubernetes resource
-			continue
-		}
+				o, ok := resource.Resource.(runtime.Object)
+				if !ok {
+					return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
+				}
 
-		o, ok := resource.Resource.(runtime.Object)
-		if !ok {
-			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
-		}
-
-		if trait.Replicas != nil {
-			r.setReplicas(o, trait.Replicas)
+				if trait.Replicas != nil {
+					r.setReplicas(o, trait.Replicas)
+				}
+			}
+			break
 		}
 	}
 

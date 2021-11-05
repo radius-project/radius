@@ -10,10 +10,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
@@ -42,11 +42,12 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 		return dependencies, nil
 	}
 
-	if trait.Provides == "" {
+	provides := to.String(trait.Provides)
+	if provides == "" {
 		return dependencies, nil
 	}
 
-	parsed, err := azresources.Parse(trait.Provides)
+	parsed, err := azresources.Parse(provides)
 	if err != nil {
 		return nil, err
 	}
@@ -105,14 +106,14 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		if appID != "" {
 			annotations["dapr.io/app-id"] = appID
 		}
-		if trait.AppPort != 0 {
-			annotations["dapr.io/app-port"] = fmt.Sprintf("%d", trait.AppPort)
+		if appPort := to.Int32(trait.AppPort); appPort != 0 {
+			annotations["dapr.io/app-port"] = fmt.Sprintf("%d", appPort)
 		}
-		if trait.Config != "" {
-			annotations["dapr.io/config"] = trait.Config
+		if config := to.String(trait.Config); config != "" {
+			annotations["dapr.io/config"] = config
 		}
-		if trait.Protocol != "" {
-			annotations["dapr.io/protocol"] = trait.Protocol
+		if trait.Protocol != nil {
+			annotations["dapr.io/protocol"] = string(*trait.Protocol)
 		}
 
 		r.setAnnotations(o, annotations)
@@ -121,32 +122,30 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	return output, nil
 }
 
-func (r *Renderer) FindTrait(resource renderers.RendererResource) (*Trait, error) {
-	container := containerv1alpha3.ContainerProperties{}
+func (r *Renderer) FindTrait(resource renderers.RendererResource) (*radclient.DaprSidecarTrait, error) {
+	container := radclient.ContainerComponentProperties{}
 	err := resource.ConvertDefinition(&container)
 	if err != nil {
 		return nil, err
 	}
 
-	trait := Trait{}
-	found, err := container.FindTrait(Kind, &trait)
-	if err != nil {
-		return nil, err
-	} else if !found {
-		return nil, nil
+	for _, t := range container.Traits {
+		switch trait := t.(type) {
+		case *radclient.DaprSidecarTrait:
+			return trait, nil
+		}
 	}
-
-	return &trait, nil
+	return nil, nil
 }
 
-func (r *Renderer) resolveAppId(trait Trait, dependencies map[string]renderers.RendererDependency) (string, error) {
+func (r *Renderer) resolveAppId(trait radclient.DaprSidecarTrait, dependencies map[string]renderers.RendererDependency) (string, error) {
 	// We're being extra pedantic here about reporting error cases. None of these
 	// cases should be possible to trigger with user input, they would result from internal bugs.
 	routeAppID := ""
-	if trait.Provides != "" {
-		routeDependency, ok := dependencies[trait.Provides]
+	if provides := to.String(trait.Provides); provides != "" {
+		routeDependency, ok := dependencies[provides]
 		if !ok {
-			return "", fmt.Errorf("failed to find depenendency with id %q", trait.Provides)
+			return "", fmt.Errorf("failed to find depenendency with id %q", provides)
 		}
 
 		route := radclient.DaprHTTPRouteProperties{}
@@ -154,21 +153,19 @@ func (r *Renderer) resolveAppId(trait Trait, dependencies map[string]renderers.R
 		if err != nil {
 			return "", err
 		}
-		routeAppID = ""
-		if route.AppID != nil {
-			routeAppID = *route.AppID
-		}
+		routeAppID = to.String(route.AppID)
 	}
 
-	if trait.AppID != "" && routeAppID != "" && trait.AppID != routeAppID {
-		return "", fmt.Errorf("the appId specified on a %q must match the appId specified on the %q trait. Route: %q, Trait: %q", daprhttproutev1alpha3.ResourceType, Kind, routeAppID, trait.AppID)
+	appID := to.String(trait.AppID)
+	if appID != "" && routeAppID != "" && appID != routeAppID {
+		return "", fmt.Errorf("the appId specified on a %q must match the appId specified on the %q trait. Route: %q, Trait: %q", daprhttproutev1alpha3.ResourceType, *trait.Kind, routeAppID, appID)
 	}
 
 	if routeAppID != "" {
 		return routeAppID, nil
 	}
 
-	return trait.AppID, nil
+	return appID, nil
 }
 
 func (r *Renderer) getAnnotations(o runtime.Object) (map[string]string, bool) {

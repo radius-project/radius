@@ -90,7 +90,7 @@
       "properties": {
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "protocol": {
           "description": "Protocol in use by the port",
@@ -235,7 +235,7 @@
         },
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "path": {
           "description": "The route to make the HTTP request on",
@@ -279,7 +279,7 @@
         },
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "initialDelaySeconds": {
           "description": "Initial delay in seconds before probing for readiness/liveness",

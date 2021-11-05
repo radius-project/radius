@@ -9,12 +9,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -36,7 +36,7 @@ const resourceName = "test-container"
 const envVarName1 = "TEST_VAR_1"
 const envVarValue1 = "TEST_VALUE_1"
 const envVarName2 = "TEST_VAR_2"
-const envVarValue2 = 81
+const envVarValue2 = "81"
 
 func createContext(t *testing.T) context.Context {
 	logger, err := radlogger.NewTestLogger(t)
@@ -47,7 +47,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func makeResource(t *testing.T, properties ContainerProperties) renderers.RendererResource {
+func makeResource(t *testing.T, properties radclient.ContainerComponentProperties) renderers.RendererResource {
 	b, err := json.Marshal(&properties)
 	require.NoError(t, err)
 
@@ -82,30 +82,29 @@ func makeResourceID(t *testing.T, resourceType string, resourceName string) azre
 
 func Test_GetDependencyIDs_Success(t *testing.T) {
 	testResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
-	properties := ContainerProperties{
-		Connections: map[string]ContainerConnection{
+	properties := radclient.ContainerComponentProperties{
+		Connections: map[string]*radclient.ContainerConnection{
 			"A": {
-				Kind:   "Http",
-				Source: makeResourceID(t, "HttpRoute", "A").ID,
+				Kind:   radclient.ContainerConnectionKindHTTP.ToPtr(),
+				Source: to.StringPtr(makeResourceID(t, "HttpRoute", "A").ID),
 			},
 			"B": {
-				Kind:   "Http",
-				Source: makeResourceID(t, "HttpRoute", "B").ID,
+				Kind:   radclient.ContainerConnectionKindHTTP.ToPtr(),
+				Source: to.StringPtr(makeResourceID(t, "HttpRoute", "B").ID),
 			},
 		},
-		Container: Container{
-			Image: "someimage:latest",
-			Ports: map[string]ContainerPort{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Ports: map[string]*radclient.ContainerPort{
 				"web": {
-					ContainerPort: to.IntPtr(5000),
-					Provides:      makeResourceID(t, "HttpRoute", "C").ID,
+					ContainerPort: to.Int32Ptr(5000),
+					Provides:      to.StringPtr(makeResourceID(t, "HttpRoute", "C").ID),
 				},
 			},
-			Volumes: map[string]map[string]interface{}{
-				"vol1": {
-					"kind":      "persistent",
-					"mountPath": "/tmpfs",
-					"source":    testResourceID,
+			Volumes: map[string]radclient.VolumeClassification{
+				"vol1": &radclient.PersistentVolume{
+					MountPath: to.StringPtr("/tmpfs"),
+					Source:    to.StringPtr(testResourceID),
 				},
 			},
 		},
@@ -142,15 +141,15 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 }
 
 func Test_GetDependencyIDs_InvalidId(t *testing.T) {
-	properties := ContainerProperties{
-		Connections: map[string]ContainerConnection{
+	properties := radclient.ContainerComponentProperties{
+		Connections: map[string]*radclient.ContainerConnection{
 			"A": {
-				Kind:   "Http",
-				Source: "not a resource id obviously...",
+				Kind:   radclient.ContainerConnectionKindHTTP.ToPtr(),
+				Source: to.StringPtr("not a resource id obviously..."),
 			},
 		},
-		Container: Container{
-			Image: "someimage:latest",
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
 		},
 	}
 	resource := makeResource(t, properties)
@@ -166,12 +165,12 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 //
 // If you add minor features, add them here.
 func Test_Render_Basic(t *testing.T) {
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Env: map[string]interface{}{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Env: map[string]*string{
+				envVarName1: to.StringPtr(envVarValue1),
+				envVarName2: to.StringPtr(envVarValue2),
 			},
 		},
 	}
@@ -203,12 +202,12 @@ func Test_Render_Basic(t *testing.T) {
 
 		container := deployment.Spec.Template.Spec.Containers[0]
 		require.Equal(t, resourceName, container.Name)
-		require.Equal(t, properties.Container.Image, container.Image)
+		require.Equal(t, *properties.Container.Image, container.Image)
 		require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
 
 		expectedEnv := []v1.EnvVar{
 			{Name: envVarName1, Value: envVarValue1},
-			{Name: envVarName2, Value: strconv.Itoa(envVarValue2)},
+			{Name: envVarName2, Value: envVarValue2},
 		}
 		require.Equal(t, expectedEnv, container.Env)
 
@@ -217,13 +216,13 @@ func Test_Render_Basic(t *testing.T) {
 }
 
 func Test_Render_PortWithoutRoute(t *testing.T) {
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Ports: map[string]ContainerPort{
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Ports: map[string]*radclient.ContainerPort{
 				"web": {
-					ContainerPort: to.IntPtr(5000),
-					Protocol:      "TCP",
+					ContainerPort: to.Int32Ptr(5000),
+					Protocol:      radclient.ContainerPortProtocolTCP.ToPtr(),
 				},
 			},
 		},
@@ -258,14 +257,14 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 }
 
 func Test_Render_PortConnectedToRoute(t *testing.T) {
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Ports: map[string]ContainerPort{
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Ports: map[string]*radclient.ContainerPort{
 				"web": {
-					ContainerPort: to.IntPtr(5000),
-					Protocol:      "TCP",
-					Provides:      makeResourceID(t, "HttpRoute", "A").ID,
+					ContainerPort: to.Int32Ptr(5000),
+					Protocol:      radclient.ContainerPortProtocolTCP.ToPtr(),
+					Provides:      to.StringPtr(makeResourceID(t, "HttpRoute", "A").ID),
 				},
 			},
 		},
@@ -310,18 +309,18 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 }
 
 func Test_Render_Connections(t *testing.T) {
-	properties := ContainerProperties{
-		Connections: map[string]ContainerConnection{
+	properties := radclient.ContainerComponentProperties{
+		Connections: map[string]*radclient.ContainerConnection{
 			"A": {
-				Kind:   "A",
-				Source: makeResourceID(t, "ResourceType", "A").ID,
+				Kind:   radclient.ContainerConnectionKindHTTP.ToPtr(),
+				Source: to.StringPtr(makeResourceID(t, "ResourceType", "A").ID),
 			},
 		},
-		Container: Container{
-			Image: "someimage:latest",
-			Env: map[string]interface{}{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Env: map[string]*string{
+				envVarName1: to.StringPtr(envVarValue1),
+				envVarName2: to.StringPtr(envVarValue2),
 			},
 		},
 	}
@@ -353,7 +352,7 @@ func Test_Render_Connections(t *testing.T) {
 
 		container := deployment.Spec.Template.Spec.Containers[0]
 		require.Equal(t, resourceName, container.Name)
-		require.Equal(t, properties.Container.Image, container.Image)
+		require.Equal(t, *properties.Container.Image, container.Image)
 		require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
 
 		expectedEnv := []v1.EnvVar{
@@ -380,7 +379,7 @@ func Test_Render_Connections(t *testing.T) {
 				},
 			},
 			{Name: envVarName1, Value: envVarValue1},
-			{Name: envVarName2, Value: strconv.Itoa(envVarValue2)},
+			{Name: envVarName2, Value: envVarValue2},
 		}
 		require.Equal(t, expectedEnv, container.Env)
 	})
@@ -406,15 +405,15 @@ func Test_Render_Connections(t *testing.T) {
 }
 
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
-	properties := ContainerProperties{
-		Connections: map[string]ContainerConnection{
+	properties := radclient.ContainerComponentProperties{
+		Connections: map[string]*radclient.ContainerConnection{
 			"A": {
-				Kind:   "A",
-				Source: makeResourceID(t, "ResourceType", "A").ID,
+				Kind:   radclient.ContainerConnectionKindHTTP.ToPtr(),
+				Source: to.StringPtr(makeResourceID(t, "ResourceType", "A").ID),
 			},
 		},
-		Container: Container{
-			Image: "someimage:latest",
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
 		},
 	}
 	resource := makeResource(t, properties)
@@ -434,8 +433,8 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	}
 
 	renderer := Renderer{
-		RoleAssignmentMap: map[string]RoleAssignmentData{
-			"A": {
+		RoleAssignmentMap: map[radclient.ContainerConnectionKind]RoleAssignmentData{
+			radclient.ContainerConnectionKindHTTP: {
 				LocalID:   "TargetLocalID",
 				RoleNames: []string{"TestRole1", "TestRole2"},
 			},
@@ -539,18 +538,17 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 func Test_Render_EphemeralVolumes(t *testing.T) {
 	const tempVolName = "TempVolume"
 	const tempVolMountPath = "/tmpfs"
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Env: map[string]interface{}{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Env: map[string]*string{
+				envVarName1: to.StringPtr(envVarValue1),
+				envVarName2: to.StringPtr(envVarValue2),
 			},
-			Volumes: map[string]map[string]interface{}{
-				tempVolName: {
-					"kind":         "ephemeral",
-					"mountPath":    tempVolMountPath,
-					"managedStore": "memory",
+			Volumes: map[string]radclient.VolumeClassification{
+				tempVolName: &radclient.EphemeralVolume{
+					MountPath:    to.StringPtr(tempVolMountPath),
+					ManagedStore: radclient.EphemeralVolumeManagedStoreMemory.ToPtr(),
 				},
 			},
 		},
@@ -609,14 +607,13 @@ func Test_Render_PersistentVolumes(t *testing.T) {
 	const testShareName = "myshare"
 	testResourceID := fmt.Sprintf("/subscriptions/%s/resourceGroups/test/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/share/%s", uuid.New(), testShareName)
 
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Volumes: map[string]map[string]interface{}{
-				tempVolName: {
-					"kind":      "persistent",
-					"mountPath": tempVolMountPath,
-					"source":    testResourceID,
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Volumes: map[string]radclient.VolumeClassification{
+				tempVolName: &radclient.PersistentVolume{
+					MountPath: to.StringPtr(tempVolMountPath),
+					Source:    to.StringPtr(testResourceID),
 				},
 			},
 		},
@@ -666,21 +663,20 @@ func outputResourcesToKindMap(resources []outputresource.OutputResource) map[str
 }
 
 func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Env: map[string]interface{}{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Env: map[string]*string{
+				envVarName1: to.StringPtr(envVarValue1),
+				envVarName2: to.StringPtr(envVarValue2),
 			},
-			ReadinessProbe: map[string]interface{}{
-				"kind":                "httpGet",
-				"path":                "/healthz",
-				"containerPort":       8080,
-				"headers":             map[string]string{"header1": "value1"},
-				"initialDelaySeconds": to.IntPtr(30),
-				"failureThreshold":    to.IntPtr(10),
-				"periodSeconds":       to.IntPtr(2),
+			ReadinessProbe: &radclient.HTTPGetHealthProbeProperties{
+				Path:                to.StringPtr("/healthz"),
+				ContainerPort:       to.Int32Ptr(8080),
+				Headers:             map[string]*string{"header1": to.StringPtr("value1")},
+				InitialDelaySeconds: to.Float32Ptr(30),
+				FailureThreshold:    to.Float32Ptr(10),
+				PeriodSeconds:       to.Float32Ptr(2),
 			},
 		},
 	}
@@ -736,16 +732,14 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 }
 
 func Test_Render_ReadinessProbeTcp(t *testing.T) {
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Env:   map[string]interface{}{},
-			ReadinessProbe: map[string]interface{}{
-				"kind":                "tcp",
-				"containerPort":       8080,
-				"initialDelaySeconds": to.IntPtr(30),
-				"failureThreshold":    to.IntPtr(10),
-				"periodSeconds":       to.IntPtr(2),
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			ReadinessProbe: &radclient.TCPHealthProbeProperties{
+				ContainerPort:       to.Int32Ptr(8080),
+				InitialDelaySeconds: to.Float32Ptr(30),
+				FailureThreshold:    to.Float32Ptr(10),
+				PeriodSeconds:       to.Float32Ptr(2),
 			},
 		},
 	}
@@ -794,16 +788,14 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 }
 
 func Test_Render_LivenessProbeExec(t *testing.T) {
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Env:   map[string]interface{}{},
-			LivenessProbe: map[string]interface{}{
-				"kind":                "exec",
-				"command":             "a b c",
-				"initialDelaySeconds": to.IntPtr(30),
-				"failureThreshold":    to.IntPtr(10),
-				"periodSeconds":       to.IntPtr(2),
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			LivenessProbe: &radclient.ExecHealthProbeProperties{
+				Command:             to.StringPtr("a b c"),
+				InitialDelaySeconds: to.Float32Ptr(30),
+				FailureThreshold:    to.Float32Ptr(10),
+				PeriodSeconds:       to.Float32Ptr(2),
 			},
 		},
 	}
@@ -852,13 +844,11 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 }
 
 func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
-	properties := ContainerProperties{
-		Container: Container{
-			Image: "someimage:latest",
-			Env:   map[string]interface{}{},
-			LivenessProbe: map[string]interface{}{
-				"kind":    "exec",
-				"command": "a b c",
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			LivenessProbe: &radclient.ExecHealthProbeProperties{
+				Command: to.StringPtr("a b c"),
 			},
 		},
 	}

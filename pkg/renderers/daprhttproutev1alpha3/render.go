@@ -8,6 +8,7 @@ package daprhttproutev1alpha3
 import (
 	"context"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/renderers"
@@ -29,14 +30,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		return renderers.RendererOutput{}, err
 	}
 
-	appId := ""
-	if properties.AppID != nil {
-		appId = *properties.AppID
-	}
 	return renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"appId": {
-				Value: appId,
+				Value: to.String(properties.AppID),
 			},
 		},
 	}, nil
