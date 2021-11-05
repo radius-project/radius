@@ -16,6 +16,14 @@ resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
     administratorLoginPassword: adminPassword
   }
 
+  resource allowAzureResources 'firewallRules' = {
+    name: 'allow-azure-resources'
+    properties: {
+      startIpAddress: '0.0.0.0'
+      endIpAddress: '0.0.0.0'
+    }
+  }
+
   resource identity 'databases' = {
     name: 'IdentityDb'
     location: location

@@ -18,13 +18,21 @@ param adminLogin string = 'sqladmin'
 @secure()
 param adminPassword string
 
-resource sql 'Microsoft.Sql/servers@2019-06-01-preview' = {
+resource sql 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: serverName
   location: location
   properties: {
     administratorLogin: adminLogin
     administratorLoginPassword: adminPassword
     publicNetworkAccess: 'Enabled'
+  }
+
+  resource allowAzureResources 'firewallRules' = {
+    name: 'allow-azure-resources'
+    properties: {
+      startIpAddress: '0.0.0.0'
+      endIpAddress: '0.0.0.0'
+    }
   }
 
   resource identity 'databases' = {
