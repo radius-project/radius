@@ -61,8 +61,10 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 					r.setReplicas(o, trait.Replicas)
 				}
 			}
-			break
+		default:
+			continue
 		}
+		break
 	}
 
 	return output, nil
