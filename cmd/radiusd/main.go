@@ -13,14 +13,17 @@ import (
 	"os/signal"
 	"path"
 	"syscall"
+	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
 	"github.com/mitchellh/go-homedir"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/Azure/radius/pkg/hosting"
 	"github.com/Azure/radius/pkg/localenv"
-	"github.com/Azure/radius/pkg/radlogger"
 )
 
 type startupOpts struct {
@@ -45,16 +48,10 @@ func main() {
 	exeDir := getExeDir()
 
 	opts := getStartupOpts()
-	log, flushLogs, err := radlogger.NewLogger("radiusd")
-	if err != nil {
-		println(err.Error())
-		os.Exit(int(CannotCreateLogger))
-	}
-	defer flushLogs()
+	log, err := configureLogger()
 
 	abort := func(err error, msg string, code RadiusdExitCode) {
 		log.Error(err, msg)
-		flushLogs()
 		os.Exit(int(code))
 	}
 
@@ -140,6 +137,26 @@ func getStartupOpts() *startupOpts {
 	flag.StringVar(&opts.HealthProbeAddr, "health-probe-bind-address", ":43591", "The address the probe endpoint binds to.")
 	flag.Parse()
 	return &startupOpts{}
+}
+
+func configureLogger() (logr.Logger, error) {
+	config := zap.NewDevelopmentConfig()
+	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
+	config.EncoderConfig.CallerKey = zapcore.OmitKey
+	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+
+	// Use a really simple date/time format
+	config.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Format("Jan 2 15:04:05"))
+	}
+
+	zlogger, err := config.Build()
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize zap logger: %w", err)
+	}
+
+	logger := zapr.NewLogger(zlogger).WithName("radiusd")
+	return logger, nil
 }
 
 func getWorkingDir() string {
