@@ -5,10 +5,15 @@
 
 ##@ Install
 
+RAD_LOCATION := $(shell which rad)
+
 .PHONY: install
 install: build-binaries ## Installs a local build for development
 	mkdir -p $(HOME)/.rad/crd
 	mkdir -p $(HOME)/.rad/bin
+
+	@echo "$(ARROW) Installing rad"
+	cp $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)/rad$(BINARY_EXT) $(RAD_LOCATION)
 
 	@echo "$(ARROW) Installing radiusd"
 	cp $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)/radiusd$(BINARY_EXT) $(HOME)/.rad/bin/
