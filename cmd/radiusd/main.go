@@ -36,10 +36,12 @@ const (
 	CannotCreateControllerManager RadiusdExitCode = 3
 	CannotCreateKcpRunner         RadiusdExitCode = 4
 	CannotDownloadKcpExecutable   RadiusdExitCode = 5
+	CannotCreateWorkingDirectory  RadiusdExitCode = 6
 	ForcedShutdown                RadiusdExitCode = 99
 )
 
 func main() {
+	workingDir := getWorkingDir()
 	exeDir := getExeDir()
 
 	opts := getStartupOpts()
@@ -56,13 +58,25 @@ func main() {
 		os.Exit(int(code))
 	}
 
+	err = os.MkdirAll(workingDir, os.FileMode(0755))
+	if err != nil {
+		abort(err, "unable to create working directory", CannotCreateWorkingDirectory)
+	}
+
+	apiServerReady := make(chan struct{})
+
 	certDir := os.Getenv("TLS_CERT_DIR")
-	controllerOptions := ctrl.Options{
-		MetricsBindAddress:     opts.MetricsAddr,
-		HealthProbeBindAddress: opts.HealthProbeAddr,
-		LeaderElection:         false,
-		CertDir:                certDir,
-		Logger:                 log,
+	controllerOptions := localenv.ControllerOptions{
+		Options: ctrl.Options{
+			MetricsBindAddress:     opts.MetricsAddr,
+			HealthProbeBindAddress: opts.HealthProbeAddr,
+			LeaderElection:         false,
+			CertDir:                certDir,
+			Logger:                 log,
+		},
+		CRDDirectory:   getCRDDir(),
+		KubeConfigPath: getKubeConfigPath(),
+		Start:          apiServerReady,
 	}
 
 	cms, err := localenv.NewControllerManagerService(log, controllerOptions)
@@ -70,7 +84,12 @@ func main() {
 		abort(err, "unable to create controller manager service", CannotCreateControllerManager)
 	}
 
-	kcpRunner, err := localenv.NewKcpRunner(exeDir, nil)
+	kcpOptions := localenv.KcpOptions{
+		WorkingDirectory: workingDir,
+		Started:          apiServerReady,
+	}
+
+	kcpRunner, err := localenv.NewKcpRunner(log, exeDir, kcpOptions)
 	if err != nil {
 		abort(err, "unable to create KCP runner service", CannotCreateKcpRunner)
 	}
@@ -83,7 +102,7 @@ func main() {
 	}
 	// Create a channel to handle the shutdown
 	exitCh := make(chan os.Signal, 1)
-	signal.Notify(exitCh, os.Kill, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), log))
 
 	err = kcpRunner.EnsureKcpExecutable(ctx)
@@ -91,27 +110,26 @@ func main() {
 		abort(err, "unable to ensure KCP executable", CannotDownloadKcpExecutable)
 	}
 
+	log.Info("Starting server...")
 	stopped, serviceErrors := host.RunAsync(ctx)
 
-	for {
-		select {
-		// Normal shutdown
-		case <-exitCh:
-			log.Info("Shutdown requested..")
-			cancel()
+	select {
+	// Normal shutdown
+	case <-exitCh:
+		log.Info("Shutdown requested..")
+		cancel()
 
-		// A service terminated with a failure. Details of the failure have already been logged.
-		case <-serviceErrors:
-			log.Info("One of the services failed. Shutting down...")
-			cancel()
+	// A service terminated with a failure. Details of the failure have already been logged.
+	case <-serviceErrors:
+		log.Info("One of the services failed. Shutting down...")
+		cancel()
+	}
 
-		// Finished shutting down. An error returned here is a failure to terminate
-		// gracefully, so just crash if that happens.
-		case err := <-stopped:
-			if err != nil {
-				abort(err, "Graceful shutdown failed. Aborting...", ForcedShutdown)
-			}
-		}
+	// Finished shutting down. An error returned here is a failure to terminate
+	// gracefully, so just crash if that happens.
+	err = <-stopped
+	if err != nil {
+		abort(err, "Graceful shutdown failed. Aborting...", ForcedShutdown)
 	}
 }
 
@@ -124,6 +142,16 @@ func getStartupOpts() *startupOpts {
 	return &startupOpts{}
 }
 
+func getWorkingDir() string {
+	home, err := homedir.Dir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not determine user's home directory: %v", err)
+		os.Exit(int(KcpPathNotFound))
+	}
+	exeDir := path.Join(home, ".rad", "server")
+	return exeDir
+}
+
 func getExeDir() string {
 	home, err := homedir.Dir()
 	if err != nil {
@@ -131,5 +159,25 @@ func getExeDir() string {
 		os.Exit(int(KcpPathNotFound))
 	}
 	exeDir := path.Join(home, ".rad", "bin")
+	return exeDir
+}
+
+func getKubeConfigPath() string {
+	home, err := homedir.Dir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not determine user's home directory: %v", err)
+		os.Exit(int(KcpPathNotFound))
+	}
+	exeDir := path.Join(home, ".rad", "server", ".kcp", "data", "admin.kubeconfig")
+	return exeDir
+}
+
+func getCRDDir() string {
+	home, err := homedir.Dir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not determine user's home directory: %v", err)
+		os.Exit(int(KcpPathNotFound))
+	}
+	exeDir := path.Join(home, ".rad", "crd")
 	return exeDir
 }

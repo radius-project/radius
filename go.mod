@@ -22,6 +22,7 @@ require (
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-playground/validator/v10 v10.4.1
+	github.com/gofrs/flock v0.8.1
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.5.6
@@ -47,7 +48,7 @@ require (
 	go.uber.org/zap v1.17.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
-	golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0 // indirect
+	golang.org/x/sys v0.0.0-20211105183446-c75c47738b0c // indirect
 	golang.org/x/text v0.3.6
 	golang.org/x/tools v0.1.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

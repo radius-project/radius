@@ -15,6 +15,7 @@ import (
 
 	"github.com/Azure/radius/test/localenvtest"
 	"github.com/Azure/radius/test/testcontext"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +24,7 @@ func TestRunnerStartsStopsKcp(t *testing.T) {
 
 	kcpBinaryDir, kcpBinaryPath := createKcpTestDir(t)
 	executor := localenvtest.NewTestProcessExecutor()
-	runner, err := NewKcpRunner(kcpBinaryDir, executor)
+	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{Executor: executor})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
 	var runnerErr error
@@ -52,7 +53,7 @@ func TestErrorsIfKcpBinaryNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No "KCP binary" added
 
-	runner, err := NewKcpRunner(tmpDir, nil)
+	runner, err := NewKcpRunner(logr.Discard(), tmpDir, KcpOptions{})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
 	ctx, _ := testcontext.GetContext(t)
@@ -65,7 +66,7 @@ func TestNoConcurrentKcpRuns(t *testing.T) {
 
 	kcpBinaryDir, kcpBinaryPath := createKcpTestDir(t)
 	executor := localenvtest.NewTestProcessExecutor()
-	runner, err := NewKcpRunner(kcpBinaryDir, executor)
+	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{Executor: executor})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
 	ctx, cancel := testcontext.GetContext(t)
@@ -103,7 +104,7 @@ func TestCleansWorkingDirAfterRun(t *testing.T) {
 
 	kcpBinaryDir, kcpBinaryPath := createKcpTestDir(t)
 	executor := localenvtest.NewTestProcessExecutor()
-	runner, err := NewKcpRunner(kcpBinaryDir, executor)
+	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{Executor: executor})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
 	ctx, cancel := testcontext.GetContext(t)
@@ -138,7 +139,7 @@ func TestCleansWorkingDirBeforeRun(t *testing.T) {
 	require.NoErrorf(t, err, "unable to simulate creation of KCP working directory")
 
 	executor := localenvtest.NewTestProcessExecutor()
-	runner, err := NewKcpRunner(kcpBinaryDir, executor)
+	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{Executor: executor})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
 	ctx, cancel := testcontext.GetContext(t)
@@ -171,7 +172,7 @@ func TestRunFailsIfKcpAlreadyRunning(t *testing.T) {
 	pid, _, err := executor.StartProcess(context.Background(), cmd, nil)
 	require.NoError(t, err)
 
-	runner, err := NewKcpRunner(kcpBinaryDir, executor)
+	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{Executor: executor})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
 	ctx, cancel := testcontext.GetContext(t)
@@ -201,7 +202,7 @@ func TestRunFailsIfKcpCrashes(t *testing.T) {
 	kcpBinaryDir, kcpBinaryPath := createKcpTestDir(t)
 	executor := localenvtest.NewTestProcessExecutor()
 
-	runner, err := NewKcpRunner(kcpBinaryDir, executor)
+	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{Executor: executor})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
 	ctx, _ := testcontext.GetContext(t)

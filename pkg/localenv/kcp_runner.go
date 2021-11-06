@@ -7,15 +7,17 @@ package localenv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
-	"strings"
 	"sync/atomic"
 
 	"github.com/Azure/radius/pkg/cli/download"
 	"github.com/Azure/radius/pkg/process"
+	"github.com/go-logr/logr"
+	"github.com/gofrs/flock"
 )
 
 type runningState uint32
@@ -29,12 +31,21 @@ const (
 	skipProcessCheck    processCheck = 0
 )
 
+type KcpOptions struct {
+	Executor         process.Executor
+	WorkingDirectory string
+	Started          chan<- struct{}
+}
+
 type KcpRunner struct {
+	log               logr.Logger
+	workingDirectory  string
 	kcpExecutablePath string
 	processExited     chan finishedProcessInfo
 	kcpPid            int
 	state             runningState
 	processExecutor   process.Executor
+	started           chan<- struct{}
 }
 
 var _ process.ProcessExitHandler = (*KcpRunner)(nil)
@@ -44,18 +55,22 @@ type finishedProcessInfo struct {
 	exitCode int
 }
 
-func NewKcpRunner(executablesDir string, pe process.Executor) (*KcpRunner, error) {
+func NewKcpRunner(log logr.Logger, executablesDir string, options KcpOptions) (*KcpRunner, error) {
 	kcpPath := path.Join(executablesDir, kcpFilename())
 
+	pe := options.Executor
 	if pe == nil {
 		pe = process.NewOSExecutor()
 	}
 
 	return &KcpRunner{
+		log:               log,
+		workingDirectory:  options.WorkingDirectory,
 		kcpExecutablePath: kcpPath,
 		processExecutor:   pe,
 		kcpPid:            process.InvalidPID,
 		state:             ready,
+		started:           options.Started,
 	}, nil
 }
 
@@ -64,6 +79,7 @@ func (r *KcpRunner) Name() string {
 }
 
 func (r *KcpRunner) Run(ctx context.Context) error {
+	log := logr.FromContextOrDiscard(ctx)
 	if !atomic.CompareAndSwapUint32((*uint32)(&r.state), uint32(ready), uint32(running)) {
 		return fmt.Errorf("KCP run in progress")
 	}
@@ -73,13 +89,25 @@ func (r *KcpRunner) Run(ctx context.Context) error {
 		return fmt.Errorf("unable to locate KCP binary")
 	}
 
+	flock := flock.New(path.Join(r.workingDirectory, "radiusd.lock"))
+	locked, err := flock.TryLock()
+	if err != nil {
+		return fmt.Errorf("unable to take radiusd.lock: %w", err)
+	} else if !locked {
+		return errors.New("kcp is already running")
+	}
+
+	// We've taken the lock
+	defer flock.Close()
+	r.cleanup(skipProcessCheck)
+
 	if err := r.cleanup(performProcessCheck); err != nil {
 		return err
 	}
 
-	cmd := exec.CommandContext(ctx, r.kcpExecutablePath)
-	cmd.Args = []string{r.kcpExecutablePath, "start"}
-	cmd.Dir = path.Dir(r.kcpExecutablePath)
+	log.Info("Starting API Server...")
+	cmd := exec.CommandContext(ctx, r.kcpExecutablePath, "start")
+	cmd.Dir = r.workingDirectory
 	pid, startWaitForProcessExit, err := r.processExecutor.StartProcess(ctx, cmd, r)
 	if err != nil {
 		return fmt.Errorf("unable to start KCP process: %w", err)
@@ -89,6 +117,9 @@ func (r *KcpRunner) Run(ctx context.Context) error {
 	defer func() { r.kcpPid = process.InvalidPID }()
 	r.processExited = make(chan finishedProcessInfo, 1)
 	startWaitForProcessExit()
+
+	r.started <- struct{}{}
+	log.Info("Started API Server")
 
 	select {
 	case processInfo := <-r.processExited:
@@ -133,18 +164,7 @@ func (r *KcpRunner) EnsureKcpExecutable(ctx context.Context) error {
 }
 
 func (r *KcpRunner) cleanup(pc processCheck) error {
-	kcpConfigPath := path.Join(path.Dir(r.kcpExecutablePath), ".kcp")
-
-	if pc == performProcessCheck {
-		kcpRunning, err := r.isKcpRunning()
-		if err != nil {
-			return fmt.Errorf("unable to determine whether KCP process is running: %w", err)
-		}
-
-		if kcpRunning {
-			return fmt.Errorf("KCP process is running")
-		}
-	}
+	kcpConfigPath := path.Join(r.workingDirectory, ".kcp")
 
 	// Make sure the data from previous run was deleted
 	if _, err := os.Stat(kcpConfigPath); err == nil {
@@ -154,25 +174,6 @@ func (r *KcpRunner) cleanup(pc processCheck) error {
 	}
 
 	return nil
-}
-
-func (r *KcpRunner) isKcpRunning() (bool, error) {
-	if r.kcpPid != process.InvalidPID {
-		return true, nil
-	}
-
-	processes, err := r.processExecutor.Processes()
-	if err != nil {
-		return false, err
-	}
-
-	for _, p := range processes {
-		if strings.Contains(p.Cmdline, r.kcpExecutablePath) {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 func kcpFilename() string {
