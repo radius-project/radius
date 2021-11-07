@@ -34,6 +34,7 @@ const (
 )
 
 type KcpOptions struct {
+	Clean            bool
 	Executor         process.Executor
 	KubeConfigPath   string
 	WorkingDirectory string
@@ -42,6 +43,7 @@ type KcpOptions struct {
 
 type KcpRunner struct {
 	log               logr.Logger
+	clean             bool
 	workingDirectory  string
 	kcpExecutablePath string
 	kubeConfigPath    string
@@ -69,6 +71,7 @@ func NewKcpRunner(log logr.Logger, executablesDir string, options KcpOptions) (*
 
 	return &KcpRunner{
 		log:               log,
+		clean:             options.Clean,
 		workingDirectory:  options.WorkingDirectory,
 		kcpExecutablePath: kcpPath,
 		kubeConfigPath:    options.KubeConfigPath,
@@ -175,6 +178,10 @@ func (r *KcpRunner) EnsureKcpExecutable(ctx context.Context) error {
 }
 
 func (r *KcpRunner) cleanup(pc processCheck) error {
+	if !r.clean {
+		return nil
+	}
+
 	kcpConfigPath := path.Join(r.workingDirectory, ".kcp")
 
 	// Make sure the data from previous run was deleted

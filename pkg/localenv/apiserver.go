@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/Azure/radius/pkg/kubernetes/apiserver"
+	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/radrp/frontend/handler"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/go-logr/logr"
@@ -27,6 +28,7 @@ type APIServerExtension struct {
 type APIServerExtensionOptions struct {
 	KubeConfigPath string
 	Scheme         *apiruntime.Scheme
+	AppModel       model.ApplicationModel
 	Start          <-chan struct{}
 }
 
@@ -57,7 +59,7 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 		return err
 	}
 
-	rp := apiserver.NewResourceProvider(c)
+	rp := apiserver.NewResourceProvider(api.options.AppModel, c)
 	s := server.NewServer(ctx, server.ServerOptions{
 		Address:      "localhost:9999",
 		Authenticate: false,

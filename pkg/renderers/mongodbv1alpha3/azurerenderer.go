@@ -10,11 +10,13 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
 var cosmosAccountDependency outputresource.Dependency = outputresource.Dependency{
@@ -112,6 +114,7 @@ func RenderUnmanaged(name string, properties radclient.MongoDBComponentPropertie
 	cosmosAccountResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureCosmosAccount,
 		ResourceKind: resourcekinds.AzureCosmosAccount,
+		Identity:     resourcemodel.NewARMIdentity(cosmosAccountID.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent())),
 		Resource: map[string]string{
 			handlers.ManagedKey:             "false",
 			handlers.CosmosDBAccountIDKey:   cosmosAccountID.ID,
@@ -123,6 +126,7 @@ func RenderUnmanaged(name string, properties radclient.MongoDBComponentPropertie
 	databaseResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
 		ResourceKind: resourcekinds.AzureCosmosDBMongo,
+		Identity:     resourcemodel.NewARMIdentity(databaseID.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent())),
 		Resource: map[string]string{
 			handlers.ManagedKey:              "false",
 			handlers.CosmosDBAccountIDKey:    cosmosAccountID.ID,

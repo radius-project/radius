@@ -12,16 +12,20 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
+	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/resources"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -33,13 +37,14 @@ import (
 var ErrUnsupportedResourceType = errors.New("unsupported resource type")
 
 // NewResourceProvider creates a new ResourceProvider.
-func NewResourceProvider(client controller_runtime.Client) resourceprovider.ResourceProvider {
-	return &rp{client: client, namespace: "default"}
+func NewResourceProvider(appmodel model.ApplicationModel, client controller_runtime.Client) resourceprovider.ResourceProvider {
+	return &rp{AppModel: appmodel, client: client, namespace: "default"}
 }
 
 type rp struct {
 	client    controller_runtime.Client
 	namespace string
+	AppModel  model.ApplicationModel
 }
 
 // As a general design principle, returning an error from the RP signals an internal error (500).
@@ -79,7 +84,7 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 
 	item := radiusv1alpha3.Application{}
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Name()}, &item)
-	if err != nil && client.IgnoreNotFound(err) == nil {
+	if err != nil && controller_runtime.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
@@ -414,6 +419,12 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		}), nil
 	}
 
+	cv, err := converters.GetComputedValues(resource.Status)
+	computedValues := map[string]interface{}{}
+	for k, v := range cv {
+		computedValues[k] = v.Value
+	}
+
 	// The 'SecretValues' we store as part of the resource status (from render output) are references
 	// to secrets, we need to fetch the values and pass them to the renderer.
 	secretValues, err := converters.GetSecretValues(resource.Status)
@@ -422,14 +433,57 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 	}
 
 	values := map[string]interface{}{}
-	secretClient := converters.SecretClient{Client: r.client}
 	for k, v := range secretValues {
-		value, err := secretClient.LookupSecretValue(ctx, resource.Status, v)
-		if err != nil {
-			return nil, err
+		cloud, ok := resource.Status.CloudResources[v.LocalID]
+		if ok {
+			// This is an Azure resource
+			arm, err := armauth.GetArmAuthorizer()
+			if err != nil {
+				return nil, fmt.Errorf("failed to authenticate with Azure: %w", err)
+			}
+
+			identity := resourcemodel.NewARMIdentity(strings.Split(cloud.Identity, "@")[0], strings.Split(cloud.Identity, "@")[1])
+
+			azureSecretClient := renderers.NewSecretValueClient(arm)
+			value, err := azureSecretClient.FetchSecret(ctx, identity, v.Action, v.ValueSelector)
+			if err != nil {
+				return nil, err
+			}
+
+			if v.Transformer != "" {
+				transformer, err := r.AppModel.GetSecretValueTransformer(v.Transformer)
+				if err != nil {
+					return nil, err
+				}
+
+				dependency := renderers.RendererDependency{
+					ComputedValues: computedValues,
+					ResourceID:     id,
+					Definition:     output.Properties,
+				}
+
+				value, err = transformer.Transform(ctx, dependency, value)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			values[k] = value
+			continue
 		}
 
-		values[k] = value
+		_, ok = resource.Status.Resources[v.LocalID]
+		if ok {
+			// This is an Kubernetes secret
+			kubernetesSecretClient := converters.SecretClient{Client: r.client}
+			value, err := kubernetesSecretClient.LookupSecretValue(ctx, resource.Status, v)
+			if err != nil {
+				return nil, err
+			}
+
+			values[k] = value
+			continue
+		}
 	}
 
 	return rest.NewOKResponse(values), nil

@@ -12,7 +12,11 @@ import (
 	"os/exec"
 )
 
-func Run(ctx context.Context) error {
+type Options struct {
+	Clean bool
+}
+
+func Run(ctx context.Context, options Options) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -26,7 +30,7 @@ func Run(ctx context.Context) error {
 		return err
 	}
 
-	radiusd, err := startRadiusD(ctx, wd)
+	radiusd, err := startRadiusD(ctx, wd, options.Clean)
 	if err != nil {
 		return fmt.Errorf("failed to start radiusd: %w", err)
 	}
@@ -39,13 +43,17 @@ func Run(ctx context.Context) error {
 	return nil
 }
 
-func startRadiusD(ctx context.Context, wd string) (*exec.Cmd, error) {
+func startRadiusD(ctx context.Context, wd string, clean bool) (*exec.Cmd, error) {
 	executable, err := GetLocalRadiusDFilepath()
 	if err != nil {
 		return nil, err
 	}
 
 	args := []string{}
+	if clean {
+		args = append(args, "--clean")
+	}
+
 	cmd := exec.CommandContext(ctx, executable, args...)
 	cmd.Dir = wd
 	cmd.Stdout = os.Stdout

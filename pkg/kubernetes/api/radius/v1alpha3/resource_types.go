@@ -35,10 +35,18 @@ type ResourceStatus struct {
 	SecretValues *runtime.RawExtension `json:"secretValues,omitempty"`
 
 	// +optional
+	CloudResources map[string]CloudResourceStatus `json:"cloudResources,omitempty"`
+
+	// +optional
 	Resources map[string]corev1.ObjectReference `json:"resources,omitempty"`
 
 	// +optional
 	Phrase string `json:"phrase,omitempty"`
+}
+
+type CloudResourceStatus struct {
+	Provider string `json:"provider"`
+	Identity string `json:"identity"`
 }
 
 //+kubebuilder:object:root=true

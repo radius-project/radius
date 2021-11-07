@@ -86,8 +86,10 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 
 	options := armtemplate.TemplateOptions{
 		SubscriptionID: "kubernetes",
-		ResourceGroup:  req.Namespace,
-		Parameters:     parameters,
+		ResourceGroup: armtemplate.ResourceGroup{
+			Name: req.Namespace,
+		},
+		Parameters: parameters,
 	}
 	resources, err := armtemplate.Eval(template, options)
 	if err != nil {

@@ -6,6 +6,8 @@
 // Contains constant values related to azure resources
 package azresources
 
+import "strings"
+
 const (
 	AzureFileShareFileServices                  = "fileServices"
 	AzureFileShareShares                        = "shares"
@@ -32,3 +34,32 @@ const (
 	CustomRPV3Name     = "radiusv3"
 	CustomRPApiVersion = "2018-09-01-preview"
 )
+
+func IsRadiusCustomAction(id ResourceID) bool {
+	if len(id.Types) == 1 &&
+		strings.EqualFold(id.Types[0].Type, CustomProvidersResourceProviders) &&
+		strings.EqualFold(id.Types[0].Name, CustomRPV3Name) {
+		return true
+	}
+
+	return false
+}
+
+func IsRadiusResource(id ResourceID) bool {
+	if len(id.Types) >= 2 &&
+		strings.EqualFold(id.Types[0].Type, CustomProvidersResourceProviders) &&
+		strings.EqualFold(id.Types[0].Name, CustomRPV3Name) {
+		return true
+	}
+
+	return false
+}
+
+func IsKubernetesResource(id ResourceID) bool {
+	if len(id.Types) >= 1 &&
+		strings.HasPrefix(strings.ToLower(id.Types[0].Type), "kubernetes.") {
+		return true
+	}
+
+	return false
+}

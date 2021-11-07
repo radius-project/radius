@@ -9,14 +9,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
@@ -305,81 +308,28 @@ func (r *ResourceReconciler) ApplyState(
 	//
 	// We also trample over the 'resources' part of the status so that it's clean.
 
+	resource.Status.CloudResources = map[string]radiusv1alpha3.CloudResourceStatus{}
 	resource.Status.Resources = map[string]corev1.ObjectReference{}
 
 	for _, cr := range desired.Resources {
-		obj, ok := cr.Resource.(client.Object)
-		if !ok {
-			err := fmt.Errorf("resource is not a kubernetes resource, was: %T", cr.Resource)
-			log.Error(err, "failed to render resources for resource")
-			return err
-		}
-
-		// TODO: configure all of the metadata at the top-level
-		obj.SetNamespace(resource.Namespace)
-		annotations := obj.GetAnnotations()
-		if annotations == nil {
-			annotations = map[string]string{}
-		}
-		annotations[AnnotationLocalID] = cr.LocalID
-		obj.SetAnnotations(annotations)
-
-		// Remove items with the same identity from the 'actual' list
-		for i, a := range actual {
-			if a.GetObjectKind().GroupVersionKind().String() == obj.GetObjectKind().GroupVersionKind().String() && a.GetName() == obj.GetName() && a.GetNamespace() == obj.GetNamespace() {
-				actual = append(actual[:i], actual[i+1:]...)
-				break
+		if cr.Identity.Kind == resourcemodel.IdentityKindKubernetes {
+			or, err := r.ApplyKubernetesResourceState(ctx, log, inputUnst, resource, cr, &actual)
+			if err != nil {
+				log.Error(err, "failed to apply resources for resource")
+				return err
 			}
+
+			resource.Status.Resources[cr.LocalID] = *or
+		} else if cr.Identity.Kind == resourcemodel.IdentityKindARM {
+			cloudResource, err := r.ApplyARMResourceState(ctx, log, resource, cr)
+			if err != nil {
+				log.Error(err, "failed to apply resources for resource")
+				return err
+			}
+			resource.Status.CloudResources[cr.LocalID] = *cloudResource
+		} else {
+			return fmt.Errorf("unsupported resource kind: %s", cr.Identity.Kind)
 		}
-
-		// We want all of our objects to have a GVK explicitly specified for ease of use.
-		// This allows us to maintain that invariant without requiring the renderer code
-		// to hardcode this data.
-		gvks, unversioned, err := r.Scheme.ObjectKinds(obj)
-		if err != nil {
-			err := fmt.Errorf("failed to retrieve GVK for object: %T", obj)
-			log.Error(err, "failed to render resources for resource")
-			return err
-		} else if unversioned {
-			err := fmt.Errorf("object %T is unversioned, we don't support that", obj)
-			log.Error(err, "failed to render resources for resource")
-			return err
-		} else if len(gvks) != 1 {
-			err := fmt.Errorf("object %T has multiple GVKs, we don't support that", obj)
-			log.Error(err, "failed to render resources for resource")
-			return err
-		}
-		obj.GetObjectKind().SetGroupVersionKind(gvks[0])
-
-		log := log.WithValues(
-			"resourcenamespace", obj.GetNamespace(),
-			"resourcename", obj.GetName(),
-			"resourcekind", obj.GetObjectKind().GroupVersionKind().String(),
-			"localid", cr.LocalID)
-
-		// Make sure to NOT use the resource type here, as the resource type
-		// Otherwise, we get into a loop where resources are created and are immediately terminated.
-		err = controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
-		if err != nil {
-			log.Error(err, "failed to set owner reference for resource")
-			return err
-		}
-
-		// We don't have to diff the actual resource - server side apply is magic.
-		log.Info("applying output resource for resource")
-		err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
-		if err != nil {
-			log.Error(err, "failed to apply resources for resource")
-			return err
-		}
-
-		or, err := ref.GetReference(r.Scheme, obj)
-		if err != nil {
-			log.Error(err, "failed to get resource reference for resource")
-			return err
-		}
-
-		resource.Status.Resources[cr.LocalID] = *or
 
 		log.Info("applied output resource for resource")
 	}
@@ -436,6 +386,106 @@ func (r *ResourceReconciler) ApplyState(
 	return nil
 }
 
+func (r *ResourceReconciler) ApplyKubernetesResourceState(
+	ctx context.Context,
+	log logr.Logger,
+	inputUnst *unstructured.Unstructured,
+	resource *radiusv1alpha3.Resource,
+	cr outputresource.OutputResource,
+	actual *[]client.Object) (*corev1.ObjectReference, error) {
+	obj, ok := cr.Resource.(client.Object)
+	if !ok {
+		err := fmt.Errorf("resource is not a kubernetes resource, was: %T", cr.Resource)
+		log.Error(err, "failed to render resources for resource")
+		return nil, err
+	}
+
+	// TODO: configure all of the metadata at the top-level
+	obj.SetNamespace(resource.Namespace)
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[AnnotationLocalID] = cr.LocalID
+	obj.SetAnnotations(annotations)
+
+	// Remove items with the same identity from the 'actual' list
+	for i, a := range *actual {
+		if a.GetObjectKind().GroupVersionKind().String() == obj.GetObjectKind().GroupVersionKind().String() &&
+			a.GetName() == obj.GetName() &&
+			a.GetNamespace() == obj.GetNamespace() {
+			*actual = append((*actual)[:i], (*actual)[i+1:]...)
+			break
+		}
+	}
+
+	// We want all of our objects to have a GVK explicitly specified for ease of use.
+	// This allows us to maintain that invariant without requiring the renderer code
+	// to hardcode this data.
+	gvks, unversioned, err := r.Scheme.ObjectKinds(obj)
+	if err != nil {
+		err := fmt.Errorf("failed to retrieve GVK for object: %T", obj)
+		log.Error(err, "failed to render resources for resource")
+		return nil, err
+	} else if unversioned {
+		err := fmt.Errorf("object %T is unversioned, we don't support that", obj)
+		log.Error(err, "failed to render resources for resource")
+		return nil, err
+	} else if len(gvks) != 1 {
+		err := fmt.Errorf("object %T has multiple GVKs, we don't support that", obj)
+		log.Error(err, "failed to render resources for resource")
+		return nil, err
+	}
+	obj.GetObjectKind().SetGroupVersionKind(gvks[0])
+
+	log = log.WithValues(
+		"resourcenamespace", obj.GetNamespace(),
+		"resourcename", obj.GetName(),
+		"resourcekind", obj.GetObjectKind().GroupVersionKind().String(),
+		"localid", cr.LocalID)
+
+	// Make sure to NOT use the resource type here, as the resource type
+	// Otherwise, we get into a loop where resources are created and are immediately terminated.
+	err = controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
+	if err != nil {
+		log.Error(err, "failed to set owner reference for resource")
+		return nil, err
+	}
+
+	// We don't have to diff the actual resource - server side apply is magic.
+	log.Info("applying output resource for resource")
+	err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
+	if err != nil {
+		log.Error(err, "failed to apply resources for resource")
+		return nil, err
+	}
+
+	or, err := ref.GetReference(r.Scheme, obj)
+	if err != nil {
+		log.Error(err, "failed to get resource reference for resource")
+		return nil, err
+	}
+
+	return or, nil
+}
+
+func (r *ResourceReconciler) ApplyARMResourceState(
+	ctx context.Context,
+	log logr.Logger,
+	resource *radiusv1alpha3.Resource,
+	cr outputresource.OutputResource) (*radiusv1alpha3.CloudResourceStatus, error) {
+	// The work we need to do here is translate this data into a status so we can track it.
+	identity, apiVersion, err := cr.Identity.RequireARM()
+	if err != nil {
+		return nil, err
+	}
+
+	return &radiusv1alpha3.CloudResourceStatus{
+		Provider: "azure",
+		Identity: identity + "@" + apiVersion,
+	}, nil
+}
+
 func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace string, id azresources.ResourceID) (*renderers.RendererDependency, error) {
 	// Find the Kubernetes resource based on the resourceID.
 	if len(id.Types) < 3 {
@@ -487,6 +537,16 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 	}
 
 	outputResources := map[string]resourcemodel.ResourceIdentity{}
+	for localID, outputResource := range k8sResource.Status.CloudResources {
+		outputResources[localID] = resourcemodel.ResourceIdentity{
+			Kind: resourcemodel.IdentityKindARM,
+			Data: resourcemodel.ARMIdentity{
+				ID:         strings.Split(outputResource.Identity, "@")[0],
+				APIVersion: strings.Split(outputResource.Identity, "@")[1],
+			},
+		}
+	}
+
 	for localID, outputResource := range k8sResource.Status.Resources {
 		outputResources[localID] = resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
@@ -519,14 +579,58 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 		return nil, err
 	}
 
-	secretClient := converters.SecretClient{Client: r.Client}
 	for k, v := range secretValues {
-		value, err := secretClient.LookupSecretValue(ctx, k8sResource.Status, v)
-		if err != nil {
-			return nil, err
+		cloud, ok := k8sResource.Status.CloudResources[v.LocalID]
+		if ok {
+			// This is an Azure resource
+			arm, err := armauth.GetArmAuthorizer()
+			if err != nil {
+				return nil, fmt.Errorf("failed to authenticate with Azure: %w", err)
+			}
+
+			identity := resourcemodel.NewARMIdentity(strings.Split(cloud.Identity, "@")[0], strings.Split(cloud.Identity, "@")[1])
+
+			azureSecretClient := renderers.NewSecretValueClient(arm)
+			value, err := azureSecretClient.FetchSecret(ctx, identity, v.Action, v.ValueSelector)
+			if err != nil {
+				return nil, err
+			}
+
+			if v.Transformer != "" {
+				transformer, err := r.AppModel.GetSecretValueTransformer(v.Transformer)
+				if err != nil {
+					return nil, err
+				}
+
+				dependency := renderers.RendererDependency{
+					ComputedValues:  values,
+					ResourceID:      id,
+					Definition:      properties,
+					OutputResources: outputResources,
+				}
+
+				value, err = transformer.Transform(ctx, dependency, value)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			values[k] = value
+			continue
 		}
 
-		values[k] = value
+		_, ok = k8sResource.Status.Resources[v.LocalID]
+		if ok {
+			// This is an Kubernetes secret
+			kubernetesSecretClient := converters.SecretClient{Client: r.Client}
+			value, err := kubernetesSecretClient.LookupSecretValue(ctx, k8sResource.Status, v)
+			if err != nil {
+				return nil, err
+			}
+
+			values[k] = value
+			continue
+		}
 	}
 
 	return &renderers.RendererDependency{

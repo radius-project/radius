@@ -108,6 +108,12 @@ func (r *LocalRenderer) makeExecutable(ctx context.Context, resource renderers.R
 			env[k] = strconv.Itoa(val)
 		}
 	}
+
+	connectionVars := makeEnvironmentVariablesForConnections(properties.Connections, dependencies)
+	for k, v := range connectionVars {
+		env[k] = v
+	}
+
 	deployment := radiusv1alpha3.Executable{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),

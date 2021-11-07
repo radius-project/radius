@@ -32,7 +32,9 @@ import (
 func Test_DeploymentEvaluator_KubernetesReference(t *testing.T) {
 	options := TemplateOptions{
 		SubscriptionID: "test-sub",
-		ResourceGroup:  "test-group",
+		ResourceGroup: ResourceGroup{
+			Name: "test-group",
+		},
 	}
 	for _, tc := range []struct {
 		name           string
@@ -109,7 +111,9 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 	require.NoError(t, err)
 	options := TemplateOptions{
 		SubscriptionID: "test-sub",
-		ResourceGroup:  "test-group",
+		ResourceGroup: ResourceGroup{
+			Name: "test-group",
+		},
 		Parameters: map[string]map[string]interface{}{
 			// Setting one required parameter, and using the default value for 'backendRoute' parameter
 			"frontendRoute": {

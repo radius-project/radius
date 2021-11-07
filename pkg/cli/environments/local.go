@@ -11,6 +11,8 @@ import (
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
@@ -26,6 +28,8 @@ type LocalEnvironment struct {
 	Name               string `mapstructure:"name" validate:"required"`
 	Kind               string `mapstructure:"kind" validate:"required"`
 	DefaultApplication string `mapstructure:"defaultapplication" yaml:",omitempty"`
+	SubscriptionID     string `mapstructure:"subscriptionid" yaml:",omitempty"`
+	ResourceGroup      string `mapstructure:"resourcegroup" yaml:",omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain" yaml:",omitempty"`
@@ -47,16 +51,55 @@ func (e *LocalEnvironment) GetStatusLink() string {
 	return ""
 }
 
+func (e *LocalEnvironment) HasAzureProvider() bool {
+	return e.SubscriptionID != "" && e.ResourceGroup != ""
+}
+
+func (e *LocalEnvironment) GetAzureProviderDetails() (string, string) {
+	if e.HasAzureProvider() {
+		return e.SubscriptionID, e.ResourceGroup
+	}
+
+	return "test-subscription", "test-resource-group"
+}
+
+func (e *LocalEnvironment) GetURL() string {
+	return "http://localhost:9999"
+}
+
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	azcred := &radclient.AnonymousCredential{}
-	connection := arm.NewConnection("http://localhost:9999", azcred, nil)
+	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
+
+	providers := map[string]localrp.DeploymentProvider{
+		"radius": {
+			Authorizer: nil,
+			BaseURL:    e.GetURL(),
+			Connection: arm.NewConnection(e.GetURL(), &radclient.AnonymousCredential{}, nil),
+		},
+	}
+
+	if e.HasAzureProvider() {
+		authorizer, err := armauth.GetArmAuthorizer()
+		if err != nil {
+			return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
+		}
+
+		azcred, err := azidentity.NewDefaultAzureCredential(nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
+		}
+
+		providers["azure"] = localrp.DeploymentProvider{
+			Authorizer: authorizer,
+			BaseURL:    arm.AzurePublicCloud,
+			Connection: arm.NewDefaultConnection(azcred, nil),
+		}
+	}
 
 	return &localrp.LocalRPDeploymentClient{
-		Authorizer:     nil,
-		BaseURL:        "http://localhost:9999",
-		Connection:     connection,
-		SubscriptionID: "test-subscription",
-		ResourceGroup:  "test-resource-group",
+		Providers:      providers,
+		SubscriptionID: subscriptionID,
+		ResourceGroup:  resourceGroup,
 	}, nil
 }
 
@@ -88,7 +131,9 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 	}
 
 	azcred := &radclient.AnonymousCredential{}
-	con := arm.NewConnection("http://localhost:9999", azcred, nil)
+	con := arm.NewConnection(e.GetURL(), azcred, nil)
+
+	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
 	return &azure.AKSDiagnosticsClient{
 		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
@@ -96,19 +141,21 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 			RestConfig: config,
 		},
 		ResourceClient: *radclient.NewRadiusResourceClient(con, "test-subscription"),
-		SubscriptionID: "test-subscription",
-		ResourceGroup:  "test-resource-group",
+		SubscriptionID: subscriptionID,
+		ResourceGroup:  resourceGroup,
 	}, nil
 }
 
 func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
 	azcred := &radclient.AnonymousCredential{}
-	con := arm.NewConnection("http://localhost:9999", azcred, nil)
+	con := arm.NewConnection(e.GetURL(), azcred, nil)
+
+	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
 	return &azure.ARMManagementClient{
 		Connection:      con,
-		SubscriptionID:  "test-subscription",
-		ResourceGroup:   "test-resource-group",
+		SubscriptionID:  subscriptionID,
+		ResourceGroup:   resourceGroup,
 		EnvironmentName: e.Name,
 	}, nil
 }

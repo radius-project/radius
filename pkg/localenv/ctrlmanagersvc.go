@@ -65,7 +65,7 @@ func (cms *ControllerManagerService) Run(ctx context.Context) error {
 	}
 
 	model := radcontroller.NewLocalModel()
-	appmodel := localmodel.NewLocalModel(mgr.GetClient())
+	appmodel := localmodel.NewLocalModel()
 
 	unstructuredClient, err := dynamic.NewForConfig(config)
 	if err != nil {

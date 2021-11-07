@@ -19,9 +19,20 @@ var serverRunCmd = &cobra.Command{
 
 func init() {
 	serverCmd.AddCommand(serverRunCmd)
+
+	serverRunCmd.Flags().BoolP("clean", "c", false, "Clean server state")
 }
 
 func serverRun(cmd *cobra.Command, args []string) error {
-	err := server.Run(cmd.Context())
+	clean, err := cmd.Flags().GetBool("clean")
+	if err != nil {
+		return err
+	}
+
+	options := server.Options{
+		Clean: clean,
+	}
+
+	err = server.Run(cmd.Context(), options)
 	return err
 }

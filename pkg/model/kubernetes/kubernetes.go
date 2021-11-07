@@ -24,7 +24,7 @@ import (
 )
 
 func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
-	renderers := map[string]renderers.Renderer{
+	r := map[string]renderers.Renderer{
 		containerv1alpha3.ResourceType:      &dapr.Renderer{Inner: &containerv1alpha3.Renderer{}},
 		daprhttproutev1alpha3.ResourceType:  &daprhttproutev1alpha3.Renderer{},
 		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues}},
@@ -39,5 +39,8 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 	handlers := map[string]model.Handlers{
 		resourcekinds.Kubernetes: {ResourceHandler: handlers.NewKubernetesHandler(k8s), HealthHandler: nil},
 	}
-	return model.NewModel(renderers, handlers)
+
+	transformers := map[string]renderers.SecretValueTransformer{}
+
+	return model.NewModel(r, handlers, transformers)
 }

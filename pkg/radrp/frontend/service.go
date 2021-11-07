@@ -58,7 +58,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	appmodel := azure.NewAzureModel(*s.Options.Arm, k8s)
 
-	secretClient := renderers.NewSecretValueClient(*s.Options.Arm)
+	secretClient := renderers.NewSecretValueClient(s.Options.Arm.Auth)
 
 	db := db.NewRadrpDB(dbclient)
 	rp := resourceprovider.NewResourceProvider(db, deployment.NewDeploymentProcessor(appmodel, db, &s.Options.HealthChannels, secretClient, k8s), nil)

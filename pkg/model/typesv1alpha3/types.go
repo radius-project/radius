@@ -18,6 +18,7 @@ type ApplicationModel interface {
 	GetOutputResources() []OutputResourceType
 	LookupResource(kind string) (ResourceKind, error)
 	LookupOutputResource(resourceType string) (OutputResourceType, error)
+	GetSecretValueTransformer(name string) (renderers.SecretValueTransformer, error)
 }
 
 // ResourceKind represents a resource kind supported by the application model.
@@ -34,10 +35,11 @@ type OutputResourceType interface {
 }
 
 type applicationModel struct {
-	resourceList         []ResourceKind
-	resourceLookup       map[string]ResourceKind
-	outputResourceList   []OutputResourceType
-	outputResourceLookup map[string]OutputResourceType
+	resourceList           []ResourceKind
+	resourceLookup         map[string]ResourceKind
+	outputResourceList     []OutputResourceType
+	outputResourceLookup   map[string]OutputResourceType
+	secretValueTranformers map[string]renderers.SecretValueTransformer
 }
 
 func (model *applicationModel) GetResources() []ResourceKind {
@@ -97,12 +99,21 @@ func (model *applicationModel) GetOutputResources() []OutputResourceType {
 	return model.outputResourceList
 }
 
+func (model *applicationModel) GetSecretValueTransformer(name string) (renderers.SecretValueTransformer, error) {
+	transformer, ok := model.secretValueTranformers[name]
+	if !ok {
+		return nil, fmt.Errorf("transformer %q not found", name)
+	}
+
+	return transformer, nil
+}
+
 type Handlers struct {
 	ResourceHandler handlers.ResourceHandler
 	HealthHandler   handlers.HealthHandler
 }
 
-func NewModel(renderers map[string]renderers.Renderer, handlers map[string]Handlers) ApplicationModel {
+func NewModel(renderers map[string]renderers.Renderer, handlers map[string]Handlers, transformers map[string]renderers.SecretValueTransformer) ApplicationModel {
 	resourceList := []ResourceKind{}
 	resourceLookup := map[string]ResourceKind{}
 	for kind, renderer := range renderers {
@@ -131,9 +142,10 @@ func NewModel(renderers map[string]renderers.Renderer, handlers map[string]Handl
 	}
 
 	return &applicationModel{
-		resourceList:         resourceList,
-		resourceLookup:       resourceLookup,
-		outputResourceList:   outputResourceList,
-		outputResourceLookup: outputResourceLookup,
+		resourceList:           resourceList,
+		resourceLookup:         resourceLookup,
+		outputResourceList:     outputResourceList,
+		outputResourceLookup:   outputResourceLookup,
+		secretValueTranformers: transformers,
 	}
 }

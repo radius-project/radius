@@ -26,11 +26,13 @@ import (
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/localenv"
+	"github.com/Azure/radius/pkg/model/local"
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
 type startupOpts struct {
+	Clean           bool
 	MetricsAddr     string
 	HealthProbeAddr string
 }
@@ -92,6 +94,7 @@ func main() {
 	}
 
 	kcpOptions := localenv.KcpOptions{
+		Clean:            opts.Clean,
 		WorkingDirectory: workingDir,
 		KubeConfigPath:   getKubeConfigPath(),
 		Started:          apiServerStarted,
@@ -103,6 +106,7 @@ func main() {
 	}
 
 	apiServerOptions := localenv.APIServerExtensionOptions{
+		AppModel:       local.NewLocalModel(),
 		KubeConfigPath: getKubeConfigPath(),
 		Scheme:         scheme,
 		Start:          apiServerReady,
@@ -160,6 +164,7 @@ func main() {
 func getStartupOpts() *startupOpts {
 	opts := startupOpts{}
 
+	flag.BoolVar(&opts.Clean, "clean", false, "Clean server state")
 	flag.StringVar(&opts.MetricsAddr, "metrics-bind-address", ":43590", "The address the metric endpoint binds to.")
 	flag.StringVar(&opts.HealthProbeAddr, "health-probe-bind-address", ":43591", "The address the probe endpoint binds to.")
 	flag.Parse()

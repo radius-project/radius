@@ -12,36 +12,25 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli"
 	radazure "github.com/Azure/radius/pkg/cli/azure"
+	"github.com/Azure/radius/pkg/cli/azure/selector"
 	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/cli/prompt"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
-
-var supportedLocations = [5]string{
-	"australiaeast",
-	"eastus",
-	"northeurope",
-	"westeurope",
-	"westus2",
-}
 
 // Placeholder is for the 'channel'
 const armTemplateURIFormat = "https://radiuspublic.blob.core.windows.net/environment/%s/rp-full.json"
@@ -73,7 +62,7 @@ rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NA
 		}
 
 		if a.Interactive {
-			a.SubscriptionID, a.ResourceGroup, err = choose(cmd.Context())
+			a.SubscriptionID, a.ResourceGroup, err = selector.Select(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -173,8 +162,8 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
-	if location != "" && !isSupportedLocation(location) {
-		return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
+	if location != "" && !selector.IsSupportedLocation(location) {
+		return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(selector.SupportedLocations[:], ", "))
 	}
 
 	return arguments{
@@ -187,117 +176,6 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		ContainerRegistry:       registryName,
 		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
 	}, nil
-}
-
-func choose(ctx context.Context) (string, string, error) {
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		return "", "", err
-	}
-
-	sub, err := selectSubscription(ctx, authorizer)
-	if err != nil {
-		return "", "", err
-	}
-
-	resourceGroup, err := selectResourceGroup(ctx, authorizer, sub)
-	if err != nil {
-		return "", "", err
-	}
-
-	return sub.SubscriptionID, resourceGroup, nil
-}
-
-func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (radazure.Subscription, error) {
-	subs, err := radazure.LoadSubscriptionsFromProfile()
-	if err != nil {
-		// Failed to load subscriptions from the user profile, fall back to online.
-		subs, err = radazure.LoadSubscriptionsFromAzure(ctx, authorizer)
-		if err != nil {
-			return radazure.Subscription{}, err
-		}
-	}
-
-	if subs.Default != nil {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Use Subscription '%v' [y/n]?", subs.Default.DisplayName))
-		if err != nil {
-			return radazure.Subscription{}, err
-		}
-
-		if confirmed {
-			return *subs.Default, nil
-		}
-	}
-
-	// build prompt to select from list
-	names := []string{}
-	for _, s := range subs.Subscriptions {
-		names = append(names, s.DisplayName)
-	}
-
-	index, err := prompt.Select("Select Subscription:", names)
-	if err != nil {
-		return radazure.Subscription{}, err
-	}
-
-	return subs.Subscriptions[index], nil
-}
-
-func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (string, error) {
-	rgc := clients.NewGroupsClient(sub.SubscriptionID, authorizer)
-
-	name, err := prompt.Text("Enter a Resource Group name:", prompt.EmptyValidator)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := rgc.CheckExistence(ctx, name)
-	if err != nil {
-		return "", err
-	} else if !resp.HasHTTPStatus(404) {
-		// already exists
-		return name, nil
-	}
-
-	output.LogInfo("Resource Group '%v' will be created...", name)
-
-	subc := clients.NewSubscriptionClient(authorizer)
-
-	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
-	if err != nil {
-		return "", fmt.Errorf("cannot list locations: %w", err)
-	}
-
-	names := []string{}
-	nameToLocation := map[string]subscription.Location{}
-	for _, loc := range *locations.Value {
-		if !isSupportedLocation(*loc.Name) {
-			continue
-		}
-
-		// Use the display name for the prompt
-		names = append(names, *loc.DisplayName)
-		nameToLocation[*loc.DisplayName] = loc
-	}
-
-	// alphabetize so the list is stable and scannable
-	sort.Strings(names)
-
-	index, err := prompt.Select("Select a location:", names)
-	if err != nil {
-		return "", err
-	}
-
-	selected := names[index]
-	location := nameToLocation[selected]
-	_, err = rgc.CreateOrUpdate(ctx, name, resources.Group{
-		Location: to.StringPtr(*location.Name),
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return name, nil
 }
 
 func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string) error {
@@ -358,8 +236,8 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	}
 
 	if group != nil {
-		if !isSupportedLocation(*group.Location) {
-			return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(supportedLocations[:], ", "))
+		if !selector.IsSupportedLocation(*group.Location) {
+			return fmt.Errorf("the location '%s' of resource group '%s' is not supported. choose from: %s", *group.Location, *group.Name, strings.Join(selector.SupportedLocations[:], ", "))
 		}
 
 		location = *group.Location
@@ -670,17 +548,6 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 
 	output.CompleteStep(step)
 	return nil
-}
-
-// operates on the *programmatic* location name ('eastus' not 'East US')
-func isSupportedLocation(name string) bool {
-	for _, loc := range supportedLocations {
-		if strings.EqualFold(name, loc) {
-			return true
-		}
-	}
-
-	return false
 }
 
 type deploymentParameters struct {

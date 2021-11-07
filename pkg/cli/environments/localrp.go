@@ -58,13 +58,16 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	azcred := &radclient.AnonymousCredential{}
-	connection := arm.NewConnection(e.URL, azcred, nil)
+	providers := map[string]localrp.DeploymentProvider{
+		"radius": {
+			Authorizer: nil,
+			BaseURL:    e.URL,
+			Connection: arm.NewConnection(e.URL, &radclient.AnonymousCredential{}, nil),
+		},
+	}
 
 	return &localrp.LocalRPDeploymentClient{
-		Authorizer:     nil,
-		BaseURL:        e.URL,
-		Connection:     connection,
+		Providers:      providers,
 		SubscriptionID: e.SubscriptionID,
 		ResourceGroup:  e.ResourceGroup,
 	}, nil

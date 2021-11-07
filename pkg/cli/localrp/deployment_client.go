@@ -31,11 +31,17 @@ import (
 const PollInterval = 5 * time.Second
 
 type LocalRPDeploymentClient struct {
-	Authorizer     autorest.Authorizer
-	BaseURL        string
-	Connection     *arm.Connection
+	Providers      ProviderMap
 	SubscriptionID string
 	ResourceGroup  string
+}
+
+type ProviderMap = map[string]DeploymentProvider
+
+type DeploymentProvider struct {
+	Authorizer autorest.Authorizer
+	BaseURL    string
+	Connection *arm.Connection
 }
 
 var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
@@ -50,9 +56,14 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 		return clients.DeploymentResult{}, err
 	}
 
+	resourceGroup, err := dc.GetResourceGroupData(ctx)
+	if err != nil {
+		return clients.DeploymentResult{}, err
+	}
+
 	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{
 		SubscriptionID:         dc.SubscriptionID,
-		ResourceGroup:          dc.ResourceGroup,
+		ResourceGroup:          resourceGroup,
 		Parameters:             options.Parameters,
 		EvaluatePropertiesNode: false,
 	})
@@ -65,12 +76,17 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 		Template: template,
 		Options: armtemplate.TemplateOptions{
 			SubscriptionID:         dc.SubscriptionID,
-			ResourceGroup:          dc.ResourceGroup,
+			ResourceGroup:          resourceGroup,
 			Parameters:             options.Parameters,
 			EvaluatePropertiesNode: true,
 		},
-		CustomActionCallback: func(id, apiVersion string, action string, body interface{}) (interface{}, error) {
-			return dc.customAction(ctx, id, apiVersion, action, body)
+		CustomActionCallback: func(id string, apiVersion string, action string, body interface{}) (interface{}, error) {
+			provider, err := dc.findProvider(id)
+			if err != nil {
+				return nil, err
+			}
+
+			return dc.customAction(ctx, provider, id, apiVersion, action, body)
 		},
 		Deployed:  deployed,
 		Variables: map[string]interface{}{},
@@ -89,6 +105,11 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 	ids := []azresources.ResourceID{}
 	fmt.Printf("Starting deployment...\n")
 	for _, resource := range resources {
+		provider, err := dc.findProvider(resource.ID)
+		if err != nil {
+			return clients.DeploymentResult{}, err
+		}
+
 		body, err := evaluator.VisitMap(resource.Body)
 		if err != nil {
 			return clients.DeploymentResult{}, err
@@ -97,7 +118,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 		resource.Body = body
 
 		fmt.Printf("Deploying %s %s...\n", resource.Type, resource.Name)
-		response, result, err := dc.deployResource(ctx, dc.Connection, resource)
+		response, result, err := dc.deployResource(ctx, provider, resource)
 		if err != nil {
 			return clients.DeploymentResult{}, fmt.Errorf("failed to PUT resource %s %s: %w", resource.Type, resource.Name, err)
 		}
@@ -121,9 +142,9 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 	return clients.DeploymentResult{Resources: ids}, err
 }
 
-func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connection *arm.Connection, resource armtemplate.Resource) (*http.Response, map[string]interface{}, error) {
-	client := azclients.NewGenericResourceClient(dc.SubscriptionID, dc.Authorizer)
-	client.BaseURI = strings.TrimSuffix(dc.BaseURL, "/")
+func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, provider DeploymentProvider, resource armtemplate.Resource) (*http.Response, map[string]interface{}, error) {
+	client := azclients.NewGenericResourceClient(dc.SubscriptionID, provider.Authorizer)
+	client.BaseURI = strings.TrimSuffix(provider.BaseURL, "/")
 	client.PollingDelay = PollInterval
 
 	converted := resources.GenericResource{}
@@ -161,9 +182,9 @@ func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, connectio
 	return future.Response(), result, nil
 }
 
-func (dc *LocalRPDeploymentClient) customAction(ctx context.Context, id string, apiVersion string, action string, body interface{}) (map[string]interface{}, error) {
-	client := azclients.NewCustomActionClient(dc.SubscriptionID, dc.Authorizer)
-	client.BaseURI = dc.BaseURL
+func (dc *LocalRPDeploymentClient) customAction(ctx context.Context, provider DeploymentProvider, id string, apiVersion string, action string, body interface{}) (map[string]interface{}, error) {
+	client := azclients.NewCustomActionClient(dc.SubscriptionID, provider.Authorizer)
+	client.BaseURI = provider.BaseURL
 
 	response, err := client.InvokeCustomAction(ctx, id, apiVersion, action, body)
 	if err != nil {
@@ -171,4 +192,61 @@ func (dc *LocalRPDeploymentClient) customAction(ctx context.Context, id string, 
 	}
 
 	return response.Body, nil
+}
+
+func (dc *LocalRPDeploymentClient) findProvider(id string) (DeploymentProvider, error) {
+	parsed, err := azresources.Parse(id)
+	if err != nil {
+		return DeploymentProvider{}, err
+	}
+
+	if azresources.IsRadiusResource(parsed) || azresources.IsRadiusCustomAction(parsed) {
+		provider, ok := dc.Providers["radius"]
+		if !ok {
+			return DeploymentProvider{}, fmt.Errorf("could not find %s provider", "radius")
+		}
+
+		return provider, nil
+	} else if azresources.IsKubernetesResource(parsed) {
+		provider, ok := dc.Providers["kubernetes"]
+		if !ok {
+			return DeploymentProvider{}, fmt.Errorf("could not find %s provider", "kubernetes")
+		}
+
+		return provider, nil
+	} else {
+		provider, ok := dc.Providers["azure"]
+		if !ok {
+			return DeploymentProvider{}, fmt.Errorf("could not find %s provider", "azure")
+		}
+
+		return provider, nil
+	}
+}
+
+func (dc *LocalRPDeploymentClient) GetResourceGroupData(ctx context.Context) (armtemplate.ResourceGroup, error) {
+	provider, ok := dc.Providers["azure"]
+	if !ok {
+		// no Azure provider, just provide the name for building resource ids
+		return armtemplate.ResourceGroup{
+			Name: dc.ResourceGroup,
+		}, nil
+	}
+
+	rgc := azclients.NewGroupsClient(dc.SubscriptionID, provider.Authorizer)
+	group, err := rgc.Get(ctx, dc.ResourceGroup)
+	if err != nil {
+		return armtemplate.ResourceGroup{}, fmt.Errorf("error finding resource group %q: %w", dc.ResourceGroup, err)
+	}
+
+	// TODO: for some reason this doesn't roundtrip through JSON well :-/
+
+	return armtemplate.ResourceGroup{
+		Name: dc.ResourceGroup,
+		Properties: map[string]interface{}{
+			"id":       *group.ID,
+			"location": *group.Location,
+			"name":     *group.Name,
+		},
+	}, nil
 }

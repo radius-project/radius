@@ -59,6 +59,18 @@ spec:
           status:
             description: ResourceStatus defines the observed state of Resource
             properties:
+              cloudResources:
+                additionalProperties:
+                  properties:
+                    identity:
+                      type: string
+                    provider:
+                      type: string
+                  required:
+                  - identity
+                  - provider
+                  type: object
+                type: object
               computedValues:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
