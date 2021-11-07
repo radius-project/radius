@@ -86,7 +86,7 @@ func (cms *ControllerManagerService) Run(ctx context.Context) error {
 		Scheme:        mgr.GetScheme(),
 		Log:           ctrl.Log,
 		Recorder:      mgr.GetEventRecorderFor("radius"),
-		RestConfig:    ctrl.GetConfigOrDie(),
+		RestConfig:    mgr.GetConfig(),
 		RestMapper:    mapper,
 		ResourceTypes: model.GetReconciledTypes(),
 		WatchedTypes:  model.GetWatchedTypes(),

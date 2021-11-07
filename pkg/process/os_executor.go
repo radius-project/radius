@@ -10,9 +10,15 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"syscall"
+	"time"
 )
 
 type OSExecutor struct{}
+
+const (
+	ProcessExitTimeout = 5 * time.Second
+)
 
 func NewOSExecutor() Executor {
 	return &OSExecutor{}
@@ -60,8 +66,28 @@ func (e *OSExecutor) StartProcess(ctx context.Context, cmd *exec.Cmd, handler Pr
 
 func (e *OSExecutor) StopProcess(pid int) error {
 	proc, err := os.FindProcess(pid)
-	if err == nil {
-		err = proc.Kill()
+	if err != nil {
+		return err
 	}
-	return err
+
+	// Ask nicely
+	err = proc.Signal(syscall.SIGTERM)
+	if err != nil {
+		return err
+	}
+
+	exited := make(chan error, 1)
+	go func() {
+		_, waitErr := proc.Wait()
+		exited <- waitErr
+		close(exited)
+	}()
+
+	select {
+	case <-time.After(ProcessExitTimeout):
+		err = proc.Kill()
+		return err
+	case err = <-exited:
+		return err
+	}
 }
