@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -78,21 +77,6 @@ func (e *TestProcessExecutor) StartProcess(ctx context.Context, cmd *exec.Cmd, h
 
 func (e *TestProcessExecutor) StopProcess(pid int) error {
 	return e.stopProcessImpl(pid, KilledProcessExitCode)
-}
-
-func (e *TestProcessExecutor) Processes() ([]process.ProcessData, error) {
-	e.m.RLock()
-	defer e.m.RUnlock()
-
-	retval := make([]process.ProcessData, len(e.Executions))
-	for i, pe := range e.Executions {
-		if pe.Finished() {
-			continue
-		}
-		retval[i].PID = pe.PID
-		retval[i].Cmdline = strings.Join(pe.Cmd.Args, " ")
-	}
-	return retval, nil
 }
 
 // Following methods are called by tests only (they are not part of Executor interface)

@@ -28,6 +28,7 @@ type processCheck int
 const (
 	running runningState = 1
 	ready   runningState = 0
+	done    runningState = 2
 
 	performProcessCheck processCheck = 1
 	skipProcessCheck    processCheck = 0
@@ -90,9 +91,9 @@ func (r *KcpRunner) Run(ctx context.Context) error {
 	log := logr.FromContextOrDiscard(ctx)
 
 	if !atomic.CompareAndSwapUint32((*uint32)(&r.state), uint32(ready), uint32(running)) {
-		return fmt.Errorf("KCP run in progress")
+		return fmt.Errorf("KCP run in progress, or already completed")
 	}
-	defer func() { atomic.StoreUint32((*uint32)(&r.state), uint32(ready)) }()
+	defer func() { atomic.StoreUint32((*uint32)(&r.state), uint32(done)) }()
 
 	if _, err := os.Stat(r.kcpExecutablePath); err != nil {
 		return fmt.Errorf("unable to locate KCP binary")
@@ -132,7 +133,9 @@ func (r *KcpRunner) Run(ctx context.Context) error {
 		return err
 	}
 
-	close(r.started)
+	if r.started != nil {
+		close(r.started)
+	}
 	log.Info("Started API Server")
 
 	select {

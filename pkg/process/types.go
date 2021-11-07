@@ -16,14 +16,9 @@ const (
 	InvalidPID = -1
 )
 
-type ProcessData struct {
-	PID     int
-	Cmdline string
-}
 type Executor interface {
 	StartProcess(ctx context.Context, cmd *exec.Cmd, exitHandler ProcessExitHandler) (pid int, startWaitForProcessExit func(), err error)
 	StopProcess(pid int) error
-	Processes() ([]ProcessData, error)
 }
 
 type ProcessExitHandler interface {
