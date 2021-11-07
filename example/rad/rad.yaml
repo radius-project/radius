@@ -1,0 +1,17 @@
+name: todo
+build:
+- name: todo_build
+  npm:
+    directory: '.'
+    script: 'dev:start'
+    container:
+      image: 'rynowak/todo'
+stages:
+- name: infra
+  deploy:
+    bicep: infra.bicep
+- name: app
+  deploy:
+    bicep: app.bicep
+    params:
+    - name: todo_build

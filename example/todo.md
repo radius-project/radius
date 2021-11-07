@@ -1,0 +1,9 @@
+- Make example work with non-container
+- Work on layers for dev/prod split
+- Make example work with container
+- Save state between runs (use sandbox in directory)
+- Rad logs
+- Make application sticky
+- Website -> Service
+- Run through and design flow
+- Bicep changes for parameters
