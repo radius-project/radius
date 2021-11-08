@@ -6,7 +6,8 @@
         "source": "something"
       }
     },
-    "container": {
+    "run": {
+      "kind": "container",
       "image": "something"
     },
     "env": {

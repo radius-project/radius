@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package websitev1alpha3
+package servicev1alpha3
 
 import (
 	"fmt"

@@ -37,7 +37,7 @@ func NewKubernetesModel() ResourceModel {
 		},
 		[]ReconcilableType{
 			{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
-			{&radiusv1alpha3.Website{}, &radiusv1alpha3.WebsiteList{}},
+			{&radiusv1alpha3.Service{}, &radiusv1alpha3.ServiceList{}},
 			{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
 			{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
 			{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
@@ -56,7 +56,7 @@ func NewLocalModel() ResourceModel {
 			{&radiusv1alpha3.Executable{}, &radiusv1alpha3.ExecutableList{}},
 		},
 		[]ReconcilableType{
-			{&radiusv1alpha3.Website{}, &radiusv1alpha3.WebsiteList{}},
+			{&radiusv1alpha3.Service{}, &radiusv1alpha3.ServiceList{}},
 			{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
 			{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
 		},

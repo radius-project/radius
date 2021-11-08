@@ -711,12 +711,12 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/Volume",
+                "name": "Application/Service",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/Website",
+                "name": "Application/Volume",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },

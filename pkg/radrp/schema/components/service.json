@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "WebsiteResource": {
-      "description": "The radius.dev/Website resource provides an abstraction for a website that can run as an executable or container on any Radius platform",
+    "ServiceResource": {
+      "description": "The radius.dev/Service resource provides an abstraction for a long-running process that can run as an executable or container on any Radius platform",
       "type": "object",
       "x-ms-azure-resource": true,
       "allOf": [
@@ -15,11 +15,11 @@
       ],
       "properties": {
         "properties": {
-          "$ref": "#/definitions/WebsiteProperties"
+          "$ref": "#/definitions/ServiceProperties"
         }
       }
     },
-    "WebsiteProperties": {
+    "ServiceProperties": {
       "type": "object",
       "additionalProperties": false,
       "allOf": [
@@ -31,45 +31,11 @@
         "connections": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/WebsiteConnection"
+            "$ref": "#/definitions/ServiceConnection"
           }
         },
-        "container": {
-          "type": "object",
-          "required": [
-            "image"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "image": {
-              "description": "The registry and image to download and run in your container",
-              "type": "string"
-            }
-          }
-        },
-        "executable": {
-          "type": "object",
-          "required": [
-            "name"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "args": {
-              "description": "The arguments passed to the executable",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "workingDirectory": {
-              "description": "The working directory of the executable",
-              "type": "string"
-            },
-            "name": {
-              "description": "The name of the executable to launch",
-              "type": "string"
-            }
-          }
+        "run": {
+          "$ref": "#/definitions/ServiceRunnable"
         },
         "env": {
           "type": "object",
@@ -80,7 +46,7 @@
         "ports": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/WebsitePort"
+            "$ref": "#/definitions/ServicePort"
           }
         },
         "readinessProbe": {
@@ -98,7 +64,72 @@
         }
       }
     },
-    "WebsitePort": {
+    "ServiceRunnable": {
+      "description": "Configuration for running the service.",
+      "type": "object",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/ServiceContainer"
+        },
+        {
+          "$ref": "#/definitions/ServiceExecutable"
+        }
+      ]
+    },
+    "ServiceContainer": {
+      "type": "object",
+      "required": [
+        "kind",
+        "image"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Runnable kind.",
+          "type": "string",
+          "enum": [
+            "container"
+          ]
+        },
+        "image": {
+          "description": "The registry and image to download and run in your container",
+          "type": "string"
+        }
+      }
+    },
+    "ServiceExecutable": {
+      "type": "object",
+      "required": [
+        "kind",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Runnable kind.",
+          "type": "string",
+          "enum": [
+            "executable"
+          ]
+        },
+        "args": {
+          "description": "The arguments passed to the executable",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workingDirectory": {
+          "description": "The working directory of the executable",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the executable to launch",
+          "type": "string"
+        }
+      }
+    },
+    "ServicePort": {
       "description": "Specifies a listening port for the container",
       "type": "object",
       "additionalProperties": false,
@@ -125,8 +156,8 @@
         }
       }
     },
-    "WebsiteConnection": {
-      "description": "Specifies a connection from the website to another resource",
+    "ServiceConnection": {
+      "description": "Specifies a connection from the service to another resource",
       "type": "object",
       "additionalProperties": false,
       "properties": {

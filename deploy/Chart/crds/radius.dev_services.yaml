@@ -6,17 +6,17 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: websites.radius.dev
+  name: services.radius.dev
 spec:
   group: radius.dev
   names:
     categories:
     - all
     - radius
-    kind: Website
-    listKind: WebsiteList
-    plural: websites
-    singular: website
+    kind: Service
+    listKind: ServiceList
+    plural: services
+    singular: service
   scope: Namespaced
   versions:
   - additionalPrinterColumns:

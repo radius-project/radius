@@ -13,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource web 'Website' = {
+  resource web 'Service' = {
     name: 'todo-website'
     properties: {
       connections: {
@@ -22,7 +22,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
           source: db.id
         }
       }
-      executable: todo_build
+      run: todo_build
       ports: {
         web: {
           dynamic: true

@@ -47,6 +47,7 @@ func (builder *npmBuilder) Build(ctx context.Context, values interface{}, option
 
 	input.Directory = normalize(options.BaseDirectory, input.Directory)
 	output := map[string]interface{}{
+		"kind":             "executable",
 		"name":             "npm",
 		"workingDirectory": input.Directory,
 		"args": []string{

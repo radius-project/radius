@@ -3,6 +3,5 @@
 - Save state between runs (use sandbox in directory)
 - Rad logs
 - Make application sticky
-- Website -> Service
 - Run through and design flow
 - Bicep changes for parameters

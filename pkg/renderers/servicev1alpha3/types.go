@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package websitev1alpha3
+package servicev1alpha3
 
 import (
 	"encoding/json"
@@ -24,31 +24,34 @@ const (
 
 const (
 	kindProperty = "kind"
-	ResourceType = "Website"
+	ResourceType = "Service"
 )
 
-type WebsiteProperties struct {
+type ServiceProperties struct {
 	Connections    map[string]Connection  `json:"connections,omitempty"`
-	Container      *Container             `json:"container,omitempty"`
-	Executable     *Executable            `json:"executable,omitempty"`
+	Run            Runnable               `json:"run,omitempty"`
 	Env            map[string]interface{} `json:"env,omitempty"`
-	Ports          map[string]WebsitePort `json:"ports,omitempty"`
+	Ports          map[string]ServicePort `json:"ports,omitempty"`
 	ReadinessProbe map[string]interface{} `json:"readinessProbe,omitempty"`
 	LivenessProbe  map[string]interface{} `json:"livenessProbe,omitempty"`
 	Traits         []Trait                `json:"traits,omitempty"`
 }
 
+type Runnable = map[string]interface{}
+
 type Container struct {
+	Kind  string `json:"kind"`
 	Image string `json:"image"`
 }
 
 type Executable struct {
+	Kind             string   `json:"kind"`
 	Name             string   `json:"name"`
 	WorkingDirectory string   `json:"workingDirectory,omitempty"`
 	Args             []string `json:"args,omitempty"`
 }
 
-type WebsitePort struct {
+type ServicePort struct {
 	Provides string `json:"provides"`
 	Protocol string `json:"protocol"`
 	Port     *int   `json:"port"`
@@ -137,7 +140,7 @@ func (ct *Trait) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (resource WebsiteProperties) FindTrait(kind string, trait interface{}) (bool, error) {
+func (resource ServiceProperties) FindTrait(kind string, trait interface{}) (bool, error) {
 	traits := resource.Traits
 	if traits == nil {
 		return false, nil
@@ -169,8 +172,8 @@ func (resource Trait) As(kind string, specific interface{}) (bool, error) {
 	return true, nil
 }
 
-func convert(resource renderers.RendererResource) (*WebsiteProperties, error) {
-	properties := &WebsiteProperties{}
+func convert(resource renderers.RendererResource) (*ServiceProperties, error) {
+	properties := &ServiceProperties{}
 	err := resource.ConvertDefinition(properties)
 	if err != nil {
 		return nil, err

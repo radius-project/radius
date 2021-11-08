@@ -21,43 +21,43 @@ import (
 	"strings"
 )
 
-// WebsiteClient contains the methods for the Website group.
-// Don't use this type directly, use NewWebsiteClient() instead.
-type WebsiteClient struct {
+// ServiceClient contains the methods for the Service group.
+// Don't use this type directly, use NewServiceClient() instead.
+type ServiceClient struct {
 	ep string
 	pl runtime.Pipeline
 	subscriptionID string
 }
 
-// NewWebsiteClient creates a new instance of WebsiteClient with the specified values.
-func NewWebsiteClient(con *arm.Connection, subscriptionID string) *WebsiteClient {
-	return &WebsiteClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+// NewServiceClient creates a new instance of ServiceClient with the specified values.
+func NewServiceClient(con *arm.Connection, subscriptionID string) *ServiceClient {
+	return &ServiceClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
-// BeginCreateOrUpdate - Creates or updates a Website resource.
+// BeginCreateOrUpdate - Creates or updates a Service resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *WebsiteClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, websiteName string, parameters WebsiteResource, options *WebsiteBeginCreateOrUpdateOptions) (WebsiteCreateOrUpdatePollerResponse, error) {
-	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, websiteName, parameters, options)
+func (client *ServiceClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, serviceName string, parameters ServiceResource, options *ServiceBeginCreateOrUpdateOptions) (ServiceCreateOrUpdatePollerResponse, error) {
+	resp, err := client.createOrUpdate(ctx, resourceGroupName, applicationName, serviceName, parameters, options)
 	if err != nil {
-		return WebsiteCreateOrUpdatePollerResponse{}, err
+		return ServiceCreateOrUpdatePollerResponse{}, err
 	}
-	result := WebsiteCreateOrUpdatePollerResponse{
+	result := ServiceCreateOrUpdatePollerResponse{
 		RawResponse: resp,
 	}
-	pt, err := armruntime.NewPoller("WebsiteClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
+	pt, err := armruntime.NewPoller("ServiceClient.CreateOrUpdate", "location", resp, 	client.pl, client.createOrUpdateHandleError)
 	if err != nil {
-		return WebsiteCreateOrUpdatePollerResponse{}, err
+		return ServiceCreateOrUpdatePollerResponse{}, err
 	}
-	result.Poller = &WebsiteCreateOrUpdatePoller {
+	result.Poller = &ServiceCreateOrUpdatePoller {
 		pt: pt,
 	}
 	return result, nil
 }
 
-// CreateOrUpdate - Creates or updates a Website resource.
+// CreateOrUpdate - Creates or updates a Service resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *WebsiteClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, websiteName string, parameters WebsiteResource, options *WebsiteBeginCreateOrUpdateOptions) (*http.Response, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, websiteName, parameters, options)
+func (client *ServiceClient) createOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, serviceName string, parameters ServiceResource, options *ServiceBeginCreateOrUpdateOptions) (*http.Response, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, serviceName, parameters, options)
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +72,8 @@ func (client *WebsiteClient) createOrUpdate(ctx context.Context, resourceGroupNa
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *WebsiteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, websiteName string, parameters WebsiteResource, options *WebsiteBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Website/{websiteName}"
+func (client *ServiceClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, serviceName string, parameters ServiceResource, options *ServiceBeginCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Service/{serviceName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -86,10 +86,10 @@ func (client *WebsiteClient) createOrUpdateCreateRequest(ctx context.Context, re
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if websiteName == "" {
-		return nil, errors.New("parameter websiteName cannot be empty")
+	if serviceName == "" {
+		return nil, errors.New("parameter serviceName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{websiteName}", url.PathEscape(websiteName))
+	urlPath = strings.ReplaceAll(urlPath, "{serviceName}", url.PathEscape(serviceName))
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (client *WebsiteClient) createOrUpdateCreateRequest(ctx context.Context, re
 }
 
 // createOrUpdateHandleError handles the CreateOrUpdate error response.
-func (client *WebsiteClient) createOrUpdateHandleError(resp *http.Response) error {
+func (client *ServiceClient) createOrUpdateHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -114,30 +114,30 @@ func (client *WebsiteClient) createOrUpdateHandleError(resp *http.Response) erro
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// BeginDelete - Deletes a Website resource.
+// BeginDelete - Deletes a Service resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *WebsiteClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, websiteName string, options *WebsiteBeginDeleteOptions) (WebsiteDeletePollerResponse, error) {
-	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, websiteName, options)
+func (client *ServiceClient) BeginDelete(ctx context.Context, resourceGroupName string, applicationName string, serviceName string, options *ServiceBeginDeleteOptions) (ServiceDeletePollerResponse, error) {
+	resp, err := client.deleteOperation(ctx, resourceGroupName, applicationName, serviceName, options)
 	if err != nil {
-		return WebsiteDeletePollerResponse{}, err
+		return ServiceDeletePollerResponse{}, err
 	}
-	result := WebsiteDeletePollerResponse{
+	result := ServiceDeletePollerResponse{
 		RawResponse: resp,
 	}
-	pt, err := armruntime.NewPoller("WebsiteClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
+	pt, err := armruntime.NewPoller("ServiceClient.Delete", "location", resp, 	client.pl, client.deleteHandleError)
 	if err != nil {
-		return WebsiteDeletePollerResponse{}, err
+		return ServiceDeletePollerResponse{}, err
 	}
-	result.Poller = &WebsiteDeletePoller {
+	result.Poller = &ServiceDeletePoller {
 		pt: pt,
 	}
 	return result, nil
 }
 
-// Delete - Deletes a Website resource.
+// Delete - Deletes a Service resource.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *WebsiteClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, websiteName string, options *WebsiteBeginDeleteOptions) (*http.Response, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, websiteName, options)
+func (client *ServiceClient) deleteOperation(ctx context.Context, resourceGroupName string, applicationName string, serviceName string, options *ServiceBeginDeleteOptions) (*http.Response, error) {
+	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, serviceName, options)
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +152,8 @@ func (client *WebsiteClient) deleteOperation(ctx context.Context, resourceGroupN
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *WebsiteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, websiteName string, options *WebsiteBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Website/{websiteName}"
+func (client *ServiceClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, serviceName string, options *ServiceBeginDeleteOptions) (*policy.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Service/{serviceName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -166,10 +166,10 @@ func (client *WebsiteClient) deleteCreateRequest(ctx context.Context, resourceGr
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if websiteName == "" {
-		return nil, errors.New("parameter websiteName cannot be empty")
+	if serviceName == "" {
+		return nil, errors.New("parameter serviceName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{websiteName}", url.PathEscape(websiteName))
+	urlPath = strings.ReplaceAll(urlPath, "{serviceName}", url.PathEscape(serviceName))
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (client *WebsiteClient) deleteCreateRequest(ctx context.Context, resourceGr
 }
 
 // deleteHandleError handles the Delete error response.
-func (client *WebsiteClient) deleteHandleError(resp *http.Response) error {
+func (client *ServiceClient) deleteHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -194,26 +194,26 @@ func (client *WebsiteClient) deleteHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// Get - Gets a Website resource by name.
+// Get - Gets a Service resource by name.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *WebsiteClient) Get(ctx context.Context, resourceGroupName string, applicationName string, websiteName string, options *WebsiteGetOptions) (WebsiteGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, websiteName, options)
+func (client *ServiceClient) Get(ctx context.Context, resourceGroupName string, applicationName string, serviceName string, options *ServiceGetOptions) (ServiceGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, serviceName, options)
 	if err != nil {
-		return WebsiteGetResponse{}, err
+		return ServiceGetResponse{}, err
 	}
 	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return WebsiteGetResponse{}, err
+		return ServiceGetResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return WebsiteGetResponse{}, client.getHandleError(resp)
+		return ServiceGetResponse{}, client.getHandleError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *WebsiteClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, websiteName string, options *WebsiteGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Website/{websiteName}"
+func (client *ServiceClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, serviceName string, options *ServiceGetOptions) (*policy.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Service/{serviceName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -226,10 +226,10 @@ func (client *WebsiteClient) getCreateRequest(ctx context.Context, resourceGroup
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	if websiteName == "" {
-		return nil, errors.New("parameter websiteName cannot be empty")
+	if serviceName == "" {
+		return nil, errors.New("parameter serviceName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{websiteName}", url.PathEscape(websiteName))
+	urlPath = strings.ReplaceAll(urlPath, "{serviceName}", url.PathEscape(serviceName))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -242,16 +242,16 @@ func (client *WebsiteClient) getCreateRequest(ctx context.Context, resourceGroup
 }
 
 // getHandleResponse handles the Get response.
-func (client *WebsiteClient) getHandleResponse(resp *http.Response) (WebsiteGetResponse, error) {
-	result := WebsiteGetResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.WebsiteResource); err != nil {
-		return WebsiteGetResponse{}, err
+func (client *ServiceClient) getHandleResponse(resp *http.Response) (ServiceGetResponse, error) {
+	result := ServiceGetResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ServiceResource); err != nil {
+		return ServiceGetResponse{}, err
 	}
 	return result, nil
 }
 
 // getHandleError handles the Get error response.
-func (client *WebsiteClient) getHandleError(resp *http.Response) error {
+func (client *ServiceClient) getHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -263,26 +263,26 @@ func (client *WebsiteClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - List the Website resources deployed in the application.
+// List - List the Service resources deployed in the application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *WebsiteClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *WebsiteListOptions) (WebsiteListResponse, error) {
+func (client *ServiceClient) List(ctx context.Context, resourceGroupName string, applicationName string, options *ServiceListOptions) (ServiceListResponse, error) {
 	req, err := client.listCreateRequest(ctx, resourceGroupName, applicationName, options)
 	if err != nil {
-		return WebsiteListResponse{}, err
+		return ServiceListResponse{}, err
 	}
 	resp, err := 	client.pl.Do(req)
 	if err != nil {
-		return WebsiteListResponse{}, err
+		return ServiceListResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return WebsiteListResponse{}, client.listHandleError(resp)
+		return ServiceListResponse{}, client.listHandleError(resp)
 	}
 	return client.listHandleResponse(resp)
 }
 
 // listCreateRequest creates the List request.
-func (client *WebsiteClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *WebsiteListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Website"
+func (client *ServiceClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ServiceListOptions) (*policy.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Service"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -307,16 +307,16 @@ func (client *WebsiteClient) listCreateRequest(ctx context.Context, resourceGrou
 }
 
 // listHandleResponse handles the List response.
-func (client *WebsiteClient) listHandleResponse(resp *http.Response) (WebsiteListResponse, error) {
-	result := WebsiteListResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.WebsiteList); err != nil {
-		return WebsiteListResponse{}, err
+func (client *ServiceClient) listHandleResponse(resp *http.Response) (ServiceListResponse, error) {
+	result := ServiceListResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ServiceList); err != nil {
+		return ServiceListResponse{}, err
 	}
 	return result, nil
 }
 
 // listHandleError handles the List error response.
-func (client *WebsiteClient) listHandleError(resp *http.Response) error {
+func (client *ServiceClient) listHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)

@@ -40,9 +40,9 @@ func (dc *LocalDiagnosticsClient) Logs(ctx context.Context, options clients.Logs
 }
 
 func (dc *LocalDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
-	// Only Website is supported
+	// Only Service is supported
 	if len(options.ResourceID.Types) != 3 ||
-		options.ResourceID.Types[2].Type != "Website" {
+		options.ResourceID.Types[2].Type != "Service" {
 		return nil, nil
 	}
 

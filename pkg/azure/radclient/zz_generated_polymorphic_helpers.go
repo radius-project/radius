@@ -128,6 +128,64 @@ func unmarshalHealthProbePropertiesClassificationMap(rawMsg json.RawMessage) (ma
 	return fMap, nil
 }
 
+func unmarshalServiceRunnableClassification(rawMsg json.RawMessage) (ServiceRunnableClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b ServiceRunnableClassification
+	switch m["kind"] {
+	case "container":
+		b = &ServiceContainer{}
+	case "executable":
+		b = &ServiceExecutable{}
+	default:
+		b = &ServiceRunnable{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalServiceRunnableClassificationArray(rawMsg json.RawMessage) ([]ServiceRunnableClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]ServiceRunnableClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalServiceRunnableClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalServiceRunnableClassificationMap(rawMsg json.RawMessage) (map[string]ServiceRunnableClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]ServiceRunnableClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalServiceRunnableClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
 func unmarshalVolumeClassification(rawMsg json.RawMessage) (VolumeClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

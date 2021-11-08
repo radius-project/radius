@@ -3,10 +3,11 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package websitev1alpha3
+package servicev1alpha3
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -60,24 +61,35 @@ func (r *LocalRenderer) GetDependencyIDs(ctx context.Context, resource renderers
 
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r *LocalRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	website, err := convert(options.Resource)
+	properties, err := convert(options.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	if website.Executable == nil {
+	if properties.Run["kind"].(string) == "executable" {
+		b, err := json.Marshal(&properties.Run)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+
+		executable := Executable{}
+		err = json.Unmarshal(b, &executable)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+
+		output, err := r.makeExecutable(ctx, options.Resource, executable, options.Dependencies, properties)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+
+		return renderers.RendererOutput{Resources: []outputresource.OutputResource{output}}, nil
+	} else {
 		return renderers.RendererOutput{}, errors.New("executable is required right now")
 	}
-
-	executable, err := r.makeExecutable(ctx, options.Resource, options.Dependencies, website)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-
-	return renderers.RendererOutput{Resources: []outputresource.OutputResource{executable}}, nil
 }
 
-func (r *LocalRenderer) makeExecutable(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency, properties *WebsiteProperties) (outputresource.OutputResource, error) {
+func (r *LocalRenderer) makeExecutable(ctx context.Context, resource renderers.RendererResource, executable Executable, dependencies map[string]renderers.RendererDependency, properties *ServiceProperties) (outputresource.OutputResource, error) {
 	ports := []radiusv1alpha3.ExecutablePort{}
 	for name, port := range properties.Ports {
 		converted := radiusv1alpha3.ExecutablePort{
@@ -120,9 +132,9 @@ func (r *LocalRenderer) makeExecutable(ctx context.Context, resource renderers.R
 			Labels: kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: radiusv1alpha3.ExecutableSpec{
-			Executable:       properties.Executable.Name,
-			WorkingDirectory: properties.Executable.WorkingDirectory,
-			Args:             properties.Executable.Args,
+			Executable:       executable.Name,
+			WorkingDirectory: executable.WorkingDirectory,
+			Args:             executable.Args,
 			Env:              env,
 			Ports:            ports,
 		},

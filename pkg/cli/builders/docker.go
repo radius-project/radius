@@ -85,6 +85,7 @@ func (builder *dockerBuilder) Build(ctx context.Context, values interface{}, opt
 	}
 
 	output := map[string]interface{}{
+		"kind":       "container",
 		"repository": input.Repository,
 		"image":      fmt.Sprintf("%s:%s", input.Repository, input.Tag),
 		"tag":        input.Tag,

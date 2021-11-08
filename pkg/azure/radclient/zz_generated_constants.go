@@ -373,6 +373,66 @@ func (c SKUTier) ToPtr() *SKUTier {
 	return &c
 }
 
+// ServiceConnectionKind - The kind of connection
+type ServiceConnectionKind string
+
+const (
+	ServiceConnectionKindAzureComKeyVault ServiceConnectionKind = "azure.com/KeyVault"
+	ServiceConnectionKindAzureComServiceBusQueue ServiceConnectionKind = "azure.com/ServiceBusQueue"
+	ServiceConnectionKindDaprIoDaprHTTP ServiceConnectionKind = "dapr.io/DaprHttp"
+	ServiceConnectionKindDaprIoPubSubTopic ServiceConnectionKind = "dapr.io/PubSubTopic"
+	ServiceConnectionKindDaprIoStateStore ServiceConnectionKind = "dapr.io/StateStore"
+	ServiceConnectionKindGrpc ServiceConnectionKind = "Grpc"
+	ServiceConnectionKindHTTP ServiceConnectionKind = "Http"
+	ServiceConnectionKindMicrosoftComSQL ServiceConnectionKind = "microsoft.com/SQL"
+	ServiceConnectionKindMongoComMongoDB ServiceConnectionKind = "mongo.com/MongoDB"
+	ServiceConnectionKindRabbitmqComMessageQueue ServiceConnectionKind = "rabbitmq.com/MessageQueue"
+	ServiceConnectionKindRedislabsComRedis ServiceConnectionKind = "redislabs.com/Redis"
+)
+
+// PossibleServiceConnectionKindValues returns the possible values for the ServiceConnectionKind const type.
+func PossibleServiceConnectionKindValues() []ServiceConnectionKind {
+	return []ServiceConnectionKind{	
+		ServiceConnectionKindAzureComKeyVault,
+		ServiceConnectionKindAzureComServiceBusQueue,
+		ServiceConnectionKindDaprIoDaprHTTP,
+		ServiceConnectionKindDaprIoPubSubTopic,
+		ServiceConnectionKindDaprIoStateStore,
+		ServiceConnectionKindGrpc,
+		ServiceConnectionKindHTTP,
+		ServiceConnectionKindMicrosoftComSQL,
+		ServiceConnectionKindMongoComMongoDB,
+		ServiceConnectionKindRabbitmqComMessageQueue,
+		ServiceConnectionKindRedislabsComRedis,
+	}
+}
+
+// ToPtr returns a *ServiceConnectionKind pointing to the current value.
+func (c ServiceConnectionKind) ToPtr() *ServiceConnectionKind {
+	return &c
+}
+
+// ServicePortProtocol - Protocol in use by the port
+type ServicePortProtocol string
+
+const (
+	ServicePortProtocolTCP ServicePortProtocol = "TCP"
+	ServicePortProtocolUDP ServicePortProtocol = "UDP"
+)
+
+// PossibleServicePortProtocolValues returns the possible values for the ServicePortProtocol const type.
+func PossibleServicePortProtocolValues() []ServicePortProtocol {
+	return []ServicePortProtocol{	
+		ServicePortProtocolTCP,
+		ServicePortProtocolUDP,
+	}
+}
+
+// ToPtr returns a *ServicePortProtocol pointing to the current value.
+func (c ServicePortProtocol) ToPtr() *ServicePortProtocol {
+	return &c
+}
+
 // VolumePropertiesKind - The kind of volume component
 type VolumePropertiesKind string
 
@@ -389,66 +449,6 @@ func PossibleVolumePropertiesKindValues() []VolumePropertiesKind {
 
 // ToPtr returns a *VolumePropertiesKind pointing to the current value.
 func (c VolumePropertiesKind) ToPtr() *VolumePropertiesKind {
-	return &c
-}
-
-// WebsiteConnectionKind - The kind of connection
-type WebsiteConnectionKind string
-
-const (
-	WebsiteConnectionKindAzureComKeyVault WebsiteConnectionKind = "azure.com/KeyVault"
-	WebsiteConnectionKindAzureComServiceBusQueue WebsiteConnectionKind = "azure.com/ServiceBusQueue"
-	WebsiteConnectionKindDaprIoDaprHTTP WebsiteConnectionKind = "dapr.io/DaprHttp"
-	WebsiteConnectionKindDaprIoPubSubTopic WebsiteConnectionKind = "dapr.io/PubSubTopic"
-	WebsiteConnectionKindDaprIoStateStore WebsiteConnectionKind = "dapr.io/StateStore"
-	WebsiteConnectionKindGrpc WebsiteConnectionKind = "Grpc"
-	WebsiteConnectionKindHTTP WebsiteConnectionKind = "Http"
-	WebsiteConnectionKindMicrosoftComSQL WebsiteConnectionKind = "microsoft.com/SQL"
-	WebsiteConnectionKindMongoComMongoDB WebsiteConnectionKind = "mongo.com/MongoDB"
-	WebsiteConnectionKindRabbitmqComMessageQueue WebsiteConnectionKind = "rabbitmq.com/MessageQueue"
-	WebsiteConnectionKindRedislabsComRedis WebsiteConnectionKind = "redislabs.com/Redis"
-)
-
-// PossibleWebsiteConnectionKindValues returns the possible values for the WebsiteConnectionKind const type.
-func PossibleWebsiteConnectionKindValues() []WebsiteConnectionKind {
-	return []WebsiteConnectionKind{	
-		WebsiteConnectionKindAzureComKeyVault,
-		WebsiteConnectionKindAzureComServiceBusQueue,
-		WebsiteConnectionKindDaprIoDaprHTTP,
-		WebsiteConnectionKindDaprIoPubSubTopic,
-		WebsiteConnectionKindDaprIoStateStore,
-		WebsiteConnectionKindGrpc,
-		WebsiteConnectionKindHTTP,
-		WebsiteConnectionKindMicrosoftComSQL,
-		WebsiteConnectionKindMongoComMongoDB,
-		WebsiteConnectionKindRabbitmqComMessageQueue,
-		WebsiteConnectionKindRedislabsComRedis,
-	}
-}
-
-// ToPtr returns a *WebsiteConnectionKind pointing to the current value.
-func (c WebsiteConnectionKind) ToPtr() *WebsiteConnectionKind {
-	return &c
-}
-
-// WebsitePortProtocol - Protocol in use by the port
-type WebsitePortProtocol string
-
-const (
-	WebsitePortProtocolTCP WebsitePortProtocol = "TCP"
-	WebsitePortProtocolUDP WebsitePortProtocol = "UDP"
-)
-
-// PossibleWebsitePortProtocolValues returns the possible values for the WebsitePortProtocol const type.
-func PossibleWebsitePortProtocolValues() []WebsitePortProtocol {
-	return []WebsitePortProtocol{	
-		WebsitePortProtocolTCP,
-		WebsitePortProtocolUDP,
-	}
-}
-
-// ToPtr returns a *WebsitePortProtocol pointing to the current value.
-func (c WebsitePortProtocol) ToPtr() *WebsitePortProtocol {
 	return &c
 }
 

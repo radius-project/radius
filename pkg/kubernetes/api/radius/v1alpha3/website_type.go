@@ -16,7 +16,7 @@ import (
 //+kubebuilder:printcolumn:name="Resource",type="string",JSONPath=".spec.resource"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase"
 
-type Website struct {
+type Service struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -25,12 +25,12 @@ type Website struct {
 }
 
 //+kubebuilder:object:root=true
-type WebsiteList struct {
+type ServiceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Website `json:"items"`
+	Items           []Service `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Website{}, &WebsiteList{})
+	SchemeBuilder.Register(&Service{}, &ServiceList{})
 }

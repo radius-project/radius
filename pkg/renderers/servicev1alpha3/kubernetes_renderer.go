@@ -3,11 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package websitev1alpha3
+package servicev1alpha3
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -72,13 +73,28 @@ func (r KubernetesRenderer) GetDependencyIDs(ctx context.Context, resource rende
 func (r KubernetesRenderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	outputResources := []outputresource.OutputResource{}
 
-	cw, err := convert(resource)
+	properties, err := convert(resource)
 	if err != nil {
 		return renderers.RendererOutput{Resources: outputResources}, err
 	}
 
+	if properties.Run["kind"].(string) == "executable" {
+		return renderers.RendererOutput{}, errors.New("container is required right now")
+	}
+
+	b, err := json.Marshal(&properties.Run)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	container := Container{}
+	err = json.Unmarshal(b, &container)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
 	// Create the deployment as the primary workload
-	deployment, secretData, err := r.makeDeployment(ctx, resource, dependencies, cw)
+	deployment, secretData, err := r.makeDeployment(ctx, resource, properties, container, dependencies)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -92,7 +108,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, resource renderers.Rende
 
 	// Connections might require a role assignment to grant access.
 	roles := []outputresource.OutputResource{}
-	for _, connection := range cw.Connections {
+	for _, connection := range properties.Connections {
 		if !r.IAM.IsIdentitySupported(connection.Kind) {
 			continue
 		}
@@ -115,7 +131,12 @@ func (r KubernetesRenderer) Render(ctx context.Context, resource renderers.Rende
 	return renderers.RendererOutput{Resources: outputResources}, nil
 }
 
-func (r KubernetesRenderer) makeDeployment(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency, cc *WebsiteProperties) (outputresource.OutputResource, map[string][]byte, error) {
+func (r KubernetesRenderer) makeDeployment(
+	ctx context.Context,
+	resource renderers.RendererResource,
+	properties *ServiceProperties,
+	container Container,
+	dependencies map[string]renderers.RendererDependency) (outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
@@ -127,7 +148,7 @@ func (r KubernetesRenderer) makeDeployment(ctx context.Context, resource rendere
 	portEnvVars := map[string]string{}
 
 	ports := []corev1.ContainerPort{}
-	for name, port := range cc.Ports {
+	for name, port := range properties.Ports {
 		if port.Dynamic {
 			port.Port = &nextPort
 			if len(ports) == 1 {
@@ -166,9 +187,9 @@ func (r KubernetesRenderer) makeDeployment(ctx context.Context, resource rendere
 
 	}
 
-	container := corev1.Container{
+	k8sContainer := corev1.Container{
 		Name:  resource.ResourceName,
-		Image: cc.Container.Image,
+		Image: container.Image,
 		// TODO: use better policies than this when we have a good versioning story
 		ImagePullPolicy: corev1.PullPolicy("Always"),
 		Ports:           ports,
@@ -177,14 +198,14 @@ func (r KubernetesRenderer) makeDeployment(ctx context.Context, resource rendere
 	}
 
 	var err error
-	if cc.ReadinessProbe != nil {
-		container.ReadinessProbe, err = r.makeHealthProbe(cc.ReadinessProbe)
+	if properties.ReadinessProbe != nil {
+		k8sContainer.ReadinessProbe, err = r.makeHealthProbe(properties.ReadinessProbe)
 		if err != nil {
 			return outputresource.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
 		}
 	}
-	if cc.LivenessProbe != nil {
-		container.LivenessProbe, err = r.makeHealthProbe(cc.LivenessProbe)
+	if properties.LivenessProbe != nil {
+		k8sContainer.LivenessProbe, err = r.makeHealthProbe(properties.LivenessProbe)
 		if err != nil {
 			return outputresource.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
 		}
@@ -203,7 +224,7 @@ func (r KubernetesRenderer) makeDeployment(ctx context.Context, resource rendere
 	secretData := map[string][]byte{}
 
 	// Take each connection and create environment variables for each part
-	for name, con := range cc.Connections {
+	for name, con := range properties.Connections {
 		properties := dependencies[con.Source]
 		for key, value := range properties.ComputedValues {
 			name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
@@ -232,7 +253,7 @@ func (r KubernetesRenderer) makeDeployment(ctx context.Context, resource rendere
 		}
 	}
 
-	for k, v := range cc.Env {
+	for k, v := range properties.Env {
 		switch val := v.(type) {
 		case string:
 			env[k] = corev1.EnvVar{Name: k, Value: val}
@@ -245,7 +266,7 @@ func (r KubernetesRenderer) makeDeployment(ctx context.Context, resource rendere
 
 	// Append in sorted order
 	for _, key := range getSortedEnvKeys(env) {
-		container.Env = append(container.Env, env[key])
+		k8sContainer.Env = append(k8sContainer.Env, env[key])
 	}
 
 	// In addition to the descriptive labels, we need to attach labels for each route
@@ -275,7 +296,7 @@ func (r KubernetesRenderer) makeDeployment(ctx context.Context, resource rendere
 					Labels: podLabels,
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{container},
+					Containers: []corev1.Container{k8sContainer},
 				},
 			},
 		},

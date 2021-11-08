@@ -126,7 +126,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 var kindMap = map[string]string{
 	"Application":                        "Application",
 	"ContainerComponent":                 "ContainerComponent",
-	"Website":                            "Website",
+	"Service":                            "Service",
 	"dapr.io.PubSubTopicComponent":       "DaprIOPubSubTopicComponent",
 	"dapr.io.StateStoreComponent":        "DaprIOStateStoreComponent",
 	"dapr.io.DaprHttpRoute":              "DaprIODaprHttpRoute",
