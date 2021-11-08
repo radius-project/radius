@@ -16,9 +16,9 @@ import (
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/Azure/radius/pkg/cli/localrp"
 	"github.com/Azure/radius/pkg/cli/server"
+	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -130,16 +130,19 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 		return nil, err
 	}
 
+	dyn, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
 	azcred := &radclient.AnonymousCredential{}
 	con := arm.NewConnection(e.GetURL(), azcred, nil)
 
 	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
-	return &azure.AKSDiagnosticsClient{
-		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
-			Client:     k8sClient,
-			RestConfig: config,
-		},
+	return &localrp.LocalDiagnosticsClient{
+		K8sClient:      k8sClient,
+		DynamicClient:  dyn,
 		ResourceClient: *radclient.NewRadiusResourceClient(con, "test-subscription"),
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 )
 
 var _ Builder = (*dockerBuilder)(nil)
@@ -26,7 +25,7 @@ type dockerInput struct {
 	Tag        string `json:"tag"`
 }
 
-func (builder *dockerBuilder) Build(ctx context.Context, values map[string]interface{}, options BuilderOptions) (map[string]interface{}, error) {
+func (builder *dockerBuilder) Build(ctx context.Context, values interface{}, options BuilderOptions) (map[string]interface{}, error) {
 	b, err := json.Marshal(&values)
 	if err != nil {
 		return nil, err
@@ -94,12 +93,4 @@ func (builder *dockerBuilder) Build(ctx context.Context, values map[string]inter
 	}
 
 	return output, nil
-}
-
-func normalize(base string, p string) string {
-	if path.IsAbs(p) {
-		return p
-	}
-
-	return path.Join(base, p)
 }

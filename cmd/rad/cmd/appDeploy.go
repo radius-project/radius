@@ -8,6 +8,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/bicep"
@@ -31,7 +32,7 @@ func init() {
 	applicationCmd.AddCommand(appDeployCmd)
 
 	appDeployCmd.Flags().Bool("all", false, "Deploy all layers")
-	appDeployCmd.Flags().StringP("radfile", "r", "rad.yaml", "path to rad.yaml")
+	appDeployCmd.Flags().StringP("radfile", "r", "", "path to rad.yaml")
 }
 
 func deployApplication(cmd *cobra.Command, args []string) error {
@@ -40,7 +41,7 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	radFile, err := cmd.Flags().GetString("radfile")
+	radFile, err := cli.RequireRadYAML(cmd)
 	if err != nil {
 		return err
 	}
@@ -60,6 +61,7 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 	}
 	defer file.Close()
 
+	baseDir := path.Dir(radFile)
 	app, err := radyaml.Parse(file)
 	if err != nil {
 		return err
@@ -94,5 +96,5 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return layers.Process(cmd.Context(), env, app, layersToProcess, all)
+	return layers.Process(cmd.Context(), env, baseDir, app, layersToProcess, all)
 }

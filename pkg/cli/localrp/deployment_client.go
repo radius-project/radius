@@ -90,6 +90,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 		},
 		Deployed:  deployed,
 		Variables: map[string]interface{}{},
+		Outputs:   map[string]map[string]interface{}{},
 	}
 
 	for name, variable := range template.Variables {
@@ -117,20 +118,31 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 
 		resource.Body = body
 
-		fmt.Printf("Deploying %s %s...\n", resource.Type, resource.Name)
-		response, result, err := dc.deployResource(ctx, provider, resource)
-		if err != nil {
-			return clients.DeploymentResult{}, fmt.Errorf("failed to PUT resource %s %s: %w", resource.Type, resource.Name, err)
-		}
-
-		fmt.Printf("succeed with status code %d\n", response.StatusCode)
-		evaluator.Deployed[resource.ID] = result
-
 		parsed, err := azresources.Parse(resource.ID)
 		if err != nil {
 			// We don't expect this to fail, but just in case...
 			return clients.DeploymentResult{}, err
 		}
+
+		options.UpdateChannel <- clients.DeploymentProgressUpdate{
+			Resource: parsed,
+			Kind:     clients.UpdateStart,
+		}
+		_, result, err := dc.deployResource(ctx, provider, resource)
+		if err != nil {
+			options.UpdateChannel <- clients.DeploymentProgressUpdate{
+				Resource: parsed,
+				Kind:     clients.UpdateFailed,
+			}
+			return clients.DeploymentResult{}, fmt.Errorf("failed to PUT resource %s %s: %w", resource.Type, resource.Name, err)
+		}
+
+		options.UpdateChannel <- clients.DeploymentProgressUpdate{
+			Resource: parsed,
+			Kind:     clients.UpdateSucceeded,
+		}
+
+		evaluator.Deployed[resource.ID] = result
 
 		ids = append(ids, parsed)
 	}
@@ -139,7 +151,24 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 		close(options.UpdateChannel)
 	}
 
-	return clients.DeploymentResult{Resources: ids}, err
+	for name, output := range template.Outputs {
+		value, err := evaluator.VisitMap(output)
+		if err != nil {
+			return clients.DeploymentResult{}, err
+		}
+
+		evaluator.Outputs[name] = value
+	}
+
+	outputs := map[string]clients.DeploymentOutput{}
+	for name, output := range evaluator.Outputs {
+		outputs[name] = clients.DeploymentOutput{
+			Type:  template.Outputs[name]["type"].(string),
+			Value: output["value"],
+		}
+	}
+
+	return clients.DeploymentResult{Resources: ids, Outputs: outputs}, err
 }
 
 func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, provider DeploymentProvider, resource armtemplate.Resource) (*http.Response, map[string]interface{}, error) {

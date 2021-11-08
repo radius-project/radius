@@ -28,7 +28,7 @@ type DeploymentTemplate struct {
 	Functions  []interface{}                     `json:"functions"`
 	Imports    map[string]Provider               `json:"imports"`
 	Resources  []map[string]interface{}          `json:"resources"`
-	Outputs    map[string]interface{}            `json:"outputs"`
+	Outputs    map[string]map[string]interface{} `json:"outputs"`
 }
 
 // Providers are extension imported in the Bicep file.

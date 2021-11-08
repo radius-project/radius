@@ -26,6 +26,7 @@ type DeploymentEvaluator struct {
 	Options   TemplateOptions
 	Deployed  map[string]map[string]interface{}
 	Variables map[string]interface{}
+	Outputs   map[string]map[string]interface{}
 
 	CustomActionCallback func(id string, apiVersion string, action string, payload interface{}) (interface{}, error)
 

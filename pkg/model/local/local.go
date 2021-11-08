@@ -8,14 +8,16 @@ package local
 import (
 	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/websitev1alpha3"
 )
 
 func NewLocalModel() model.ApplicationModel {
 	r := map[string]renderers.Renderer{
-		websitev1alpha3.ResourceType: &websitev1alpha3.LocalRenderer{},
-		mongodbv1alpha3.ResourceType: &mongodbv1alpha3.AzureRenderer{},
+		websitev1alpha3.ResourceType:   &websitev1alpha3.LocalRenderer{},
+		mongodbv1alpha3.ResourceType:   &mongodbv1alpha3.AzureRenderer{},
+		httproutev1alpha3.ResourceType: &httproutev1alpha3.LocalRenderer{},
 	}
 
 	handlers := map[string]model.Handlers{}

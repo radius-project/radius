@@ -1,4 +1,3 @@
-- Make example work with non-container
 - Work on layers for dev/prod split
 - Make example work with container
 - Save state between runs (use sandbox in directory)

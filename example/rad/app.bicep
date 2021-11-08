@@ -4,22 +4,29 @@ param todo_build object
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'todo'
 
+  resource route 'HttpRoute' = {
+    name: 'todo-route'
+    properties: {
+      gateway: {
+        hostname: '*'
+      }
+    }
+  }
+
   resource web 'Website' = {
     name: 'todo-website'
     properties: {
       connections: {
-        db: {
+        itemstore: {
           kind: 'mongo.com/MongoDB'
           source: db.id
         }
       }
       executable: todo_build
-      env: {
-        DB_CONNECTION: db.connectionString()
-      }
       ports: {
         web: {
           dynamic: true
+          provides: route.id
         }
       }
     }

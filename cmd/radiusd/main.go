@@ -54,14 +54,14 @@ func main() {
 	exeDir := getExeDir()
 
 	opts := getStartupOpts()
-	log, err := configureLogger()
+	log, _ := configureLogger()
 
 	abort := func(err error, msg string, code RadiusdExitCode) {
 		log.Error(err, msg)
 		os.Exit(int(code))
 	}
 
-	err = os.MkdirAll(workingDir, os.FileMode(0755))
+	err := os.MkdirAll(workingDir, os.FileMode(0755))
 	if err != nil {
 		abort(err, "unable to create working directory", CannotCreateWorkingDirectory)
 	}
@@ -168,7 +168,7 @@ func getStartupOpts() *startupOpts {
 	flag.StringVar(&opts.MetricsAddr, "metrics-bind-address", ":43590", "The address the metric endpoint binds to.")
 	flag.StringVar(&opts.HealthProbeAddr, "health-probe-bind-address", ":43591", "The address the probe endpoint binds to.")
 	flag.Parse()
-	return &startupOpts{}
+	return &opts
 }
 
 func configureLogger() (logr.Logger, error) {

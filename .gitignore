@@ -48,3 +48,7 @@ pkg/handlers/gomock_*
 
 # kcp state
 .kcp/
+
+# node stuff
+.cache/
+node_modules/

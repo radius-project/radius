@@ -58,6 +58,7 @@ func NewLocalModel() ResourceModel {
 		[]ReconcilableType{
 			{&radiusv1alpha3.Website{}, &radiusv1alpha3.WebsiteList{}},
 			{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
+			{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
 		},
 	)
 }

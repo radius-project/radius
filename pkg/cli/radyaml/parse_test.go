@@ -15,7 +15,14 @@ import (
 
 func Test_Parse_Success(t *testing.T) {
 	reader := strings.NewReader(`
-name: my-app
+name: todo
+build:
+- name: todo_build
+  npm:
+    directory: '.'
+    script: 'dev:start'
+    container:
+      image: 'radius.azurecr.io/magpie'
 stages:
 - name: infra
   deploy:
@@ -25,18 +32,25 @@ stages:
     bicep: app.bicep
     params:
     - name: todo_build
-      npm:
-        directory: '.'
-        script: 'dev:start'
-        container:
-          image: 'radius.azurecr.io/magpie'
 `)
 
 	parsed, err := Parse(reader)
 	require.NoError(t, err)
 
 	expected := Manifest{
-		Name: "my-app",
+		Name: "todo",
+		Build: []BuildTarget{
+			{
+				Name: "todo_build",
+				NPM: &NPMBuild{
+					Directory: ".",
+					Script:    "dev:start",
+					Container: &NPMBuildContainer{
+						Image: "radius.azurecr.io/magpie",
+					},
+				},
+			},
+		},
 		Stages: []Stage{
 			{
 				Name: "infra",
@@ -51,13 +65,6 @@ stages:
 					Params: []DeployStageParameter{
 						{
 							Name: "todo_build",
-							NPM: &NPMBuild{
-								Directory: ".",
-								Script:    "dev:start",
-								Container: &NPMBuildContainer{
-									Image: "radius.azurecr.io/magpie",
-								},
-							},
 						},
 					},
 				},
