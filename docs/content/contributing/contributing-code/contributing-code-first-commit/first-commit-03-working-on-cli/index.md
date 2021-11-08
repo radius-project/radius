@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Your first commit: working on the CLI"
+title: "Your first commit: Working on the CLI"
 linkTitle: "Working on the CLI"
 description: Try out updating and running the Radius CLI
 weight: 80
