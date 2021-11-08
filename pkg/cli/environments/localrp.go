@@ -22,6 +22,7 @@ import (
 type LocalRPEnvironment struct {
 	Name                      string `mapstructure:"name" validate:"required"`
 	Kind                      string `mapstructure:"kind" validate:"required"`
+	Purpose                   string `mapstructure:"purpose" yaml:",omitempty"`
 	SubscriptionID            string `mapstructure:"subscriptionid" validate:"required"`
 	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required"`
 	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
@@ -41,6 +42,10 @@ func (e *LocalRPEnvironment) GetName() string {
 
 func (e *LocalRPEnvironment) GetKind() string {
 	return e.Kind
+}
+
+func (e *LocalRPEnvironment) GetPurpose() string {
+	return e.Purpose
 }
 
 func (e *LocalRPEnvironment) GetDefaultApplication() string {

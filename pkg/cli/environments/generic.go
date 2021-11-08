@@ -9,6 +9,7 @@ package environments
 type GenericEnvironment struct {
 	Name               string `mapstructure:"name" validate:"required"`
 	Kind               string `mapstructure:"kind" validate:"required"`
+	Purpose            string `mapstructure:"purpose" yaml:",omitempty"`
 	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
 
 	// Capture arbitrary other properties
@@ -21,6 +22,10 @@ func (e *GenericEnvironment) GetName() string {
 
 func (e *GenericEnvironment) GetKind() string {
 	return e.Kind
+}
+
+func (e *GenericEnvironment) GetPurpose() string {
+	return e.Purpose
 }
 
 func (e *GenericEnvironment) GetDefaultApplication() string {

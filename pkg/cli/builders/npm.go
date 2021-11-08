@@ -62,9 +62,8 @@ func (builder *npmBuilder) ShouldBuildContainer(input npmInput, options BuilderO
 }
 
 func (builder *npmBuilder) BuildExecutable(ctx context.Context, input npmInput, options BuilderOptions) (map[string]interface{}, error) {
+	output.LogInfo("Building %s for local run...", input.Directory)
 	if input.Script != "" {
-		output.LogInfo("Building %s...", input.Directory)
-
 		cmd := exec.CommandContext(ctx, "npm", "run-script", input.Script)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -90,6 +89,7 @@ func (builder *npmBuilder) BuildExecutable(ctx context.Context, input npmInput, 
 }
 
 func (builder *npmBuilder) BuildContainer(ctx context.Context, input npmInput, options BuilderOptions) (map[string]interface{}, error) {
+	output.LogInfo("Building %s as a container...", input.Directory)
 	c, err := pack.NewClient()
 	if err != nil {
 		return nil, err

@@ -35,6 +35,7 @@ func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
 type AzureCloudEnvironment struct {
 	Name                      string `mapstructure:"name" validate:"required"`
 	Kind                      string `mapstructure:"kind" validate:"required"`
+	Purpose                   string `mapstructure:"purpose" yaml:",omitempty"`
 	SubscriptionID            string `mapstructure:"subscriptionid" validate:"required"`
 	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required"`
 	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
@@ -51,6 +52,10 @@ func (e *AzureCloudEnvironment) GetName() string {
 
 func (e *AzureCloudEnvironment) GetKind() string {
 	return e.Kind
+}
+
+func (e *AzureCloudEnvironment) GetPurpose() string {
+	return e.Purpose
 }
 
 func (e *AzureCloudEnvironment) GetDefaultApplication() string {

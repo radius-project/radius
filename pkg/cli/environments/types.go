@@ -23,6 +23,7 @@ const (
 type Environment interface {
 	GetName() string
 	GetKind() string
+	GetPurpose() string
 	GetDefaultApplication() string
 
 	// GetStatusLink provides an optional URL for display of the environment.

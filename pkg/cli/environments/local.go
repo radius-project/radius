@@ -27,6 +27,7 @@ import (
 type LocalEnvironment struct {
 	Name               string `mapstructure:"name" validate:"required"`
 	Kind               string `mapstructure:"kind" validate:"required"`
+	Purpose            string `mapstructure:"purpose" yaml:",omitempty"`
 	DefaultApplication string `mapstructure:"defaultapplication" yaml:",omitempty"`
 	SubscriptionID     string `mapstructure:"subscriptionid" yaml:",omitempty"`
 	ResourceGroup      string `mapstructure:"resourcegroup" yaml:",omitempty"`
@@ -41,6 +42,10 @@ func (e *LocalEnvironment) GetName() string {
 
 func (e *LocalEnvironment) GetKind() string {
 	return e.Kind
+}
+
+func (e *LocalEnvironment) GetPurpose() string {
+	return e.Purpose
 }
 
 func (e *LocalEnvironment) GetDefaultApplication() string {

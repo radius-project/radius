@@ -24,10 +24,24 @@ import (
 	"github.com/Azure/radius/pkg/cli/radyaml"
 )
 
-func Process(ctx context.Context, env environments.Environment, baseDir string, app radyaml.Manifest, layersToProcess []radyaml.Stage, all bool) error {
+func Process(ctx context.Context, env environments.Environment, target string, baseDir string, app radyaml.Manifest, layersToProcess []radyaml.Stage, all bool) error {
 	if len(layersToProcess) == 0 {
 		output.LogInfo("Nothing to do...")
 	}
+
+	// TODO: this is good enough for a demo but ultimately not right.
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	if target == "" && env.GetPurpose() == "dev" {
+		target = "dev"
+	} else if target == "" {
+		target = "default"
+	}
+
+	output.LogInfo("Using environment %s with target %s", env.GetName(), target)
 
 	processor := &processor{
 		Application: app,
@@ -50,7 +64,7 @@ func Process(ctx context.Context, env environments.Environment, baseDir string, 
 		force := all || len(layersToProcess)-1 == i
 		if layer.Deploy != nil {
 			for _, param := range layer.Deploy.Params {
-				result, err := processor.ProcessBuild(ctx, param)
+				result, err := processor.ProcessBuild(ctx, param, builders.BuilderOptions{BaseDirectory: wd, PreferContainer: env.GetPurpose() != "dev"})
 				if err != nil {
 					return err
 				}
@@ -87,7 +101,7 @@ type buildResult struct {
 	Result map[string]interface{}
 }
 
-func (p *processor) ProcessBuild(ctx context.Context, param radyaml.DeployStageParameter) (*buildResult, error) {
+func (p *processor) ProcessBuild(ctx context.Context, param radyaml.DeployStageParameter, options builders.BuilderOptions) (*buildResult, error) {
 	br, ok := p.Build[param.Name]
 	if !ok {
 		return nil, fmt.Errorf("no build is defined matching name %s", param.Name)
@@ -97,18 +111,13 @@ func (p *processor) ProcessBuild(ctx context.Context, param radyaml.DeployStageP
 		return br, nil
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
 	if br.Target.Container != nil {
 		builder, ok := builders.GetBuilders()["container"]
 		if !ok {
 			return nil, fmt.Errorf("builder %q is not supported", "container")
 		}
 
-		values, err := builder.Build(ctx, *br.Target.Container, builders.BuilderOptions{BaseDirectory: wd})
+		values, err := builder.Build(ctx, *br.Target.Container, options)
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +129,7 @@ func (p *processor) ProcessBuild(ctx context.Context, param radyaml.DeployStageP
 			return nil, fmt.Errorf("builder %q is not supported", "npm")
 		}
 
-		values, err := builder.Build(ctx, *br.Target.NPM, builders.BuilderOptions{BaseDirectory: wd})
+		values, err := builder.Build(ctx, *br.Target.NPM, options)
 		if err != nil {
 			return nil, err
 		}

@@ -16,6 +16,7 @@ import (
 type KubernetesEnvironment struct {
 	Name               string `mapstructure:"name" validate:"required"`
 	Kind               string `mapstructure:"kind" validate:"required"`
+	Purpose            string `mapstructure:"purpose" yaml:",omitempty"`
 	Context            string `mapstructure:"context" validate:"required"`
 	Namespace          string `mapstructure:"namespace" validate:"required"`
 	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
@@ -30,6 +31,10 @@ func (e *KubernetesEnvironment) GetName() string {
 
 func (e *KubernetesEnvironment) GetKind() string {
 	return e.Kind
+}
+
+func (e *KubernetesEnvironment) GetPurpose() string {
+	return e.Purpose
 }
 
 func (e *KubernetesEnvironment) GetDefaultApplication() string {

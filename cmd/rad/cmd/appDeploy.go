@@ -33,10 +33,16 @@ func init() {
 
 	appDeployCmd.Flags().Bool("all", false, "Deploy all layers")
 	appDeployCmd.Flags().StringP("radfile", "r", "", "path to rad.yaml")
+	appDeployCmd.Flags().StringP("target", "t", "", "target to build and deploy")
 }
 
 func deployApplication(cmd *cobra.Command, args []string) error {
 	all, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		return err
+	}
+
+	target, err := cmd.Flags().GetString("target")
 	if err != nil {
 		return err
 	}
@@ -96,5 +102,5 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return layers.Process(cmd.Context(), env, baseDir, app, layersToProcess, all)
+	return layers.Process(cmd.Context(), env, target, baseDir, app, layersToProcess, all)
 }

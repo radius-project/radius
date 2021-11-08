@@ -66,7 +66,8 @@ func createLocalEnvironment(config *viper.Viper, subscriptionID string, resource
 	}
 
 	definition := map[string]interface{}{
-		"kind": "local",
+		"kind":    "local",
+		"purpose": "dev",
 	}
 
 	if subscriptionID != "" && resourceGroup != "" {
