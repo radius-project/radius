@@ -44,17 +44,52 @@ chmod +x ./kubectl
 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 helm version
 
-# Install Dapr
-helm repo add dapr https://dapr.github.io/helm-charts/
-helm repo update
+# Need to retry each command because the cluster might be in a state where the command fails
+# We've seen a lot of failures in this area: 
+for i in {1..5}
+do
+  echo "adding dapr helm repo - attempt $i"
+  helm repo add dapr https://dapr.github.io/helm-charts/
+  if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
 
-helm upgrade \
-  dapr dapr/dapr \
-  --install \
-  --create-namespace \
-  --namespace dapr-system \
-  --version 1.0.0 \
-  --wait
+for i in {1..5}
+do
+  echo "adding haproxy-ingress helm chart - attempt $i"
+  helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+  if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
+for i in {1..5}
+do
+  echo "updating helm repos- attempt $i"
+  helm repo update
+  if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
+
+for i in {1..5}
+do
+  echo "installing dapr - attempt $i"
+  helm upgrade \
+    dapr dapr/dapr \
+    --install \
+    --create-namespace \
+    --namespace dapr-system \
+    --version 1.0.0 \
+    --wait
+  if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
 
 # Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
 # ex: https://github.com/Azure/radius/issues/29 https://github.com/Azure/radius/issues/39
@@ -67,15 +102,23 @@ do
   fi
 done
 
-./kubectl kustomize\
-  "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
-  ./kubectl apply -f -
+for i in {1..5}
+do
+  echo "installing dapr - attempt $i"
+  ./kubectl kustomize\
+    "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
+    ./kubectl apply -f -
+  if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
 
 # Install nginx-ingress
-helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
-helm repo update
-
-cat <<EOF | helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
+for i in {1..5}
+do
+  echo "listing dapr pods - attempt $i"
+  cat <<EOF | helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
   --create-namespace --namespace radius-system \
   --version 0.13.4 \
   -f -
@@ -84,8 +127,16 @@ controller:
   extraArgs:
     watch-gateway: "true"
 EOF
+  if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
 
-cat <<EOF | ./kubectl apply -f -
+for i in {1..5}
+do
+  echo "listing dapr pods - attempt $i"
+  cat <<EOF | ./kubectl apply -f -
 apiVersion: networking.x-k8s.io/v1alpha1
 kind: GatewayClass
 metadata:
@@ -93,6 +144,12 @@ metadata:
 spec:
   controller: haproxy-ingress.github.io/controller
 EOF
+  if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
+
 
 # Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
 # ex: https://github.com/Azure/radius/issues/29 https://github.com/Azure/radius/issues/39
