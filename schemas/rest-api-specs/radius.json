@@ -1572,12 +1572,8 @@
               ],
               "type": "string"
             },
-            "primaryKey": {
-              "description": "The primary key for this Redis instance",
-              "type": "string"
-            },
-            "secondaryKey": {
-              "description": "The secondard key for this Redis instance",
+            "password": {
+              "description": "The password for this Redis instance",
               "type": "string"
             }
           },

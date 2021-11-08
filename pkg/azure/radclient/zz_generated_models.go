@@ -2070,11 +2070,8 @@ type RedisComponentPropertiesSecrets struct {
 	// The Redis connection string used to connect to the redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
 
-	// The primary key for this Redis instance
-	PrimaryKey *string `json:"primaryKey,omitempty"`
-
-	// The secondard key for this Redis instance
-	SecondaryKey *string `json:"secondaryKey,omitempty"`
+	// The password for this Redis instance
+	Password *string `json:"password,omitempty"`
 }
 
 // RedisComponentResource - The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.

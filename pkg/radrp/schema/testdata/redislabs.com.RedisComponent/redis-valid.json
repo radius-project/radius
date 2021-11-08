@@ -7,8 +7,7 @@
     "port": 6380,
     "secrets": {
       "connectionString": "connection-string",
-      "primaryKey": "primary-key",
-      "secondaryKey": "secondary-key"
+      "password": "password"
     }
   }
 }
