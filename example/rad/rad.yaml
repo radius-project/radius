@@ -3,7 +3,7 @@ build:
 - name: todo_build
   npm:
     directory: '.'
-    script: 'dev:start'
+    script: 'build'
     container:
       image: 'rynowak/todo'
 stages:

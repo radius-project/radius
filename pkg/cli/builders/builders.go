@@ -11,7 +11,8 @@ import (
 )
 
 type BuilderOptions struct {
-	BaseDirectory string
+	BaseDirectory   string
+	PreferContainer bool
 }
 
 type Builder interface {
