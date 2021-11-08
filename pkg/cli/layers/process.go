@@ -13,6 +13,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/bicep"
@@ -75,7 +77,7 @@ func Process(ctx context.Context, env environments.Environment, target string, b
 			}
 
 			// Cache results that don't accept a build as input.
-			err := processor.ProcessDeploy(ctx, layer.Name, *layer.Deploy, force, len(layer.Deploy.Params) == 0)
+			err := processor.ProcessDeploy(ctx, layer.Name, target, *layer.Deploy, force, len(layer.Deploy.Params) == 0)
 			if err != nil {
 				return err
 			}
@@ -117,10 +119,12 @@ func (p *processor) ProcessBuild(ctx context.Context, param radyaml.DeployStageP
 			return nil, fmt.Errorf("builder %q is not supported", "container")
 		}
 
+		output.LogInfo("Building %s with builder %s...", options.BaseDirectory, "container")
 		values, err := builder.Build(ctx, *br.Target.Container, options)
 		if err != nil {
 			return nil, err
 		}
+		output.LogInfo("")
 
 		br.Result = values
 	} else if br.Target.NPM != nil {
@@ -129,10 +133,12 @@ func (p *processor) ProcessBuild(ctx context.Context, param radyaml.DeployStageP
 			return nil, fmt.Errorf("builder %q is not supported", "npm")
 		}
 
+		output.LogInfo("Building %s with builder %s...", options.BaseDirectory, "npm")
 		values, err := builder.Build(ctx, *br.Target.NPM, options)
 		if err != nil {
 			return nil, err
 		}
+		output.LogInfo("")
 
 		br.Result = values
 	} else {
@@ -142,9 +148,29 @@ func (p *processor) ProcessBuild(ctx context.Context, param radyaml.DeployStageP
 	return br, nil
 }
 
-func (p *processor) ProcessDeploy(ctx context.Context, name string, stage radyaml.DeployStage, force bool, cache bool) error {
-	deployFile := *stage.Bicep
-	deployFile = path.Join(p.BaseDir, deployFile)
+func (p *processor) ProcessDeploy(ctx context.Context, name string, target string, stage radyaml.DeployStage, force bool, cache bool) error {
+	deployFile := path.Join(p.BaseDir, *stage.Bicep)
+
+	// Now we need to locate the desired file base on the target.
+	if target != "default" {
+		// First chop off the file extension and build a new file name like:
+		// foo.<target>.bicep
+		//
+		// NOTE: ext includes the .
+		ext := filepath.Ext(deployFile)
+		base := strings.TrimSuffix(deployFile, ext)
+		combined := fmt.Sprintf("%s.%s%s", base, target, ext)
+		_, err := os.Stat(combined)
+		if os.IsNotExist(err) {
+			// Target-specific file does not exist, use the default filename.
+		} else if err != nil {
+			return err
+		} else {
+			deployFile = combined
+		}
+	}
+
+	output.LogInfo("Found %s for target %s", deployFile, target)
 
 	client, err := environments.CreateDeploymentClient(ctx, p.Env)
 	if err != nil {

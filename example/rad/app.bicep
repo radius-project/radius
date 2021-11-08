@@ -1,7 +1,7 @@
-param database_id string
+param database_name string
 param todo_build object
 
-resource app 'radius.dev/Application@v1alpha3' = {
+resource app 'radius.dev/Application@v1alpha3' existing = {
   name: 'todo'
 
   resource route 'HttpRoute' = {
@@ -32,10 +32,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource db 'mongodb.com.MongoDBComponent' = {
-    name: 'db'
-    properties: {
-      resource: database_id
-    }
-  }
+  resource db 'mongodb.com.MongoDBComponent' existing = {
+    name: database_name
+  } 
 }

@@ -1,4 +1,3 @@
-- Work on layers for dev/prod split
 - Save state between runs (use sandbox in directory)
 - Make application sticky
 - Make example work with container
