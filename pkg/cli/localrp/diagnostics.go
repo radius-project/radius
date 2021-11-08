@@ -36,6 +36,32 @@ func (dc *LocalDiagnosticsClient) Expose(ctx context.Context, options clients.Ex
 }
 
 func (dc *LocalDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) ([]clients.LogStream, error) {
+	exe, err := dc.GetExecutable(ctx, options.Application, options.Resource)
+	if err != nil {
+		return nil, err
+	} else if exe == nil {
+		return nil, nil
+	}
+
+	for _, replica := range exe.Status.Replicas {
+		log := replica.LogFile
+		if log == "" {
+			continue
+		}
+
+		file, err := os.Open(log)
+		if err != nil {
+			return nil, err
+		}
+
+		return []clients.LogStream{
+			{
+				Name:   options.Resource,
+				Stream: file,
+			},
+		}, nil
+	}
+
 	return nil, nil
 }
 
@@ -46,7 +72,25 @@ func (dc *LocalDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options
 		return nil, nil
 	}
 
-	response, err := dc.ResourceClient.Get(ctx, dc.ResourceGroup, options.ResourceID.Types[1].Name, options.ResourceID.Types[2].Type, options.ResourceID.Types[2].Name, nil)
+	exe, err := dc.GetExecutable(ctx, options.ResourceID.Types[1].Name, options.ResourceID.Types[2].Name)
+	if err != nil {
+		return nil, err
+	} else if exe == nil {
+		return nil, nil
+	}
+
+	for _, replica := range exe.Status.Replicas {
+		for _, port := range replica.Ports {
+			endpoint := fmt.Sprintf("http://localhost:%d", port.Port)
+			return &endpoint, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (dc *LocalDiagnosticsClient) GetExecutable(ctx context.Context, applicationName string, resourceName string) (*radiusv1alpha3.Executable, error) {
+	response, err := dc.ResourceClient.Get(ctx, dc.ResourceGroup, applicationName, "Service", resourceName, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -94,12 +138,7 @@ func (dc *LocalDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options
 			return nil, err
 		}
 
-		for _, replica := range exe.Status.Replicas {
-			for _, port := range replica.Ports {
-				endpoint := fmt.Sprintf("http://localhost:%d", port.Port)
-				return &endpoint, nil
-			}
-		}
+		return &exe, nil
 	}
 
 	return nil, nil
