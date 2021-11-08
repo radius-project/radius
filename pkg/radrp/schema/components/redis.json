@@ -39,14 +39,6 @@
             "account::redis.id"
           ]
         },
-        "connectionString": {
-          "description": "The Redis connection string used to connect to the redis cache",
-          "type": "string",
-          "example": [
-            "myrediscache.redis.cache.windows.net:6380",
-            "redis.default.svc.cluster.local:6379"
-          ]
-        },
         "host": {
           "description": "The host name of the redis cache to which you are connecting",
           "type": "string",
@@ -62,6 +54,28 @@
             6380,
             6379
           ]
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "connectionString": {
+              "description": "The Redis connection string used to connect to the redis cache",
+              "type": "string",
+              "example": [
+                "myrediscache.redis.cache.windows.net:6380",
+                "redis.default.svc.cluster.local:6379"
+              ]
+            },
+            "primaryKey": {
+              "description": "The primary key for this Redis instance",
+              "type": "string"
+            },
+            "secondaryKey": {
+              "description": "The secondard key for this Redis instance",
+              "type": "string"
+            }
+          }
         }
       }
     }
