@@ -133,6 +133,7 @@ func StartController() error {
 		RestConfig:    cfg,
 		RestMapper:    mapper,
 		ResourceTypes: radcontroller.DefaultResourceTypes,
+		WatchTypes:    radcontroller.DefaultWatchTypes,
 		SkipWebhooks:  false,
 	}
 
