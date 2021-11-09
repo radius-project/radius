@@ -23,6 +23,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/microsoftsqlv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/Azure/radius/pkg/renderers/servicev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
 
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
@@ -62,6 +63,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			},
 		},
 		httproutev1alpha3.ResourceType: &httproutev1alpha3.Renderer{},
+		servicev1alpha3.ResourceType:   &servicev1alpha3.KubernetesRenderer{},
 
 		// Dapr
 		daprhttproutev1alpha3.ResourceType: &daprhttproutev1alpha3.Renderer{},

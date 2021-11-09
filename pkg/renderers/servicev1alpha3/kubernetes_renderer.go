@@ -70,10 +70,10 @@ func (r KubernetesRenderer) GetDependencyIDs(ctx context.Context, resource rende
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
-func (r KubernetesRenderer) Render(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func (r KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	outputResources := []outputresource.OutputResource{}
 
-	properties, err := convert(resource)
+	properties, err := convert(options.Resource)
 	if err != nil {
 		return renderers.RendererOutput{Resources: outputResources}, err
 	}
@@ -94,7 +94,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, resource renderers.Rende
 	}
 
 	// Create the deployment as the primary workload
-	deployment, secretData, err := r.makeDeployment(ctx, resource, properties, container, dependencies)
+	deployment, secretData, err := r.makeDeployment(ctx, options.Resource, properties, container, options.Dependencies)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -103,7 +103,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, resource renderers.Rende
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
-		outputResources = append(outputResources, r.makeSecret(ctx, resource, secretData))
+		outputResources = append(outputResources, r.makeSecret(ctx, options.Resource, secretData))
 	}
 
 	// Connections might require a role assignment to grant access.
@@ -113,7 +113,7 @@ func (r KubernetesRenderer) Render(ctx context.Context, resource renderers.Rende
 			continue
 		}
 
-		more, err := r.makeRoleAssignmentsForResource(ctx, resource, connection, dependencies)
+		more, err := r.makeRoleAssignmentsForResource(ctx, options.Resource, connection, options.Dependencies)
 		if err != nil {
 			return renderers.RendererOutput{}, nil
 		}
@@ -124,8 +124,8 @@ func (r KubernetesRenderer) Render(ctx context.Context, resource renderers.Rende
 	// If we created role assigmments then we will need an identity and the mapping of the identity to AKS.
 	if len(roles) > 0 {
 		outputResources = append(outputResources, roles...)
-		outputResources = append(outputResources, r.makeManagedIdentity(ctx, resource))
-		outputResources = append(outputResources, r.makePodIdentity(ctx, resource, roles))
+		outputResources = append(outputResources, r.makeManagedIdentity(ctx, options.Resource))
+		outputResources = append(outputResources, r.makePodIdentity(ctx, options.Resource, roles))
 	}
 
 	return renderers.RendererOutput{Resources: outputResources}, nil
@@ -150,12 +150,13 @@ func (r KubernetesRenderer) makeDeployment(
 	ports := []corev1.ContainerPort{}
 	for name, port := range properties.Ports {
 		if port.Dynamic {
-			port.Port = &nextPort
-			if len(ports) == 1 {
-				portEnvVars["PORT"] = fmt.Sprintf("%v", nextPort)
+			chosenPort := nextPort
+			port.Port = &chosenPort
+			if len(properties.Ports) == 1 {
+				portEnvVars["PORT"] = fmt.Sprintf("%v", chosenPort)
 			}
 
-			portEnvVars[fmt.Sprintf("%s_PORT", name)] = fmt.Sprintf("%v", nextPort)
+			portEnvVars[fmt.Sprintf("%s_PORT", strings.ToUpper(name))] = fmt.Sprintf("%v", chosenPort)
 
 			nextPort++
 		}
@@ -215,6 +216,7 @@ func (r KubernetesRenderer) makeDeployment(
 	env := map[string]corev1.EnvVar{}
 	for k, v := range portEnvVars {
 		env[k] = corev1.EnvVar{
+			Name:  k,
 			Value: v,
 		}
 	}

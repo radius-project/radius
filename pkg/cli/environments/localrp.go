@@ -7,9 +7,12 @@ package environments
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/radius/pkg/azure/aks"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
@@ -63,7 +66,22 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+	authorizer, err := armauth.GetArmAuthorizer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
+	}
+
+	azcred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
+	}
+
 	providers := map[string]localrp.DeploymentProvider{
+		"azure": {
+			Authorizer: authorizer,
+			BaseURL:    arm.AzurePublicCloud,
+			Connection: arm.NewDefaultConnection(azcred, nil),
+		},
 		"radius": {
 			Authorizer: nil,
 			BaseURL:    e.URL,
