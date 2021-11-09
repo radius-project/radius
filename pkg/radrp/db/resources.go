@@ -5,6 +5,8 @@
 
 package db
 
+import "github.com/Azure/radius/pkg/azure/azresources"
+
 // RadiusResource represents one of the child resources of Application as stored in the database.
 type RadiusResource struct {
 	ID              string `bson:"_id"`
@@ -29,6 +31,19 @@ type RadiusResourceStatus struct {
 	ProvisioningState string           `bson:"provisioningState"`
 	HealthState       string           `bson:"healthState"`
 	OutputResources   []OutputResource `bson:"outputResources,omitempty" structs:"-"` // Ignore stateful property during serialization
+}
+
+// AzureResource represents reference to an existing non-Radius azure resource that Radius resources connect to.
+type AzureResource struct {
+	ID              string `bson:"_id"`
+	SubscriptionID  string `bson:"subscriptionId"`
+	ResourceGroup   string `bson:"resourceGroup"`
+	ApplicationName string `bson:"applicationName"`
+	ResourceName    string `bson:"resourceName"`
+	Type            string `bson:"type"`
+
+	// Radius resources that connect to this Azure resource
+	RadiusConnections []azresources.ResourceID `bson:"radiusConnections"`
 }
 
 // see renderers.SecretValueReference for description
