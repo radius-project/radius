@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Your first commit: running tests"
+title: "Your first commit: Running tests"
 linkTitle: "Running tests"
 description: How to run unit tests on your local machine
 weight: 100
@@ -8,7 +8,7 @@ weight: 100
 
 ## Running tests
 
-To run the all unit tests for the project from the command line:
+To run all the unit tests for the project from the command line:
 
 ```sh
 make test

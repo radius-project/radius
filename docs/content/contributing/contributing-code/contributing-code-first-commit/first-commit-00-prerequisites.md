@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Your first commit: Prequisites"
+title: "Your first commit: Prerequisites"
 linkTitle: "Prerequisites"
 description: "How to setup your system to begin developing for Radius"
 weight: 50
