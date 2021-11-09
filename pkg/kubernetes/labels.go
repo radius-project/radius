@@ -60,9 +60,14 @@ func MakeDescriptiveLabels(application string, resource string) map[string]strin
 // This function is used to generate the labels used by a Deployment to select its Pods. eg: the Deployment and Pods
 // are the same resource.
 func MakeSelectorLabels(application string, resource string) map[string]string {
+	if resource != "" {
+		return map[string]string{
+			LabelRadiusApplication: application,
+			LabelRadiusResource:    resource,
+		}
+	}
 	return map[string]string{
 		LabelRadiusApplication: application,
-		LabelRadiusResource:    resource,
 	}
 }
 

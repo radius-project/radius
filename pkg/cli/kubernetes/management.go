@@ -125,18 +125,10 @@ func (mc *KubernetesManagementClient) listAllResourcesByApplication(ctx context.
 	if err != nil {
 		return nil, err
 	}
-	fieldSelector := map[string]string{}
-	if resourceName != "" {
-		fieldSelector["metadata.name"] = resourceName
-	}
-	labelSelector := map[string]string{kubernetes.LabelRadiusApplication: applicationName}
-	if resourceType != "" {
-		labelSelector[kubernetes.LabelRadiusResourceType] = resourceType
-	}
 	filter := metav1.ListOptions{
-		FieldSelector: labels.SelectorFromSet(labels.Set(fieldSelector)).String(),
-		LabelSelector: labels.SelectorFromSet(labels.Set(labelSelector)).String(),
+		LabelSelector: labels.FormatLabels(kubernetes.MakeSelectorLabels(applicationName, resourceName)),
 	}
+
 	results := []*radclient.RadiusResource{}
 	for _, crd := range crds {
 		resourceClient := mc.DynamicClient.Resource(schema.GroupVersionResource{
