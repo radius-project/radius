@@ -121,14 +121,23 @@ func (builder *npmBuilder) BuildContainer(ctx context.Context, input npmInput, o
 		return nil, err
 	}
 
+	args := []string{
+		"push",
+		fmt.Sprintf("%s:%s", input.Container.Image, "latest"),
+	}
+	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
 	output := map[string]interface{}{
-		"kind":             "executable",
-		"name":             "npm",
-		"workingDirectory": input.Directory,
-		"args": []string{
-			"run",
-			input.Script,
-		},
+		"kind":  "container",
+		"image": input.Container.Image + ":latest",
 	}
 
 	return output, nil
