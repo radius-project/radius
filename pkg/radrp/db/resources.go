@@ -40,6 +40,7 @@ type AzureResource struct {
 	ResourceGroup   string `bson:"resourceGroup"`
 	ApplicationName string `bson:"applicationName"`
 	ResourceName    string `bson:"resourceName"`
+	ResourceKind    string `bson:"resourceKind"`
 	Type            string `bson:"type"`
 
 	// Radius resources that connect to this Azure resource

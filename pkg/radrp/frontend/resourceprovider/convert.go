@@ -129,3 +129,12 @@ func NewRestOutputResourceStatus(original []db.OutputResource) []rest.OutputReso
 	}
 	return rrs
 }
+
+func NewRestAzureResource(resource db.AzureResource) AzureResource {
+	return AzureResource{
+		ID:   resource.ID,
+		Name: resource.ResourceName,
+		Kind: resource.ResourceKind,
+		Type: resource.Type,
+	}
+}

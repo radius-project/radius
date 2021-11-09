@@ -8,6 +8,7 @@ package resourcekinds
 // ResourceKinds supported. The RP determines how these are created/deleted and the HealthService determines how
 // health checks are handled for these
 const (
+	Azure                            = "azure"
 	Kubernetes                       = "kubernetes"
 	Deployment                       = "Deployment"
 	Service                          = "Service"
