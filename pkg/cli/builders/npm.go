@@ -100,7 +100,7 @@ func (builder *npmBuilder) BuildContainer(ctx context.Context, input npmInput, o
 	}
 
 	if input.Script != "" {
-		env["BP_NODE_RUN_SCRIPTS"] = "build"
+		env["BP_NODE_RUN_SCRIPTS"] = input.Script
 	}
 
 	err = c.Build(ctx, pack.BuildOptions{
