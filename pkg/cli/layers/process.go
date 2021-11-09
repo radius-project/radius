@@ -181,7 +181,7 @@ func (p *processor) ProcessDeploy(ctx context.Context, name string, target strin
 		var existing *clients.DeploymentResult
 
 		// Try the cache first
-		cacheFile := path.Join(p.CacheDir, fmt.Sprintf("deploy-%s.json", name))
+		cacheFile := path.Join(p.CacheDir, fmt.Sprintf("deploy-%s-%s-%s.json", p.Env.GetName(), target, name))
 		b, err := ioutil.ReadFile(cacheFile)
 		if os.IsNotExist(err) {
 			// No cache
@@ -288,7 +288,7 @@ func (p *processor) ProcessDeploy(ctx context.Context, name string, target strin
 			return err
 		}
 
-		err = ioutil.WriteFile(path.Join(p.CacheDir, fmt.Sprintf("deploy-%s.json", name)), b, 0644)
+		err = ioutil.WriteFile(path.Join(p.CacheDir, fmt.Sprintf("deploy-%s-%s-%s.json", p.Env.GetName(), target, name)), b, 0644)
 		if err != nil {
 			return err
 		}
