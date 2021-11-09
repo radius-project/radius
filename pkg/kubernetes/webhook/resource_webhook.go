@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -79,10 +78,7 @@ func (w *ResourceWebhook) ValidateCreate(ctx context.Context, request admission.
 
 		validationErrs := validator.ValidateJSON(armJson)
 		if len(validationErrs) > 0 {
-			// TODO revert https://github.com/Azure/radius/issues/1118
-			if !strings.HasPrefix(validationErrs[0].Position, "(root).properties.container.env") {
-				return admission.Errored(http.StatusBadRequest, &schema.AggregateValidationError{Details: validationErrs})
-			}
+			return admission.Errored(http.StatusBadRequest, &schema.AggregateValidationError{Details: validationErrs})
 		}
 	}
 
