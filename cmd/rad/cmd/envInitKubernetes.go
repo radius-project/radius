@@ -102,7 +102,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			"namespace": namespace,
 		}
 
-		output.LogInfo("using environment %v", environmentName)
+		output.LogInfo("Using environment: %v", environmentName)
 		env.Default = environmentName
 		cli.UpdateEnvironmentSection(config, env)
 
