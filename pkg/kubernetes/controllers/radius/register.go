@@ -44,13 +44,16 @@ var DefaultResourceTypes = []struct {
 	{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 }
 
-var DefaultWatchTypes = []client.Object{
-	&corev1.Service{},
-	&appsv1.Deployment{},
-	&corev1.Secret{},
-	&appsv1.StatefulSet{},
-	&gatewayv1alpha1.Gateway{},
-	&gatewayv1alpha1.HTTPRoute{},
+var DefaultWatchTypes = []struct {
+	client.Object
+	client.ObjectList
+}{
+	{&corev1.Service{}, &corev1.ServiceList{}},
+	{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
+	{&corev1.Secret{}, &corev1.SecretList{}},
+	{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
+	{&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}},
+	{&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}},
 }
 
 type Options struct {
