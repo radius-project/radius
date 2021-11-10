@@ -107,6 +107,7 @@ func main() {
 		RestConfig:    ctrl.GetConfigOrDie(),
 		RestMapper:    mapper,
 		ResourceTypes: radcontroller.DefaultResourceTypes,
+		WatchTypes:    radcontroller.DefaultWatchTypes,
 		SkipWebhooks:  os.Getenv("SKIP_WEBHOOKS") == "true",
 	}
 

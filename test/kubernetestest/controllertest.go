@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -35,6 +36,8 @@ import (
 	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/discovery"
 	memory "k8s.io/client-go/discovery/cached"
@@ -133,7 +136,16 @@ func StartController() error {
 		RestConfig:    cfg,
 		RestMapper:    mapper,
 		ResourceTypes: radcontroller.DefaultResourceTypes,
-		SkipWebhooks:  false,
+		WatchTypes: []struct {
+			client.Object
+			client.ObjectList
+		}{
+			{&corev1.Service{}, &corev1.ServiceList{}},
+			{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
+			{&corev1.Secret{}, &corev1.SecretList{}},
+			{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
+		},
+		SkipWebhooks: false,
 	}
 
 	controller := radcontroller.NewRadiusController(&controllerOptions)

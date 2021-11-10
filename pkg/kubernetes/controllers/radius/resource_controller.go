@@ -20,7 +20,6 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -47,15 +46,19 @@ const (
 // ResourceReconciler reconciles a Resource object
 type ResourceReconciler struct {
 	client.Client
-	Log        logr.Logger
-	Scheme     *runtime.Scheme
-	Recorder   record.EventRecorder
-	Dynamic    dynamic.Interface
-	RestMapper meta.RESTMapper
-	ObjectType client.Object
-	ObjectList client.ObjectList
-	Model      model.ApplicationModel
-	GVR        schema.GroupVersionResource
+	Log          logr.Logger
+	Scheme       *runtime.Scheme
+	Recorder     record.EventRecorder
+	Dynamic      dynamic.Interface
+	RestMapper   meta.RESTMapper
+	ObjectType   client.Object
+	ObjectList   client.ObjectList
+	Model        model.ApplicationModel
+	GVR          schema.GroupVersionResource
+	WatchedTypes []struct {
+		client.Object
+		client.ObjectList
+	}
 }
 
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -176,28 +179,22 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	log.Info("fetching existing resources for resource")
 	results := []client.Object{}
 
-	deployments := &appsv1.DeploymentList{}
-	err := r.Client.List(ctx, deployments, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
-	if err != nil {
-		log.Error(err, "failed to retrieve deployments")
-		return nil, err
-	}
+	for _, a := range r.WatchedTypes {
+		err := r.Client.List(ctx, a.ObjectList, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
+		if err != nil {
+			log.Error(err, fmt.Sprintf("failed to retrieve %T", a.ObjectList))
+			return nil, err
+		}
 
-	for _, d := range (*deployments).Items {
-		obj := d
-		results = append(results, &obj)
-	}
-
-	services := &corev1.ServiceList{}
-	err = r.Client.List(ctx, services, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
-	if err != nil {
-		log.Error(err, "failed to retrieve services")
-		return nil, err
-	}
-
-	for _, s := range (*services).Items {
-		obj := s
-		results = append(results, &obj)
+		err = meta.EachListItem(a.ObjectList, func(obj runtime.Object) error {
+			o := obj.(client.Object)
+			results = append(results, o)
+			return nil
+		})
+		if err != nil {
+			log.Error(err, "failed to get types")
+			return nil, err
+		}
 	}
 
 	log.Info("found existing resource for resource", "count", len(results))
@@ -547,12 +544,14 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return requests
 	})
 
-	return ctrl.NewControllerManagedBy(mgr).
+	c := ctrl.NewControllerManagedBy(mgr).
 		For(r.ObjectType).
-		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.Service{}).
-		Watches(applicationSource, applicationHandler).
-		Complete(r)
+		Watches(applicationSource, applicationHandler)
+	for _, obj := range r.WatchedTypes {
+		c = c.Owns(obj.Object)
+	}
+
+	return c.Complete(r)
 }
 
 func extractApplicationKey(obj client.Object) []string {

@@ -25,6 +25,7 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	"github.com/Azure/radius/pkg/kubernetes/webhook"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 var DefaultResourceTypes = []struct {
@@ -43,6 +44,18 @@ var DefaultResourceTypes = []struct {
 	{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 }
 
+var DefaultWatchTypes = []struct {
+	client.Object
+	client.ObjectList
+}{
+	{&corev1.Service{}, &corev1.ServiceList{}},
+	{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
+	{&corev1.Secret{}, &corev1.SecretList{}},
+	{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
+	{&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}},
+	{&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}},
+}
+
 type Options struct {
 	AppModel      model.ApplicationModel
 	Client        client.Client
@@ -53,6 +66,10 @@ type Options struct {
 	RestConfig    *rest.Config
 	RestMapper    meta.RESTMapper
 	ResourceTypes []struct {
+		client.Object
+		client.ObjectList
+	}
+	WatchTypes []struct {
 		client.Object
 		client.ObjectList
 	}
@@ -69,14 +86,15 @@ func NewRadiusController(options *Options) *RadiusController {
 	resources := []*ResourceReconciler{}
 	for _, resourceType := range options.ResourceTypes {
 		resource := &ResourceReconciler{
-			Model:      options.AppModel,
-			Client:     options.Client,
-			Dynamic:    options.Dynamic,
-			Scheme:     options.Scheme,
-			Recorder:   options.Recorder,
-			ObjectType: resourceType.Object,
-			ObjectList: resourceType.ObjectList,
-			Log:        ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
+			Model:        options.AppModel,
+			Client:       options.Client,
+			Dynamic:      options.Dynamic,
+			Scheme:       options.Scheme,
+			Recorder:     options.Recorder,
+			ObjectType:   resourceType.Object,
+			ObjectList:   resourceType.ObjectList,
+			Log:          ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
+			WatchedTypes: options.WatchTypes,
 		}
 		resources = append(resources, resource)
 	}
@@ -113,16 +131,12 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 	// We create some indexes for watched types - this is done once because
 	// we create a reconciler per-resource-type right now.
 
-	// Index deployments by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		return fmt.Errorf("failed to register index for %s: %w", "Deployment", err)
-	}
-
-	// Index services by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		return fmt.Errorf("failed to register index for %s: %w", "Service", err)
+	// Index watched types by the owner (any resource besides application)
+	for _, r := range c.options.WatchTypes {
+		err = mgr.GetFieldIndexer().IndexField(context.Background(), r.Object, CacheKeyController, extractOwnerKey)
+		if err != nil {
+			return fmt.Errorf("failed to register index for %s: %w", "Deployment", err)
+		}
 	}
 
 	for _, resource := range c.resources {
@@ -155,16 +169,18 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	if err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to setup Application webhook: %w", err)
-	}
+	if !c.options.SkipWebhooks {
+		if err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to setup Application webhook: %w", err)
+		}
 
-	if err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to setup Resource webhook: %w", err)
-	}
+		if err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to setup Resource webhook: %w", err)
+		}
 
-	if err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to setup DeploymentTemplate webhook: %w", err)
+		if err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to setup DeploymentTemplate webhook: %w", err)
+		}
 	}
 
 	return nil
