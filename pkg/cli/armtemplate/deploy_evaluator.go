@@ -34,6 +34,8 @@ type DeploymentEvaluator struct {
 	ProviderStore providers.Store
 }
 
+var _ armexpr.Visitor = &DeploymentEvaluator{}
+
 func (eva *DeploymentEvaluator) VisitValue(input interface{}) (interface{}, error) {
 	str, ok := input.(string)
 	if ok {
@@ -145,7 +147,12 @@ func (eva *DeploymentEvaluator) VisitStringLiteral(node *armexpr.StringLiteralNo
 	return nil
 }
 
-func (eva *DeploymentEvaluator) VisitPropertyAccess(node *armexpr.PropertyAccessNode) error {
+func (eva *DeploymentEvaluator) VisitIntLiteral(node *armexpr.IntLiteralNode) error {
+	eva.Value = node.Value
+	return nil
+}
+
+func (eva *DeploymentEvaluator) VisitIndexingNode(node *armexpr.IndexingNode) error {
 	// Recursively evaluate the LHS
 	err := node.Base.Accept(eva)
 	if err != nil {
@@ -156,30 +163,43 @@ func (eva *DeploymentEvaluator) VisitPropertyAccess(node *armexpr.PropertyAccess
 		return errors.New("value to access is null")
 	}
 
-	obj, ok := eva.Value.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("value to access should be a map, was: %+v", eva.Value)
-	}
+	switch obj := eva.Value.(type) {
+	case map[string]interface{}:
+		key := node.Identifier.Text
+		if key == "" {
+			// must be a string
+			err = node.IndexExpr.Accept(eva)
+			if err != nil {
+				return err
+			}
+			ok := false
+			key, ok = eva.Value.(string)
+			if !ok {
+				return fmt.Errorf("map key must be string, was %+v", eva.Value)
+			}
+		}
+		value, ok := obj[key]
+		if !ok {
+			return fmt.Errorf("value did not contain property '%s', was: %+v", key, obj)
+		}
 
-	key := node.Identifier.Text
-	if key == "" {
-		// must be a string
-		err = node.String.Accept(eva)
+		eva.Value = value
+	case []interface{}:
+		err = node.IndexExpr.Accept(eva)
 		if err != nil {
 			return err
 		}
-		key, ok = eva.Value.(string)
+		idx, ok := eva.Value.(int)
 		if !ok {
-			return fmt.Errorf("map key must be string, was %+v", key)
+			return fmt.Errorf("array index must be int, was %+v", eva.Value)
 		}
+		if idx >= len(obj) {
+			return fmt.Errorf("array index out of range %d>=%d", idx, len(obj))
+		}
+		eva.Value = obj[idx]
+	default:
+		return fmt.Errorf("value to access should be a map or array, was: %+v", eva.Value)
 	}
-	value, ok := obj[key]
-	if !ok {
-		return fmt.Errorf("value did not contain property '%s', was: %+v", key, obj)
-	}
-
-	eva.Value = value
-
 	return nil
 }
 

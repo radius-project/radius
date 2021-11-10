@@ -31,7 +31,8 @@
           }
         },
         "data": {
-          "conn": "[format('{0}.{1}.svc.cluster.local,password={2}', reference(resourceId('kubernetes.core/Service', 'redis-master'), 'v1', 'full').properties.metadata.name, reference(resourceId('kubernetes.core/Service', 'redis-master'), 'v1', 'full').properties.metadata.namespace, base64ToString(reference(resourceId('kubernetes.core/Secret', 'redis'), 'v1', 'full').properties.data.redisPassword))]"
+          "conn": "[format('{0}.{1}.svc.cluster.local,password={2}', reference(resourceId('kubernetes.core/Service', 'redis-master'), 'v1', 'full').properties.metadata.name, reference(resourceId('kubernetes.core/Service', 'redis-master'), 'v1', 'full').properties.metadata.namespace, base64ToString(reference(resourceId('kubernetes.core/Secret', 'redis'), 'v1', 'full').properties.data.redisPassword))]",
+          "port": "[format('{0}', reference(resourceId('kubernetes.core/Service', 'redis-master'), 'v1', 'full').properties.spec.ports[0].port)]"
         }
       }
     }

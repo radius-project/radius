@@ -46,6 +46,23 @@ func (node *IdentifierNode) GetSpan() Span {
 	return node.Span
 }
 
+type IntLiteralNode struct {
+	Span  Span
+	Value int
+}
+
+func (node *IntLiteralNode) GetSpan() Span {
+	return node.Span
+}
+
+func (node *IntLiteralNode) GetKind() ExpressionKind {
+	return KindString
+}
+
+func (node *IntLiteralNode) Accept(visitor Visitor) error {
+	return visitor.VisitIntLiteral(node)
+}
+
 type StringLiteralNode struct {
 	Span Span
 	Text string
@@ -81,25 +98,25 @@ func (node *FunctionCallNode) Accept(visitor Visitor) error {
 	return visitor.VisitFunctionCall(node)
 }
 
-type PropertyAccessNode struct {
+type IndexingNode struct {
 	Span       Span
 	Base       ExpressionNode
 	Identifier IdentifierNode
-	String     ExpressionNode
+	IndexExpr  ExpressionNode
 }
 
-func (node *PropertyAccessNode) GetSpan() Span {
+func (node *IndexingNode) GetSpan() Span {
 	return node.Span
 }
 
-func (node *PropertyAccessNode) GetKind() ExpressionKind {
+func (node *IndexingNode) GetKind() ExpressionKind {
 	return KindProperty
 }
 
-func (node *PropertyAccessNode) Accept(visitor Visitor) error {
-	return visitor.VisitPropertyAccess(node)
+func (node *IndexingNode) Accept(visitor Visitor) error {
+	return visitor.VisitIndexingNode(node)
 }
 
 var _ ExpressionNode = &StringLiteralNode{}
-var _ ExpressionNode = &PropertyAccessNode{}
+var _ ExpressionNode = &IndexingNode{}
 var _ ExpressionNode = &FunctionCallNode{}

@@ -40,19 +40,19 @@ func Test_Parse_SyntaxTree_Valid(t *testing.T) {
 					Start:  0,
 					Length: 138,
 				},
-				Expression: &PropertyAccessNode{
+				Expression: &IndexingNode{
 					Span: Span{
 						Start:  1,
 						Length: 136,
 					},
-					String: &StringLiteralNode{
+					IndexExpr: &StringLiteralNode{
 						Span: Span{
 							Start:  131,
 							Length: 5,
 						},
 						Text: "'web'",
 					},
-					Base: &PropertyAccessNode{
+					Base: &IndexingNode{
 						Span: Span{
 							Start:  1,
 							Length: 129,
@@ -202,7 +202,6 @@ func Test_Parse_PropertyAccess_Invalid(t *testing.T) {
 		".",
 		"reference()]",
 		"reference()",
-		"[reference()]foo",
 		"",
 	}
 
@@ -394,7 +393,7 @@ func Test_Parse_PropertyAccess_Valid(t *testing.T) {
 	inputs := []input{
 		{
 			Text: "test() .foo",
-			Expected: &PropertyAccessNode{
+			Expected: &IndexingNode{
 				Span: Span{
 					Start:  0,
 					Length: 11,
@@ -411,7 +410,7 @@ func Test_Parse_PropertyAccess_Valid(t *testing.T) {
 		},
 		{
 			Text: "test() .  foo  ",
-			Expected: &PropertyAccessNode{
+			Expected: &IndexingNode{
 				Span: Span{
 					Start:  0,
 					Length: 13,
@@ -422,6 +421,40 @@ func Test_Parse_PropertyAccess_Valid(t *testing.T) {
 						Length: 3,
 					},
 					Text: "foo",
+				},
+				Base: &base,
+			},
+		},
+		{
+			Text: "test() ['foo']",
+			Expected: &IndexingNode{
+				Span: Span{
+					Start:  0,
+					Length: 14,
+				},
+				IndexExpr: &StringLiteralNode{
+					Span: Span{
+						Start:  8,
+						Length: 5,
+					},
+					Text: "'foo'",
+				},
+				Base: &base,
+			},
+		},
+		{
+			Text: "test() [12345]",
+			Expected: &IndexingNode{
+				Span: Span{
+					Start:  0,
+					Length: 14,
+				},
+				IndexExpr: &IntLiteralNode{
+					Span: Span{
+						Start:  8,
+						Length: 5,
+					},
+					Value: 12345,
 				},
 				Base: &base,
 			},

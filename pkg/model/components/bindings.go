@@ -364,7 +364,12 @@ func (visitor *visitor) VisitStringLiteral(node *armexpr.StringLiteralNode) erro
 	return nil
 }
 
-func (visitor *visitor) VisitPropertyAccess(node *armexpr.PropertyAccessNode) error {
+func (visitor *visitor) VisitIntLiteral(node *armexpr.IntLiteralNode) error {
+	visitor.value = node.Value
+	return nil
+}
+
+func (visitor *visitor) VisitIndexingNode(node *armexpr.IndexingNode) error {
 	err := node.Base.Accept(visitor)
 	if err != nil {
 		return err
