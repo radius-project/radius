@@ -37,17 +37,6 @@ const (
 	HealthStateError = "Error"
 )
 
-// Translation of internal representation of health state to user facing values
-var InternalToUserHealthStateTranslation = map[string]string{
-	HealthStateUnknown:       HealthStateUnhealthy,
-	HealthStateHealthy:       HealthStateHealthy,
-	HealthStateUnhealthy:     HealthStateUnhealthy,
-	HealthStateDegraded:      HealthStateDegraded,
-	HealthStateNotSupported:  "",
-	HealthStateNotApplicable: HealthStateHealthy,
-	HealthStateError:         HealthStateUnhealthy,
-}
-
 // HealthCheckOptions defines the options available for performing health check of a resource
 type HealthCheckOptions struct {
 	// Periodic interval at which the health state is probed

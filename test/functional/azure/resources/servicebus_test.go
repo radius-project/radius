@@ -69,7 +69,7 @@ func Test_ServiceBusManaged(t *testing.T) {
 								true,
 								rest.OutputResourceStatus{
 									HealthState:       healthcontract.HealthStateHealthy,
-									ProvisioningState: rest.Provisioned,
+									ProvisioningState: rest.ProvisioningStateProvisioned,
 								}),
 						},
 					},
