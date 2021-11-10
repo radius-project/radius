@@ -173,16 +173,18 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	if err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to setup Application webhook: %w", err)
-	}
+	if !c.options.SkipWebhooks {
+		if err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to setup Application webhook: %w", err)
+		}
 
-	if err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to setup Resource webhook: %w", err)
-	}
+		if err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to setup Resource webhook: %w", err)
+		}
 
-	if err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to setup DeploymentTemplate webhook: %w", err)
+		if err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to setup DeploymentTemplate webhook: %w", err)
+		}
 	}
 
 	return nil

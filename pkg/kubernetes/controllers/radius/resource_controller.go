@@ -180,18 +180,17 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 	results := []client.Object{}
 
 	for _, a := range r.WatchedTypes {
-		list := &unstructured.UnstructuredList{}
-		list.SetGroupVersionKind(a.ObjectList.GetObjectKind().GroupVersionKind())
-		err := r.Client.List(ctx, list, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
+		err := r.Client.List(ctx, a.ObjectList, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to retrieve %T", a.ObjectList))
 			return nil, err
 		}
 
-		for _, d := range list.Items {
-			obj := d
-			results = append(results, &obj)
-		}
+		err = meta.EachListItem(a.ObjectList, func(obj runtime.Object) error {
+			o := obj.(client.Object)
+			results = append(results, o)
+			return nil
+		})
 	}
 
 	log.Info("found existing resource for resource", "count", len(results))
