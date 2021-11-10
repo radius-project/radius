@@ -42,6 +42,7 @@ func TestRunnerStartsStopsKcp(t *testing.T) {
 	}()
 	err = executor.WaitProcessesStarted(ctx, kcpBinaryPath, 1)
 	require.NoErrorf(t, err, "KCP process was not started")
+	createAdminKubeconfig(t, kcpBinaryDir)
 
 	// Runner report readiness immediately after KCP process is started
 	<-kcpStarted
@@ -75,9 +76,11 @@ func TestNoConcurrentKcpRuns(t *testing.T) {
 
 	kcpBinaryDir, kcpBinaryPath := createKcpTestDir(t)
 	executor := localenvtest.NewTestProcessExecutor()
+	kcpStarted := make(chan struct{}, 1)
 	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{
 		Executor:         executor,
 		WorkingDirectory: kcpBinaryDir,
+		Started:          kcpStarted,
 	})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
@@ -91,6 +94,8 @@ func TestNoConcurrentKcpRuns(t *testing.T) {
 	}()
 	err = executor.WaitProcessesStarted(ctx, kcpBinaryPath, 1)
 	require.NoErrorf(t, err, "KCP process was not started")
+	createAdminKubeconfig(t, kcpBinaryDir)
+	<-kcpStarted
 
 	err = runner.Run(ctx)
 	require.Errorf(t, err, "second run should fail when first run is in progress")
@@ -104,9 +109,11 @@ func TestCanRunOnlyOnce(t *testing.T) {
 
 	kcpBinaryDir, kcpBinaryPath := createKcpTestDir(t)
 	executor := localenvtest.NewTestProcessExecutor()
+	kcpStarted := make(chan struct{}, 1)
 	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{
 		Executor:         executor,
 		WorkingDirectory: kcpBinaryDir,
+		Started:          kcpStarted,
 	})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
@@ -120,6 +127,9 @@ func TestCanRunOnlyOnce(t *testing.T) {
 	}()
 	err = executor.WaitProcessesStarted(ctx, kcpBinaryPath, 1)
 	require.NoErrorf(t, err, "KCP process was not started")
+	createAdminKubeconfig(t, kcpBinaryDir)
+	<-kcpStarted
+
 	cancel()
 	<-runnerDone
 	require.Nil(t, runnerErr)
@@ -133,9 +143,12 @@ func TestCleansWorkingDirAfterRun(t *testing.T) {
 
 	kcpBinaryDir, kcpBinaryPath := createKcpTestDir(t)
 	executor := localenvtest.NewTestProcessExecutor()
+	kcpStarted := make(chan struct{}, 1)
 	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{
 		Executor:         executor,
 		WorkingDirectory: kcpBinaryDir,
+		Clean:            true,
+		Started:          kcpStarted,
 	})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
@@ -150,13 +163,13 @@ func TestCleansWorkingDirAfterRun(t *testing.T) {
 	require.NoErrorf(t, err, "KCP process was not started")
 
 	// Simulate KCP creating working dir
-	kcpWorkingDirPath := path.Join(kcpBinaryDir, ".kcp")
-	err = os.Mkdir(kcpWorkingDirPath, os.ModeDir)
-	require.NoErrorf(t, err, "unable to simulate creation of KCP working directory")
+	createAdminKubeconfig(t, kcpBinaryDir)
+	<-kcpStarted
 
 	cancel()
 	<-runnerDone
 
+	kcpWorkingDirPath := path.Join(kcpBinaryDir, ".kcp")
 	require.NoDirExistsf(t, kcpWorkingDirPath, "KcpRunner should have removed KCP working dir")
 }
 
@@ -171,9 +184,12 @@ func TestCleansWorkingDirBeforeRun(t *testing.T) {
 	require.NoErrorf(t, err, "unable to simulate creation of KCP working directory")
 
 	executor := localenvtest.NewTestProcessExecutor()
+	kcpStarted := make(chan struct{}, 1)
 	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{
 		Executor:         executor,
 		WorkingDirectory: kcpBinaryDir,
+		Clean:            true,
+		Started:          kcpStarted,
 	})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
@@ -181,7 +197,8 @@ func TestCleansWorkingDirBeforeRun(t *testing.T) {
 	runnerDone := make(chan struct{})
 
 	go func() {
-		_ = runner.Run(ctx)
+		runnerErr := runner.Run(ctx)
+		require.NoError(t, runnerErr)
 		close(runnerDone)
 	}()
 	err = executor.WaitProcessesStarted(ctx, kcpBinaryPath, 1)
@@ -192,8 +209,13 @@ func TestCleansWorkingDirBeforeRun(t *testing.T) {
 	// Net effect is, we expect the working dir to not exist after the run has started.
 	require.NoDirExistsf(t, kcpWorkingDirPath, "KcpRunner should have removed KCP working dir")
 
+	createAdminKubeconfig(t, kcpBinaryDir)
+	<-kcpStarted
+
 	cancel()
 	<-runnerDone
+
+	require.NoDirExistsf(t, kcpWorkingDirPath, "KcpRunner should have removed KCP working dir")
 }
 
 func TestRunFailsIfKcpAlreadyRunning(t *testing.T) {
@@ -223,10 +245,11 @@ func TestRunFailsIfKcpCrashes(t *testing.T) {
 
 	kcpBinaryDir, kcpBinaryPath := createKcpTestDir(t)
 	executor := localenvtest.NewTestProcessExecutor()
-
+	kcpStarted := make(chan struct{}, 1)
 	runner, err := NewKcpRunner(logr.Discard(), kcpBinaryDir, KcpOptions{
 		Executor:         executor,
 		WorkingDirectory: kcpBinaryDir,
+		Started:          kcpStarted,
 	})
 	require.NoErrorf(t, err, "unable to create KcpRunner")
 
@@ -240,14 +263,15 @@ func TestRunFailsIfKcpCrashes(t *testing.T) {
 	}()
 	err = executor.WaitProcessesStarted(ctx, kcpBinaryPath, 1)
 	require.NoErrorf(t, err, "KCP process was not started")
+	createAdminKubeconfig(t, kcpBinaryDir)
+	<-kcpStarted
 
 	kcpExecutions := executor.FindAll(kcpBinaryPath, nil)
 	require.Len(t, kcpExecutions, 1)
 	require.True(t, !kcpExecutions[0].Finished())
-
 	executor.SimulateProcessExit(t, kcpExecutions[0].PID, 1)
-	<-runnerDone
 
+	<-runnerDone
 	require.Errorf(t, runnerErr, "run should have ended with error becasue KCP 'crashed'")
 }
 
@@ -260,4 +284,13 @@ func createKcpTestDir(t *testing.T) (string, string) {
 	}
 
 	return kcpBinaryDir, kcpBinaryPath
+}
+
+func createAdminKubeconfig(t *testing.T, kcpBinaryDir string) {
+	kcpDataDir := path.Join(kcpBinaryDir, ".kcp", "data")
+	err := os.MkdirAll(kcpDataDir, 0744)
+	require.NoError(t, err)
+	kcpAdminConfig := path.Join(kcpDataDir, "admin.kubeconfig")
+	err = ioutil.WriteFile(kcpAdminConfig, []byte("admin config"), 0744)
+	require.NoError(t, err)
 }

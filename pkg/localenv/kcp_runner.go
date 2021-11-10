@@ -29,9 +29,6 @@ const (
 	running runningState = 1
 	ready   runningState = 0
 	done    runningState = 2
-
-	performProcessCheck processCheck = 1
-	skipProcessCheck    processCheck = 0
 )
 
 type KcpOptions struct {
@@ -68,6 +65,10 @@ func NewKcpRunner(log logr.Logger, executablesDir string, options KcpOptions) (*
 	pe := options.Executor
 	if pe == nil {
 		pe = process.NewOSExecutor()
+	}
+
+	if options.KubeConfigPath == "" {
+		options.KubeConfigPath = path.Join(options.WorkingDirectory, ".kcp", "data", "admin.kubeconfig")
 	}
 
 	return &KcpRunner{
@@ -109,9 +110,8 @@ func (r *KcpRunner) Run(ctx context.Context) error {
 
 	// We've taken the lock
 	defer flock.Close()
-	r.cleanup(skipProcessCheck)
 
-	if err := r.cleanup(performProcessCheck); err != nil {
+	if err := r.cleanup(); err != nil {
 		return err
 	}
 
@@ -148,11 +148,11 @@ func (r *KcpRunner) Run(ctx context.Context) error {
 			}
 		} else {
 			// KCP was ended because context was cancelled (we are shutting down)
-			return r.cleanup(skipProcessCheck)
+			return r.cleanup()
 		}
 	case <-ctx.Done():
 		_ = r.processExecutor.StopProcess(r.kcpPid)
-		return r.cleanup(skipProcessCheck)
+		return r.cleanup()
 	}
 }
 
@@ -180,7 +180,7 @@ func (r *KcpRunner) EnsureKcpExecutable(ctx context.Context) error {
 	return nil
 }
 
-func (r *KcpRunner) cleanup(pc processCheck) error {
+func (r *KcpRunner) cleanup() error {
 	if !r.clean {
 		return nil
 	}
