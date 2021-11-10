@@ -7,6 +7,7 @@ package armexpr
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -110,6 +111,9 @@ func ParseExpression(t *tokenizer) (ExpressionNode, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if unicode.IsNumber(r) {
+		// We only support unsigned int constants now
+		v, err = ParseUnsignedInt(t)
 	} else {
 		return nil, errors.New("expected expression")
 	}
@@ -227,6 +231,28 @@ func parseArgumentList(t *tokenizer) ([]ExpressionNode, error) {
 	return values, nil
 }
 
+func ParseUnsignedInt(t *tokenizer) (ExpressionNode, error) {
+	start := t.Current
+
+	for {
+		r, length := t.Peek()
+		if r == utf8.RuneError && length == 0 {
+			break
+		} else if !unicode.IsNumber(r) {
+			break
+		}
+		t.Advance(length)
+	}
+
+	value, _ := strconv.Atoi(t.Text[start:t.Current])
+	return &IntLiteralNode{
+		Span: Span{
+			Start:  start,
+			Length: t.Current - start,
+		},
+		Value: value,
+	}, nil
+}
 func ParseString(t *tokenizer) (ExpressionNode, error) {
 	start := t.Current
 
@@ -270,7 +296,7 @@ func ParseString(t *tokenizer) (ExpressionNode, error) {
 	}, nil
 }
 
-func ParseBracketPropertyAccess(t *tokenizer, base ExpressionNode) (*PropertyAccessNode, error) {
+func ParseBracketPropertyAccess(t *tokenizer, base ExpressionNode) (*IndexingNode, error) {
 	// Use the start of the base expression as the start of this node since
 	// this is right-associative.
 	//
@@ -285,7 +311,7 @@ func ParseBracketPropertyAccess(t *tokenizer, base ExpressionNode) (*PropertyAcc
 	}
 	t.SkipWhitespace()
 
-	s, err := ParseString(t)
+	s, err := ParseExpression(t)
 	if err != nil {
 		return nil, err
 	}
@@ -295,17 +321,17 @@ func ParseBracketPropertyAccess(t *tokenizer, base ExpressionNode) (*PropertyAcc
 		return nil, err
 	}
 
-	return &PropertyAccessNode{
+	return &IndexingNode{
 		Span: Span{
 			Start:  start,
 			Length: t.Current - start,
 		},
-		Base:   base,
-		String: s,
+		Base:      base,
+		IndexExpr: s,
 	}, nil
 }
 
-func ParsePropertyAccess(t *tokenizer, base ExpressionNode) (*PropertyAccessNode, error) {
+func ParsePropertyAccess(t *tokenizer, base ExpressionNode) (*IndexingNode, error) {
 	// Use the start of the base expression as the start of this node since
 	// this is right-associative.
 	//
@@ -330,7 +356,7 @@ func ParsePropertyAccess(t *tokenizer, base ExpressionNode) (*PropertyAccessNode
 		return nil, err
 	}
 
-	return &PropertyAccessNode{
+	return &IndexingNode{
 		Span: Span{
 			Start:  start,
 			Length: t.Current - start,

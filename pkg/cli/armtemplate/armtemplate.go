@@ -121,6 +121,8 @@ type evaluator struct {
 	PreserveExpressions bool
 }
 
+var _ armexpr.Visitor = &evaluator{}
+
 func Eval(template DeploymentTemplate, options TemplateOptions) ([]Resource, error) {
 	eva := &evaluator{
 		Template: template,
@@ -341,8 +343,13 @@ func (eva *evaluator) VisitStringLiteral(node *armexpr.StringLiteralNode) error 
 	return nil
 }
 
-func (eva *evaluator) VisitPropertyAccess(node *armexpr.PropertyAccessNode) error {
-	return errors.New("property access is not supported")
+func (eva *evaluator) VisitIntLiteral(node *armexpr.IntLiteralNode) error {
+	eva.Value = node.Value
+	return nil
+}
+
+func (eva *evaluator) VisitIndexingNode(node *armexpr.IndexingNode) error {
+	return errors.New("indexing is not supported")
 }
 
 func (eva *evaluator) VisitFunctionCall(node *armexpr.FunctionCallNode) error {

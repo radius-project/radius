@@ -8,5 +8,6 @@ package armexpr
 type Visitor interface {
 	VisitFunctionCall(*FunctionCallNode) error
 	VisitStringLiteral(*StringLiteralNode) error
-	VisitPropertyAccess(*PropertyAccessNode) error
+	VisitIntLiteral(*IntLiteralNode) error
+	VisitIndexingNode(*IndexingNode) error
 }
