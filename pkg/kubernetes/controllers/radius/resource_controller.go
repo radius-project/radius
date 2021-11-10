@@ -184,7 +184,7 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 		list.SetGroupVersionKind(a.ObjectList.GetObjectKind().GroupVersionKind())
 		err := r.Client.List(ctx, list, client.InNamespace(resource.Namespace), client.MatchingFields{CacheKeyController: resource.Kind + resource.Name})
 		if err != nil {
-			log.Error(err, "failed to retrieve %T", a.ObjectList)
+			log.Error(err, fmt.Sprintf("failed to retrieve %T", a.ObjectList))
 			return nil, err
 		}
 
