@@ -191,6 +191,10 @@ func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log l
 			results = append(results, o)
 			return nil
 		})
+		if err != nil {
+			log.Error(err, "failed to get types")
+			return nil, err
+		}
 	}
 
 	log.Info("found existing resource for resource", "count", len(results))
