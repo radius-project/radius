@@ -131,16 +131,12 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 	// We create some indexes for watched types - this is done once because
 	// we create a reconciler per-resource-type right now.
 
-	// Index deployments by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		return fmt.Errorf("failed to register index for %s: %w", "Deployment", err)
-	}
-
-	// Index services by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		return fmt.Errorf("failed to register index for %s: %w", "Service", err)
+	// Index watched types by the owner (any resource besides application)
+	for _, r := range c.options.WatchTypes {
+		err = mgr.GetFieldIndexer().IndexField(context.Background(), r.Object, CacheKeyController, extractOwnerKey)
+		if err != nil {
+			return fmt.Errorf("failed to register index for %s: %w", "Deployment", err)
+		}
 	}
 
 	for _, resource := range c.resources {
