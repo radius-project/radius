@@ -114,6 +114,9 @@ func ParseExpression(t *tokenizer) (ExpressionNode, error) {
 	} else if unicode.IsNumber(r) {
 		// We only support unsigned int constants now
 		v, err = ParseUnsignedInt(t)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		return nil, errors.New("expected expression")
 	}
