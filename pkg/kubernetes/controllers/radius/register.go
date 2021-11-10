@@ -69,7 +69,10 @@ type Options struct {
 		client.Object
 		client.ObjectList
 	}
-	WatchTypes   []client.Object
+	WatchTypes []struct {
+		client.Object
+		client.ObjectList
+	}
 	SkipWebhooks bool
 }
 
@@ -83,14 +86,15 @@ func NewRadiusController(options *Options) *RadiusController {
 	resources := []*ResourceReconciler{}
 	for _, resourceType := range options.ResourceTypes {
 		resource := &ResourceReconciler{
-			Model:      options.AppModel,
-			Client:     options.Client,
-			Dynamic:    options.Dynamic,
-			Scheme:     options.Scheme,
-			Recorder:   options.Recorder,
-			ObjectType: resourceType.Object,
-			ObjectList: resourceType.ObjectList,
-			Log:        ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
+			Model:        options.AppModel,
+			Client:       options.Client,
+			Dynamic:      options.Dynamic,
+			Scheme:       options.Scheme,
+			Recorder:     options.Recorder,
+			ObjectType:   resourceType.Object,
+			ObjectList:   resourceType.ObjectList,
+			Log:          ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
+			WatchedTypes: options.WatchTypes,
 		}
 		resources = append(resources, resource)
 	}
@@ -157,7 +161,7 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 			}
 
 			resource.GVR = gvr.Resource
-			err = resource.SetupWithManager(mgr, c.options.WatchTypes)
+			err = resource.SetupWithManager(mgr)
 			if err != nil {
 				return fmt.Errorf("failed to setup Resource controller for %T: %w", resource.ObjectType, err)
 			}

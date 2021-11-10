@@ -136,11 +136,14 @@ func StartController() error {
 		RestConfig:    cfg,
 		RestMapper:    mapper,
 		ResourceTypes: radcontroller.DefaultResourceTypes,
-		WatchTypes: []client.Object{
-			&corev1.Service{},
-			&appsv1.Deployment{},
-			&corev1.Secret{},
-			&appsv1.StatefulSet{},
+		WatchTypes: []struct {
+			client.Object
+			client.ObjectList
+		}{
+			{&corev1.Service{}, &corev1.ServiceList{}},
+			{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
+			{&corev1.Secret{}, &corev1.SecretList{}},
+			{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
 		},
 		SkipWebhooks: false,
 	}
