@@ -5,8 +5,6 @@
 
 package db
 
-import "github.com/Azure/radius/pkg/azure/azresources"
-
 // RadiusResource represents one of the child resources of Application as stored in the database.
 type RadiusResource struct {
 	ID              string `bson:"_id"`
@@ -44,7 +42,7 @@ type AzureResource struct {
 	Type            string `bson:"type"`
 
 	// Radius resources that connect to this Azure resource
-	RadiusConnections []azresources.ResourceID `bson:"radiusConnections"`
+	RadiusConnectionIDs []string `bson:"radiusConnectionIDs"`
 }
 
 // see renderers.SecretValueReference for description
