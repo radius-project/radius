@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"sync/atomic"
 	"time"
 
 	"github.com/Azure/radius/pkg/cli/download"
@@ -24,12 +23,6 @@ import (
 
 type runningState uint32
 type processCheck int
-
-const (
-	running runningState = 1
-	ready   runningState = 0
-	done    runningState = 2
-)
 
 type KcpOptions struct {
 	Clean            bool
@@ -47,7 +40,6 @@ type KcpRunner struct {
 	kubeConfigPath    string
 	processExited     chan finishedProcessInfo
 	kcpPid            int
-	state             runningState
 	processExecutor   process.Executor
 	started           chan<- struct{}
 }
@@ -79,7 +71,6 @@ func NewKcpRunner(log logr.Logger, executablesDir string, options KcpOptions) (*
 		kubeConfigPath:    options.KubeConfigPath,
 		processExecutor:   pe,
 		kcpPid:            process.InvalidPID,
-		state:             ready,
 		started:           options.Started,
 	}, nil
 }
@@ -90,11 +81,6 @@ func (r *KcpRunner) Name() string {
 
 func (r *KcpRunner) Run(ctx context.Context) error {
 	log := logr.FromContextOrDiscard(ctx)
-
-	if !atomic.CompareAndSwapUint32((*uint32)(&r.state), uint32(ready), uint32(running)) {
-		return fmt.Errorf("KCP run in progress, or already completed")
-	}
-	defer func() { atomic.StoreUint32((*uint32)(&r.state), uint32(done)) }()
 
 	if _, err := os.Stat(r.kcpExecutablePath); err != nil {
 		return fmt.Errorf("unable to locate KCP binary")
