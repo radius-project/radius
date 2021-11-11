@@ -50,10 +50,6 @@ spec:
             description: DeploymentTemplateStatus defines the observed state of Arm
             properties:
               conditions:
-                description: contains the status of each resource and the deployment
-                  template resource if you do kubectl get, make it so only the status
-                  of the deployment template is shown otherwise, with describe show
-                  everything true == success false == failure unknown == pending
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -122,12 +118,6 @@ spec:
                   - type
                   type: object
                 type: array
-              lastSucceededGeneration:
-                description: LastSucceededGeneration captures the last generation
-                  that has successfully completed a full workflow rollout of the application
-                  group
-                format: int64
-                type: integer
               observedGeneration:
                 description: ObservedGeneration captures the last generation that
                   was captured and completed by the reconciler
