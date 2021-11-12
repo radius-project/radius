@@ -15,7 +15,7 @@ Developers [describe their application]({{< ref appmodel-concept >}}) services a
 <img src="app-diagram.png" alt="Screenshot of a Radius applications diagram" style="width:100%" >
 {{< /card >}}
 {{< card header="**Portable**" >}}
-Radius applicationa and tooling are agnostic of platform, services, and infrastructure. 
+Radius applications and tooling are agnostic of platform, services, and infrastructure. 
 <table style="max-width:600px;margin-top:10%">
   <tr>
     <td style="width:50%;text-align:center">
