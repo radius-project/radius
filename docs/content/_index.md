@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Project Radius"
+title: "Radius"
 linkTitle: "Home"
 description: "An intelligent application model"
 weight: 1
