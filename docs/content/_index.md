@@ -37,7 +37,7 @@ Leverage the Bicep language and set of tooling to build your model and deploy yo
 <table style="max-width:600px">
   <tr>
     <td style="width:50%;text-align:center">
-      <a href="https://github.com/Azure/Bicep"><img src="bicep-logo.png" alt="Bicep logo" style="width:70%"></a>
+      <a href="https://github.com/Azure/Bicep" target="_blank"><img src="bicep-logo.png" alt="Bicep logo" style="width:70%"></a>
     </td>
     <td style="width:50%;text-align:center">
       <a href="{{< ref setup-vscode >}}"><img src="vscode-logo.png" alt="Visual Studio Code logo" style="width:80%"></a>
