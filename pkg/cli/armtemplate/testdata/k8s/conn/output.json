@@ -9,7 +9,8 @@
                 }
             },
             "data": {
-                "conn": "redis-master.default.svc.cluster.local,password=awesome"
+                "conn": "redis-master.default.svc.cluster.local,password=awesome",
+                "port": "6379"
             }
         }
     }

@@ -50,7 +50,7 @@
                             },
                             "env": {
                                 "SERVICE__BACKEND__HOST": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'backendhttp')).host]",
-                                "SERVICE__BACKEND__PORT": "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'backendhttp')).port]"
+                                "SERVICE__BACKEND__PORT": "string([reference(resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'backendhttp')).port])"
                             }
                         }
                     },

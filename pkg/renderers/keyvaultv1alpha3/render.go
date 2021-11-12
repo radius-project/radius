@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
@@ -27,7 +28,7 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, workload renderers.Rend
 }
 
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := KeyVaultComponentProperties{}
+	properties := radclient.AzureKeyVaultComponentProperties{}
 	err := options.Resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -35,8 +36,8 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 
 	output := renderers.RendererOutput{}
 
-	if properties.Managed {
-		if properties.Resource != "" {
+	if properties.Managed != nil && *properties.Managed {
+		if properties.Resource != nil && *properties.Resource != "" {
 			return renderers.RendererOutput{}, renderers.ErrResourceSpecifiedForManagedResource
 		}
 
@@ -52,11 +53,11 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 
 		output.Resources = append(output.Resources, resource)
 	} else {
-		if properties.Resource == "" {
+		if properties.Resource == nil || *properties.Resource == "" {
 			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
 		}
 
-		vaultID, err := renderers.ValidateResourceID(properties.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)
+		vaultID, err := renderers.ValidateResourceID(*properties.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}

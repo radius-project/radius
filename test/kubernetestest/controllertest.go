@@ -20,9 +20,6 @@ import (
 	"testing"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,11 +32,12 @@ import (
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	"github.com/Azure/radius/pkg/kubernetes/webhook"
+	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
 	"github.com/Azure/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/discovery"
 	memory "k8s.io/client-go/discovery/cached"
@@ -55,8 +53,7 @@ var options EnvOptions
 var testEnv *envtest.Environment
 
 const (
-	retries            = 10
-	CacheKeyController = "metadata.controller"
+	retries = 10
 )
 
 func StartController() error {
@@ -111,6 +108,12 @@ func StartController() error {
 	}
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
 
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to create discovery client: %w", err)
+	}
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:             scheme,
 		Host:               webhookInstallOptions.LocalServingHost,
@@ -122,98 +125,33 @@ func StartController() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize manager: %w", err)
 	}
-	err = (&radcontroller.ApplicationReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to initialize application reconciler: %w", err)
+
+	controllerOptions := radcontroller.Options{
+		AppModel:      kubernetesmodel.NewKubernetesModel(mgr.GetClient()),
+		Client:        mgr.GetClient(),
+		Dynamic:       dynamicClient,
+		Scheme:        scheme,
+		Log:           ctrl.Log,
+		Recorder:      mgr.GetEventRecorderFor("radius"),
+		RestConfig:    cfg,
+		RestMapper:    mapper,
+		ResourceTypes: radcontroller.DefaultResourceTypes,
+		WatchTypes: []struct {
+			client.Object
+			client.ObjectList
+		}{
+			{&corev1.Service{}, &corev1.ServiceList{}},
+			{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
+			{&corev1.Secret{}, &corev1.SecretList{}},
+			{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
+		},
+		SkipWebhooks: false,
 	}
 
-	// Index deployments by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, CacheKeyController, extractOwnerKey)
+	controller := radcontroller.NewRadiusController(&controllerOptions)
+	err = controller.SetupWithManager(mgr)
 	if err != nil {
 		return err
-	}
-
-	// Index services by the owner (any resource besides application)
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, CacheKeyController, extractOwnerKey)
-	if err != nil {
-		return err
-	}
-
-	resourceTypes := []struct {
-		client.Object
-		client.ObjectList
-	}{
-		{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
-		{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
-		{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
-		{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
-		{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
-		{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
-		{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
-		{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
-		{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
-		{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
-	}
-
-	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create discovery client: %w", err)
-	}
-	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
-
-	for _, resourceType := range resourceTypes {
-		gvks, _, err := scheme.ObjectKinds(resourceType.Object)
-		if err != nil {
-			return fmt.Errorf("failed to initialize find objects : %w", err)
-		}
-		for _, gvk := range gvks {
-			if gvk.GroupVersion() != radiusv1alpha3.GroupVersion {
-				continue
-			}
-			// Get GVR for corresponding component.
-			gvr, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-
-			if err != nil {
-				return fmt.Errorf("can't find gvr: %w", err)
-			}
-
-			if err = (&radcontroller.ResourceReconciler{
-				Client:  mgr.GetClient(),
-				Log:     ctrl.Log.WithName("controllers").WithName(resourceType.GetName()),
-				Scheme:  mgr.GetScheme(),
-				Dynamic: dynamicClient,
-				GVR:     gvr.Resource,
-			}).SetupWithManager(mgr, resourceType.Object, resourceType.ObjectList); err != nil {
-				return fmt.Errorf("can't create controller: %w", err)
-			}
-		}
-	}
-
-	err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to initialize component webhook: %w", err)
-	}
-
-	if err = (&bicepcontroller.DeploymentTemplateReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("DeploymentTemplate"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to initialize arm reconciler: %w", err)
-	}
-
-	err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to initialize application webhook: %w", err)
-	}
-
-	err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to initialize arm webhook: %w", err)
 	}
 
 	go func() {
@@ -340,17 +278,4 @@ type EnvOptions struct {
 
 func NewControllerTest(ctx context.Context, row ControllerStep) ControllerTest {
 	return ControllerTest{options, ctx, row}
-}
-
-func extractOwnerKey(obj client.Object) []string {
-	owner := metav1.GetControllerOf(obj)
-	if owner == nil {
-		return nil
-	}
-
-	if owner.APIVersion != radiusv1alpha3.GroupVersion.String() || owner.Kind == "Application" {
-		return nil
-	}
-
-	return []string{owner.Kind + owner.Name}
 }

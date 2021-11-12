@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
@@ -29,14 +30,14 @@ type Renderer struct {
 
 // Need a step to take rendered routes to be usable by resource
 func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	route := HttpRoute{}
+	route := radclient.HTTPRouteProperties{}
 	err := resource.ConvertDefinition(&route)
 	if err != nil {
 		return nil, err
 	}
 
-	if route.Gateway != nil && route.Gateway.Source != "" {
-		resourceId, err := azresources.Parse(route.Gateway.Source)
+	if route.Gateway != nil && route.Gateway.Source != nil && *route.Gateway.Source != "" {
+		resourceId, err := azresources.Parse(*route.Gateway.Source)
 		if err != nil {
 			return nil, err
 		}
@@ -46,7 +47,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	route := HttpRoute{}
+	route := radclient.HTTPRouteProperties{}
 	resource := options.Resource
 	dependencies := options.Dependencies
 
@@ -60,10 +61,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 		},
 		"port": {
-			Value: route.GetEffectivePort(),
+			Value: GetEffectivePort(route),
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), route.GetEffectivePort()),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), GetEffectivePort(route)),
 		},
 		"scheme": {
 			Value: "http",
@@ -77,7 +78,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 
 	if route.Gateway != nil {
 		gatewayId := route.Gateway.Source
-		if gatewayId == "" {
+		if gatewayId == nil || *gatewayId == "" {
 			gatewayClassName := options.Runtime.Gateway.GatewayClass
 			if gatewayClassName == "" {
 				return renderers.RendererOutput{}, errors.New("gateway class not found")
@@ -90,7 +91,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 			httpRoute := r.makeHttpRoute(resource, route, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName))
 			outputs = append(outputs, httpRoute)
 		} else {
-			existingGateway := dependencies[gatewayId]
+			existingGateway := dependencies[*gatewayId]
 			httpRoute := r.makeHttpRoute(resource, route, kubernetes.MakeResourceName(resource.ApplicationName, existingGateway.ResourceID.Name()))
 			outputs = append(outputs, httpRoute)
 		}
@@ -116,7 +117,7 @@ func (r *Renderer) createDefaultGateway() gateway.Gateway {
 	return gateway
 }
 
-func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRoute) outputresource.OutputResource {
+func (r *Renderer) makeService(resource renderers.RendererResource, route radclient.HTTPRouteProperties) outputresource.OutputResource {
 	typeParts := strings.Split(resource.ResourceType, "/")
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -134,7 +135,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 			Ports: []corev1.ServicePort{
 				{
 					Name:       resource.ResourceName,
-					Port:       int32(route.GetEffectivePort()),
+					Port:       int32(GetEffectivePort(route)),
 					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + typeParts[len(typeParts)-1] + resource.ResourceName)),
 					Protocol:   corev1.ProtocolTCP,
 				},
@@ -145,23 +146,23 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route HttpRo
 	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
-func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route HttpRoute, gatewayName string) outputresource.OutputResource {
+func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route radclient.HTTPRouteProperties, gatewayName string) outputresource.OutputResource {
 
 	serviceName := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
 	pathMatch := gatewayv1alpha1.PathMatchImplementationSpecific
 	var rules []gatewayv1alpha1.HTTPRouteRule
 	for _, rule := range route.Gateway.Rules {
 		// Default to prefix match
-		if strings.EqualFold(rule.Path.Type, "exact") {
+		if rule.Path != nil && rule.Path.Type != nil && strings.EqualFold(*rule.Path.Type, "exact") {
 			pathMatch = gatewayv1alpha1.PathMatchExact
 		}
-		port := gatewayv1alpha1.PortNumber(route.GetEffectivePort())
+		port := gatewayv1alpha1.PortNumber(GetEffectivePort(route))
 		rules = append(rules, gatewayv1alpha1.HTTPRouteRule{
 			Matches: []gatewayv1alpha1.HTTPRouteMatch{
 				{
 					Path: &gatewayv1alpha1.HTTPPathMatch{
 						Type:  &pathMatch,
-						Value: &rule.Path.Value,
+						Value: rule.Path.Value,
 					},
 				},
 			},
@@ -177,7 +178,7 @@ func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route Http
 	// Add a default rule which maps to the service if none specified
 	if len(rules) == 0 {
 		path := "/"
-		port := gatewayv1alpha1.PortNumber(route.GetEffectivePort())
+		port := gatewayv1alpha1.PortNumber(GetEffectivePort(route))
 		rules = append(rules, gatewayv1alpha1.HTTPRouteRule{
 			Matches: []gatewayv1alpha1.HTTPRouteMatch{
 				{
@@ -196,7 +197,10 @@ func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route Http
 		})
 	}
 	var hostnames []gatewayv1alpha1.Hostname
-	hostname := route.Gateway.Hostname
+	hostname := ""
+	if route.Gateway != nil && route.Gateway.Hostname != nil {
+		hostname = *route.Gateway.Hostname
+	}
 	if hostname != "" && hostname != "*" {
 		hostnames = append(hostnames, gatewayv1alpha1.Hostname(hostname))
 	}

@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Your first commit: creating a pull request"
+title: "Your first commit: Creating a pull request"
 linkTitle: "Creating a pull request"
 description: Creating your first Radius PR
 weight: 110
@@ -64,8 +64,8 @@ If you have any failing checks try to investigate the details and solve them if 
 
 At this point one or more core team members will review your code changes. 
 
-Reviewers will leave their feedback via comments. Discuss as needed and resolve the feedback when you and the review are both happy.
+Reviewers will leave their feedback via comments. Discuss as needed and resolve the feedback when both you and the reviewers are happy.
 
-Once you've resolve all of the feedback, your reviewers will make the pull request as approved.
+Once you've resolved all the feedback, your reviewers will make the pull request as approved.
 
 From this point on you don't need to do anything. The maintainers will merge your pull request.

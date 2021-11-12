@@ -1,3 +1,3 @@
 (root).properties.managed: properties.managed must be one of the following: true
-(root).properties: Additional property resource is not allowed
+(root).properties.resource: Invalid type. Expected: string, given: integer
 (root).properties: Additional property someUnknownProperty is not allowed

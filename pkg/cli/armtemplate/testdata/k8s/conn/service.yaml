@@ -5,3 +5,8 @@ metadata:
   namespace: default
 spec:
   type: ClusterIP
+  ports:
+  - name: tcp-redis
+    port: 6379
+    protocol: TCP
+    targetPort: redis

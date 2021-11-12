@@ -11,17 +11,21 @@ import (
 
 // Represents the possible ProvisioningState values
 const (
-	NotProvisioned = "NotProvisioned"
-	Provisioning   = "Provisioning"
-	Provisioned    = "Provisioned"
-	Failed         = "Failed"
+	ProvisioningStateNotProvisioned = "NotProvisioned"
+	ProvisioningStateProvisioning   = "Provisioning"
+	ProvisioningStateProvisioned    = "Provisioned"
+	ProvisioningStateFailed         = "Failed"
 )
 
 // Represents the possible HealthState values
 const (
-	Healthy   = "Healthy"
-	Unhealthy = "Unhealthy"
-	Degraded  = "Degraded"
+	HealthStateUnknown       = "Unknown"
+	HealthStateHealthy       = "Healthy"
+	HealthStateUnhealthy     = "Unhealthy"
+	HealthStateDegraded      = "Degraded"
+	HealthStateNotSupported  = "NotSupported"
+	HealthStateNotApplicable = "NotApplicable"
+	HealthStateError         = "Error"
 )
 
 // ApplicationStatus represents the status of the overall Radius Application

@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Your first commit: building"
+title: "Your first commit: Building"
 linkTitle: "Building"
 description: Building Radius on your local machine
 weight: 70

@@ -66,8 +66,8 @@ Radius gateways are still in development, and will get more features in upcoming
 {{% codetab %}}
 
 1. Navigate to the RE-[ENV-NAME] resource group that was initialized for your environment.
-1. Select the Azure Kubernetes Service cluster.
-1. Note the IP address of the External IP of your LoadBalancer.
+1. Select the Kubernetes Service cluster and navigate to the "Services and ingresses" blade.
+1. Note the IP address of the External IP of your LoadBalancer service.
 {{% /codetab %}}
 {{% codetab %}}
 1. Ensure your cluster is set as the default cluster in your kubectl config, and Radius is initialized on it.

@@ -25,8 +25,3 @@ var CosmosMongoResourceType = azresources.KnownType{
 		},
 	},
 }
-
-type MongoDBComponentProperties struct {
-	Managed  bool   `json:"managed"`
-	Resource string `json:"resource"`
-}

@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
@@ -25,7 +26,7 @@ func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, workload renderers
 }
 
 func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := RedisComponentProperties{}
+	properties := radclient.RedisComponentProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
@@ -33,7 +34,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	}
 
 	outputResources := []outputresource.OutputResource{}
-	if properties.Managed {
+	if properties.Managed != nil && *properties.Managed {
 		redisCacheOutputResource := RenderManaged(resource.ResourceName, properties)
 
 		outputResources = append(outputResources, redisCacheOutputResource)
@@ -55,7 +56,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	}, nil
 }
 
-func RenderManaged(resourceName string, properties RedisComponentProperties) outputresource.OutputResource {
+func RenderManaged(resourceName string, properties radclient.RedisComponentProperties) outputresource.OutputResource {
 	redisCacheOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureRedis,
 		ResourceKind: resourcekinds.AzureRedis,
@@ -69,12 +70,12 @@ func RenderManaged(resourceName string, properties RedisComponentProperties) out
 	return redisCacheOutputResource
 }
 
-func RenderUnmanaged(resourceName string, properties RedisComponentProperties) (outputresource.OutputResource, error) {
-	if properties.Resource == "" {
+func RenderUnmanaged(resourceName string, properties radclient.RedisComponentProperties) (outputresource.OutputResource, error) {
+	if properties.Resource == nil || *properties.Resource == "" {
 		return outputresource.OutputResource{}, renderers.ErrResourceMissingForUnmanagedResource
 	}
 
-	redisResourceID, err := renderers.ValidateResourceID(properties.Resource, RedisResourceType, "Redis Cache")
+	redisResourceID, err := renderers.ValidateResourceID(*properties.Resource, RedisResourceType, "Redis Cache")
 	if err != nil {
 		return outputresource.OutputResource{}, err
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/azure/clients"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
@@ -32,22 +33,22 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := MicrosoftSQLComponentProperties{}
+	properties := radclient.MicrosoftSQLSQLComponentProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	if properties.Managed {
-		return renderers.RendererOutput{}, errors.New("only 'managed: true' SQL components are supported")
+	if properties.Managed != nil && *properties.Managed {
+		return renderers.RendererOutput{}, errors.New("only 'managed: false' SQL components are supported")
 	}
 
-	if properties.Resource == "" {
+	if properties.Resource == nil || *properties.Resource == "" {
 		return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
 	}
 
-	databaseID, err := renderers.ValidateResourceID(properties.Resource, SQLResourceType, "SQL Database")
+	databaseID, err := renderers.ValidateResourceID(*properties.Resource, SQLResourceType, "SQL Database")
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

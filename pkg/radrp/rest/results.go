@@ -19,6 +19,17 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// Translation of internal representation of health state to user facing values
+var internalToUserHealthStateTranslation = map[string]string{
+	HealthStateUnknown:       HealthStateUnhealthy,
+	HealthStateHealthy:       HealthStateHealthy,
+	HealthStateUnhealthy:     HealthStateUnhealthy,
+	HealthStateDegraded:      HealthStateDegraded,
+	HealthStateNotSupported:  "",
+	HealthStateNotApplicable: HealthStateHealthy,
+	HealthStateError:         HealthStateUnhealthy,
+}
+
 // Response represents a category of HTTP response (eg. OK with payload).
 type Response interface {
 	// Apply modifies the ResponseWriter to send the desired details back to the client.
@@ -388,4 +399,69 @@ func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.Response
 	}
 
 	return nil
+}
+
+// GetUserFacingHealthState computes the aggregate health state to be shown to the user
+// It also modifies the state of the individual output resources to the user facing value as needed
+func GetUserFacingHealthState(restOutputResources []OutputResource) (string, string) {
+	aggregateHealthState := HealthStateHealthy
+	aggregateHealthStateErrorDetails := ""
+	foundNotSupported := false
+	foundHealthyOrUnhealthy := false
+
+	for i, or := range restOutputResources {
+		userHealthState := internalToUserHealthStateTranslation[or.Status.HealthState]
+		if userHealthState != or.Status.HealthState {
+			// Set the individual output resource to the user facing value
+			restOutputResources[i].Status.HealthState = userHealthState
+		}
+
+		switch or.Status.HealthState {
+		case HealthStateUnknown:
+			aggregateHealthState = userHealthState
+			aggregateHealthStateErrorDetails = "Health state unknown"
+		case HealthStateHealthy:
+			foundHealthyOrUnhealthy = true
+		case HealthStateUnhealthy:
+			// If any one of the resources is unhealthy, the aggregate is unhealthy
+			aggregateHealthState = userHealthState
+			foundHealthyOrUnhealthy = true
+		case HealthStateNotSupported:
+			// If any one of the resources is not supported, the user facing aggregate is ""
+			aggregateHealthState = userHealthState
+			foundNotSupported = true
+		case HealthStateNotApplicable:
+			// This case is ignored and has no effect on the aggregate state
+		default:
+			// Unexpected state
+			or.Status.HealthState = internalToUserHealthStateTranslation[HealthStateUnhealthy]
+			aggregateHealthStateErrorDetails = fmt.Sprintf("output resource found in unexpected state: %s", or.Status.HealthState)
+		}
+	}
+
+	if foundNotSupported && foundHealthyOrUnhealthy {
+		// We do not expect a combination of not supported and supported health reporting for output resources
+		// This will result in an aggregation logic error
+		aggregateHealthState = internalToUserHealthStateTranslation[HealthStateError]
+		aggregateHealthStateErrorDetails = "Health aggregation error"
+	}
+
+	return aggregateHealthState, aggregateHealthStateErrorDetails
+}
+
+func GetUserFacingProvisioningState(restOutputResources []OutputResource) string {
+	var aggregateProvisiongState = ProvisioningStateProvisioned
+forLoop:
+	for _, or := range restOutputResources {
+		switch or.Status.ProvisioningState {
+		case ProvisioningStateFailed:
+			// If any of the output resources is Failed, then the aggregate is Failed
+			aggregateProvisiongState = ProvisioningStateFailed
+			break forLoop
+		case ProvisioningStateProvisioning, ProvisioningStateNotProvisioned:
+			// If any of the output resources is not in Provisioned state, the aggregate is Provisioning
+			aggregateProvisiongState = ProvisioningStateProvisioning
+		}
+	}
+	return aggregateProvisiongState
 }

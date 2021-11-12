@@ -157,6 +157,9 @@ type AzureKeyVaultComponentProperties struct {
 	BasicComponentProperties
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
 	Managed *Enum3 `json:"managed,omitempty"`
+
+	// The ID of the user-managed KeyVault to use
+	Resource *string `json:"resource,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultComponentProperties.
@@ -164,6 +167,7 @@ func (a AzureKeyVaultComponentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	a.BasicComponentProperties.marshalInternal(objectMap)
 	populate(objectMap, "managed", a.Managed)
+	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
 
@@ -178,6 +182,9 @@ func (a *AzureKeyVaultComponentProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "managed":
 				err = unpopulate(val, &a.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &a.Resource)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -587,7 +594,7 @@ type ContainerConnection struct {
 // ContainerPort - Specifies a listening port for the container
 type ContainerPort struct {
 	// REQUIRED; The listening port number
-	ContainerPort *float32 `json:"containerPort,omitempty"`
+	ContainerPort *int32 `json:"containerPort,omitempty"`
 
 	// Protocol in use by the port
 	Protocol *ContainerPortProtocol `json:"protocol,omitempty"`
@@ -1152,7 +1159,7 @@ func (g GatewayResource) MarshalJSON() ([]byte, error) {
 type HTTPGetHealthProbeProperties struct {
 	HealthProbeProperties
 	// REQUIRED; The listening port number
-	ContainerPort *float32 `json:"containerPort,omitempty"`
+	ContainerPort *int32 `json:"containerPort,omitempty"`
 
 	// REQUIRED; The route to make the HTTP request on
 	Path *string `json:"path,omitempty"`
@@ -1241,7 +1248,7 @@ type HTTPRouteGateway struct {
 	Rules map[string]*HTTPRouteGatewayRule `json:"rules,omitempty"`
 
 	// The gateway which this route is part of.
-	Source interface{} `json:"source,omitempty"`
+	Source *string `json:"source,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type HTTPRouteGateway.
@@ -1998,9 +2005,6 @@ func (r RedisComponentList) MarshalJSON() ([]byte, error) {
 
 type RedisComponentProperties struct {
 	BasicComponentProperties
-	// The Redis connection string used to connect to the redis cache
-	ConnectionString *string `json:"connectionString,omitempty"`
-
 	// The host name of the redis cache to which you are connecting
 	Host *string `json:"host,omitempty"`
 
@@ -2012,17 +2016,18 @@ type RedisComponentProperties struct {
 
 	// The ID of the user-managed Redis cache to use for this Component
 	Resource *string `json:"resource,omitempty"`
+	Secrets *RedisComponentPropertiesSecrets `json:"secrets,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisComponentProperties.
 func (r RedisComponentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	r.BasicComponentProperties.marshalInternal(objectMap)
-	populate(objectMap, "connectionString", r.ConnectionString)
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "managed", r.Managed)
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "resource", r.Resource)
+	populate(objectMap, "secrets", r.Secrets)
 	return json.Marshal(objectMap)
 }
 
@@ -2035,9 +2040,6 @@ func (r *RedisComponentProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "connectionString":
-				err = unpopulate(val, &r.ConnectionString)
-				delete(rawMsg, key)
 		case "host":
 				err = unpopulate(val, &r.Host)
 				delete(rawMsg, key)
@@ -2050,6 +2052,9 @@ func (r *RedisComponentProperties) UnmarshalJSON(data []byte) error {
 		case "resource":
 				err = unpopulate(val, &r.Resource)
 				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, &r.Secrets)
+				delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2059,6 +2064,14 @@ func (r *RedisComponentProperties) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+type RedisComponentPropertiesSecrets struct {
+	// The Redis connection string used to connect to the redis cache
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// The password for this Redis instance
+	Password *string `json:"password,omitempty"`
 }
 
 // RedisComponentResource - The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
@@ -2302,7 +2315,7 @@ func (s *SystemData) UnmarshalJSON(data []byte) error {
 type TCPHealthProbeProperties struct {
 	HealthProbeProperties
 	// REQUIRED; The listening port number
-	ContainerPort *float32 `json:"containerPort,omitempty"`
+	ContainerPort *int32 `json:"containerPort,omitempty"`
 
 	// Threshold number of times the probe fails after which a failure would be reported
 	FailureThreshold *float32 `json:"failureThreshold,omitempty"`

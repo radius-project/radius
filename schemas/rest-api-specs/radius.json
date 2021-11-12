@@ -120,6 +120,10 @@
             true
           ],
           "type": "boolean"
+        },
+        "resource": {
+          "description": "The ID of the user-managed KeyVault to use",
+          "type": "string"
         }
       },
       "type": "object"
@@ -432,7 +436,7 @@
       "properties": {
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "protocol": {
           "description": "Protocol in use by the port",
@@ -891,7 +895,7 @@
       "properties": {
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "failureThreshold": {
           "description": "Threshold number of times the probe fails after which a failure would be reported",
@@ -940,7 +944,8 @@
           "type": "object"
         },
         "source": {
-          "description": "The gateway which this route is part of."
+          "description": "The gateway which this route is part of.",
+          "type": "string"
         }
       },
       "required": [
@@ -1529,14 +1534,6 @@
         }
       ],
       "properties": {
-        "connectionString": {
-          "description": "The Redis connection string used to connect to the redis cache",
-          "example": [
-            "myrediscache.redis.cache.windows.net:6380",
-            "redis.default.svc.cluster.local:6379"
-          ],
-          "type": "string"
-        },
         "host": {
           "description": "The host name of the redis cache to which you are connecting",
           "example": [
@@ -1563,6 +1560,24 @@
             "account::redis.id"
           ],
           "type": "string"
+        },
+        "secrets": {
+          "additionalProperties": false,
+          "properties": {
+            "connectionString": {
+              "description": "The Redis connection string used to connect to the redis cache",
+              "example": [
+                "myrediscache.redis.cache.windows.net:6380",
+                "redis.default.svc.cluster.local:6379"
+              ],
+              "type": "string"
+            },
+            "password": {
+              "description": "The password for this Redis instance",
+              "type": "string"
+            }
+          },
+          "type": "object"
         }
       },
       "type": "object"
@@ -1773,7 +1788,7 @@
       "properties": {
         "containerPort": {
           "description": "The listening port number",
-          "type": "number"
+          "type": "integer"
         },
         "failureThreshold": {
           "description": "Threshold number of times the probe fails after which a failure would be reported",

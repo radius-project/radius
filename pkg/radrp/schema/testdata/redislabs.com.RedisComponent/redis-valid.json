@@ -3,8 +3,11 @@
   "name": "name",
   "properties": {
     "managed": true,
-    "connectionString": "connection-string",
     "host": "localhost",
-    "port": 6380
+    "port": 6380,
+    "secrets": {
+      "connectionString": "connection-string",
+      "password": "password"
+    }
   }
 }

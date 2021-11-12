@@ -3,6 +3,9 @@
   "name": 42,
   "properties": {
     "managed": true,
-    "additional": "property"
+    "additional": "property",
+    "secrets": {
+      "additional": "property"
+    }
   }
 }

@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Your first commit: debugging the CLI"
+title: "Your first commit: Debugging the CLI"
 linkTitle: "Debugging the CLI"
 weight: 90
 ---
