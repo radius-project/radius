@@ -1,25 +1,21 @@
 ---
 type: docs
-title: "Radius"
+title: "Project Radius"
 linkTitle: "Home"
-description: "An intelligent application model"
+description: "Model, deploy, and manage applications across cloud and edge"
 weight: 1
 ---
 
 <img src="azure-app.png" alt="Screenshot of an Azure application" style="width: 70%;">
 
-## Overview
-
-With Radius, application developers can create, deploy, and manage applications across cloud and edge.  
-
-
 {{< cardpane >}}
 {{< card header="**App-centric**" >}}
-Developers describe the intentions of their application rather than just a list of infrastructure.
-<img src="radius-app-visual.png" alt="Screenshot of a list of Radius applications in the Azure portal" style="width:100%" >
+Developers [describe their application]({{< ref appmodel-concept >}}) services and relationships, rather than just a list of infrastructure.
+
+<img src="radius-app-visual.png" alt="Screenshot of a Radius applications diagram" style="width:100%" >
 {{< /card >}}
 {{< card header="**Portable**" >}}
-Radius application templates and tooling are agnostic of platform, services, and infrastructure. 
+Radius applicationa and tooling are agnostic of platform, services, and infrastructure. 
 <table style="max-width:600px;margin-top:10%">
   <tr>
     <td style="width:50%;text-align:center">
@@ -47,28 +43,21 @@ Radius extends strong existing tools to further streamline the app developer exp
 </table>
 {{< /card >}}
 {{< card header="**Intelligent**" >}}
-Developers can offload the complexity of wiring-up applications. Radius implements best practices for service connections. 
+Developers can offload the complexity of wiring-up applications, and let Radius handle  best-practices.
 <table style="max-width:600px;margin-top:5%">
   <tr>
     <td style="width:25%;text-align:center">
-      <a href="{{< ref mongodb >}}"><img src="mongo-logo.png" alt="Mongo logo" style="width:50%"></a>
+      <a href="{{< ref connections-model >}}"><img src="connect-logo.svg" alt="Connections logo" style="width:40%"></a>
     </td>
     <td style="width:25%;text-align:center">
-      <a href="{{< ref redis >}}"><img src="redis-logo.png" alt="Redis logo" style="width:50%"></a>
+      <a href="{{< ref networking >}}"><img src="network-logo.svg" alt="Networking logo" style="width:40%"></a>
     </td>
     <td style="width:25%;text-align:center">
-      <a href="{{< ref rabbitmq >}}"><img src="rabbitmq-logo.png" alt="RabbitMQ logo" style="width:50%"></a>
-    </td>
-    <td style="width:25%;text-align:center">
-      <a href="{{< ref dapr >}}"><img src="dapr-logo.svg" alt="Dapr logo" style="width:50%"></a>
+      <a href="{{< ref dapr >}}"><img src="dapr-logo.svg" alt="Dapr logo" style="width:40%"></a>
     </td>
   </tr>
   </table>
 {{< /card >}}
 {{< /cardpane >}}
 
-
-## Getting started
-
-{{< button text="Install Radius" page="install-cli.md" color="success" >}}    {{< button text="Tutorials" page="tutorials" color="success" >}}
-
+{{< button text="Get started with Radius 🚀" page="install-cli.md" color="success" size="btn-lg" >}}

@@ -3,6 +3,8 @@
 {{ $link := .Get "link" | default "#" }}
 {{ $text := .Get "text" }}
 
+{{ $size := .Get "size" }}
+
 {{- if $page -}}{{- $link = ref . $page -}}{{- end -}}
 
-<a class="btn btn-{{ $color }}" href="{{ $link }}" role="button">{{ $text }}</a>
+<a class="btn {{ $size }} btn-{{ $color }}" href="{{ $link }}" role="button">{{ $text }}</a>
