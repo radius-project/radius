@@ -581,7 +581,6 @@ func (r *ResourceReconciler) StatusProvisioning(ctx context.Context, resource *r
 	}
 
 	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)
-	return nil
 }
 
 func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
