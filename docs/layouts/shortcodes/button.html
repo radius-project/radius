@@ -3,7 +3,8 @@
 {{ $link := .Get "link" | default "#" }}
 {{ $text := .Get "text" }}
 {{ $newtab := .Get "newtab" | default "false" }}
+{{ $size := .Get "size" }}
 
 {{- if $page -}}{{- $link = ref . $page -}}{{- end -}}
 
-<a class="btn btn-{{ $color }}" href="{{ $link }}" role="button" {{- if eq $newtab "true" -}}target="_blank"{{- end -}}>{{ $text }}</a>
+<a class="btn {{ $size }} btn-{{ $color }}" href="{{ $link }}" role="button" {{- if eq $newtab "true" -}}target="_blank"{{- end -}}>{{ $text }}</a>
