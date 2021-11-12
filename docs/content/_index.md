@@ -12,7 +12,7 @@ weight: 1
 {{< card header="**App-centric**" >}}
 Developers [describe their application]({{< ref appmodel-concept >}}) services and relationships, rather than just a list of infrastructure.
 
-<img src="radius-app-visual.png" alt="Screenshot of a Radius applications diagram" style="width:100%" >
+<img src="app-diagram.png" alt="Screenshot of a Radius applications diagram" style="width:100%" >
 {{< /card >}}
 {{< card header="**Portable**" >}}
 Radius applicationa and tooling are agnostic of platform, services, and infrastructure. 
