@@ -39,6 +39,14 @@ type RadiusResourceList struct {
 	Value []RadiusResource `json:"value"`
 }
 
+// AzureResource over the wire format for non-Radius Azure resources that are referenced from Radius resources in the application. These resources do not have output resources and may not support all the other properties included in RadiusResource type.
+type AzureResource struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+	Type string `json:"type"`
+}
+
 // ListSecretsInput is used for the RP's 'listSecrets' custom action.
 type ListSecretsInput struct {
 	// TargetID is the resource ID of the Radius resource for which secrets are being listed.

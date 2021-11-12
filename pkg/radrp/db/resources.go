@@ -31,6 +31,20 @@ type RadiusResourceStatus struct {
 	OutputResources   []OutputResource `bson:"outputResources,omitempty" structs:"-"` // Ignore stateful property during serialization
 }
 
+// AzureResource represents reference to an existing non-Radius azure resource that Radius resources connect to.
+type AzureResource struct {
+	ID              string `bson:"_id"`
+	SubscriptionID  string `bson:"subscriptionId"`
+	ResourceGroup   string `bson:"resourceGroup"`
+	ApplicationName string `bson:"applicationName"`
+	ResourceName    string `bson:"resourceName"`
+	ResourceKind    string `bson:"resourceKind"`
+	Type            string `bson:"type"`
+
+	// Radius resources that connect to this Azure resource
+	RadiusConnectionIDs []string `bson:"radiusConnectionIDs"`
+}
+
 // see renderers.SecretValueReference for description
 type SecretValueReference struct {
 	LocalID       string `bson:"localId"`
