@@ -39,7 +39,7 @@ func ApplyRadiusHelmChart(version string) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	radiusChart, err := radiusChart(version, helmConf)
+	radiusChart, err := radiusChart(version, helmConf, radiusHelmRepo, radiusReleaseName)
 	if err != nil {
 		return fmt.Errorf("failed to get radius chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -117,9 +117,9 @@ func locateChartFile(dirPath string) (string, error) {
 	return filepath.Join(dirPath, files[0].Name()), nil
 }
 
-func radiusChart(version string, config *helm.Configuration) (*chart.Chart, error) {
+func radiusChart(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pull := helm.NewPull()
-	pull.RepoURL = radiusHelmRepo
+	pull.RepoURL = repoUrl
 	pull.Settings = &cli.EnvSettings{}
 
 	// If version isn't set, it will use the latest version.
@@ -135,7 +135,7 @@ func radiusChart(version string, config *helm.Configuration) (*chart.Chart, erro
 
 	pull.DestDir = dir
 
-	_, err = pull.Run(radiusReleaseName)
+	_, err = pull.Run(releaseName)
 	if err != nil {
 		return nil, err
 	}

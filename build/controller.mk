@@ -15,6 +15,20 @@ controller-crd-install: generate-k8s-manifests  ## Install CRDs into the K8s clu
 controller-crd-uninstall: generate-k8s-manifests  ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	kubectl delete -f deploy/Chart/crds/
 
+controller-gateway-install:
+	kubectl kustomize\
+          "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
+          kubectl apply -f -
+	helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+	helm repo update
+
+	helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
+		--create-namespace --namespace radius-system \
+		--version 0.13.4 \
+		-f deploy/gateway/haproxy/config.yaml
+	
+	kubectl apply -f deploy/gateway/haproxy/gatewayclass.yaml
+
 controller-deploy: docker-build-radius-controller docker-push-radius-controller controller-deploy-existing ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 
 controller-deploy-existing: generate-k8s-manifests ## Deploy controller to the K8s cluster specified in ~/.kube/config.

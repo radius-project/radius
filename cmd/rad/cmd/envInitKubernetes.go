@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -16,8 +17,12 @@ import (
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
+	"github.com/Azure/radius/pkg/kubernetes/kubectl"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 var envInitKubernetesCmd = &cobra.Command{
@@ -78,6 +83,26 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
+		err = kubectl.RunCLICommand("apply", "--kustomize", "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0")
+		if err != nil {
+			return err
+		}
+
+		err = helm.ApplyHAProxyHelmChart("0.13.4")
+		if err != nil {
+			return err
+		}
+
+		runtimeClient, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
+		if err != nil {
+			return err
+		}
+
+		err = applyGatewayClass(cmd.Context(), runtimeClient)
+		if err != nil {
+			return err
+		}
+
 		err = helm.ApplyRadiusHelmChart(version.NewVersionInfo().Channel)
 		if err != nil {
 			return err
@@ -113,6 +138,25 @@ var envInitKubernetesCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func applyGatewayClass(ctx context.Context, runtimeClient sigclient.Client) error {
+	// TODO create gateway class
+	gateway := gatewayv1alpha1.GatewayClass{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "GatewayClass",
+			APIVersion: "networking.x-k8s.io/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "haproxy",
+			Namespace: "radius-system",
+		},
+		Spec: gatewayv1alpha1.GatewayClassSpec{
+			Controller: "haproxy-ingress.github.io/controller",
+		},
+	}
+
+	return runtimeClient.Patch(ctx, &gateway, sigclient.Apply)
 }
 
 func init() {
