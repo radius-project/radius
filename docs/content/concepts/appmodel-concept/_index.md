@@ -11,7 +11,7 @@ Project Radius provides an *application model* - a descriptive framework for clo
 
 ## App-model language
 
-Radius uses the [Bicep langauge](https://github.com/azure/bicep) as its file-format and structure. Bicep offers to the user:
+Radius uses the [Bicep language](https://github.com/azure/bicep) as its file-format and structure. Bicep offers to the user:
 - A high quality authoring experience with modules, loops, parametrization, and templating
 - ARM Deployment Stacks as the declarative deployment/rollback mechanism
 - Ability to punch through abstractions to platform when necessary

@@ -10,11 +10,11 @@ weight: 999
 
 ### Can I connect to an existing environment?
 
-**Yes**. When you initialize an environment via [`rad env init`]({{< ref rad_env_init.md >}})), you can enter an existing Azure subscription or Kubernetes cluster. Radius will update your `config.yaml` file with the appropriate values.
+**Yes**. When you initialize an environment via [`rad env init`]({{< ref rad_env_init.md >}})), you can provide an existing Azure subscription or Kubernetes cluster context. Radius will update your `config.yaml` file with the appropriate values.
 
 ### When would/should I use more than one environment?
 
-Users can employ multiple environments to for isolation and organization, for example based on:
+Users can employ multiple environments for isolation and organization, for example based on:
 - Permissions (managed at the Resource Group/Subscription level in Azure)
 - Purpose (dev vs prod)
 - Difference in hosting (standalone Kubernetes vs Microsoft Azure)
