@@ -138,11 +138,7 @@ func (r *ResourceReconciler) Apply(ctx context.Context, req ctrl.Request, log lo
 	if resource.Generation != resource.Status.ObservedGeneration {
 		// Resource is modified, update status to say provisioning
 		// as the old status isn't valid.
-		err := r.StatusProvisioning(ctx, resource, unst, resource.Kind+"-"+resource.Name)
-		if err != nil {
-			log.Error(err, "failed to set status to provisioning")
-			return ctrl.Result{}, err
-		}
+		r.StatusProvisioning(ctx, resource, unst, resource.Kind+"-"+resource.Name)
 	}
 
 	log = log.WithValues(
@@ -176,7 +172,7 @@ func (r *ResourceReconciler) Apply(ctx context.Context, req ctrl.Request, log lo
 	}
 
 	if rendered {
-		err = r.StatusDeployed(ctx, resource, unst, resource.Kind+"-"+resource.Name)
+		r.StatusDeployed(ctx, resource, unst, resource.Kind+"-"+resource.Name)
 		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
 	}
 
@@ -571,7 +567,7 @@ func extractApplicationKey(obj client.Object) []string {
 	return []string{obj.GetAnnotations()[kubernetes.LabelRadiusApplication]}
 }
 
-func (r *ResourceReconciler) StatusProvisioning(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) error {
+func (r *ResourceReconciler) StatusProvisioning(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
 	r.Log.Info("updating status to processing")
 
 	resource.Status.Conditions = []metav1.Condition{}
@@ -588,7 +584,7 @@ func (r *ResourceReconciler) StatusProvisioning(ctx context.Context, resource *r
 	return nil
 }
 
-func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) error {
+func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
 	r.Log.Info("updating status to deployed")
 	newCondition := metav1.Condition{
 		Status:  metav1.ConditionTrue,
@@ -598,6 +594,4 @@ func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiu
 	}
 
 	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)
-
-	return nil
 }
