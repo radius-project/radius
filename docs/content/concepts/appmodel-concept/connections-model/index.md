@@ -2,7 +2,7 @@
 type: docs
 title: "Radius Connections concept"
 linkTitle: "Connections"
-description: "Learn how to model how resources interact with Radius Connections."
+description: "Learn how to model resource interactions and relationships with Radius Connections."
 weight: 400
 ---
 
