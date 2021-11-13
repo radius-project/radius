@@ -21,8 +21,9 @@ const (
 )
 
 type CLI struct {
-	T              *testing.T
-	ConfigFilePath string
+	T                *testing.T
+	ConfigFilePath   string
+	WorkingDirectory string
 }
 
 func NewCLI(t *testing.T, configFilePath string) *CLI {
@@ -46,6 +47,22 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 
 	for _, parameter := range parameters {
 		args = append(args, "--parameters", parameter)
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
+func (cli *CLI) ApplicationInit(ctx context.Context, applicationName string) error {
+	command := "application"
+
+	args := []string{
+		command,
+		"init",
+	}
+
+	if applicationName != "" {
+		args = append(args, applicationName)
 	}
 
 	_, err := cli.RunCommand(ctx, args)
@@ -126,6 +143,9 @@ func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
 	args = cli.appendStandardArgs(args)
 
 	cmd := exec.CommandContext(ctx, "rad", args...)
+	if cli.WorkingDirectory != "" {
+		cmd.Dir = cli.WorkingDirectory
+	}
 
 	// we run a background goroutine to report a heartbeat in the logs while the command
 	// is still running. This makes it easy to see what's still in progress if we hit a timeout.
