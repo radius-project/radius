@@ -63,23 +63,46 @@ func unwrapK8sUnstructured(resource Resource) (*unstructured.Unstructured, error
 	return r, nil
 }
 
-func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, error) {
+func scrapeSecrets(resource Resource) map[string]string {
+	properties, ok := resource.Body["properties"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	secrets, ok := properties["secrets"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	if len(secrets) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(secrets))
+	for k, v := range secrets {
+		if str, ok := v.(string); ok {
+			result[k] = str
+		}
+	}
+	delete(properties, "secrets")
+	return result
+}
+
+func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, map[string]string, error) {
 	annotations := map[string]string{}
 
 	// K8s extension resources are not part of an application, so we can skip all the
 	// application-related annotation logic.
 	if resource.Provider != nil && resource.Provider.Name == "Kubernetes" {
-		return unwrapK8sUnstructured(resource)
+		u, err := unwrapK8sUnstructured(resource)
+		return u, nil, err
 	}
-
+	secrets := scrapeSecrets(resource)
 	data, err := json.Marshal(resource)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	applicationName, resourceName, resourceType := resource.GetRadiusResourceParts()
 
 	if applicationName == "" {
-		return nil, errors.New("application name is empty")
+		return nil, nil, errors.New("application name is empty")
 	}
 
 	name := applicationName
@@ -101,7 +124,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 	kind := GetKindFromArmType(resourceType)
 	if kind == "" {
-		return nil, fmt.Errorf("must have custom resource type mapping to arm type %s", resourceType)
+		return nil, nil, fmt.Errorf("must have custom resource type mapping to arm type %s", resourceType)
 	}
 
 	uns := &unstructured.Unstructured{
@@ -119,7 +142,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 	}
 
 	uns.SetAnnotations(annotations)
-	return uns, nil
+	return uns, secrets, nil
 }
 
 // TODO this should be removed and instead we should use the CR definitions to know about the arm mapping

@@ -9,11 +9,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -114,23 +118,57 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 }
 
-func Test_Render_KubernetesRedis_Unmanaged_Failure(t *testing.T) {
+func TestRenderUnmanagedRedis(t *testing.T) {
 	ctx := createContext(t)
 	renderer := KubernetesRenderer{}
 
-	resource := renderers.RendererResource{
+	input := renderers.RendererResource{
 		ApplicationName: "test-app",
 		ResourceName:    "test-redis",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"managed": false,
+			"host": "hello.com",
+			"port": 1234,
+			"secrets": map[string]interface{}{
+				"connectionString": "***",
+				"password":         "***",
+			},
 		},
 	}
-
-	_, err := renderer.Render(ctx, renderers.RenderOptions{
-		Resource:     resource,
+	output, err := renderer.Render(ctx, renderers.RenderOptions{
+		Resource:     input,
 		Dependencies: map[string]renderers.RendererDependency{},
 	})
-	require.Error(t, err)
-	require.Equal(t, "only managed = true is supported for the Kubernetes Redis Component", err.Error())
+	require.NoError(t, err)
+
+	expected := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{{
+			ResourceKind: resourcekinds.Kubernetes,
+			LocalID:      outputresource.LocalIDScrapedSecret,
+			Resource: kubernetes.MakeScrapedSecret(
+				input.ApplicationName, "RedisComponent", input.ResourceName),
+		}},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"host": {
+				Value: to.StringPtr("hello.com"),
+			},
+			"port": {
+				Value: to.Int32Ptr(1234),
+			},
+			"username": {
+				Value: "",
+			},
+		},
+		SecretValues: map[string]renderers.SecretValueReference{
+			"password": {
+				LocalID:       outputresource.LocalIDScrapedSecret,
+				ValueSelector: "password",
+			},
+			"connectionString": {
+				LocalID:       outputresource.LocalIDScrapedSecret,
+				ValueSelector: "connectionString",
+			},
+		},
+	}
+	assert.DeepEqual(t, expected, output)
 }

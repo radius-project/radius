@@ -40,7 +40,39 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 	}
 
 	if properties.Managed == nil || !*properties.Managed {
-		return renderers.RendererOutput{}, fmt.Errorf("only managed = true is supported for the Kubernetes Redis Component")
+		output := renderers.RendererOutput{
+			// It should be possible to handle the computed values in a
+			// generic manner. However the slightly tricky part is knowing
+			// which fields are part of the non-secret connection-provided
+			// data. As a result We still have to duplicate this logic here
+			// instead of sharing the same logic across renderers.
+			//
+			// If we have the schema of the connection-based properties, we
+			// could do it more generically here.
+			ComputedValues: map[string]renderers.ComputedValueReference{
+				"host": {
+					Value: properties.Host,
+				},
+				"port": {
+					Value: properties.Port,
+				},
+				"username": {
+					Value: "",
+				},
+			},
+			SecretValues: map[string]renderers.SecretValueReference{
+				"password": {
+					LocalID:       outputresource.LocalIDScrapedSecret,
+					ValueSelector: "password",
+				},
+				// TODO: generate a default connection string when the secret was not provided.
+				"connectionString": {
+					LocalID:       outputresource.LocalIDScrapedSecret,
+					ValueSelector: "connectionString",
+				},
+			},
+		}
+		return output, nil
 	}
 
 	resources, err := GetKubernetesRedis(resource, properties)

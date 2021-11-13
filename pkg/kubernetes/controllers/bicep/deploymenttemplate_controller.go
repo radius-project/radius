@@ -147,7 +147,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 
 		resource.Body = body
 
-		k8sInfo, err := armtemplate.ConvertToK8s(resource, req.NamespacedName.Namespace)
+		k8sInfo, scrapedSecrets, err := armtemplate.ConvertToK8s(resource, req.NamespacedName.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -159,14 +159,14 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		}
 		k8sInfo.SetAnnotations(annotations)
 
-		appName, _, resourceType := resource.GetRadiusResourceParts()
+		appName, resourceName, resourceType := resource.GetRadiusResourceParts()
 
 		// If this is not an extension resource, which lives outside an application,
 		// make sure the application that contains the resource has been created
 		if resourceType != "Application" && resource.Provider == nil {
 			application := &radiusv1alpha3.Application{}
 
-			err = r.Get(ctx, client.ObjectKey{
+			err = r.Client.Get(ctx, client.ObjectKey{
 				Namespace: k8sInfo.GetNamespace(),
 				Name:      appName,
 			}, application)
@@ -182,7 +182,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		}
 
 		r.Recorder.Eventf(k8sInfo, "Normal", "Provisioned", "Resource %s has been provisioned", k8sInfo.GetName())
-
 		r.StatusProvisionedResource(ctx, arm, k8sInfo)
 
 		// Always patch the resource, even if it already exists.
@@ -199,6 +198,21 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		// Now store secret we scraped from the rendered template.
+		if len(scrapedSecrets) > 0 {
+			secret := kubernetes.MakeScrapedSecret(appName, k8sInfo.GetKind(), resourceName)
+			secret.SetNamespace(k8sInfo.GetNamespace())
+			secret.StringData = scrapedSecrets
+			err := controllerutil.SetControllerReference(k8sInfo, secret, r.Scheme)
+			_, ok := err.(*controllerutil.AlreadyOwnedError) // Ignore already owned error as if the resource is already created, it will be owned
+			if err != nil && !ok {
+				return ctrl.Result{}, err
+			}
+			err = r.Client.Patch(ctx, secret, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 
 		// TODO could remove this dependecy on radiusv1alpha3
 		k8sResource := &radiusv1alpha3.Resource{}
@@ -206,7 +220,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-
 		// Transform from k8s representation to arm representation
 		//
 		// We need to overlay stateful properties over the original definition.

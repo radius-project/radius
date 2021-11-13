@@ -23,7 +23,8 @@ const (
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
 	LabelManagedByRadiusRP  = "radius-rp"
 
-	FieldManager = "radius-rp"
+	FieldManager      = "radius-rp"
+	AnnotationLocalID = "radius.dev/local-id"
 )
 
 // NOTE: the difference between descriptive labels and selector labels

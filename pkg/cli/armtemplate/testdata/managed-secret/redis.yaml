@@ -1,0 +1,32 @@
+apiVersion: radius.dev/v1alpha3
+kind: RedisComponent
+metadata:
+  annotations:
+    radius.dev/application: kubernetes-resources-redis-unmanaged
+    radius.dev/resource: redis
+    radius.dev/resource-type: redislabs.com.RedisComponent
+  labels:
+    app.kubernetes.io/managed-by: radius-rp
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/part-of: kubernetes-resources-redis-unmanaged
+    radius.dev/application: kubernetes-resources-redis-unmanaged
+    radius.dev/resource: redis
+    radius.dev/resource-type: redislabs.com.RedisComponent
+  name: kubernetes-resources-redis-unmanaged-redis
+  namespace: default
+spec:
+  application: kubernetes-resources-redis-unmanaged
+  resource: redis
+  template:
+    apiVersion: 2018-09-01-preview
+    body:
+      properties:
+        host: my-redis.com
+        port: 1234
+        secrets:
+          connectionString: '*****'
+          password: '*****'
+    dependsOn: []
+    id: /subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/kubernetes-resources-redis-unmanaged/redislabs.com.RedisComponent/redis
+    name: radiusv3/kubernetes-resources-redis-unmanaged/redis
+    type: Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisComponent

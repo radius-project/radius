@@ -44,8 +44,7 @@ import (
 )
 
 const (
-	AnnotationLocalID = "radius.dev/local-id"
-	ConditionReady    = "Ready"
+	ConditionReady = "Ready"
 )
 
 // ResourceReconciler reconciles a Resource object
@@ -426,6 +425,22 @@ func (r *ResourceReconciler) ApplyState(
 	}
 
 	for _, obj := range actual {
+		if localId := obj.GetAnnotations()[kubernetes.AnnotationLocalID]; localId == outputresource.LocalIDScrapedSecret {
+			or, err := ref.GetReference(r.Scheme, obj)
+			if err != nil {
+				log.Error(err, "failed to get resource reference for resource")
+				return err
+			}
+			// Mention the scraped secret resource in the local ID so that we can refer
+			// to it in ComputedValues.
+			resource.Status.Resources[localId] = *or
+
+			// Do not delete scraped secret. While the `ownerRef` mechanism was use
+			// so that the scraped secret is cleaned up whenever our resource is cleaned up,
+			// it was actually a sibling resource created by the template controller. We don't
+			// want to ask that each renderer mention the scraped secret explictly.
+			continue
+		}
 		log := log.WithValues(
 			"resourcenamespace", obj.GetNamespace(),
 			"resourcename", obj.GetName(),
@@ -514,8 +529,8 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 
 	// TODO determine this correctly
 	unst.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
+		Group:   radiusv1alpha3.GroupVersion.Group,
+		Version: radiusv1alpha3.GroupVersion.Version,
 		Kind:    armtemplate.GetKindFromArmType(resourceType.Type),
 	})
 
