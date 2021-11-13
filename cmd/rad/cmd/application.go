@@ -10,9 +10,10 @@ import (
 )
 
 var applicationCmd = &cobra.Command{
-	Use:   "application",
-	Short: "Manage RAD applications",
-	Long:  `Manage RAD applications`,
+	Use:     "application",
+	Aliases: []string{"app"},
+	Short:   "Manage RAD applications",
+	Long:    `Manage RAD applications`,
 }
 
 func init() {
