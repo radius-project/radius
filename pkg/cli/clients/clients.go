@@ -40,8 +40,14 @@ type DeploymentOptions struct {
 	Parameters DeploymentParameters
 }
 
+type DeploymentOutput struct {
+	Type  string      `json:"type"`
+	Value interface{} `json:"value"`
+}
+
 type DeploymentResult struct {
 	Resources []azresources.ResourceID
+	Outputs   map[string]DeploymentOutput
 }
 
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
@@ -89,4 +95,13 @@ type ManagementClient interface {
 
 	ShowResource(ctx context.Context, applicationName string, resourceType string, resourceName string) (interface{}, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
+}
+
+func ShallowCopy(params DeploymentParameters) DeploymentParameters {
+	copy := DeploymentParameters{}
+	for k, v := range params {
+		copy[k] = v
+	}
+
+	return copy
 }
