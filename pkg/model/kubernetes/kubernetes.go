@@ -7,16 +7,15 @@ package kubernetes
 
 import (
 	"github.com/Azure/radius/pkg/handlers"
-	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/dapr"
 	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha1"
+	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/gateway"
 	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/rabbitmqv1alpha1"
+	"github.com/Azure/radius/pkg/renderers/rabbitmqv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
 	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
 	"github.com/Azure/radius/pkg/resourcekinds"
@@ -24,20 +23,51 @@ import (
 )
 
 func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
-	renderers := map[string]renderers.Renderer{
-		containerv1alpha3.ResourceType:      &dapr.Renderer{Inner: &containerv1alpha3.Renderer{}},
-		daprhttproutev1alpha3.ResourceType:  &daprhttproutev1alpha3.Renderer{},
-		daprstatestorev1alpha1.ResourceType: &renderers.V1RendererAdapter{Inner: &daprstatestorev1alpha1.Renderer{StateStores: daprstatestorev1alpha1.SupportedKubernetesStateStoreKindValues}},
-		mongodbv1alpha3.ResourceType:        &mongodbv1alpha3.KubernetesRenderer{},
-		rabbitmqv1alpha1.ResourceType:       &renderers.V1RendererAdapter{Inner: &rabbitmqv1alpha1.Renderer{}},
-		redisv1alpha3.ResourceType:          &redisv1alpha3.KubernetesRenderer{},
-		httproutev1alpha3.ResourceType:      &httproutev1alpha3.Renderer{},
-		gateway.ResourceType:                &gateway.Renderer{},
-		volumev1alpha3.ResourceType:         &volumev1alpha3.KubernetesRenderer{VolumeRenderers: nil},
+
+	radiusResources := []model.RadiusResourceModel{
+		{
+			ResourceType: containerv1alpha3.ResourceType,
+			Renderer:     &dapr.Renderer{Inner: &containerv1alpha3.Renderer{}},
+		},
+		{
+			ResourceType: daprhttproutev1alpha3.ResourceType,
+			Renderer:     &daprhttproutev1alpha3.Renderer{},
+		},
+		{
+			ResourceType: daprstatestorev1alpha3.ResourceType,
+			Renderer:     &daprstatestorev1alpha3.Renderer{StateStores: daprstatestorev1alpha3.SupportedKubernetesStateStoreKindValues},
+		},
+		{
+			ResourceType: mongodbv1alpha3.ResourceType,
+			Renderer:     &mongodbv1alpha3.KubernetesRenderer{},
+		},
+		{
+			ResourceType: rabbitmqv1alpha3.ResourceType,
+			Renderer:     &rabbitmqv1alpha3.Renderer{},
+		},
+		{
+			ResourceType: redisv1alpha3.ResourceType,
+			Renderer:     &redisv1alpha3.KubernetesRenderer{},
+		},
+		{
+			ResourceType: httproutev1alpha3.ResourceType,
+			Renderer:     &httproutev1alpha3.Renderer{},
+		},
+		{
+			ResourceType: gateway.ResourceType,
+			Renderer:     &gateway.Renderer{},
+		},
+		{
+			ResourceType: volumev1alpha3.ResourceType,
+			Renderer:     &volumev1alpha3.KubernetesRenderer{VolumeRenderers: nil},
+		},
+	}
+	outputResources := []model.OutputResourceModel{
+		{
+			Kind:            resourcekinds.Kubernetes,
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
 	}
 
-	handlers := map[string]model.Handlers{
-		resourcekinds.Kubernetes: {ResourceHandler: handlers.NewKubernetesHandler(k8s), HealthHandler: nil},
-	}
-	return model.NewModel(renderers, handlers)
+	return model.NewModel(radiusResources, outputResources)
 }

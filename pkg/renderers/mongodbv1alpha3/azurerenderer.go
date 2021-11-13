@@ -147,9 +147,7 @@ func MakeSecretsAndValues(name string) (map[string]renderers.ComputedValueRefere
 			// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
 			Action:        "listConnectionStrings",
 			ValueSelector: "/connectionStrings/0/connectionString",
-
-			// By-convention the resource type is used as the transformer name.
-			Transformer: CosmosMongoResourceType.Type(),
+			Transformer:   resourcekinds.AzureCosmosDBMongo,
 		},
 	}
 

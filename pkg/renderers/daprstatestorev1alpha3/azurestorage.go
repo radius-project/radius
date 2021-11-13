@@ -3,22 +3,21 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package daprstatestorev1alpha1
+package daprstatestorev1alpha3
 
 import (
 	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/workloads"
 )
 
-func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component DaprStateStoreComponent) ([]outputresource.OutputResource, error) {
+func GetDaprStateStoreAzureStorage(resource renderers.RendererResource, properties Properties) ([]outputresource.OutputResource, error) {
 	resourceKind := resourcekinds.DaprStateStoreAzureStorage
 	localID := outputresource.LocalIDDaprStateStoreAzureStorage
 
-	if component.Config.Managed {
-		if component.Config.Resource != "" {
+	if properties.Managed {
+		if properties.Resource != "" {
 			return nil, renderers.ErrResourceSpecifiedForManagedResource
 		}
 		resource := outputresource.OutputResource{
@@ -27,20 +26,20 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "true",
-				handlers.KubernetesNameKey:       w.Name,
-				handlers.KubernetesNamespaceKey:  w.Application,
+				handlers.KubernetesNameKey:       resource.ResourceName,
+				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
-				handlers.ResourceName:            w.Name,
+				handlers.ResourceName:            resource.ResourceName,
 			},
 		}
 
 		return []outputresource.OutputResource{resource}, nil
 	} else {
-		if component.Config.Resource == "" {
+		if properties.Resource == "" {
 			return nil, renderers.ErrResourceMissingForUnmanagedResource
 		}
-		accountID, err := renderers.ValidateResourceID(component.Config.Resource, StorageAccountResourceType, "Storage Account")
+		accountID, err := renderers.ValidateResourceID(properties.Resource, StorageAccountResourceType, "Storage Account")
 		if err != nil {
 			return nil, err
 		}
@@ -52,8 +51,8 @@ func GetDaprStateStoreAzureStorage(w workloads.InstantiatedWorkload, component D
 			Managed:      false,
 			Resource: map[string]string{
 				handlers.ManagedKey:              "false",
-				handlers.KubernetesNameKey:       w.Name,
-				handlers.KubernetesNamespaceKey:  w.Application,
+				handlers.KubernetesNameKey:       resource.ResourceName,
+				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
 

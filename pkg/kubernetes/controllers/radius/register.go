@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	model "github.com/Azure/radius/pkg/model/typesv1alpha3"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +24,7 @@ import (
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
 	"github.com/Azure/radius/pkg/kubernetes/webhook"
+	"github.com/Azure/radius/pkg/model"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 

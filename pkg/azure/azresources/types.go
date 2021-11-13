@@ -31,4 +31,8 @@ const (
 
 	CustomRPV3Name     = "radiusv3"
 	CustomRPApiVersion = "2018-09-01-preview"
+
+	ApplicationResourceType = "Application"
+	// OperationResourceType declares the resource type for an Operation.
+	OperationResourceType = "OperationResults"
 )
