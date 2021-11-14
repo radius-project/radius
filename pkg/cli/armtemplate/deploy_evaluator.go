@@ -24,6 +24,7 @@ type DeploymentEvaluator struct {
 	Options   TemplateOptions
 	Deployed  map[string]map[string]interface{}
 	Variables map[string]interface{}
+	Outputs   map[string]map[string]interface{}
 
 	CustomActionCallback func(id string, apiVersion string, action string, payload interface{}) (interface{}, error)
 
@@ -32,9 +33,115 @@ type DeploymentEvaluator struct {
 
 	// A providers.Store can provide more resources that we don't deploy ourselves.
 	ProviderStore providers.Store
+
+	// PreserveExpressions is a stateful property telling the evaluator to skip over expressions when
+	// processing. This is used when doing a 'first-pass' to evaluate resources before deployment starts.
+	preserveExpressions bool
 }
 
 var _ armexpr.Visitor = &DeploymentEvaluator{}
+
+func (eva *DeploymentEvaluator) VisitResource(input map[string]interface{}) (Resource, error) {
+	// In order to produce a resource we need to process ARM expressions using the "loosely-typed" representation
+	// and then read it into an object.
+
+	// Special case for evaluating resource bodies
+	evaluated := map[string]interface{}{}
+	for k, v := range input {
+		eva.preserveExpressions = !eva.Options.EvaluatePropertiesNode && k == "properties"
+
+		v, err := eva.VisitValue(v)
+		if err != nil {
+			return Resource{}, err
+		}
+
+		evaluated[k] = v
+		eva.preserveExpressions = false
+	}
+
+	name, ok := evaluated["name"].(string)
+	if !ok {
+		return Resource{}, errors.New("resource does not contain a name")
+	}
+
+	t, ok := evaluated["type"].(string)
+	if !ok {
+		return Resource{}, errors.New("resource does not contain a type")
+	}
+
+	apiVersion, ok := evaluated["apiVersion"].(string)
+	if !ok {
+		if !strings.Contains(t, "@") {
+			return Resource{}, fmt.Errorf("resource %#v does not contain an apiVersion", input)
+		}
+		// This is a K8s resource, whom API version is embedded in type string.
+		// For example: "kubernetes.core/Service@v1", which translates to
+		// - type=kubernetes.core/Service, and
+		// - apiVersion=v1.
+		tokens := strings.SplitN(t, "@", 2)
+		apiVersion = tokens[1]
+		t = tokens[0]
+	}
+
+	providerKey := ""
+	if importSpec, ok := evaluated["import"].(map[string]interface{}); ok {
+		providerKey, _ = importSpec["provider"].(string)
+	}
+	var providerPtr *Provider
+	if provider, hasProvider := eva.Template.Imports[providerKey]; hasProvider {
+		providerPtr = &provider
+	}
+	dependsOn := []string{}
+	obj, ok := evaluated["dependsOn"]
+	if ok {
+		ds, ok := obj.([]interface{})
+		if !ok {
+			return Resource{}, errors.New("dependsOn is the wrong type")
+		}
+
+		for _, d := range ds {
+			dt, ok := d.(string)
+			if !ok {
+				return Resource{}, errors.New("dependsOn is the wrong type")
+			}
+
+			dependsOn = append(dependsOn, dt)
+		}
+	}
+
+	nameParts := strings.Split(name, "/")
+	args := []interface{}{}
+	for _, part := range nameParts {
+		args = append(args, part)
+	}
+
+	id, err := eva.EvaluateResourceID(t, args)
+	if err != nil {
+		return Resource{}, err
+	}
+
+	// remove properties that are not part of the body
+	body := map[string]interface{}{}
+	for k, v := range input {
+		body[k] = v
+	}
+
+	delete(body, "name")
+	delete(body, "type")
+	delete(body, "apiVersion")
+	delete(body, "dependsOn")
+	delete(body, "import")
+	result := Resource{
+		ID:         id,
+		Type:       t,
+		APIVersion: apiVersion,
+		Name:       name,
+		DependsOn:  dependsOn,
+		Body:       body,
+		Provider:   providerPtr,
+	}
+	return result, nil
+}
 
 func (eva *DeploymentEvaluator) VisitValue(input interface{}) (interface{}, error) {
 	str, ok := input.(string)
@@ -82,7 +189,11 @@ func (eva *DeploymentEvaluator) VisitValue(input interface{}) (interface{}, erro
 }
 
 func (eva *DeploymentEvaluator) VisitString(input string) (interface{}, error) {
-	isExpr, err := armexpr.IsStandardARMExpression(input)
+	if eva.preserveExpressions {
+		return input, nil
+	}
+
+	isExpr, err := armexpr.IsARMExpression(input)
 	if err != nil {
 		return "", err
 	} else if !isExpr {

@@ -122,6 +122,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		Options:   options,
 		Deployed:  deployed,
 		Variables: map[string]interface{}{},
+		Outputs:   map[string]map[string]interface{}{},
 
 		CustomActionCallback: func(id string, apiVersion string, action string, payload interface{}) (interface{}, error) {
 			return r.InvokeCustomAction(ctx, req.Namespace, id, apiVersion, action, payload)

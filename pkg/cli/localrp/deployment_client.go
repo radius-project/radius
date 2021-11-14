@@ -70,6 +70,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 		},
 		Deployed:  deployed,
 		Variables: map[string]interface{}{},
+		Outputs:   map[string]map[string]interface{}{},
 	}
 
 	for name, variable := range template.Variables {
