@@ -174,7 +174,7 @@ func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request
 
 	if rendered {
 		r.StatusDeployed(ctx, resource, unst, "Ready")
-		r.Recorder.Event(resource, "N	ormal", "Rendered", "Resource has been processed successfully")
+		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
 	}
 
 	err = r.ApplyState(ctx, log, req, application, resource, unst, actual, *desired)

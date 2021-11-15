@@ -26,7 +26,7 @@ spec:
     - jsonPath: .spec.resource
       name: Resource
       type: string
-    - jsonPath: .status.conditions[0].status
+    - jsonPath: .status.phrase
       name: Status
       type: string
     name: v1alpha3
