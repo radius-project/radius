@@ -14,6 +14,7 @@ import (
 const (
 	LabelRadiusApplication  = "radius.dev/application"
 	LabelRadiusResource     = "radius.dev/resource"
+	LabelRadiusDeployment   = "radius.dev/deployment"
 	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
 	LabelRadiusRevision     = "radius.dev/revision"
 	LabelRadiusResourceType = "radius.dev/resource-type"

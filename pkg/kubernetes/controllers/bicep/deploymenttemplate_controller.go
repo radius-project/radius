@@ -20,6 +20,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
@@ -146,6 +148,13 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+
+		// Set name of deployment template
+		annotations := k8sInfo.GetAnnotations()
+		if annotations != nil {
+			annotations[kubernetes.LabelRadiusDeployment] = arm.Name
+		}
+		k8sInfo.SetAnnotations(annotations)
 
 		appName, _, resourceType := resource.GetRadiusResourceParts()
 
@@ -366,7 +375,35 @@ func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager, objs [
 	client.Object
 	client.ObjectList
 }) error {
+	// Watch for the application changes on top of other resources
+	appType := struct {
+		client.Object
+		client.ObjectList
+	}{
+		&radiusv1alpha3.Application{},
+		&radiusv1alpha3.ApplicationList{},
+	}
+
+	objs = append(objs, appType)
+
 	c := ctrl.NewControllerManagedBy(mgr).
 		For(&bicepv1alpha3.DeploymentTemplate{})
+	for _, obj := range objs {
+		resourceSource := &source.Kind{Type: obj.Object}
+		handler := handler.EnqueueRequestsFromMapFunc(func(clientObj client.Object) []ctrl.Request {
+			annotations := clientObj.GetAnnotations()
+			template := annotations[kubernetes.LabelRadiusDeployment]
+			if template == "" {
+				return nil
+			}
+
+			return []ctrl.Request{
+				{NamespacedName: types.NamespacedName{Namespace: clientObj.GetNamespace(), Name: template}},
+			}
+		})
+
+		c = c.Watches(resourceSource, handler)
+	}
+
 	return c.Complete(r)
 }
