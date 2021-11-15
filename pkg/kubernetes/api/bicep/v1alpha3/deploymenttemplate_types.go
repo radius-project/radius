@@ -46,14 +46,10 @@ type ResourceStatus struct {
 
 	// The name of the resource.
 	// +required
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=True;False;Unknown
 	Name string `json:"name"`
 
 	// The kind of the resource.
 	// +required
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=True;False;Unknown
 	Kind string `json:"kind"`
 }
 

@@ -134,17 +134,9 @@ spec:
                   properties:
                     kind:
                       description: The kind of the resource.
-                      enum:
-                      - "True"
-                      - "False"
-                      - Unknown
                       type: string
                     name:
                       description: The name of the resource.
-                      enum:
-                      - "True"
-                      - "False"
-                      - Unknown
                       type: string
                     status:
                       description: status of the condition, one of True, False, Unknown.
