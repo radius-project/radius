@@ -22,7 +22,10 @@ type DeploymentTemplateSpec struct {
 
 // DeploymentTemplateStatus defines the observed state of Arm
 type DeploymentTemplateStatus struct {
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Conditions represents the latest available observations of an object's current state.
+	// The first entry in the conditions represents this object's current state.
+	// Afterwards, the rest of the conditions represent the states of all deployed resources.
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 
 	// ObservedGeneration captures the last generation
 	// that was captured and completed by the reconciler

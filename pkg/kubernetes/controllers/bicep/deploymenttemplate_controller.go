@@ -65,9 +65,9 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		r.StatusProvisioning(ctx, arm, deploymentTemplateConditionType)
 	}
 
-	// First status in the status list contains the status of the deployment template
-	// Ones after are for the status of each resource being deployed
-	if len(arm.Status.Conditions) > 0 && arm.Status.Conditions[0].Status == metav1.ConditionTrue {
+	templateCondition := meta.FindStatusCondition(arm.Status.Conditions, deploymentTemplateConditionType)
+
+	if len(arm.Status.Conditions) > 0 && templateCondition != nil && templateCondition.Status == metav1.ConditionTrue {
 		// Template has already deployed, don't do anything
 		r.Log.Info("template is already deployed")
 		return ctrl.Result{}, nil
@@ -172,7 +172,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			}
 		}
 
-		r.StatusSetResource(ctx, arm, conditionType)
+		r.StatusProvisionResource(ctx, arm, conditionType)
 
 		// Always patch the resource, even if it already exists.
 		err = r.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
@@ -307,7 +307,7 @@ func (r *DeploymentTemplateReconciler) StatusProvisioning(ctx context.Context, a
 	meta.SetStatusCondition(&arm.Status.Conditions, newCondition)
 }
 
-func (r *DeploymentTemplateReconciler) StatusSetResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
+func (r *DeploymentTemplateReconciler) StatusProvisionResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
 	newCondition := metav1.Condition{
 		Status:  metav1.ConditionUnknown,
 		Type:    conditionType,

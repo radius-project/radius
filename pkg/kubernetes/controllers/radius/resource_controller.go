@@ -123,7 +123,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	res, err := r.Apply(ctx, req, log, unst, resource)
+	res, err := r.ReconcileCore(ctx, req, log, unst, resource)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -131,14 +131,14 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return res, err
 }
 
-func (r *ResourceReconciler) Apply(ctx context.Context, req ctrl.Request, log logr.Logger, unst *unstructured.Unstructured, resource *radiusv1alpha3.Resource) (ctrl.Result, error) {
+func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request, log logr.Logger, unst *unstructured.Unstructured, resource *radiusv1alpha3.Resource) (ctrl.Result, error) {
 	applicationName := resource.Annotations[kubernetes.LabelRadiusApplication]
 	resourceName := resource.Annotations[kubernetes.LabelRadiusResource]
 
 	if resource.Generation != resource.Status.ObservedGeneration {
 		// Resource is modified, update status to say provisioning
 		// as the old status isn't valid.
-		r.StatusProvisioning(ctx, resource, unst, resource.Kind+"-"+resource.Name)
+		r.StatusProvisioned(ctx, resource, unst, resource.Kind+"-"+resource.Name)
 	}
 
 	log = log.WithValues(
@@ -567,16 +567,16 @@ func extractApplicationKey(obj client.Object) []string {
 	return []string{obj.GetAnnotations()[kubernetes.LabelRadiusApplication]}
 }
 
-func (r *ResourceReconciler) StatusProvisioning(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
-	r.Log.Info("updating status to processing")
+func (r *ResourceReconciler) StatusProvisioned(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
+	r.Log.Info("updating status to provisioned")
 
 	resource.Status.Conditions = []metav1.Condition{}
 	resource.Status.ObservedGeneration = resource.Generation
 	newCondition := metav1.Condition{
 		Status:             metav1.ConditionUnknown,
 		Type:               conditionType,
-		Reason:             "Provisioning",
-		Message:            "provisioning resource",
+		Reason:             "Provisioned",
+		Message:            "provisioned resource",
 		ObservedGeneration: resource.Generation,
 	}
 
@@ -588,8 +588,8 @@ func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiu
 	newCondition := metav1.Condition{
 		Status:  metav1.ConditionTrue,
 		Type:    conditionType,
-		Reason:  "Provisioning",
-		Message: "provisioning resource",
+		Reason:  "Deployed",
+		Message: "deployed resource",
 	}
 
 	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)
