@@ -351,6 +351,14 @@
                                 },
                                 "podIdentityProfile": {
                                     "enabled": true
+                                },
+                                "addonProfiles": {
+                                    "azureKeyvaultSecretsProvider": {
+                                        "enabled": true,
+                                        "config": {
+                                            "enableSecretRotation": "true"
+                                        }
+                                    }
                                 }
                             },
                             "tags": "[parameters('resourceTags')]",
