@@ -45,12 +45,6 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 
 	// Get dependencies
 	managedIdentityProperties := map[string]string{}
-	for _, resource := range options.Dependencies {
-		if resource.LocalID == outputresource.LocalIDUserAssignedManagedIdentity {
-			managedIdentityProperties = resource.Properties
-		}
-	}
-
 	if properties, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]; ok {
 		managedIdentityProperties = properties
 	}

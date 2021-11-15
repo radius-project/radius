@@ -17,8 +17,6 @@ type PutOptions struct {
 	ResourceName    string
 	Resource        *outputresource.OutputResource
 
-	Dependencies []Dependency
-
 	// ExistingOutputResource is the current state of the output resource persisted in database
 	ExistingOutputResource *db.OutputResource
 
