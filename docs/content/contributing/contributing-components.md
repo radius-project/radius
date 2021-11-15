@@ -14,7 +14,7 @@ This page is still under construction. Please come back soon once the Radius tea
 
 All components need to have a page under [Components]({{< ref components-model >}}). Each page needs to have:
 
-- Overview section which describes what the component do and why people would use it.
+- Overview section which describes what the component does and why people would use it.
 - Configuration section which describes every value which you could provide when defining a component, along with example values for each field.
 - Bindings section which describes every bindings the component can provide.
 - Traits section which describes every trait that component can have.
