@@ -32,6 +32,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+const (
+	ConditionReady = "Ready"
+)
+
 // DeploymentTemplateReconciler reconciles a Arm object
 type DeploymentTemplateReconciler struct {
 	client.Client
@@ -54,18 +58,13 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	// Used to find the condition associated with the deployment template
-	// Type is a unique identifier for the condition. For example finding the
-	// condition is based of Type: https://github.com/kubernetes/apimachinery/blob/master/pkg/api/meta/conditions.go#L74
-	deploymentTemplateConditionType := arm.GroupVersionKind().Kind + "-" + arm.Name
-
 	// Update observed generation
 	// We know for sure that the resource is currently being provisioned.
 	if arm.Generation != arm.Status.ObservedGeneration {
-		r.StatusProvisioning(ctx, arm, deploymentTemplateConditionType)
+		r.StatusProvisioned(ctx, arm, ConditionReady)
 	}
 
-	templateCondition := meta.FindStatusCondition(arm.Status.Conditions, deploymentTemplateConditionType)
+	templateCondition := meta.FindStatusCondition(arm.Status.Conditions, ConditionReady)
 
 	if len(arm.Status.Conditions) > 0 && templateCondition != nil && templateCondition.Status == metav1.ConditionTrue {
 		// Template has already deployed, don't do anything
@@ -73,7 +72,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	result, err := r.ApplyState(ctx, req, arm, deploymentTemplateConditionType)
+	result, err := r.ApplyState(ctx, req, arm)
 
 	// Always try to update status even if there was a failure.
 	_ = r.Status().Update(ctx, arm)
@@ -86,7 +85,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 // Parses the arm template and deploys individual resources to the cluster
 // TODO: Can we avoid parsing resources multiple times by caching?
-func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.Request, arm *bicepv1alpha3.DeploymentTemplate, deploymentTemplateConditionType string) (ctrl.Result, error) {
+func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.Request, arm *bicepv1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	template, err := armtemplate.Parse(string(arm.Spec.Content.Raw))
 	if err != nil {
 		return ctrl.Result{}, err
@@ -148,8 +147,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			return ctrl.Result{}, err
 		}
 
-		conditionType := k8sInfo.GroupVersionKind().Kind + "-" + k8sInfo.GetName()
-
 		appName, _, resourceType := resource.GetRadiusResourceParts()
 
 		// If this is not an extension resource, which lives outside an application,
@@ -172,7 +169,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			}
 		}
 
-		r.StatusProvisionResource(ctx, arm, conditionType)
+		r.StatusProvisionedResource(ctx, arm, k8sInfo)
 
 		// Always patch the resource, even if it already exists.
 		err = r.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
@@ -208,17 +205,18 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 
 		deployed[resource.ID] = resource.Body
 
+		resourceStatus := meta.FindStatusCondition(k8sResource.Status.Conditions, ConditionReady)
 		// check bounds and stuff
-		if len(k8sResource.Status.Conditions) == 0 || k8sResource.Status.Conditions[0].Status != metav1.ConditionTrue {
+		if len(k8sResource.Status.Conditions) == 0 || (resourceStatus != nil && resourceStatus.Status != metav1.ConditionTrue) {
 			// Need to wait for the resource to be ready
 			return ctrl.Result{}, nil
 		}
 
-		r.StatusDeployedResource(ctx, arm, conditionType)
+		r.StatusDeployedResource(ctx, arm, k8sInfo)
 	}
 
 	// All resources have been deployed, update status to be Deployed
-	r.StatusDeployedResource(ctx, arm, deploymentTemplateConditionType)
+	r.StatusDeployed(ctx, arm, ConditionReady)
 
 	return ctrl.Result{}, nil
 }
@@ -291,15 +289,15 @@ func (r *DeploymentTemplateReconciler) InvokeCustomAction(ctx context.Context, n
 	return values, nil
 }
 
-func (r *DeploymentTemplateReconciler) StatusProvisioning(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, deploymentTemplateConditionType string) {
-	r.Log.Info("updating status to processing deployment template")
+func (r *DeploymentTemplateReconciler) StatusProvisioned(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
+	r.Log.Info("updating status to provisioned deployment template")
 	arm.Status.Conditions = []metav1.Condition{}
 	arm.Status.ObservedGeneration = arm.Generation
 
 	newCondition := metav1.Condition{
 		Status:             metav1.ConditionUnknown,
 		Reason:             "Provisioning",
-		Type:               deploymentTemplateConditionType,
+		Type:               conditionType,
 		Message:            "provisioning resources",
 		ObservedGeneration: arm.Generation,
 	}
@@ -307,27 +305,60 @@ func (r *DeploymentTemplateReconciler) StatusProvisioning(ctx context.Context, a
 	meta.SetStatusCondition(&arm.Status.Conditions, newCondition)
 }
 
-func (r *DeploymentTemplateReconciler) StatusProvisionResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
+func (r *DeploymentTemplateReconciler) StatusDeployed(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
+	r.Log.Info("updating status to deployed deployment template")
 	newCondition := metav1.Condition{
-		Status:  metav1.ConditionUnknown,
-		Type:    conditionType,
-		Reason:  "Provisioning",
-		Message: "provisioning resource",
+		Status:             metav1.ConditionTrue,
+		Type:               conditionType,
+		Reason:             "Deployed",
+		Message:            "deployed resource",
+		ObservedGeneration: arm.Generation,
 	}
 
 	meta.SetStatusCondition(&arm.Status.Conditions, newCondition)
 }
 
-func (r *DeploymentTemplateReconciler) StatusDeployedResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
+func (r *DeploymentTemplateReconciler) StatusProvisionedResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {
+	newResourceStatus := bicepv1alpha3.ResourceStatus{
+		Status: metav1.ConditionUnknown,
+		Name:   unst.GetName(),
+		Kind:   unst.GetKind(),
+	}
+	r.setResourceStatus(&arm.Status.ResourceStatuses, newResourceStatus)
+}
 
-	newCondition := metav1.Condition{
-		Status:  metav1.ConditionTrue,
-		Type:    conditionType,
-		Reason:  "Deployed",
-		Message: "deployed resource",
+func (r *DeploymentTemplateReconciler) StatusDeployedResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {
+	newResourceStatus := bicepv1alpha3.ResourceStatus{
+		Status: metav1.ConditionTrue,
+		Name:   unst.GetName(),
+		Kind:   unst.GetKind(),
+	}
+	r.setResourceStatus(&arm.Status.ResourceStatuses, newResourceStatus)
+}
+
+func (r *DeploymentTemplateReconciler) setResourceStatus(resourceStatuses *[]bicepv1alpha3.ResourceStatus, status bicepv1alpha3.ResourceStatus) {
+	if resourceStatuses == nil {
+		return
+	}
+	existingStatus := r.findResourceStatus(*resourceStatuses, status)
+	if existingStatus == nil {
+		*resourceStatuses = append(*resourceStatuses, status)
+		return
 	}
 
-	meta.SetStatusCondition(&arm.Status.Conditions, newCondition)
+	if existingStatus.Status != status.Status {
+		existingStatus.Status = status.Status
+	}
+}
+
+func (r *DeploymentTemplateReconciler) findResourceStatus(resourceStatuses []bicepv1alpha3.ResourceStatus, status bicepv1alpha3.ResourceStatus) *bicepv1alpha3.ResourceStatus {
+	for i := range resourceStatuses {
+		if resourceStatuses[i].Name == status.Name && resourceStatuses[i].Kind == status.Kind {
+			return &resourceStatuses[i]
+		}
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

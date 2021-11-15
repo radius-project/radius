@@ -41,6 +41,7 @@ import (
 
 const (
 	AnnotationLocalID = "radius.dev/local-id"
+	ConditionReady    = "Ready"
 )
 
 // ResourceReconciler reconciles a Resource object
@@ -138,7 +139,7 @@ func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request
 	if resource.Generation != resource.Status.ObservedGeneration {
 		// Resource is modified, update status to say provisioning
 		// as the old status isn't valid.
-		r.StatusProvisioned(ctx, resource, unst, resource.Kind+"-"+resource.Name)
+		r.StatusProvisioned(ctx, resource, unst, ConditionReady)
 	}
 
 	log = log.WithValues(
@@ -172,7 +173,7 @@ func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request
 	}
 
 	if rendered {
-		r.StatusDeployed(ctx, resource, unst, resource.Kind+"-"+resource.Name)
+		r.StatusDeployed(ctx, resource, unst, "Ready")
 		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
 	}
 

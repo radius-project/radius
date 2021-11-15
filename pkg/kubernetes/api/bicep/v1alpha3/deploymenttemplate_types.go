@@ -31,6 +31,30 @@ type DeploymentTemplateStatus struct {
 	// that was captured and completed by the reconciler
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// ResourceStatuses holds the status of each deployed resource in the template.
+	// +optional
+	ResourceStatuses []ResourceStatus `json:"resourceStatuses,omitempty"`
+}
+
+type ResourceStatus struct {
+	// status of the condition, one of True, False, Unknown.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=True;False;Unknown
+	Status metav1.ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status"`
+
+	// The name of the resource.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=True;False;Unknown
+	Name string `json:"name"`
+
+	// The kind of the resource.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=True;False;Unknown
+	Kind string `json:"kind"`
 }
 
 //+kubebuilder:object:root=true

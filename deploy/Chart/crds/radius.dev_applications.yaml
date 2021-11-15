@@ -123,6 +123,8 @@ spec:
               observedGeneration:
                 format: int64
                 type: integer
+              phase:
+                type: string
               resources:
                 additionalProperties:
                   description: 'ObjectReference contains enough information to let

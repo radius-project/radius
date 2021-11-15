@@ -50,6 +50,10 @@ spec:
             description: DeploymentTemplateStatus defines the observed state of Arm
             properties:
               conditions:
+                description: Conditions represents the latest available observations
+                  of an object's current state. The first entry in the conditions
+                  represents this object's current state. Afterwards, the rest of
+                  the conditions represent the states of all deployed resources.
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -123,6 +127,38 @@ spec:
                   was captured and completed by the reconciler
                 format: int64
                 type: integer
+              resourceStatuses:
+                description: ResourceStatuses holds the status of each deployed resource
+                  in the template.
+                items:
+                  properties:
+                    kind:
+                      description: The kind of the resource.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    name:
+                      description: The name of the resource.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                  required:
+                  - kind
+                  - name
+                  - status
+                  type: object
+                type: array
             type: object
         type: object
     served: true
