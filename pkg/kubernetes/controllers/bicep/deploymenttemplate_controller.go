@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -45,6 +46,7 @@ type DeploymentTemplateReconciler struct {
 	DynamicClient dynamic.Interface
 	Log           logr.Logger
 	Scheme        *runtime.Scheme
+	Recorder      record.EventRecorder
 }
 
 //+kubebuilder:rbac:groups=bicep.dev,resources=deploymenttemplates,verbs=get;list;watch;create;update;patch;delete
@@ -178,6 +180,8 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			}
 		}
 
+		r.Recorder.Eventf(k8sInfo, "Normal", "Provisioned", "Resource %s has been provisioned", k8sInfo.GetName())
+
 		r.StatusProvisionedResource(ctx, arm, k8sInfo)
 
 		// Always patch the resource, even if it already exists.
@@ -221,10 +225,12 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			return ctrl.Result{}, nil
 		}
 
+		r.Recorder.Eventf(k8sInfo, "Normal", "Deployed", "Resource %s has been deployed", k8sInfo.GetName())
 		r.StatusDeployedResource(ctx, arm, k8sInfo)
 	}
 
 	// All resources have been deployed, update status to be Deployed
+	r.Recorder.Eventf(arm, "Normal", "Deployed", "Deployment Template %s has been deployed", arm.GetName())
 	r.StatusDeployed(ctx, arm, ConditionReady)
 
 	return ctrl.Result{}, nil
@@ -302,16 +308,18 @@ func (r *DeploymentTemplateReconciler) StatusProvisioned(ctx context.Context, ar
 	r.Log.Info("updating status to provisioned deployment template")
 	arm.Status.Conditions = []metav1.Condition{}
 	arm.Status.ObservedGeneration = arm.Generation
+	arm.Status.Phrase = "Provisioned"
 
 	newCondition := metav1.Condition{
 		Status:             metav1.ConditionUnknown,
-		Reason:             "Provisioning",
+		Reason:             "Provisioned",
 		Type:               conditionType,
-		Message:            "provisioning resources",
+		Message:            "provisioning deployment template",
 		ObservedGeneration: arm.Generation,
 	}
 
 	meta.SetStatusCondition(&arm.Status.Conditions, newCondition)
+
 }
 
 func (r *DeploymentTemplateReconciler) StatusDeployed(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
@@ -320,11 +328,12 @@ func (r *DeploymentTemplateReconciler) StatusDeployed(ctx context.Context, arm *
 		Status:             metav1.ConditionTrue,
 		Type:               conditionType,
 		Reason:             "Deployed",
-		Message:            "deployed resource",
+		Message:            "deployed deployment template",
 		ObservedGeneration: arm.Generation,
 	}
 
 	meta.SetStatusCondition(&arm.Status.Conditions, newCondition)
+	arm.Status.Phrase = "Deployed"
 }
 
 func (r *DeploymentTemplateReconciler) StatusProvisionedResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {

@@ -105,6 +105,7 @@ func NewRadiusController(options *Options) *RadiusController {
 		Scheme:        options.Scheme,
 		RESTMapper:    options.RestMapper,
 		Log:           options.Log.WithName("controllers").WithName("DeploymentTemplate"),
+		Recorder:      options.Recorder,
 	}
 
 	return &RadiusController{

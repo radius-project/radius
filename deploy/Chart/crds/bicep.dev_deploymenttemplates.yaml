@@ -19,7 +19,11 @@ spec:
     singular: deploymenttemplate
   scope: Namespaced
   versions:
-  - name: v1alpha3
+  - additionalPrinterColumns:
+    - jsonPath: .status.phrase
+      name: Status
+      type: string
+    name: v1alpha3
     schema:
       openAPIV3Schema:
         description: DeploymentTemplate is the Schema for the DeploymentTemplate API
@@ -51,9 +55,7 @@ spec:
             properties:
               conditions:
                 description: Conditions represents the latest available observations
-                  of an object's current state. The first entry in the conditions
-                  represents this object's current state. Afterwards, the rest of
-                  the conditions represent the states of all deployed resources.
+                  of an object's current state.
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -127,6 +129,9 @@ spec:
                   was captured and completed by the reconciler
                 format: int64
                 type: integer
+              phrase:
+                description: The readable status "phrase" of the deployment template.
+                type: string
               resourceStatuses:
                 description: ResourceStatuses holds the status of each deployed resource
                   in the template.

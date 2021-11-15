@@ -174,7 +174,7 @@ func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request
 
 	if rendered {
 		r.StatusDeployed(ctx, resource, unst, "Ready")
-		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
+		r.Recorder.Event(resource, "N	ormal", "Rendered", "Resource has been processed successfully")
 	}
 
 	err = r.ApplyState(ctx, log, req, application, resource, unst, actual, *desired)
@@ -573,6 +573,7 @@ func (r *ResourceReconciler) StatusProvisioned(ctx context.Context, resource *ra
 
 	resource.Status.Conditions = []metav1.Condition{}
 	resource.Status.ObservedGeneration = resource.Generation
+	resource.Status.Phrase = "Provisioned"
 	newCondition := metav1.Condition{
 		Status:             metav1.ConditionUnknown,
 		Type:               conditionType,
@@ -586,11 +587,14 @@ func (r *ResourceReconciler) StatusProvisioned(ctx context.Context, resource *ra
 
 func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
 	r.Log.Info("updating status to deployed")
+	resource.Status.Phrase = "Deployed"
+
 	newCondition := metav1.Condition{
-		Status:  metav1.ConditionTrue,
-		Type:    conditionType,
-		Reason:  "Deployed",
-		Message: "deployed resource",
+		Status:             metav1.ConditionTrue,
+		Type:               conditionType,
+		Reason:             "Deployed",
+		Message:            "deployed resource",
+		ObservedGeneration: resource.Generation,
 	}
 
 	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)

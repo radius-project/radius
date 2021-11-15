@@ -63,6 +63,8 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               conditions:
+                description: Conditions represents the latest available observations
+                  of an object's current state.
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -132,9 +134,12 @@ spec:
                   type: object
                 type: array
               observedGeneration:
+                description: ObservedGeneration captures the last generation that
+                  was captured and completed by the reconciler
                 format: int64
                 type: integer
-              phase:
+              phrase:
+                description: The readable status "phrase" of the resource.
                 type: string
               resources:
                 additionalProperties:
