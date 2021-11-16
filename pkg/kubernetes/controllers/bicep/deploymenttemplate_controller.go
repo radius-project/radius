@@ -314,7 +314,7 @@ func (r *DeploymentTemplateReconciler) StatusProvisioned(ctx context.Context, ar
 		Status:             metav1.ConditionUnknown,
 		Reason:             "Provisioned",
 		Type:               conditionType,
-		Message:            "provisioning deployment template",
+		Message:            "provisioned deployment template",
 		ObservedGeneration: arm.Generation,
 	}
 
