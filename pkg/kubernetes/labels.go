@@ -14,14 +14,14 @@ import (
 const (
 	LabelRadiusApplication  = "radius.dev/application"
 	LabelRadiusResource     = "radius.dev/resource"
+	LabelRadiusDeployment   = "radius.dev/deployment"
 	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
 	LabelRadiusRevision     = "radius.dev/revision"
 	LabelRadiusResourceType = "radius.dev/resource-type"
-
-	LabelPartOf            = "app.kubernetes.io/part-of"
-	LabelName              = "app.kubernetes.io/name"
-	LabelManagedBy         = "app.kubernetes.io/managed-by"
-	LabelManagedByRadiusRP = "radius-rp"
+	LabelPartOf             = "app.kubernetes.io/part-of"
+	LabelName               = "app.kubernetes.io/name"
+	LabelManagedBy          = "app.kubernetes.io/managed-by"
+	LabelManagedByRadiusRP  = "radius-rp"
 
 	FieldManager = "radius-rp"
 )

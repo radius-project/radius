@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
@@ -34,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
@@ -41,6 +41,7 @@ import (
 
 const (
 	AnnotationLocalID = "radius.dev/local-id"
+	ConditionReady    = "Ready"
 )
 
 // ResourceReconciler reconciles a Resource object
@@ -123,8 +124,23 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
+	res, err := r.ReconcileCore(ctx, req, log, unst, resource)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return res, err
+}
+
+func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request, log logr.Logger, unst *unstructured.Unstructured, resource *radiusv1alpha3.Resource) (ctrl.Result, error) {
 	applicationName := resource.Annotations[kubernetes.LabelRadiusApplication]
 	resourceName := resource.Annotations[kubernetes.LabelRadiusResource]
+
+	if resource.Generation != resource.Status.ObservedGeneration {
+		// Resource is modified, update status to say provisioning
+		// as the old status isn't valid.
+		r.StatusProvisioned(ctx, resource, unst, ConditionReady)
+	}
 
 	log = log.WithValues(
 		"application", applicationName,
@@ -132,7 +148,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	application := &radiusv1alpha3.Application{}
 	key := client.ObjectKey{Namespace: resource.Namespace, Name: applicationName}
-	err = r.Get(ctx, key, application)
+	err := r.Get(ctx, key, application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Application is not found
 		r.Recorder.Eventf(resource, "Normal", "Waiting", "Application %s does not exist", applicationName)
@@ -150,16 +166,15 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	if rendered {
-		resource.Status.Phrase = "Ready"
-	} else {
-		resource.Status.Phrase = "Waiting"
-	}
-
 	// Now we need to rationalize the set of logical resources (desired state against the actual state)
 	actual, err := r.FetchKubernetesResources(ctx, log, resource)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if rendered {
+		r.StatusDeployed(ctx, resource, unst, ConditionReady)
+		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
 	}
 
 	err = r.ApplyState(ctx, log, req, application, resource, unst, actual, *desired)
@@ -167,12 +182,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	if rendered {
-		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
-		return ctrl.Result{}, nil
-	}
-
-	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log logr.Logger, resource *radiusv1alpha3.Resource) ([]client.Object, error) {
@@ -400,7 +410,6 @@ func (r *ResourceReconciler) ApplyState(
 	u := &unstructured.Unstructured{Object: unst}
 
 	_, err = r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).UpdateStatus(ctx, u, v1.UpdateOptions{})
-
 	if err != nil {
 		log.Error(err, "failed to update resource status for resource")
 		return err
@@ -556,4 +565,36 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func extractApplicationKey(obj client.Object) []string {
 	return []string{obj.GetAnnotations()[kubernetes.LabelRadiusApplication]}
+}
+
+func (r *ResourceReconciler) StatusProvisioned(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
+	r.Log.Info("updating status to provisioned")
+
+	resource.Status.Conditions = []metav1.Condition{}
+	resource.Status.ObservedGeneration = resource.Generation
+	resource.Status.Phrase = "Provisioned"
+	newCondition := metav1.Condition{
+		Status:             metav1.ConditionUnknown,
+		Type:               conditionType,
+		Reason:             "Provisioned",
+		Message:            "provisioned resource",
+		ObservedGeneration: resource.Generation,
+	}
+
+	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)
+}
+
+func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
+	r.Log.Info("updating status to deployed")
+	resource.Status.Phrase = "Deployed"
+
+	newCondition := metav1.Condition{
+		Status:             metav1.ConditionTrue,
+		Type:               conditionType,
+		Reason:             "Deployed",
+		Message:            "deployed resource",
+		ObservedGeneration: resource.Generation,
+	}
+
+	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)
 }

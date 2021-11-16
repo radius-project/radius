@@ -105,6 +105,7 @@ func NewRadiusController(options *Options) *RadiusController {
 		Scheme:        options.Scheme,
 		RESTMapper:    options.RestMapper,
 		Log:           options.Log.WithName("controllers").WithName("DeploymentTemplate"),
+		Recorder:      options.Recorder,
 	}
 
 	return &RadiusController{
@@ -164,7 +165,7 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	}
 
-	err = c.template.SetupWithManager(mgr)
+	err = c.template.SetupWithManager(mgr, c.options.ResourceTypes)
 	if err != nil {
 		return err
 	}

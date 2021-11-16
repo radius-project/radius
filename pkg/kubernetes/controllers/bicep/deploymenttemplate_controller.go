@@ -10,19 +10,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/go-logr/logr"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
@@ -31,7 +31,12 @@ import (
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+const (
+	ConditionReady = "Ready"
 )
 
 // DeploymentTemplateReconciler reconciles a Arm object
@@ -41,6 +46,7 @@ type DeploymentTemplateReconciler struct {
 	DynamicClient dynamic.Interface
 	Log           logr.Logger
 	Scheme        *runtime.Scheme
+	Recorder      record.EventRecorder
 }
 
 //+kubebuilder:rbac:groups=bicep.dev,resources=deploymenttemplates,verbs=get;list;watch;create;update;patch;delete
@@ -56,10 +62,23 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	arm.Status.Operations = nil
+	// Update observed generation
+	// We know for sure that the resource is currently being provisioned.
+	if arm.Generation != arm.Status.ObservedGeneration {
+		r.StatusProvisioned(ctx, arm, ConditionReady)
+	}
+
+	templateCondition := meta.FindStatusCondition(arm.Status.Conditions, ConditionReady)
+
+	if len(arm.Status.Conditions) > 0 && templateCondition != nil && templateCondition.Status == metav1.ConditionTrue {
+		// Template has already deployed, don't do anything
+		r.Log.Info("template is already deployed")
+		return ctrl.Result{}, nil
+	}
 
 	result, err := r.ApplyState(ctx, req, arm)
 
+	// Always try to update status even if there was a failure.
 	_ = r.Status().Update(ctx, arm)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -119,7 +138,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		evaluator.Variables[name] = value
 	}
 
-	for i, resource := range resources {
+	for _, resource := range resources {
 		body, err := evaluator.VisitMap(resource.Body)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -132,51 +151,54 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			return ctrl.Result{}, err
 		}
 
-		// TODO track progress of operations (count of deployed resources) in Status.
-		arm.Status.Operations = append(arm.Status.Operations, bicepv1alpha3.DeploymentTemplateOperation{
-			Name:      k8sInfo.GetName(),
-			Namespace: k8sInfo.GetNamespace(),
-		})
+		// Set name of deployment template
+		annotations := k8sInfo.GetAnnotations()
+		if annotations != nil {
+			annotations[kubernetes.LabelRadiusDeployment] = arm.Name
+		}
+		k8sInfo.SetAnnotations(annotations)
 
-		err = r.Client.Get(ctx, client.ObjectKey{
+		appName, _, resourceType := resource.GetRadiusResourceParts()
+
+		// If this is not an extension resource, which lives outside an application,
+		// make sure the application that contains the resource has been created
+		if resourceType != "Application" && resource.Provider == nil {
+			application := &radiusv1alpha3.Application{}
+
+			err = r.Get(ctx, client.ObjectKey{
+				Namespace: k8sInfo.GetNamespace(),
+				Name:      appName,
+			}, application)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			err := controllerutil.SetControllerReference(application, k8sInfo, r.Scheme)
+			_, ok := err.(*controllerutil.AlreadyOwnedError) // Ignore already owned error as if the resource is already created, it will be owned
+			if err != nil && !ok {
+				return ctrl.Result{}, err
+			}
+		}
+
+		r.Recorder.Eventf(k8sInfo, "Normal", "Provisioned", "Resource %s has been provisioned", k8sInfo.GetName())
+
+		r.StatusProvisionedResource(ctx, arm, k8sInfo)
+
+		// Always patch the resource, even if it already exists.
+		err = r.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = r.Get(ctx, client.ObjectKey{
 			Namespace: k8sInfo.GetNamespace(),
 			Name:      k8sInfo.GetName(),
 		}, k8sInfo)
 
-		if err != nil && client.IgnoreNotFound(err) != nil {
+		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if apierrors.IsNotFound(err) {
-			appName, _, resourceType := resource.GetRadiusResourceParts()
-
-			// If this is not an extension resource, which lives outside an application,
-			// make sure the application that contains the resource has been created
-			if resourceType != "Application" && resource.Provider == nil {
-				application := &radiusv1alpha3.Application{}
-
-				err = r.Client.Get(ctx, client.ObjectKey{
-					Namespace: k8sInfo.GetNamespace(),
-					Name:      appName,
-				}, application)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-
-				err := controllerutil.SetControllerReference(application, k8sInfo, r.Scheme)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-			}
-
-			err = r.Client.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
-		}
-
-		arm.Status.Operations[i].Provisioned = true
 		// TODO could remove this dependecy on radiusv1alpha3
 		k8sResource := &radiusv1alpha3.Resource{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, k8sResource)
@@ -196,11 +218,22 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 
 		deployed[resource.ID] = resource.Body
 
-		if k8sResource.Status.Phrase != "Ready" {
-			return ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+		resourceStatus := meta.FindStatusCondition(k8sResource.Status.Conditions, ConditionReady)
+		// check bounds and stuff
+		if len(k8sResource.Status.Conditions) == 0 || (resourceStatus != nil && resourceStatus.Status != metav1.ConditionTrue) {
+			// Need to wait for the resource to be ready
+			return ctrl.Result{}, nil
 		}
+
+		r.Recorder.Eventf(k8sInfo, "Normal", "Deployed", "Resource %s has been deployed", k8sInfo.GetName())
+		r.StatusDeployedResource(ctx, arm, k8sInfo)
 	}
-	return reconcile.Result{}, nil
+
+	// All resources have been deployed, update status to be Deployed
+	r.Recorder.Eventf(arm, "Normal", "Deployed", "Deployment Template %s has been deployed", arm.GetName())
+	r.StatusDeployed(ctx, arm, ConditionReady)
+
+	return ctrl.Result{}, nil
 }
 
 func (r *DeploymentTemplateReconciler) InvokeCustomAction(ctx context.Context, namespace string, id string, apiVersion string, action string, payload interface{}) (interface{}, error) {
@@ -271,9 +304,115 @@ func (r *DeploymentTemplateReconciler) InvokeCustomAction(ctx context.Context, n
 	return values, nil
 }
 
+func (r *DeploymentTemplateReconciler) StatusProvisioned(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
+	r.Log.Info("updating status to provisioned deployment template")
+	arm.Status.Conditions = []metav1.Condition{}
+	arm.Status.ObservedGeneration = arm.Generation
+	arm.Status.Phrase = "Provisioned"
+
+	newCondition := metav1.Condition{
+		Status:             metav1.ConditionUnknown,
+		Reason:             "Provisioned",
+		Type:               conditionType,
+		Message:            "provisioned deployment template",
+		ObservedGeneration: arm.Generation,
+	}
+
+	meta.SetStatusCondition(&arm.Status.Conditions, newCondition)
+
+}
+
+func (r *DeploymentTemplateReconciler) StatusDeployed(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, conditionType string) {
+	r.Log.Info("updating status to deployed deployment template")
+	newCondition := metav1.Condition{
+		Status:             metav1.ConditionTrue,
+		Type:               conditionType,
+		Reason:             "Deployed",
+		Message:            "deployed deployment template",
+		ObservedGeneration: arm.Generation,
+	}
+
+	meta.SetStatusCondition(&arm.Status.Conditions, newCondition)
+	arm.Status.Phrase = "Deployed"
+}
+
+func (r *DeploymentTemplateReconciler) StatusProvisionedResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {
+	newResourceStatus := bicepv1alpha3.ResourceStatus{
+		Status: metav1.ConditionUnknown,
+		Name:   unst.GetName(),
+		Kind:   unst.GetKind(),
+	}
+	r.setResourceStatus(&arm.Status.ResourceStatuses, newResourceStatus)
+}
+
+func (r *DeploymentTemplateReconciler) StatusDeployedResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {
+	newResourceStatus := bicepv1alpha3.ResourceStatus{
+		Status: metav1.ConditionTrue,
+		Name:   unst.GetName(),
+		Kind:   unst.GetKind(),
+	}
+	r.setResourceStatus(&arm.Status.ResourceStatuses, newResourceStatus)
+}
+
+func (r *DeploymentTemplateReconciler) setResourceStatus(resourceStatuses *[]bicepv1alpha3.ResourceStatus, status bicepv1alpha3.ResourceStatus) {
+	if resourceStatuses == nil {
+		return
+	}
+	existingStatus := r.findResourceStatus(*resourceStatuses, status)
+	if existingStatus == nil {
+		*resourceStatuses = append(*resourceStatuses, status)
+		return
+	}
+
+	if existingStatus.Status != status.Status {
+		existingStatus.Status = status.Status
+	}
+}
+
+func (r *DeploymentTemplateReconciler) findResourceStatus(resourceStatuses []bicepv1alpha3.ResourceStatus, status bicepv1alpha3.ResourceStatus) *bicepv1alpha3.ResourceStatus {
+	for i := range resourceStatuses {
+		if resourceStatuses[i].Name == status.Name && resourceStatuses[i].Kind == status.Kind {
+			return &resourceStatuses[i]
+		}
+	}
+
+	return nil
+}
+
 // SetupWithManager sets up the controller with the Manager.
-func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&bicepv1alpha3.DeploymentTemplate{}).
-		Complete(r)
+func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager, objs []struct {
+	client.Object
+	client.ObjectList
+}) error {
+	// Watch for the application changes on top of other resources
+	appType := struct {
+		client.Object
+		client.ObjectList
+	}{
+		&radiusv1alpha3.Application{},
+		&radiusv1alpha3.ApplicationList{},
+	}
+
+	objs = append(objs, appType)
+
+	c := ctrl.NewControllerManagedBy(mgr).
+		For(&bicepv1alpha3.DeploymentTemplate{})
+	for _, obj := range objs {
+		resourceSource := &source.Kind{Type: obj.Object}
+		handler := handler.EnqueueRequestsFromMapFunc(func(clientObj client.Object) []ctrl.Request {
+			annotations := clientObj.GetAnnotations()
+			template := annotations[kubernetes.LabelRadiusDeployment]
+			if template == "" {
+				return nil
+			}
+
+			return []ctrl.Request{
+				{NamespacedName: types.NamespacedName{Namespace: clientObj.GetNamespace(), Name: template}},
+			}
+		})
+
+		c = c.Watches(resourceSource, handler)
+	}
+
+	return c.Complete(r)
 }

@@ -32,9 +32,9 @@ import (
 )
 
 const (
-	IntervalForDeploymentCreation = 10 * time.Second
-	IntervalForPodShutdown        = 10 * time.Second
-	IntervalForResourceCreation   = 5 * time.Second
+	IntervalForDeploymentCreation = 3 * time.Second
+	IntervalForPodShutdown        = 3 * time.Second
+	IntervalForResourceCreation   = 3 * time.Second
 
 	// We want to make sure to produce some output any time we're in a watch
 	// otherwise it's hard to know if it got stuck.
