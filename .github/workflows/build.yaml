@@ -255,7 +255,7 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init kubernetes
+        dist/rad env init kubernetes 
         # Print config for sanity check
         cat ~/.rad/config.yaml
     - name: Deploy Controller

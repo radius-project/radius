@@ -29,9 +29,9 @@ func ApplyHAProxyHelmChart(version string) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	helmChart, err := radiusChart(version, helmConf, haproxyHelmRepo, haproxyReleaseName)
+	helmChart, err := helmChart(version, helmConf, haproxyHelmRepo, haproxyReleaseName)
 	if err != nil {
-		return fmt.Errorf("failed to get radius chart, err: %w, helm output: %s", err, helmOutput.String())
+		return fmt.Errorf("failed to get haproxy chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you

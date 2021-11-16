@@ -30,7 +30,7 @@ const (
 	helmDriverSecret      = "secret"
 )
 
-func ApplyRadiusHelmChart(version string) error {
+func ApplyRadiusHelmChart(chartPath string, version string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -39,9 +39,14 @@ func ApplyRadiusHelmChart(version string) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	radiusChart, err := radiusChart(version, helmConf, radiusHelmRepo, radiusReleaseName)
+	var helmChart *chart.Chart
+	if chartPath == "" {
+		helmChart, err = helmChartFromRepo(version, helmConf, radiusHelmRepo, radiusReleaseName)
+	} else {
+		helmChart, err = loader.Load(chartPath)
+	}
 	if err != nil {
-		return fmt.Errorf("failed to get radius chart, err: %w, helm output: %s", err, helmOutput.String())
+		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
@@ -60,7 +65,7 @@ func ApplyRadiusHelmChart(version string) error {
 	if err == driver.ErrReleaseNotFound {
 		output.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", RadiusSystemNamespace)
 
-		err = runRadiusHelmInstall(helmConf, radiusChart)
+		err = runRadiusHelmInstall(helmConf, helmChart)
 		if err != nil {
 			return fmt.Errorf("failed to run helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
@@ -71,11 +76,11 @@ func ApplyRadiusHelmChart(version string) error {
 	return err
 }
 
-func runRadiusHelmInstall(helmConf *helm.Configuration, radiusChart *chart.Chart) error {
+func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = radiusReleaseName
 	installClient.Namespace = RadiusSystemNamespace
-	_, err := installClient.Run(radiusChart, radiusChart.Values)
+	_, err := installClient.Run(helmChart, helmChart.Values)
 	return err
 }
 
@@ -117,7 +122,7 @@ func locateChartFile(dirPath string) (string, error) {
 	return filepath.Join(dirPath, files[0].Name()), nil
 }
 
-func radiusChart(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
+func helmChartFromRepo(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pull := helm.NewPull()
 	pull.RepoURL = repoUrl
 	pull.Settings = &cli.EnvSettings{}

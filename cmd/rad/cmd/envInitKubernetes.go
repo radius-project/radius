@@ -45,6 +45,11 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
+		chartPath, err := cmd.Flags().GetString("chart")
+		if err != nil {
+			return err
+		}
+
 		if interactive {
 			namespace, err = prompt.Text("Enter a namespace name:", prompt.EmptyValidator)
 			if err != nil {
@@ -103,7 +108,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = helm.ApplyRadiusHelmChart(version.NewVersionInfo().Channel)
+		err = helm.ApplyRadiusHelmChart(chartPath, version.NewVersionInfo().Channel)
 		if err != nil {
 			return err
 		}
@@ -141,7 +146,6 @@ var envInitKubernetesCmd = &cobra.Command{
 }
 
 func applyGatewayClass(ctx context.Context, runtimeClient sigclient.Client) error {
-	// TODO create gateway class
 	gateway := gatewayv1alpha1.GatewayClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GatewayClass",
@@ -163,4 +167,5 @@ func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
+	envInitKubernetesCmd.Flags().StringP("chart", "c", "", "Specify a file path to a helm chart to install radius from")
 }
