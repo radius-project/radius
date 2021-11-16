@@ -173,7 +173,7 @@ func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request
 	}
 
 	if rendered {
-		r.StatusDeployed(ctx, resource, unst, "Ready")
+		r.StatusDeployed(ctx, resource, unst, ConditionReady)
 		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
 	}
 
@@ -410,7 +410,6 @@ func (r *ResourceReconciler) ApplyState(
 	u := &unstructured.Unstructured{Object: unst}
 
 	_, err = r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).UpdateStatus(ctx, u, v1.UpdateOptions{})
-
 	if err != nil {
 		log.Error(err, "failed to update resource status for resource")
 		return err
