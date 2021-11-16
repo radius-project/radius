@@ -31,8 +31,10 @@ const (
 
 // Log levels
 const (
+	// More details on verbosity levels can be found here: https://github.com/go-logr/logr#how-do-i-choose-my-v-levels
 	Verbose               = 1
 	Normal                = 0
+	Debug                 = 10
 	DefaultLogLevel       = Normal
 	VerbosityLevelNormal  = "normal"
 	VerbosityLevelVerbose = "verbose"

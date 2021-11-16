@@ -35,8 +35,23 @@ func (m *MockRadrpDB) EXPECT() *MockRadrpDBMockRecorder {
 	return m.recorder
 }
 
+// AddAzureResourceConnection mocks base method.
+func (m *MockRadrpDB) AddAzureResourceConnection(arg0 context.Context, arg1 string, arg2 AzureResource) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddAzureResourceConnection", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AddAzureResourceConnection indicates an expected call of AddAzureResourceConnection.
+func (mr *MockRadrpDBMockRecorder) AddAzureResourceConnection(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddAzureResourceConnection", reflect.TypeOf((*MockRadrpDB)(nil).AddAzureResourceConnection), arg0, arg1, arg2)
+}
+
 // DeleteAzureResource mocks base method.
-func (m *MockRadrpDB) DeleteAzureResource(arg0 context.Context, arg1 azresources.ResourceID, arg2 string) error {
+func (m *MockRadrpDB) DeleteAzureResource(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteAzureResource", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -92,7 +107,7 @@ func (mr *MockRadrpDBMockRecorder) DeleteV3Resource(arg0, arg1 interface{}) *gom
 }
 
 // GetAzureResource mocks base method.
-func (m *MockRadrpDB) GetAzureResource(arg0 context.Context, arg1 azresources.ResourceID, arg2 string) (AzureResource, error) {
+func (m *MockRadrpDB) GetAzureResource(arg0 context.Context, arg1, arg2 string) (AzureResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAzureResource", arg0, arg1, arg2)
 	ret0, _ := ret[0].(AzureResource)
@@ -241,34 +256,34 @@ func (mr *MockRadrpDBMockRecorder) PatchOperationByID(arg0, arg1, arg2 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchOperationByID", reflect.TypeOf((*MockRadrpDB)(nil).PatchOperationByID), arg0, arg1, arg2)
 }
 
-// UpdateAzureResource mocks base method.
-func (m *MockRadrpDB) UpdateAzureResource(arg0 context.Context, arg1 azresources.ResourceID, arg2 AzureResource) (bool, error) {
+// RemoveAzureResourceConnection mocks base method.
+func (m *MockRadrpDB) RemoveAzureResourceConnection(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateAzureResource", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "RemoveAzureResourceConnection", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RemoveAzureResourceConnection indicates an expected call of RemoveAzureResourceConnection.
+func (mr *MockRadrpDBMockRecorder) RemoveAzureResourceConnection(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveAzureResourceConnection", reflect.TypeOf((*MockRadrpDB)(nil).RemoveAzureResourceConnection), arg0, arg1, arg2, arg3)
+}
+
+// UpdateAzureResource mocks base method.
+func (m *MockRadrpDB) UpdateAzureResource(arg0 context.Context, arg1 AzureResource) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateAzureResource", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateAzureResource indicates an expected call of UpdateAzureResource.
-func (mr *MockRadrpDBMockRecorder) UpdateAzureResource(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockRadrpDBMockRecorder) UpdateAzureResource(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAzureResource", reflect.TypeOf((*MockRadrpDB)(nil).UpdateAzureResource), arg0, arg1, arg2)
-}
-
-// UpdateAzureResourceConnections mocks base method.
-func (m *MockRadrpDB) UpdateAzureResourceConnections(arg0 context.Context, arg1 azresources.ResourceID, arg2 AzureResource) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateAzureResourceConnections", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpdateAzureResourceConnections indicates an expected call of UpdateAzureResourceConnections.
-func (mr *MockRadrpDBMockRecorder) UpdateAzureResourceConnections(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAzureResourceConnections", reflect.TypeOf((*MockRadrpDB)(nil).UpdateAzureResourceConnections), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAzureResource", reflect.TypeOf((*MockRadrpDB)(nil).UpdateAzureResource), arg0, arg1)
 }
 
 // UpdateV3ApplicationDefinition mocks base method.
