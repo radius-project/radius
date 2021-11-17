@@ -7,6 +7,21 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: 'radius.azurecr.io/storefront'
+        env: {
+          PATH_BASE: '/identity-api'
+        }
+        ports: {
+          http: {
+            containerPort: 80
+            provides: identityHttp.id
+          }
+        }
+      }
+      connections: {
+        sql: {
+          kind: 'microsoft.com/SQL'
+          source: sqlIdentity.id
+        }
       }
     }
   }
@@ -21,4 +36,5 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
   //STATESTORE
-}
+
+  

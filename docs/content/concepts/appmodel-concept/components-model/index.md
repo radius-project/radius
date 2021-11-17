@@ -2,21 +2,17 @@
 type: docs
 title: "Radius components"
 linkTitle: "Components"
-description: "Learn how to model your Application pieces with Radius Components"
+description: "Learn how to model your Application's pieces with Radius Components"
 weight: 200
 ---
 
-Each node on the diagram maps to one **Component**. Components describe the code, data, and infrastructure pieces of an application. Components only have meaning within the context of an **Application**.
+Components describe the code, data, and infrastructure pieces of an application.   
 
-{{% alert title="📄 Radius Components" color="primary" %}}
-The description of behavior and requirements for a single unit of software.
-{{% /alert %}}
-
-The Component is documentation for a piece of code, data, or infrastructure. It can capture all of the important behaviors and requirements needed for a runtime to host that software. An application can have both runnable components *(e.g. containers, web applications)* and non-runnable components *(e.g. databases, message queues)*.
+Simplistically, each node of an architecture diagram would map to one Component. Together, an Application's Components capture all of the important behaviors and requirements needed for a runtime to host that app. 
 
 ## Component definition
 
-When a Component describes your code, data, or infrastructure it needs to conceptually document the following details:
+In your app's Bicep file, the Component resource captures: 
 
 | Property | Description | Example |
 |----------|-------------|---------|
@@ -27,48 +23,30 @@ When a Component describes your code, data, or infrastructure it needs to concep
 | **Routes** | What capabilities do I provide for others? | Offer an HTTP endpoint on `/home`
 | **Traits** | What operational behaviors do I offer and interact with? | Need a Dapr sidecar (`dapr.io.App`)
 
-These details can generally be separated into two categories:
+## Example Radius Components
 
-- Details that are **always true** about the code *(eg. use `DBCONNECTION` to pass SQL Server connection string)*
-- Details that are **per-deployment** *(eg. accept traffic with the hostname `myapp.example.com`)*
-
-The Component concept in Radius is designed to version with the application code. For maximum flexibility, you should use Bicep parameters for the things that change per-deployment. This will allow you to provide these setting at the command line or by composing your definitions into other modules.
-
-{{% alert title="💡 Key concept" color="info" %}}
-Behaviors and requirements that are per-deployment, or otherwise separate from the code, can be made into parameters and configured separately from the Component definition.
-{{% /alert %}} 
-
-It's up to your discretion as the user to decide which details of your software are per-deployment and which are always true. Radius will also not stop you from writing *all-in-one* definitions that capture everything.
-
-## Runnable Components
 
 Runnable components capture the details of your code and its requirements. For example, a [ContainerComponent]({{< ref container >}}) describes your container and how to run it.
 
 #### Bicep example
 
-Within the shopping app example, each node is a Radius Component. Taking a look specifically at the storefront container, it would be modeled as:
+In an example eshop app, the storefront code's would include info necessary for the storefront container to run:
 
 {{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" >}}
 
-### Runtime
-
-Each [Radius platform]({{< ref platforms >}}) has a different implementation of a runtime for runnable Components such as a `ContainerComponent`. For example, Azure environments use Azure Kubernetes Service, while Kubernetes environments run containers directly on the cluster.
-
-{{% alert title="🚧 Under construction" color="info" %}}
-As additional runnable Component types are designed and implemented, additional runtimes will be added to Azure environments. Stay tuned for more information.
-{{% /alert %}}
-
-## Non-runnable Components
-
-When a Component defines a non-runnable unit of code: like a database or message queue, the same definitions apply, but generally more of the work is done for you. It's easier to describe a PostgreSQL database than it is to describe a container, because the database has many standard behaviors.
-
-#### Bicep example
+When a Component defines a non-runnable resource (e.g. a database or message queue), the same definitions apply, but it's even easier to describe in Radius. Since behavior of non-runnable resources is more standardized, Radius can offload this type of repetitive configuration work from developers.
 
 An example of a non-runnable Radius Component is an inventory database, modeled as:
 
 {{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
+## Runtime
+
+Since Radius Applications can be deployed to a variety of [Radius-supported platforms]({{< ref platforms >}}), some Components use a different runtime based on platform. For example, under-the-hood of `ContainerComponent`, Azure deployments use Azure Kubernetes Service while Kubernetes deployments run containers directly on the user's cluster.
+
+
 ### Resource lifecycle
+<!-- TODO: overhaul this section as we replace Radius-managed with Bicep modules -->
 
 Radius offers two methods for managing the lifecycle of a Component: Radius-managed and user-managed. Separately, you can use platform specific resources for any Bicep resources that do not have Radius Components that model them.
 
@@ -104,6 +82,17 @@ We'd love to hear your feedback on User-managed resources. Please visit [GitHub 
 
 {{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
 
+## Parameterizing per-deployment Component details
+
+Component details can generally be separated into two categories:
+
+- Details that are **always true** about the code *(eg. use `DBCONNECTION` to pass SQL Server connection string)*
+- Details that are **per-deployment** *(eg. accept traffic with the hostname `myapp.example.com`)*
+
+The Component concept in Radius is designed to version with the application code. For maximum flexibility, you should use Bicep parameters for the things that change per-deployment. This will allow you to provide these setting at the command line or by composing your definitions into other modules.
+
+<!-- TODO: add example here -->
+
 ### Portability
 
 Non-runnable Components can work across hosting models without any configuration changes, and will be satisfied using the best means available by the host. They are generally OSS services that are not tied to any particular SaaS or hosting platform and usually have multiple implementations.
@@ -127,3 +116,6 @@ Platform-specific resources are still under construction. Stay tuned for more in
 Now that you are familiar with Radius Components, the next step is to learn about Radius Connections.
 
 {{< button text="Learn about Connections" page="connections-model.md" >}}
+
+
+An application can have both runnable components *(e.g. containers, web applications)* and non-runnable components *(e.g. databases, message queues)*.

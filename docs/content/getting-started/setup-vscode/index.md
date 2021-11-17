@@ -1,12 +1,14 @@
 ---
 type: docs
-title: "Setup Visual Studio Code with the Radius extension"
+title: "Install VS Code extension"
 linkTitle: "Setup tools"
-description: "How to setup VS Code with the Radius extension for easy application authoring"
+description: "How to setup Visual Studio Code with the Radius extension for easy application authoring"
 weight: 20
 ---
 
-Radius can be used with any text editor, but Radius-specific optimizations are available for [Visual Studio Code](https://code.visualstudio.com/). The Project Radius VSCode extension provides:
+Radius can be used with any text editor, but Radius-specific optimizations are available for [Visual Studio Code](https://code.visualstudio.com/). 
+
+The Project Radius VSCode extension provides:
 - Syntax highlighting
 - Auto-completion
 - Linting

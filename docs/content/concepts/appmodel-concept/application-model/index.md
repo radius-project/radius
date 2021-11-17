@@ -2,42 +2,37 @@
 type: docs
 title: "Radius applications"
 linkTitle: "Applications"
-description: "Learn how to model your applications with the Radius application."
+description: "Radius Applications as the top-level resource"
 weight: 100
 ---
 
 ## Definition
 
-The Radius Application contains everything on the diagram, including all the compute, data, and infrastructure. In one line, the Application is defined as: 
+The Radius Application contains everything on the diagram, including all the compute, data, and infrastructure. 
 
-{{% alert title="📄 Application" color="primary" %}}
-The biggest possible circle you could draw around your software.
-{{% /alert %}}
-
-In Radius, the Application concept is the boundary within which names have meaning. The other concepts in Radius define symbolic names - the Application is the scope in which these names must be unique, and in which they are referenced.
-
+<!-- TODO: expand this diagram to include more about the infra layer -->
 {{< imgproc radius-application Fit "700x500">}}
-<i>A Radius Application encompases all the containers, databases, and APIs within a simple online store app.</i>
+<i>A Radius Application encompases all the containers, databases, and APIs for an app.</i>
 {{< /imgproc >}}
 
-### Bicep example
+### Authoring an Application
 
-This example shows a blank application with nothing in it. Deploying this would do nothing as there are no [components]({{< ref components-model.md >}}).
-
+Applications are the top-level *resource*. The descriptions of the app's sub-components or external resources the app interacts with will be defined within a top-level `resource app` in a .bicep file: 
 {{< rad file="snippets/blank-app.bicep" embed=true >}}
 
-{{% alert title="💡 Key concept" color="info" %}}
-Since defining an Application only defines a boundary, deploying an empty Application has no real effect. Applications are only containers for your Components.
-{{% /alert %}} 
+Currently, this example app is an empty shell and has no [components]({{< ref components-model.md >}}) defined.
 
-It's up to you, the user, to define what you consider part of the Application. It is recommended that you draw this circle very large to includes as much as possible of the software you work on. You should include the things that run your code (*runnable components*), and your data and infrastructure resources (*non-runnable components*).
+It's up to the user to define what they consider part of the app. Generally, users should include both all the runnable components (things that run code) and all the non-runnable components (data and infrastructure resources).
 
-{{% alert title="💡 Key concept" color="info" %}}
-Applications are **not** units of deployment. An Application can contain multiple units of deployment that version separately. This topic will be explored later.
-{{% /alert %}} 
+### Deploying an Application
+A Radius Application is deployed by using the rad CLI to deploy the Bicep file containing the app. For example:
 
-## Next step
+```sh
+rad deploy example.bicep
+```
 
-Now that you are familiar with Radius applications, the next step is to learn about Radius components.
+This command deploys the app and either launches or connects to its child resources as needed.
 
-{{< button text="Learn about Components" page="components-model.md" >}}
+<!-- TODO: high-level overview of managing an app -->
+
+{{< button text="Radius Components" page="components-model.md" >}}
