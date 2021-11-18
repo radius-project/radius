@@ -39,6 +39,9 @@ func RunCLICommandSilent(args ...string) error {
 	}()
 
 	err = c.Run()
+	if err != nil {
+		return fmt.Errorf("failed to run command: %w", err)
+	}
 
 	bytes, err := io.ReadAll(&buf)
 	if err != nil {
