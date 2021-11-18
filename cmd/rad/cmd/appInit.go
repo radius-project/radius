@@ -54,7 +54,7 @@ func initApplication(cmd *cobra.Command, args []string) error {
 		applicationName = path.Base(wd)
 	}
 
-	output.LogInfo("Creating Application %s...", applicationName)
+	output.LogInfo("Initializing Application %s...", applicationName)
 	files, err := scaffold.WriteApplication(wd, applicationName)
 	if err != nil {
 		return err
