@@ -7,30 +7,23 @@ package helm
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/Azure/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/storage/driver"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const (
 	radiusReleaseName     = "radius"
 	radiusHelmRepo        = "https://radius.azurecr.io/helm/v1/repo"
 	RadiusSystemNamespace = "radius-system"
-	helmDriverSecret      = "secret"
 )
 
-func ApplyRadiusHelmChart(chartPath string, version string) error {
+func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage string, containerTag string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -41,12 +34,19 @@ func ApplyRadiusHelmChart(chartPath string, version string) error {
 
 	var helmChart *chart.Chart
 	if chartPath == "" {
-		helmChart, err = helmChartFromRepo(version, helmConf, radiusHelmRepo, radiusReleaseName)
+		helmChart, err = helmChartFromRepo(chartVersion, helmConf, radiusHelmRepo, radiusReleaseName)
 	} else {
 		helmChart, err = loader.Load(chartPath)
 	}
+
 	if err != nil {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
+	}
+
+	err = addRadiusValues(helmChart, containerImage, containerTag)
+
+	if err != nil {
+		return fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
@@ -84,70 +84,16 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	return err
 }
 
-func helmConfig(namespace string, builder strings.Builder) (*helm.Configuration, error) {
-	hc := helm.Configuration{}
-	flags := &genericclioptions.ConfigFlags{
-		Namespace: &namespace,
+func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag string) error {
+	values := helmChart.Values
+
+	if containerImage != "" {
+		values["container"] = containerImage
 	}
 
-	// helmDriver is "secret" to make the backend storage driver
-	// use kubernetes secrets.
-	err := hc.Init(flags, namespace, helmDriverSecret, func(format string, v ...interface{}) {
-		builder.WriteString(fmt.Sprintf(format, v...))
-	})
-	return &hc, err
-}
-
-func createTempDir() (string, error) {
-	dir, err := ioutil.TempDir("", radiusReleaseName)
-	if err != nil {
-		return "", fmt.Errorf("error creating temp dir: %s", err)
-	}
-	return dir, nil
-}
-
-func locateChartFile(dirPath string) (string, error) {
-	files, err := ioutil.ReadDir(dirPath)
-	if err != nil {
-		return "", err
-	}
-	if len(files) == 0 {
-		return "", errors.New("radius helm chart not found")
+	if containerTag != "" {
+		values["tag"] = containerTag
 	}
 
-	if len(files) > 1 {
-		return "", errors.New("unexpected files found when downloading helm chart")
-	}
-
-	return filepath.Join(dirPath, files[0].Name()), nil
-}
-
-func helmChartFromRepo(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
-	pull := helm.NewPull()
-	pull.RepoURL = repoUrl
-	pull.Settings = &cli.EnvSettings{}
-
-	// If version isn't set, it will use the latest version.
-	if version != "" && version != "edge" {
-		pull.Version = version
-	}
-
-	dir, err := createTempDir()
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(dir)
-
-	pull.DestDir = dir
-
-	_, err = pull.Run(releaseName)
-	if err != nil {
-		return nil, err
-	}
-
-	chartPath, err := locateChartFile(dir)
-	if err != nil {
-		return nil, err
-	}
-	return loader.Load(chartPath)
+	return nil
 }

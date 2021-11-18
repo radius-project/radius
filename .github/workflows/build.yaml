@@ -221,6 +221,7 @@ jobs:
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
+      RADIUS_CHART_LOCATION: deploy/Charts/
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -243,25 +244,17 @@ jobs:
       with:
         cluster_name: radius
         version:  v0.11.0
-    - name: Apply CRDs
-      run: make controller-crd-install
     - name: Dapr tool installer
       uses: dapr/setup-dapr@v1
     - name: Install dapr into cluster
       run: dapr init -k --wait --timeout 600
-    - name: Install haproxy into cluster
-      run: make controller-gateway-install
     - name: Update rad env with Kubernetes
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init kubernetes 
+        dist/rad env init kubernetes -c ${{ env.RADIUS_CHART_LOCATION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
-    - name: Deploy Controller
-      run: make controller-deploy-existing
-      env:
-        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
     - name: Download Bicep
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH

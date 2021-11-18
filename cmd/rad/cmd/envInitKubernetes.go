@@ -17,10 +17,12 @@ import (
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
+	k8slabels "github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/kubernetes/kubectl"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -46,6 +48,16 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		chartPath, err := cmd.Flags().GetString("chart")
+		if err != nil {
+			return err
+		}
+
+		image, err := cmd.Flags().GetString("image")
+		if err != nil {
+			return err
+		}
+
+		tag, err := cmd.Flags().GetString("tag")
 		if err != nil {
 			return err
 		}
@@ -88,7 +100,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = kubectl.RunCLICommand("apply", "--kustomize", "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0")
+		err = kubectl.RunCLICommandSilent("apply", "--kustomize", "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0")
 		if err != nil {
 			return err
 		}
@@ -108,7 +120,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = helm.ApplyRadiusHelmChart(chartPath, version.NewVersionInfo().Channel)
+		err = helm.ApplyRadiusHelmChart(chartPath, version.NewVersionInfo().Channel, image, tag)
 		if err != nil {
 			return err
 		}
@@ -160,7 +172,8 @@ func applyGatewayClass(ctx context.Context, runtimeClient sigclient.Client) erro
 		},
 	}
 
-	return runtimeClient.Patch(ctx, &gateway, sigclient.Apply)
+	err := runtimeClient.Patch(ctx, &gateway, sigclient.Apply, &client.PatchOptions{FieldManager: k8slabels.FieldManager})
+	return err
 }
 
 func init() {
@@ -168,4 +181,6 @@ func init() {
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
 	envInitKubernetesCmd.Flags().StringP("chart", "c", "", "Specify a file path to a helm chart to install radius from")
+	envInitKubernetesCmd.Flags().String("image", "", "Specify the radius controller image to use")
+	envInitKubernetesCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
 }

@@ -29,7 +29,7 @@ func ApplyHAProxyHelmChart(version string) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	helmChart, err := helmChart(version, helmConf, haproxyHelmRepo, haproxyReleaseName)
+	helmChart, err := helmChartFromRepo(version, helmConf, haproxyHelmRepo, haproxyReleaseName)
 	if err != nil {
 		return fmt.Errorf("failed to get haproxy chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -43,7 +43,7 @@ func ApplyHAProxyHelmChart(version string) error {
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
-	err = addValues(helmChart)
+	err = addHAProxyValues(helmChart)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,8 @@ func ApplyHAProxyHelmChart(version string) error {
 	return err
 }
 
-func addValues(helmChart *chart.Chart) error {
+// Values for configuring the install of the helm chart
+func addHAProxyValues(helmChart *chart.Chart) error {
 	controllerNode := helmChart.Values["controller"].(map[string]interface{})
 	if controllerNode == nil {
 		return fmt.Errorf("controller node not found in chart values")
