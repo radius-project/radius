@@ -35,7 +35,7 @@ which stages run. If you specify a stage at the command line all stages before a
 stage are run. Stages after the specified stage are skipped.
 
 You can specify parameters at the command line using the '--parameter' flag ('-p' for short). Parameters
-specified at the command line apply to all stages.
+specified at the command line apply to all stages and must therefore exist in the template file for every stage. 
 
 Parameters can be passed as:
 
