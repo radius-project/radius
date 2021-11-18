@@ -26,7 +26,7 @@ var appDeployCmd = &cobra.Command{
 	Long: `Deploy a RAD application using rad.yaml
 
 The app deploy command reads a rad.yaml file to process a series of deployment stages. For example a typical
-application will have an 'infra' (infrastructure) phase followed by an 'app' (applicaiton code) phase.
+application will have an 'infra' (infrastructure) phase followed by an 'app' (application code) phase.
 'rad app deploy'  will deploy both stages in sequence and automatically pass the outputs of the 'infra' 
 phase to the 'app' phase as parameters.
 
