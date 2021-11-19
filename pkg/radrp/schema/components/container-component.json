@@ -189,6 +189,7 @@
           "description": "The kind of connection",
           "type": "string",
           "enum": [
+            "azure",
             "azure.com/KeyVault",
             "azure.com/ServiceBusQueue",
             "dapr.io/DaprHttp",
@@ -205,8 +206,19 @@
         "source": {
           "description": "The source of the connection",
           "type": "string"
+        },
+        "role": {
+          "description": "RBAC permissions to be assigned on the source resource",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
-      }
+      },
+      "required": [
+        "kind",
+        "source"
+      ]
     },
     "HealthProbeProperties": {
       "description": "Properties for readiness/liveness probe",

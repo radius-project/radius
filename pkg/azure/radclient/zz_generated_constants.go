@@ -57,6 +57,7 @@ func (c CheckNameAvailabilityReason) ToPtr() *CheckNameAvailabilityReason {
 type ContainerConnectionKind string
 
 const (
+	ContainerConnectionKindAzure ContainerConnectionKind = "azure"
 	ContainerConnectionKindAzureComKeyVault ContainerConnectionKind = "azure.com/KeyVault"
 	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
 	ContainerConnectionKindDaprIoDaprHTTP ContainerConnectionKind = "dapr.io/DaprHttp"
@@ -73,6 +74,7 @@ const (
 // PossibleContainerConnectionKindValues returns the possible values for the ContainerConnectionKind const type.
 func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
 	return []ContainerConnectionKind{	
+		ContainerConnectionKindAzure,
 		ContainerConnectionKindAzureComKeyVault,
 		ContainerConnectionKindAzureComServiceBusQueue,
 		ContainerConnectionKindDaprIoDaprHTTP,

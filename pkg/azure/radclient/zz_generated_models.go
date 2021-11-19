@@ -584,11 +584,23 @@ func (c ContainerComponentResource) MarshalJSON() ([]byte, error) {
 
 // ContainerConnection - Specifies a connection from the container to another resource
 type ContainerConnection struct {
-	// The kind of connection
+	// REQUIRED; The kind of connection
 	Kind *ContainerConnectionKind `json:"kind,omitempty"`
 
-	// The source of the connection
+	// REQUIRED; The source of the connection
 	Source *string `json:"source,omitempty"`
+
+	// RBAC permissions to be assigned on the source resource
+	Role []*string `json:"role,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ContainerConnection.
+func (c ContainerConnection) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "kind", c.Kind)
+	populate(objectMap, "role", c.Role)
+	populate(objectMap, "source", c.Source)
+	return json.Marshal(objectMap)
 }
 
 // ContainerPort - Specifies a listening port for the container
