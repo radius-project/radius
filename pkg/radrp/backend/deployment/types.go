@@ -449,6 +449,7 @@ func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.
 	}
 }
 
+// Returns fully qualified radius resource identifier to RendererDependency map
 func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependencyResourceIDs []azresources.ResourceID) (map[string]renderers.RendererDependency, error) {
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, dependencyResourceID := range dependencyResourceIDs {

@@ -60,11 +60,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	deps := []azresources.ResourceID{}
 	for _, connection := range properties.Connections {
-		resourceId, err := azresources.Parse(to.String(connection.Source))
+		resourceID, err := azresources.Parse(*connection.Source)
 		if err != nil {
 			return nil, err
 		}
-		deps = append(deps, resourceId)
+		deps = append(deps, resourceID)
 	}
 
 	for _, port := range properties.Container.Ports {
@@ -73,11 +73,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 			continue
 		}
 
-		resourceId, err := azresources.Parse(provides)
+		resourceID, err := azresources.Parse(provides)
 		if err != nil {
 			return nil, err
 		}
-		deps = append(deps, resourceId)
+		deps = append(deps, resourceID)
 	}
 
 	for _, volume := range properties.Container.Volumes {
@@ -542,35 +542,45 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.
 func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, resource renderers.RendererResource, connection radclient.ContainerConnection, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
-	// We're reporting errors in this code path to avoid obscuring a bug in another layer of the system.
-	// None of these error conditions should be caused by invalid user input. They should only be caused
-	// by internal bugs in Radius.
-	roleAssignmentData, ok := r.RoleAssignmentMap[*connection.Kind]
-	if !ok {
-		return nil, fmt.Errorf("connection kind %q does not support managed identity", *connection.Kind)
-	}
+	var roleNames []string
+	var armResourceIdentifier string
+	if *connection.Kind == "azure" {
+		roleNames = []string{"reader"} //*connection.Roles //***TODO
+		armResourceIdentifier = *connection.Source
+	} else {
+		// We're reporting errors in this code path to avoid obscuring a bug in another layer of the system.
+		// None of these error conditions should be caused by invalid user input. They should only be caused
+		// by internal bugs in Radius.
+		roleAssignmentData, ok := r.RoleAssignmentMap[*connection.Kind]
+		if !ok {
+			return nil, fmt.Errorf("RBAC is not supported for connection kind %q", *connection.Kind)
+		}
 
-	// The dependency will have already been fetched by the system.
-	dependency, ok := dependencies[to.String(connection.Source)]
-	if !ok {
-		return nil, fmt.Errorf("connection source %q was not found in the dependencies collection", to.String(connection.Source))
-	}
+		// The dependency will have already been fetched by the system.
+		dependency, ok := dependencies[*connection.Source]
+		if !ok {
+			return nil, fmt.Errorf("connection source %q was not found in the dependencies collection", *connection.Source)
+		}
 
-	// Find the matching output resource based on LocalID
-	target, ok := dependency.OutputResources[roleAssignmentData.LocalID]
-	if !ok {
-		return nil, fmt.Errorf("output resource %q was not found in the outputs of dependency %q", roleAssignmentData.LocalID, to.String(connection.Source))
-	}
+		// Find the matching output resource based on LocalID
+		target, ok := dependency.OutputResources[roleAssignmentData.LocalID]
+		if !ok {
+			return nil, fmt.Errorf("output resource %q was not found in the outputs of dependency %q", roleAssignmentData.LocalID, *connection.Source)
+		}
 
-	// Now we know the resource ID to assign roles against.
-	arm, ok := target.Data.(resourcemodel.ARMIdentity)
-	if !ok {
-		return nil, fmt.Errorf("output resource %q must be an ARM resource to support role assignments. Was: %+v", roleAssignmentData.LocalID, target)
+		// Now we know the resource ID to assign roles against.
+		arm, ok := target.Data.(resourcemodel.ARMIdentity)
+		if !ok {
+			return nil, fmt.Errorf("output resource %q must be an ARM resource to support role assignments. Was: %+v", roleAssignmentData.LocalID, target)
+		}
+		armResourceIdentifier = arm.ID
 	}
 
 	outputResources := []outputresource.OutputResource{}
-	for _, roleName := range roleAssignmentData.RoleNames {
-		localID := outputresource.GenerateLocalIDForRoleAssignment(arm.ID, roleName)
+	// for _, roleName := range roleAssignmentData.RoleNames {
+	for _, roleName := range roleNames {
+		// localID := outputresource.GenerateLocalIDForRoleAssignment(arm.ID, roleName)
+		localID := outputresource.GenerateLocalIDForRoleAssignment(armResourceIdentifier, roleName)
 		roleAssignment := outputresource.OutputResource{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
 			LocalID:      localID,
@@ -578,7 +588,8 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, resource r
 			Deployed:     false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:             roleName,
-				handlers.RoleAssignmentTargetKey: arm.ID,
+				handlers.RoleAssignmentTargetKey: armResourceIdentifier,
+				// handlers.RoleAssignmentTargetKey: arm.ID,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
