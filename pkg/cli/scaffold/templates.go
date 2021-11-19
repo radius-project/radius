@@ -7,7 +7,14 @@ package scaffold
 
 import (
 	_ "embed"
+	"path"
+	"text/template"
 )
+
+type TemplateWorkItem struct {
+	FilePath string
+	Template *template.Template
+}
 
 type ScaffoldTemplate = string
 
@@ -23,3 +30,20 @@ var InfrastructureStage ScaffoldTemplate
 
 //go:embed "rad.yaml.tmpl"
 var RADYaml ScaffoldTemplate
+
+func GetApplicationTemplates() []TemplateWorkItem {
+	return []TemplateWorkItem{
+		{
+			FilePath: path.Join("rad", "rad.yaml"),
+			Template: template.Must(template.New("rad.yaml").Parse(RADYaml)),
+		},
+		{
+			FilePath: path.Join("rad", "infra.bicep"),
+			Template: template.Must(template.New("infra.bicep").Parse(InfrastructureStage)),
+		},
+		{
+			FilePath: path.Join("rad", "app.bicep"),
+			Template: template.Must(template.New("app.bicep").Parse(ApplicationStage)),
+		},
+	}
+}

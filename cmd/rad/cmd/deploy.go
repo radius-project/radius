@@ -147,10 +147,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	_, err = deploy.DeployWithProgress(cmd.Context(), deploy.Options{
-		Environment:  env,
-		Template:     template,
-		Parameters:   parameters,
-		ProgressText: progressText,
+		Environment:    env,
+		Template:       template,
+		Parameters:     parameters,
+		ProgressText:   progressText,
+		CompletionText: "Deployment Complete",
 	})
 	if err != nil {
 		return err

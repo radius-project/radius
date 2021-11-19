@@ -39,12 +39,14 @@ func (p *processor) ProcessDeploy(ctx context.Context, stage radyaml.BicepStage)
 	}
 
 	progressText := fmt.Sprintf("Deploying %s...", deployFile)
+	completionText := fmt.Sprintf("Deployed stage %s: %d of %d", p.CurrrentStage.Name, p.CurrrentStage.DisplayIndex, p.CurrrentStage.TotalCount)
 
 	result, err := deploy.DeployWithProgress(ctx, deploy.Options{
-		Environment:  p.Environment,
-		Template:     template,
-		Parameters:   p.Parameters,
-		ProgressText: progressText,
+		Environment:    p.Environment,
+		Template:       template,
+		Parameters:     p.Parameters,
+		ProgressText:   progressText,
+		CompletionText: completionText,
 	})
 	if err != nil {
 		return err

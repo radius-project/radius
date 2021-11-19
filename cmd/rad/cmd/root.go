@@ -8,6 +8,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -54,7 +55,11 @@ func prettyPrintJSON(o interface{}) (string, error) {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	ctx := context.WithValue(context.Background(), configHolderKey, configHolder)
-	if err := RootCmd.ExecuteContext(ctx); err != nil {
+	err := RootCmd.ExecuteContext(ctx)
+	if errors.Is(&cli.FriendlyError{}, err) {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		os.Exit(1)
 	}

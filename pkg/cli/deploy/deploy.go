@@ -31,10 +31,11 @@ func ValidateBicepFile(filePath string) error {
 }
 
 type Options struct {
-	Environment  environments.Environment
-	Template     string
-	Parameters   clients.DeploymentParameters
-	ProgressText string
+	Environment    environments.Environment
+	Template       string
+	Parameters     clients.DeploymentParameters
+	ProgressText   string
+	CompletionText string
 }
 
 // DeployWithProgress run a deployment and displays progress to the user. This is intended to be used
@@ -58,7 +59,7 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 	output.LogInfo("")
 	output.CompleteStep(step)
 
-	output.LogInfo("Deployment Complete")
+	output.LogInfo(options.CompletionText)
 	output.LogInfo("")
 
 	if len(result.Resources) > 0 {

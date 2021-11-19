@@ -26,8 +26,15 @@ type Options struct {
 
 type processor struct {
 	Options
-	Parameters clients.DeploymentParameters
-	Results    []StageResult
+	Parameters    clients.DeploymentParameters
+	Results       []StageResult
+	CurrrentStage stageInfo
+}
+
+type stageInfo struct {
+	Name         string
+	DisplayIndex int
+	TotalCount   int
 }
 
 // Result captures the results of processing for diagnostic logging and testing.

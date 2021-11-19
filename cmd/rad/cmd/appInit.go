@@ -26,10 +26,16 @@ var appInitCmd = &cobra.Command{
 
 func init() {
 	applicationCmd.AddCommand(appInitCmd)
+	appInitCmd.Flags().BoolP("force", "f", false, "overwrite existing files")
 }
 
 func initApplication(cmd *cobra.Command, args []string) error {
 	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
 	}
@@ -55,7 +61,7 @@ func initApplication(cmd *cobra.Command, args []string) error {
 	}
 
 	output.LogInfo("Initializing Application %s...", applicationName)
-	files, err := scaffold.WriteApplication(wd, applicationName)
+	files, err := scaffold.WriteApplication(scaffold.Options{ApplicationName: applicationName, BaseDirectory: wd, Force: force})
 	if err != nil {
 		return err
 	}
@@ -66,6 +72,6 @@ func initApplication(cmd *cobra.Command, args []string) error {
 	}
 	output.LogInfo("")
 
-	output.LogInfo("Have a RAD time 🕶️")
+	output.LogInfo("Have a RAD time 😎")
 	return nil
 }

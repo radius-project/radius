@@ -52,6 +52,11 @@ func Run(ctx context.Context, options Options) ([]StageResult, error) {
 
 	for i := 0; i < length; i++ {
 		stage := options.Manifest.Stages[i]
+		processor.CurrrentStage = stageInfo{
+			Name:         stage.Name,
+			DisplayIndex: i + 1,
+			TotalCount:   length,
+		}
 
 		result := StageResult{
 			Stage: &stage,
@@ -59,15 +64,15 @@ func Run(ctx context.Context, options Options) ([]StageResult, error) {
 		}
 
 		output.LogInfo("")
-		step := output.BeginStep("Processing stage %s: %d of %d", stage.Name, i+1, length)
+		step := output.BeginStep("Processing stage %s: %d of %d", processor.CurrrentStage.Name, processor.CurrrentStage.DisplayIndex, processor.CurrrentStage.TotalCount)
 
 		if stage.Bicep != nil {
 			err := processor.ProcessDeploy(ctx, *stage.Bicep)
 			if err != nil {
-				return nil, fmt.Errorf("stage %s failed: %w", stage.Name, err)
+				return nil, fmt.Errorf("stage %s failed: %w", processor.CurrrentStage.Name, err)
 			}
 		} else {
-			output.LogInfo("Nothing to do for stage %s...", stage.Name)
+			output.LogInfo("Nothing to do for stage %s...", processor.CurrrentStage.Name)
 		}
 
 		output.CompleteStep(step)
