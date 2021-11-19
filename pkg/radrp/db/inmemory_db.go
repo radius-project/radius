@@ -98,3 +98,31 @@ func (s *store) UpdateV3ResourceStatus(ctx context.Context, id azresources.Resou
 func (s *store) DeleteV3Resource(ctx context.Context, id azresources.ResourceID) error {
 	return errors.New("not implemented")
 }
+
+func (s *store) ListAllAzureResourcesForApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s *store) ListAzureResourcesForResourceType(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s *store) GetAzureResource(ctx context.Context, applicationName string, azureResourceID string) (AzureResource, error) {
+	return AzureResource{}, errors.New("not implemented")
+}
+
+func (s *store) UpdateAzureResource(ctx context.Context, azureResource AzureResource) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (s *store) AddAzureResourceConnection(ctx context.Context, radiusResourceID string, azureResource AzureResource) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (s *store) DeleteAzureResource(ctx context.Context, applicationName string, azureResourceID string) error {
+	return errors.New("not implemented")
+}
+
+func (s *store) RemoveAzureResourceConnection(ctx context.Context, applicationName string, radiusResourceID string, azureResourceID string) (bool, error) {
+	return false, errors.New("not implemented")
+}

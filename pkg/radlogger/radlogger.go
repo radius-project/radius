@@ -31,9 +31,16 @@ const (
 
 // Log levels
 const (
-	Verbose               = 1
-	Normal                = 0
-	DefaultLogLevel       = Normal
+	// More details on verbosity levels can be found here: https://github.com/go-logr/logr#how-do-i-choose-my-v-levels
+	Fatal   = 0
+	Error   = 1
+	Warn    = 2
+	Info    = 3
+	Verbose = 4
+	Debug   = 9
+	Trace   = 10
+
+	DefaultLogLevel       = Info
 	VerbosityLevelNormal  = "normal"
 	VerbosityLevelVerbose = "verbose"
 )
@@ -69,7 +76,7 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 		if strings.EqualFold(VerbosityLevelVerbose, radLogLevel) {
 			logLevel = Verbose
 		} else if strings.EqualFold(VerbosityLevelNormal, radLogLevel) {
-			logLevel = Normal
+			logLevel = Info
 		}
 		cfg.Level = zap.NewAtomicLevelAt(zapcore.Level(logLevel))
 	}

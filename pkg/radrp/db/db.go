@@ -29,6 +29,9 @@ const applicationsV3Collection string = "applicationsv3"
 // resourcesCollection represents the collection used to store resources in the db.
 const resourcesCollection string = "resources"
 
+// azureResourcesCollection represents the collection used to store non-Radius Azure resources in the db.
+const azureResourcesCollection string = "azureResources"
+
 // operationsCollection represents the collection used to store operations in the db.
 const operationsCollection string = "operations"
 
@@ -60,6 +63,14 @@ type RadrpDB interface {
 	UpdateV3ResourceDefinition(ctx context.Context, id azresources.ResourceID, resource RadiusResource) (bool, error)
 	UpdateV3ResourceStatus(ctx context.Context, id azresources.ResourceID, resource RadiusResource) error
 	DeleteV3Resource(ctx context.Context, id azresources.ResourceID) error
+
+	ListAllAzureResourcesForApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error)
+	ListAzureResourcesForResourceType(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error)
+	GetAzureResource(ctx context.Context, applicationName string, azureResourceID string) (AzureResource, error)
+	UpdateAzureResource(ctx context.Context, azureResource AzureResource) (bool, error)
+	AddAzureResourceConnection(ctx context.Context, radiusResourceID string, azureResource AzureResource) (bool, error)
+	DeleteAzureResource(ctx context.Context, applicationName string, azureResourceID string) error
+	RemoveAzureResourceConnection(ctx context.Context, applicationName string, radiusResourceID string, azureResourceID string) (bool, error)
 }
 
 type radrpDB struct {
@@ -379,4 +390,206 @@ func (d radrpDB) DeleteV3Resource(ctx context.Context, id azresources.ResourceID
 	}
 
 	return nil
+}
+
+func (d radrpDB) ListAllAzureResourcesForApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error) {
+	resources, err := d.listAzureResourcesForApplication(ctx, id, applicationName, false /* filterByType */)
+	if err != nil {
+		return nil, err
+	}
+
+	return resources, nil
+}
+
+func (d radrpDB) ListAzureResourcesForResourceType(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error) {
+	resources, err := d.listAzureResourcesForApplication(ctx, id, applicationName, true /* filterByType */)
+	if err != nil {
+		return nil, err
+	}
+
+	return resources, nil
+}
+
+func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, id azresources.ResourceID, applicationName string, filterByType bool) ([]AzureResource, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
+		radlogger.LogFieldResourceID, id.ID)
+
+	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID},
+		{Key: "resourceGroup", Value: id.ResourceGroup},
+		{Key: "applicationName", Value: applicationName},
+	}
+	if filterByType {
+		filter = append(filter, bson.E{Key: "type", Value: id.Type()})
+	}
+
+	logger.Info(fmt.Sprintf("Listing azure resources from DB with filter: %v", filter))
+	collection := d.db.Collection(azureResourcesCollection)
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("error querying azure resources with filter %v: %w", filter, err)
+	}
+
+	azureResources := make([]AzureResource, 0)
+	err = cursor.All(ctx, &azureResources)
+	if err != nil {
+		return nil, fmt.Errorf("error reading azure resources for filter %v: %w", filter, err)
+	}
+	logger.V(radlogger.Debug).Info(fmt.Sprintf("Found %d resources for filter %v", len(azureResources), filter))
+
+	return azureResources, nil
+}
+
+// The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
+// Example /subscriptions/{guid}/resourceGroups/{resource-group-name}/{resource-provider-namespace}/{resource-type}/{resource-name}
+func (d radrpDB) GetAzureResource(ctx context.Context, applicationName string, azureResourceID string) (AzureResource, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
+		radlogger.LogFieldResourceID, azureResourceID)
+
+	filter := bson.D{{Key: "_id", Value: azureResourceID},
+		{Key: "applicationName", Value: applicationName}}
+
+	logger.Info(fmt.Sprintf("Getting resource from DB with operation filter: %v", filter))
+	collection := d.db.Collection(azureResourcesCollection)
+	dbResult := collection.FindOne(ctx, filter)
+	err := dbResult.Err()
+	if err == mongo.ErrNoDocuments {
+		return AzureResource{}, ErrNotFound
+	} else if err != nil {
+		return AzureResource{}, fmt.Errorf("error querying azure resource with filter %v: %w", filter, err)
+	}
+
+	azureResource := AzureResource{}
+	err = dbResult.Decode(&azureResource)
+	if err != nil {
+		return AzureResource{}, fmt.Errorf("error reading azure resource for filter %v: %w", filter, err)
+	}
+
+	return azureResource, nil
+}
+
+// Creates a new Azure resource document with the values specified in `resource` parameter if an entry doesn't exist.
+// If an entry already exists, radiusConnectionIDs array will be updated to include the value specified in resource.RadiusConnectionIDs
+func (d radrpDB) UpdateAzureResource(ctx context.Context, azureResource AzureResource) (bool, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, azureResource.ApplicationName,
+		radlogger.LogFieldResourceID, azureResource.ID)
+
+	// Creates a new document entry if an existing document with matching ID is not found
+	options := options.Update().SetUpsert(true)
+	filter := bson.D{{Key: "_id", Value: azureResource.ID},
+		{Key: "applicationName", Value: azureResource.ApplicationName}}
+
+	var update interface{}
+	if len(azureResource.RadiusConnectionIDs) == 1 {
+		// `$push` appends the value to an existing array for the key or creates a new array with the value if the key doesn't exist
+		update = bson.D{
+			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID},
+				{Key: "subscriptionId", Value: azureResource.SubscriptionID}, {Key: "resourceGroup", Value: azureResource.ResourceGroup},
+				{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "resourceName", Value: azureResource.ResourceName},
+				{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type}},
+			},
+			{Key: "$push", Value: bson.D{{Key: "radiusConnectionIDs", Value: azureResource.RadiusConnectionIDs[0]}}},
+		}
+	} else if len(azureResource.RadiusConnectionIDs) > 1 {
+		update = bson.D{
+			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID},
+				{Key: "subscriptionId", Value: azureResource.SubscriptionID}, {Key: "resourceGroup", Value: azureResource.ResourceGroup},
+				{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "resourceName", Value: azureResource.ResourceName},
+				{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type},
+				{Key: "radiusConnectionIDs", Value: azureResource.RadiusConnectionIDs}},
+			},
+		}
+	} else {
+		return false, fmt.Errorf("RadiusConnectionIDs cannot be empty")
+	}
+
+	logger.Info(fmt.Sprintf("Applying update %v on azure resource", update))
+	col := d.db.Collection(azureResourcesCollection)
+	result, err := col.UpdateOne(ctx, filter, update, options)
+	if err != nil {
+		return false, fmt.Errorf("error updating azure resource with filter %v: %w", filter, err)
+	}
+
+	return (result.UpsertedCount > 0 || result.ModifiedCount > 0), nil
+}
+
+// Adds specified `radiusResourceID` to radiusConnectionIDs in existing document matching resource id of the specified `azureResource`
+// The radiusResourceID parameter is fully qualified resource identifier of the radius resource that connects to azure resource.
+func (d radrpDB) AddAzureResourceConnection(ctx context.Context, radiusResourceID string, azureResource AzureResource) (bool, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, azureResource.ApplicationName,
+		radlogger.LogFieldResourceID, azureResource.ID)
+
+	// Setting upsert to true creates a new document entry if the existing entry for id
+	// was deleted through another concurrent delete call.
+	// `$setOnInsert` allows setting all non connection fields only in case of insert of a new entry.
+	// `$push` appends the value to an existing array for the key or creates a new array with the value if the key doesn't exist.
+	options := options.Update().SetUpsert(true)
+	filter := bson.D{{Key: "_id", Value: azureResource.ID},
+		{Key: "applicationName", Value: azureResource.ApplicationName}}
+	update := bson.D{
+		{Key: "$push", Value: bson.D{{Key: "radiusConnectionIDs", Value: radiusResourceID}}},
+		{Key: "$setOnInsert", Value: bson.D{
+			{Key: "_id", Value: azureResource.ID},
+			{Key: "subscriptionId", Value: azureResource.SubscriptionID}, {Key: "resourceGroup", Value: azureResource.ResourceGroup},
+			{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "resourceName", Value: azureResource.ResourceName},
+			{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type},
+		}},
+	}
+
+	logger.Info(fmt.Sprintf("Applying update %v on azure resource", update))
+	col := d.db.Collection(azureResourcesCollection)
+	result, err := col.UpdateOne(ctx, filter, update, options)
+	if err != nil {
+		return false, fmt.Errorf("error updating azure resource connections with filter %v: %w", filter, err)
+	}
+
+	return (result.UpsertedCount > 0 || result.ModifiedCount > 0), nil
+}
+
+// The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
+// Example /subscriptions/{guid}/resourceGroups/{resource-group-name}/{resource-provider-namespace}/{resource-type}/{resource-name}
+func (d radrpDB) DeleteAzureResource(ctx context.Context, applicationName string, azureResourceID string) error {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
+		radlogger.LogFieldResourceID, azureResourceID)
+
+	filter := bson.D{{Key: "_id", Value: azureResourceID},
+		{Key: "applicationName", Value: applicationName}}
+
+	logger.Info(fmt.Sprintf("Deleting azure resource from DB with filter: %s", filter))
+	collection := d.db.Collection(azureResourcesCollection)
+	result := collection.FindOneAndDelete(ctx, filter)
+	err := result.Err()
+	if err == mongo.ErrNoDocuments {
+		logger.Info("No existing resource to delete was found in the database for filter: %v", filter)
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error deleting resource with filter: '%v': %w", filter, err)
+	}
+
+	return nil
+}
+
+// Removes specified `radiusResourceID` from radiusConnectionIDs in existing document matching resource id of the specified azure resource ResourceID
+// The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
+func (d radrpDB) RemoveAzureResourceConnection(ctx context.Context, applicationName string, radiusResourceID string, azureResourceID string) (bool, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
+		radlogger.LogFieldResourceID, azureResourceID)
+
+	// Setting upsert to false prevents creation of a new document entry if not existent document match is found for the provided azureResource id.
+	options := options.Update().SetUpsert(false)
+	filter := bson.D{{Key: "_id", Value: azureResourceID},
+		{Key: "applicationName", Value: applicationName}}
+
+	// `$pull` removes the specified value from an existing array for the key or creates a new array with the value if the key doesn't exist.
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{{Key: "radiusConnectionIDs", Value: radiusResourceID}}},
+	}
+
+	logger.Info(fmt.Sprintf("Applying update %v on azure resource", update))
+	col := d.db.Collection(azureResourcesCollection)
+	result, err := col.UpdateOne(ctx, filter, update, options)
+	if err != nil {
+		return false, fmt.Errorf("error updating azure resource: %w", err)
+	}
+
+	return result.ModifiedCount > 0, nil
 }
