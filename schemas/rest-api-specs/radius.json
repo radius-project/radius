@@ -409,6 +409,7 @@
         "kind": {
           "description": "The kind of connection",
           "enum": [
+            "azure",
             "azure.com/KeyVault",
             "azure.com/ServiceBusQueue",
             "dapr.io/DaprHttp",
@@ -423,11 +424,22 @@
           ],
           "type": "string"
         },
+        "role": {
+          "description": "RBAC permissions to be assigned on the source resource",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "source": {
           "description": "The source of the connection",
           "type": "string"
         }
       },
+      "required": [
+        "kind",
+        "source"
+      ],
       "type": "object"
     },
     "ContainerPort": {
