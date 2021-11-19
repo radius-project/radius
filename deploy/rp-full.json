@@ -334,6 +334,14 @@
                             "location": "[resourceGroup().location]",
                             "name": "[parameters('clusterName')]",
                             "properties": {
+                                "addonProfiles": {
+                                    "azureKeyvaultSecretsProvider": {
+                                        "config": {
+                                            "enableSecretRotation": "true"
+                                        },
+                                        "enabled": true
+                                    }
+                                },
                                 "agentPoolProfiles": [
                                     {
                                         "count": 1,
@@ -351,14 +359,6 @@
                                 },
                                 "podIdentityProfile": {
                                     "enabled": true
-                                },
-                                "addonProfiles": {
-                                    "azureKeyvaultSecretsProvider": {
-                                        "enabled": true,
-                                        "config": {
-                                            "enableSecretRotation": "true"
-                                        }
-                                    }
                                 }
                             },
                             "tags": "[parameters('resourceTags')]",

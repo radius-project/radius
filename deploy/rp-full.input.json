@@ -363,6 +363,14 @@
                                 "podIdentityProfile": {
                                     "enabled": true
                                 },
+                                "addonProfiles": {
+                                    "azureKeyvaultSecretsProvider": {
+                                        "enabled": true,
+                                        "config": {
+                                            "enableSecretRotation": "true"
+                                        }
+                                    }
+                                },
                                 "networkProfile": {
                                     "networkPlugin": "azure"
                                 }
