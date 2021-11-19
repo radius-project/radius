@@ -69,6 +69,29 @@ func (a ApplicationResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type ApplicationResource.
+func (a *ApplicationResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &a.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := a.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // ApplicationStatus - Status of an application.
 type ApplicationStatus struct {
 	// Health errors for the application
@@ -140,6 +163,73 @@ func (a AzureEntityResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureEntityResource.
+func (a *AzureEntityResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "etag":
+				err = unpopulate(val, &a.Etag)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := a.Resource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+type AzureFileShareVolumeProperties struct {
+	VolumeProperties
+	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
+	Managed *bool `json:"managed,omitempty"`
+
+	// The ID of the user-managed volume to use for this component
+	Resource *string `json:"resource,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type AzureFileShareVolumeProperties.
+func (a AzureFileShareVolumeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	a.VolumeProperties.marshalInternal(objectMap, "azure.com.fileshare")
+	populate(objectMap, "managed", a.Managed)
+	populate(objectMap, "resource", a.Resource)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureFileShareVolumeProperties.
+func (a *AzureFileShareVolumeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managed":
+				err = unpopulate(val, &a.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &a.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := a.VolumeProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // AzureKeyVaultComponentList - List of azure.com.KeyVaultComponent resources.
 type AzureKeyVaultComponentList struct {
 	// REQUIRED; List of azure.com.KeyVaultComponent resources.
@@ -156,7 +246,7 @@ func (a AzureKeyVaultComponentList) MarshalJSON() ([]byte, error) {
 type AzureKeyVaultComponentProperties struct {
 	BasicComponentProperties
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
-	Managed *Enum3 `json:"managed,omitempty"`
+	Managed *Enum2 `json:"managed,omitempty"`
 
 	// The ID of the user-managed KeyVault to use
 	Resource *string `json:"resource,omitempty"`
@@ -212,6 +302,94 @@ func (a AzureKeyVaultComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureKeyVaultComponentResource.
+func (a *AzureKeyVaultComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &a.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := a.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+type AzureKeyVaultVolumeProperties struct {
+	VolumeProperties
+	// The KeyVault certificates that this volume exposes
+	Certificates map[string]*CertificateObjectProperties `json:"certificates,omitempty"`
+
+	// The KeyVault keys that this volume exposes
+	Keys map[string]*KeyObjectProperties `json:"keys,omitempty"`
+
+	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
+	Managed *bool `json:"managed,omitempty"`
+
+	// The ID of the user-managed keyvault to use for this volume component
+	Resource *string `json:"resource,omitempty"`
+
+	// The KeyVault secrets that this volume exposes
+	Secrets map[string]*SecretObjectProperties `json:"secrets,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultVolumeProperties.
+func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	a.VolumeProperties.marshalInternal(objectMap, "azure.com.keyvault")
+	populate(objectMap, "certificates", a.Certificates)
+	populate(objectMap, "keys", a.Keys)
+	populate(objectMap, "managed", a.Managed)
+	populate(objectMap, "resource", a.Resource)
+	populate(objectMap, "secrets", a.Secrets)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureKeyVaultVolumeProperties.
+func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "certificates":
+				err = unpopulate(val, &a.Certificates)
+				delete(rawMsg, key)
+		case "keys":
+				err = unpopulate(val, &a.Keys)
+				delete(rawMsg, key)
+		case "managed":
+				err = unpopulate(val, &a.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &a.Resource)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, &a.Secrets)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := a.VolumeProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // AzureServiceBusComponentList - List of azure.com.ServiceBusQueueComponent resources.
 type AzureServiceBusComponentList struct {
 	// REQUIRED; List of azure.com.ServiceBusQueueComponent resources.
@@ -228,7 +406,7 @@ func (a AzureServiceBusComponentList) MarshalJSON() ([]byte, error) {
 type AzureServiceBusComponentProperties struct {
 	BasicComponentProperties
 	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-	Managed *Enum4 `json:"managed,omitempty"`
+	Managed *Enum3 `json:"managed,omitempty"`
 
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
@@ -284,6 +462,29 @@ func (a AzureServiceBusComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureServiceBusComponentResource.
+func (a *AzureServiceBusComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &a.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := a.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // BasicComponentProperties - Basic properties of a component.
 type BasicComponentProperties struct {
 	// Status of the component
@@ -329,6 +530,23 @@ func (b *BasicComponentProperties) unmarshalInternal(rawMsg map[string]json.RawM
 type BasicRouteProperties struct {
 	// Status of the component
 	Status *RouteStatus `json:"status,omitempty"`
+}
+
+type CertificateObjectProperties struct {
+	// REQUIRED; The name of the certificate
+	Name *string `json:"name,omitempty"`
+
+	// REQUIRED; Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
+	Value *CertificateObjectPropertiesValue `json:"value,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *CertificateObjectPropertiesEncoding `json:"encoding,omitempty"`
+
+	// Certificate format. Default pem
+	Format *CertificateObjectPropertiesFormat `json:"format,omitempty"`
+
+	// Certificate version
+	Version *string `json:"version,omitempty"`
 }
 
 // CheckNameAvailabilityRequest - The check availability request body.
@@ -582,6 +800,29 @@ func (c ContainerComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerComponentResource.
+func (c *ContainerComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &c.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := c.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // ContainerConnection - Specifies a connection from the container to another resource
 type ContainerConnection struct {
 	// The kind of connection
@@ -636,6 +877,29 @@ func (d DaprHTTPRouteResource) MarshalJSON() ([]byte, error) {
 	d.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprHTTPRouteResource.
+func (d *DaprHTTPRouteResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &d.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoDaprHTTPRoute.BeginCreateOrUpdate method.
@@ -784,6 +1048,29 @@ func (d DaprPubSubTopicComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicComponentResource.
+func (d *DaprPubSubTopicComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &d.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // DaprSidecarTrait - The specifies that the component should have a Dapr sidecar injected
 type DaprSidecarTrait struct {
 	ComponentTrait
@@ -869,7 +1156,7 @@ type DaprStateStoreComponentProperties struct {
 	Kind *DaprStateStoreComponentPropertiesKind `json:"kind,omitempty"`
 
 	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-	Managed *Enum4 `json:"managed,omitempty"`
+	Managed *Enum3 `json:"managed,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentProperties.
@@ -920,6 +1207,29 @@ func (d DaprStateStoreComponentResource) MarshalJSON() ([]byte, error) {
 	d.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreComponentResource.
+func (d *DaprStateStoreComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &d.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // EncryptionProperties - Configuration of key for data encryption
@@ -1155,6 +1465,29 @@ func (g GatewayResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type GatewayResource.
+func (g *GatewayResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &g.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := g.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
 type HTTPGetHealthProbeProperties struct {
 	HealthProbeProperties
@@ -1334,6 +1667,29 @@ func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type HTTPRouteResource.
+func (h *HTTPRouteResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &h.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := h.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // HealthProbePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetHealthProbeProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
@@ -1391,6 +1747,14 @@ type Identity struct {
 
 	// READ-ONLY; The tenant ID of resource.
 	TenantID *string `json:"tenantId,omitempty" azure:"ro"`
+}
+
+type KeyObjectProperties struct {
+	// REQUIRED; The name of the key
+	Name *string `json:"name,omitempty"`
+
+	// Key version
+	Version *string `json:"version,omitempty"`
 }
 
 type KeyVaultProperties struct {
@@ -1500,6 +1864,29 @@ func (m MicrosoftSQLComponentResource) MarshalJSON() ([]byte, error) {
 	m.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", m.Properties)
 	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MicrosoftSQLComponentResource.
+func (m *MicrosoftSQLComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &m.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := m.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
 }
 
 type MicrosoftSQLSQLComponentProperties struct {
@@ -1615,6 +2002,29 @@ func (m MongoDBComponentResource) MarshalJSON() ([]byte, error) {
 	m.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", m.Properties)
 	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDBComponentResource.
+func (m *MongoDBComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &m.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := m.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // MongodbComMongoDBComponentBeginCreateOrUpdateOptions contains the optional parameters for the MongodbComMongoDBComponent.BeginCreateOrUpdate method.
@@ -1854,6 +2264,13 @@ func (p ProxyResource) marshalInternal(objectMap map[string]interface{}) {
 	p.Resource.marshalInternal(objectMap)
 }
 
+func (p *ProxyResource) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	if err := p.Resource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RabbitMQComponentList - List of rabbitmq.com.MessageQueueComponent resources.
 type RabbitMQComponentList struct {
 	// REQUIRED; List of rabbitmq.com.MessageQueueComponent resources.
@@ -1870,7 +2287,7 @@ func (r RabbitMQComponentList) MarshalJSON() ([]byte, error) {
 type RabbitMQComponentProperties struct {
 	BasicComponentProperties
 	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
-	Managed *Enum7 `json:"managed,omitempty"`
+	Managed *Enum6 `json:"managed,omitempty"`
 
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
@@ -1926,6 +2343,29 @@ func (r RabbitMQComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQComponentResource.
+func (r *RabbitMQComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.BeginCreateOrUpdate
 // method.
 type RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions struct {
@@ -1960,6 +2400,29 @@ func (r RadiusResource) MarshalJSON() ([]byte, error) {
 	r.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", r.Properties)
 	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RadiusResource.
+func (r *RadiusResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // RadiusResourceBeginDeleteOptions contains the optional parameters for the RadiusResource.BeginDelete method.
@@ -2089,6 +2552,29 @@ func (r RedisComponentResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisComponentResource.
+func (r *RedisComponentResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RedislabsComRedisComponentBeginCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedisComponent.BeginCreateOrUpdate method.
 type RedislabsComRedisComponentBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -2128,10 +2614,40 @@ func (r Resource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type Resource.
+func (r *Resource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return r.unmarshalInternal(rawMsg)
+}
+
 func (r Resource) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "name", r.Name)
 	populate(objectMap, "type", r.Type)
+}
+
+func (r *Resource) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "id":
+				err = unpopulate(val, &r.ID)
+				delete(rawMsg, key)
+		case "name":
+				err = unpopulate(val, &r.Name)
+				delete(rawMsg, key)
+		case "type":
+				err = unpopulate(val, &r.Type)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ResourceModelWithAllowedPropertySet - The resource model definition containing the full set of allowed properties for a resource. Except properties bag,
@@ -2237,6 +2753,17 @@ type SKU struct {
 
 	// This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.
 	Tier *SKUTier `json:"tier,omitempty"`
+}
+
+type SecretObjectProperties struct {
+	// REQUIRED; The name of the secret
+	Name *string `json:"name,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *SecretObjectPropertiesEncoding `json:"encoding,omitempty"`
+
+	// Secret version
+	Version *string `json:"version,omitempty"`
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
@@ -2387,10 +2914,40 @@ func (t TrackedResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// UnmarshalJSON implements the json.Unmarshaller interface for type TrackedResource.
+func (t *TrackedResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return t.unmarshalInternal(rawMsg)
+}
+
 func (t TrackedResource) marshalInternal(objectMap map[string]interface{}) {
 	t.Resource.marshalInternal(objectMap)
 	populate(objectMap, "location", t.Location)
 	populate(objectMap, "tags", t.Tags)
+}
+
+func (t *TrackedResource) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "location":
+				err = unpopulate(val, &t.Location)
+				delete(rawMsg, key)
+		case "tags":
+				err = unpopulate(val, &t.Tags)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := t.Resource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // VolumeClassification provides polymorphic access to related types.
@@ -2473,27 +3030,23 @@ type VolumeListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// VolumePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetVolumeProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *AzureFileShareVolumeProperties, *AzureKeyVaultVolumeProperties, *VolumeProperties
+type VolumePropertiesClassification interface {
+	// GetVolumeProperties returns the VolumeProperties content of the underlying type.
+	GetVolumeProperties() *VolumeProperties
+}
+
 type VolumeProperties struct {
 	BasicComponentProperties
-	// REQUIRED; The kind of volume component
-	Kind *VolumePropertiesKind `json:"kind,omitempty"`
-
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
-	Managed *bool `json:"managed,omitempty"`
-
-	// The ID of the user-managed volume to use for this component
-	Resource *string `json:"resource,omitempty"`
+	// REQUIRED; The VolumeProperties kind
+	Kind *string `json:"kind,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type VolumeProperties.
-func (v VolumeProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	v.BasicComponentProperties.marshalInternal(objectMap)
-	populate(objectMap, "kind", v.Kind)
-	populate(objectMap, "managed", v.Managed)
-	populate(objectMap, "resource", v.Resource)
-	return json.Marshal(objectMap)
-}
+// GetVolumeProperties implements the VolumePropertiesClassification interface for type VolumeProperties.
+func (v *VolumeProperties) GetVolumeProperties() *VolumeProperties { return v }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type VolumeProperties.
 func (v *VolumeProperties) UnmarshalJSON(data []byte) error {
@@ -2501,17 +3054,21 @@ func (v *VolumeProperties) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
 	}
+	return v.unmarshalInternal(rawMsg)
+}
+
+func (v VolumeProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
+	v.BasicComponentProperties.marshalInternal(objectMap)
+	v.Kind = &discValue
+	objectMap["kind"] = v.Kind
+}
+
+func (v *VolumeProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
 		case "kind":
 				err = unpopulate(val, &v.Kind)
-				delete(rawMsg, key)
-		case "managed":
-				err = unpopulate(val, &v.Managed)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, &v.Resource)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2528,7 +3085,7 @@ func (v *VolumeProperties) UnmarshalJSON(data []byte) error {
 type VolumeResource struct {
 	ProxyResource
 	// REQUIRED
-	Properties *VolumeProperties `json:"properties,omitempty"`
+	Properties VolumePropertiesClassification `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type VolumeResource.
@@ -2537,6 +3094,29 @@ func (v VolumeResource) MarshalJSON() ([]byte, error) {
 	v.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", v.Properties)
 	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type VolumeResource.
+func (v *VolumeResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				v.Properties, err = unmarshalVolumePropertiesClassification(val)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := v.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
 }
 
 func populate(m map[string]interface{}, k string, v interface{}) {

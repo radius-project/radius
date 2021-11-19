@@ -19,7 +19,7 @@ import (
 )
 
 func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	properties := radclient.VolumeProperties{}
+	properties := radclient.AzureFileShareVolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -55,7 +55,7 @@ func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererRes
 	}, nil
 }
 
-func RenderManaged(name string, properties radclient.VolumeProperties) ([]outputresource.OutputResource, error) {
+func RenderManaged(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != nil && *properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
@@ -84,7 +84,7 @@ func RenderManaged(name string, properties radclient.VolumeProperties) ([]output
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
-func RenderUnmanaged(name string, properties radclient.VolumeProperties) ([]outputresource.OutputResource, error) {
+func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}

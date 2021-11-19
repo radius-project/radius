@@ -186,3 +186,61 @@ func unmarshalVolumeClassificationMap(rawMsg json.RawMessage) (map[string]Volume
 	return fMap, nil
 }
 
+func unmarshalVolumePropertiesClassification(rawMsg json.RawMessage) (VolumePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b VolumePropertiesClassification
+	switch m["kind"] {
+	case "azure.com.fileshare":
+		b = &AzureFileShareVolumeProperties{}
+	case "azure.com.keyvault":
+		b = &AzureKeyVaultVolumeProperties{}
+	default:
+		b = &VolumeProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalVolumePropertiesClassificationArray(rawMsg json.RawMessage) ([]VolumePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]VolumePropertiesClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalVolumePropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalVolumePropertiesClassificationMap(rawMsg json.RawMessage) (map[string]VolumePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]VolumePropertiesClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalVolumePropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
