@@ -92,7 +92,7 @@ func setup(t *testing.T) SharedMocks {
 	skipHealthCheckKubernetesKinds := map[string]bool{
 		resourcekinds.Service: true,
 		resourcekinds.Secret:  true,
-		resourcekinds.Ingress: true,
+		resourcekinds.Gateway: true,
 	}
 	model := model.NewModel(
 		[]model.RadiusResourceModel{

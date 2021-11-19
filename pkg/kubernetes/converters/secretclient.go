@@ -29,7 +29,7 @@ func (sc *SecretClient) LookupSecretValue(ctx context.Context, status radiusv1al
 	}
 
 	secret := corev1.Secret{}
-	err := sc.Client.Get(ctx, client.ObjectKey{Namespace: outputResource.Namespace, Name: outputResource.Name}, &secret)
+	err := sc.Client.Get(ctx, client.ObjectKey{Namespace: outputResource.Resource.Namespace, Name: outputResource.Resource.Name}, &secret)
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve secret of dependency: %w", err)
 	}

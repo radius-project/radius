@@ -11,8 +11,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,6 +78,16 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 					}),
 				},
 			},
+			Status: radiusv1alpha3.ResourceStatus{
+				Resources: map[string]*radiusv1alpha3.OutputResource{
+					"Deployment": {
+						Status: radiusv1alpha3.OutputResourceStatus{
+							ProvisioningState: "Provisioned",
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+				},
+			},
 		},
 		expected: &radclient.RadiusResource{
 			ProxyResource: radclient.ProxyResource{
@@ -86,6 +99,20 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 			},
 			Properties: map[string]interface{}{
 				"image": "the-best",
+				"status": rest.ComponentStatus{
+					ProvisioningState: "Provisioned",
+					HealthState:       healthcontract.HealthStateHealthy,
+					OutputResources: []rest.OutputResource{
+						{
+							LocalID:            "Deployment",
+							OutputResourceType: string(resourcemodel.IdentityKindKubernetes),
+							Status: rest.OutputResourceStatus{
+								ProvisioningState: "Provisioned",
+								HealthState:       healthcontract.HealthStateHealthy,
+							},
+						},
+					},
+				},
 			},
 		},
 	}, {
@@ -100,6 +127,16 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 					}),
 				},
 			},
+			Status: radiusv1alpha3.ResourceStatus{
+				Resources: map[string]*radiusv1alpha3.OutputResource{
+					"Deployment": {
+						Status: radiusv1alpha3.OutputResourceStatus{
+							ProvisioningState: "Provisioned",
+							HealthState:       healthcontract.HealthStateHealthy,
+						},
+					},
+				},
+			},
 		},
 		expected: &radclient.RadiusResource{
 			ProxyResource: radclient.ProxyResource{
@@ -107,6 +144,22 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 					Name: to.StringPtr("route-42"),
 					ID:   to.StringPtr("/the/long/and/winding/route"),
 					Type: to.StringPtr("/very/long/path/radius.dev/HttpRoute"),
+				},
+			},
+			Properties: map[string]interface{}{
+				"status": rest.ComponentStatus{
+					ProvisioningState: "Provisioned",
+					HealthState:       healthcontract.HealthStateHealthy,
+					OutputResources: []rest.OutputResource{
+						{
+							LocalID:            "Deployment",
+							OutputResourceType: string(resourcemodel.IdentityKindKubernetes),
+							Status: rest.OutputResourceStatus{
+								ProvisioningState: "Provisioned",
+								HealthState:       healthcontract.HealthStateHealthy,
+							},
+						},
+					},
 				},
 			},
 		},

@@ -60,12 +60,14 @@ func Test_GetRenderDependency(t *testing.T) {
 			}),
 		},
 		Status: radiusv1alpha3.ResourceStatus{
-			Resources: map[string]corev1.ObjectReference{
-				"SecretLocalID": {
-					Namespace:  Namespace,
-					Name:       "some-secret",
-					Kind:       "Secret",
-					APIVersion: "v1",
+			Resources: map[string]*radiusv1alpha3.OutputResource{
+				"SecretLocalID": &radiusv1alpha3.OutputResource{
+					Resource: corev1.ObjectReference{
+						Namespace:  Namespace,
+						Name:       "some-secret",
+						Kind:       "Secret",
+						APIVersion: "v1",
+					},
 				},
 			},
 			ComputedValues: rawOrPanic(map[string]renderers.ComputedValueReference{

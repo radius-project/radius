@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -44,16 +45,17 @@ var DefaultResourceTypes = []struct {
 	{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 }
 
-var DefaultWatchTypes = []struct {
-	client.Object
-	client.ObjectList
+var DefaultWatchTypes = map[string]struct {
+	Object        client.Object
+	ObjectList    client.ObjectList
+	HealthHandler func(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string)
 }{
-	{&corev1.Service{}, &corev1.ServiceList{}},
-	{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
-	{&corev1.Secret{}, &corev1.SecretList{}},
-	{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
-	{&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}},
-	{&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}},
+	resourcekinds.Service:     {&corev1.Service{}, &corev1.ServiceList{}, nil},
+	resourcekinds.Deployment:  {&appsv1.Deployment{}, &appsv1.DeploymentList{}, GetHealthStateFromDeployment},
+	resourcekinds.Secret:      {&corev1.Secret{}, &corev1.SecretList{}, nil},
+	resourcekinds.StatefulSet: {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
+	resourcekinds.Gateway:     {&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}, nil},
+	resourcekinds.HTTPRoute:   {&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}, nil},
 }
 
 type Options struct {
@@ -69,9 +71,10 @@ type Options struct {
 		client.Object
 		client.ObjectList
 	}
-	WatchTypes []struct {
-		client.Object
-		client.ObjectList
+	WatchTypes map[string]struct {
+		Object        client.Object
+		ObjectList    client.ObjectList
+		HealthHandler func(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string)
 	}
 	SkipWebhooks bool
 }
