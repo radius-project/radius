@@ -92,7 +92,7 @@ rad app deploy --parameters @myfile.json --parameters version=latest
 func init() {
 	applicationCmd.AddCommand(appDeployCmd)
 	appDeployCmd.Flags().StringP("environment", "e", "", "The environment name")
-	appDeployCmd.Flags().StringP("radfile", "r", "", "path to rad.yaml")
+	appDeployCmd.Flags().StringP("radfile", "r", "", "The path to rad.yaml. The default is './rad/rad.yaml'")
 	appDeployCmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
 }
 
