@@ -8,6 +8,8 @@ package environments
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 )
@@ -42,18 +44,8 @@ func (e *KubernetesEnvironment) GetStatusLink() string {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
-	if err != nil {
-		return nil, err
-	}
-	dynamicClient, err := kubernetes.CreateDynamicClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
-	typedClient, _, err := kubernetes.CreateTypedClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
+	azcred := &radclient.AnonymousCredential{}
+	connection := arm.NewConnection("http://localhost:9999", azcred, nil)
 
 	return &kubernetes.KubernetesDeploymentClient{
 		Client:    client,
