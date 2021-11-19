@@ -13,6 +13,7 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/helm/log"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -24,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/Azure/radius/pkg/hosting"
+	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
@@ -128,6 +131,62 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	apiServerStarted = make(chan struct{})
+	apiServerReady := make(chan struct{})
+
+	apiServerOptions := kubernetes.APIServerExtensionOptions{
+		KubeConfigPath: getKubeConfigPath(),
+		Scheme:         scheme,
+		Start:          apiServerReady,
+	}
+	apiServer := kubernetes.NewAPIServerExtension(log, apiServerOptions)
+
+	host := hosting.Host{
+		Services: []hosting.Service{
+			apiServer,
+		},
+	}
+
+	// // Create a channel to handle the shutdown
+	// exitCh := make(chan os.Signal, 1)
+	// signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	// ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), log))
+
+	// err = kcpRunner.EnsureKcpExecutable(ctx)
+	// if err != nil {
+	// 	abort(err, "unable to ensure KCP executable", CannotDownloadKcpExecutable)
+	// }
+
+	log.Info("Starting server...")
+	stopped, serviceErrors := host.RunAsync(ctx)
+
+	// go func() {
+	// 	<-apiServerStarted
+	// 	log.Info("Applying CRDs...")
+	// 	localenv.ApplyCRDs(ctx, getKubeConfigPath(), getCRDDir())
+	// 	log.Info("CRDs Ready")
+	// 	close(apiServerReady)
+	// }()
+
+	// select {
+	// // Normal shutdown
+	// case <-exitCh:
+	// 	log.Info("Shutdown requested..")
+	// 	cancel()
+
+	// // A service terminated with a failure. Details of the failure have already been logged.
+	// case <-serviceErrors:
+	// 	log.Info("One of the services failed. Shutting down...")
+	// 	cancel()
+	// }
+
+	// // Finished shutting down. An error returned here is a failure to terminate
+	// // gracefully, so just crash if that happens.
+	// err = <-stopped
+	// if err != nil {
+	// 	abort(err, "Graceful shutdown failed. Aborting...", ForcedShutdown)
+	// }
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
