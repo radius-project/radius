@@ -3,10 +3,12 @@
     "connections": {
       "gateway": {
         "kind": "UnknownKind",
-        "anotherThing": true
+        "anotherThing": true,
+        "source": "id"
       },
       "backend": {
-        "kind": "Http"
+        "kind": "Http",
+        "source": "id"
       },
       "frontend": {
         "kind": "Http",
