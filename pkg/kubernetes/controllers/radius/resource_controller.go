@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/kubernetes"
+	"github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/model"
@@ -433,7 +434,12 @@ func (r *ResourceReconciler) ApplyState(
 			}
 			// Mention the scraped secret resource in the local ID so that we can refer
 			// to it in ComputedValues.
-			resource.Status.Resources[localId] = *or
+			resource.Status.Resources[localId] = &v1alpha3.OutputResource{
+				Resource: *or,
+				Status: radiusv1alpha3.OutputResourceStatus{
+					ProvisioningState: kubernetes.ProvisioningStateProvisioned,
+				},
+			}
 
 			// Do not delete scraped secret. While the `ownerRef` mechanism was use
 			// so that the scraped secret is cleaned up whenever our resource is cleaned up,
@@ -512,7 +518,7 @@ func outputResourceToKubernetesObject(namespace string, outputResource outputres
 	if annotations == nil {
 		annotations = map[string]string{}
 	}
-	annotations[AnnotationLocalID] = outputResource.LocalID
+	annotations[kubernetes.AnnotationLocalID] = outputResource.LocalID
 	obj.SetAnnotations(annotations)
 
 	return obj, nil

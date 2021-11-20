@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -142,12 +141,6 @@ func TestRenderUnmanagedRedis(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{{
-			ResourceKind: resourcekinds.Kubernetes,
-			LocalID:      outputresource.LocalIDScrapedSecret,
-			Resource: kubernetes.MakeScrapedSecret(
-				input.ApplicationName, "RedisComponent", input.ResourceName),
-		}},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"host": {
 				Value: to.StringPtr("hello.com"),
