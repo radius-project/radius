@@ -77,10 +77,10 @@ func init() {
 	RootCmd.SetVersionTemplate(template)
 
 	RootCmd.Flags().BoolP("version", "v", false, "version for radius")
-	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default is $HOME/.rad/config.yaml)")
+	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 
-	outputDescription := fmt.Sprintf("output format (default is %s, supported formats are %s)", output.DefaultFormat, strings.Join(output.SupportedFormats(), ", "))
-	RootCmd.PersistentFlags().StringP("output", "o", "table", outputDescription)
+	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
+	RootCmd.PersistentFlags().StringP("output", "o", output.DefaultFormat, outputDescription)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
