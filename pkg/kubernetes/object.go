@@ -139,18 +139,18 @@ func GetShortenedTargetPortName(name string) string {
 
 // MakeScrapedSecretName creates a Secret scraped from input values passed through
 // from the deployment template.
-func MakeScrapedSecretName(appName string, resourceType string, resourceName string) string {
-	return strings.ToLower(appName + "-" + resourceType + "-" + resourceName)
+func MakeScrapedSecretName(appName string, resourceKind string, resourceName string) string {
+	return strings.ToLower(appName + "-" + resourceKind + "-" + resourceName)
 }
 
-func MakeScrapedSecret(appName string, resourceType string, resourceName string) *corev1.Secret {
+func MakeScrapedSecret(appName string, resourceKind string, resourceName string) *corev1.Secret {
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   MakeScrapedSecretName(appName, resourceType, resourceName),
+			Name:   MakeScrapedSecretName(appName, resourceKind, resourceName),
 			Labels: MakeDescriptiveLabels(appName, resourceName),
 			Annotations: map[string]string{
 				AnnotationLocalID: outputresource.LocalIDScrapedSecret,

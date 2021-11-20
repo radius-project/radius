@@ -199,8 +199,11 @@ func (r *ResourceReconciler) UpdateResourceStatus(ctx context.Context, log logr.
 		or, err := r.getOutputResource(desired, a)
 		if err != nil {
 			// No output resource to update the state for
-			log.Error(err, fmt.Sprintf("Unable to find output resource with name: %s-%s", a.GetNamespace(), a.GetName()))
+			log.Error(err, fmt.Sprintf("Unable to find output resource with name: %s/%s", a.GetNamespace(), a.GetName()))
 			return
+		}
+		if or == nil {
+			continue
 		}
 
 		var healthState string
