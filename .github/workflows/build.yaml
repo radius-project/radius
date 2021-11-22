@@ -221,6 +221,7 @@ jobs:
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
+      RADIUS_CHART_LOCATION: deploy/Chart/
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -243,51 +244,17 @@ jobs:
       with:
         cluster_name: radius
         version:  v0.11.0
-    - name: Apply CRDs
-      run: make controller-crd-install
     - name: Dapr tool installer
       uses: dapr/setup-dapr@v1
     - name: Install dapr into cluster
       run: dapr init -k --wait --timeout 600
-    - name: Install haproxy into cluster
-      run: |
-        kubectl kustomize\
-          "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
-          kubectl apply -f -
-        helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
-        helm repo update
-
-        cat <<EOF | helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
-          --create-namespace --namespace radius-system \
-          --version 0.13.4 \
-          -f -
-        controller:
-          hostNetwork: true
-          extraArgs:
-            watch-gateway: "true"
-        EOF
-    - name: Install haproxy gateway class
-      run: |
-        cat <<EOF | kubectl apply -f -
-        apiVersion: networking.x-k8s.io/v1alpha1
-        kind: GatewayClass
-        metadata:
-          name: haproxy
-        spec:
-          controller: haproxy-ingress.github.io/controller
-        EOF
-
     - name: Update rad env with Kubernetes
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init kubernetes
+        dist/rad env init kubernetes -c ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
-    - name: Deploy Controller
-      run: make controller-deploy-existing
-      env:
-        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
     - name: Download Bicep
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
