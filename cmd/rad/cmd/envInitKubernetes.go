@@ -27,6 +27,11 @@ import (
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
+const (
+	HAProxyVersion    = "0.13.4"
+	GatewayCRDVersion = "v0.3.0"
+)
+
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "Initializes a kubernetes environment",
@@ -100,12 +105,12 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = kubectl.RunCLICommandSilent("apply", "--kustomize", "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0")
+		err = kubectl.RunCLICommandSilent("apply", "--kustomize", fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GatewayCRDVersion))
 		if err != nil {
 			return err
 		}
 
-		err = helm.ApplyHAProxyHelmChart("0.13.4")
+		err = helm.ApplyHAProxyHelmChart(HAProxyVersion)
 		if err != nil {
 			return err
 		}
