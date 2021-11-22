@@ -22,11 +22,22 @@ func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validat
 	h := handler{rp: rp, validatorFactory: validatorFactory}
 	var subrouter *mux.Router
 
+	// when you register a crd, basically the api server will be responible for that group version
+	// when you register an api service extension, I'm responsible for it
+	// when you register the api version, you respond to the api server
+	// discovery is part of the protocol, api server pings api service, what crds do you own?
+	// don't need provide data, but need to respond to request, ready checks will fail, log what urls
+	// see example url, hit different one, you get an example.
+
+	// kubectl proxy
+
+	// use kubeclient to create httpclient, don't create a separate public endpoint
 	var providerPath = fmt.Sprintf(
-		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
+		"/apis/api.radius.dev/v1alpha3/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
 
+	router.Path("/apis/api.radius.dev/v1alpha3").Methods("GET").HandlerFunc(h.GetResource)
 	router.Path(fmt.Sprintf("%s/listSecrets", providerPath)).Methods("POST").HandlerFunc(h.ListSecrets)
 
 	var applicationCollectionPath = fmt.Sprintf("%s/Application", providerPath)

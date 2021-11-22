@@ -152,6 +152,7 @@ func (h *handler) ListResources(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) GetResource(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
+
 	response, err := h.rp.GetResource(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
@@ -266,7 +267,7 @@ func resourceID(req *http.Request) azresources.ResourceID {
 	logger := radlogger.GetLogger(req.Context())
 	id, err := azresources.Parse(req.URL.Path)
 	if err != nil {
-		logger.Info("URL was not a valid resource id: %v", req.URL.Path)
+		logger.Info(fmt.Sprintf("URL was not a valid resource id: %v", req.URL.Path))
 		// just log the error - it will be handled in the RP layer.
 	}
 	return id

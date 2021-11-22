@@ -44,23 +44,11 @@ func NewRestApplicationResource(id azresources.ResourceID, input radiusv1alpha3.
 		}
 	}
 
-	ap := resourceprovider.ApplicationResourceProperties{}
-
-	b, err := json.Marshal(&properties)
-	if err != nil {
-		return resourceprovider.ApplicationResource{}, err
-	}
-
-	err = json.Unmarshal(b, &ap)
-	if err != nil {
-		return resourceprovider.ApplicationResource{}, err
-	}
-
 	return resourceprovider.ApplicationResource{
 		ID:         id.ID,
 		Type:       id.Type(),
 		Name:       id.Name(),
-		Properties: ap,
+		Properties: properties,
 	}, nil
 }
 

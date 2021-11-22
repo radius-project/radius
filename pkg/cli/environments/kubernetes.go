@@ -44,8 +44,17 @@ func (e *KubernetesEnvironment) GetStatusLink() string {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	azcred := &radclient.AnonymousCredential{}
-	connection := arm.NewConnection("http://localhost:9999", azcred, nil)
+	// azcred := &radclient.AnonymousCredential{}
+	// connection := arm.NewConnection("http://localhost:9999", azcred, nil)
+
+	// return &kubernetes.KubernetesDeploymentClient{
+	// 	Client:    client,
+	// 	Namespace: e.Namespace,
+	// }, nil
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+	if err != nil {
+		return nil, err
+	}
 
 	return &kubernetes.KubernetesDeploymentClient{
 		Client:    client,

@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -23,8 +22,6 @@ import (
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/radrp/schema"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcemodel"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -262,6 +259,8 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 		return nil, err
 	}
 
+	fmt.Println()
+
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
@@ -433,50 +432,50 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 
 	values := map[string]interface{}{}
 	for k, v := range secretValues {
-		cloud, ok := resource.Status.CloudResources[v.LocalID]
-		if ok {
-			// This is an Azure resource
-			arm, err := armauth.GetArmAuthorizer()
-			if err != nil {
-				return nil, fmt.Errorf("failed to authenticate with Azure: %w", err)
-			}
+		// cloud, ok := resource.Status.CloudResources[v.LocalID]
+		// if ok {
+		// 	// This is an Azure resource
+		// 	arm, err := armauth.GetArmAuthorizer()
+		// 	if err != nil {
+		// 		return nil, fmt.Errorf("failed to authenticate with Azure: %w", err)
+		// 	}
 
-			identity := resourcemodel.NewARMIdentity(strings.Split(cloud.Identity, "@")[0], strings.Split(cloud.Identity, "@")[1])
+		// 	identity := resourcemodel.NewARMIdentity(strings.Split(cloud.Identity, "@")[0], strings.Split(cloud.Identity, "@")[1])
 
-			azureSecretClient := renderers.NewSecretValueClient(arm)
-			value, err := azureSecretClient.FetchSecret(ctx, identity, v.Action, v.ValueSelector)
-			if err != nil {
-				return nil, err
-			}
+		// 	azureSecretClient := renderers.NewSecretValueClient(arm)
+		// 	value, err := azureSecretClient.FetchSecret(ctx, identity, v.Action, v.ValueSelector)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
 
-			if v.Transformer != "" {
-				outputResourceType, err := r.AppModel.LookupOutputResource(v.Transformer)
-				if err != nil {
-					return nil, err
-				}
+		// 	if v.Transformer != "" {
+		// 		outputResourceType, err := r.AppModel.LookupOutputResource(v.Transformer)
+		// 		if err != nil {
+		// 			return nil, err
+		// 		}
 
-				transformer := outputResourceType.SecretValueTransformer
-				if transformer == nil {
-					return nil, fmt.Errorf("output resource %q has no secret value transformer", v.Transformer)
-				}
+		// 		transformer := outputResourceType.SecretValueTransformer
+		// 		if transformer == nil {
+		// 			return nil, fmt.Errorf("output resource %q has no secret value transformer", v.Transformer)
+		// 		}
 
-				dependency := renderers.RendererDependency{
-					ComputedValues: computedValues,
-					ResourceID:     id,
-					Definition:     output.Properties,
-				}
+		// 		dependency := renderers.RendererDependency{
+		// 			ComputedValues: computedValues,
+		// 			ResourceID:     id,
+		// 			Definition:     output.Properties,
+		// 		}
 
-				value, err = transformer.Transform(ctx, dependency, value)
-				if err != nil {
-					return nil, err
-				}
-			}
+		// 		value, err = transformer.Transform(ctx, dependency, value)
+		// 		if err != nil {
+		// 			return nil, err
+		// 		}
+		// 	}
 
-			values[k] = value
-			continue
-		}
+		// 	values[k] = value
+		// 	continue
+		// }
 
-		_, ok = resource.Status.Resources[v.LocalID]
+		_, ok := resource.Status.Resources[v.LocalID]
 		if ok {
 			// This is an Kubernetes secret
 			kubernetesSecretClient := converters.SecretClient{Client: r.client}

@@ -5,15 +5,17 @@ Copyright 2021.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
+	"os/signal"
+	"syscall"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/restmapper"
-	"k8s.io/helm/log"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -26,10 +28,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/Azure/radius/pkg/hosting"
-	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/kubernetes/apiserver"
 	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
+	"github.com/go-logr/logr"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
@@ -132,15 +135,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	apiServerStarted = make(chan struct{})
+	// apiServerStarted = make(chan struct{})
 	apiServerReady := make(chan struct{})
 
-	apiServerOptions := kubernetes.APIServerExtensionOptions{
-		KubeConfigPath: getKubeConfigPath(),
-		Scheme:         scheme,
-		Start:          apiServerReady,
+	apiServerOptions := apiserver.APIServerExtensionOptions{
+		KubeConfig: ctrl.GetConfigOrDie(),
+		Scheme:     scheme,
+		Start:      apiServerReady,
 	}
-	apiServer := kubernetes.NewAPIServerExtension(log, apiServerOptions)
+	apiServer := apiserver.NewAPIServerExtension(setupLog, apiServerOptions)
 
 	host := hosting.Host{
 		Services: []hosting.Service{
@@ -158,8 +161,15 @@ func main() {
 	// 	abort(err, "unable to ensure KCP executable", CannotDownloadKcpExecutable)
 	// }
 
-	log.Info("Starting server...")
+	// Create a channel to handle the shutdown
+	exitCh := make(chan os.Signal, 1)
+	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), ctrl.Log))
+
+	setupLog.Info("Starting server...")
 	stopped, serviceErrors := host.RunAsync(ctx)
+
+	close(apiServerReady)
 
 	// go func() {
 	// 	<-apiServerStarted
@@ -169,28 +179,27 @@ func main() {
 	// 	close(apiServerReady)
 	// }()
 
-	// select {
-	// // Normal shutdown
-	// case <-exitCh:
-	// 	log.Info("Shutdown requested..")
-	// 	cancel()
-
-	// // A service terminated with a failure. Details of the failure have already been logged.
-	// case <-serviceErrors:
-	// 	log.Info("One of the services failed. Shutting down...")
-	// 	cancel()
-	// }
-
-	// // Finished shutting down. An error returned here is a failure to terminate
-	// // gracefully, so just crash if that happens.
-	// err = <-stopped
-	// if err != nil {
-	// 	abort(err, "Graceful shutdown failed. Aborting...", ForcedShutdown)
-	// }
-
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
+	}
+
+	select {
+	// Normal shutdown
+	case <-exitCh:
+		setupLog.Info("Shutdown requested..")
+		cancel()
+	// A service terminated with a failure. Details of the failure have already been logged.
+	case <-serviceErrors:
+		setupLog.Info("One of the services failed. Shutting down...")
+		cancel()
+	}
+
+	// Finished shutting down. An error returned here is a failure to terminate
+	// gracefully, so just crash if that happens.
+	err = <-stopped
+	if err != nil {
+		return
 	}
 }

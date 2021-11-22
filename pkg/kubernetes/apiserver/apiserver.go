@@ -3,19 +3,19 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package kubernetes
+package apiserver
 
 import (
 	"context"
 	"fmt"
 	"net/http"
 
-	"github.com/Azure/radius/pkg/kubernetes/apiserver"
-	"github.com/Azure/radius/pkg/radrp/frontend/handler"
+	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -25,9 +25,10 @@ type APIServerExtension struct {
 }
 
 type APIServerExtensionOptions struct {
-	KubeConfigPath string
-	Scheme         *apiruntime.Scheme
-	Start          <-chan struct{}
+	KubeConfig *rest.Config
+	Scheme     *apiruntime.Scheme
+	AppModel   model.ApplicationModel
+	Start      <-chan struct{}
 }
 
 func NewAPIServerExtension(log logr.Logger, options APIServerExtensionOptions) *APIServerExtension {
@@ -47,22 +48,18 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 	logger.Info("API Server Extension waiting for API Server...")
 	<-api.options.Start
 
-	config, err := GetRESTConfig(api.options.KubeConfigPath)
+	c, err := client.New(api.options.KubeConfig, client.Options{Scheme: api.options.Scheme})
 	if err != nil {
 		return err
 	}
+	// Add group/version as prefix.
 
-	c, err := client.New(config, client.Options{Scheme: api.options.Scheme})
-	if err != nil {
-		return err
-	}
-
-	rp := apiserver.NewResourceProvider(c)
+	rp := NewResourceProvider(api.options.AppModel, c)
 	s := server.NewServer(ctx, server.ServerOptions{
 		Address:      "localhost:9999",
 		Authenticate: false,
 		Configure: func(r *mux.Router) {
-			apiserver.AddRoutes(rp, r, handler.DefaultValidatorFactory)
+			AddRoutes(rp, r, DefaultValidatorFactory)
 		},
 	})
 
