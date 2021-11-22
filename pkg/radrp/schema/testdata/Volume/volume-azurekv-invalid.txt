@@ -1,0 +1,7 @@
+(root).properties.secrets.mysecret-1: name is required
+(root).properties.secrets.mysecret-2.encoding: properties.secrets.mysecret-2.encoding must be one of the following: "utf-8", "hex", "base64"
+(root).properties.keys.mykey-1: name is required
+(root).properties.certificates.mycert-1: name is required
+(root).properties.certificates.mycert-2: value is required
+(root).properties.certificates.mycert-3.format: properties.certificates.mycert-3.format must be one of the following: "pem", "pfx"
+(root).properties.certificates.mycert-3.value: properties.certificates.mycert-3.value must be one of the following: "certificate", "publickey", "privatekey"

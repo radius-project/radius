@@ -32,6 +32,73 @@ func (c ActionType) ToPtr() *ActionType {
 	return &c
 }
 
+// CertificateObjectPropertiesEncoding - Encoding format. Default utf-8
+type CertificateObjectPropertiesEncoding string
+
+const (
+	CertificateObjectPropertiesEncodingBase64 CertificateObjectPropertiesEncoding = "base64"
+	CertificateObjectPropertiesEncodingHex CertificateObjectPropertiesEncoding = "hex"
+	CertificateObjectPropertiesEncodingUTF8 CertificateObjectPropertiesEncoding = "utf-8"
+)
+
+// PossibleCertificateObjectPropertiesEncodingValues returns the possible values for the CertificateObjectPropertiesEncoding const type.
+func PossibleCertificateObjectPropertiesEncodingValues() []CertificateObjectPropertiesEncoding {
+	return []CertificateObjectPropertiesEncoding{	
+		CertificateObjectPropertiesEncodingBase64,
+		CertificateObjectPropertiesEncodingHex,
+		CertificateObjectPropertiesEncodingUTF8,
+	}
+}
+
+// ToPtr returns a *CertificateObjectPropertiesEncoding pointing to the current value.
+func (c CertificateObjectPropertiesEncoding) ToPtr() *CertificateObjectPropertiesEncoding {
+	return &c
+}
+
+// CertificateObjectPropertiesFormat - Certificate format. Default pem
+type CertificateObjectPropertiesFormat string
+
+const (
+	CertificateObjectPropertiesFormatPem CertificateObjectPropertiesFormat = "pem"
+	CertificateObjectPropertiesFormatPfx CertificateObjectPropertiesFormat = "pfx"
+)
+
+// PossibleCertificateObjectPropertiesFormatValues returns the possible values for the CertificateObjectPropertiesFormat const type.
+func PossibleCertificateObjectPropertiesFormatValues() []CertificateObjectPropertiesFormat {
+	return []CertificateObjectPropertiesFormat{	
+		CertificateObjectPropertiesFormatPem,
+		CertificateObjectPropertiesFormatPfx,
+	}
+}
+
+// ToPtr returns a *CertificateObjectPropertiesFormat pointing to the current value.
+func (c CertificateObjectPropertiesFormat) ToPtr() *CertificateObjectPropertiesFormat {
+	return &c
+}
+
+// CertificateObjectPropertiesValue - Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
+type CertificateObjectPropertiesValue string
+
+const (
+	CertificateObjectPropertiesValueCertificate CertificateObjectPropertiesValue = "certificate"
+	CertificateObjectPropertiesValuePrivatekey CertificateObjectPropertiesValue = "privatekey"
+	CertificateObjectPropertiesValuePublickey CertificateObjectPropertiesValue = "publickey"
+)
+
+// PossibleCertificateObjectPropertiesValueValues returns the possible values for the CertificateObjectPropertiesValue const type.
+func PossibleCertificateObjectPropertiesValueValues() []CertificateObjectPropertiesValue {
+	return []CertificateObjectPropertiesValue{	
+		CertificateObjectPropertiesValueCertificate,
+		CertificateObjectPropertiesValuePrivatekey,
+		CertificateObjectPropertiesValuePublickey,
+	}
+}
+
+// ToPtr returns a *CertificateObjectPropertiesValue pointing to the current value.
+func (c CertificateObjectPropertiesValue) ToPtr() *CertificateObjectPropertiesValue {
+	return &c
+}
+
 // CheckNameAvailabilityReason - The reason why the given name is not available.
 type CheckNameAvailabilityReason string
 
@@ -228,7 +295,26 @@ func (c EncryptionStatus) ToPtr() *EncryptionStatus {
 	return &c
 }
 
-// Enum3 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
+// Enum2 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
+type Enum2 bool
+
+const (
+	Enum2True Enum2 = true
+)
+
+// PossibleEnum2Values returns the possible values for the Enum2 const type.
+func PossibleEnum2Values() []Enum2 {
+	return []Enum2{	
+		Enum2True,
+	}
+}
+
+// ToPtr returns a *Enum2 pointing to the current value.
+func (c Enum2) ToPtr() *Enum2 {
+	return &c
+}
+
+// Enum3 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component
 type Enum3 bool
 
 const (
@@ -247,41 +333,22 @@ func (c Enum3) ToPtr() *Enum3 {
 	return &c
 }
 
-// Enum4 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-type Enum4 bool
+// Enum6 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
+type Enum6 bool
 
 const (
-	Enum4True Enum4 = true
+	Enum6True Enum6 = true
 )
 
-// PossibleEnum4Values returns the possible values for the Enum4 const type.
-func PossibleEnum4Values() []Enum4 {
-	return []Enum4{	
-		Enum4True,
+// PossibleEnum6Values returns the possible values for the Enum6 const type.
+func PossibleEnum6Values() []Enum6 {
+	return []Enum6{	
+		Enum6True,
 	}
 }
 
-// ToPtr returns a *Enum4 pointing to the current value.
-func (c Enum4) ToPtr() *Enum4 {
-	return &c
-}
-
-// Enum7 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
-type Enum7 bool
-
-const (
-	Enum7True Enum7 = true
-)
-
-// PossibleEnum7Values returns the possible values for the Enum7 const type.
-func PossibleEnum7Values() []Enum7 {
-	return []Enum7{	
-		Enum7True,
-	}
-}
-
-// ToPtr returns a *Enum7 pointing to the current value.
-func (c Enum7) ToPtr() *Enum7 {
+// ToPtr returns a *Enum6 pointing to the current value.
+func (c Enum6) ToPtr() *Enum6 {
 	return &c
 }
 
@@ -375,22 +442,26 @@ func (c SKUTier) ToPtr() *SKUTier {
 	return &c
 }
 
-// VolumePropertiesKind - The kind of volume component
-type VolumePropertiesKind string
+// SecretObjectPropertiesEncoding - Encoding format. Default utf-8
+type SecretObjectPropertiesEncoding string
 
 const (
-	VolumePropertiesKindAzureComFileshare VolumePropertiesKind = "azure.com.fileshare"
+	SecretObjectPropertiesEncodingBase64 SecretObjectPropertiesEncoding = "base64"
+	SecretObjectPropertiesEncodingHex SecretObjectPropertiesEncoding = "hex"
+	SecretObjectPropertiesEncodingUTF8 SecretObjectPropertiesEncoding = "utf-8"
 )
 
-// PossibleVolumePropertiesKindValues returns the possible values for the VolumePropertiesKind const type.
-func PossibleVolumePropertiesKindValues() []VolumePropertiesKind {
-	return []VolumePropertiesKind{	
-		VolumePropertiesKindAzureComFileshare,
+// PossibleSecretObjectPropertiesEncodingValues returns the possible values for the SecretObjectPropertiesEncoding const type.
+func PossibleSecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEncoding {
+	return []SecretObjectPropertiesEncoding{	
+		SecretObjectPropertiesEncodingBase64,
+		SecretObjectPropertiesEncodingHex,
+		SecretObjectPropertiesEncodingUTF8,
 	}
 }
 
-// ToPtr returns a *VolumePropertiesKind pointing to the current value.
-func (c VolumePropertiesKind) ToPtr() *VolumePropertiesKind {
+// ToPtr returns a *SecretObjectPropertiesEncoding pointing to the current value.
+func (c SecretObjectPropertiesEncoding) ToPtr() *SecretObjectPropertiesEncoding {
 	return &c
 }
 
