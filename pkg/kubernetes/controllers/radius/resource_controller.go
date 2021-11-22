@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/kubernetes"
+	"github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
 	"github.com/Azure/radius/pkg/model"
@@ -44,8 +45,7 @@ import (
 )
 
 const (
-	AnnotationLocalID = "radius.dev/local-id"
-	ConditionReady    = "Ready"
+	ConditionReady = "Ready"
 )
 
 // ResourceReconciler reconciles a Resource object
@@ -199,8 +199,11 @@ func (r *ResourceReconciler) UpdateResourceStatus(ctx context.Context, log logr.
 		or, err := r.getOutputResource(desired, a)
 		if err != nil {
 			// No output resource to update the state for
-			log.Error(err, fmt.Sprintf("Unable to find output resource with name: %s-%s", a.GetNamespace(), a.GetName()))
+			log.Error(err, fmt.Sprintf("Unable to find output resource with name: %s/%s", a.GetNamespace(), a.GetName()))
 			return
+		}
+		if or == nil {
+			continue
 		}
 
 		var healthState string
@@ -426,6 +429,27 @@ func (r *ResourceReconciler) ApplyState(
 	}
 
 	for _, obj := range actual {
+		if localId := obj.GetAnnotations()[kubernetes.AnnotationLocalID]; localId == outputresource.LocalIDScrapedSecret {
+			or, err := ref.GetReference(r.Scheme, obj)
+			if err != nil {
+				log.Error(err, "failed to get resource reference for resource")
+				return err
+			}
+			// Mention the scraped secret resource in the local ID so that we can refer
+			// to it in ComputedValues.
+			resource.Status.Resources[localId] = &v1alpha3.OutputResource{
+				Resource: *or,
+				Status: radiusv1alpha3.OutputResourceStatus{
+					ProvisioningState: kubernetes.ProvisioningStateProvisioned,
+				},
+			}
+
+			// Do not delete scraped secret. While the `ownerRef` mechanism was use
+			// so that the scraped secret is cleaned up whenever our resource is cleaned up,
+			// it was actually a sibling resource created by the template controller. We don't
+			// want to ask that each renderer mention the scraped secret explictly.
+			continue
+		}
 		log := log.WithValues(
 			"resourcenamespace", obj.GetNamespace(),
 			"resourcename", obj.GetName(),
@@ -497,7 +521,7 @@ func outputResourceToKubernetesObject(namespace string, outputResource outputres
 	if annotations == nil {
 		annotations = map[string]string{}
 	}
-	annotations[AnnotationLocalID] = outputResource.LocalID
+	annotations[kubernetes.AnnotationLocalID] = outputResource.LocalID
 	obj.SetAnnotations(annotations)
 
 	return obj, nil
@@ -514,8 +538,8 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 
 	// TODO determine this correctly
 	unst.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
+		Group:   radiusv1alpha3.GroupVersion.Group,
+		Version: radiusv1alpha3.GroupVersion.Version,
 		Kind:    armtemplate.GetKindFromArmType(resourceType.Type),
 	})
 

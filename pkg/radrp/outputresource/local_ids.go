@@ -57,6 +57,7 @@ const (
 	LocalIDRabbitMQService              = "KubernetesRabbitMQService"
 	LocalIDRedisDeployment              = "KubernetesRedisDeployment"
 	LocalIDRedisService                 = "KubernetesRedisService"
+	LocalIDScrapedSecret                = "KubernetesScrapedSecret"
 	LocalIDSecret                       = "Secret"
 	LocalIDService                      = "Service"
 	LocalIDStatefulSet                  = "StatefulSet"
