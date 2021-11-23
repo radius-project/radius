@@ -1,3 +1,6 @@
 (root).id: Invalid type. Expected: string, given: integer
 (root).name: Invalid type. Expected: string, given: integer
+(root).properties.host: Invalid type. Expected: string, given: integer
+(root).properties.port: Invalid type. Expected: integer, given: string
 (root).properties: Additional property extra is not allowed
+(root).properties.secrets: Additional property extra is not allowed

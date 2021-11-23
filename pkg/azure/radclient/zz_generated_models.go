@@ -1960,19 +1960,29 @@ func (m MongoDBComponentList) MarshalJSON() ([]byte, error) {
 
 type MongoDBComponentProperties struct {
 	BasicComponentProperties
+	// The host name of the MongoDB to which you are connecting
+	Host *string `json:"host,omitempty"`
+
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
 	Managed *bool `json:"managed,omitempty"`
 
+	// The port value of the MongoDB to which you are connecting
+	Port *int32 `json:"port,omitempty"`
+
 	// The ID of the user-managed DB with Mongo API to use for this Component
 	Resource *string `json:"resource,omitempty"`
+	Secrets *MongoDBComponentPropertiesSecrets `json:"secrets,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type MongoDBComponentProperties.
 func (m MongoDBComponentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	m.BasicComponentProperties.marshalInternal(objectMap)
+	populate(objectMap, "host", m.Host)
 	populate(objectMap, "managed", m.Managed)
+	populate(objectMap, "port", m.Port)
 	populate(objectMap, "resource", m.Resource)
+	populate(objectMap, "secrets", m.Secrets)
 	return json.Marshal(objectMap)
 }
 
@@ -1985,11 +1995,20 @@ func (m *MongoDBComponentProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "host":
+				err = unpopulate(val, &m.Host)
+				delete(rawMsg, key)
 		case "managed":
 				err = unpopulate(val, &m.Managed)
 				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, &m.Port)
+				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &m.Resource)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, &m.Secrets)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2000,6 +2019,17 @@ func (m *MongoDBComponentProperties) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+type MongoDBComponentPropertiesSecrets struct {
+	// The connection string used to connect to this DB
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// The password for this MongoDB instance
+	Password *string `json:"password,omitempty"`
+
+	// The password for this MongoDB instance
+	Username *string `json:"username,omitempty"`
 }
 
 // MongoDBComponentResource - The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
