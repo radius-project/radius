@@ -35,6 +35,36 @@
           "example": [
             "account::mongodb.id"
           ]
+        },
+        "host": {
+          "description": "The host name of the MongoDB to which you are connecting",
+          "type": "string"
+        },
+        "port": {
+          "description": "The port value of the MongoDB to which you are connecting",
+          "type": "integer",
+          "example": [
+            27017
+          ]
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secrets provided by unmanaged resources,",
+          "additionalProperties": false,
+          "properties": {
+            "username": {
+              "description": "The password for this MongoDB instance",
+              "type": "string"
+            },
+            "password": {
+              "description": "The password for this MongoDB instance",
+              "type": "string"
+            },
+            "connectionString": {
+              "description": "The connection string used to connect to this DB",
+              "type": "string"
+            }
+          }
         }
       }
     }

@@ -4,6 +4,13 @@
   "kind": "mongodb.com/Mongo@v1alpha1",
   "properties": {
     "managed": true,
-    "resource": "foo"
+    "resource": "foo",
+    "host": "host",
+    "port": 80,
+    "secrets": {
+      "username": "username",
+      "password": "password",
+      "connectionString": "connectionString"
+    }
   }
 }
