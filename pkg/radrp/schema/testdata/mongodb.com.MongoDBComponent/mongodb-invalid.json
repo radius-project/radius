@@ -8,6 +8,9 @@
     "host": 42,
     "port": "should-be-number",
     "secrets": {
+      "username": 42,
+      "password": 42,
+      "connectionString": 42,
       "extra": "foo"
     }
   }

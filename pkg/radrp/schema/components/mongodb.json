@@ -49,6 +49,7 @@
         },
         "secrets": {
           "type": "object",
+          "description": "Secrets provided by unmanaged resources,",
           "additionalProperties": false,
           "properties": {
             "username": {

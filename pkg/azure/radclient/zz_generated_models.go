@@ -1971,6 +1971,8 @@ type MongoDBComponentProperties struct {
 
 	// The ID of the user-managed DB with Mongo API to use for this Component
 	Resource *string `json:"resource,omitempty"`
+
+	// Secrets provided by unmanaged resources,
 	Secrets *MongoDBComponentPropertiesSecrets `json:"secrets,omitempty"`
 }
 
@@ -2021,6 +2023,7 @@ func (m *MongoDBComponentProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MongoDBComponentPropertiesSecrets - Secrets provided by unmanaged resources,
 type MongoDBComponentPropertiesSecrets struct {
 	// The connection string used to connect to this DB
 	ConnectionString *string `json:"connectionString,omitempty"`

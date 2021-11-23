@@ -1340,6 +1340,7 @@
         },
         "secrets": {
           "additionalProperties": false,
+          "description": "Secrets provided by unmanaged resources,",
           "properties": {
             "connectionString": {
               "description": "The connection string used to connect to this DB",
