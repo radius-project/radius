@@ -6,7 +6,11 @@
 {{- $altName2 := printf "webhook-service.%s.svc" .Release.Namespace }}
 {{- $altName3 := printf "webhook-service.%s.svc.cluster" .Release.Namespace }}
 {{- $altName4 := printf "webhook-service.%s.svc.cluster.local" .Release.Namespace }}
-{{- $cert := genSignedCert $cn nil (list $altName1 $altName2 $altName3 $altName4) 3650 $ca }}
+{{- $altName5 := printf "radius-api.%s" .Release.Namespace }}
+{{- $altName6 := printf "radius-api.%s.svc" .Release.Namespace }}
+{{- $altName7 := printf "radius-api.%s.svc.cluster" .Release.Namespace }}
+{{- $altName8 := printf "radius-api.%s.svc.cluster.local" .Release.Namespace }}
+{{- $cert := genSignedCert $cn nil (list $altName1 $altName2 $altName3 $altName4 $altName5 $altName6 $altName7 $altName8) 3650 $ca }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -106,3 +110,17 @@ webhooks:
     resources:
     - deploymenttemplates
   sideEffects: None
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha3.api.radius.dev
+spec:
+  group: api.radius.dev
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: radius-api
+    namespace: {{ .Release.Namespace }}
+  version: v1alpha3
+  caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}

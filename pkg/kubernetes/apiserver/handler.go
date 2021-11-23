@@ -258,6 +258,30 @@ func (h *handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (h *handler) EmptySwaggerDoc2(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	fmt.Println("EmptySwaggerDoc2")
+
+	body, err := readJSONBody(req)
+	if err != nil {
+		badRequest(ctx, w, req, err)
+		return
+	}
+	fmt.Println(string(body))
+}
+
+func (h *handler) EmptySwaggerDoc(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	fmt.Println("EmptySwaggerDoc")
+
+	body, err := readJSONBody(req)
+	if err != nil {
+		badRequest(ctx, w, req, err)
+		return
+	}
+	fmt.Println(string(body))
+}
+
 func (h *handler) findValidator(id azresources.ResourceID) (schema.Validator, error) {
 	resourceType := id.Types[len(id.Types)-1].Type
 	return h.validatorFactory(resourceType)
