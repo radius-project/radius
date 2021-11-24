@@ -90,6 +90,10 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 	if err != nil {
 		return nil, err
 	}
+
+	azcred := &radclient.AnonymousCredential{}
+	connection := arm.NewConnection("", azcred, nil)
+
 	return &kubernetes.KubernetesManagementClient{
 		Client:          client,
 		DynamicClient:   dynamicClient,

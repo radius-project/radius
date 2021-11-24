@@ -53,6 +53,20 @@ func CreateExtensionClient(context string) (clientset.Interface, error) {
 	return client, err
 }
 
+func CreateRestClient(context string) (rest.Interface, error) {
+	merged, err := GetConfig(context)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := clientset.NewForConfig(merged)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, err
+}
+
 func CreateDynamicClient(context string) (dynamic.Interface, error) {
 	merged, err := GetConfig(context)
 	if err != nil {

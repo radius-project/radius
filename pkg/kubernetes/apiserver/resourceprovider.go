@@ -47,6 +47,16 @@ type rp struct {
 // Code paths that validate input should return a rest.Response.
 
 func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+	fmt.Println(id)
+	fmt.Println(len(id.Types))
+
+	if len(id.Types) > 0 {
+		fmt.Println(id.Types[0].Type)
+	}
+	if len(id.Types) > 1 {
+		fmt.Println(id.Types[1].Type)
+	}
+
 	err := r.validateApplicationType(id)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -432,48 +442,6 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 
 	values := map[string]interface{}{}
 	for k, v := range secretValues {
-		// cloud, ok := resource.Status.CloudResources[v.LocalID]
-		// if ok {
-		// 	// This is an Azure resource
-		// 	arm, err := armauth.GetArmAuthorizer()
-		// 	if err != nil {
-		// 		return nil, fmt.Errorf("failed to authenticate with Azure: %w", err)
-		// 	}
-
-		// 	identity := resourcemodel.NewARMIdentity(strings.Split(cloud.Identity, "@")[0], strings.Split(cloud.Identity, "@")[1])
-
-		// 	azureSecretClient := renderers.NewSecretValueClient(arm)
-		// 	value, err := azureSecretClient.FetchSecret(ctx, identity, v.Action, v.ValueSelector)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-
-		// 	if v.Transformer != "" {
-		// 		outputResourceType, err := r.AppModel.LookupOutputResource(v.Transformer)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-
-		// 		transformer := outputResourceType.SecretValueTransformer
-		// 		if transformer == nil {
-		// 			return nil, fmt.Errorf("output resource %q has no secret value transformer", v.Transformer)
-		// 		}
-
-		// 		dependency := renderers.RendererDependency{
-		// 			ComputedValues: computedValues,
-		// 			ResourceID:     id,
-		// 			Definition:     output.Properties,
-		// 		}
-
-		// 		value, err = transformer.Transform(ctx, dependency, value)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		// 	}
-
-		// 	values[k] = value
-		// 	continue
-		// }
 
 		_, ok := resource.Status.Resources[v.LocalID]
 		if ok {

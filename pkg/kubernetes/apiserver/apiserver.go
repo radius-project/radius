@@ -57,7 +57,7 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 
 	rp := NewResourceProvider(api.options.AppModel, c)
 	s := server.NewServer(ctx, server.ServerOptions{
-		Address:      "localhost:8080",
+		Address:      ":7443",
 		Authenticate: false,
 		Configure: func(r *mux.Router) {
 			AddRoutes(rp, r, DefaultValidatorFactory)
@@ -71,9 +71,10 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 		_ = s.Shutdown(ctx)
 	}()
 
+	// http://localhost:8001/apis/api.radius.dev/v1alpha3/subscriptions/123/resourceGroups/testrg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application
+
 	logger.Info(fmt.Sprintf("listening on: '%s'...", "localhost:7443"))
-	// err = s.ListenAndServeTLS(api.options.TLSCertDir+"/tls.crt", api.options.TLSCertDir+"/tls.key")
-	err = s.ListenAndServe()
+	err = s.ListenAndServeTLS(api.options.TLSCertDir+"/tls.crt", api.options.TLSCertDir+"/tls.key")
 
 	fmt.Println("failed to listen")
 	if err == http.ErrServerClosed {

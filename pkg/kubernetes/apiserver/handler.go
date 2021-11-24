@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/radlogger"
@@ -289,7 +290,9 @@ func (h *handler) findValidator(id azresources.ResourceID) (schema.Validator, er
 
 func resourceID(req *http.Request) azresources.ResourceID {
 	logger := radlogger.GetLogger(req.Context())
-	id, err := azresources.Parse(req.URL.Path)
+	path := req.URL.Path
+	pathFixed := strings.TrimPrefix(path, "/apis/api.radius.dev/v1alpha3")
+	id, err := azresources.Parse(pathFixed)
 	if err != nil {
 		logger.Info(fmt.Sprintf("URL was not a valid resource id: %v", req.URL.Path))
 		// just log the error - it will be handled in the RP layer.

@@ -37,12 +37,12 @@ spec:
         - name: TLS_CERT_DIR
           value: /radius/cert
         image: {{ .Values.container }}:{{ .Values.tag }}
-        # livenessProbe:
-        #   httpGet:
-        #     path: /healthz
-        #     port: 8081
-        #   initialDelaySeconds: 15
-        #   periodSeconds: 20
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
         name: manager
         ports:
         - containerPort: 9443
@@ -51,19 +51,16 @@ spec:
         - containerPort: 7443
           name: radius-api
           protocol: TCP
-        - containerPort: 8080
-          name: radius-api2
-          protocol: TCP
         volumeMounts:
         - name: cert
           mountPath: /radius/cert
           readOnly: true
-        # readinessProbe:
-        #   httpGet:
-        #     path: /readyz
-        #     port: 8081
-        #   initialDelaySeconds: 5
-        #   periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
         resources:
           limits:
             cpu: 100m
@@ -103,19 +100,6 @@ spec:
   ports:
     - port: 443
       protocol: TCP
-      targetPort: radius-api
-  selector:
-    control-plane: controller-manager
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: radius-api-2
-  namespace: {{ .Release.Namespace }}
-spec:
-  ports:
-    - port: 80
-      protocol: TCP
-      targetPort: 8080
+      targetPort: 7443
   selector:
     control-plane: controller-manager
