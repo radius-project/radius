@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	watchk8s "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -511,7 +512,17 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 
 		case event := <-watch.ResultChan():
 			pod, ok := event.Object.(*corev1.Pod)
-			require.Truef(t, ok, "object %T is not a pod", event.Object)
+			if !ok {
+				// Check the status if there is a failure.
+				// Errors usually have a status as the object type
+				if event.Type == watchk8s.Error {
+					status, ok := event.Object.(*metav1.Status)
+					if ok {
+						t.Errorf("pod watch error with status reason: %s, message: %s", status.Reason, status.Message)
+					}
+				}
+				require.Truef(t, ok, "object %T is not a pod", event.Object)
+			}
 
 			if pod.Status.Phase == corev1.PodRunning {
 				t.Logf("success! pod %v has status: %v", pod.Name, pod.Status)
