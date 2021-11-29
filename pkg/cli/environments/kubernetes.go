@@ -7,9 +7,13 @@ package environments
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 )
@@ -91,8 +95,14 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 		return nil, err
 	}
 
-	azcred := &radclient.AnonymousCredential{}
-	connection := arm.NewConnection("", azcred, nil)
+	restClient, err := kubernetes.CreateRestConfig(e.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	azcred := &K8sToken{restClient.BearerToken}
+	// 	con := arm.NewDefaultConnection(azcred, nil)
+	connection := arm.NewConnection(fmt.Sprintf("%s%s%s", restClient.Host, restClient.APIPath, "/apis/api.radius.dev/v1alpha3"), azcred, nil)
 
 	return &kubernetes.KubernetesManagementClient{
 		Client:          client,
@@ -100,5 +110,57 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 		ExtensionClient: extensionClient,
 		Namespace:       e.Namespace,
 		EnvironmentName: e.Name,
+		Connection:      connection,
+		ResourceGroup:   "test", // TODO fill these in with more specific info about env
+		SubscriptionID:  "123",
 	}, nil
 }
+
+var _ azcore.TokenCredential = &K8sToken{}
+
+type K8sToken struct {
+	BearerToken string
+}
+
+func (k *K8sToken) GetToken(ctx context.Context, options policy.TokenRequestOptions) (*azcore.AccessToken, error) {
+	return &azcore.AccessToken{Token: k.BearerToken}, nil
+}
+
+// PolicyFunc is a type that implements the Policy interface.
+// Use this type when implementing a stateless policy as a first-class function.
+type PolicyFunc func(*policy.Request) (*http.Response, error)
+
+// Do implements the Policy interface on PolicyFunc.
+func (pf PolicyFunc) Do(req *policy.Request) (*http.Response, error) {
+	return pf(req)
+}
+
+func (*K8sToken) NewAuthenticationPolicy(options runtime.AuthenticationOptions) policy.Policy {
+	return PolicyFunc(func(req *policy.Request) (*http.Response, error) {
+		return req.Next()
+	})
+}
+
+// var _ azcore.TokenCredential = &AnonymousCredential{}
+
+// type AnonymousCredential struct {
+// }
+
+// // PolicyFunc is a type that implements the Policy interface.
+// // Use this type when implementing a stateless policy as a first-class function.
+// type PolicyFunc func(*policy.Request) (*http.Response, error)
+
+// // Do implements the Policy interface on PolicyFunc.
+// func (pf PolicyFunc) Do(req *policy.Request) (*http.Response, error) {
+// 	return pf(req)
+// }
+
+// func (*AnonymousCredential) NewAuthenticationPolicy(options runtime.AuthenticationOptions) policy.Policy {
+// 	return PolicyFunc(func(req *policy.Request) (*http.Response, error) {
+// 		return req.Next()
+// 	})
+// }
+
+// func (a *AnonymousCredential) GetToken(ctx context.Context, options policy.TokenRequestOptions) (*azcore.AccessToken, error) {
+// 	return nil, nil
+// }

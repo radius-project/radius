@@ -59,12 +59,21 @@ func CreateRestClient(context string) (rest.Interface, error) {
 		return nil, err
 	}
 
-	client, err := clientset.NewForConfig(merged)
+	client, err := rest.RESTClientFor(merged)
 	if err != nil {
 		return nil, err
 	}
 
 	return client, err
+}
+
+func CreateRestConfig(context string) (*rest.Config, error) {
+	merged, err := GetConfig(context)
+	if err != nil {
+		return nil, err
+	}
+
+	return merged, err
 }
 
 func CreateDynamicClient(context string) (dynamic.Interface, error) {
