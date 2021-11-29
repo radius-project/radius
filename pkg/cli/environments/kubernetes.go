@@ -110,11 +110,6 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 		return nil, err
 	}
 
-	restClient, err := kubernetes.CreateRestClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
-
 	roundTripper, err := kubernetes.CreateRestRoundTripper(e.Context)
 	if err != nil {
 		return nil, err
@@ -131,10 +126,9 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 		ExtensionClient: extensionClient,
 		Namespace:       e.Namespace,
 		EnvironmentName: e.Name,
-		RestClient:      restClient,
 		Connection:      connection,
-		ResourceGroup:   "test", // TODO fill these in with more specific info about env
-		SubscriptionID:  "123",
+		ResourceGroup:   e.Namespace, // TODO fill these in with more specific info about env
+		SubscriptionID:  restConfig.Host,
 	}, nil
 }
 

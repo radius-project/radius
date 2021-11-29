@@ -56,24 +56,6 @@ func CreateExtensionClient(context string) (clientset.Interface, error) {
 	return client, err
 }
 
-func CreateRestClient(context string) (rest.Interface, error) {
-	merged, err := GetConfig(context)
-	if err != nil {
-		return nil, err
-	}
-	gv := schema.GroupVersion{Group: "api.radius.dev", Version: "v1alpha3"}
-	merged.GroupVersion = &gv
-	merged.APIPath = "/apis"
-	merged.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
-
-	client, err := rest.RESTClientFor(merged)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, err
-}
-
 func CreateRestRoundTripper(context string) (http.RoundTripper, error) {
 	merged, err := GetConfig(context)
 	if err != nil {

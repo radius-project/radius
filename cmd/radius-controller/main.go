@@ -83,6 +83,7 @@ func main() {
 		Scheme:     scheme,
 		Start:      apiServerReady,
 		TLSCertDir: certDir,
+		Port:       7443,
 	}
 	apiServer := apiserver.NewAPIServerExtension(setupLog, apiServerOptions)
 
