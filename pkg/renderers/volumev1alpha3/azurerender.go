@@ -18,25 +18,62 @@ import (
 )
 
 const (
-	VolumeKindEphemeral                  = "ephemeral"
-	VolumeKindPersistent                 = "persistent"
-	PersistentVolumeKindAzureFileShare   = "azure.com.fileshare"
-	PersistentVolumeKindAzureComKeyVault = "azure.com.keyvault"
+	VolumeKindEphemeral                = "ephemeral"
+	VolumeKindPersistent               = "persistent"
+	PersistentVolumeKindAzureFileShare = "azure.com.fileshare"
+	PersistentVolumeKindAzureKeyVault  = "azure.com.keyvault"
 )
 
 var storageAccountDependency outputresource.Dependency
 
+// RendererType defines the type for the renderer function
+type RendererType func(ctx context.Context, arm armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
+type volumeFuncs struct {
+	renderer RendererType
+	secrets  func(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference)
+}
+
+var supportedVolumes = map[string]volumeFuncs{
+	PersistentVolumeKindAzureFileShare: {
+		renderer: GetAzureFileShareVolume,
+		secrets:  MakeSecretsAndValuesForAzureFileShare,
+	},
+	PersistentVolumeKindAzureKeyVault: {
+		renderer: GetAzureKeyVaultVolume,
+		secrets:  nil,
+	},
+}
+
+// GetSupportedRenderers returns the list of supported volume types and corresponding Azure renderer
+func GetSupportedRenderers() map[string]RendererType {
+	result := map[string]RendererType{}
+	for k, v := range supportedVolumes {
+		result[k] = v.renderer
+	}
+	return result
+}
+
+// MakeSecretsAndValues invokes the secrets routine for the specified resource kind
+func MakeSecretsAndValues(kind string, name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+	volumeFuncs := supportedVolumes[kind]
+	if volumeFuncs.secrets != nil {
+		return volumeFuncs.secrets(name)
+	}
+	return nil, nil
+}
+
+// GetSupportedKinds returns a list of supported volume kinds
+func GetSupportedKinds() []string {
+	keys := []string{}
+	for k := range supportedVolumes {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 type AzureRenderer struct {
 	Arm             armauth.ArmConfig
-	VolumeRenderers map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
-}
-
-var SupportedVolumeRenderers = map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
-	PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
-}
-
-var SupportedVolumeMakeSecretsAndValues = map[string]func(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference){
-	PersistentVolumeKindAzureFileShare: MakeSecretsAndValuesForAzureFileShare,
+	VolumeRenderers map[string]RendererType
 }
 
 func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
@@ -52,15 +89,15 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	if properties.Kind == nil {
 		return renderers.RendererOutput{}, errors.New("`kind` property is required")
 	} else if !isSupported(*properties.Kind) {
-		return renderers.RendererOutput{}, fmt.Errorf("%v is not supported. Supported kind values: %v", properties.Kind, SupportedVolumeRenderers)
+		return renderers.RendererOutput{}, fmt.Errorf("%v is not supported. Supported kind values: %v", properties.Kind, GetSupportedKinds())
 	}
 
-	renderOutput, err := r.VolumeRenderers[*properties.Kind](ctx, options.Resource, options.Dependencies)
+	renderOutput, err := r.VolumeRenderers[*properties.Kind](ctx, r.Arm, options.Resource, options.Dependencies)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	computedValues, secretValues := SupportedVolumeMakeSecretsAndValues[*properties.Kind](storageAccountDependency.LocalID)
+	computedValues, secretValues := MakeSecretsAndValues(*properties.Kind, storageAccountDependency.LocalID)
 
 	return renderers.RendererOutput{
 		Resources:      renderOutput.Resources,
@@ -70,7 +107,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 }
 
 func isSupported(kind string) bool {
-	for k := range SupportedVolumeRenderers {
+	for _, k := range GetSupportedKinds() {
 		if kind == k {
 			return true
 		}

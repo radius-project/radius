@@ -298,6 +298,10 @@
     },
     "CertificateObjectProperties": {
       "properties": {
+        "alias": {
+          "description": "File name when written to disk.",
+          "type": "string"
+        },
         "encoding": {
           "default": "utf-8",
           "description": "Encoding format. Default utf-8",
@@ -1195,6 +1199,10 @@
     },
     "KeyObjectProperties": {
       "properties": {
+        "alias": {
+          "description": "File name when written to disk.",
+          "type": "string"
+        },
         "name": {
           "description": "The name of the key",
           "type": "string"
@@ -1910,6 +1918,10 @@
     },
     "SecretObjectProperties": {
       "properties": {
+        "alias": {
+          "description": "File name when written to disk.",
+          "type": "string"
+        },
         "encoding": {
           "default": "utf-8",
           "description": "Encoding format. Default utf-8",

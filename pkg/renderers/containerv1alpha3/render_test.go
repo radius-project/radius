@@ -727,7 +727,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	})
 }
 
-func Test_Render_PersistentVolumes(t *testing.T) {
+func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	const tempVolName = "TempVolume"
 	const tempVolMountPath = "/tmpfs"
 	const testShareName = "myshare"
@@ -749,7 +749,9 @@ func Test_Render_PersistentVolumes(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
-			Definition: map[string]interface{}{},
+			Definition: map[string]interface{}{
+				"kind": "azure.com.fileshare",
+			},
 			ComputedValues: map[string]interface{}{
 				"azurestorageaccountname": "accountname",
 				"azurestorageaccountkey":  "storagekey",
@@ -775,6 +777,89 @@ func Test_Render_PersistentVolumes(t *testing.T) {
 	secret := renderOutput.Resources[1].Resource.(*corev1.Secret)
 	require.Lenf(t, secret.Data, 2, "expected 2 secret key-value pairs, instead got %+v", len(secret.Data))
 	require.NoError(t, err)
+}
+
+func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
+	const tempVolName = "TempVolume"
+	const tempVolMountPath = "/tmpfs"
+	testResourceID := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/azure-kv"
+
+	properties := radclient.ContainerComponentProperties{
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("someimage:latest"),
+			Volumes: map[string]radclient.VolumeClassification{
+				tempVolName: &radclient.PersistentVolume{
+					MountPath: to.StringPtr(tempVolMountPath),
+					Source:    to.StringPtr(testResourceID),
+				},
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	resourceID, _ := azresources.Parse(testResourceID)
+	dependencies := map[string]renderers.RendererDependency{
+		testResourceID: {
+			ResourceID: resourceID,
+			Definition: map[string]interface{}{
+				"kind":     "azure.com.keyvault",
+				"resource": testResourceID,
+				"secrets": map[string]*radclient.SecretObjectProperties{
+					"mysecret": {
+						Name: to.StringPtr("secret1"),
+					},
+				},
+				"keys": map[string]*radclient.KeyObjectProperties{
+					"mykey": {
+						Name: to.StringPtr("key1"),
+					},
+				},
+			},
+			OutputResources: map[string]resourcemodel.ResourceIdentity{
+				outputresource.LocalIDSecretProviderClass: resourcemodel.ResourceIdentity{
+					Kind: resourcemodel.IdentityKindKubernetes,
+					Data: resourcemodel.KubernetesIdentity{
+						Kind:       "SecretProviderClass",
+						APIVersion: "secrets-store.csi.x-k8s.io/v1alpha1",
+						Name:       "test-volume-sp",
+						Namespace:  "test-ns",
+					},
+				},
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	renderOutput, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.NoError(t, err)
+	require.Lenf(t, renderOutput.Resources, 5, "expected 5 output resource, instead got %+v", len(renderOutput.Resources))
+
+	// Verify Managed Identity
+	require.Equal(t, outputresource.LocalIDUserAssignedManagedIdentity, renderOutput.Resources[0].LocalID, "expected output resource of kind user assigned managed identity instead got :%v", renderOutput.Resources[0].LocalID)
+
+	// Verify Role Assignments
+	require.True(t, strings.Contains(renderOutput.Resources[1].LocalID, "RoleAssignment"), "expected output resource of kind role assignment instead got :%v", renderOutput.Resources[0].LocalID)
+	require.True(t, strings.Contains(renderOutput.Resources[2].LocalID, "RoleAssignment"), "expected output resource of kind role assignment instead got :%v", renderOutput.Resources[0].LocalID)
+
+	// Verify AAD Pod Identity
+	require.Equal(t, outputresource.LocalIDAADPodIdentity, renderOutput.Resources[3].LocalID, "expected output resource of kind aad pod identity instead got :%v", renderOutput.Resources[1].LocalID)
+
+	// Verify deployment
+	require.Equal(t, outputresource.LocalIDDeployment, renderOutput.Resources[4].LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[2].LocalID)
+
+	// Verify volume spec
+	volumes := renderOutput.Resources[4].Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes
+	require.Lenf(t, volumes, 1, "expected 1 volume, instead got %+v", len(volumes))
+	require.Equal(t, tempVolName, volumes[0].Name)
+	require.Equal(t, "secrets-store.csi.k8s.io", volumes[0].VolumeSource.CSI.Driver, "expected volumesource azurefile to be not nil")
+	require.Equal(t, "test-volume-sp", volumes[0].VolumeSource.CSI.VolumeAttributes["secretProviderClass"], "expected secret provider class to match the input test-volume-sp")
+	require.Equal(t, true, *volumes[0].VolumeSource.CSI.ReadOnly, "expected readonly attribute to be true")
+
+	// Verify volume mount spec
+	volumeMounts := renderOutput.Resources[4].Resource.(*appsv1.Deployment).Spec.Template.Spec.Containers[0].VolumeMounts
+	require.Lenf(t, volumeMounts, 1, "expected 1 volume mount, instead got %+v", len(volumeMounts))
+	require.Equal(t, tempVolMountPath, volumeMounts[0].MountPath)
+	require.Equal(t, tempVolName, volumeMounts[0].Name)
+	require.Equal(t, true, volumeMounts[0].ReadOnly)
 }
 
 func outputResourcesToKindMap(resources []outputresource.OutputResource) map[string][]outputresource.OutputResource {
