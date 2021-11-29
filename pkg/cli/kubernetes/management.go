@@ -68,11 +68,6 @@ func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*ra
 }
 
 func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error) {
-	// check rest client
-	res := mc.RestClient.Get().RequestURI(fmt.Sprintf("/apis/api.radius.dev/v1alpha3/subscriptions/%s/resourceGroups/%s/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application", mc.SubscriptionID, mc.ResourceGroup)).Do(context.TODO())
-	if res.Error() != nil {
-		return nil, res.Error()
-	}
 	ac := radclient.NewApplicationClient(mc.Connection, mc.SubscriptionID)
 	response, err := ac.Get(ctx, mc.ResourceGroup, applicationName, nil)
 	if err != nil {
