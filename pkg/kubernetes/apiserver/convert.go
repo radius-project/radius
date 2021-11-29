@@ -75,7 +75,7 @@ func NewKubernetesApplicationResource(id azresources.ResourceID, input resourcep
 			Name: id.Name(),
 		},
 		Spec: radiusv1alpha3.ApplicationSpec{
-			Applciation: id.Name(),
+			Application: id.Name(),
 			Template:    &runtime.RawExtension{Raw: b},
 		},
 	}, nil
@@ -122,9 +122,9 @@ func NewRestRadiusResource(id azresources.ResourceID, input radiusv1alpha3.Resou
 		identity := resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
 			Data: resourcemodel.KubernetesIdentity{
-				Kind:       r.Kind,
-				APIVersion: r.APIVersion,
-				Name:       r.Name,
+				Kind:       r.Resource.Kind,
+				APIVersion: r.Resource.APIVersion,
+				Name:       r.Resource.Name,
 				Namespace:  input.Namespace,
 			},
 		}

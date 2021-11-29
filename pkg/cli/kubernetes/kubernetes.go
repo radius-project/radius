@@ -8,18 +8,21 @@ package kubernetes
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -58,8 +61,30 @@ func CreateRestClient(context string) (rest.Interface, error) {
 	if err != nil {
 		return nil, err
 	}
+	gv := schema.GroupVersion{Group: "api.radius.dev", Version: "v1alpha3"}
+	merged.GroupVersion = &gv
+	merged.APIPath = "/apis"
+	merged.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
 	client, err := rest.RESTClientFor(merged)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, err
+}
+
+func CreateRestRoundTripper(context string) (http.RoundTripper, error) {
+	merged, err := GetConfig(context)
+	if err != nil {
+		return nil, err
+	}
+	gv := schema.GroupVersion{Group: "api.radius.dev", Version: "v1alpha3"}
+	merged.GroupVersion = &gv
+	merged.APIPath = "/apis"
+	merged.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+	client, err := rest.TransportFor(merged)
 	if err != nil {
 		return nil, err
 	}

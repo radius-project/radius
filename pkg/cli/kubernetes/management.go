@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -30,6 +31,7 @@ type KubernetesManagementClient struct {
 	Client          client.Client
 	DynamicClient   dynamic.Interface
 	ExtensionClient clientset.Interface
+	RestClient      rest.Interface
 	Namespace       string
 	EnvironmentName string
 	Connection      *arm.Connection
@@ -66,6 +68,11 @@ func (mc *KubernetesManagementClient) ListApplications(ctx context.Context) (*ra
 }
 
 func (mc *KubernetesManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error) {
+	// check rest client
+	res := mc.RestClient.Get().RequestURI(fmt.Sprintf("/apis/api.radius.dev/v1alpha3/subscriptions/%s/resourceGroups/%s/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application", mc.SubscriptionID, mc.ResourceGroup)).Do(context.TODO())
+	if res.Error() != nil {
+		return nil, res.Error()
+	}
 	ac := radclient.NewApplicationClient(mc.Connection, mc.SubscriptionID)
 	response, err := ac.Get(ctx, mc.ResourceGroup, applicationName, nil)
 	if err != nil {
