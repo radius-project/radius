@@ -590,9 +590,7 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 	}
 
 	outputResources := []outputresource.OutputResource{}
-	// for _, roleName := range roleAssignmentData.RoleNames {
 	for _, roleName := range roleNames {
-		// localID := outputresource.GenerateLocalIDForRoleAssignment(arm.ID, roleName)
 		localID := outputresource.GenerateLocalIDForRoleAssignment(armResourceIdentifier, roleName)
 		roleAssignment := outputresource.OutputResource{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
@@ -602,7 +600,6 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 			Resource: map[string]string{
 				handlers.RoleNameKey:             roleName,
 				handlers.RoleAssignmentTargetKey: armResourceIdentifier,
-				// handlers.RoleAssignmentTargetKey: arm.ID,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
