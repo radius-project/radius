@@ -39,8 +39,8 @@ var SupportedVolumeMakeSecretsAndValues = map[string]func(name string) (map[stri
 	PersistentVolumeKindAzureFileShare: MakeSecretsAndValuesForAzureFileShare,
 }
 
-func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {

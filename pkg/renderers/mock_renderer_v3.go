@@ -36,12 +36,13 @@ func (m *MockRenderer) EXPECT() *MockRendererMockRecorder {
 }
 
 // GetDependencyIDs mocks base method.
-func (m *MockRenderer) GetDependencyIDs(arg0 context.Context, arg1 RendererResource) ([]azresources.ResourceID, error) {
+func (m *MockRenderer) GetDependencyIDs(arg0 context.Context, arg1 RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDependencyIDs", arg0, arg1)
 	ret0, _ := ret[0].([]azresources.ResourceID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].([]azresources.ResourceID)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // GetDependencyIDs indicates an expected call of GetDependencyIDs.

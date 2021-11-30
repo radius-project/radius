@@ -27,32 +27,32 @@ type Renderer struct {
 	Inner renderers.Renderer
 }
 
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	dependencies, err := r.Inner.GetDependencyIDs(ctx, resource)
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	dependencies, _, err := r.Inner.GetDependencyIDs(ctx, resource)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	trait, err := r.FindTrait(resource)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if trait == nil {
-		return dependencies, nil
+		return dependencies, nil, nil
 	}
 
 	provides := to.String(trait.Provides)
 	if provides == "" {
-		return dependencies, nil
+		return dependencies, nil, nil
 	}
 
 	parsed, err := azresources.Parse(provides)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return append(dependencies, parsed), nil
+	return append(dependencies, parsed), nil, nil
 }
 
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {

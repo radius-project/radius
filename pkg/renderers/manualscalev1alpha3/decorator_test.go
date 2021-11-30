@@ -23,8 +23,8 @@ var _ renderers.Renderer = (*noop)(nil)
 type noop struct {
 }
 
-func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 func (r *noop) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
