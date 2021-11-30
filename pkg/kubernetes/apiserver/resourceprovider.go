@@ -414,6 +414,9 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 	}
 
 	cv, err := converters.GetComputedValues(resource.Status)
+	if err != nil {
+		return nil, err
+	}
 	computedValues := map[string]interface{}{}
 	for k, v := range cv {
 		computedValues[k] = v.Value

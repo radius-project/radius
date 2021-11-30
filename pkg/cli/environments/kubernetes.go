@@ -17,17 +17,6 @@ import (
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 )
 
-const (
-	headerXmsDate                = "x-ms-date"
-	headerUserAgent              = "User-Agent"
-	headerURLEncoded             = "application/x-www-form-urlencoded"
-	headerAuthorization          = "Authorization"
-	headerAuxiliaryAuthorization = "x-ms-authorization-auxiliary"
-	headerMetadata               = "Metadata"
-	headerContentType            = "Content-Type"
-	bearerTokenPrefix            = "Bearer "
-)
-
 // KubernetesEnvironment represents a Kubernetes Radius environment.
 type KubernetesEnvironment struct {
 	Name               string `mapstructure:"name" validate:"required"`
