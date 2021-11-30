@@ -47,16 +47,6 @@ type rp struct {
 // Code paths that validate input should return a rest.Response.
 
 func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-	fmt.Println(id)
-	fmt.Println(len(id.Types))
-
-	if len(id.Types) > 0 {
-		fmt.Println(id.Types[0].Type)
-	}
-	if len(id.Types) > 1 {
-		fmt.Println(id.Types[1].Type)
-	}
-
 	err := r.validateApplicationType(id)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -116,12 +106,11 @@ func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, b
 		return nil, err // Unexpected error, the payload has already been validated.
 	}
 
-	converted, err := NewKubernetesApplicationResource(id, application)
+	converted, err := NewKubernetesApplicationResource(id, application, r.namespace)
 	if err != nil {
 		return nil, err // Unexpected error, the payload has already been validated.
 	}
 
-	converted.Namespace = r.namespace
 	err = r.client.Patch(ctx, &converted, controller_runtime.Apply, controller_runtime.FieldOwner("rad-api-server"))
 	if err != nil {
 		return nil, err
@@ -199,8 +188,8 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 			// The last type is '{ Type: RadiusResource Name: '' }
 			//
 			// Chop that off and add the *real* type/name
-			id := id.Truncate().Append(azresources.ResourceType{Type: armType, Name: resource.Spec.Resource})
-			converted, err := NewRestRadiusResource(id, resource)
+			// id := id.Truncate().Append(azresources.ResourceType{Type: armType, Name: resource.Spec.Resource})
+			converted, err := NewRestRadiusResource(resource)
 			if err != nil {
 				return nil, err
 			}
@@ -248,8 +237,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 			return nil, err
 		}
 
-		id := id.Append(azresources.ResourceType{Type: id.Types[len(id.Types)-1].Type, Name: resource.Spec.Resource})
-		converted, err := NewRestRadiusResource(id, resource)
+		converted, err := NewRestRadiusResource(resource)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +281,7 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 		return nil, err
 	}
 
-	output, err := NewRestRadiusResource(id, resource)
+	output, err := NewRestRadiusResource(resource)
 	if err != nil {
 		return nil, err
 	}
@@ -313,17 +301,15 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, err // Unexpected error, the payload has already been validated.
 	}
 
-	item, err := NewKubernetesRadiusResource(id, resource)
-	if err != nil {
-		return nil, err // Unexpected error, the payload has already been validated.
-	}
-
-	item.SetNamespace(r.namespace)
-	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
+	item, err := NewKubernetesRadiusResource(id, resource, r.namespace, k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
 		Kind:    armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type),
 	})
+	if err != nil {
+		return nil, err // Unexpected error, the payload has already been validated.
+	}
+
 	err = r.client.Patch(ctx, &item, controller_runtime.Apply, controller_runtime.FieldOwner("rad-api-server"))
 	if err != nil {
 		return nil, err
@@ -343,7 +329,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, err
 	}
 
-	output, err := NewRestRadiusResource(id, k8sOutput)
+	output, err := NewRestRadiusResource(k8sOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +398,7 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		return nil, err
 	}
 
-	output, err := NewRestRadiusResource(id, resource)
+	output, err := NewRestRadiusResource(resource)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +480,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return nil, err
 	}
 
-	output, err := NewRestRadiusResource(targetID, resource)
+	output, err := NewRestRadiusResource(resource)
 	if err != nil {
 		return nil, err
 	}
