@@ -37,7 +37,6 @@ func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validat
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
 	router.Path("/apis/api.radius.dev/v1alpha3").Methods("GET").HandlerFunc(h.EmptySwaggerDoc)
-	// router.Path("/apis/api.radius.dev").Methods("GET", "PUT", "DELETE", "POST").HandlerFunc(h.EmptySwaggerDoc)
 	router.Path(fmt.Sprintf("%s/listSecrets", providerPath)).Methods("POST").HandlerFunc(h.ListSecrets)
 
 	var applicationCollectionPath = fmt.Sprintf("%s/Application", providerPath)

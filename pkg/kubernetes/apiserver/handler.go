@@ -42,6 +42,7 @@ type handler struct {
 
 func (h *handler) ListApplications(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
+	fmt.Println("ListApplications")
 	response, err := h.rp.ListApplications(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
@@ -57,6 +58,7 @@ func (h *handler) ListApplications(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) GetApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
+	fmt.Println("ListApplications")
 	response, err := h.rp.GetApplication(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
@@ -259,28 +261,7 @@ func (h *handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) EmptySwaggerDoc2(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	fmt.Println("EmptySwaggerDoc2")
-
-	body, err := readJSONBody(req)
-	if err != nil {
-		badRequest(ctx, w, req, err)
-		return
-	}
-	fmt.Println(string(body))
-}
-
 func (h *handler) EmptySwaggerDoc(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	fmt.Println("EmptySwaggerDoc")
-
-	body, err := readJSONBody(req)
-	if err != nil {
-		badRequest(ctx, w, req, err)
-		return
-	}
-	fmt.Println(string(body))
 }
 
 func (h *handler) findValidator(id azresources.ResourceID) (schema.Validator, error) {

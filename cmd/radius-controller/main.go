@@ -68,58 +68,11 @@ func main() {
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
-	// TODO may need to setup server up before setting up manager
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// Get certificate from volume mounted environment variable
 	certDir := os.Getenv("TLS_CERT_DIR")
-
-	// apiServerStarted = make(chan struct{})
-	apiServerReady := make(chan struct{})
-
-	apiServerOptions := apiserver.APIServerExtensionOptions{
-		KubeConfig: ctrl.GetConfigOrDie(),
-		Scheme:     scheme,
-		Start:      apiServerReady,
-		TLSCertDir: certDir,
-		Port:       7443,
-	}
-	apiServer := apiserver.NewAPIServerExtension(setupLog, apiServerOptions)
-
-	host := hosting.Host{
-		Services: []hosting.Service{
-			apiServer,
-		},
-	}
-
-	// // Create a channel to handle the shutdown
-	// exitCh := make(chan os.Signal, 1)
-	// signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	// ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), log))
-
-	// err = kcpRunner.EnsureKcpExecutable(ctx)
-	// if err != nil {
-	// 	abort(err, "unable to ensure KCP executable", CannotDownloadKcpExecutable)
-	// }
-
-	// Create a channel to handle the shutdown
-	exitCh := make(chan os.Signal, 1)
-	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), ctrl.Log))
-
-	setupLog.Info("Starting server...")
-	stopped, serviceErrors := host.RunAsync(ctx)
-
-	close(apiServerReady)
-
-	// go func() {
-	// 	<-apiServerStarted
-	// 	log.Info("Applying CRDs...")
-	// 	localenv.ApplyCRDs(ctx, getKubeConfigPath(), getCRDDir())
-	// 	log.Info("CRDs Ready")
-	// 	close(apiServerReady)
-	// }()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -180,6 +133,33 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	apiServerReady := make(chan struct{})
+
+	apiServerOptions := apiserver.APIServerExtensionOptions{
+		KubeConfig: ctrl.GetConfigOrDie(),
+		Scheme:     scheme,
+		Start:      apiServerReady,
+		TLSCertDir: certDir,
+		Port:       7443,
+	}
+	apiServer := apiserver.NewAPIServerExtension(setupLog, apiServerOptions)
+
+	host := hosting.Host{
+		Services: []hosting.Service{
+			apiServer,
+		},
+	}
+
+	// Create a channel to handle the shutdown
+	exitCh := make(chan os.Signal, 1)
+	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), ctrl.Log))
+
+	setupLog.Info("Starting server...")
+	stopped, serviceErrors := host.RunAsync(ctx)
+
+	close(apiServerReady)
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

@@ -117,7 +117,7 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		ResourceGroup:   e.Namespace, // TODO fill these in with more specific info about env
-		SubscriptionID:  restConfig.Host,
+		SubscriptionID:  e.Namespace,
 	}, nil
 }
 
