@@ -80,5 +80,16 @@ func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExte
 		resources = append(resources, id)
 	}
 
-	return clients.DeploymentResult{Resources: resources}, nil
+	outputs := map[string]clients.DeploymentOutput{}
+	b, err := json.Marshal(&deployment.Properties.Outputs)
+	if err != nil {
+		return clients.DeploymentResult{}, nil
+	}
+
+	err = json.Unmarshal(b, &outputs)
+	if err != nil {
+		return clients.DeploymentResult{}, nil
+	}
+
+	return clients.DeploymentResult{Resources: resources, Outputs: outputs}, nil
 }
