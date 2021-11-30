@@ -52,6 +52,10 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 				"Key Vault Crypto User",
 			},
 		},
+		radclient.ContainerConnectionKindAzure: {
+			// RBAC for non-Radius Azure resources. Supports user specified roles.
+			// More information can be found here: https://github.com/Azure/radius/issues/1321
+		},
 	}
 
 	radiusResourceModel := []model.RadiusResourceModel{

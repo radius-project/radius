@@ -29,7 +29,7 @@ func (m ApplicationModel) GetOutputResources() []OutputResourceModel {
 	return m.outputResources
 }
 
-func (m ApplicationModel) LookupRadiusResource(resourceType string) (*RadiusResourceModel, error) {
+func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*RadiusResourceModel, error) {
 	resource, ok := m.radiusResourceLookup[resourceType]
 	if !ok {
 		return nil, fmt.Errorf("radius resource type '%s' is unsupported", resourceType)
@@ -38,7 +38,7 @@ func (m ApplicationModel) LookupRadiusResource(resourceType string) (*RadiusReso
 	return &resource, nil
 }
 
-func (m ApplicationModel) LookupOutputResource(resourceKind string) (*OutputResourceModel, error) {
+func (m ApplicationModel) LookupOutputResourceModel(resourceKind string) (*OutputResourceModel, error) {
 	resource, ok := m.outputResourceLookup[resourceKind]
 	if !ok {
 		return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceKind)
