@@ -42,7 +42,6 @@ type handler struct {
 
 func (h *handler) ListApplications(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	fmt.Println("ListApplications")
 	response, err := h.rp.ListApplications(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
@@ -58,7 +57,6 @@ func (h *handler) ListApplications(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) GetApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	fmt.Println("ListApplications")
 	response, err := h.rp.GetApplication(ctx, resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)

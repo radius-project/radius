@@ -257,8 +257,6 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 		return nil, err
 	}
 
-	fmt.Println()
-
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
