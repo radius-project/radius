@@ -250,6 +250,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 
 func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
 	application := radiusv1alpha3.Application{}
+
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Types[len(id.Types)-2].Name}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
@@ -263,6 +264,7 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 		Version: "v1alpha3",
 		Kind:    armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type),
 	})
+
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(id.Types[len(id.Types)-2].Name, id.Types[len(id.Types)-1].Name)}, &item)
 	if err != nil {
 		return nil, err

@@ -138,7 +138,7 @@ func (mc *KubernetesManagementClient) ListAllResourcesByApplication(ctx context.
 
 func (mc *KubernetesManagementClient) ShowResource(ctx context.Context, appName string, resourceType string, resourceName string) (interface{}, error) {
 	client := radclient.NewRadiusResourceClient(mc.Connection, mc.SubscriptionID)
-	result, err := client.Get(ctx, mc.ResourceGroup, appName, resourceType, appName, nil)
+	result, err := client.Get(ctx, mc.ResourceGroup, appName, resourceType, resourceName, nil)
 	if err != nil {
 		return nil, err
 	}
