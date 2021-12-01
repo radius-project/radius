@@ -185,10 +185,6 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 				return nil, err
 			}
 
-			// The last type is '{ Type: RadiusResource Name: '' }
-			//
-			// Chop that off and add the *real* type/name
-			// id := id.Truncate().Append(azresources.ResourceType{Type: armType, Name: resource.Spec.Resource})
 			converted, err := NewRestRadiusResource(resource)
 			if err != nil {
 				return nil, err
