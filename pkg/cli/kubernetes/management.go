@@ -18,20 +18,12 @@ import (
 	"github.com/Azure/radius/pkg/cli/clients"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 type KubernetesManagementClient struct {
-	Client          client.Client
-	DynamicClient   dynamic.Interface
-	ExtensionClient clientset.Interface
-	RestClient      rest.Interface
 	Namespace       string
 	EnvironmentName string
 	Connection      *arm.Connection

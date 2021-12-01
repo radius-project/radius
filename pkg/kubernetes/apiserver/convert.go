@@ -23,7 +23,7 @@ import (
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// Converts K8s Application to Rest Application
+// Converts K8s Application to a REST Application
 func NewRestApplicationResource(id azresources.ResourceID, input radiusv1alpha3.Application) (resourceprovider.ApplicationResource, error) {
 	template := map[string]interface{}{}
 	if input.Spec.Template != nil {
@@ -56,7 +56,7 @@ func NewRestApplicationResource(id azresources.ResourceID, input radiusv1alpha3.
 	}, nil
 }
 
-// Converts K8s Application to Rest Application
+// Converts REST Application to a K8s Application
 func NewKubernetesApplicationResource(id azresources.ResourceID, input resourceprovider.ApplicationResource, namespace string) (radiusv1alpha3.Application, error) {
 	properties := input.Properties
 	var raw *runtime.RawExtension
@@ -96,6 +96,7 @@ func NewKubernetesApplicationResource(id azresources.ResourceID, input resourcep
 	}, nil
 }
 
+// Converts K8s Resource to a REST Resource
 func NewRestRadiusResource(input radiusv1alpha3.Resource) (resourceprovider.RadiusResource, error) {
 	unstMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&input)
 	if err != nil {

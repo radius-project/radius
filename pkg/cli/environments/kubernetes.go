@@ -47,13 +47,6 @@ func (e *KubernetesEnvironment) GetStatusLink() string {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	// azcred := &radclient.AnonymousCredential{}
-	// connection := arm.NewConnection("http://localhost:9999", azcred, nil)
-
-	// return &kubernetes.KubernetesDeploymentClient{
-	// 	Client:    client,
-	// 	Namespace: e.Namespace,
-	// }, nil
 	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
@@ -81,18 +74,6 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
-	if err != nil {
-		return nil, err
-	}
-	dynamicClient, err := kubernetes.CreateDynamicClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
-	extensionClient, err := kubernetes.CreateExtensionClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
 
 	restConfig, err := kubernetes.CreateRestConfig(e.Context)
 	if err != nil {
@@ -103,31 +84,27 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 	if err != nil {
 		return nil, err
 	}
-
 	azcred := &radclient.AnonymousCredential{}
 
 	connection := arm.NewConnection(fmt.Sprintf("%s%s%s", restConfig.Host, restConfig.APIPath, "/apis/api.radius.dev/v1alpha3"), azcred, &arm.ConnectionOptions{
-		HTTPClient: &TestClient{Client: roundTripper},
+		HTTPClient: &KubernetesRoundTripper{Client: roundTripper},
 	})
 	return &kubernetes.KubernetesManagementClient{
-		Client:          client,
-		DynamicClient:   dynamicClient,
-		ExtensionClient: extensionClient,
 		Namespace:       e.Namespace,
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		ResourceGroup:   e.Namespace, // TODO fill these in with more specific info about env
+		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
 		SubscriptionID:  e.Namespace,
 	}, nil
 }
 
-var _ policy.Transporter = &TestClient{}
+var _ policy.Transporter = &KubernetesRoundTripper{}
 
-type TestClient struct {
+type KubernetesRoundTripper struct {
 	Client http.RoundTripper
 }
 
-func (t *TestClient) Do(req *http.Request) (*http.Response, error) {
+func (t *KubernetesRoundTripper) Do(req *http.Request) (*http.Response, error) {
 	resp, err := t.Client.RoundTrip(req)
 	return resp, err
 }

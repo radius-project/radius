@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// APIServerExtension is a Kubernetes API Service that exposes the Radius API
 type APIServerExtension struct {
 	log     logr.Logger
 	options APIServerExtensionOptions
@@ -47,6 +48,10 @@ func (api *APIServerExtension) Name() string {
 func (api *APIServerExtension) Run(ctx context.Context) error {
 	logger := api.log
 
+	if api.options.TLSCertDir == "" {
+		return fmt.Errorf("TLSCertDir must be set")
+	}
+
 	logger.Info("API Server Extension waiting for API Server...")
 	<-api.options.Start
 
@@ -54,7 +59,6 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	// Add group/version as prefix.
 
 	rp := NewResourceProvider(api.options.AppModel, c)
 	s := server.NewServer(ctx, server.ServerOptions{
@@ -71,8 +75,6 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 		// We don't care about shutdown errors
 		_ = s.Shutdown(ctx)
 	}()
-
-	// http://localhost:8001/apis/api.radius.dev/v1alpha3/subscriptions/123/resourceGroups/testrg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", fmt.Sprintf(":%v", api.options.Port)))
 	err = s.ListenAndServeTLS(api.options.TLSCertDir+"/tls.crt", api.options.TLSCertDir+"/tls.key")
