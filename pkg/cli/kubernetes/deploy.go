@@ -29,6 +29,7 @@ import (
 
 const (
 	ConditionReady = "Ready"
+	TimeoutSeconds = int64(3600) // 1 hour
 )
 
 type KubernetesDeploymentClient struct {
@@ -86,10 +87,12 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
+	timeoutSeconds := TimeoutSeconds
 	watcher, err := c.Dynamic.Resource(mapping.Resource).Namespace(deployment.Namespace).Watch(ctx,
 		v1.ListOptions{
-			Watch:         true,
-			FieldSelector: fmt.Sprintf("metadata.name==%s,metadata.namespace==%s", deployment.Name, deployment.Namespace),
+			Watch:          true,
+			FieldSelector:  fmt.Sprintf("metadata.name==%s,metadata.namespace==%s", deployment.Name, deployment.Namespace),
+			TimeoutSeconds: &timeoutSeconds,
 		})
 
 	if err != nil {
