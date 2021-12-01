@@ -33,8 +33,9 @@ id = "G-9JR8B6TPF9"
     source = "archetypes"
     target = "archetypes"
 
-# Disable categories & tags
-disableKinds = ["taxonomy", "term"]
+# Taxonomies
+[taxonomies]
+category = "categories"
 
 # Top Nav Bar
 [[menu.main]]
