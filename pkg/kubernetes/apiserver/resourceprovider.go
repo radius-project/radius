@@ -17,7 +17,6 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
-	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/rest"
@@ -33,14 +32,13 @@ import (
 var ErrUnsupportedResourceType = errors.New("unsupported resource type")
 
 // NewResourceProvider creates a new ResourceProvider.
-func NewResourceProvider(appmodel model.ApplicationModel, client controller_runtime.Client) resourceprovider.ResourceProvider {
-	return &rp{AppModel: appmodel, client: client, namespace: "default"}
+func NewResourceProvider(client controller_runtime.Client) resourceprovider.ResourceProvider {
+	return &rp{client: client, namespace: "default"}
 }
 
 type rp struct {
 	client    controller_runtime.Client
 	namespace string
-	AppModel  model.ApplicationModel
 }
 
 // As a general design principle, returning an error from the RP signals an internal error (500).
@@ -60,9 +58,11 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 
 	output := resourceprovider.ApplicationResourceList{}
 	for _, item := range items.Items {
-		id := id
-		id.Types[len(id.Types)-1].Name = item.Name
-		converted, err := NewRestApplicationResource(id, item)
+		typeName := id.Types[len(id.Types)-1].Type // Should always be Application
+		// Add name to resource ID, by removing the last type/name and appending
+		// the actual part.
+		newId := id.Truncate().Append(azresources.ResourceType{Type: typeName, Name: item.Name})
+		converted, err := NewRestApplicationResource(newId, item)
 		if err != nil {
 			return nil, err
 		}
@@ -145,8 +145,12 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 }
 
 func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+	err := r.validateApplicationType(id)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
 	application := radiusv1alpha3.Application{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Types[len(id.Types)-2].Name}, &application)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Types[len(id.Types)-1].Name}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -167,7 +171,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 			Kind:    kubernetesType + "List",
 		})
 		err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
-			kubernetes.LabelRadiusApplication: id.Types[len(id.Types)-2].Name,
+			kubernetes.LabelRadiusApplication: id.Types[len(id.Types)-1].Name,
 		})
 		if err != nil {
 			return nil, err
@@ -208,14 +212,15 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 
 	output := resourceprovider.RadiusResourceList{}
 
+	kindlist := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type) + "List"
 	items := unstructured.UnstructuredList{}
 	items.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
-		Kind:    armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type) + "List",
+		Kind:    kindlist,
 	})
 	err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
-		kubernetes.LabelRadiusApplication: id.Name(),
+		// kubernetes.LabelRadiusApplication: id.Types[len(id.Types)-2].Name,
 	})
 	if err != nil {
 		return nil, err
@@ -399,7 +404,8 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		return nil, err
 	}
 
-	if !rest.IsTeminalStatus(rest.OperationStatus(output.Properties["provisioningState"].(string))) {
+	// Check if the resource is provisioned and ready
+	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ComponentStatus).ProvisioningState)) {
 		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
@@ -407,15 +413,6 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 				Target:  id.ID,
 			},
 		}), nil
-	}
-
-	cv, err := converters.GetComputedValues(resource.Status)
-	if err != nil {
-		return nil, err
-	}
-	computedValues := map[string]interface{}{}
-	for k, v := range cv {
-		computedValues[k] = v.Value
 	}
 
 	// The 'SecretValues' we store as part of the resource status (from render output) are references
@@ -484,13 +481,14 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return nil, err
 	}
 
-	if rest.IsTeminalStatus(rest.OperationStatus(output.Properties["provisioningState"].(string))) {
-		return rest.NewOKResponse(output), nil
+	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ComponentStatus).ProvisioningState)) {
+		// Operation is still processing.
+		// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
+		return rest.NewAcceptedAsyncResponse(output, id.ID), nil
 	}
 
-	// Operation is still processing.
-	// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
-	return rest.NewAcceptedAsyncResponse(output, id.ID), nil
+	return rest.NewOKResponse(output), nil
+
 }
 
 // We don't really expect an invalid type to get through ARM's routing

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Azure/radius/pkg/model"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
@@ -28,7 +27,6 @@ type APIServerExtension struct {
 type APIServerExtensionOptions struct {
 	KubeConfig *rest.Config
 	Scheme     *apiruntime.Scheme
-	AppModel   model.ApplicationModel
 	TLSCertDir string
 	Port       int
 	Start      <-chan struct{}
@@ -60,7 +58,7 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 		return err
 	}
 
-	rp := NewResourceProvider(api.options.AppModel, c)
+	rp := NewResourceProvider(c)
 	s := server.NewServer(ctx, server.ServerOptions{
 		Address:      fmt.Sprintf(":%v", api.options.Port),
 		Authenticate: false,
