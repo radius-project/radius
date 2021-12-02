@@ -24,7 +24,7 @@ type Renderer struct {
 	Inner renderers.Renderer
 }
 
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	// Let the inner renderer do its work
 	return r.Inner.GetDependencyIDs(ctx, resource)
 }

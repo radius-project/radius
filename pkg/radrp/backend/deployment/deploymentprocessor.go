@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/renderers"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-openapi/jsonpointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,7 +57,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 	resourceID := operationID.Truncate()
 
 	// Render
-	rendererOutput, armerr, err := dp.renderResource(ctx, resourceID, resource)
+	rendererOutput, azureDependencyIDs, armerr, err := dp.renderResource(ctx, resourceID, resource)
 	if err != nil {
 		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
@@ -82,6 +83,30 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		return err
 	}
 
+	for _, azureResourceID := range azureDependencyIDs {
+		dbAzureResource := db.AzureResource{
+			ID:                  azureResourceID.ID,
+			SubscriptionID:      azureResourceID.SubscriptionID,
+			ResourceGroup:       azureResourceID.ResourceGroup,
+			ApplicationName:     resource.ApplicationName,
+			ResourceName:        azureResourceID.Name(),
+			ResourceKind:        resourcekinds.Azure,
+			Type:                azureResourceID.Type(),
+			RadiusConnectionIDs: []string{resourceID.ID},
+		}
+
+		_, err = dp.db.UpdateAzureResource(ctx, dbAzureResource)
+		if err != nil {
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+			return err
+		}
+	}
+
 	dp.updateOperation(ctx, rest.SuccededStatus, operationID, nil /* success */)
 
 	return nil
@@ -95,7 +120,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 	deployedOutputResources := resource.Status.OutputResources
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
 		outputResource := deployedOutputResources[i]
-		outputResourceType, err := dp.appmodel.LookupOutputResource(outputResource.ResourceKind)
+		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceKind)
 		if err != nil {
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
@@ -107,7 +132,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 		}
 
 		logger.Info(fmt.Sprintf("Deleting output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
-		err = outputResourceType.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
+		err = outputResourceModel.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
 			Application:            resource.ApplicationName,
 			ResourceName:           resource.ResourceGroup,
 			ExistingOutputResource: &outputResource,
@@ -132,8 +157,20 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 		}
 	}
 
-	// Update resource and operation in the database
-	err := dp.db.DeleteV3Resource(ctx, resourceID)
+	// Delete all azure resource connections for this radius resource from the database
+	errorCode, err := dp.deleteAzureResourceConnectionsFromDB(ctx, resource, resourceID)
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    errorCode,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
+		return err
+	}
+
+	// Delete radius resource and update operation in the database
+	err = dp.db.DeleteV3Resource(ctx, resourceID)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Internal,
@@ -149,17 +186,60 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 	return nil
 }
 
-func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource) (renderers.RendererOutput, *armerrors.ErrorDetails, error) {
+// Retrieve resourceIDs of azure dependencies for the radius resource being deleted
+func (dp *deploymentProcessor) deleteAzureResourceConnectionsFromDB(ctx context.Context, radiusResource db.RadiusResource, radiusResourceID azresources.ResourceID) (errorCode string, err error) {
+	renderer, armerr, err := dp.getResourceRenderer(radiusResourceID)
+	if err != nil {
+		return armerr.Code, err
+	}
+
+	rendererResource := renderers.RendererResource{
+		ApplicationName: radiusResource.ApplicationName,
+		ResourceName:    radiusResource.ResourceName,
+		ResourceType:    radiusResource.Type,
+		Definition:      radiusResource.Definition,
+	}
+
+	_, azureDependencyIDs, err := renderer.GetDependencyIDs(ctx, rendererResource)
+	if err != nil {
+		return armerrors.Invalid, err
+	}
+
+	for _, azureResourceID := range azureDependencyIDs {
+		azureResource, err := dp.db.GetAzureResource(ctx, radiusResource.ApplicationName, azureResourceID.ID)
+		if err != nil {
+			if err == db.ErrNotFound {
+				// nothing to delete
+				continue
+			}
+
+			return armerrors.Internal, err
+		}
+
+		// If more than one radius resources are connected to this azure resource, only remove connection id for this radius resource
+		// else delete the resource entry
+		if len(azureResource.RadiusConnectionIDs) > 1 {
+			_, err = dp.db.RemoveAzureResourceConnection(ctx, radiusResource.ApplicationName, radiusResource.ID, azureResourceID.ID)
+			if err != nil {
+				return armerrors.Internal, err
+			}
+		} else {
+			err = dp.db.DeleteAzureResource(ctx, radiusResource.ApplicationName, azureResourceID.ID)
+			if err != nil {
+				return armerrors.Internal, err
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource) (renderers.RendererOutput, []azresources.ResourceID, *armerrors.ErrorDetails, error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
-	resourceType, err := dp.appmodel.LookupRadiusResource(resourceID.Types[len(resourceID.Types)-1].Type) // Using the last type segment as key
+	renderer, armerr, err := dp.getResourceRenderer(resourceID)
 	if err != nil {
-		armerr := &armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
-			Message: err.Error(),
-			Target:  resourceID.ID,
-		}
-		return renderers.RendererOutput{}, armerr, err
+		return renderers.RendererOutput{}, nil, armerr, err
 	}
 
 	// Build inputs for renderer
@@ -171,24 +251,24 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 	}
 
 	// Get resources that the resource being deployed has connection with.
-	dependencyResourceIDs, err := resourceType.Renderer.GetDependencyIDs(ctx, rendererResource)
+	radiusDependencyResourceIDs, azureDependencyIDs, err := renderer.GetDependencyIDs(ctx, rendererResource)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Invalid,
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		return renderers.RendererOutput{}, armerr, err
+		return renderers.RendererOutput{}, nil, armerr, err
 	}
 
-	rendererDependencies, err := dp.fetchDepenendencies(ctx, dependencyResourceIDs)
+	rendererDependencies, err := dp.fetchDepenendencies(ctx, radiusDependencyResourceIDs)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Internal,
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		return renderers.RendererOutput{}, armerr, err
+		return renderers.RendererOutput{}, nil, armerr, err
 	}
 
 	runtimeOptions, err := dp.getRuntimeOptions(ctx)
@@ -198,20 +278,34 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		return renderers.RendererOutput{}, armerr, err
+		return renderers.RendererOutput{}, nil, armerr, err
 	}
 
-	rendererOutput, err := resourceType.Renderer.Render(ctx, renderers.RenderOptions{Resource: rendererResource, Dependencies: rendererDependencies, Runtime: runtimeOptions})
+	rendererOutput, err := renderer.Render(ctx, renderers.RenderOptions{Resource: rendererResource, Dependencies: rendererDependencies, Runtime: runtimeOptions})
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Invalid,
 			Message: err.Error(),
 			Target:  resourceID.ID,
 		}
-		return renderers.RendererOutput{}, armerr, err
+		return renderers.RendererOutput{}, nil, armerr, err
 	}
 
-	return rendererOutput, nil, nil
+	return rendererOutput, azureDependencyIDs, nil, nil
+}
+
+func (dp *deploymentProcessor) getResourceRenderer(resourceID azresources.ResourceID) (renderers.Renderer, *armerrors.ErrorDetails, error) {
+	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(resourceID.Types[len(resourceID.Types)-1].Type) // Using the last type segment as key
+	if err != nil {
+		armerr := &armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: err.Error(),
+			Target:  resourceID.ID,
+		}
+		return nil, armerr, err
+	}
+
+	return radiusResourceModel.Renderer, nil, nil
 }
 
 // Deploys rendered output resources in order of dependencies
@@ -261,7 +355,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			}
 		}
 
-		outputResourceType, err := dp.appmodel.LookupOutputResource(outputResource.ResourceKind)
+		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceKind)
 		if err != nil {
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
@@ -271,7 +365,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			return db.RadiusResource{}, armerr, err
 		}
 
-		properties, err := outputResourceType.ResourceHandler.Put(ctx, &handlers.PutOptions{
+		properties, err := outputResourceModel.ResourceHandler.Put(ctx, &handlers.PutOptions{
 			ApplicationName:        resource.ApplicationName,
 			ResourceName:           resource.ResourceName,
 			Resource:               &outputResource,
@@ -341,7 +435,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		}
 
 		supportsHealthMonitor := true
-		if !outputResourceType.SupportsHealthMonitor(outputResource.Identity) {
+		if !outputResourceModel.SupportsHealthMonitor(outputResource.Identity) {
 			// Health state is not applicable to this resource and can be skipped from registering with health service
 			logger.Info(fmt.Sprintf("Health state is not applicable for resource kind: %s. Skipping registration with health service", outputResource.Identity.Kind))
 			// Return skipped = true
@@ -349,7 +443,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		}
 
 		if supportsHealthMonitor {
-			dp.registerOutputResourceForHealthChecks(ctx, healthResource, outputResourceType.HealthHandler.GetHealthOptions(ctx))
+			dp.registerOutputResourceForHealthChecks(ctx, healthResource, outputResourceModel.HealthHandler.GetHealthOptions(ctx))
 		}
 
 		// Build database resource - copy updated properties to Resource field
@@ -449,6 +543,7 @@ func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.
 	}
 }
 
+// Returns fully qualified radius resource identifier to RendererDependency map
 func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependencyResourceIDs []azresources.ResourceID) (map[string]renderers.RendererDependency, error) {
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, dependencyResourceID := range dependencyResourceIDs {
@@ -528,14 +623,14 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.
 		}
 
 		if secretReference.Transformer != "" {
-			outputResourceType, err := dp.appmodel.LookupOutputResource(secretReference.Transformer)
+			outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(secretReference.Transformer)
 			if err != nil {
 				return nil, err
-			} else if outputResourceType.SecretValueTransformer == nil {
+			} else if outputResourceModel.SecretValueTransformer == nil {
 				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
 			}
 
-			secret, err = outputResourceType.SecretValueTransformer.Transform(ctx, rendererDependency, secret)
+			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, rendererDependency, secret)
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform secret %q of dependency resource %q: %W", k, id.ID, err)
 			}

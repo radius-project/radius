@@ -283,14 +283,14 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
-	resourceType, err := r.Model.LookupRadiusResource(w.ResourceType)
+	resourceModel, err := r.Model.LookupRadiusResourceModel(w.ResourceType)
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource type '%s' is not supported'", w.ResourceType)
 		log.Error(err, "unsupported type for resource")
 		return nil, false, err
 	}
 
-	references, err := resourceType.Renderer.GetDependencyIDs(ctx, *w)
+	references, _, err := resourceModel.Renderer.GetDependencyIDs(ctx, *w)
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies: %v", err)
 		log.Error(err, "failed to render resource")
@@ -316,7 +316,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		deps[reference.ID] = *dependency
 	}
 
-	output, err := resourceType.Renderer.Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, Runtime: runtimeOptions})
+	output, err := resourceModel.Renderer.Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, Runtime: runtimeOptions})
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")

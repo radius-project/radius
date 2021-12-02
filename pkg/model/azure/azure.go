@@ -32,7 +32,9 @@ import (
 )
 
 func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationModel {
-	// Configuration for how connections of different types map to role assignments.
+	// Configure RBAC support on connections based connection kind.
+	// Role names can be user input or default roles assigned by Radius.
+	// Leave RoleNames field empty if no default roles are supported for a connection kind.
 	//
 	// For a primer on how to read this data, see the KeyVault case.
 	roleAssignmentMap := map[radclient.ContainerConnectionKind]containerv1alpha3.RoleAssignmentData{
@@ -50,9 +52,13 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 				"Key Vault Crypto User",
 			},
 		},
+		radclient.ContainerConnectionKindAzure: {
+			// RBAC for non-Radius Azure resources. Supports user specified roles.
+			// More information can be found here: https://github.com/Azure/radius/issues/1321
+		},
 	}
 
-	radiusResources := []model.RadiusResourceModel{
+	radiusResourceModel := []model.RadiusResourceModel{
 		// Built-in types
 		{
 			ResourceType: containerv1alpha3.ResourceType,
@@ -125,7 +131,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		resourcekinds.HTTPRoute:   true,
 	}
 
-	outputResources := []model.OutputResourceModel{
+	outputResourceModel := []model.OutputResourceModel{
 		{
 			Kind:            resourcekinds.Kubernetes,
 			HealthHandler:   handlers.NewKubernetesHealthHandler(k8s),
@@ -232,5 +238,5 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 	}
 
-	return model.NewModel(radiusResources, outputResources)
+	return model.NewModel(radiusResourceModel, outputResourceModel)
 }

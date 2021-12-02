@@ -25,7 +25,7 @@ func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
 
 	resource := renderers.RendererResource{}
-	dependencies, err := r.GetDependencyIDs(context.Background(), resource)
+	dependencies, _, err := r.GetDependencyIDs(context.Background(), resource)
 	require.NoError(t, err)
 	require.Empty(t, dependencies)
 }
