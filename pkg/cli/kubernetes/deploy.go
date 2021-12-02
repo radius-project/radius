@@ -82,6 +82,11 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.
 		return clients.DeploymentResult{}, err
 	}
 
+	return c.waitForDeploymentCompletion(ctx, kind, deployment)
+}
+
+func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Context, kind string, deployment bicepv1alpha3.DeploymentTemplate) (clients.DeploymentResult, error) {
+
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(c.Typed.DiscoveryClient))
 	mapping, err := restMapper.RESTMapping(schema.GroupKind{Group: bicepv1alpha3.GroupVersion.Group, Kind: kind}, bicepv1alpha3.GroupVersion.Version)
 	if err != nil {
@@ -123,7 +128,7 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.
 
 			if event.Type == watch.Added || event.Type == watch.Modified {
 				templateCondition := meta.FindStatusCondition(deploymentTemplate.Status.Conditions, ConditionReady)
-				if templateCondition.Status == v1.ConditionTrue {
+				if templateCondition != nil && templateCondition.Status == v1.ConditionTrue {
 					// Done with deployment
 					return clients.DeploymentResult{}, nil
 				}
@@ -132,4 +137,5 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.
 			return clients.DeploymentResult{}, err
 		}
 	}
+
 }
