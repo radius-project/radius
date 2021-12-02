@@ -7,7 +7,6 @@ package mongodbv1alpha3
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -52,7 +51,20 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 	}
 
 	if properties.Managed == nil || !*properties.Managed {
-		return renderers.RendererOutput{}, errors.New("only Radius managed resources are supported for MongoDB on Kubernetes")
+		output := renderers.RendererOutput{
+			ComputedValues: map[string]renderers.ComputedValueReference{
+				"database": {
+					Value: resource.ResourceName,
+				},
+			},
+			SecretValues: map[string]renderers.SecretValueReference{
+				"connectionString": {
+					LocalID:       outputresource.LocalIDScrapedSecret,
+					ValueSelector: "connectionString",
+				},
+			},
+		}
+		return output, nil
 	}
 
 	k8sOptions := KubernetesOptions{
