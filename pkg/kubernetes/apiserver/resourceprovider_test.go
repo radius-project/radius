@@ -379,41 +379,6 @@ func Test_ListAllV3ResourcesByApplication(t *testing.T) {
 		},
 	}
 
-	resource2Name := "my-resource2"
-	expectedID2, err := azresources.Parse(azresources.MakeID(
-		"kubernetes",
-		Namespace,
-		azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
-		azresources.ResourceType{Type: "Application", Name: appName},
-		azresources.ResourceType{Type: "ContainerComponent", Name: resource2Name}))
-	require.NoError(t, err)
-
-	resource2 := radiusv1alpha3.ContainerComponent{
-		TypeMeta: v1.TypeMeta{
-			APIVersion: radiusv1alpha3.GroupVersion.String(),
-			Kind:       "ContainerComponent",
-		},
-		ObjectMeta: v1.ObjectMeta{
-			Name:      resource2Name,
-			Namespace: Namespace,
-			Labels: map[string]string{
-				kubernetes.LabelRadiusApplication: appName,
-			},
-		},
-		Spec: radiusv1alpha3.ResourceSpec{
-			Template: rawOrPanic(map[string]interface{}{
-				"name": resource2Name,
-				"id":   expectedID2.ID,
-				"type": expectedID2.Type(),
-				"body": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"definition-property": "definition-value",
-					},
-				},
-			}),
-		},
-	}
-
 	id, err := azresources.Parse(azresources.MakeID(
 		"kubernetes",
 		Namespace,
@@ -421,7 +386,7 @@ func Test_ListAllV3ResourcesByApplication(t *testing.T) {
 		azresources.ResourceType{Type: "Application", Name: appName}))
 	require.NoError(t, err)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1, &resource2).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1).Build()
 
 	rp := NewResourceProvider(c)
 
@@ -434,15 +399,6 @@ func Test_ListAllV3ResourcesByApplication(t *testing.T) {
 				ID:   expectedID1.ID,
 				Type: expectedID1.Type(),
 				Name: resource1Name,
-				Properties: map[string]interface{}{
-					"definition-property": "definition-value",
-					"status":              map[string]interface{}{},
-				},
-			},
-			{
-				ID:   expectedID2.ID,
-				Type: expectedID2.Type(),
-				Name: resource2Name,
 				Properties: map[string]interface{}{
 					"definition-property": "definition-value",
 					"status":              map[string]interface{}{},
