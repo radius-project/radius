@@ -92,12 +92,11 @@ func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Cont
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
-	timeoutSeconds := TimeoutSeconds
 	watcher, err := c.Dynamic.Resource(mapping.Resource).Namespace(deployment.Namespace).Watch(ctx,
 		v1.ListOptions{
 			Watch:          true,
 			FieldSelector:  fmt.Sprintf("metadata.name==%s,metadata.namespace==%s", deployment.Name, deployment.Namespace),
-			TimeoutSeconds: &timeoutSeconds,
+			TimeoutSeconds: int64Ptr(TimeoutSeconds),
 		})
 
 	if err != nil {
@@ -137,5 +136,8 @@ func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Cont
 			return clients.DeploymentResult{}, err
 		}
 	}
+}
 
+func int64Ptr(i int64) *int64 {
+	return &i
 }
