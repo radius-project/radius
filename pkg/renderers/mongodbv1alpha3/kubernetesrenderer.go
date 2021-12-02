@@ -50,13 +50,15 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 		return renderers.RendererOutput{}, err
 	}
 
+	computedValues := map[string]renderers.ComputedValueReference{
+		"database": {
+			Value: resource.ResourceName,
+		},
+	}
+
 	if properties.Managed == nil || !*properties.Managed {
 		output := renderers.RendererOutput{
-			ComputedValues: map[string]renderers.ComputedValueReference{
-				"database": {
-					Value: resource.ResourceName,
-				},
-			},
+			ComputedValues: computedValues,
 			SecretValues: map[string]renderers.SecretValueReference{
 				"connectionString": {
 					LocalID:       outputresource.LocalIDScrapedSecret,
@@ -91,11 +93,6 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 	set := r.MakeStatefulSet(k8sOptions, service.Name, secret.Name)
 	resources = append(resources, outputresource.NewKubernetesOutputResource(outputresource.LocalIDStatefulSet, set, set.ObjectMeta))
 
-	computedValues := map[string]renderers.ComputedValueReference{
-		"database": {
-			Value: resource.ResourceName,
-		},
-	}
 	secretValues := map[string]renderers.SecretValueReference{
 		"connectionString": {
 			LocalID:       outputresource.LocalIDSecret,
