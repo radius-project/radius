@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Radius Traits"
+title: "Radius traits"
 linkTitle: "Traits"
 description: "Learn how to model your application component behavior with Radius traits."
 weight: 400

@@ -4,7 +4,7 @@ title: "Project Radius application model"
 linkTitle: "Application model"
 description: An overview of how the Radius app model is structured
 weight: 200
-no_list: true
+no_list: false
 ---
 
 Project Radius provides a descriptive framework for cloud native applications and their requirements. 
@@ -14,42 +14,33 @@ Project Radius provides a descriptive framework for cloud native applications an
 
 Cloud-native applications are often designed and described using lines-and-boxes architecture diagrams as the starting point.
 
+<!-- TODO: make this diagram match the app in the mockup below-->
 {{< imgproc app-diagram Fit "700x500" >}}
-<i>A simple example of an online app.</i>
+<i>An example app represented as a block diagram.</i>
 {{< /imgproc >}}
 
 These diagrams often include  
-- the resources that run application code 
+- the resources that run application code, like containers. 
 - "supporting" resources - like databases, messages queues, api gateways, and secret stores
 - information about the relationship between resources - like protocols, settings, and permissions.
 
 Radius provides a way for developers to translate human-understandable application diagrams into human-understandable application code. 
 
-## Project Radius app model
+## Example: diagram ➡ code ➡ diagram 
 
-In Radius, the following concepts are used to describe application architecture:
+With the Radius app model, teams can easily codify and share pieces of a large, shared application. 
+{{< rad file="snippets/appmodel-concept.bicep" embed=true >}}
 
-{{< cardpane >}}
-{{< card header="[**Radius Application**](./application-model)" >}}
-A Radius Application includes all software, compute, data, and infrastructure used by the app.
-{{< /card >}}
-{{< card header="[**Components**](./components-model)" >}}
-Each node on the diagram maps to one Component and describe the code, data, and infrastructure pieces of an application.
-{{< /card >}}
-{{< /cardpane >}}
-{{< cardpane >}}
-{{< card header="[**Connections**](./connections-model)" >}}
-Connections describe a logical unit of communication between Components and model the edges between nodes in an architecture diagram.
-{{< /card >}}
-{{< card header="[**Traits**](./traits-model)" >}}
-A Trait is a piece of configuration that specifies an operational behavior. Once defined, a trait can be added to Component definitions.
-{{< /card >}}
-{{< /cardpane >}}
-{{< cardpane width=52% >}}
-{{< card header="[**Scopes**](./scopes-model)" >}}
-A Scope is a shared piece of configuration that applies to one or more Components. It's the circle you draw around Components in your architecture diagram.
-{{< /card >}}
-{{< /cardpane >}}
+The result is no longer just a flat list of resources - it's a fully fledged diagram of how the pieces relate to each other.
+{{< imgproc ui-mockup-basic Fit "700x500">}}
+<i>An example app represented in the Radius Azure Service.</i>
+{{< /imgproc >}}
+
+In fact, we're committed to creating a dev experience users love. So developers will be able to debug and iterate on that same app definition locally via VSCode as well. 
+<!-- TODO: make all these diagrams & code show the identically same app -->
+{{< imgproc vscode-mockup-basic Fit "700x500">}}
+<i>An example app represented in VSCode.</i>
+{{< /imgproc >}}
 
 
 ## App-model language
@@ -60,6 +51,5 @@ Radius uses the [Bicep language](https://github.com/azure/bicep) as its file-for
 - Ability to punch through abstractions to platform when necessary
 - Extensions to work with other providers (e.g. Kubernetes, Azure Active Directory, etc.)
 
-
-{{< button page="application-model" text="Learn about Radius Applications" >}}
+<br>
 
