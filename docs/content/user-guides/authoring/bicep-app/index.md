@@ -44,6 +44,6 @@ Relationships between Radius services and other resources can be defined through
 
 ## Next step
 
-Now that you have defined your infrasturcture, application, services, and connections you can break it up into modules such that separate teams and can work on different parts of the application.
+Now that you have defined your infrastructure, application, services, and connections you can break it up into modules such that separate teams can work on different parts of the application.
 
 {{< button page="bicep-modules" text="Model your application and services in modules" >}}
