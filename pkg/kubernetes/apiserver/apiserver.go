@@ -77,7 +77,6 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 	logger.Info(fmt.Sprintf("listening on: '%s'...", fmt.Sprintf(":%v", api.options.Port)))
 	err = s.ListenAndServeTLS(api.options.TLSCertDir+"/tls.crt", api.options.TLSCertDir+"/tls.key")
 
-	fmt.Println("failed to listen")
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

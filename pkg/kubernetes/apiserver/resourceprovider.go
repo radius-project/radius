@@ -145,12 +145,15 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 }
 
 func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-	err := r.validateApplicationType(id)
+	// Resource name is RadiusResource
+	err := r.validateResourceType(id)
+
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
+
 	application := radiusv1alpha3.Application{}
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Types[len(id.Types)-1].Name}, &application)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Types[len(id.Types)-2].Name}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -171,7 +174,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 			Kind:    kubernetesType + "List",
 		})
 		err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
-			kubernetes.LabelRadiusApplication: id.Types[len(id.Types)-1].Name,
+			kubernetes.LabelRadiusApplication: id.Types[len(id.Types)-2].Name,
 		})
 		if err != nil {
 			return nil, err

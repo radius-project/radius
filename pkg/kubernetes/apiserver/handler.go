@@ -105,6 +105,7 @@ func (h *handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) DeleteApplication(w http.ResponseWriter, req *http.Request) {
+
 	ctx := req.Context()
 	response, err := h.rp.DeleteApplication(ctx, resourceID(req))
 	if err != nil {

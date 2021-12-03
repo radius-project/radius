@@ -383,7 +383,8 @@ func Test_ListAllV3ResourcesByApplication(t *testing.T) {
 		"kubernetes",
 		Namespace,
 		azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
-		azresources.ResourceType{Type: "Application", Name: appName}))
+		azresources.ResourceType{Type: "Application", Name: appName},
+		azresources.ResourceType{Type: "RadiusResource"}))
 	require.NoError(t, err)
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1).Build()
