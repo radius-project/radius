@@ -20,6 +20,7 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{ secrets.RADIUS_BICEP_VALIDATION_AZURE_SP }}
+        allow-no-subscriptions: true
     - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
     - name: Download rad-bicep
