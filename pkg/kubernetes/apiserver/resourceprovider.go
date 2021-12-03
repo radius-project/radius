@@ -474,12 +474,13 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	targetID := id.Truncate()
+
+	kind, ok := armtemplate.GetKindFromArmType(targetID.Types[len(targetID.Types)-1].Type)
 	if !ok {
-		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+		return nil, fmt.Errorf("unsupported resource type %s", targetID.Types[len(targetID.Types)-1].Type)
 	}
 
-	targetID := id.Truncate()
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
