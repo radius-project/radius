@@ -29,7 +29,6 @@ type APIServerExtensionOptions struct {
 	Scheme     *apiruntime.Scheme
 	TLSCertDir string
 	Port       int
-	Start      <-chan struct{}
 }
 
 func NewAPIServerExtension(log logr.Logger, options APIServerExtensionOptions) *APIServerExtension {
@@ -51,7 +50,6 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 	}
 
 	logger.Info("API Server Extension waiting for API Server...")
-	<-api.options.Start
 
 	c, err := client.New(api.options.KubeConfig, client.Options{Scheme: api.options.Scheme})
 	if err != nil {

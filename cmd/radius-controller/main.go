@@ -134,12 +134,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	apiServerReady := make(chan struct{})
-
 	apiServerOptions := apiserver.APIServerExtensionOptions{
 		KubeConfig: ctrl.GetConfigOrDie(),
 		Scheme:     scheme,
-		Start:      apiServerReady,
 		TLSCertDir: certDir,
 		Port:       7443,
 	}
@@ -157,9 +154,7 @@ func main() {
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), ctrl.Log))
 
 	setupLog.Info("Starting server...")
-	stopped, serviceErrors := host.RunAsync(ctx)
-
-	close(apiServerReady)
+	stopped, apiServiceErrors := host.RunAsync(ctx)
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
@@ -173,7 +168,7 @@ func main() {
 		setupLog.Info("Shutdown requested..")
 		cancel()
 	// A service terminated with a failure. Details of the failure have already been logged.
-	case <-serviceErrors:
+	case <-apiServiceErrors:
 		setupLog.Info("One of the services failed. Shutting down...")
 		cancel()
 	}

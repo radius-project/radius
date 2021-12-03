@@ -215,7 +215,11 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 
 	output := resourceprovider.RadiusResourceList{}
 
-	kindlist := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type) + "List"
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	if !ok {
+		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+	}
+	kindlist := kind + "List"
 	items := unstructured.UnstructuredList{}
 	items.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
@@ -262,11 +266,16 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 		return nil, err
 	}
 
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	if !ok {
+		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+	}
+
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
-		Kind:    armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type),
+		Kind:    kind,
 	})
 
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(id.Types[len(id.Types)-2].Name, id.Types[len(id.Types)-1].Name)}, &item)
@@ -305,10 +314,14 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, err // Unexpected error, the payload has already been validated.
 	}
 
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	if !ok {
+		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+	}
 	item, err := NewKubernetesRadiusResource(id, resource, r.namespace, k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
-		Kind:    armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type),
+		Kind:    kind,
 	})
 	if err != nil {
 		return nil, err // Unexpected error, the payload has already been validated.
@@ -347,13 +360,18 @@ func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (res
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	if !ok {
+		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+	}
+
 	item := unstructured.Unstructured{}
 	item.SetNamespace(r.namespace)
 	item.SetName(kubernetes.MakeResourceName(id.Types[len(id.Types)-2].Name, id.Types[len(id.Types)-1].Name))
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
-		Kind:    armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type),
+		Kind:    kind,
 	})
 	err = r.client.Delete(ctx, &item)
 	if err != nil {
@@ -375,11 +393,16 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	if !ok {
+		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+	}
+
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
-		Kind:    armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type),
+		Kind:    kind,
 	})
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(id.Types[len(id.Types)-2].Name, id.Types[len(id.Types)-1].Name)}, &item)
 	if err != nil {
@@ -451,12 +474,17 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	if !ok {
+		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+	}
+
 	targetID := id.Truncate()
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
-		Kind:    armtemplate.GetKindFromArmType(targetID.Types[len(targetID.Types)-1].Type),
+		Kind:    kind,
 	})
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(targetID.Types[len(targetID.Types)-2].Name, targetID.Types[len(targetID.Types)-1].Name)}, &item)
 	if err != nil {
