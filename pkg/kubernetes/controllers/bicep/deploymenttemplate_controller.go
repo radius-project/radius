@@ -214,6 +214,8 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			}
 		}
 
+		// For non radius resources, we don't check the status of the resource to check if they are deployed
+
 		// TODO could remove this dependecy on radiusv1alpha3
 		k8sResource := &radiusv1alpha3.Resource{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, k8sResource)
@@ -232,11 +234,15 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 
 		deployed[resource.ID] = resource.Body
 
-		resourceStatus := meta.FindStatusCondition(k8sResource.Status.Conditions, ConditionReady)
-		// check bounds and stuff
-		if len(k8sResource.Status.Conditions) == 0 || (resourceStatus != nil && resourceStatus.Status != metav1.ConditionTrue) {
-			// Need to wait for the resource to be ready
-			return ctrl.Result{}, nil
+		_, ok := armtemplate.GetKindFromArmType(resourceType)
+		if ok {
+			resourceStatus := meta.FindStatusCondition(k8sResource.Status.Conditions, ConditionReady)
+			// check bounds and stuff
+			// Only check for readiness on resources that radius owns.
+			if len(k8sResource.Status.Conditions) == 0 || (resourceStatus != nil && resourceStatus.Status != metav1.ConditionTrue) {
+				// Need to wait for the resource to be ready
+				return ctrl.Result{}, nil
+			}
 		}
 
 		r.Recorder.Eventf(k8sInfo, "Normal", "Deployed", "Resource %s has been deployed", k8sInfo.GetName())
@@ -282,10 +288,15 @@ func (r *DeploymentTemplateReconciler) InvokeCustomAction(ctx context.Context, n
 	}
 
 	unst := unstructured.Unstructured{}
+	kind, ok := armtemplate.GetKindFromArmType(targetID.Types[2].Type)
+	if !ok {
+		return nil, fmt.Errorf("resource id does not have matching kind was: %q", targetID.Types[2].Type)
+	}
+
 	unst.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
-		Kind:    armtemplate.GetKindFromArmType(targetID.Types[2].Type),
+		Kind:    kind,
 	})
 
 	err = r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: kubernetes.MakeResourceName(targetID.Types[1].Name, targetID.Types[2].Name)}, &unst)

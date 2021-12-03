@@ -94,6 +94,7 @@ func (mc *KubernetesManagementClient) DeleteApplication(ctx context.Context, app
 
 func (mc *KubernetesManagementClient) listAllRadiusCRDs(ctx context.Context) ([]v1.CustomResourceDefinition, error) {
 	crds, err := mc.ExtensionClient.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return nil, err
 	}
