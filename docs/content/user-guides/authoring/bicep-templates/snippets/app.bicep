@@ -2,12 +2,12 @@ resource myapp 'radius.dev/Application@v1alpha3' = {
   name: 'my-application'
 }
 
-module frontend 'br:exampleregistry.azurecr.io/templates/container:latest' = {
+module frontend 'br:radius.azurecr.io/templates/container:latest' = {
   name: 'frontend-module'
   params: {
     app: myapp
     name: 'frontend'
-    image: 'exampleregistry.azurecr.io/services/frontend:latest'
+    image: 'radius.azurecr.io/services/frontend:latest'
     ports: {
       web: {
         containerPort: 80
@@ -18,7 +18,7 @@ module frontend 'br:exampleregistry.azurecr.io/templates/container:latest' = {
   }
 }
 
-module backend 'br:exampleregistry.azurecr.io/templates/container:latest' = {
+module backend 'br:radius.azurecr.io/templates/container:latest' = {
   name: 'frontend-module'
   params: {
     app: myapp
