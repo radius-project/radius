@@ -19,7 +19,7 @@ module frontend 'br:radius.azurecr.io/templates/container:latest' = {
 }
 
 module backend 'br:radius.azurecr.io/templates/container:latest' = {
-  name: 'frontend-module'
+  name: 'backend-module'
   params: {
     app: myapp
     name: 'backend'
