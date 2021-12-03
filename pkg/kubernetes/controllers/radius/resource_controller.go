@@ -533,14 +533,18 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 		return nil, fmt.Errorf("dependency %q is not a radius resource", id)
 	}
 
-	resourceType := id.Types[2]
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[2].Type)
+	if !ok {
+		return nil, fmt.Errorf("kind does not exist for id %q", id)
+	}
+
 	unst := &unstructured.Unstructured{}
 
 	// TODO determine this correctly
 	unst.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   radiusv1alpha3.GroupVersion.Group,
 		Version: radiusv1alpha3.GroupVersion.Version,
-		Kind:    armtemplate.GetKindFromArmType(resourceType.Type),
+		Kind:    kind,
 	})
 
 	err := r.Client.Get(ctx, client.ObjectKey{

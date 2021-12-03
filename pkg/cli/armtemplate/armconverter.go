@@ -122,8 +122,8 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 
 	labels := kubernetes.MakeResourceCRDLabels(applicationName, resourceType, resourceName)
 
-	kind := GetKindFromArmType(resourceType)
-	if kind == "" {
+	kind, ok := GetKindFromArmType(resourceType)
+	if !ok {
 		return nil, nil, fmt.Errorf("must have custom resource type mapping to arm type %s", resourceType)
 	}
 
@@ -146,7 +146,7 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 }
 
 // TODO this should be removed and instead we should use the CR definitions to know about the arm mapping
-func GetKindFromArmType(armType string) string {
+func GetKindFromArmType(armType string) (string, bool) {
 	kindMap := map[string]string{
 		"Application":                        "Application",
 		"ContainerComponent":                 "ContainerComponent",
@@ -160,5 +160,6 @@ func GetKindFromArmType(armType string) string {
 		"GrpcRoute":                          "GrpcRoute",
 		"Gateway":                            "Gateway",
 	}
-	return kindMap[armType]
+	res, ok := kindMap[armType]
+	return res, ok
 }

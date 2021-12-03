@@ -130,6 +130,8 @@ func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Cont
 				if templateCondition != nil && templateCondition.Status == v1.ConditionTrue {
 					// Done with deployment
 					return clients.DeploymentResult{}, nil
+				} else if templateCondition != nil && templateCondition.Status == v1.ConditionFalse {
+					return clients.DeploymentResult{}, fmt.Errorf("Deployment failed: %s", templateCondition.Message)
 				}
 			}
 		case <-ctx.Done():
