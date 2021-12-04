@@ -57,15 +57,15 @@ type RadrpDB interface {
 	UpdateV3ApplicationDefinition(ctx context.Context, application ApplicationResource) (bool, error)
 	DeleteV3Application(ctx context.Context, id azresources.ResourceID) error
 
-	ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error)
+	ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]RadiusResource, error)
 	ListV3Resources(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error)
 	GetV3Resource(ctx context.Context, id azresources.ResourceID) (RadiusResource, error)
 	UpdateV3ResourceDefinition(ctx context.Context, id azresources.ResourceID, resource RadiusResource) (bool, error)
 	UpdateV3ResourceStatus(ctx context.Context, id azresources.ResourceID, resource RadiusResource) error
 	DeleteV3Resource(ctx context.Context, id azresources.ResourceID) error
 
-	ListAllAzureResourcesForApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error)
-	ListAzureResourcesForResourceType(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error)
+	ListAllAzureResourcesForApplication(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string) ([]AzureResource, error)
+	ListAzureResourcesForResourceType(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string, resourceType string) ([]AzureResource, error)
 	GetAzureResource(ctx context.Context, applicationName string, azureResourceID string) (AzureResource, error)
 	UpdateAzureResource(ctx context.Context, azureResource AzureResource) (bool, error)
 	AddAzureResourceConnection(ctx context.Context, radiusResourceID string, azureResource AzureResource) (bool, error)
@@ -213,7 +213,7 @@ func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.Resourc
 		return err
 	}
 
-	items, err := d.listV3ResourcesByApplication(ctx, id, application, false /* all */)
+	items, err := d.listV3ResourcesByApplication(ctx, id, application.ApplicationName, false /* all */)
 	if err != nil {
 		return err
 	}
@@ -236,13 +236,8 @@ func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.Resourc
 	return nil
 }
 
-func (d radrpDB) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
-	application, err := d.GetV3Application(ctx, id.Truncate())
-	if err != nil {
-		return nil, err
-	}
-
-	items, err := d.listV3ResourcesByApplication(ctx, id, application, true /* all */)
+func (d radrpDB) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]RadiusResource, error) {
+	items, err := d.listV3ResourcesByApplication(ctx, id, applicationName, true /* all */)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +251,7 @@ func (d radrpDB) ListV3Resources(ctx context.Context, id azresources.ResourceID)
 		return nil, err
 	}
 
-	items, err := d.listV3ResourcesByApplication(ctx, id, application, false /* all */)
+	items, err := d.listV3ResourcesByApplication(ctx, id, application.ApplicationName, false /* all */)
 	if err != nil {
 		return nil, err
 	}
@@ -264,13 +259,13 @@ func (d radrpDB) ListV3Resources(ctx context.Context, id azresources.ResourceID)
 	return items, nil
 }
 
-func (d radrpDB) listV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, application ApplicationResource, all bool) ([]RadiusResource, error) {
+func (d radrpDB) listV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, applicationName string, all bool) ([]RadiusResource, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.ID)
 
 	items := make([]RadiusResource, 0)
 
 	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup},
-		{Key: "applicationName", Value: application.ApplicationName}}
+		{Key: "applicationName", Value: applicationName}}
 	if !all {
 		filter = append(filter, bson.E{Key: "type", Value: id.Type()})
 	}
@@ -392,8 +387,8 @@ func (d radrpDB) DeleteV3Resource(ctx context.Context, id azresources.ResourceID
 	return nil
 }
 
-func (d radrpDB) ListAllAzureResourcesForApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error) {
-	resources, err := d.listAzureResourcesForApplication(ctx, id, applicationName, false /* filterByType */)
+func (d radrpDB) ListAllAzureResourcesForApplication(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string) ([]AzureResource, error) {
+	resources, err := d.listAzureResourcesForApplication(ctx, applicationName, appSubscriptionID, appResourceGroup, false /* filterByType */, "")
 	if err != nil {
 		return nil, err
 	}
@@ -401,8 +396,8 @@ func (d radrpDB) ListAllAzureResourcesForApplication(ctx context.Context, id azr
 	return resources, nil
 }
 
-func (d radrpDB) ListAzureResourcesForResourceType(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error) {
-	resources, err := d.listAzureResourcesForApplication(ctx, id, applicationName, true /* filterByType */)
+func (d radrpDB) ListAzureResourcesForResourceType(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string, resourceType string) ([]AzureResource, error) {
+	resources, err := d.listAzureResourcesForApplication(ctx, applicationName, appSubscriptionID, appResourceGroup, true /* filterByType */, resourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -410,16 +405,16 @@ func (d radrpDB) ListAzureResourcesForResourceType(ctx context.Context, id azres
 	return resources, nil
 }
 
-func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, id azresources.ResourceID, applicationName string, filterByType bool) ([]AzureResource, error) {
+func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string, filterByType bool, resourceType string) ([]AzureResource, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
-		radlogger.LogFieldResourceID, id.ID)
+		radlogger.LogFieldSubscriptionID, appSubscriptionID, radlogger.LogFieldResourceGroup, appResourceGroup)
 
-	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID},
-		{Key: "resourceGroup", Value: id.ResourceGroup},
+	filter := bson.D{{Key: "appSubscriptionId", Value: appSubscriptionID},
+		{Key: "appResourceGroup", Value: appResourceGroup},
 		{Key: "applicationName", Value: applicationName},
 	}
 	if filterByType {
-		filter = append(filter, bson.E{Key: "type", Value: id.Type()})
+		filter = append(filter, bson.E{Key: "type", Value: resourceType})
 	}
 
 	logger.Info(fmt.Sprintf("Listing azure resources from DB with filter: %v", filter))
@@ -482,20 +477,21 @@ func (d radrpDB) UpdateAzureResource(ctx context.Context, azureResource AzureRes
 	if len(azureResource.RadiusConnectionIDs) == 1 {
 		// `$push` appends the value to an existing array for the key or creates a new array with the value if the key doesn't exist
 		update = bson.D{
-			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID},
-				{Key: "subscriptionId", Value: azureResource.SubscriptionID}, {Key: "resourceGroup", Value: azureResource.ResourceGroup},
-				{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "resourceName", Value: azureResource.ResourceName},
-				{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type}},
+			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID}, {Key: "subscriptionId", Value: azureResource.SubscriptionID},
+				{Key: "resourceGroup", Value: azureResource.ResourceGroup}, {Key: "resourceName", Value: azureResource.ResourceName},
+				{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type},
+				{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "appSubscriptionId", Value: azureResource.AppSubscriptionID},
+				{Key: "appResourceGroup", Value: azureResource.AppResourceGroup}},
 			},
 			{Key: "$push", Value: bson.D{{Key: "radiusConnectionIDs", Value: azureResource.RadiusConnectionIDs[0]}}},
 		}
 	} else if len(azureResource.RadiusConnectionIDs) > 1 {
 		update = bson.D{
-			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID},
-				{Key: "subscriptionId", Value: azureResource.SubscriptionID}, {Key: "resourceGroup", Value: azureResource.ResourceGroup},
-				{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "resourceName", Value: azureResource.ResourceName},
+			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID}, {Key: "subscriptionId", Value: azureResource.SubscriptionID},
+				{Key: "resourceGroup", Value: azureResource.ResourceGroup}, {Key: "resourceName", Value: azureResource.ResourceName},
 				{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type},
-				{Key: "radiusConnectionIDs", Value: azureResource.RadiusConnectionIDs}},
+				{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "appSubscriptionId", Value: azureResource.AppSubscriptionID},
+				{Key: "appResourceGroup", Value: azureResource.AppResourceGroup}, {Key: "radiusConnectionIDs", Value: azureResource.RadiusConnectionIDs}},
 			},
 		}
 	} else {
@@ -528,10 +524,11 @@ func (d radrpDB) AddAzureResourceConnection(ctx context.Context, radiusResourceI
 	update := bson.D{
 		{Key: "$push", Value: bson.D{{Key: "radiusConnectionIDs", Value: radiusResourceID}}},
 		{Key: "$setOnInsert", Value: bson.D{
-			{Key: "_id", Value: azureResource.ID},
-			{Key: "subscriptionId", Value: azureResource.SubscriptionID}, {Key: "resourceGroup", Value: azureResource.ResourceGroup},
-			{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "resourceName", Value: azureResource.ResourceName},
+			{Key: "_id", Value: azureResource.ID}, {Key: "subscriptionId", Value: azureResource.SubscriptionID},
+			{Key: "resourceGroup", Value: azureResource.ResourceGroup}, {Key: "resourceName", Value: azureResource.ResourceName},
 			{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type},
+			{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "appSubscriptionId", Value: azureResource.AppSubscriptionID},
+			{Key: "appResourceGroup", Value: azureResource.AppResourceGroup},
 		}},
 	}
 

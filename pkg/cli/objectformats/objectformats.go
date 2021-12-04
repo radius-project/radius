@@ -34,7 +34,10 @@ func GetResourceTableFormat() output.FormatterOptions {
 				JSONPath: "{ .type }",
 				Transformer: func(t string) string {
 					tokens := strings.Split(t, "/")
-					return tokens[len(tokens)-1]
+					if tokens[0] == "Microsoft.CustomProviders" {
+						return tokens[len(tokens)-1]
+					}
+					return t
 				},
 			},
 			{

@@ -23,6 +23,7 @@ type ApplicationResourceList struct {
 }
 
 // RadiusResource represents one of the child resource types of Application in the ARM wire-format.
+// This also includes non-Radius Azure resources that are referenced from Radius application. These resources do not contain output resources and may not support all the other properties included in RadiusResource type.
 type RadiusResource struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -37,14 +38,6 @@ type RadiusResourceStatus = rest.ComponentStatus
 // RadiusResourceList represents a list of a child resource type of Application in the ARM wire-format.
 type RadiusResourceList struct {
 	Value []RadiusResource `json:"value"`
-}
-
-// AzureResource over the wire format for non-Radius Azure resources that are referenced from Radius resources in the application. These resources do not have output resources and may not support all the other properties included in RadiusResource type.
-type AzureResource struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Kind string `json:"kind"`
-	Type string `json:"type"`
 }
 
 // ListSecretsInput is used for the RP's 'listSecrets' custom action.

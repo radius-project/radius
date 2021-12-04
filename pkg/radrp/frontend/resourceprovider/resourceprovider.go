@@ -147,19 +147,50 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 }
 
 func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-	items, err := r.db.ListAllV3ResourcesByApplication(ctx, id)
-	if err == db.ErrNotFound {
-		// It's possible that the application does not exist.
-		return rest.NewNotFoundResponse(id), nil
-	} else if err != nil {
-		return nil, err
-	}
-	output := RadiusResourceList{}
-	for _, item := range items {
-		output.Value = append(output.Value, NewRestRadiusResource(item))
+	// Format of request url/id for list resources is:
+	// /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource
+
+	// Validate request url has correct application resource type
+	applicationID := id.Truncate()
+	err := r.validateApplicationType(applicationID)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	return rest.NewOKResponse(output), nil
+	// Validate the application exists
+	_, err = r.db.GetV3Application(ctx, applicationID)
+	if err != nil {
+		if err == db.ErrNotFound {
+			return rest.NewNotFoundResponse(id), nil
+		}
+		return nil, err
+	}
+
+	applicationName := applicationID.Name()
+	subscriptionID := id.SubscriptionID
+	resourceGroup := id.ResourceGroup
+
+	// List radius resources
+	radiusResources, err := r.db.ListAllV3ResourcesByApplication(ctx, id, applicationName)
+	if err != nil {
+		return nil, err
+	}
+
+	// List non-radius azure resources that are referenced from the application
+	azureResources, err := r.db.ListAllAzureResourcesForApplication(ctx, applicationName, subscriptionID, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	outputResourceList := RadiusResourceList{}
+	for _, radiusResource := range radiusResources {
+		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResource(radiusResource))
+	}
+	for _, azureResource := range azureResources {
+		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResourceFromAzureResource(azureResource))
+	}
+
+	return rest.NewOKResponse(outputResourceList), nil
 }
 
 func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {

@@ -75,7 +75,7 @@ func (s *store) DeleteV3Application(ctx context.Context, id azresources.Resource
 	return errors.New("not implemented")
 }
 
-func (s *store) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) ([]RadiusResource, error) {
+func (s *store) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]RadiusResource, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -99,11 +99,11 @@ func (s *store) DeleteV3Resource(ctx context.Context, id azresources.ResourceID)
 	return errors.New("not implemented")
 }
 
-func (s *store) ListAllAzureResourcesForApplication(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error) {
+func (s *store) ListAllAzureResourcesForApplication(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string) ([]AzureResource, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *store) ListAzureResourcesForResourceType(ctx context.Context, id azresources.ResourceID, applicationName string) ([]AzureResource, error) {
+func (s *store) ListAzureResourcesForResourceType(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string, resourceType string) ([]AzureResource, error) {
 	return nil, errors.New("not implemented")
 }
 

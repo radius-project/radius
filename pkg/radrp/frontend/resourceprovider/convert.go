@@ -92,6 +92,17 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 	}
 }
 
+func NewRestRadiusResourceFromAzureResource(azResource db.AzureResource) RadiusResource {
+	// Currently properties for Azure resources is empty, once we implement health check or decide to store additional
+	// metadata about azure resources, it should be included as a part of the properties field.
+	return RadiusResource{
+		ID:         azResource.ID,
+		Type:       azResource.Type,
+		Name:       azResource.ResourceName,
+		Properties: map[string]interface{}{},
+	}
+}
+
 func NewRestRadiusResourceStatus(resourceName string, original db.RadiusResourceStatus) RadiusResourceStatus {
 	ors := NewRestOutputResourceStatus(original.OutputResources)
 
@@ -128,13 +139,4 @@ func NewRestOutputResourceStatus(original []db.OutputResource) []rest.OutputReso
 		rrs = append(rrs, rr)
 	}
 	return rrs
-}
-
-func NewRestAzureResource(resource db.AzureResource) AzureResource {
-	return AzureResource{
-		ID:   resource.ID,
-		Name: resource.ResourceName,
-		Kind: resource.ResourceKind,
-		Type: resource.Type,
-	}
 }

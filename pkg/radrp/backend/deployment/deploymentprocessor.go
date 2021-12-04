@@ -88,10 +88,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			ID:                  azureResourceID.ID,
 			SubscriptionID:      azureResourceID.SubscriptionID,
 			ResourceGroup:       azureResourceID.ResourceGroup,
-			ApplicationName:     resource.ApplicationName,
 			ResourceName:        azureResourceID.Name(),
 			ResourceKind:        resourcekinds.Azure,
 			Type:                azureResourceID.Type(),
+			ApplicationName:     resource.ApplicationName,
+			AppSubscriptionID:   resource.SubscriptionID,
+			AppResourceGroup:    resource.ResourceGroup,
 			RadiusConnectionIDs: []string{resourceID.ID},
 		}
 
