@@ -51,9 +51,19 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	if err != nil {
 		return nil, err
 	}
+	dynamicClient, err := kubernetes.CreateDynamicClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
+	typedClient, _, err := kubernetes.CreateTypedClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
 
 	return &kubernetes.KubernetesDeploymentClient{
 		Client:    client,
+		Dynamic:   dynamicClient,
+		Typed:     typedClient,
 		Namespace: e.Namespace,
 	}, nil
 }
