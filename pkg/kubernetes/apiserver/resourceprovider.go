@@ -393,9 +393,9 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	kind, ok := armtemplate.GetKindFromArmType(r.getResourceNameFromResourceId(id))
+	kind, ok := armtemplate.GetKindFromArmType(r.getResourceTypeFromResourceId(id))
 	if !ok {
-		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceNameFromResourceId(id))
+		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
 
 	item := unstructured.Unstructured{}
