@@ -22,7 +22,7 @@ If your application needs to be portable across [Radius platforms]({{< ref platf
 Portable components allow you to decouple infrastructure that provides an API from your application which consumes it. For example, a MongoDB can be provided by both Azure CosmosDB and a MongoDB container. Using a portable component allows your application services to use common values like `host`, `port` and `connectionString` to connect to the MongoDB, and the underlying infrastructure binding can be swapped out.
 {{% /alert %}}
 
-For example, you can add a [MongoDB]({{< ref mongodb >}}) component to your application and bind it to the CosmosDB with MongoDB resource you previously modeled:
+Add a [MongoDB]({{< ref mongodb >}}) component to your application and bind it to the CosmosDB with MongoDB resource you previously modeled:
 
 {{< rad file="snippets/mongo.bicep" embed=true replace-key-cosmos="//COSMOS" replace-value-cosmos="resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' existing = {...}" >}}
 
@@ -42,8 +42,9 @@ Relationships between Radius services and other resources can be defined through
 
 {{< rad file="snippets/connection.bicep" embed=true replace-key-mongo="//MONGO" replace-value-mongo="resource mongo 'mongodb.com.MongoDBComponent' = {...}" replace-key-cosmos="//COSMOS" replace-value-cosmos="resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' existing = {...}" replace-key-container="//CONTAINER" replace-value-container="container: {...}" >}}
 
-## Next step
+## Next stepa
 
-Now that you have defined your infrastructure, application, services, and connections you can break it up into modules such that separate teams can work on different parts of the application.
+Now that you have defined your infrastructure, application, services, and connections you can:
 
-{{< button page="bicep-modules" text="Model your application and services in modules" >}}
+- [Deploy your application to a Radius-enabled platform]({{< ref deploying >}})
+- [Break it up into modules so separate teams can work on different parts of the application]({{< ref bicep-modules >}})
