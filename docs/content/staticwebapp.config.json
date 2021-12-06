@@ -22,7 +22,7 @@
         },
         {
             "route": "/*",
-            "allowedRoles": ["authenticated"]
+            "allowedRoles": ["reader","admin"]
         }
     ],
     "responseOverrides": {
