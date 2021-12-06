@@ -536,8 +536,25 @@ func (r *rp) validateApplicationType(id azresources.ResourceID) error {
 }
 
 func (r *rp) GetSwaggerDoc(ctx context.Context) (rest.Response, error) {
+
+	// We must return at least one resource, otherwise
+	// there will be errors on the client saying: memcache.go:196] couldn't get resource list for api.radius.dev/v1alpha3:
+	// 0-length response with status code: 200 and content type: application/json
+	// So return a dummy resource with no ability to call get, list, etc.
 	resp := metav1.APIResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "APIResourceList",
+			APIVersion: "v1",
+		},
 		GroupVersion: k8sschema.GroupVersion{Group: "api.radius.dev", Version: "v1alpha3"}.String(),
+		APIResources: []metav1.APIResource{
+			{
+				Name:         "apiradiuss",
+				Kind:         "APIRadius",
+				SingularName: "apiradius",
+				Namespaced:   true,
+			},
+		},
 	}
 
 	return rest.NewOKResponse(resp), nil
