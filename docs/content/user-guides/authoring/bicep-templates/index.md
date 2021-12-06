@@ -14,7 +14,7 @@ Template modules can be consumed through one of:
 
 - [Local file path](https://docs.microsoft.com/azure/azure-resource-manager/bicep/modules#local-file)
 - [Container registry](https://docs.microsoft.com/azure/azure-resource-manager/bicep/modules#file-in-registry)
-- [Azure tempalte spec](https://docs.microsoft.com/azure/azure-resource-manager/bicep/modules#file-in-template-spec)
+- [Azure template spec](https://docs.microsoft.com/azure/azure-resource-manager/bicep/modules#file-in-template-spec)
 
 This guide will walk you through creating a template module for a container resource.
 
