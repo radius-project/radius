@@ -6,7 +6,7 @@ description: "Learn how to model your infrastucture in the Bicep language."
 weight: 200
 ---
 
-Begin by modeling your infrastructure in a Bicep file. This can be done by declaring and deploying new resources, or by referencing existing resources that have already been deployed.
+Application "infrastructure" is the underlying resources that your service interacts with and is hosted on. Examples include servers, databases, caches, message queues, and secret stores. In a Radius application you can model all of your non-compute infrastructure in the Bicep language by declaring and deploying new resources, or by referencing existing resources that have already been deployed. Radius compute resources are managed for you as [services]({{< ref bicep-app >}}).
 
 ## Model and deploy with Bicep
 
