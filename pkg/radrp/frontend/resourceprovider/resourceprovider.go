@@ -44,6 +44,8 @@ type ResourceProvider interface {
 	ListSecrets(ctx context.Context, input ListSecretsInput) (rest.Response, error)
 
 	ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
+
+	GetSwaggerDoc(ctx context.Context) (rest.Response, error)
 }
 
 // NewResourceProvider creates a new ResourceProvider.
@@ -392,6 +394,10 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 	// 3. Operation is still processing.
 	// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
 	return rest.NewAcceptedAsyncResponse(output, id.ID), nil
+}
+
+func (r *rp) GetSwaggerDoc(ctx context.Context) (rest.Response, error) {
+	return rest.NewOKResponse([]byte{}), nil
 }
 
 func (r *rp) ProcessDeploymentBackground(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) {

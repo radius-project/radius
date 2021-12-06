@@ -259,9 +259,21 @@ func (h *Handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *Handler) EmptySwaggerDoc(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetSwaggerDoc(w http.ResponseWriter, req *http.Request) {
 	// Required for the K8s scenario, we are required to respond to a request
-	// to /apis/api.radius.dev/v1alpha1 with a 200 OK response.
+	// to /apis/api.radius.dev/v1alpha3 with a 200 OK response.
+	ctx := req.Context()
+	response, err := h.Rp.GetSwaggerDoc(ctx)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+
+	err = response.Apply(ctx, w, req)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
 }
 
 func (h *Handler) findValidator(id azresources.ResourceID) (schema.Validator, error) {

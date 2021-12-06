@@ -535,6 +535,14 @@ func (r *rp) validateApplicationType(id azresources.ResourceID) error {
 	return nil
 }
 
+func (r *rp) GetSwaggerDoc(ctx context.Context) (rest.Response, error) {
+	resp := metav1.APIResourceList{
+		GroupVersion: k8sschema.GroupVersion{Group: "api.radius.dev", Version: "v1alpha3"}.String(),
+	}
+
+	return rest.NewOKResponse(resp), nil
+}
+
 // We don't really expect an invalid type to get through ARM's routing
 // but we're testing it anyway to catch bugs.
 func (r *rp) validateResourceType(id azresources.ResourceID) error {

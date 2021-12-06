@@ -123,25 +123,25 @@ a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 				output, err = cli.ResourceList(ctx, application)
 				require.NoError(t, err)
 				expected = regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
-				a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
-				b\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
-				`)
+a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+b\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+`)
 				match = expected.MatchString(output)
 				require.Equal(t, true, match)
 
 				output, err = cli.ApplicationShow(ctx, application)
 				require.NoError(t, err)
 				expected = regexp.MustCompile(`APPLICATION
-				kubernetes-cli
-				`)
+kubernetes-cli
+`)
 				match = expected.MatchString(output)
 				require.Equal(t, true, match)
 
 				output, err = cli.ApplicationList(ctx)
 				require.NoError(t, err)
 				expected = regexp.MustCompile(`APPLICATION
-				kubernetes-cli
-				`)
+kubernetes-cli
+`)
 				match = expected.MatchString(output)
 				require.Equal(t, true, match)
 			},
