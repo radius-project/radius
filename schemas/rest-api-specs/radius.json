@@ -1632,7 +1632,6 @@
         }
       },
       "required": [
-        "managed",
         "queue"
       ],
       "type": "object"

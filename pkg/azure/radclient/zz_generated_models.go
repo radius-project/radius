@@ -2331,11 +2331,11 @@ func (r RabbitMQComponentList) MarshalJSON() ([]byte, error) {
 
 type RabbitMQComponentProperties struct {
 	BasicComponentProperties
-	// REQUIRED; Indicates if the resource is Radius-managed.
-	Managed *bool `json:"managed,omitempty"`
-
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
+
+	// Indicates if the resource is Radius-managed.
+	Managed *bool `json:"managed,omitempty"`
 
 	// Secrets provided by unmanaged resources,
 	Secrets *RabbitMQComponentPropertiesSecrets `json:"secrets,omitempty"`

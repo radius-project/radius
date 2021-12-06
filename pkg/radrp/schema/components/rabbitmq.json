@@ -27,7 +27,6 @@
         }
       ],
       "required": [
-        "managed",
         "queue"
       ],
       "additionalProperties": false,
