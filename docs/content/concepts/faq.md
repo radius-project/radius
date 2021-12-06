@@ -10,7 +10,7 @@ weight: 999
 
 ### Can I incrementally adopt, or "try out" Radius?
 
-**Yes**. You can use the [Bicep existing keyword](https://docs.microsoft.com/azure/azure-resource-manager/bicep/resource-declaration?tabs=azure-powershell#existing-resources) to add a Radius application to previously deployed resources. Learn more in the [Radius authoring guide]({{< ref authoring >}}).
+**Yes**. You can use the [Bicep `existing` keyword](https://docs.microsoft.com/azure/azure-resource-manager/bicep/resource-declaration?tabs=azure-powershell#existing-resources) to add a Radius application to previously deployed resources. Learn more in the [Radius authoring guide]({{< ref authoring >}}).
 
 ## Environments
 
