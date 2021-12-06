@@ -92,6 +92,16 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (st
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) ApplicationList(ctx context.Context) (string, error) {
+	command := "application"
+
+	args := []string{
+		command,
+		"list",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 // ApplicationDelete deletes the specified application deployed by Radius.
 func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) error {
 	command := "application"

@@ -58,7 +58,7 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 
 	output := resourceprovider.ApplicationResourceList{}
 	for _, item := range items.Items {
-		typeName := id.Types[len(id.Types)-1].Type // Should always be Application
+		typeName := r.getApplicationTypeFromApplicationResourceId(id) // Should always be Application
 		// Add name to resource ID, by removing the last type/name and appending
 		// the actual part.
 		newId := id.Truncate().Append(azresources.ResourceType{Type: typeName, Name: item.Name})
@@ -133,7 +133,7 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 	item := radiusv1alpha3.Application{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: r.namespace,
-			Name:      id.Types[len(id.Types)-1].Name,
+			Name:      r.getApplicationNameFromApplicationResourceId(id),
 		},
 	}
 	err = r.client.Delete(ctx, &item)
@@ -153,7 +153,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 	}
 
 	application := radiusv1alpha3.Application{}
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Types[len(id.Types)-2].Name}, &application)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -174,7 +174,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 			Kind:    kubernetesType + "List",
 		})
 		err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
-			kubernetes.LabelRadiusApplication: id.Types[len(id.Types)-2].Name,
+			kubernetes.LabelRadiusApplication: r.getApplicationNameFromResourceId(id),
 		})
 		if err != nil {
 			return nil, err
@@ -206,7 +206,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 
 func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
 	application := radiusv1alpha3.Application{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Types[len(id.Types)-2].Name}, &application)
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -215,9 +215,9 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 
 	output := resourceprovider.RadiusResourceList{}
 
-	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	kind, ok := armtemplate.GetKindFromArmType(r.getResourceTypeFromResourceId(id))
 	if !ok {
-		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
 	kindlist := kind + "List"
 	items := unstructured.UnstructuredList{}
@@ -227,7 +227,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 		Kind:    kindlist,
 	})
 	err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
-		// kubernetes.LabelRadiusApplication: id.Types[len(id.Types)-2].Name,
+		kubernetes.LabelRadiusApplication: r.getApplicationNameFromResourceId(id),
 	})
 	if err != nil {
 		return nil, err
@@ -259,16 +259,16 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
 	application := radiusv1alpha3.Application{}
 
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Types[len(id.Types)-2].Name}, &application)
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	kind, ok := armtemplate.GetKindFromArmType(r.getResourceTypeFromResourceId(id))
 	if !ok {
-		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
 
 	item := unstructured.Unstructured{}
@@ -278,7 +278,7 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 		Kind:    kind,
 	})
 
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(id.Types[len(id.Types)-2].Name, id.Types[len(id.Types)-1].Name)}, &item)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id))}, &item)
 	if err != nil {
 		return nil, err
 	}
@@ -314,9 +314,9 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, err // Unexpected error, the payload has already been validated.
 	}
 
-	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	kind, ok := armtemplate.GetKindFromArmType(r.getResourceTypeFromResourceId(id))
 	if !ok {
-		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
 	item, err := NewKubernetesRadiusResource(id, resource, r.namespace, k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
@@ -360,14 +360,14 @@ func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (res
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	kind, ok := armtemplate.GetKindFromArmType(r.getResourceTypeFromResourceId(id))
 	if !ok {
-		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
 
 	item := unstructured.Unstructured{}
 	item.SetNamespace(r.namespace)
-	item.SetName(kubernetes.MakeResourceName(id.Types[len(id.Types)-2].Name, id.Types[len(id.Types)-1].Name))
+	item.SetName(kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id)))
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
@@ -393,9 +393,9 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	kind, ok := armtemplate.GetKindFromArmType(id.Types[len(id.Types)-1].Type)
+	kind, ok := armtemplate.GetKindFromArmType(r.getResourceNameFromResourceId(id))
 	if !ok {
-		return nil, fmt.Errorf("unsupported resource type %s", id.Types[len(id.Types)-1].Type)
+		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceNameFromResourceId(id))
 	}
 
 	item := unstructured.Unstructured{}
@@ -404,7 +404,7 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		Version: "v1alpha3",
 		Kind:    kind,
 	})
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(id.Types[len(id.Types)-2].Name, id.Types[len(id.Types)-1].Name)}, &item)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id))}, &item)
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +487,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		Version: "v1alpha3",
 		Kind:    kind,
 	})
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(targetID.Types[len(targetID.Types)-2].Name, targetID.Types[len(targetID.Types)-1].Name)}, &item)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(targetID), r.getResourceNameFromResourceId(targetID))}, &item)
 	if err != nil {
 		return nil, err
 	}
@@ -560,4 +560,24 @@ func (r *rp) validateOperationType(id azresources.ResourceID) error {
 	}
 
 	return nil
+}
+
+func (r *rp) getApplicationNameFromApplicationResourceId(id azresources.ResourceID) string {
+	return id.Types[len(id.Types)-1].Name
+}
+
+func (r *rp) getApplicationTypeFromApplicationResourceId(id azresources.ResourceID) string {
+	return id.Types[len(id.Types)-1].Type
+}
+
+func (r *rp) getResourceNameFromResourceId(id azresources.ResourceID) string {
+	return id.Types[len(id.Types)-1].Name
+}
+
+func (r *rp) getResourceTypeFromResourceId(id azresources.ResourceID) string {
+	return id.Types[len(id.Types)-1].Type
+}
+
+func (r *rp) getApplicationNameFromResourceId(id azresources.ResourceID) string {
+	return id.Types[len(id.Types)-2].Name
 }

@@ -20,6 +20,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
@@ -59,6 +61,7 @@ var DefaultWatchTypes = map[string]struct {
 }
 
 type Options struct {
+	Manager       manager.Manager
 	AppModel      model.ApplicationModel
 	Client        client.Client
 	Dynamic       dynamic.Interface
@@ -126,7 +129,12 @@ type RadiusController struct {
 	options     *Options
 }
 
-func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
+func (c *RadiusController) Name() string {
+	return "RadiusController"
+}
+
+func (c *RadiusController) Run(ctx context.Context) error {
+	mgr := c.options.Manager
 	err := c.application.SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup Application controller: %w", err)
@@ -187,5 +195,16 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	}
 
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		return fmt.Errorf("unable to set up health check %w", err)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		return fmt.Errorf("unable to set up ready check %w", err)
+
+	}
+
+	if err := c.options.Manager.Start(ctrl.SetupSignalHandler()); err != nil {
+		return fmt.Errorf("problem running manager %w", err)
+	}
 	return nil
 }

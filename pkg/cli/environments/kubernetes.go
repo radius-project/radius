@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 )
@@ -94,11 +95,10 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 	}
 	azcred := &radclient.AnonymousCredential{}
 
-	connection := arm.NewConnection(fmt.Sprintf("%s%s%s", restConfig.Host, restConfig.APIPath, "/apis/api.radius.dev/v1alpha3"), azcred, &arm.ConnectionOptions{
+	connection := arm.NewConnection(fmt.Sprintf("%s%s/apis/api.radius.dev/v1alpha3", restConfig.Host, restConfig.APIPath), azcred, &arm.ConnectionOptions{
 		HTTPClient: &KubernetesRoundTripper{Client: roundTripper},
 	})
-	return &kubernetes.KubernetesManagementClient{
-		Namespace:       e.Namespace,
+	return &azure.ARMManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace

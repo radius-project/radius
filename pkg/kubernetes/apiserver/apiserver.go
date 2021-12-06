@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Azure/radius/pkg/radrp/frontend/handler"
 	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
@@ -61,7 +62,7 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 		Address:      fmt.Sprintf(":%v", api.options.Port),
 		Authenticate: false,
 		Configure: func(r *mux.Router) {
-			AddRoutes(rp, r, DefaultValidatorFactory)
+			handler.AddRoutes(rp, r, handler.DefaultValidatorFactory, "/apis/api.radius.dev/v1alpha3")
 		},
 	})
 

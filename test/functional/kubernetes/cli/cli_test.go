@@ -105,6 +105,9 @@ func Test_CLI(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetestest.ApplicationTest) {
+				// Test all management commands
+				// Delete application is implicitly tested by all application tests
+				// as it is how we cleanup.
 				cli := radcli.NewCLI(t, options.ConfigFilePath)
 				output, err := cli.ResourceShow(ctx, application, "ContainerComponent", "a")
 				require.NoError(t, err)
@@ -115,6 +118,33 @@ func Test_CLI(t *testing.T) {
 a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
 				match := expected.MatchString(output)
+				require.Equal(t, true, match)
+
+				// List Applications
+				// Show Application
+				output, err = cli.ResourceList(ctx, application)
+				require.NoError(t, err)
+				expected = regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
+				a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+				b\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+				`)
+				match = expected.MatchString(output)
+				require.Equal(t, true, match)
+
+				output, err = cli.ApplicationShow(ctx, application)
+				require.NoError(t, err)
+				expected = regexp.MustCompile(`APPLICATION
+				kubernetes-cli
+				`)
+				match = expected.MatchString(output)
+				require.Equal(t, true, match)
+
+				output, err = cli.ApplicationList(ctx)
+				require.NoError(t, err)
+				expected = regexp.MustCompile(`APPLICATION
+				kubernetes-cli
+				`)
+				match = expected.MatchString(output)
 				require.Equal(t, true, match)
 			},
 		},

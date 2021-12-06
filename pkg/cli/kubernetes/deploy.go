@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
 	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -23,8 +24,10 @@ import (
 	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/restmapper"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 const (
@@ -37,6 +40,17 @@ type KubernetesDeploymentClient struct {
 	Dynamic   dynamic.Interface
 	Typed     *k8s.Clientset
 	Namespace string
+}
+
+var (
+	Scheme = runtime.NewScheme()
+)
+
+func init() {
+	_ = clientgoscheme.AddToScheme(Scheme)
+	_ = radiusv1alpha3.AddToScheme(Scheme)
+	_ = bicepv1alpha3.AddToScheme(Scheme)
+	_ = gatewayv1alpha1.AddToScheme(Scheme)
 }
 
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
