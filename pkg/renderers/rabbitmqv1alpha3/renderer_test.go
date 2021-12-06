@@ -11,8 +11,10 @@ import (
 
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -109,6 +111,39 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 		data := secret.Data
 		require.Equal(t, "amqp://test-app-test-resource:5672", string(data[SecretKeyRabbitMQConnectionString]))
 	})
+}
+
+func TestRenderUnmanaged(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"queue": "cool-queue",
+			"secrets": map[string]interface{}{
+				"connectionString": "cool-connection-string",
+			},
+		},
+	}
+
+	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	assert.NoError(t, err)
+	assert.Equal(t, renderers.RendererOutput{
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"queue": {
+				Value: "cool-queue",
+			},
+		},
+		SecretValues: map[string]renderers.SecretValueReference{
+			"connectionString": {
+				LocalID:       outputresource.LocalIDScrapedSecret,
+				ValueSelector: "connectionString",
+			},
+		},
+	}, output)
 }
 
 func TestInvalidKubernetesMissingQueueName(t *testing.T) {
