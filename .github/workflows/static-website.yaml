@@ -1,4 +1,4 @@
-name: 'Build and deploy static webapp'
+name: 'Build and deploy static website'
 
 on:
   push:

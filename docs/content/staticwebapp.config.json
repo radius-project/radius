@@ -9,6 +9,10 @@
             "allowedRoles": ["anonymous"]
         },
         {
+            "route": "/.auth/invitations",
+            "allowedRoles": ["anonymous"]
+        },
+        {
             "route": "/.auth/login/twitter",
             "statusCode": 401
         },
