@@ -120,8 +120,6 @@ a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 				match := expected.MatchString(output)
 				require.Equal(t, true, match)
 
-				// List Applications
-				// Show Application
 				output, err = cli.ResourceList(ctx, application)
 				require.NoError(t, err)
 				expected = regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
