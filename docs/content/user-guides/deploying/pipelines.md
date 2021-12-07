@@ -22,7 +22,7 @@ If deploying to Microsoft Azure, begin by creating an Azure Service Principal th
 az ad sp create-for-rbac -n "GitHub Deploy SP" --scopes /subscriptions/{subscriptionId} --role owner --sdk-auth
 ```
 
-> While this example uses an Owner assignment at the subscription level, you can also assign your service principal a contributor role on the `resourceGroupName` resource group and a reader role on the `RE-resourceGroupName` resource group if the environment had been previously initialized. During initial environment initialization owner is required to configure the private resource provider.
+> While this example uses an Owner assignment at the subscription level, you can also assign your service principal a contributor role on the `resourceGroupName` resource group and a reader role on the `RE-resourceGroupName` resource group if the environment had been previously initialized. During initial environment initialization Owner is required to configure the private resource provider. This is a temporary workaround while a custom resource provider is being used for the Radius control-plane.
 
 Take the output of the above command and paste it into a [GitHub secret](https://docs.github.com/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository) named `AZURE_CREDENTIALS`.
 
