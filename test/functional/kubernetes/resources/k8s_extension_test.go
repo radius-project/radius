@@ -19,6 +19,7 @@ import (
 )
 
 func TestK8sExtension(t *testing.T) {
+	t.Skip("Disable until we reinstate full-references for Bicep")
 	template := "testdata/k8s-extension/connection-string.bicep"
 	application := "dummy"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
