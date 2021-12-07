@@ -72,16 +72,9 @@ func Test_ContainerAzureKeyVaultCSIDriver(t *testing.T) {
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment:                  validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:                      validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDUserAssignedManagedIdentity: validation.NewOutputResource(outputresource.LocalIDUserAssignedManagedIdentity, outputresource.TypeARM, resourcekinds.AzureUserAssignedManagedIdentity, true, false, rest.OutputResourceStatus{}),
+							// Since only secrets (no keys/certs) are mounted, only one role assignment is expected
 							"role-assignment-1": {
-								SkipLocalIDWhenMatching: true,
-								OutputResourceType:      outputresource.TypeARM,
-								ResourceKind:            resourcekinds.AzureRoleAssignment,
-								Managed:                 true,
-								VerifyStatus:            false,
-							},
-							"role-assignment-2": {
 								SkipLocalIDWhenMatching: true,
 								OutputResourceType:      outputresource.TypeARM,
 								ResourceKind:            resourcekinds.AzureRoleAssignment,
@@ -96,7 +89,7 @@ func Test_ContainerAzureKeyVaultCSIDriver(t *testing.T) {
 						ResourceName:    "myshare",
 						ResourceType:    volumev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDSecretProviderClass: validation.NewOutputResource(outputresource.LocalIDSecretProviderClass, outputresource.TypeKubernetes, resourcekinds.SecretProviderClass, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecretProviderClass: validation.NewOutputResource(outputresource.LocalIDSecretProviderClass, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
