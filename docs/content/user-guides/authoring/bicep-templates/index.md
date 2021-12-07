@@ -20,7 +20,9 @@ This guide will walk you through creating a template module for a container reso
 
 ## Create a template module
 
-Begin by creating a new Bicep file defining the resources you want to include in your module. For this example, we'll use a container resource where a central monitoring team requires a liveness probe to be configured on port 3000:
+Begin by creating a new Bicep file defining the resources you want to include in your module, as well as any parameters that define other resources or customization values used by these resources.
+
+For this example, we'll use a container resource where a central monitoring team requires a liveness probe to be configured on port 3000:
 
 {{< rad file="snippets/container.bicep" embed=true >}}
 
@@ -46,4 +48,4 @@ In your application you can now consume the template module by referencing it in
 
 ## Next steps
 
-- [Deploy your application]({{< ref deploying >}})
+{{< button page="deploying" text="Deploy your application" >}}

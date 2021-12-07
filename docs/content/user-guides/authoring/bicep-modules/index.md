@@ -6,7 +6,7 @@ description: "Learn how to grow a single-file Radius application into a multi-fi
 weight: 400
 ---
 
-So far you've been creating and deploying Radius applications that are a single file. For larger application you'll want to break your appliction into multiple files, each representing a separate microservice. [Bicep modules](https://docs.microsoft.com/azure/azure-resource-manager/bicep/modules) provides this capability.
+So far you've been creating and deploying Radius applications that are a single file. For larger application you may want to break your application into multiple files, each representing a separate microservice. [Bicep modules](https://docs.microsoft.com/azure/azure-resource-manager/bicep/modules) provide this capability. A module is a Bicep file that is deployed from another Bicep file, registry, or template spec.
 
 ## Start with your application
 
