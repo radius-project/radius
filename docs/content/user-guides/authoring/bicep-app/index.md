@@ -28,7 +28,7 @@ Add a [MongoDB]({{< ref mongodb >}}) component to your application and bind it t
 
 ## Add services
 
-Now that you have an infrastructure and application defined you can add services to it. For example, you can add a [container]({{< ref container >}}):
+Now that you have an application resource defined you can add services to it. For example, you can add a [container]({{< ref container >}}):
 
 {{< rad file="snippets/service.bicep" embed=true >}}
 
