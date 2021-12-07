@@ -34,6 +34,8 @@ func GetResourceTableFormat() output.FormatterOptions {
 				JSONPath: "{ .type }",
 				Transformer: func(t string) string {
 					tokens := strings.Split(t, "/")
+					// For Radius resource types only show last part of the resource type. Example: mongodb.com.MongoDBComponent instead of Microsoft.CustomProviders/mongodb.com.MongoDBComponent
+					// For non-Radius resources types, show full resource type, Microsoft.ServiceBus/namespaces for example.
 					if tokens[0] == "Microsoft.CustomProviders" {
 						return tokens[len(tokens)-1]
 					}
