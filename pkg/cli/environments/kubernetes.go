@@ -7,7 +7,13 @@ package environments
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 )
@@ -77,23 +83,36 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+
+	restConfig, err := kubernetes.CreateRestConfig(e.Context)
 	if err != nil {
 		return nil, err
 	}
-	dynamicClient, err := kubernetes.CreateDynamicClient(e.Context)
+
+	roundTripper, err := kubernetes.CreateRestRoundTripper(e.Context)
 	if err != nil {
 		return nil, err
 	}
-	extensionClient, err := kubernetes.CreateExtensionClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
-	return &kubernetes.KubernetesManagementClient{
-		Client:          client,
-		DynamicClient:   dynamicClient,
-		ExtensionClient: extensionClient,
-		Namespace:       e.Namespace,
+	azcred := &radclient.AnonymousCredential{}
+
+	connection := arm.NewConnection(fmt.Sprintf("%s%s/apis/api.radius.dev/v1alpha3", restConfig.Host, restConfig.APIPath), azcred, &arm.ConnectionOptions{
+		HTTPClient: &KubernetesRoundTripper{Client: roundTripper},
+	})
+	return &azure.ARMManagementClient{
 		EnvironmentName: e.Name,
+		Connection:      connection,
+		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
+		SubscriptionID:  e.Namespace,
 	}, nil
+}
+
+var _ policy.Transporter = &KubernetesRoundTripper{}
+
+type KubernetesRoundTripper struct {
+	Client http.RoundTripper
+}
+
+func (t *KubernetesRoundTripper) Do(req *http.Request) (*http.Response, error) {
+	resp, err := t.Client.RoundTrip(req)
+	return resp, err
 }

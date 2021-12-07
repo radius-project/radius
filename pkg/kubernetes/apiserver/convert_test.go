@@ -3,55 +3,115 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package kubernetes
+package apiserver
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func Test_ConvertK8sApplicationToARM(t *testing.T) {
+func Test_ConvertApplication_RoundTrips(t *testing.T) {
+	namespace := "default"
+	id, err := azresources.Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend")
+	require.NoError(t, err)
 	original := radiusv1alpha3.Application{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "radius.dev/v1alpha1",
+			APIVersion: "radius.dev/v1alpha3",
 			Kind:       "Application",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "frontend-backend",
-			Namespace: "default",
+			Namespace: namespace,
 			Annotations: map[string]string{
 				kubernetes.LabelRadiusApplication: "frontend-backend",
 			},
 		},
-		Spec: radiusv1alpha3.ApplicationSpec{},
+		Spec: radiusv1alpha3.ApplicationSpec{
+			Application: "frontend-backend",
+		},
 	}
 
-	expected := &radclient.ApplicationResource{
-		TrackedResource: radclient.TrackedResource{
-			Resource: radclient.Resource{
-				Name: to.StringPtr("frontend-backend"),
+	res, err := NewRestApplicationResource(id, original)
+	require.NoError(t, err)
+
+	final, err := NewKubernetesApplicationResource(id, res, namespace)
+	require.NoError(t, err)
+
+	require.Equal(t, original, final)
+}
+
+func Test_ConvertResource_RoundTrips(t *testing.T) {
+	namespace := "default"
+	id, err := azresources.Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/ContainerComponent/frontend")
+	require.NoError(t, err)
+	original := radiusv1alpha3.Resource{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "radius.dev/v1alpha3",
+			Kind:       "ContainerComponent",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "frontend-backend-frontend",
+			Namespace:   namespace,
+			Annotations: kubernetes.MakeResourceCRDLabels("frontend-backend", "ContainerComponent", "frontend"),
+			Labels:      kubernetes.MakeResourceCRDLabels("frontend-backend", "ContainerComponent", "frontend"),
+		},
+		Spec: radiusv1alpha3.ResourceSpec{
+			Application: "frontend-backend",
+			Resource:    "frontend",
+			Template: &runtime.RawExtension{
+				Raw: marshalJSONIgnoreErr(map[string]interface{}{
+					"name": "kata-container",
+					"id":   id.ID,
+					"type": "ContainerComponent",
+					"body": map[string]interface{}{
+						"properties": map[string]string{
+							"image": "the-best",
+						},
+					},
+				}),
 			},
 		},
-		Properties: &radclient.ApplicationProperties{},
 	}
 
-	actual, err := ConvertK8sApplicationToARM(original)
-	require.NoError(t, err, "failed to convert application")
+	unstMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&original)
+	require.NoError(t, err)
+	unst := unstructured.Unstructured{Object: unstMap}
 
-	require.Equal(t, expected, actual)
+	res, err := NewRestRadiusResourceFromUnstructured(unst)
+	require.NoError(t, err)
+
+	gvk := k8sschema.GroupVersionKind{
+		Group:   "radius.dev",
+		Version: "v1alpha3",
+		Kind:    "ContainerComponent",
+	}
+
+	final, err := NewKubernetesRadiusResource(id, res, namespace, gvk)
+	require.NoError(t, err)
+
+	// Unstructured comparison causes a comparison between interface{} and a string
+	// so we need to convert to JSON
+	expectedUns, err := json.Marshal(unst)
+
+	require.NoError(t, err)
+
+	actualUns, err := json.Marshal(final)
+	require.NoError(t, err)
+
+	require.JSONEq(t, string(expectedUns), string(actualUns))
 }
 
 func Test_ConvertK8sResourceToARM(t *testing.T) {
@@ -59,7 +119,7 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		original    interface{}
-		expected    *radclient.RadiusResource
+		expected    resourceprovider.RadiusResource
 		expectedErr string
 	}{{
 		name: "has all fields",
@@ -89,14 +149,10 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 				},
 			},
 		},
-		expected: &radclient.RadiusResource{
-			ProxyResource: radclient.ProxyResource{
-				Resource: radclient.Resource{
-					Name: to.StringPtr("kata-container"),
-					ID:   to.StringPtr("/very/long/path/container-01"),
-					Type: to.StringPtr("/very/long/path/radius.dev/ContainerComponent"),
-				},
-			},
+		expected: resourceprovider.RadiusResource{
+			Name: "kata-container",
+			ID:   "/very/long/path/container-01",
+			Type: "/very/long/path/radius.dev/ContainerComponent",
 			Properties: map[string]interface{}{
 				"image": "the-best",
 				"status": rest.ComponentStatus{
@@ -138,14 +194,10 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 				},
 			},
 		},
-		expected: &radclient.RadiusResource{
-			ProxyResource: radclient.ProxyResource{
-				Resource: radclient.Resource{
-					Name: to.StringPtr("route-42"),
-					ID:   to.StringPtr("/the/long/and/winding/route"),
-					Type: to.StringPtr("/very/long/path/radius.dev/HttpRoute"),
-				},
-			},
+		expected: resourceprovider.RadiusResource{
+			Name: "route-42",
+			ID:   "/the/long/and/winding/route",
+			Type: "/very/long/path/radius.dev/HttpRoute",
 			Properties: map[string]interface{}{
 				"status": rest.ComponentStatus{
 					ProvisioningState: "Provisioned",
@@ -190,7 +242,7 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 			input := unstructured.Unstructured{}
 			j, _ := json.MarshalIndent(tc.original, "", "  ")
 			_ = json.Unmarshal(j, &input.Object)
-			actual, err := ConvertK8sResourceToARM(input)
+			actual, err := NewRestRadiusResourceFromUnstructured(input)
 			if tc.expectedErr == "" {
 				require.NoError(t, err)
 			} else {

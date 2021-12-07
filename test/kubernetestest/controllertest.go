@@ -129,6 +129,7 @@ func StartController() error {
 	}
 
 	controllerOptions := radcontroller.Options{
+		Manager:       mgr,
 		AppModel:      kubernetesmodel.NewKubernetesModel(mgr.GetClient()),
 		Client:        mgr.GetClient(),
 		Dynamic:       dynamicClient,
@@ -152,13 +153,12 @@ func StartController() error {
 	}
 
 	controller := radcontroller.NewRadiusController(&controllerOptions)
-	err = controller.SetupWithManager(mgr)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		_ = mgr.Start(ctrl.SetupSignalHandler())
+		_ = controller.Run(context.Background())
 	}()
 
 	// Make sure the webhook is started

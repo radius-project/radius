@@ -48,6 +48,9 @@ spec:
         - containerPort: 9443
           name: webhook-server
           protocol: TCP
+        - containerPort: 7443
+          name: radius-api
+          protocol: TCP
         volumeMounts:
         - name: cert
           mountPath: /radius/cert
@@ -58,13 +61,6 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: false
       volumes:
@@ -85,5 +81,18 @@ spec:
   ports:
     - port: 443
       targetPort: 9443
+  selector:
+    control-plane: controller-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radius-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: 7443
   selector:
     control-plane: controller-manager

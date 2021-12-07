@@ -105,17 +105,43 @@ func Test_CLI(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetestest.ApplicationTest) {
+				// Test all management commands
+				// Delete application is implicitly tested by all application tests
+				// as it is how we cleanup.
 				cli := radcli.NewCLI(t, options.ConfigFilePath)
-				output, err := cli.ResourceShow(ctx, application, "ContainerComponent", "a")
-				require.NoError(t, err)
-				// We are more interested in the content and less about the formatting, which
-				// is already covered by unit tests. The spaces change depending on the input
-				// and it takes very long to get a feedback from CI.
-				expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
+
+				t.Run("resource show", func(t *testing.T) {
+					output, err := cli.ResourceShow(ctx, application, "ContainerComponent", "a")
+					require.NoError(t, err)
+					// We are more interested in the content and less about the formatting, which
+					// is already covered by unit tests. The spaces change depending on the input
+					// and it takes very long to get a feedback from CI.
+					expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
 a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
-				match := expected.MatchString(output)
-				require.Equal(t, true, match)
+					match := expected.MatchString(output)
+					require.Equal(t, true, match)
+				})
+				t.Run("resource list", func(t *testing.T) {
+					output, err := cli.ResourceList(ctx, application)
+					require.NoError(t, err)
+					expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
+a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+b\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+`)
+					match := expected.MatchString(output)
+					require.Equal(t, true, match)
+				})
+
+				t.Run("application show", func(t *testing.T) {
+					output, err := cli.ApplicationShow(ctx, application)
+					require.NoError(t, err)
+					expected := regexp.MustCompile(`APPLICATION
+kubernetes-cli
+`)
+					match := expected.MatchString(output)
+					require.Equal(t, true, match)
+				})
 			},
 		},
 	})

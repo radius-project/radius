@@ -16,16 +16,21 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory) {
+func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory, swaggerDocRoute string) {
 	// Nothing for now
 
-	h := handler{rp: rp, validatorFactory: validatorFactory}
+	h := Handler{RP: rp, ValidatorFactory: validatorFactory, PathPrefix: swaggerDocRoute}
 	var subrouter *mux.Router
 
 	var providerPath = fmt.Sprintf(
-		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
+		"%s/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
+		swaggerDocRoute,
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
+
+	if swaggerDocRoute != "" {
+		router.Path(swaggerDocRoute).Methods("GET").HandlerFunc(h.GetSwaggerDoc)
+	}
 
 	router.Path(fmt.Sprintf("%s/listSecrets", providerPath)).Methods("POST").HandlerFunc(h.ListSecrets)
 
