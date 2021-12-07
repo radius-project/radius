@@ -42,7 +42,7 @@ $ rad-bicep publish container.bicep --target br:exampleregistry.azurecr.io/templ
 
 ## Consume template module
 
-In your application you can now consume the template module by referencing it in your module definition:
+In your application you can now consume the template module by referencing it in a module definition. Note how the container image, set of ports, and livenessPort are all overridden:
 
 {{< rad file="snippets/app.bicep" embed=true >}}
 
