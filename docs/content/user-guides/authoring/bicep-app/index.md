@@ -42,7 +42,7 @@ Relationships between Radius services and other resources can be defined through
 
 {{< rad file="snippets/connection.bicep" embed=true replace-key-mongo="//MONGO" replace-value-mongo="resource mongo 'mongodb.com.MongoDBComponent' = {...}" replace-key-cosmos="//COSMOS" replace-value-cosmos="resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' existing = {...}" replace-key-container="//CONTAINER" replace-value-container="container: {...}" >}}
 
-## Next stepa
+## Next steps
 
 Now that you have defined your infrastructure, application, services, and connections you can:
 
