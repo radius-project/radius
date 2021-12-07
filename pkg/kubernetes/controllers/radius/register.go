@@ -27,7 +27,6 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes/webhook"
 	"github.com/Azure/radius/pkg/model"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
-	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
 )
 
 var DefaultResourceTypes = []struct {
@@ -51,13 +50,12 @@ var DefaultWatchTypes = map[string]struct {
 	ObjectList    client.ObjectList
 	HealthHandler func(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string)
 }{
-	resourcekinds.Service:             {&corev1.Service{}, &corev1.ServiceList{}, nil},
-	resourcekinds.Deployment:          {&appsv1.Deployment{}, &appsv1.DeploymentList{}, GetHealthStateFromDeployment},
-	resourcekinds.Secret:              {&corev1.Secret{}, &corev1.SecretList{}, nil},
-	resourcekinds.StatefulSet:         {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
-	resourcekinds.Gateway:             {&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}, nil},
-	resourcekinds.HTTPRoute:           {&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}, nil},
-	resourcekinds.SecretProviderClass: {&csidriver.SecretProviderClass{}, &csidriver.SecretProviderClassList{}, nil},
+	resourcekinds.Service:     {&corev1.Service{}, &corev1.ServiceList{}, nil},
+	resourcekinds.Deployment:  {&appsv1.Deployment{}, &appsv1.DeploymentList{}, GetHealthStateFromDeployment},
+	resourcekinds.Secret:      {&corev1.Secret{}, &corev1.SecretList{}, nil},
+	resourcekinds.StatefulSet: {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
+	resourcekinds.Gateway:     {&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}, nil},
+	resourcekinds.HTTPRoute:   {&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}, nil},
 }
 
 type Options struct {
