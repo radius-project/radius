@@ -56,6 +56,7 @@ func Test_RabbitMQ(t *testing.T) {
 }
 
 func TestRabbitMQUnmanaged(t *testing.T) {
+	t.Skip("Disable until we reinstate full-references for Bicep")
 	template := "testdata/kubernetes-resources-rabbitmq-unmanaged/kubernetes-resources-rabbitmq-unmanaged.bicep"
 	application := "kubernetes-resources-rabbitmq-unmanaged"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
