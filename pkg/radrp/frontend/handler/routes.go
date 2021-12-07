@@ -28,6 +28,10 @@ func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validat
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
 
+	if swaggerDocRoute != "" {
+		router.Path(swaggerDocRoute).Methods("GET").HandlerFunc(h.GetSwaggerDoc)
+	}
+
 	router.Path(fmt.Sprintf("%s/listSecrets", providerPath)).Methods("POST").HandlerFunc(h.ListSecrets)
 
 	var applicationCollectionPath = fmt.Sprintf("%s/Application", providerPath)
