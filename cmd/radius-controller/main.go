@@ -126,11 +126,20 @@ func main() {
 	}
 	apiServer := apiserver.NewAPIServerExtension(setupLog, apiServerOptions)
 
-	host := hosting.Host{
-		Services: []hosting.Service{
-			apiServer,
-			controller,
-		},
+	var host hosting.Host
+	if os.Getenv("SKIP_WEBHOOKS") != "true" {
+		host = hosting.Host{
+			Services: []hosting.Service{
+				apiServer,
+				controller,
+			},
+		}
+	} else {
+		host = hosting.Host{
+			Services: []hosting.Service{
+				controller,
+			},
+		}
 	}
 
 	// Create a channel to handle the shutdown
@@ -139,7 +148,7 @@ func main() {
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), ctrl.Log))
 
 	setupLog.Info("Starting server...")
-	stopped, apiServiceErrors := host.RunAsync(ctx)
+	stopped, errors := host.RunAsync(ctx)
 
 	select {
 	// Normal shutdown
@@ -147,7 +156,7 @@ func main() {
 		setupLog.Info("Shutdown requested..")
 		cancel()
 	// A service terminated with a failure. Details of the failure have already been logged.
-	case <-apiServiceErrors:
+	case <-errors:
 		setupLog.Info("One of the services failed. Shutting down...")
 		cancel()
 	}
