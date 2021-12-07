@@ -33,6 +33,7 @@ func TestK8sExtension(t *testing.T) {
 	test.Test(t)
 }
 
+//nolint:unused
 func loadResources(dir string, suffix string) []unstructured.Unstructured {
 	objects := []unstructured.Unstructured{}
 	_ = filepath.Walk(dir, func(path string, info os.FileInfo, _ error) error {
