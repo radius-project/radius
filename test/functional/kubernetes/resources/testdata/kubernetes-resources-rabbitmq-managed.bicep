@@ -7,7 +7,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-					BINDING_RABBITMQ_CONNECTIONSTRING: rabbitmq.connectionString()
+	  BINDING_RABBITMQ_CONNECTIONSTRING: rabbitmq.connectionString()
         }
       }
       connections: {
