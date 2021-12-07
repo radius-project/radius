@@ -16,6 +16,7 @@ import (
 )
 
 func TestRedisUnmanaged(t *testing.T) {
+	t.Skip("Disable until we reinstate full-references for Bicep")
 	template := "testdata/kubernetes-resources-redis-unmanaged/kubernetes-resources-redis-unmanaged.bicep"
 	application := "kubernetes-resources-redis-unmanaged"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{

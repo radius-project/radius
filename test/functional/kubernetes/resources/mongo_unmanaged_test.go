@@ -16,6 +16,7 @@ import (
 )
 
 func TestMongoUnmanaged(t *testing.T) {
+	t.Skip("Disable until we reinstate full-references for Bicep")
 	template := "testdata/kubernetes-resources-mongo-unmanaged/kubernetes-resources-mongo-unmanaged.bicep"
 	application := "kubernetes-resources-mongo-unmanaged"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{

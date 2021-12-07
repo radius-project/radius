@@ -19,6 +19,7 @@ import (
 )
 
 func TestK8sExtension(t *testing.T) {
+	t.Skip("Disable until we reinstate full-references for Bicep")
 	template := "testdata/k8s-extension/connection-string.bicep"
 	application := "dummy"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
@@ -32,6 +33,7 @@ func TestK8sExtension(t *testing.T) {
 	test.Test(t)
 }
 
+//nolint:unused
 func loadResources(dir string, suffix string) []unstructured.Unstructured {
 	objects := []unstructured.Unstructured{}
 	_ = filepath.Walk(dir, func(path string, info os.FileInfo, _ error) error {
