@@ -9,7 +9,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/kubernetes"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/renderers"
@@ -36,28 +38,39 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource := options.Resource
 
-	properties := Properties{}
+	properties := &radclient.RabbitMQComponentProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	// queue name must be specified by the user
-	queueName := properties.Queue
+	queueName := to.String(properties.Queue)
 	if queueName == "" {
 		return renderers.RendererOutput{}, fmt.Errorf("queue name must be specified")
 	}
-
+	values := map[string]renderers.ComputedValueReference{
+		"queue": {
+			Value: queueName,
+		},
+	}
+	if properties.Managed == nil || !*properties.Managed {
+		output := renderers.RendererOutput{
+			ComputedValues: values,
+			SecretValues: map[string]renderers.SecretValueReference{
+				"connectionString": {
+					LocalID:       outputresource.LocalIDScrapedSecret,
+					ValueSelector: "connectionString",
+				},
+			},
+		}
+		return output, nil
+	}
 	resources, err := GetRabbitMQ(resource, properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	values := map[string]renderers.ComputedValueReference{
-		"queue": {
-			Value: properties.Queue,
-		},
-	}
 	secrets := map[string]renderers.SecretValueReference{
 		"connectionString": {
 			LocalID:       outputresource.LocalIDRabbitMQSecret,
@@ -72,7 +85,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	}, nil
 }
 
-func GetRabbitMQ(resource renderers.RendererResource, properties Properties) ([]outputresource.OutputResource, error) {
+func GetRabbitMQ(resource renderers.RendererResource, properties *radclient.RabbitMQComponentProperties) ([]outputresource.OutputResource, error) {
 	resources := []outputresource.OutputResource{}
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
