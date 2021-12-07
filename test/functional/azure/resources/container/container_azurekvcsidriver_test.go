@@ -123,8 +123,8 @@ func Test_ContainerAzureKeyVaultCSIDriver(t *testing.T) {
 				}
 				require.True(t, found, "persistent volume did not get mounted")
 				volume := matches.Items[0].Spec.Volumes[volIndex]
-				require.Equal(t, volume.CSI.Driver, "secrets-store.csi.k8s.io")
-				require.Equal(t, volume.CSI.VolumeAttributes, map[string]string{"secretProviderClass": "azure-resources-container-azurekvcsidriver-sp"})
+				require.Equal(t, "secrets-store.csi.k8s.io", volume.CSI.Driver)
+				require.Equal(t, map[string]string{"secretProviderClass": "myshare-sp"}, volume.CSI.VolumeAttributes)
 			},
 		},
 	})
