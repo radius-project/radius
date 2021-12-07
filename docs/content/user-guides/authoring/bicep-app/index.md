@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Model your application and its services in Bicep"
+title: "Model your application and its services"
 linkTitle: "Model application"
 description: "Learn how to model your application and its services in Radius"
 weight: 300
