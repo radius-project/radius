@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Sample applications for Project Radius"
-linkTitle: "Sample apps"
+linkTitle: "Samples"
 description: "See how full applications are modeled in Project Radius"
 weight: 150
 no_list: true
