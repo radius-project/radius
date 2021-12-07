@@ -142,17 +142,6 @@ kubernetes-cli
 					match := expected.MatchString(output)
 					require.Equal(t, true, match)
 				})
-
-				t.Run("application list", func(t *testing.T) {
-					output, err := cli.ApplicationList(ctx)
-					require.NoError(t, err)
-					expected := regexp.MustCompile(`APPLICATION
-kubernetes-cli
-`)
-					match := expected.MatchString(output)
-					require.Equal(t, true, match)
-				})
-
 			},
 		},
 	})
