@@ -29,21 +29,21 @@ type Renderer struct {
 }
 
 // Need a step to take rendered routes to be usable by resource
-func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	route := radclient.HTTPRouteProperties{}
 	err := resource.ConvertDefinition(&route)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if route.Gateway != nil && route.Gateway.Source != nil && *route.Gateway.Source != "" {
 		resourceId, err := azresources.Parse(*route.Gateway.Source)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return []azresources.ResourceID{resourceId}, nil
+		return []azresources.ResourceID{resourceId}, nil, nil
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {

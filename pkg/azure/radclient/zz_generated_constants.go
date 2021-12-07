@@ -333,25 +333,6 @@ func (c Enum3) ToPtr() *Enum3 {
 	return &c
 }
 
-// Enum6 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
-type Enum6 bool
-
-const (
-	Enum6True Enum6 = true
-)
-
-// PossibleEnum6Values returns the possible values for the Enum6 const type.
-func PossibleEnum6Values() []Enum6 {
-	return []Enum6{	
-		Enum6True,
-	}
-}
-
-// ToPtr returns a *Enum6 pointing to the current value.
-func (c Enum6) ToPtr() *Enum6 {
-	return &c
-}
-
 // EphemeralVolumeManagedStore - Backing store for the ephemeral volume
 type EphemeralVolumeManagedStore string
 

@@ -2331,11 +2331,14 @@ func (r RabbitMQComponentList) MarshalJSON() ([]byte, error) {
 
 type RabbitMQComponentProperties struct {
 	BasicComponentProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
-	Managed *Enum6 `json:"managed,omitempty"`
-
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
+
+	// Indicates if the resource is Radius-managed.
+	Managed *bool `json:"managed,omitempty"`
+
+	// Secrets provided by unmanaged resources,
+	Secrets *RabbitMQComponentPropertiesSecrets `json:"secrets,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentProperties.
@@ -2344,6 +2347,7 @@ func (r RabbitMQComponentProperties) MarshalJSON() ([]byte, error) {
 	r.BasicComponentProperties.marshalInternal(objectMap)
 	populate(objectMap, "managed", r.Managed)
 	populate(objectMap, "queue", r.Queue)
+	populate(objectMap, "secrets", r.Secrets)
 	return json.Marshal(objectMap)
 }
 
@@ -2362,6 +2366,9 @@ func (r *RabbitMQComponentProperties) UnmarshalJSON(data []byte) error {
 		case "queue":
 				err = unpopulate(val, &r.Queue)
 				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, &r.Secrets)
+				delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2371,6 +2378,12 @@ func (r *RabbitMQComponentProperties) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+// RabbitMQComponentPropertiesSecrets - Secrets provided by unmanaged resources,
+type RabbitMQComponentPropertiesSecrets struct {
+	// The connection string used to connect to this RabbitMQ instance
+	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
 // RabbitMQComponentResource - The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.

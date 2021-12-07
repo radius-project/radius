@@ -26,8 +26,8 @@ var _ renderers.Renderer = (*KubernetesRenderer)(nil)
 type KubernetesRenderer struct {
 }
 
-func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {

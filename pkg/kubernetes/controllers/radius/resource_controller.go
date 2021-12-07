@@ -283,14 +283,14 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
-	resourceType, err := r.Model.LookupRadiusResource(w.ResourceType)
+	resourceModel, err := r.Model.LookupRadiusResourceModel(w.ResourceType)
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource type '%s' is not supported'", w.ResourceType)
 		log.Error(err, "unsupported type for resource")
 		return nil, false, err
 	}
 
-	references, err := resourceType.Renderer.GetDependencyIDs(ctx, *w)
+	references, _, err := resourceModel.Renderer.GetDependencyIDs(ctx, *w)
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies: %v", err)
 		log.Error(err, "failed to render resource")
@@ -316,7 +316,7 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		deps[reference.ID] = *dependency
 	}
 
-	output, err := resourceType.Renderer.Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, Runtime: runtimeOptions})
+	output, err := resourceModel.Renderer.Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, Runtime: runtimeOptions})
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")
@@ -533,14 +533,18 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 		return nil, fmt.Errorf("dependency %q is not a radius resource", id)
 	}
 
-	resourceType := id.Types[2]
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[2].Type)
+	if !ok {
+		return nil, fmt.Errorf("kind does not exist for id %q", id)
+	}
+
 	unst := &unstructured.Unstructured{}
 
 	// TODO determine this correctly
 	unst.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   radiusv1alpha3.GroupVersion.Group,
 		Version: radiusv1alpha3.GroupVersion.Version,
-		Kind:    armtemplate.GetKindFromArmType(resourceType.Type),
+		Kind:    kind,
 	})
 
 	err := r.Client.Get(ctx, client.ObjectKey{

@@ -1,12 +1,12 @@
 ---
 type: docs
-title: "Model your application infrastructure in Bicep"
+title: "Model your application infrastructure"
 linkTitle: "Model infrastucture"
 description: "Learn how to model your infrastucture in the Bicep language."
 weight: 200
 ---
 
-Begin by modeling your infrastructure in a Bicep file. This can be done by declaring and deploying new resources, or by referencing existing resources that have already been deployed.
+Application "infrastructure" is the underlying resources that your service interacts with and is hosted on. Examples include servers, databases, caches, message queues, and secret stores. In a Radius application you can model all of your non-compute infrastructure in the Bicep language by declaring and deploying new resources, or by referencing existing resources that have already been deployed. An application's infrastructure resources are distinct from its compute resources, which are managed as [services]({{< ref bicep-app >}}).
 
 ## Model and deploy with Bicep
 
@@ -32,7 +32,7 @@ You can now use `cosmos::db` in your Radius application, just like if you freshl
 
 ## Available resources
 
-- Visit the [Azure tempaltes](https://docs.microsoft.com/azure/templates/) docs page to learn what resources are available in Bicep.
+- Visit the [Azure templates](https://docs.microsoft.com/azure/templates/) docs page to learn what resources are available in Bicep.
 - Visit the [Radius resource library]({{< ref resources >}}) to learn what Radius resources are available in Bicep.
 
 ## Next step

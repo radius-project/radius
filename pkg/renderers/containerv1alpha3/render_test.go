@@ -82,6 +82,7 @@ func makeResourceID(t *testing.T, resourceType string, resourceName string) azre
 
 func Test_GetDependencyIDs_Success(t *testing.T) {
 	testResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
+	testAzureResourceID := makeResourceID(t, "Microsoft.ServiceBus/namespaces", "testAzureResource")
 	properties := radclient.ContainerComponentProperties{
 		Connections: map[string]*radclient.ContainerConnection{
 			"A": {
@@ -91,6 +92,11 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			"B": {
 				Kind:   radclient.ContainerConnectionKindHTTP.ToPtr(),
 				Source: to.StringPtr(makeResourceID(t, "HttpRoute", "B").ID),
+			},
+			"testAzureConnection": {
+				Kind:   radclient.ContainerConnectionKindAzure.ToPtr(),
+				Source: to.StringPtr(testAzureResourceID.ID),
+				Role:   []*string{to.StringPtr("administrator")},
 			},
 		},
 		Container: &radclient.ContainerComponentPropertiesContainer{
@@ -112,8 +118,10 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	resource := makeResource(t, properties)
 
 	renderer := Renderer{}
-	ids, err := renderer.GetDependencyIDs(createContext(t), resource)
+	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.NoError(t, err)
+	require.Len(t, radiusResourceIDs, 4)
+	require.Len(t, azureResourceIDs, 1)
 
 	storageID, _ := azresources.Parse(azresources.MakeID(
 		"test-sub-id",
@@ -131,13 +139,18 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			Name: "testShareName",
 		}))
 
-	expected := []azresources.ResourceID{
+	expectedRadiusResourceIDs := []azresources.ResourceID{
 		makeResourceID(t, "HttpRoute", "A"),
 		makeResourceID(t, "HttpRoute", "B"),
 		makeResourceID(t, "HttpRoute", "C"),
 		storageID,
 	}
-	require.ElementsMatch(t, expected, ids)
+	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
+
+	expectedAzureResourceIDs := []azresources.ResourceID{
+		testAzureResourceID,
+	}
+	require.ElementsMatch(t, expectedAzureResourceIDs, azureResourceIDs)
 }
 
 func Test_GetDependencyIDs_InvalidId(t *testing.T) {
@@ -155,9 +168,33 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 	resource := makeResource(t, properties)
 
 	renderer := Renderer{}
-	ids, err := renderer.GetDependencyIDs(createContext(t), resource)
+	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.Error(t, err)
 	require.Empty(t, ids)
+	require.Empty(t, azureIDs)
+}
+
+func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
+	properties := radclient.ContainerComponentProperties{
+		Connections: map[string]*radclient.ContainerConnection{
+			"AzureResourceTest": {
+				Kind:   radclient.ContainerConnectionKindAzure.ToPtr(),
+				Source: to.StringPtr("/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace"),
+				Role:   []*string{to.StringPtr("reader")},
+			},
+		},
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("test-image:latest"),
+		},
+	}
+	resource := makeResource(t, properties)
+
+	renderer := Renderer{}
+	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "'subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
+	require.Empty(t, ids)
+	require.Empty(t, azureIDs)
 }
 
 // This test verifies most of the 'basics' of rendering a deployment. These verifications are not
@@ -533,6 +570,95 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		},
 	}
 	require.ElementsMatch(t, expected, matches)
+}
+
+func Test_Render_AzureConnection(t *testing.T) {
+	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").ID
+	expectedRole := "administrator"
+	properties := radclient.ContainerComponentProperties{
+		Connections: map[string]*radclient.ContainerConnection{
+			"testAzureResourceConnection": {
+				Kind:   radclient.ContainerConnectionKindAzure.ToPtr(),
+				Source: to.StringPtr(testARMID),
+				Role:   []*string{to.StringPtr(expectedRole)},
+			},
+		},
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("test-image:latest"),
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	renderer := Renderer{
+		RoleAssignmentMap: map[radclient.ContainerConnectionKind]RoleAssignmentData{
+			radclient.ContainerConnectionKindAzure: {},
+		},
+	}
+	output, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+	require.Len(t, output.Resources, 4)
+
+	kindResourceMap := outputResourcesToKindMap(output.Resources)
+
+	_, ok := kindResourceMap[resourcekinds.Kubernetes]
+	require.Equal(t, true, ok)
+
+	roleOutputResource, ok := kindResourceMap[resourcekinds.AzureRoleAssignment]
+	require.Equal(t, true, ok)
+	require.Len(t, roleOutputResource, 1)
+	expected := []outputresource.OutputResource{
+		{
+			ResourceKind: resourcekinds.AzureRoleAssignment,
+			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
+			Managed:      true,
+			Deployed:     false,
+			Resource: map[string]string{
+				handlers.RoleNameKey:             expectedRole,
+				handlers.RoleAssignmentTargetKey: testARMID,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+				},
+			},
+		},
+	}
+	require.ElementsMatch(t, expected, roleOutputResource)
+
+	outputResource := kindResourceMap[resourcekinds.AzureUserAssignedManagedIdentity]
+	require.Len(t, outputResource, 1)
+
+	outputResource = kindResourceMap[resourcekinds.AzurePodIdentity]
+	require.Len(t, outputResource, 1)
+}
+
+func Test_Render_AzureConnectionMissingRoleError(t *testing.T) {
+	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").ID
+	properties := radclient.ContainerComponentProperties{
+		Connections: map[string]*radclient.ContainerConnection{
+			"testAzureResourceConnection": {
+				Kind:   radclient.ContainerConnectionKindAzure.ToPtr(),
+				Source: to.StringPtr(testARMID),
+			},
+		},
+		Container: &radclient.ContainerComponentPropertiesContainer{
+			Image: to.StringPtr("test-image:latest"),
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	renderer := Renderer{
+		RoleAssignmentMap: map[radclient.ContainerConnectionKind]RoleAssignmentData{
+			radclient.ContainerConnectionKindAzure: {},
+		},
+	}
+	_, err := renderer.Render(createContext(t), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.Error(t, err)
+	require.Equal(t, "rbac permissions are required to access Azure connections", err.Error())
 }
 
 func Test_Render_EphemeralVolumes(t *testing.T) {

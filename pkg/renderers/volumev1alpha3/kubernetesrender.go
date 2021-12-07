@@ -18,8 +18,8 @@ type KubernetesRenderer struct {
 	VolumeRenderers map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
 }
 
-func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 // Render is the WorkloadRenderer implementation for volume

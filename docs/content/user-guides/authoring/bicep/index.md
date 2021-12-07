@@ -2,7 +2,7 @@
 type: docs
 title: "Bicep language overview"
 linkTitle: "Bicep language"
-description: "Learn about the Bicep language and how Radius integrates with it to author applicaiton descriptions."
+description: "Learn about the Bicep language and how Radius integrates with it"
 weight: 99
 ---
 
@@ -66,7 +66,9 @@ Visit the [Radius getting started guide]({{< ref getting-started >}}) to install
 
 ## Radius resources
 
-Project Radius resources are available as a Bicep extension, allowing you to model and connect Radius resources to Azure and Kubernetes resources.
+Project Radius resource types are available in Bicep, allowing you to model and connect Radius resources to Azure and Kubernetes resources.
+
+In the below example, a Radius resource of type `radius.dev/Application@v1alpha3` is defined:"
 
 {{< rad file="snippets/app.bicep" embed=true replace-key-resources="//RESOURCES" replace-value-resources="..." >}}
 
