@@ -36,14 +36,14 @@ import (
 // within the RP or a bug.
 
 type Handler struct {
-	Rp               resourceprovider.ResourceProvider
+	RP               resourceprovider.ResourceProvider
 	ValidatorFactory ValidatorFactory
 	PathPrefix       string
 }
 
 func (h *Handler) ListApplications(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.Rp.ListApplications(ctx, h.resourceID(req))
+	response, err := h.RP.ListApplications(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -58,7 +58,7 @@ func (h *Handler) ListApplications(w http.ResponseWriter, req *http.Request) {
 
 func (h *Handler) GetApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.Rp.GetApplication(ctx, h.resourceID(req))
+	response, err := h.RP.GetApplication(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -92,7 +92,7 @@ func (h *Handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.Rp.UpdateApplication(ctx, id, body)
+	response, err := h.RP.UpdateApplication(ctx, id, body)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -107,7 +107,7 @@ func (h *Handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
 
 func (h *Handler) DeleteApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.Rp.DeleteApplication(ctx, h.resourceID(req))
+	response, err := h.RP.DeleteApplication(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -123,7 +123,7 @@ func (h *Handler) DeleteApplication(w http.ResponseWriter, req *http.Request) {
 func (h *Handler) ListAllV3ResourcesByApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
-	response, err := h.Rp.ListAllV3ResourcesByApplication(ctx, h.resourceID(req))
+	response, err := h.RP.ListAllV3ResourcesByApplication(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -139,7 +139,7 @@ func (h *Handler) ListAllV3ResourcesByApplication(w http.ResponseWriter, req *ht
 func (h *Handler) ListResources(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
-	response, err := h.Rp.ListResources(ctx, h.resourceID(req))
+	response, err := h.RP.ListResources(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -154,7 +154,7 @@ func (h *Handler) ListResources(w http.ResponseWriter, req *http.Request) {
 
 func (h *Handler) GetResource(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.Rp.GetResource(ctx, h.resourceID(req))
+	response, err := h.RP.GetResource(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -188,7 +188,7 @@ func (h *Handler) UpdateResource(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.Rp.UpdateResource(ctx, id, body)
+	response, err := h.RP.UpdateResource(ctx, id, body)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -203,7 +203,7 @@ func (h *Handler) UpdateResource(w http.ResponseWriter, req *http.Request) {
 
 func (h *Handler) DeleteResource(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.Rp.DeleteResource(ctx, h.resourceID(req))
+	response, err := h.RP.DeleteResource(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -218,7 +218,7 @@ func (h *Handler) DeleteResource(w http.ResponseWriter, req *http.Request) {
 
 func (h *Handler) GetOperation(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.Rp.GetOperation(ctx, h.resourceID(req))
+	response, err := h.RP.GetOperation(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -246,7 +246,7 @@ func (h *Handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.Rp.ListSecrets(ctx, input)
+	response, err := h.RP.ListSecrets(ctx, input)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -263,7 +263,7 @@ func (h *Handler) GetSwaggerDoc(w http.ResponseWriter, req *http.Request) {
 	// Required for the K8s scenario, we are required to respond to a request
 	// to /apis/api.radius.dev/v1alpha3 with a 200 OK response.
 	ctx := req.Context()
-	response, err := h.Rp.GetSwaggerDoc(ctx)
+	response, err := h.RP.GetSwaggerDoc(ctx)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return

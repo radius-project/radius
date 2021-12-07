@@ -31,6 +31,11 @@ import (
 
 var ErrUnsupportedResourceType = errors.New("unsupported resource type")
 
+const (
+	RadiusGroup   = "radius.dev"
+	RadiusVersion = "v1alpha3"
+)
+
 // NewResourceProvider creates a new ResourceProvider.
 func NewResourceProvider(client controller_runtime.Client) resourceprovider.ResourceProvider {
 	return &rp{client: client, namespace: "default"}
@@ -169,8 +174,8 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 
 		items := unstructured.UnstructuredList{}
 		items.SetGroupVersionKind(k8sschema.GroupVersionKind{
-			Group:   "radius.dev",
-			Version: "v1alpha3",
+			Group:   RadiusGroup,
+			Version: RadiusVersion,
 			Kind:    kubernetesType + "List",
 		})
 		err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
@@ -222,8 +227,8 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	kindlist := kind + "List"
 	items := unstructured.UnstructuredList{}
 	items.SetGroupVersionKind(k8sschema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
+		Group:   RadiusGroup,
+		Version: RadiusVersion,
 		Kind:    kindlist,
 	})
 	err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
@@ -273,8 +278,8 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
+		Group:   RadiusGroup,
+		Version: RadiusVersion,
 		Kind:    kind,
 	})
 
@@ -319,8 +324,8 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
 	item, err := NewKubernetesRadiusResource(id, resource, r.namespace, k8sschema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
+		Group:   RadiusGroup,
+		Version: RadiusVersion,
 		Kind:    kind,
 	})
 	if err != nil {
@@ -369,8 +374,8 @@ func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (res
 	item.SetNamespace(r.namespace)
 	item.SetName(kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id)))
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
+		Group:   RadiusGroup,
+		Version: RadiusVersion,
 		Kind:    kind,
 	})
 	err = r.client.Delete(ctx, &item)
@@ -400,8 +405,8 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
+		Group:   RadiusGroup,
+		Version: RadiusVersion,
 		Kind:    kind,
 	})
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id))}, &item)
@@ -483,8 +488,8 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 
 	item := unstructured.Unstructured{}
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
+		Group:   RadiusGroup,
+		Version: RadiusVersion,
 		Kind:    kind,
 	})
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(targetID), r.getResourceNameFromResourceId(targetID))}, &item)
@@ -546,7 +551,7 @@ func (r *rp) GetSwaggerDoc(ctx context.Context) (rest.Response, error) {
 			Kind:       "APIResourceList",
 			APIVersion: "v1",
 		},
-		GroupVersion: k8sschema.GroupVersion{Group: "api.radius.dev", Version: "v1alpha3"}.String(),
+		GroupVersion: k8sschema.GroupVersion{Group: "api.radius.dev", Version: RadiusVersion}.String(),
 		APIResources: []metav1.APIResource{
 			{
 				Name:         "apiradiuss",

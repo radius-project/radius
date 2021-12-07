@@ -47,6 +47,10 @@ var (
 )
 
 func init() {
+	// Adds all types to the client.Client scheme
+	// Any time we add a new type to to radius,
+	// we need to add it here.
+	// TODO centralize these calls.
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = radiusv1alpha3.AddToScheme(Scheme)
 	_ = bicepv1alpha3.AddToScheme(Scheme)

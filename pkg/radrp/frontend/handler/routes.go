@@ -19,7 +19,7 @@ import (
 func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory, swaggerDocRoute string) {
 	// Nothing for now
 
-	h := Handler{Rp: rp, ValidatorFactory: validatorFactory, PathPrefix: swaggerDocRoute}
+	h := Handler{RP: rp, ValidatorFactory: validatorFactory, PathPrefix: swaggerDocRoute}
 	var subrouter *mux.Router
 
 	var providerPath = fmt.Sprintf(
@@ -27,10 +27,6 @@ func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validat
 		swaggerDocRoute,
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
-
-	if swaggerDocRoute != "" {
-		router.Path(swaggerDocRoute).Methods("GET").HandlerFunc(h.GetSwaggerDoc)
-	}
 
 	router.Path(fmt.Sprintf("%s/listSecrets", providerPath)).Methods("POST").HandlerFunc(h.ListSecrets)
 
