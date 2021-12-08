@@ -167,7 +167,7 @@ func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Cont
 func (c KubernetesDeploymentClient) createSummary(deployment bicepv1alpha3.DeploymentTemplate) (clients.DeploymentResult, error) {
 
 	resources := []azresources.ResourceID{}
-	for _, resource := range *&deployment.Status.ResourceStatuses {
+	for _, resource := range deployment.Status.ResourceStatuses {
 		if resource.ResourceID == "" {
 			continue
 		}
