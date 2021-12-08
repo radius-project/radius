@@ -26,39 +26,10 @@ This template uses containerized versions of SQL, Redis, RabbitMQ, and MongoDB:
 
 Visit the [getting started guide]({{< ref create-environment >}}) to deploy or connect to a Radius environment running the latest release.
 
-### Deploy gateway controller
-
-The eShop application requires a gateway controller to be deployed to your environment, so you can access it over the internet without port-forwarding.
-
-{{< tabs Azure Kubernetes >}}
-
-{{% codetab %}}
-A Gateway controller is configured for you by default when you initialize an environment.
-{{% /codetab %}}
-
-{{% codetab %}}
-Run the following command to initialize the gateway controller:
-```sh
-kubectl kustomize\
-  "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
-  kubectl apply -f -
-helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
-helm repo update
-cat <<EOF | helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
-  --create-namespace --namespace radius-system \
-  --version 0.13.4 \
-  -f -
-controller:
-  hostNetwork: true
-  extraArgs:
-    watch-gateway: "true"
-EOF
-```
-{{% /codetab %}}
-
-{{< /tabs >}}
 
 ### Get cluster IP
+
+A Gateway controller is configured for you by default when you initialize an environment for both Kubernetes and Azure.
 
 Radius gateways are still in development, and will get more features in upcoming releases. Until they are updated, manually retrieve your cluster IP address to pass into the application:
 
