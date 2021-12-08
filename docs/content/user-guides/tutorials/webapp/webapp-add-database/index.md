@@ -71,35 +71,28 @@ Update your `template.bicep` file to match the full application definition:
    rad deploy template.bicep
    ```
 
-   This may take a few minutes because of the time required to create the database.
-
-1. You can confirm that the new `db` component was deployed by running:
+   This may take a few minutes because of the time required to create the database. On completion, you will see the following resources:
 
    ```sh
-   rad resource list --application webapp
+   Resources:
+      Application          webapp
+      ContainerComponent   todoapp
+      HttpRoute            route
+      mongodb.com.MongoDBComponent db
    ```
 
-   You should see both `db` and `todoapp` components in your `webapp` application. Example output:
-
-   ```
-   RESOURCE    KIND                          PROVISIONING_STATE   HEALTH_STATE
-   todoapp     ContainerComponent            Deployed             Healthy
-   db          mongodb.com.MongoDBComponent  Deployed             Healthy
-   ```
-
-1. To test the database, open a local tunnel on port 3000 again:
+   Just like before, a public endpoint will be available through the gateway in the `todoRoute` resource.
 
    ```sh
-   rad resource expose ContainerComponent todoapp --application webapp --port 3000
+   Public Endpoints:
+      HttpRoute            todo-route       SITE
    ```
 
-1. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. You should see a page like:
+1. To test your `webapp` application, navigate to the public endpoint that was printed at the end of the deployment. You should see a page like:
 
    <img src="todoapp-withdb.png" width="400" alt="screenshot of the todo application with a database">
 
    If your page matches, then it means that the container is able to communicate with the database. Just like before, you can test the features of the todo app. Add a task or two. Now your data is being stored in an actual database.
-
-1. When you're done testing press CTRL+C to terminate the port-forward. 
 
 ### Validate data
 

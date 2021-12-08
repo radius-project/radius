@@ -17,13 +17,16 @@ Create a new file named `template.bicep` and paste the following:
 
 ## Add a container component
 
-Next you'll add a `todoapp` resource for the website's frontend.
+Next you'll add resources for the website's frontend.
 
-Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `todoapp` resource in your template.bicep file will contain everything needed for the website frontend to run.
+Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The `todoapp` and `todoRoute` resource in your template.bicep file will contain everything needed for the website frontend to run and expose a port to the internet.
 
 Your `todoapp`, which is a ContainerComponent resource, will specify:
 - **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives.
 - **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).[]
+
+Your `todoRoute`, which is a HttpRoute resource, will specify:
+- **hostname:** `*`, the hostname that the container will be exposed to the internet on. `*` means that all hostnames will be accepted.
 
 Update your template.bicep file to match the full application definition:
 
@@ -43,31 +46,23 @@ Now you are ready to deploy the application for the first time.
    rad deploy template.bicep
    ```
 
-   This will deploy the application into your environment and launch the container resource for the frontend website.
-
-3. Confirm that your Radius application was deployed:
+   This will deploy the application into your environment and launch the container resource for the frontend website. You should see the following resources deployed at the end of `rad deploy`:
 
    ```sh
-   rad resource list --application webapp
+   Resources:
+      Application          webapp
+      ContainerComponent   todoapp
+      HttpRoute            todo-route
    ```
 
-   You should see your `todoapp` resource. Example output:
-   ```
-   RESOURCE   TYPE
-   todoapp    ContainerComponent
-   ```
-
-4. To test your `webapp` application, open a local tunnel to your application:
+   Also, a public endpoint will be available to your application as we specified a gateway in the `todoRoute` resource.
 
    ```sh
-   rad resource expose ContainerComponent todoapp --application webapp --port 3000
+   Public Endpoints:
+      HttpRoute            todo-route        SITE
    ```
 
-   {{% alert title="💡 rad expose" color="primary" %}}
-   The [`rad resource expose`]({{< ref rad_resource_expose >}}) command requires the resource type, resource name, application name flag, and port flag. If you changed any of these names when deploying, update your command to match.
-   {{% /alert %}}
-
-5. Visit the URL [http://localhost:3000](http://localhost:3000) in your browser. For now you should see a page like:
+4. To test your `webapp` application, navigate to the public endpoint that was printed at the end of the deployment.
 
    <img src="todoapp-nodb.png" width="400" alt="screenshot of the todo application with no database">
 
@@ -77,7 +72,5 @@ Now you are ready to deploy the application for the first time.
    - Add a todo item
    - Mark a todo item as complete
    - Delete a todo item
-
-6. When you're done testing press CTRL+C to terminate the port-forward.
 
 <br>{{< button text="Next: Add a database to the app" page="webapp-add-database.md" >}}

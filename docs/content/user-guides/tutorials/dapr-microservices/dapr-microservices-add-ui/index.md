@@ -41,17 +41,17 @@ services.AddSingleton<HttpClient>(DaprClient.CreateInvokeHttpClient(appId));
    rad deploy template.bicep
    ```
 
-1. To test out the frontend microservice, open a local tunnel on port 80:
+   Now that we added a 'HttpRoute', a public endpoint will be available to your application.
 
    ```sh
-   rad resource expose ContainerComponent frontend --application dapr-tutorial --port 5000 --remote-port 80
+   Public Endpoints:
+      HttpRoute            frontend-route           SITE
    ```
 
-1. Visit [http://localhost:5000](http://localhost:5000) in your browser and submit orders.
+   Navigate to the endpoint to view the application:
 
    <img src="frontend.png" alt="Screenshot of frontend application" width=500 >
 
-1. When you're done testing press CTRL+C to terminate the port-forward.
 
 1. Open the [Azure Portal](https://portal.azure.com) and navigate to the resource group for your environment. Open the storage account and navigate to Azure Storage Explorer to see the state items you just persisted:
 
