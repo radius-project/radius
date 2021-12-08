@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Azure/radius/pkg/azure/azresources"
 	"github.com/Azure/radius/pkg/cli/armtemplate"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -147,15 +148,39 @@ func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Cont
 				templateCondition := meta.FindStatusCondition(deploymentTemplate.Status.Conditions, ConditionReady)
 				if templateCondition != nil && templateCondition.Status == v1.ConditionTrue {
 					// Done with deployment
-					return clients.DeploymentResult{}, nil
+
+					summary, err := c.createSummary(deploymentTemplate)
+					if err != nil {
+						return clients.DeploymentResult{}, err
+					}
+					return summary, nil
 				} else if templateCondition != nil && templateCondition.Status == v1.ConditionFalse {
-					return clients.DeploymentResult{}, fmt.Errorf("Deployment failed: %s", templateCondition.Message)
+					return clients.DeploymentResult{}, fmt.Errorf("deployment failed: %s", templateCondition.Message)
 				}
 			}
 		case <-ctx.Done():
 			return clients.DeploymentResult{}, err
 		}
 	}
+}
+
+func (c KubernetesDeploymentClient) createSummary(deployment bicepv1alpha3.DeploymentTemplate) (clients.DeploymentResult, error) {
+
+	resources := []azresources.ResourceID{}
+	for _, resource := range deployment.Status.ResourceStatuses {
+		if resource.ResourceID == "" {
+			continue
+		}
+
+		id, err := azresources.Parse(resource.ResourceID)
+		if err != nil {
+			return clients.DeploymentResult{}, nil
+		}
+
+		resources = append(resources, id)
+	}
+
+	return clients.DeploymentResult{Resources: resources}, nil
 }
 
 func int64Ptr(i int64) *int64 {

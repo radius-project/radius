@@ -8,10 +8,12 @@ package azure
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,7 +28,7 @@ var _ clients.DiagnosticsClient = (*AKSDiagnosticsClient)(nil)
 
 func (dc *AKSDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
 	// Only HTTP Route is supported
-	if len(options.ResourceID.Types) != 3 || options.ResourceID.Types[2].Type != "HttpRoute" {
+	if len(options.ResourceID.Types) != 3 || !strings.EqualFold(options.ResourceID.Types[2].Type, resourcekinds.RadiusHttpRoute) {
 		return nil, nil
 	}
 
@@ -53,11 +55,11 @@ func (dc *AKSDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 		}
 
 		// If the component has a Kubernetes HTTPRoute then it's using gateways. Look up the IP address
-		if gvk.Kind != "HTTPRoute" {
+		if gvk.Kind != resourcekinds.KubernetesHTTPRoute {
 			continue
 		}
 
-		service, err := dc.Client.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
+		service, err := dc.K8sClient.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}

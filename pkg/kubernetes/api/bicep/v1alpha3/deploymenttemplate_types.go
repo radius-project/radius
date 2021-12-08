@@ -52,6 +52,10 @@ type ResourceStatus struct {
 	// The kind of the resource.
 	// +required
 	Kind string `json:"kind"`
+
+	// ResourceID
+	// +required
+	ResourceID string `json:"resourceId"`
 }
 
 //+kubebuilder:object:root=true

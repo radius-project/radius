@@ -128,7 +128,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		resourcekinds.Service:             true,
 		resourcekinds.Secret:              true,
 		resourcekinds.StatefulSet:         true,
-		resourcekinds.HTTPRoute:           true,
+		resourcekinds.KubernetesHTTPRoute: true,
 		resourcekinds.SecretProviderClass: true,
 	}
 

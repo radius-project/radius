@@ -143,6 +143,9 @@ spec:
                     name:
                       description: The name of the resource.
                       type: string
+                    resourceId:
+                      description: ResourceID
+                      type: string
                     status:
                       description: status of the condition, one of True, False, Unknown.
                       enum:
@@ -153,6 +156,7 @@ spec:
                   required:
                   - kind
                   - name
+                  - resourceId
                   - status
                   type: object
                 type: array

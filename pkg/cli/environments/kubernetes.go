@@ -70,12 +70,17 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 }
 
 func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	client, config, err := kubernetes.CreateTypedClient(e.Context)
+	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
 
 	return &kubernetes.KubernetesDiagnosticsClient{
+		K8sClient:  k8sClient,
 		Client:     client,
 		RestConfig: config,
 		Namespace:  e.Namespace,

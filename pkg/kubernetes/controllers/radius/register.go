@@ -52,12 +52,12 @@ var DefaultWatchTypes = map[string]struct {
 	ObjectList    client.ObjectList
 	HealthHandler func(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string)
 }{
-	resourcekinds.Service:     {&corev1.Service{}, &corev1.ServiceList{}, nil},
-	resourcekinds.Deployment:  {&appsv1.Deployment{}, &appsv1.DeploymentList{}, GetHealthStateFromDeployment},
-	resourcekinds.Secret:      {&corev1.Secret{}, &corev1.SecretList{}, nil},
-	resourcekinds.StatefulSet: {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
-	resourcekinds.Gateway:     {&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}, nil},
-	resourcekinds.HTTPRoute:   {&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}, nil},
+	resourcekinds.Service:             {&corev1.Service{}, &corev1.ServiceList{}, nil},
+	resourcekinds.Deployment:          {&appsv1.Deployment{}, &appsv1.DeploymentList{}, GetHealthStateFromDeployment},
+	resourcekinds.Secret:              {&corev1.Secret{}, &corev1.SecretList{}, nil},
+	resourcekinds.StatefulSet:         {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
+	resourcekinds.Gateway:             {&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}, nil},
+	resourcekinds.KubernetesHTTPRoute: {&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}, nil},
 }
 
 type Options struct {
