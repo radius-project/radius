@@ -14,7 +14,8 @@ const (
 	Service                          = "Service"
 	Secret                           = "Secret"
 	Gateway                          = "Gateway"
-	HTTPRoute                        = "HTTPRoute"
+	KubernetesHTTPRoute              = "HTTPRoute" // For httproutes.networking.x-k8s.io
+	RadiusHttpRoute                  = "HttpRoute" // For httproutes.radius.dev
 	StatefulSet                      = "StatefulSet"
 	SecretProviderClass              = "SecretProviderClass"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"

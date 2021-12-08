@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/Azure/radius/pkg/resourcekinds"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +42,7 @@ type KubernetesDiagnosticsClient struct {
 var _ clients.DiagnosticsClient = (*KubernetesDiagnosticsClient)(nil)
 
 func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
-	if len(options.ResourceID.Types) != 3 || options.ResourceID.Types[2].Type != "HttpRoute" {
+	if len(options.ResourceID.Types) != 3 || options.ResourceID.Types[2].Type != resourcekinds.RadiusHttpRoute {
 		return nil, nil
 	}
 
@@ -59,7 +60,7 @@ func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, op
 	// When that change goes in we'll be able to work with the route type directly to get this information.
 	for _, output := range httproute.Status.Resources {
 		// If the component has a Kubernetes HTTPRoute then it's using gateways. Look up the IP address
-		if output.Resource.Kind != "HTTPRoute" {
+		if output.Resource.Kind != resourcekinds.KubernetesHTTPRoute {
 			continue
 		}
 
