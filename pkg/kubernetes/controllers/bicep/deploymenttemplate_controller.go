@@ -182,7 +182,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		}
 
 		r.Recorder.Eventf(k8sInfo, "Normal", "Provisioned", "Resource %s has been provisioned", k8sInfo.GetName())
-		r.StatusProvisionedResource(ctx, arm, k8sInfo)
+		r.StatusProvisionedResource(ctx, resource.ID, arm, k8sInfo)
 
 		// Always patch the resource, even if it already exists.
 		err = r.Patch(ctx, k8sInfo, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
@@ -246,7 +246,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		}
 
 		r.Recorder.Eventf(k8sInfo, "Normal", "Deployed", "Resource %s has been deployed", k8sInfo.GetName())
-		r.StatusDeployedResource(ctx, arm, k8sInfo)
+		r.StatusDeployedResource(ctx, resource.ID, arm, k8sInfo)
 	}
 
 	// All resources have been deployed, update status to be Deployed
@@ -361,20 +361,22 @@ func (r *DeploymentTemplateReconciler) StatusDeployed(ctx context.Context, arm *
 	arm.Status.Phrase = "Deployed"
 }
 
-func (r *DeploymentTemplateReconciler) StatusProvisionedResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {
+func (r *DeploymentTemplateReconciler) StatusProvisionedResource(ctx context.Context, id string, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {
 	newResourceStatus := bicepv1alpha3.ResourceStatus{
-		Status: metav1.ConditionUnknown,
-		Name:   unst.GetName(),
-		Kind:   unst.GetKind(),
+		Status:     metav1.ConditionUnknown,
+		Name:       unst.GetName(),
+		Kind:       unst.GetKind(),
+		ResourceID: id,
 	}
 	r.setResourceStatus(&arm.Status.ResourceStatuses, newResourceStatus)
 }
 
-func (r *DeploymentTemplateReconciler) StatusDeployedResource(ctx context.Context, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {
+func (r *DeploymentTemplateReconciler) StatusDeployedResource(ctx context.Context, id string, arm *bicepv1alpha3.DeploymentTemplate, unst *unstructured.Unstructured) {
 	newResourceStatus := bicepv1alpha3.ResourceStatus{
-		Status: metav1.ConditionTrue,
-		Name:   unst.GetName(),
-		Kind:   unst.GetKind(),
+		Status:     metav1.ConditionTrue,
+		Name:       unst.GetName(),
+		Kind:       unst.GetKind(),
+		ResourceID: id,
 	}
 	r.setResourceStatus(&arm.Status.ResourceStatuses, newResourceStatus)
 }

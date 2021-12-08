@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/Azure/radius/pkg/cli/localrp"
 	k8s "k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // LocalRPEnvironment represents a local test setup for Azure Cloud Radius environment.
@@ -81,12 +82,18 @@ func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clien
 		return nil, err
 	}
 
+	client, err := client.New(config, client.Options{Scheme: kubernetes.Scheme})
+	if err != nil {
+		return nil, err
+	}
+
 	azcred := &radclient.AnonymousCredential{}
 	con := arm.NewConnection(e.URL, azcred, nil)
 
 	return &azure.AKSDiagnosticsClient{
 		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
-			Client:     k8sClient,
+			K8sClient:  k8sClient,
+			Client:     client,
 			RestConfig: config,
 		},
 		ResourceClient: *radclient.NewRadiusResourceClient(con, e.SubscriptionID),

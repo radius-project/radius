@@ -16,18 +16,23 @@ import (
 
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
+	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type KubernetesDiagnosticsClient struct {
-	Client     *k8s.Clientset
+	K8sClient  *k8s.Clientset
 	RestConfig *rest.Config
+	Client     client.Client
 
 	// If set, the value of this field will be used to find replicas. Otherwise the application name will be used.
 	Namespace string
@@ -36,6 +41,39 @@ type KubernetesDiagnosticsClient struct {
 var _ clients.DiagnosticsClient = (*KubernetesDiagnosticsClient)(nil)
 
 func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
+	if len(options.ResourceID.Types) != 3 || options.ResourceID.Types[2].Type != "HttpRoute" {
+		return nil, nil
+	}
+
+	httproute := radiusv1alpha3.HttpRoute{}
+
+	name := options.ResourceID.Types[1].Name + "-" + options.ResourceID.Types[2].Name
+	err := dc.Client.Get(ctx, types.NamespacedName{Namespace: options.ResourceID.ResourceGroup, Name: name}, &httproute)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Right now this is VERY coupled to how we do resource creation on the server.
+	// This will be improved as part of https://github.com/Azure/radius/issues/1247 .
+	//
+	// When that change goes in we'll be able to work with the route type directly to get this information.
+	for _, output := range httproute.Status.Resources {
+		// If the component has a Kubernetes HTTPRoute then it's using gateways. Look up the IP address
+		if output.Resource.Kind != "HTTPRoute" {
+			continue
+		}
+
+		service, err := dc.K8sClient.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, in := range service.Status.LoadBalancer.Ingress {
+			endpoint := fmt.Sprintf("http://%s", in.IP)
+			return &endpoint, nil
+		}
+	}
+
 	return nil, nil
 }
 
@@ -48,9 +86,9 @@ func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clien
 	var replica *corev1.Pod
 
 	if options.Replica != "" {
-		replica, err = getSpecificReplica(ctx, dc.Client, namespace, options.Resource, options.Replica)
+		replica, err = getSpecificReplica(ctx, dc.K8sClient, namespace, options.Resource, options.Replica)
 	} else {
-		replica, err = getRunningReplica(ctx, dc.Client, namespace, options.Application, options.Resource)
+		replica, err = getRunningReplica(ctx, dc.K8sClient, namespace, options.Application, options.Resource)
 	}
 
 	if err != nil {
@@ -66,7 +104,7 @@ func (dc *KubernetesDiagnosticsClient) Expose(ctx context.Context, options clien
 	ready := make(chan struct{})
 	stop = make(chan struct{}, 1)
 	go func() {
-		err := runPortforward(dc.RestConfig, dc.Client, replica, ready, stop, options.Port, options.RemotePort)
+		err := runPortforward(dc.RestConfig, dc.K8sClient, replica, ready, stop, options.Port, options.RemotePort)
 		failed <- err
 	}()
 
@@ -83,13 +121,13 @@ func (dc *KubernetesDiagnosticsClient) Logs(ctx context.Context, options clients
 	var err error
 
 	if options.Replica != "" {
-		replica, err := getSpecificReplica(ctx, dc.Client, namespace, options.Resource, options.Replica)
+		replica, err := getSpecificReplica(ctx, dc.K8sClient, namespace, options.Resource, options.Replica)
 		if err != nil {
 			return nil, err
 		}
 		replicas = append(replicas, *replica)
 	} else {
-		replicas, err = getRunningReplicas(ctx, dc.Client, namespace, options.Application, options.Resource)
+		replicas, err = getRunningReplicas(ctx, dc.K8sClient, namespace, options.Application, options.Resource)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +162,7 @@ func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *Kube
 			}
 		}
 
-		stream, err := streamLogs(ctx, dc.RestConfig, dc.Client, &replica, container, follow)
+		stream, err := streamLogs(ctx, dc.RestConfig, dc.K8sClient, &replica, container, follow)
 		if err != nil {
 			return streams, fmt.Errorf("failed to open log stream to %s: %w", options.Resource, err)
 		}

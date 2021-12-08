@@ -57,7 +57,7 @@ func (dc *AKSDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 			continue
 		}
 
-		service, err := dc.Client.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
+		service, err := dc.K8sClient.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
