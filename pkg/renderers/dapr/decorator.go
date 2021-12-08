@@ -28,7 +28,7 @@ type Renderer struct {
 }
 
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
-	dependencies, _, err := r.Inner.GetDependencyIDs(ctx, resource)
+	radiusDependencyIDs, azureDependencyIDs, err := r.Inner.GetDependencyIDs(ctx, resource)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -39,12 +39,12 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 	}
 
 	if trait == nil {
-		return dependencies, nil, nil
+		return radiusDependencyIDs, azureDependencyIDs, nil
 	}
 
 	provides := to.String(trait.Provides)
 	if provides == "" {
-		return dependencies, nil, nil
+		return radiusDependencyIDs, azureDependencyIDs, nil
 	}
 
 	parsed, err := azresources.Parse(provides)
@@ -52,7 +52,7 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 		return nil, nil, err
 	}
 
-	return append(dependencies, parsed), nil, nil
+	return append(radiusDependencyIDs, parsed), azureDependencyIDs, nil
 }
 
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
