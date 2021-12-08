@@ -14,7 +14,7 @@ const (
 	Service                          = "Service"
 	Secret                           = "Secret"
 	Gateway                          = "Gateway"
-	HTTPRoute                        = "HttpRoute"
+	HTTPRoute                        = "HTTPRoute"
 	StatefulSet                      = "StatefulSet"
 	SecretProviderClass              = "SecretProviderClass"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
