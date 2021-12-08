@@ -167,48 +167,48 @@ func (mr *MockRadrpDBMockRecorder) GetV3Resource(arg0, arg1 interface{}) *gomock
 }
 
 // ListAllAzureResourcesForApplication mocks base method.
-func (m *MockRadrpDB) ListAllAzureResourcesForApplication(arg0 context.Context, arg1 azresources.ResourceID, arg2 string) ([]AzureResource, error) {
+func (m *MockRadrpDB) ListAllAzureResourcesForApplication(arg0 context.Context, arg1, arg2, arg3 string) ([]AzureResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAllAzureResourcesForApplication", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ListAllAzureResourcesForApplication", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]AzureResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAllAzureResourcesForApplication indicates an expected call of ListAllAzureResourcesForApplication.
-func (mr *MockRadrpDBMockRecorder) ListAllAzureResourcesForApplication(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockRadrpDBMockRecorder) ListAllAzureResourcesForApplication(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllAzureResourcesForApplication", reflect.TypeOf((*MockRadrpDB)(nil).ListAllAzureResourcesForApplication), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllAzureResourcesForApplication", reflect.TypeOf((*MockRadrpDB)(nil).ListAllAzureResourcesForApplication), arg0, arg1, arg2, arg3)
 }
 
 // ListAllV3ResourcesByApplication mocks base method.
-func (m *MockRadrpDB) ListAllV3ResourcesByApplication(arg0 context.Context, arg1 azresources.ResourceID) ([]RadiusResource, error) {
+func (m *MockRadrpDB) ListAllV3ResourcesByApplication(arg0 context.Context, arg1 azresources.ResourceID, arg2 string) ([]RadiusResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAllV3ResourcesByApplication", arg0, arg1)
+	ret := m.ctrl.Call(m, "ListAllV3ResourcesByApplication", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]RadiusResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAllV3ResourcesByApplication indicates an expected call of ListAllV3ResourcesByApplication.
-func (mr *MockRadrpDBMockRecorder) ListAllV3ResourcesByApplication(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockRadrpDBMockRecorder) ListAllV3ResourcesByApplication(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllV3ResourcesByApplication", reflect.TypeOf((*MockRadrpDB)(nil).ListAllV3ResourcesByApplication), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllV3ResourcesByApplication", reflect.TypeOf((*MockRadrpDB)(nil).ListAllV3ResourcesByApplication), arg0, arg1, arg2)
 }
 
 // ListAzureResourcesForResourceType mocks base method.
-func (m *MockRadrpDB) ListAzureResourcesForResourceType(arg0 context.Context, arg1 azresources.ResourceID, arg2 string) ([]AzureResource, error) {
+func (m *MockRadrpDB) ListAzureResourcesForResourceType(arg0 context.Context, arg1, arg2, arg3, arg4 string) ([]AzureResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAzureResourcesForResourceType", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ListAzureResourcesForResourceType", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].([]AzureResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAzureResourcesForResourceType indicates an expected call of ListAzureResourcesForResourceType.
-func (mr *MockRadrpDBMockRecorder) ListAzureResourcesForResourceType(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockRadrpDBMockRecorder) ListAzureResourcesForResourceType(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAzureResourcesForResourceType", reflect.TypeOf((*MockRadrpDB)(nil).ListAzureResourcesForResourceType), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAzureResourcesForResourceType", reflect.TypeOf((*MockRadrpDB)(nil).ListAzureResourcesForResourceType), arg0, arg1, arg2, arg3, arg4)
 }
 
 // ListV3Applications mocks base method.

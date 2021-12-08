@@ -49,17 +49,33 @@ func Test_FormatResourceTable(t *testing.T) {
 	options := GetResourceTableFormat()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	obj := radclient.RadiusResource{
-		ProxyResource: radclient.ProxyResource{
-			Resource: radclient.Resource{
-				Name: to.StringPtr("test-resource"),
-				Type: to.StringPtr("my/very/CoolResource"),
+	obj := []radclient.RadiusResource{
+		{
+			ProxyResource: radclient.ProxyResource{
+				Resource: radclient.Resource{
+					Name: to.StringPtr("test-resource"),
+					Type: to.StringPtr("Microsoft.CustomProviders/resourceProviders/Application/mongodb.com.MongoDBComponent"),
+				},
+			},
+			Properties: map[string]interface{}{
+				"status": &radclient.ComponentStatus{
+					HealthState:       to.StringPtr("Healthy"),
+					ProvisioningState: to.StringPtr("Provisioned"),
+				},
 			},
 		},
-		Properties: map[string]interface{}{
-			"status": &radclient.ComponentStatus{
-				HealthState:       to.StringPtr("Healthy"),
-				ProvisioningState: to.StringPtr("Provisioned"),
+		{
+			ProxyResource: radclient.ProxyResource{
+				Resource: radclient.Resource{
+					Name: to.StringPtr("test-azure-resource"),
+					Type: to.StringPtr("Microsoft.ServiceBus/namespaces"),
+				},
+			},
+			Properties: map[string]interface{}{
+				"status": &radclient.ComponentStatus{
+					HealthState:       to.StringPtr("Healthy"),
+					ProvisioningState: to.StringPtr("Provisioned"),
+				},
 			},
 		},
 	}
@@ -68,8 +84,10 @@ func Test_FormatResourceTable(t *testing.T) {
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `RESOURCE       TYPE          PROVISIONING_STATE  HEALTH_STATE
-test-resource  CoolResource  Provisioned         Healthy
+	expected := `RESOURCE             TYPE                             PROVISIONING_STATE  HEALTH_STATE
+test-resource        mongodb.com.MongoDBComponent     Provisioned         Healthy
+test-azure-resource  Microsoft.ServiceBus/namespaces  Provisioned         Healthy
 `
+
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }

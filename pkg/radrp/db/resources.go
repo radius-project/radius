@@ -33,13 +33,17 @@ type RadiusResourceStatus struct {
 
 // AzureResource represents reference to an existing non-Radius azure resource that Radius resources connect to.
 type AzureResource struct {
-	ID              string `bson:"_id"`
-	SubscriptionID  string `bson:"subscriptionId"`
-	ResourceGroup   string `bson:"resourceGroup"`
-	ApplicationName string `bson:"applicationName"`
-	ResourceName    string `bson:"resourceName"`
-	ResourceKind    string `bson:"resourceKind"`
-	Type            string `bson:"type"`
+	ID             string `bson:"_id"`
+	SubscriptionID string `bson:"subscriptionId"`
+	ResourceGroup  string `bson:"resourceGroup"`
+	ResourceName   string `bson:"resourceName"`
+	ResourceKind   string `bson:"resourceKind"`
+	Type           string `bson:"type"`
+
+	// Details of the application this resource is consumed in
+	ApplicationName           string `bson:"applicationName"`
+	ApplicationSubscriptionID string `bson:"applicationSubscriptionId"`
+	ApplicationResourceGroup  string `bson:"applicationResourceGroup"`
 
 	// Radius resources that connect to this Azure resource
 	RadiusConnectionIDs []string `bson:"radiusConnectionIDs"`

@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/Azure/radius/pkg/radrp/outputresource"
 	"github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
@@ -107,6 +108,19 @@ var testcases = []testcase{
 		id: parseOrPanic(applicationID(applicationName)),
 	},
 	{
+		description: "ListAllResourcesByApplication",
+		verb:        "List",
+		invoke: func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+			return rp.ListAllV3ResourcesByApplication(ctx, id)
+		},
+		setupDB: func(database *db.MockRadrpDB, err error) {
+			database.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(interface{}, interface{}) ([]db.RadiusResource, error) {
+				return nil, err
+			})
+		},
+		id: parseOrPanic(fmt.Sprintf("%s/%s", applicationID(applicationName), schema.GenericResourceType)),
+	},
+	{
 		description: "ListResources",
 		verb:        "List",
 		invoke: func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
@@ -179,6 +193,35 @@ var testcases = []testcase{
 	},
 }
 
+func Test_AllEndpoints_RejectInvalidApplicationType(t *testing.T) {
+	ctx := createContext(t)
+
+	id := parseOrPanic(fmt.Sprintf(
+		"/subscriptions/%s/resourceGroups/%s/providers/%s/%s/%s/%s",
+		subscriptionID,
+		resourceGroup,
+		azresources.CustomProvidersResourceProviders,
+		providerName,
+		"InvalidApplicationType", applicationName))
+
+	for _, testcase := range testcases {
+		t.Run(testcase.description, func(t *testing.T) {
+			test := createRPTest(t)
+
+			response, err := testcase.invoke(test.rp, ctx, id)
+			require.NoError(t, err)
+
+			expected := armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    armerrors.Invalid,
+					Message: "unsupported resource type",
+				},
+			}
+			require.Equal(t, rest.NewBadRequestARMResponse(expected), response)
+		})
+	}
+}
+
 func Test_AllEndpoints_RejectInvalidResourceID(t *testing.T) {
 	ctx := createContext(t)
 
@@ -186,6 +229,10 @@ func Test_AllEndpoints_RejectInvalidResourceID(t *testing.T) {
 	id := parseOrPanic(resourceID(applicationName, "InvalidResourceType", resourceName))
 
 	for _, testcase := range testcases {
+		if testcase.description == "ListAllResourcesByApplication" {
+			continue
+		}
+
 		t.Run(testcase.description, func(t *testing.T) {
 			test := createRPTest(t)
 
@@ -426,6 +473,90 @@ func Test_DeleteApplication_Conflict(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, rest.NewConflictResponse(db.ErrConflict.Error()), response)
+}
+
+func Test_ListAllResources_Success(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	requestID := parseOrPanic(fmt.Sprintf("%s/%s", applicationID(applicationName), schema.GenericResourceType))
+	azureConnectionID := "/subscriptions/az-resource-subscription/resourceGroups/az-resource-rg/providers/Microsoft.ServiceBus/namespaces/az-resource-name"
+	expectedRadiusResources := []db.RadiusResource{
+		{
+			ID:                testID,
+			Type:              requestID.Type(),
+			SubscriptionID:    subscriptionID,
+			ResourceGroup:     resourceGroup,
+			ApplicationName:   applicationName,
+			ResourceName:      resourceName,
+			ProvisioningState: string(rest.SuccededStatus),
+			Status:            db.RadiusResourceStatus{},
+			Definition: map[string]interface{}{
+				"data": true,
+			},
+		},
+	}
+	expectedAzureResources := []db.AzureResource{
+		{
+			ID:                        azureConnectionID,
+			SubscriptionID:            "az-resource-subscription",
+			ResourceGroup:             "az-resource-rg",
+			ResourceName:              "az-resource-name",
+			ResourceKind:              resourcekinds.Azure,
+			Type:                      "Microsoft.ServiceBus/namespaces",
+			ApplicationName:           applicationName,
+			ApplicationSubscriptionID: subscriptionID,
+			ApplicationResourceGroup:  resourceGroup,
+			RadiusConnectionIDs:       []string{testID},
+		},
+	}
+
+	test.db.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).Return(db.ApplicationResource{}, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(expectedRadiusResources, nil)
+	test.db.EXPECT().ListAllAzureResourcesForApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Times(1).Return(expectedAzureResources, nil)
+
+	response, err := test.rp.ListAllV3ResourcesByApplication(ctx, requestID)
+	require.NoError(t, err)
+
+	expectedOutput := RadiusResourceList{
+		Value: []RadiusResource{
+			{
+				ID:   testID,
+				Type: requestID.Type(),
+				Name: resourceName,
+				Properties: map[string]interface{}{
+					"data":              true,
+					"provisioningState": string(rest.SuccededStatus),
+					"status": rest.ComponentStatus{
+						ProvisioningState: "Provisioned",
+						HealthState:       "Healthy",
+						OutputResources:   []rest.OutputResource{},
+					},
+				},
+			},
+			{
+				ID:         azureConnectionID,
+				Type:       "Microsoft.ServiceBus/namespaces",
+				Name:       "az-resource-name",
+				Properties: map[string]interface{}{},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expectedOutput), response)
+}
+
+func Test_ListAllResources_Failure(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(fmt.Sprintf("%s/%s", applicationID(applicationName), schema.GenericResourceType))
+
+	test.db.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).Return(db.ApplicationResource{}, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]db.RadiusResource{}, errors.New("database connection error"))
+
+	_, err := test.rp.ListAllV3ResourcesByApplication(ctx, id)
+	require.Error(t, err)
 }
 
 func Test_ListResources_Success(t *testing.T) {
