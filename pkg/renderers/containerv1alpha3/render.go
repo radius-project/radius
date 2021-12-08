@@ -519,23 +519,27 @@ func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persiste
 
 func (r Renderer) makeAzureKeyVaultPersistentVolume(volumeName string, keyvaultVolume radclient.PersistentVolume, secretProviderClassName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make Volume Spec which uses the SecretProvider created above
-	volumeSpec := corev1.Volume{}
-	volumeSpec.Name = volumeName
-	volumeSpec.CSI = &corev1.CSIVolumeSource{}
-	volumeSpec.CSI.Driver = "secrets-store.csi.k8s.io"
-	// We will support only Read operations
-	volumeSpec.CSI.ReadOnly = to.BoolPtr(true)
-	volumeSpec.CSI.VolumeAttributes = map[string]string{
-		"secretProviderClass": secretProviderClassName,
+	volumeSpec := corev1.Volume{
+		Name: volumeName,
+		VolumeSource: corev1.VolumeSource{
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "secrets-store.csi.k8s.io",
+				// We will support only Read operations
+				ReadOnly: to.BoolPtr(true),
+				VolumeAttributes: map[string]string{
+					"secretProviderClass": secretProviderClassName,
+				},
+			},
+		},
 	}
 
 	// Make Volume mount spec
-	volumeMountSpec := corev1.VolumeMount{}
-	volumeMountSpec.Name = volumeName
-	volumeMountSpec.MountPath = to.String(keyvaultVolume.MountPath)
-	// We will support only reads to the secret store volume
-	volumeMountSpec.ReadOnly = true
-
+	volumeMountSpec := corev1.VolumeMount{
+		Name:      volumeName,
+		MountPath: to.String(keyvaultVolume.MountPath),
+		// We will support only reads to the secret store volume
+		ReadOnly: true,
+	}
 	return volumeSpec, volumeMountSpec, nil
 }
 

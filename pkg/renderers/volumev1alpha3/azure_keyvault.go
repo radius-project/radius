@@ -49,6 +49,7 @@ func getTenantID(ctx context.Context, arm armauth.ArmConfig) (string, error) {
 	return tenantID.String(), err
 }
 
+// GetAzureKeyVaultVolume constructs a SecretProviderClass for Azure Key Vault CSI Driver volume
 func GetAzureKeyVaultVolume(ctx context.Context, arm armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	properties := radclient.AzureKeyVaultVolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
@@ -86,69 +87,84 @@ type objectValues struct {
 	format   string
 }
 
-func getValuesOrDefaults(name string, object interface{}) objectValues {
+func getValuesOrDefaultsForSecrets(name string, secretObject *radclient.SecretObjectProperties) objectValues {
 	var alias, version, encoding, format string
-	switch objectType := object.(type) {
-	case *radclient.SecretObjectProperties:
-		if objectType.Alias == nil {
-			alias = name
-		} else {
-			alias = *objectType.Alias
-		}
+	if secretObject.Alias == nil {
+		alias = name
+	} else {
+		alias = *secretObject.Alias
+	}
 
-		if objectType.Version == nil {
-			version = ""
-		} else {
-			version = *objectType.Version
-		}
+	if secretObject.Version == nil {
+		version = ""
+	} else {
+		version = *secretObject.Version
+	}
 
-		if objectType.Encoding == nil {
+	if secretObject.Encoding == nil {
+		encoding = string(radclient.CertificateObjectPropertiesEncodingUTF8)
+	} else {
+		encoding = string(*secretObject.Encoding)
+	}
+
+	return objectValues{
+		alias:    alias,
+		version:  version,
+		encoding: encoding,
+		format:   format,
+	}
+}
+
+func getValuesOrDefaultsForKeys(name string, keyObject *radclient.KeyObjectProperties) objectValues {
+	var alias, version, encoding, format string
+	if keyObject.Alias == nil {
+		alias = name
+	} else {
+		alias = *keyObject.Alias
+	}
+
+	if keyObject.Version == nil {
+		version = ""
+	} else {
+		version = *keyObject.Version
+	}
+
+	return objectValues{
+		alias:    alias,
+		version:  version,
+		encoding: encoding,
+		format:   format,
+	}
+}
+
+func getValuesOrDefaultsForCertificates(name string, certificateObject *radclient.CertificateObjectProperties) objectValues {
+	var alias, version, encoding, format string
+	if certificateObject.Alias == nil {
+		alias = name
+	} else {
+		alias = *certificateObject.Alias
+	}
+
+	if certificateObject.Version == nil {
+		version = ""
+	} else {
+		version = *certificateObject.Version
+	}
+
+	// CSI driver supports object encoding only when object type = secret i.e. cert value is privatekey
+	encoding = ""
+	if *certificateObject.Value == radclient.CertificateObjectPropertiesValuePrivatekey {
+		if certificateObject.Encoding == nil {
 			encoding = string(radclient.CertificateObjectPropertiesEncodingUTF8)
 		} else {
-			encoding = string(*objectType.Encoding)
+			encoding = string(*certificateObject.Encoding)
 		}
-	case *radclient.KeyObjectProperties:
-		key := object.(*radclient.KeyObjectProperties)
-		if key.Alias == nil {
-			alias = name
-		} else {
-			alias = *key.Alias
-		}
+	}
 
-		if key.Version == nil {
-			version = ""
-		} else {
-			version = *key.Version
-		}
-	case *radclient.CertificateObjectProperties:
-		cert := object.(*radclient.CertificateObjectProperties)
-		if cert.Alias == nil {
-			alias = name
-		} else {
-			alias = *cert.Alias
-		}
-
-		if cert.Version == nil {
-			version = ""
-		} else {
-			version = *cert.Version
-		}
-
-		// CSI driver supports object encoding only when object type = secret i.e. cert value is privatekey
-		encoding = ""
-		if *cert.Value == radclient.CertificateObjectPropertiesValuePrivatekey {
-			if cert.Encoding == nil {
-				encoding = string(radclient.CertificateObjectPropertiesEncodingUTF8)
-			} else {
-				encoding = string(*cert.Encoding)
-			}
-		}
-
-		if cert.Format == nil {
-			format = string(radclient.CertificateObjectPropertiesFormatPfx)
-		} else {
-			format = string(*cert.Format)
-		}
+	if certificateObject.Format == nil {
+		format = string(radclient.CertificateObjectPropertiesFormatPfx)
+	} else {
+		format = string(*certificateObject.Format)
 	}
 
 	return objectValues{
@@ -166,7 +182,7 @@ func makeSecretProviderClass(appName string, volumeName string, tenantID string,
 	keyVaultObjects := []provider.KeyVaultObject{}
 	// Construct the spec for the secret objects
 	for name, secret := range secretObjects.secrets {
-		secretValues := getValuesOrDefaults(name, secret)
+		secretValues := getValuesOrDefaultsForSecrets(name, secret)
 		secretSpec := provider.KeyVaultObject{
 			ObjectName:     *secret.Name,
 			ObjectAlias:    secretValues.alias,
@@ -177,7 +193,7 @@ func makeSecretProviderClass(appName string, volumeName string, tenantID string,
 		keyVaultObjects = append(keyVaultObjects, secretSpec)
 	}
 	for name, key := range secretObjects.keys {
-		keyValues := getValuesOrDefaults(name, key)
+		keyValues := getValuesOrDefaultsForKeys(name, key)
 		keySpec := provider.KeyVaultObject{
 			ObjectName:    *key.Name,
 			ObjectAlias:   keyValues.alias,
@@ -188,8 +204,7 @@ func makeSecretProviderClass(appName string, volumeName string, tenantID string,
 	}
 	for name, cert := range secretObjects.certificates {
 		var certSpec provider.KeyVaultObject
-		getValuesOrDefaults(name, cert)
-		certValues := getValuesOrDefaults(name, cert)
+		certValues := getValuesOrDefaultsForCertificates(name, cert)
 		switch *cert.Value {
 		case radclient.CertificateObjectPropertiesValueCertificate:
 			certSpec = provider.KeyVaultObject{
