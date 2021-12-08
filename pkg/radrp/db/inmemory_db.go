@@ -99,15 +99,15 @@ func (s *store) DeleteV3Resource(ctx context.Context, id azresources.ResourceID)
 	return errors.New("not implemented")
 }
 
-func (s *store) ListAllAzureResourcesForApplication(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string) ([]AzureResource, error) {
+func (s *store) ListAllAzureResourcesForApplication(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup string) ([]AzureResource, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *store) ListAzureResourcesForResourceType(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string, resourceType string) ([]AzureResource, error) {
+func (s *store) ListAzureResourcesForResourceType(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup, resourceType string) ([]AzureResource, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *store) GetAzureResource(ctx context.Context, applicationName string, azureResourceID string) (AzureResource, error) {
+func (s *store) GetAzureResource(ctx context.Context, applicationName, azureResourceID string) (AzureResource, error) {
 	return AzureResource{}, errors.New("not implemented")
 }
 
@@ -119,10 +119,10 @@ func (s *store) AddAzureResourceConnection(ctx context.Context, radiusResourceID
 	return false, errors.New("not implemented")
 }
 
-func (s *store) DeleteAzureResource(ctx context.Context, applicationName string, azureResourceID string) error {
+func (s *store) DeleteAzureResource(ctx context.Context, applicationName, azureResourceID string) error {
 	return errors.New("not implemented")
 }
 
-func (s *store) RemoveAzureResourceConnection(ctx context.Context, applicationName string, radiusResourceID string, azureResourceID string) (bool, error) {
+func (s *store) RemoveAzureResourceConnection(ctx context.Context, applicationName, radiusResourceID, azureResourceID string) (bool, error) {
 	return false, errors.New("not implemented")
 }

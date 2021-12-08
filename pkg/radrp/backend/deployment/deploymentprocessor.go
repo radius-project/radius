@@ -52,20 +52,20 @@ type deploymentProcessor struct {
 	k8s            client.Client
 }
 
-func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresources.ResourceID, radiusResource db.RadiusResource) error {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, operationID.ID)
 	resourceID := operationID.Truncate()
 
 	// Render
-	rendererOutput, azureDependencyIDs, armerr, err := dp.renderResource(ctx, resourceID, resource)
+	rendererOutput, azureDependencyIDs, armerr, err := dp.renderResource(ctx, resourceID, radiusResource)
 	if err != nil {
 		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
 	}
 
 	// Deploy
-	logger.Info(fmt.Sprintf("Deploying radius resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
-	deployedRadiusResource, armerr, err := dp.deployRenderedResources(ctx, resourceID, resource, rendererOutput)
+	logger.Info(fmt.Sprintf("Deploying radius resource: %s, application: %s", radiusResource.ResourceName, radiusResource.ApplicationName))
+	deployedRadiusResource, armerr, err := dp.deployRenderedResources(ctx, resourceID, radiusResource, rendererOutput)
 	if err != nil {
 		dp.updateOperation(ctx, rest.FailedStatus, operationID, armerr)
 		return err
@@ -83,18 +83,20 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 		return err
 	}
 
+	// Any azure dependencies referenced from this radius resource will be persisted in the database `azureResources` collection for read operations
 	for _, azureResourceID := range azureDependencyIDs {
 		dbAzureResource := db.AzureResource{
-			ID:                  azureResourceID.ID,
-			SubscriptionID:      azureResourceID.SubscriptionID,
-			ResourceGroup:       azureResourceID.ResourceGroup,
-			ResourceName:        azureResourceID.Name(),
-			ResourceKind:        resourcekinds.Azure,
-			Type:                azureResourceID.Type(),
-			ApplicationName:     resource.ApplicationName,
-			AppSubscriptionID:   resource.SubscriptionID,
-			AppResourceGroup:    resource.ResourceGroup,
-			RadiusConnectionIDs: []string{resourceID.ID},
+			ID:             azureResourceID.ID,
+			SubscriptionID: azureResourceID.SubscriptionID,
+			ResourceGroup:  azureResourceID.ResourceGroup,
+			ResourceName:   azureResourceID.Name(),
+			ResourceKind:   resourcekinds.Azure,
+			Type:           azureResourceID.Type(),
+			// Add Radius application context, since the Azure resource could belong to a different resource group/subscription outside of application context
+			ApplicationName:           radiusResource.ApplicationName,
+			ApplicationSubscriptionID: radiusResource.SubscriptionID,
+			ApplicationResourceGroup:  radiusResource.ResourceGroup,
+			RadiusConnectionIDs:       []string{resourceID.ID},
 		}
 
 		_, err = dp.db.UpdateAzureResource(ctx, dbAzureResource)

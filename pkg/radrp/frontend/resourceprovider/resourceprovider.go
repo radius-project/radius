@@ -167,8 +167,8 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 	}
 
 	applicationName := applicationID.Name()
-	subscriptionID := id.SubscriptionID
-	resourceGroup := id.ResourceGroup
+	applicationSubscriptionID := id.SubscriptionID
+	applicationResourceGroup := id.ResourceGroup
 
 	// List radius resources
 	radiusResources, err := r.db.ListAllV3ResourcesByApplication(ctx, id, applicationName)
@@ -177,7 +177,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 	}
 
 	// List non-radius azure resources that are referenced from the application
-	azureResources, err := r.db.ListAllAzureResourcesForApplication(ctx, applicationName, subscriptionID, resourceGroup)
+	azureResources, err := r.db.ListAllAzureResourcesForApplication(ctx, applicationName, applicationSubscriptionID, applicationResourceGroup)
 	if err != nil {
 		return nil, err
 	}

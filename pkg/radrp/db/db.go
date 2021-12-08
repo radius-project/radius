@@ -64,13 +64,13 @@ type RadrpDB interface {
 	UpdateV3ResourceStatus(ctx context.Context, id azresources.ResourceID, resource RadiusResource) error
 	DeleteV3Resource(ctx context.Context, id azresources.ResourceID) error
 
-	ListAllAzureResourcesForApplication(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string) ([]AzureResource, error)
-	ListAzureResourcesForResourceType(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string, resourceType string) ([]AzureResource, error)
-	GetAzureResource(ctx context.Context, applicationName string, azureResourceID string) (AzureResource, error)
+	ListAllAzureResourcesForApplication(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup string) ([]AzureResource, error)
+	ListAzureResourcesForResourceType(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup, resourceType string) ([]AzureResource, error)
+	GetAzureResource(ctx context.Context, applicationName, azureResourceID string) (AzureResource, error)
 	UpdateAzureResource(ctx context.Context, azureResource AzureResource) (bool, error)
 	AddAzureResourceConnection(ctx context.Context, radiusResourceID string, azureResource AzureResource) (bool, error)
-	DeleteAzureResource(ctx context.Context, applicationName string, azureResourceID string) error
-	RemoveAzureResourceConnection(ctx context.Context, applicationName string, radiusResourceID string, azureResourceID string) (bool, error)
+	DeleteAzureResource(ctx context.Context, applicationName, azureResourceID string) error
+	RemoveAzureResourceConnection(ctx context.Context, applicationName, radiusResourceID, azureResourceID string) (bool, error)
 }
 
 type radrpDB struct {
@@ -387,8 +387,8 @@ func (d radrpDB) DeleteV3Resource(ctx context.Context, id azresources.ResourceID
 	return nil
 }
 
-func (d radrpDB) ListAllAzureResourcesForApplication(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string) ([]AzureResource, error) {
-	resources, err := d.listAzureResourcesForApplication(ctx, applicationName, appSubscriptionID, appResourceGroup, false /* filterByType */, "")
+func (d radrpDB) ListAllAzureResourcesForApplication(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup string) ([]AzureResource, error) {
+	resources, err := d.listAzureResourcesForApplication(ctx, applicationName, applicationSubscriptionID, applicationResourceGroup, false /* filterByType */, "")
 	if err != nil {
 		return nil, err
 	}
@@ -396,8 +396,8 @@ func (d radrpDB) ListAllAzureResourcesForApplication(ctx context.Context, applic
 	return resources, nil
 }
 
-func (d radrpDB) ListAzureResourcesForResourceType(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string, resourceType string) ([]AzureResource, error) {
-	resources, err := d.listAzureResourcesForApplication(ctx, applicationName, appSubscriptionID, appResourceGroup, true /* filterByType */, resourceType)
+func (d radrpDB) ListAzureResourcesForResourceType(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup, resourceType string) ([]AzureResource, error) {
+	resources, err := d.listAzureResourcesForApplication(ctx, applicationName, applicationSubscriptionID, applicationResourceGroup, true /* filterByType */, resourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -405,12 +405,12 @@ func (d radrpDB) ListAzureResourcesForResourceType(ctx context.Context, applicat
 	return resources, nil
 }
 
-func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, applicationName string, appSubscriptionID string, appResourceGroup string, filterByType bool, resourceType string) ([]AzureResource, error) {
+func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup string, filterByType bool, resourceType string) ([]AzureResource, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
-		radlogger.LogFieldSubscriptionID, appSubscriptionID, radlogger.LogFieldResourceGroup, appResourceGroup)
+		radlogger.LogFieldSubscriptionID, applicationSubscriptionID, radlogger.LogFieldResourceGroup, applicationResourceGroup)
 
-	filter := bson.D{{Key: "appSubscriptionId", Value: appSubscriptionID},
-		{Key: "appResourceGroup", Value: appResourceGroup},
+	filter := bson.D{{Key: "applicationSubscriptionId", Value: applicationSubscriptionID},
+		{Key: "applicationResourceGroup", Value: applicationResourceGroup},
 		{Key: "applicationName", Value: applicationName},
 	}
 	if filterByType {
@@ -436,7 +436,7 @@ func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, applicati
 
 // The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
 // Example /subscriptions/{guid}/resourceGroups/{resource-group-name}/{resource-provider-namespace}/{resource-type}/{resource-name}
-func (d radrpDB) GetAzureResource(ctx context.Context, applicationName string, azureResourceID string) (AzureResource, error) {
+func (d radrpDB) GetAzureResource(ctx context.Context, applicationName, azureResourceID string) (AzureResource, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
 		radlogger.LogFieldResourceID, azureResourceID)
 
@@ -477,21 +477,30 @@ func (d radrpDB) UpdateAzureResource(ctx context.Context, azureResource AzureRes
 	if len(azureResource.RadiusConnectionIDs) == 1 {
 		// `$push` appends the value to an existing array for the key or creates a new array with the value if the key doesn't exist
 		update = bson.D{
-			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID}, {Key: "subscriptionId", Value: azureResource.SubscriptionID},
-				{Key: "resourceGroup", Value: azureResource.ResourceGroup}, {Key: "resourceName", Value: azureResource.ResourceName},
-				{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type},
-				{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "appSubscriptionId", Value: azureResource.AppSubscriptionID},
-				{Key: "appResourceGroup", Value: azureResource.AppResourceGroup}},
+			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID},
+				{Key: "subscriptionId", Value: azureResource.SubscriptionID},
+				{Key: "resourceGroup", Value: azureResource.ResourceGroup},
+				{Key: "resourceName", Value: azureResource.ResourceName},
+				{Key: "resourceKind", Value: azureResource.ResourceKind},
+				{Key: "type", Value: azureResource.Type},
+				{Key: "applicationName", Value: azureResource.ApplicationName},
+				{Key: "applicationSubscriptionId", Value: azureResource.ApplicationSubscriptionID},
+				{Key: "applicationResourceGroup", Value: azureResource.ApplicationResourceGroup}},
 			},
 			{Key: "$push", Value: bson.D{{Key: "radiusConnectionIDs", Value: azureResource.RadiusConnectionIDs[0]}}},
 		}
 	} else if len(azureResource.RadiusConnectionIDs) > 1 {
 		update = bson.D{
-			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID}, {Key: "subscriptionId", Value: azureResource.SubscriptionID},
-				{Key: "resourceGroup", Value: azureResource.ResourceGroup}, {Key: "resourceName", Value: azureResource.ResourceName},
-				{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type},
-				{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "appSubscriptionId", Value: azureResource.AppSubscriptionID},
-				{Key: "appResourceGroup", Value: azureResource.AppResourceGroup}, {Key: "radiusConnectionIDs", Value: azureResource.RadiusConnectionIDs}},
+			{Key: "$set", Value: bson.D{{Key: "_id", Value: azureResource.ID},
+				{Key: "subscriptionId", Value: azureResource.SubscriptionID},
+				{Key: "resourceGroup", Value: azureResource.ResourceGroup},
+				{Key: "resourceName", Value: azureResource.ResourceName},
+				{Key: "resourceKind", Value: azureResource.ResourceKind},
+				{Key: "type", Value: azureResource.Type},
+				{Key: "applicationName", Value: azureResource.ApplicationName},
+				{Key: "applicationSubscriptionId", Value: azureResource.ApplicationSubscriptionID},
+				{Key: "applicationResourceGroup", Value: azureResource.ApplicationResourceGroup},
+				{Key: "radiusConnectionIDs", Value: azureResource.RadiusConnectionIDs}},
 			},
 		}
 	} else {
@@ -524,11 +533,15 @@ func (d radrpDB) AddAzureResourceConnection(ctx context.Context, radiusResourceI
 	update := bson.D{
 		{Key: "$push", Value: bson.D{{Key: "radiusConnectionIDs", Value: radiusResourceID}}},
 		{Key: "$setOnInsert", Value: bson.D{
-			{Key: "_id", Value: azureResource.ID}, {Key: "subscriptionId", Value: azureResource.SubscriptionID},
-			{Key: "resourceGroup", Value: azureResource.ResourceGroup}, {Key: "resourceName", Value: azureResource.ResourceName},
-			{Key: "resourceKind", Value: azureResource.ResourceKind}, {Key: "type", Value: azureResource.Type},
-			{Key: "applicationName", Value: azureResource.ApplicationName}, {Key: "appSubscriptionId", Value: azureResource.AppSubscriptionID},
-			{Key: "appResourceGroup", Value: azureResource.AppResourceGroup},
+			{Key: "_id", Value: azureResource.ID},
+			{Key: "subscriptionId", Value: azureResource.SubscriptionID},
+			{Key: "resourceGroup", Value: azureResource.ResourceGroup},
+			{Key: "resourceName", Value: azureResource.ResourceName},
+			{Key: "resourceKind", Value: azureResource.ResourceKind},
+			{Key: "type", Value: azureResource.Type},
+			{Key: "applicationName", Value: azureResource.ApplicationName},
+			{Key: "applicationSubscriptionId", Value: azureResource.ApplicationSubscriptionID},
+			{Key: "applicationResourceGroup", Value: azureResource.ApplicationResourceGroup},
 		}},
 	}
 
@@ -544,7 +557,7 @@ func (d radrpDB) AddAzureResourceConnection(ctx context.Context, radiusResourceI
 
 // The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
 // Example /subscriptions/{guid}/resourceGroups/{resource-group-name}/{resource-provider-namespace}/{resource-type}/{resource-name}
-func (d radrpDB) DeleteAzureResource(ctx context.Context, applicationName string, azureResourceID string) error {
+func (d radrpDB) DeleteAzureResource(ctx context.Context, applicationName, azureResourceID string) error {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
 		radlogger.LogFieldResourceID, azureResourceID)
 
@@ -567,7 +580,7 @@ func (d radrpDB) DeleteAzureResource(ctx context.Context, applicationName string
 
 // Removes specified `radiusResourceID` from radiusConnectionIDs in existing document matching resource id of the specified azure resource ResourceID
 // The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
-func (d radrpDB) RemoveAzureResourceConnection(ctx context.Context, applicationName string, radiusResourceID string, azureResourceID string) (bool, error) {
+func (d radrpDB) RemoveAzureResourceConnection(ctx context.Context, applicationName, radiusResourceID, azureResourceID string) (bool, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
 		radlogger.LogFieldResourceID, azureResourceID)
 

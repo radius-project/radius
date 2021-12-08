@@ -36,6 +36,8 @@ func GetResourceTableFormat() output.FormatterOptions {
 					tokens := strings.Split(t, "/")
 					// For Radius resource types only show last part of the resource type. Example: mongodb.com.MongoDBComponent instead of Microsoft.CustomProviders/mongodb.com.MongoDBComponent
 					// For non-Radius resources types, show full resource type, Microsoft.ServiceBus/namespaces for example.
+					// TODO: "Microsoft.CustomProviders" should be updated to reflect Radius RP name once we move out of custom RP mode:
+					// https://github.com/Azure/radius/issues/1534
 					if tokens[0] == "Microsoft.CustomProviders" {
 						return tokens[len(tokens)-1]
 					}

@@ -54,7 +54,7 @@ func Test_FormatResourceTable(t *testing.T) {
 			ProxyResource: radclient.ProxyResource{
 				Resource: radclient.Resource{
 					Name: to.StringPtr("test-resource"),
-					Type: to.StringPtr("Microsoft.CustomProviders/mongodb.com.MongoDBComponent"),
+					Type: to.StringPtr("Microsoft.CustomProviders/resourceProviders/Application/mongodb.com.MongoDBComponent"),
 				},
 			},
 			Properties: map[string]interface{}{

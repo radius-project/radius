@@ -41,9 +41,9 @@ type AzureResource struct {
 	Type           string `bson:"type"`
 
 	// Details of the application this resource is consumed in
-	ApplicationName   string `bson:"applicationName"`
-	AppSubscriptionID string `bson:"appSubscriptionId"`
-	AppResourceGroup  string `bson:"appResourceGroup"`
+	ApplicationName           string `bson:"applicationName"`
+	ApplicationSubscriptionID string `bson:"applicationSubscriptionId"`
+	ApplicationResourceGroup  string `bson:"applicationResourceGroup"`
 
 	// Radius resources that connect to this Azure resource
 	RadiusConnectionIDs []string `bson:"radiusConnectionIDs"`

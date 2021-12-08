@@ -498,16 +498,16 @@ func Test_ListAllResources_Success(t *testing.T) {
 	}
 	expectedAzureResources := []db.AzureResource{
 		{
-			ID:                  azureConnectionID,
-			SubscriptionID:      "az-resource-subscription",
-			ResourceGroup:       "az-resource-rg",
-			ResourceName:        "az-resource-name",
-			ResourceKind:        resourcekinds.Azure,
-			Type:                "Microsoft.ServiceBus/namespaces",
-			ApplicationName:     applicationName,
-			AppSubscriptionID:   subscriptionID,
-			AppResourceGroup:    resourceGroup,
-			RadiusConnectionIDs: []string{testID},
+			ID:                        azureConnectionID,
+			SubscriptionID:            "az-resource-subscription",
+			ResourceGroup:             "az-resource-rg",
+			ResourceName:              "az-resource-name",
+			ResourceKind:              resourcekinds.Azure,
+			Type:                      "Microsoft.ServiceBus/namespaces",
+			ApplicationName:           applicationName,
+			ApplicationSubscriptionID: subscriptionID,
+			ApplicationResourceGroup:  resourceGroup,
+			RadiusConnectionIDs:       []string{testID},
 		},
 	}
 
