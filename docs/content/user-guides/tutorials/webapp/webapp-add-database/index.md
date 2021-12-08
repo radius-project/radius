@@ -81,11 +81,11 @@ Update your `template.bicep` file to match the full application definition:
       mongodb.com.MongoDBComponent db
    ```
 
-   And as prior, a public endpoint will be available to your application as we specified a gateway in the `route` resource.
+   Just like before, a public endpoint will be available through the gateway in the `todoRoute` resource.
 
    ```sh
    Public Endpoints:
-      HttpRoute            route           SITE
+      HttpRoute            todo-route       SITE
    ```
 
 1. To test your `webapp` application, navigate to the public endpoint that was printed at the end of the deployment. You should see a page like:

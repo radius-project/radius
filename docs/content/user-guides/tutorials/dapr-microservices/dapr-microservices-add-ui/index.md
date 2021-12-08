@@ -45,7 +45,7 @@ services.AddSingleton<HttpClient>(DaprClient.CreateInvokeHttpClient(appId));
 
    ```sh
    Public Endpoints:
-      HttpRoute            frontendroute           SITE
+      HttpRoute            frontend-route           SITE
    ```
 
    Navigate to the endpoint to view the application:

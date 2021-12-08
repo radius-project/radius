@@ -3,8 +3,8 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
   
   //CONTAINER
-  resource route 'HttpRoute' = {
-    name: 'route'
+  resource todoRoute 'HttpRoute' = {
+    name: 'todo-route'
     properties: {
       gateway: {
         hostname: '*'
@@ -21,7 +21,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         ports: {
           web: {
             containerPort: 3000
-            provides: route.id
+            provides: todoRoute.id
           }
         }
         //PORTS

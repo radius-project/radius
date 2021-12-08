@@ -19,13 +19,13 @@ Create a new file named `template.bicep` and paste the following:
 
 Next you'll add resources for the website's frontend.
 
-Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The `todoapp` and `route` resource in your template.bicep file will contain everything needed for the website frontend to run and expose a port to the internet.
+Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The `todoapp` and `todoRoute` resource in your template.bicep file will contain everything needed for the website frontend to run and expose a port to the internet.
 
 Your `todoapp`, which is a ContainerComponent resource, will specify:
 - **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives.
 - **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).[]
 
-Your `route`, which is a HttpRoute resource, will specify:
+Your `todoRoute`, which is a HttpRoute resource, will specify:
 - **hostname:** `*`, the hostname that the container will be exposed to the internet on. `*` means that all hostnames will be accepted.
 
 Update your template.bicep file to match the full application definition:
@@ -52,14 +52,14 @@ Now you are ready to deploy the application for the first time.
    Resources:
       Application          webapp
       ContainerComponent   todoapp
-      HttpRoute            route
+      HttpRoute            todo-route
    ```
 
-   Also, a public endpoint will be available to your application as we specified a gateway in the `route` resource.
+   Also, a public endpoint will be available to your application as we specified a gateway in the `todoRoute` resource.
 
    ```sh
    Public Endpoints:
-      HttpRoute            route           SITE
+      HttpRoute            todo-route        SITE
    ```
 
 4. To test your `webapp` application, navigate to the public endpoint that was printed at the end of the deployment.
