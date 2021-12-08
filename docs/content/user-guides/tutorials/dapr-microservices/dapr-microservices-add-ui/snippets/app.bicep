@@ -3,6 +3,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-tutorial'
 
   //FRONTEND
+  resource frontendroute 'HttpRoute' = {
+    name: 'frontendroute'
+    properties: {
+      gateway: {
+        hostname: '*'
+      }
+    }
+  }
   resource frontend 'ContainerComponent' = {
     name: 'frontend'
     properties: {
@@ -11,6 +19,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         ports:{
           ui: {
             containerPort: 80
+            provides: frontendroute.id
           }
         }
       }
