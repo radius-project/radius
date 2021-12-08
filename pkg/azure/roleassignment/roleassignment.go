@@ -73,7 +73,6 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 		// Check the error and determine if it is ignorable/retryable
 		detailed, ok := clients.ExtractDetailedError(err)
 		if !ok {
-			fmt.Printf("@@@@ Not ok. Detailed error: %v\n", detailed)
 			return nil, err
 		}
 
