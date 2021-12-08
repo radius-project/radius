@@ -16,6 +16,7 @@ const (
 	Gateway                          = "Gateway"
 	HTTPRoute                        = "HttpRoute"
 	StatefulSet                      = "StatefulSet"
+	SecretProviderClass              = "SecretProviderClass"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
 	DaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
 	DaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"

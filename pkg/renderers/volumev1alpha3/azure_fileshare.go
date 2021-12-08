@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/handlers"
@@ -18,7 +19,7 @@ import (
 	"github.com/Azure/radius/pkg/resourcemodel"
 )
 
-func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func GetAzureFileShareVolume(ctx context.Context, arm armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	properties := radclient.AzureFileShareVolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
@@ -126,6 +127,7 @@ func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumePrope
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
+// MakeSecretsAndValuesForAzureFileShare returns secrets and computed values for Azure File Share
 func MakeSecretsAndValuesForAzureFileShare(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	computedValues := map[string]renderers.ComputedValueReference{
 		StorageAccountName: {

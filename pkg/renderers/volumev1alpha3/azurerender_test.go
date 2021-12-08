@@ -35,7 +35,7 @@ func createContext(t *testing.T) context.Context {
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
-		VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+		VolumeRenderers: map[string]RendererType{
 			PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
 		},
 	}
@@ -101,7 +101,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
-		VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+		VolumeRenderers: map[string]RendererType{
 			PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
 		},
 	}
@@ -124,7 +124,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
-		VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+		VolumeRenderers: map[string]RendererType{
 			PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
 		},
 	}
@@ -147,7 +147,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 func Test_Render_Managed_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
-		VolumeRenderers: map[string]func(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error){
+		VolumeRenderers: map[string]RendererType{
 			PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
 		},
 	}

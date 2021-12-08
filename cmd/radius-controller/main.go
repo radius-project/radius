@@ -50,6 +50,7 @@ func init() {
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
+
 	//+kubebuilder:scaffold:scheme
 }
 

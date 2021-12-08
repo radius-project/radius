@@ -114,6 +114,10 @@
           "description": "Secret version",
           "type": "string"
         },
+        "alias": {
+          "description": "File name when written to disk.",
+          "type": "string"
+        },
         "encoding": {
           "description": "Encoding format. Default utf-8",
           "type": "string",
@@ -168,6 +172,10 @@
             "pem",
             "pfx"
           ]
+        },
+        "alias": {
+          "description": "File name when written to disk.",
+          "type": "string"
         }
       }
     },
@@ -183,6 +191,10 @@
         },
         "version": {
           "description": "Key version",
+          "type": "string"
+        },
+        "alias": {
+          "description": "File name when written to disk.",
           "type": "string"
         }
       }

@@ -116,7 +116,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 		{
 			ResourceType: volumev1alpha3.ResourceType,
-			Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.SupportedVolumeRenderers},
+			Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.GetSupportedRenderers(), Arm: arm},
 		},
 		{
 			ResourceType: servicebusqueuev1alpha3.ResourceType,
@@ -125,10 +125,11 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 	}
 
 	skipHealthCheckKubernetesKinds := map[string]bool{
-		resourcekinds.Service:     true,
-		resourcekinds.Secret:      true,
-		resourcekinds.StatefulSet: true,
-		resourcekinds.HTTPRoute:   true,
+		resourcekinds.Service:             true,
+		resourcekinds.Secret:              true,
+		resourcekinds.StatefulSet:         true,
+		resourcekinds.HTTPRoute:           true,
+		resourcekinds.SecretProviderClass: true,
 	}
 
 	outputResourceModel := []model.OutputResourceModel{

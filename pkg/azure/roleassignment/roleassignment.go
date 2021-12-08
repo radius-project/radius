@@ -29,6 +29,21 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 	}
 
 	rac := clients.NewRoleAssignmentsClient(subscriptionID, auth)
+
+	// Check if role assignment already exists for the managed identity
+	existing, err := rac.List(ctx, fmt.Sprintf("principalID eq '%s'", principalID), "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to list role assignments for user assigned managed identity: %w", err)
+	}
+	for _, r := range existing.Values() {
+		if *roleList.Values()[0].ID == *r.RoleAssignmentPropertiesWithScope.RoleDefinitionID &&
+			scope == *r.RoleAssignmentPropertiesWithScope.Scope {
+			// The required role assignment already exists
+			return &r, nil
+		}
+	}
+
+	// Generate a new role assignment name
 	raName, _ := uuid.NewV4()
 
 	MaxRetries := 100
@@ -59,15 +74,6 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 		detailed, ok := clients.ExtractDetailedError(err)
 		if !ok {
 			return nil, err
-		}
-		// StatusCode = 409 indicates that the role assignment already exists. Retrieve it
-		if detailed.StatusCode == 409 {
-			roleAssignment, err := rac.Get(ctx, scope, raName.String(), "")
-			if err != nil {
-				return nil, err
-			}
-
-			return &roleAssignment, nil
 		}
 
 		// Sometimes, the managed identity takes a while to propagate and the role assignment creation fails with status code = 400

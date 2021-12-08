@@ -539,6 +539,9 @@ type CertificateObjectProperties struct {
 	// REQUIRED; Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
 	Value *CertificateObjectPropertiesValue `json:"value,omitempty"`
 
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
 	// Encoding format. Default utf-8
 	Encoding *CertificateObjectPropertiesEncoding `json:"encoding,omitempty"`
 
@@ -1765,6 +1768,9 @@ type KeyObjectProperties struct {
 	// REQUIRED; The name of the key
 	Name *string `json:"name,omitempty"`
 
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
 	// Key version
 	Version *string `json:"version,omitempty"`
 }
@@ -2816,6 +2822,9 @@ type SKU struct {
 type SecretObjectProperties struct {
 	// REQUIRED; The name of the secret
 	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
 
 	// Encoding format. Default utf-8
 	Encoding *SecretObjectPropertiesEncoding `json:"encoding,omitempty"`
