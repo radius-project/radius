@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/kubernetes"
@@ -42,7 +43,7 @@ type KubernetesDiagnosticsClient struct {
 var _ clients.DiagnosticsClient = (*KubernetesDiagnosticsClient)(nil)
 
 func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
-	if len(options.ResourceID.Types) != 3 || options.ResourceID.Types[2].Type != resourcekinds.RadiusHttpRoute {
+	if len(options.ResourceID.Types) != 3 || !strings.EqualFold(options.ResourceID.Types[2].Type, resourcekinds.RadiusHttpRoute) {
 		return nil, nil
 	}
 

@@ -8,6 +8,7 @@ package azure
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/clients"
@@ -27,7 +28,7 @@ var _ clients.DiagnosticsClient = (*AKSDiagnosticsClient)(nil)
 
 func (dc *AKSDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
 	// Only HTTP Route is supported
-	if len(options.ResourceID.Types) != 3 || options.ResourceID.Types[2].Type != resourcekinds.RadiusHttpRoute {
+	if len(options.ResourceID.Types) != 3 || !strings.EqualFold(options.ResourceID.Types[2].Type, resourcekinds.RadiusHttpRoute) {
 		return nil, nil
 	}
 
