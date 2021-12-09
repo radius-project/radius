@@ -2,7 +2,7 @@
 type: docs
 title: "Ephemeral Volumes"
 linkTitle: "Ephemeral"
-description: "Learn about the Radius Ephemeral Volume"
+description: "Learn about Radius ephemeral volumes"
 weight: 200
 ---
 
