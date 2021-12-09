@@ -14,7 +14,8 @@ Ephemeral volumes have the same lifecycle as the container, being deployed and d
 
 ### Properties
 
-An ephemeral volume can be mounted to a container by specifying the following properties in the container definition:-
+An ephemeral volume can be mounted to a container by specifying the following 'volumes' properties as part of the container definition:
+
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | name | y | A name key for the volume. | `tempstore`
