@@ -1,0 +1,23 @@
+---
+type: docs
+title: "Persistent Volumes"
+linkTitle: "Persistent"
+description: "Learn about the Radius Persistent Volumes"
+weight: 201
+---
+
+Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the persistent volume.
+
+## Properties
+
+A persistent volume can be mounted to a container by specifying the following properties in the container definition:-
+| Key  | Required | Description | Example |
+|------|:--------:|-------------|---------|
+| name | y | A name key for the volume. | `tempstore`
+| kind | y | The type of volume, either `ephemeral` or `persistent` | `persistent`
+| mountPath | y | The container path to mount the volume to. | `\tmp\mystore`
+| source | y | The resource if of the resource providing the volume. | `filestore.id`
+| rbac | n | The role-based access control level for the file share. Allowed values are `'read'` and `'write'`. | `'read'`
+
+
+### Supported resources
