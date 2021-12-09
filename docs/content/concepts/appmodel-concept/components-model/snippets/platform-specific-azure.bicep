@@ -1,6 +1,3 @@
-@description('SKU for Text Translation API')
-param SKU string = 'F0'
-
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'text-translation-app'
 
@@ -8,7 +5,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'translation-service'
     properties: {
       container: {
-        image: '<container_image>'
+        image: 'registry/container:tag'
       }
       connections: {
         translationresource: {
@@ -28,7 +25,7 @@ resource cognitiveServicesAccount 'Microsoft.CognitiveServices/accounts@2017-04-
   location: resourceGroup().location
   kind: 'TextTranslation'
   sku: {
-    name: SKU
+    name: 'F0'
   }
-  properties: {}
 }
+
