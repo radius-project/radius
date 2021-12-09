@@ -5,7 +5,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'storage-service'
     properties: {
       container: {
-        image: '<container_image>'
+        image: 'registry/container:tag'
       }
       connections: {
         storageresource: {
