@@ -2,7 +2,7 @@
 type: docs
 title: "Radius Volume"
 linkTitle: "Volume"
-description: "Learn about the Radius Volumes"
+description: "Learn about Radius volumes"
 weight: 100
 ---
 
