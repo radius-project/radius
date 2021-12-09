@@ -14,7 +14,7 @@ Radius supports mounting an Azure Key Vault as a persistent volume to the contai
 
 ### Properties
 
-You need to specify the properties below on the volume resource to which the container attaches:-
+The following properties are available on the `Volume` resource to which the container attaches:
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
