@@ -118,7 +118,7 @@ These resources can still be used in Radius Applications. Instead of being model
 
 Additionally, through the use of the [Bicep existing keyword](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?#reference-existing-resources), you can connect to resources that are deployed and managed separately from the Application.
 
-You can configure role based access control (RBAC) on Azure resources by specifying roles in the connection defined from Radius application. Please see [here] {{< ref connections-model/index.md >}} for more details: 
+You can configure role based access control (RBAC) on Azure resources by specifying roles within the connection information. See [the connections page] {{< ref connections-model >}} for more details: 
 
 {{< rad file="snippets/plaform-specific-azure.bicep" embed=true marker="//SAMPLE" >}}
 
