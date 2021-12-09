@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Persistent Volumes"
+title: "Persistent volumes"
 linkTitle: "Persistent"
 description: "Learn about the Radius Persistent Volumes"
 weight: 201
