@@ -7,7 +7,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: 'registry/container:tag'
-        }
         volumes: {
           tempdir: {
             kind: 'ephemeral'
