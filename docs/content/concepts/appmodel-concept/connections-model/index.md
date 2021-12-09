@@ -88,9 +88,9 @@ In the following example, a frontend service connects to a backend service via a
 
 Often, platforms will have resources that are not portable across Radius platforms. For example, your application may use an Azure storage account, or specific features of Azure CosmosDB that cannot be abstracted with MongoDB. In this case, runnable Components can define a connection directly to the platform resource in Bicep.
 
-{{% alert title="🚧 Under construction" color="info" %}}
-Connecting directly to platform resources in Bicep is still in design/development. Stay tuned for updates.
-{{% /alert %}}
+An Azure resource that does not bind to a [Radius portable component type]({{< ref resources >}}) can be defined outside the `radius.dev/Application` resource and added as a connection. To define a connection to an Azure resource the `kind` field should be set to `azure`, and RBAC can be configured by specifying role names in the `role` field.
+
+{{< rad file="snippets/azure-connection.bicep" embed=true marker="//SAMPLE" >}}
 
 ## Next step
 
