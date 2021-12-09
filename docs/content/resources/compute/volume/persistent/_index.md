@@ -10,7 +10,8 @@ Persistent volumes have lifecycles that are separate from the container. Contain
 
 ## Properties
 
-A persistent volume can be mounted to a container by specifying the following properties in the container definition:-
+A persistent volume can be mounted to a container by specifying the following `volumes` properties within the container definition:
+
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | name | y | A name key for the volume. | `tempstore`
