@@ -14,7 +14,8 @@ Radius supports mounting an Azure file share persistent volume to a container. S
 
 ### Properties
 
-You need to specify the properties below on the volume resource to which the container attaches:-
+The following properties are available on the `Volume` resource which the container attaches to:
+
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
 | kind | y | The kind of persistent volume. Should be 'azure.com.fileshare' for Azure FileShare persistent volumes | `'azure.com.fileshare'`
