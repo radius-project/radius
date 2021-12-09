@@ -53,32 +53,7 @@ The ports offered by the container are  defined in the `ports` section.
 ### Volumes
 
 The volumes mounted to the container, either local or external, are defined in the `volumes` section.
-
-| Key  | Required | Description | Example |
-|------|:--------:|-------------|---------|
-| name | y | A name key for the volume. | `tempstore`
-| kind | y | The type of volume, either `ephemeral` or `persistent` (see below). | `ephemeral`
-
-#### Ephemeral
-
-Ephemeral volumes have the same lifecycle as the container, being deployed and deleted with the container. They create an empty directory on the host and mount it to the container.
-
-| Key  | Required | Description | Example |
-|------|:--------:|-------------|---------|
-| mountPath | y | The container path to mount the volume to. | `\tmp\mystore`
-| managedStore | y | The backing storage medium. Either `disk` or `memory`. | `memory`
-
-#### Persistent
-
-Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the volume.
-
 Learn more about volumes and supported resources in the [Volume docs]({{< ref volume >}}).
-
-| Key  | Required | Description | Example |
-|------|:--------:|-------------|---------|
-| mountPath | y | The container path to mount the volume to. | `\tmp\mystore`
-| source | y | The resource if of the resource providing the volume. | `filestore.id`
-| rbac | n | The role-based access control level for the file share. Allowed values are `'read'` and `'write'`. | `'read'`
 
 ### Readiness probe
 
