@@ -120,7 +120,7 @@ Additionally, through the use of the [Bicep existing keyword](https://docs.micro
 
 You can configure role based access control (RBAC) on Azure resources by specifying roles within the connection information. See [the connections page] {{< ref connections-model >}} for more details: 
 
-{{< rad file="snippets/plaform-specific-azure.bicep" embed=true marker="//SAMPLE" >}}
+{{< rad file="snippets/platform-specific-azure.bicep" embed=true marker="//SAMPLE" >}}
 
 ## Next step
 
