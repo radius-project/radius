@@ -1,7 +1,6 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'myapp'
 
-  //SAMPLE
   resource frontend 'ContainerComponent' = {
     name: 'frontend'
     properties: {
@@ -32,7 +31,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
     }
   }
-  // SAMPLE
 }
 
 @description('Specifies the value of the secret that you want to create.')
