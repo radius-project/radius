@@ -42,7 +42,7 @@ You need to specify the properties below on the volume resource to which the con
 | version | specific key version. Default is latest | false | `'1234'`
 | alias | file name created on the disk. Same as objectname if not specified | false | `'my-key'`
 
-### Certificates
+#### Certificates
 
 | Key  | Description | Required | Example |
 |------|:--------:|-------------|---------|
