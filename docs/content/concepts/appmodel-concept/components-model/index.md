@@ -84,7 +84,7 @@ User-managed resources allow you to represent cloud resources as part of your ap
 | Radius-managed | ✅ | ✅ | ✅ | ❌ |
 | Platform-specific | ✅ | ❔*‡ | ✅ | ✅ |
 
-\* resource specific - See [this doc](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-resource)
+\* resource specific - See [this doc](https://docs.microsoft.com/azure/azure-resource-manager/bicep/bicep-functions-resource)
 <br />
 ‡ still in development/review
 
