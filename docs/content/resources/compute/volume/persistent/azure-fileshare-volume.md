@@ -6,8 +6,7 @@ description: "Learn about Radius persistent Azure file share volumes"
 weight: 200
 ---
 
-### Azure File Share
-Radius supports mounting of an Azure File Share persistent volume to a container. See [Azure File Share](https://docs.microsoft.com/en-us/azure/storage/files/storage-files-introduction)
+Radius supports mounting an Azure file share persistent volume to a container. See the [Azure file share docs](https://docs.microsoft.com/azure/storage/files/storage-files-introduction) for more information on the file share service.
 
 
 ## Component format
