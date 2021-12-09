@@ -2,7 +2,7 @@
 type: docs
 title: "Persistent volumes"
 linkTitle: "Persistent"
-description: "Learn about the Radius Persistent Volumes"
+description: "Learn about Radius persistent volumes"
 weight: 201
 ---
 
