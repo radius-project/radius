@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Azure KeyVault"
-linkTitle: "Azure KeyVault"
-description: "Learn about the Radius Persistent Azure KeyVault Volume"
+title: "Azure Key Vault"
+linkTitle: "Azure Key Vault"
+description: "Learn about Radius persistent Azure Key Vault volumes"
 weight: 200
 ---
 
