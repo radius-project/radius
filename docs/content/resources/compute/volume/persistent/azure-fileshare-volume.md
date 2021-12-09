@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Azure FileShare"
-linkTitle: "Azure FileShare"
-description: "Learn about the Radius Persistent Azure FileShare Volume"
+title: "Azure file share"
+linkTitle: "Azure file share"
+description: "Learn about Radius persistent Azure file share volumes"
 weight: 200
 ---
 
