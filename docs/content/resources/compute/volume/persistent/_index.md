@@ -20,6 +20,5 @@ A persistent volume can be mounted to a container by specifying the following `v
 | source | y | The resource if of the resource providing the volume. | `filestore.id`
 | rbac | n | The role-based access control level for the file share. Allowed values are `'read'` and `'write'`. | `'read'`
 
-
 ### Supported resources
 
