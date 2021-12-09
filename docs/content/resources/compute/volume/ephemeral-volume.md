@@ -10,7 +10,7 @@ weight: 200
 
 Ephemeral volumes have the same lifecycle as the container, being deployed and deleted with the container. They create an empty directory on the host and mount it to the container.
 
-{{< rad file="snippets/volume-ephemeral.bicep" embed=true marker="//SAMPLE" >}}
+{{< rad file="snippets/volume-ephemeral.bicep" embed=true marker="//CONTAINER" >}}
 
 ### Properties
 
