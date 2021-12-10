@@ -82,9 +82,9 @@ User-managed resources allow you to represent cloud resources as part of your ap
 |-|:---------------:|:-----------------------:|:--------------:|:--------------------:|
 | User-managed | ✅ | ✅ | ✅ | ✅ |
 | Radius-managed | ✅ | ✅ | ✅ | ❌ |
-| Platform-specific | ❌‡ | ❔*‡ | ❌‡ | ✅ |
+| Platform-specific | ✅ | ❔*‡ | ✅ | ✅ |
 
-\* resource specific - See [this doc](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-resource#list)
+\* resource specific - See [this doc](https://docs.microsoft.com/azure/azure-resource-manager/bicep/bicep-functions-resource)
 <br />
 ‡ still in development/review
 
@@ -118,9 +118,9 @@ These resources can still be used in Radius Applications. Instead of being model
 
 Additionally, through the use of the [Bicep existing keyword](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?#reference-existing-resources), you can connect to resources that are deployed and managed separately from the Application.
 
-{{% alert title="🚧 Under Construction 🏗" color="info" %}}
-Platform-specific resources are still under construction. Stay tuned for more information.
-{{% /alert %}}
+You can configure role based access control (RBAC) on Azure resources by specifying roles within the connection information. See [the connections page] {{< ref connections-model >}} for more details: 
+
+{{< rad file="snippets/platform-specific-azure.bicep" embed=true marker="//SAMPLE" >}}
 
 ## Next step
 

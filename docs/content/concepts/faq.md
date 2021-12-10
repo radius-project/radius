@@ -61,4 +61,4 @@ This flag tells Radius to manage the lifetime of the component for you. The comp
 
 ## Does Radius support all Azure resources?
 
-**Not yet**. We're currently working on changing the way Radius runnable components like containers work with Azure resources. Stay tuned for more information.
+**Yes**. You can use any Azure resource type by modeling it in Bicep outside the `radius.dev/Application` resource and defining a connection to the resource from a `ContainerComponent`. See the [connections page]({{< ref connections-model >}})) for more details.
