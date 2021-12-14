@@ -67,7 +67,12 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 		// Add name to resource ID, by removing the last type/name and appending
 		// the actual part.
 		newId := id.Truncate().Append(azresources.ResourceType{Type: typeName, Name: item.Name})
+		applicationStatus, err := r.computeApplicationHealthState(ctx, newId)
+		if err != nil {
+			return nil, err
+		}
 		converted, err := NewRestApplicationResource(newId, item)
+		converted.Properties["status"] = applicationStatus
 		if err != nil {
 			return nil, err
 		}
@@ -85,6 +90,7 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 
 	namespace := id.ResourceGroup
 	item := radiusv1alpha3.Application{}
+
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: id.Name()}, &item)
 	if err != nil && controller_runtime.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
@@ -92,12 +98,40 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 		return nil, err
 	}
 
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	output, err := NewRestApplicationResource(id, item)
+	output.Properties["status"] = applicationStatus
 	if err != nil {
 		return nil, err
 	}
 
 	return rest.NewOKResponse(output), nil
+}
+
+func (r *rp) computeApplicationHealthState(ctx context.Context, id azresources.ResourceID) (rest.ApplicationStatus, error) {
+	radiusResources, err := r.getAllResources(ctx, id)
+	if err != nil {
+		return rest.ApplicationStatus{}, err
+	}
+
+	statuses := map[string]rest.ResourceStatus{}
+	for _, radiusResource := range radiusResources.Value {
+		status := radiusResource.Properties["status"].(rest.ResourceStatus)
+		statuses[radiusResource.Name] = status
+	}
+
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingAppHealthState(statuses)
+	aggregateProvisiongState, aggregateProvisiongStateErrorDetails := rest.GetUserFacingAppProvisioningState(statuses)
+
+	return rest.ApplicationStatus{
+		ProvisioningState:        aggregateProvisiongState,
+		ProvisioningErrorDetails: aggregateProvisiongStateErrorDetails,
+		HealthState:              aggregateHealthState,
+		HealthErrorDetails:       aggregateHealthStateErrorDetails,
+	}, nil
 }
 
 func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {
@@ -211,6 +245,49 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 	}
 
 	return rest.NewOKResponse(output), nil
+}
+
+func (r *rp) getAllResources(ctx context.Context, id azresources.ResourceID) (resourceprovider.RadiusResourceList, error) {
+	output := resourceprovider.RadiusResourceList{}
+	namespace := id.ResourceGroup
+	for armType, kubernetesType := range armtemplate.GetSupportedTypes() {
+		if armType == "Application" {
+			continue
+		}
+		items := unstructured.UnstructuredList{}
+		items.SetGroupVersionKind(k8sschema.GroupVersionKind{
+			Group:   RadiusGroup,
+			Version: RadiusVersion,
+			Kind:    kubernetesType + "List",
+		})
+		err := r.client.List(ctx, &items, controller_runtime.InNamespace(namespace), controller_runtime.MatchingLabels{
+			kubernetes.LabelRadiusApplication: r.getApplicationNameFromResourceId(id),
+		})
+		if err != nil {
+			return resourceprovider.RadiusResourceList{}, err
+		}
+
+		for _, item := range items.Items {
+			resource := radiusv1alpha3.Resource{}
+			b, err := item.MarshalJSON()
+			if err != nil {
+				return resourceprovider.RadiusResourceList{}, err
+			}
+
+			err = json.Unmarshal(b, &resource)
+			if err != nil {
+				return resourceprovider.RadiusResourceList{}, err
+			}
+
+			converted, err := NewRestRadiusResource(resource)
+			if err != nil {
+				return resourceprovider.RadiusResourceList{}, err
+			}
+
+			output.Value = append(output.Value, converted)
+		}
+	}
+	return output, nil
 }
 
 func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {

@@ -39,8 +39,8 @@ func Test_FormatApplicationTable(t *testing.T) {
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `APPLICATION
-test-app
+	expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
+test-app     Provisioned         Healthy
 `
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }

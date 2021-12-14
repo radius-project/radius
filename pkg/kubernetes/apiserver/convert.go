@@ -48,6 +48,8 @@ func NewRestApplicationResource(id azresources.ResourceID, input radiusv1alpha3.
 		}
 	}
 
+	// properties["status"] = NewRestApplicationStatus(input.Name)
+
 	return resourceprovider.ApplicationResource{
 		ID:         id.ID,
 		Type:       id.Type(),
