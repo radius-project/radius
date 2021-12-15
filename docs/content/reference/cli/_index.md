@@ -20,6 +20,7 @@ Available Commands:
   env         Manage environments
   help        Help about any command
   resource    Manage resources
+  version     Prints the versions of the rad cli
 
 Flags:
       --config string   config file (default is $HOME/.rad/config.yaml)

@@ -27,11 +27,15 @@ type Formatter interface {
 }
 
 func NewFormatter(format string) (Formatter, error) {
-	if strings.EqualFold(format, FormatJson) {
+	normalized := strings.ToLower(strings.TrimSpace(format))
+	switch normalized {
+	case FormatJson:
 		return &JSONFormatter{}, nil
-	} else if strings.EqualFold(format, FormatTable) {
+	case FormatList:
+		return &ListFormatter{}, nil
+	case FormatTable:
 		return &TableFormatter{}, nil
-	} else {
+	default:
 		return nil, fmt.Errorf("unsupported format %s", format)
 	}
 }

@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -75,9 +76,11 @@ func init() {
 	})
 
 	// Initialize support for --version
-	RootCmd.Version = "set"
-	RootCmd.SetVersionTemplate(getVersionString(output.DefaultFormat))
-	
+	RootCmd.Version = "foo" // needs to be set to non-empty string, actual version is set via SetVersionTemplate()
+	buf := new(bytes.Buffer)
+	writeVersionString(output.FormatList, buf)
+	RootCmd.SetVersionTemplate(buf.String())
+
 	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 
 	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
