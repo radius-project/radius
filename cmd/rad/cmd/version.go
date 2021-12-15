@@ -36,7 +36,7 @@ func writeVersionString(format string, w io.Writer) {
 		bicep.Version(),
 		version.Commit(),
 	}
-	output.Write(format, displayVersion, w, output.FormatterOptions{Columns: []output.Column{
+	_ = output.Write(format, displayVersion, w, output.FormatterOptions{Columns: []output.Column{
 		{
 			Heading:  "Release",
 			JSONPath: "{ .Release }",
