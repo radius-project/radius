@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/clients"
+	"golang.org/x/sync/errgroup"
 )
 
 type ARMManagementClient struct {
@@ -78,25 +79,39 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 		}
 		return err
 	}
-	for _, resource := range resp.RadiusResourceList.Value {
-		types := strings.Split(*resource.Type, "/")
-		resourceType := types[len(types)-1]
-		poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
-			ctx, rg, appName, resourceType, *resource.Name, nil)
-		if err != nil {
-			return err
-		}
 
-		_, err = poller.PollUntilDone(ctx, radclient.PollInterval)
-		if err != nil {
-			if isNotFound(err) {
-				errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
-					resourceType, *resource.Name, appName, dm.EnvironmentName)
-				return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+	g, ctx := errgroup.WithContext(ctx)
+	errChan := make(chan error)
+	defer close(errChan)
+
+	for _, resource := range resp.RadiusResourceList.Value {
+		r := *resource // prevent loopclouse issues
+		g.Go(func() error {
+			types := strings.Split(*r.Type, "/")
+			resourceType := types[len(types)-1]
+			poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
+				ctx, rg, appName, resourceType, *r.Name, nil)
+			if err != nil {
+				return err
 			}
-			return err
-		}
+
+			_, err = poller.PollUntilDone(ctx, radclient.PollInterval)
+			if err != nil {
+				if isNotFound(err) {
+					errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
+						resourceType, *r.Name, appName, dm.EnvironmentName)
+					return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+				}
+				return err
+			}
+			return nil
+		})
 	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
 	poller, err := radclient.NewApplicationClient(con, sub).BeginDelete(ctx, rg, appName, nil)
 	if err != nil {
 		return err
